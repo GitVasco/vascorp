@@ -191,6 +191,8 @@ $(".tablaCortes tbody").on("click", "button.btnMandarTallerTotal", function () {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
+            console.log("respuesta", respuesta);
+
             for (let i = 0; i < respuesta.length; i++) {
                 $(".nuevasTallas").append(
                     `<div class="row borrameAC" style="padding:5px 15px" id="borrameAC">

@@ -206,7 +206,7 @@ class ControladorContabilidad
             $origen = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/ventas/V' . $nomar . '.txt';
 
             #$destino = '//Sistemas-2/d/contabilidad/ventas/V'.$nomar.'.txt';   
-            $destino = '//Yudy-pc/datasmart/VASCO2024/V' . $nomar . '.txt';
+            $destino = '//Yudy-pc/datasmart/VASCO2025/V' . $nomar . '.txt';
 
             copy($origen, $destino);
             #rename($origen, $destino);
@@ -214,14 +214,14 @@ class ControladorContabilidad
             $rutaBat = "vistas/contabilidad/ventas/VB$fi$ff.bat";
             $archivoBat = fopen($rutaBat, "w");
 
-            $nombreEmpresa = "VASCO2024";
+            $nombreEmpresa = "VASCO2025";
 
             fwrite($archivoBat, "MSISCONT.EXE " . $nombreEmpresa . " V" . $nomar . ".txt" . PHP_EOL);
             fclose($archivoBat);
 
             $origen2 = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/ventas/VB' . $nomar . '.bat';
             #$destino2 = '//Sistemas-2/d/contabilidad/ventas/VB'.$nomar.'.bat';
-            $destino2 = '//Yudy-pc/datasmart/VASCO2024/VB' . $nomar . '.bat';
+            $destino2 = '//Yudy-pc/datasmart/VASCO2025/VB' . $nomar . '.bat';
             copy($origen2, $destino2);
             #rename($origen, $destino);
 
@@ -517,21 +517,21 @@ class ControladorContabilidad
             $origen = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/letras/L' . $nomar . '.txt';
 
             #$destino = '//Sistemas-2/d/contabilidad/letras/L'.$nomar.'.txt';   
-            $destino = '//Yudy-pc/datasmart/VASCO2024/L' . $nomar . '.txt';
+            $destino = '//Yudy-pc/datasmart/VASCO2025/L' . $nomar . '.txt';
 
             copy($origen, $destino);
 
             $rutaBat = "vistas/contabilidad/letras/LB$fi$ff.bat";
             $archivoBat = fopen($rutaBat, "w");
 
-            $nombreEmpresa = "VASCO2024";
+            $nombreEmpresa = "VASCO2025";
 
             fwrite($archivoBat, "MSISCONT.EXE " . $nombreEmpresa . " L" . $nomar . ".txt" . PHP_EOL);
             fclose($archivoBat);
 
             $origen2 = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/letras/LB' . $nomar . '.bat';
             #$destino2 = '//Sistemas-2/d/contabilidad/letras/LB'.$nomar.'.bat';
-            $destino2 = '//Yudy-pc/datasmart/VASCO2024/LB' . $nomar . '.bat';
+            $destino2 = '//Yudy-pc/datasmart/VASCO2025/LB' . $nomar . '.bat';
             copy($origen2, $destino2);
 
             #var_dump($corr);
@@ -861,21 +861,21 @@ class ControladorContabilidad
             $origen = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/cancelaciones/C' . $nomar . '.txt';
 
             #$destino = '//Sistemas-2/d/contabilidad/cancelaciones/C'.$nomar.'.txt';   
-            $destino = '//Yudy-pc/datasmart/VASCO2024/C' . $nomar . '.txt';
+            $destino = '//Yudy-pc/datasmart/VASCO2025/C' . $nomar . '.txt';
 
             copy($origen, $destino);
 
             $rutaBat = "vistas/contabilidad/cancelaciones/CB$fi$ff.bat";
             $archivoBat = fopen($rutaBat, "w");
 
-            $nombreEmpresa = "VASCO2024";
+            $nombreEmpresa = "VASCO2025";
 
             fwrite($archivoBat, "MSISCONT.EXE " . $nombreEmpresa . " C" . $nomar . ".txt" . PHP_EOL);
             fclose($archivoBat);
 
             $origen2 = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/cancelaciones/CB' . $nomar . '.bat';
             #$destino2 = '//Sistemas-2/d/contabilidad/cancelaciones/CB'.$nomar.'.bat';
-            $destino2 = '//Yudy-pc/datasmart/VASCO2024/CB' . $nomar . '.bat';
+            $destino2 = '//Yudy-pc/datasmart/VASCO2025/CB' . $nomar . '.bat';
             copy($origen2, $destino2);
 
             $correlativo = ModeloContabilidad::mdlActualizarCorrelativo($añoI, $mesI, $corr04, "valor_3");
@@ -1041,21 +1041,21 @@ class ControladorContabilidad
             $origen = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/clientes/CL' . $nomar . '.txt';
 
             #$destino = '//Sistemas-2/d/contabilidad/clientes/V'.$nomar.'.txt';   
-            $destino = '//Yudy-pc/datasmart/VASCO2024/CL' . $nomar . '.txt';
+            $destino = '//Yudy-pc/datasmart/VASCO2025/CL' . $nomar . '.txt';
 
             copy($origen, $destino);
 
             $rutaBat = "vistas/contabilidad/clientes/CLB$fi$ff.bat";
             $archivoBat = fopen($rutaBat, "w");
 
-            $nombreEmpresa = "VASCO2024";
+            $nombreEmpresa = "VASCO2025";
 
             fwrite($archivoBat, "MSISCONT.EXE " . $nombreEmpresa . " CL" . $nomar . ".txt" . PHP_EOL);
             fclose($archivoBat);
 
             $origen2 = 'c:/xampp2/htdocs/vascorp/vistas/contabilidad/clientes/CLB' . $nomar . '.bat';
             #$destino2 = '//Sistemas-2/d/contabilidad/clientes/VB'.$nomar.'.bat';
-            $destino2 = '//Yudy-pc/datasmart/VASCO2024/CLB' . $nomar . '.bat';
+            $destino2 = '//Yudy-pc/datasmart/VASCO2025/CLB' . $nomar . '.bat';
             copy($origen2, $destino2);
 
             echo '<script>
