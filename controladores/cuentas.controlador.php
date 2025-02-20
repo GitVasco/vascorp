@@ -658,7 +658,7 @@ class ControladorCuentas
 
 			if ($respuesta == "ok") {
 
-				$ultimo_pago = ModeloCuentas::mdlEditarUltPago($_POST["cancelarDocumento"], $_POST["tipEditar"]);
+				$ultimo_pago = ModeloCuentas::mdlEditarUltPago($_POST["docEditar"], $_POST["tipEditar"]);
 
 				echo '<script>
 

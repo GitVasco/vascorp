@@ -43,6 +43,16 @@
 
                 </a>
 
+                <a href="cerrar-arreglos">
+
+                    <button class="btn btn-warning">
+
+                        Cerrar Arreglos
+
+                    </button>
+
+                </a>
+
                 <button class="btn btn-info btnIngresoDeta" data-toggle='modal' data-target='#modalVerIngresoDeta' codigoServicio><i class="fa fa-eye"></i> Ver ingresos</button>
 
                 <?php if ($_SESSION["id"] == "6" || $_SESSION["id"] == "11" || $_SESSION["id"] == "7") : ?>
