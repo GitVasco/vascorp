@@ -139,12 +139,18 @@ class ControladorArreglos
                 $idArreglo = $value["id"];
                 $articulos = $value["articulo"];
                 $cantidad = $value["cantidad"];
+                $saldo = $value["saldo"];
+
+                $cantidadDisponible = $saldo < 0 ? $cantidad + $saldo : $cantidad;
 
                 // 1. descargamos arreglo en articulos
-                $descargarArreglos = ModeloArreglos::mdlDescargarArreglos($articulos, $cantidad);
+                $descargarArreglos = ModeloArreglos::mdlDescargarArreglos($articulos, $cantidadDisponible);
 
                 // 2. actualizamos pendiente en arreglo detalle
                 $actualizarPendiente = ModeloArreglos::mdlActualizarPendienteArreglos($idArreglo, $cantidad);
+
+                // 3. actualizamos el stock en inventario
+                $actualizarStock = ModeloArreglos::mdlActualizarStock($articulos, $cantidadDisponible);
             }
 
             ModeloArreglos::mdlCerrarDetalleArreglos();

@@ -56,6 +56,22 @@ class ModeloArreglos
         $stmt = null;
     }
 
+    static public function mdlActualizarStock($articulo, $cantidad)
+    {
+        $sql = "UPDATE articulojf set stock = stock + {$cantidad} where articulo = '{$articulo}'";
+        $stmt = Conexion::conectar()->prepare($sql);
+
+        if ($stmt->execute()) {
+
+            return "ok";
+        } else {
+
+            return "error";
+        }
+
+        $stmt = null;
+    }
+
     static public function mdlActualizarPendienteArreglos($idArreglo, $cantidad)
     {
         $sql = "UPDATE arreglos_detallejf set pendiente = pendiente - {$cantidad} where id = '{$idArreglo}'";

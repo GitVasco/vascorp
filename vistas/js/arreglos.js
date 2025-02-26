@@ -25,7 +25,7 @@ function cargarTablaArreglos(fechaInicial, fechaFinal) {
         deferRender: true,
         retrieve: true,
         processing: true,
-        order: [[6, "desc"]],
+        order: [[8, "desc"]],
         pageLength: 20,
         lengthMenu: [
             [20, 40, 60, -1],
@@ -340,6 +340,17 @@ $(".formularioArreglos").on(
     "change",
     "input.nuevaCantidadArticuloArreglo",
     function () {
+        // necesito actualizar la cantidad de nuevoSaldoIngreso que es la difrerencia con nuevaCantidadArticuloArreglo
+        var cantidad = $(this).val();
+        var nuevoTaller = $(this).attr("nuevoTaller");
+        var saldo = $(this).attr("taller");
+        var articulo = $(this).attr("articulo");
+        var nuevoSaldo = saldo - cantidad;
+
+        //$(this).attr("nuevaCantidad", cantidad);
+
+        $(this).parent().parent().find(".nuevoSaldoIngreso").val(nuevoSaldo);
+
         sumarTotalArreglosCierre();
 
         listarArticulosArreglos();
@@ -374,11 +385,14 @@ function listarArticulosArreglos() {
 
     var cantidad = $(".nuevaCantidadArticuloArreglo");
 
+    let saldo = $(".nuevoSaldoIngreso");
+
     for (var i = 0; i < descripcion.length; i++) {
         listaArticulos.push({
             id: $(descripcion[i]).attr("articuloArreglo"),
             articulo: $(descripcion[i]).attr("articulo"),
             cantidad: $(cantidad[i]).val(),
+            saldo: $(saldo[i]).val(),
         });
     }
 
@@ -458,3 +472,5 @@ $(".tablaArreglos").on("click", ".btnVisualizarArreglos", function () {
         },
     });
 });
+
+// modificar el saldo
