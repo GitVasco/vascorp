@@ -253,6 +253,15 @@ class ControladorIngresos
 
                 $listaArticulos = json_decode($_POST["listaArticulosIngreso"], true);
 
+                $entaller = self::ActualizarEnTaller($listaArticulos);
+
+                foreach ($entaller as $id => $cantidad) {
+                    $idEntrada = $id;
+                    $cantidadRestante = $cantidad;
+
+                    ModeloIngresos::mdlActualizarSaldoEnTaller($idEntrada, $cantidadRestante);
+                }
+
                 #var_dump("listaArticulos", $listaArticulos);
 
                 if ($_POST["nuevoTipoSector"] == "0") {
