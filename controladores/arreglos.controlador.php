@@ -172,6 +172,20 @@ class ControladorArreglos
 
             $cabecera = ModeloArreglos::mdlCrearArregloCabecera($datos);
 
+
+            $datosIngresos = [
+                "tipo" => "E33",
+                "usuario" => $_POST["idUsuario"],
+                "guia" => $_POST["nuevaGuiaIng"],
+                "taller" => $_POST["nuevoTalleresA"],
+                "documento" => $_POST["nuevoCodigoCe"],
+                "total" => $_POST["totalArreglosCierre"],
+                "fecha" => $fecha,
+                "almacen" => "01"
+            ];
+
+            ModeloIngresos::mdlGuardarIngreso("movimientos_cabecerajf", $datos);
+
             if ($cabecera == "ok") {
 
                 foreach ($articulosLista as $key => $value) {

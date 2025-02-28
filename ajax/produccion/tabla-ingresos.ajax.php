@@ -30,37 +30,31 @@ class TablaIngresos
                 /*
             todo: ESTADO
             */
-                if ($ingreso[$i]["tipo"] == "E20" && $ingreso[$i]["almacen"] == "01") {
+                $tipo = $ingreso[$i]["tipo"];
+                $almacen = $ingreso[$i]["almacen"];
 
-                    $nombreTipo = "Produccion";
-                    $estado = "<span style='font-size:85%' class='label label-info'>" . $nombreTipo . "</span>";
-                } else {
-
-                    if ($ingreso[$i]["tipo"] == "E20" && $ingreso[$i]["almacen"] == "02") {
-
-                        $nombreTipo = "Segundas";
-                        $estado = "<span style='font-size:85%' class='label label-danger'>" . $nombreTipo . "</span>";
-                    } else if ($ingreso[$i]["tipo"] == "S25") {
-
-                        $nombreTipo = "Falla Tela";
-                        $estado = "<span style='font-size:85%' class='label label-danger'>" . $nombreTipo . "</span>";
-                    } else if ($ingreso[$i]["tipo"] == "S26") {
-
-                        $nombreTipo = "Contaminación Tela";
-                        $estado = "<span style='font-size:85%' class='label label-danger'>" . $nombreTipo . "</span>";
-                    } else if ($ingreso[$i]["tipo"] == "S27") {
-
-                        $nombreTipo = "Prenda Incompleta";
-                        $estado = "<span style='font-size:85%' class='label label-danger'>" . $nombreTipo . "</span>";
-                    } else if ($ingreso[$i]["tipo"] == "S32") {
-
-                        $nombreTipo = "Salida por arreglo - Solo Producción";
-                        $estado = "<span style='font-size:85%' class='label label-danger'>" . $nombreTipo . "</span>";
+                if ($tipo == "E20") {
+                    if ($almacen == "01") {
+                        $nombreTipo = "Produccion";
+                        $clase = "primary";
                     } else {
                         $nombreTipo = "Segundas";
-                        $estado = "<span style='font-size:85%' class='label label-danger'>" . $nombreTipo . "</span>";
+                        $clase = "danger";
                     }
+                } elseif ($tipo == "E33" && $almacen == "01") {
+                    $nombreTipo = "Arreglo";
+                    $clase = "info";
+                } else {
+                    $etiquetas = [
+                        "S25" => "Falla Tela",
+                        "S26" => "Contaminación Tela",
+                        "S27" => "Prenda Incompleta",
+                        "S32" => "Salida por arreglo - Solo Producción"
+                    ];
+                    $nombreTipo = isset($etiquetas[$tipo]) ? $etiquetas[$tipo] : "Segundas";
+                    $clase = "danger";
                 }
+                $estado = "<span style='font-size:85%' class='label label-$clase'>$nombreTipo</span>";
 
 
                 /* 

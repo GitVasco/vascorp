@@ -619,6 +619,7 @@ class ModeloIngresos
 		if ($fechaInicial == "null") {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
+			m.tipo,
 				m.documento,
 				DATE(m.fecha) AS fechas,
 				a.modelo,
@@ -713,12 +714,12 @@ class ModeloIngresos
 				movimientosjf_2025 m 
 				LEFT JOIN articulojf a 
 				  ON m.articulo = a.articulo 
-				LEFT JOIN sectorjf se 
-				  ON LEFT(m.documento, 2) = se.cod_sector 
 				LEFT JOIN movimientos_cabecerajf mc 
 				  ON m.tipo = mc.tipo 
 				  AND m.documento = mc.documento 
-				  WHERE m.tipo IN ('S27', 'S26', 'S25', 'E20') 
+					LEFT JOIN sectorjf se 
+				  ON mc.taller = se.cod_sector 
+				  WHERE m.tipo IN ('S27', 'S26', 'S25', 'E20','E33') 
 				   and YEAR(m.fecha)= YEAR(NOW()) and month(m.fecha)= month(NOW())
 			  GROUP BY m.documento,
 				a.modelo,
@@ -732,6 +733,7 @@ class ModeloIngresos
 		} else if ($fechaInicial == $fechaFinal) {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
+				m.tipo,
 				m.documento,
 				DATE(m.fecha) AS fechas,
 				a.modelo,
@@ -822,17 +824,17 @@ class ModeloIngresos
 				  0
 				) AS t8,
 				FORMAT(SUM(m.cantidad), 0) AS total 
-			  FROM
+				  FROM
 				movimientosjf_2025 m 
 				LEFT JOIN articulojf a 
 				  ON m.articulo = a.articulo 
-				LEFT JOIN sectorjf se 
-				  ON LEFT(m.documento, 2) = se.cod_sector 
 				LEFT JOIN movimientos_cabecerajf mc 
 				  ON m.tipo = mc.tipo 
 				  AND m.documento = mc.documento 
+					LEFT JOIN sectorjf se 
+				  ON mc.taller = se.cod_sector 
 				WHERE DATE(m.fecha) like '%$fechaFinal%'
-				AND m.tipo IN ('S27', 'S26', 'S25', 'E20') 
+				AND m.tipo IN ('S27', 'S26', 'S25', 'E20','E33') 
 				GROUP BY m.documento,
 				a.modelo,
 				a.nombre,
@@ -857,6 +859,7 @@ class ModeloIngresos
 			if ($fechaFinalMasUno == $fechaActualMasUno) {
 
 				$stmt = Conexion::conectar()->prepare("SELECT 
+					m.tipo,
 					m.documento,
 					DATE(m.fecha) AS fechas,
 					a.modelo,
@@ -947,17 +950,17 @@ class ModeloIngresos
 					  0
 					) AS t8,
 					FORMAT(SUM(m.cantidad), 0) AS total 
-				  FROM
-					movimientosjf_2025 m 
-					LEFT JOIN articulojf a 
-					  ON m.articulo = a.articulo 
+				 	  FROM
+				movimientosjf_2025 m 
+				LEFT JOIN articulojf a 
+				  ON m.articulo = a.articulo 
+				LEFT JOIN movimientos_cabecerajf mc 
+				  ON m.tipo = mc.tipo 
+				  AND m.documento = mc.documento 
 					LEFT JOIN sectorjf se 
-					  ON LEFT(m.documento, 2) = se.cod_sector 
-					LEFT JOIN movimientos_cabecerajf mc 
-					  ON m.tipo = mc.tipo 
-					  AND m.documento = mc.documento 
+				  ON mc.taller = se.cod_sector 
 					WHERE DATE(m.fecha) BETWEEN '$fechaInicial' AND '$fechaFinalMasUno'
-					AND m.tipo IN ('S27', 'S26', 'S25', 'E20') 
+					AND m.tipo IN ('S27', 'S26', 'S25', 'E20','E33') 
 				  GROUP BY m.documento,
 					a.modelo,
 					a.nombre,
@@ -967,6 +970,7 @@ class ModeloIngresos
 
 
 				$stmt = Conexion::conectar()->prepare("SELECT 
+					m.tipo,
 					m.documento,
 					DATE(m.fecha) AS fechas,
 					a.modelo,
@@ -1058,16 +1062,17 @@ class ModeloIngresos
 					) AS t8,
 					FORMAT(SUM(m.cantidad), 0) AS total 
 				  FROM
-					movimientosjf_2025 m 
-					LEFT JOIN articulojf a 
-					  ON m.articulo = a.articulo 
+				movimientosjf_2025 m 
+				LEFT JOIN articulojf a 
+				  ON m.articulo = a.articulo 
+				LEFT JOIN movimientos_cabecerajf mc 
+				  ON m.tipo = mc.tipo 
+				  AND m.documento = mc.documento 
 					LEFT JOIN sectorjf se 
-					  ON LEFT(m.documento, 2) = se.cod_sector 
-					LEFT JOIN movimientos_cabecerajf mc 
-					  ON m.tipo = mc.tipo 
-					  AND m.documento = mc.documento 
+				  ON mc.taller = se.cod_sector 
 					WHERE DATE(m.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'
-					AND m.tipo IN ('S27', 'S26', 'S25', 'E20') 
+					AND m.tipo IN ('S27', 'S26', 'S25', 'E20','E33') 
+				  GROUP BY m.documento,
 					GROUP BY m.documento,
 					a.modelo,
 					a.nombre,

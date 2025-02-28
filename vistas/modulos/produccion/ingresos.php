@@ -424,6 +424,7 @@ MODAL VISUALIZAR INFORMACION
                             <thead>
 
                                 <tr>
+                                    <th></th>
                                     <th style="width:100px"></th>
                                     <th></th>
                                     <th style="width:130px"></th>
@@ -443,6 +444,7 @@ MODAL VISUALIZAR INFORMACION
                                 </tr>
 
                                 <tr>
+                                    <th></th>
                                     <th style="width:100px"></th>
                                     <th></th>
                                     <th style="width:130px"></th>
@@ -462,6 +464,7 @@ MODAL VISUALIZAR INFORMACION
                                 </tr>
 
                                 <tr>
+                                    <th>Tipo</th>
                                     <th style="width:100px">Taller</th>
                                     <th>Guia</th>
                                     <th style="width:130px">Fecha</th>
