@@ -105,7 +105,7 @@ $("#seleccionarCliente").change(function () {
     });
 });
 
-const vendedoresEspeciales = new Set(["08L"]);
+const vendedoresEspeciales = new Set(["08P"]);
 
 $("#seleccionarVendedor").change(function () {
     const cliList = $("#seleccionarCliente").val();
@@ -124,7 +124,7 @@ $("#seleccionarVendedor").change(function () {
         dataType: "json",
         success: function (respuestaDet) {
             const listaPrecio = vendedoresEspeciales.has(vendedor)
-                ? "precio4"
+                ? "precio6"
                 : respuestaDet["lista_precios"];
             $("#lista").val(listaPrecio);
             console.log("🚀 ~ listaPrecio:", listaPrecio);
