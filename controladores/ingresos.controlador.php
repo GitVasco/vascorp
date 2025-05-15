@@ -225,6 +225,10 @@ class ControladorIngresos
             isset($_POST["nuevoTalleres"]) &&
             isset($_POST["idUsuario"])
         ) {
+            echo '<pre>';
+            print_r($_POST);
+            echo '</pre>';
+            return;
 
             #var_dump("nuevaOrdenCorte", $_POST["nuevaOrdenCorte"]);
 
@@ -305,8 +309,8 @@ class ControladorIngresos
                 $datos = array(
                     "tipo" => $_POST["tipoMovimiento"],
                     "usuario" => $_POST["idUsuario"],
-                    "guia" => $_POST["nuevaGuiaIng"],
                     "taller" => $_POST["nuevoTalleres"],
+                    "guia" => $_POST["nuevaGuiaIng"],
                     "documento" => $_POST["nuevoCodigo"],
                     "total" => $_POST["totalTaller"],
                     "fecha" => $_POST["nuevaFecha"],

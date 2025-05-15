@@ -55,7 +55,7 @@ class ModeloMaestras
                                                     tabla_m_detalle 
                                                 WHERE cod_Tabla = :valor
                                                 -- ORDER BY cod_argumento ASC
-                                                -- LIMIT 0,1592
+                                                -- LIMIT 0,1943
                                                 ");
 
         $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);

@@ -138,8 +138,8 @@ class ModeloIngresos
 
 		$stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
 		$stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_INT);
-		$stmt->bindParam(":guia", $datos["guia"], PDO::PARAM_STR);
 		$stmt->bindParam(":taller", $datos["taller"], PDO::PARAM_STR);
+		$stmt->bindParam(":guia", $datos["guia"], PDO::PARAM_STR);
 		$stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
 		$stmt->bindParam(":total", $datos["total"], PDO::PARAM_INT);
 		$stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
