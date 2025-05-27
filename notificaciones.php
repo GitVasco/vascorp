@@ -2,9 +2,15 @@
 
 require_once "controladores/cuentas.controlador.php";
 require_once "modelos/cuentas.modelo.php";
+require_once "controladores/clientes.controlador.php";
+require_once "modelos/clientes.modelo.php";
 
 // Definir el nombre de la empresa
 $nombreEmpresa = "CORPORACION VASCO SAC";
+$instancia = "NTE5NDU0NzA3Mzg=";
+$entorno = "pruebas"; // Cambiar a "produccion" para el entorno real
+$numeroPrueba = "51982009013"; // Número de teléfono para pruebas
+$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MzQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJjb25zdWx0b3IifQ.9GRIzGaSQz9MHipVCyy6Ie-pIMo_aFDIjwt4Xd5rX2s";
 
 // Obtener cuentas con notificaciones pendientes
 $cuentas = ControladorCuentas::ctrNotificacionesPendientes();
@@ -34,52 +40,81 @@ $registroNotificaciones = []; // Para el archivo de registro
 // Obtener la fecha actual
 $fechaActual = date("Y-m-d");
 
-foreach ($cuentasHoy as $cuenta) {
+
+foreach ($cuentasHoy as $index => $cuenta) {
+    // Si el entorno es "pruebas" y no es el primer recorrido, salir del bucle
+    if ($entorno === "pruebas" && $index > 0) {
+        break;
+    }
+
     // Determinar el tipo de notificación y generar el mensaje correspondiente
     if ($cuenta['tipo_notificacion'] === 'VENCIMIENTO') {
-        $mensaje = "Hola {$cuenta['nombre']}, su letra con número único {$cuenta['num_unico']} y monto S/{$cuenta['monto']} vence hoy ({$cuenta['fecha_ven']}). Puede realizar el pago en el BCP. ¡Gracias!\n{$nombreEmpresa}";
+        $mensaje = "Hola {$cuenta['nombre']} 👋\n"
+            . "¡Tu letra vence hoy!\n"
+            . "🆔 Nro único: {$cuenta['num_unico']}\n"
+            . "💰 Monto: S/{$cuenta['monto']}\n"
+            . "📅 Fecha vencimiento: {$cuenta['fecha_ven']}\n"
+            . "Por favor, realiza tu pago en BCP.\n"
+            . "Gracias.\n{$nombreEmpresa}\nJACKYFORM-ROSALINDA-VASCO";
         $resumen['vencimiento'] += 1;
     } elseif ($cuenta['tipo_notificacion'] === 'RECORDATORIO') {
-        $mensaje = "Hola {$cuenta['nombre']}, le recordamos que su letra con número único {$cuenta['num_unico']} y monto S/{$cuenta['monto']} venció hace 5 días ({$cuenta['fecha_ven']}). Aún está pendiente de pago. Por favor, realice el pago en el BCP lo antes posible. ¡Gracias!\n{$nombreEmpresa}";
+        $mensaje = "Hola {$cuenta['nombre']} 👋\n"
+            . "Han pasado 5 días desde el vencimiento de tu letra.\n"
+            . "🆔 Nro único: {$cuenta['num_unico']}\n"
+            . "💰 Monto: S/{$cuenta['monto']}\n"
+            . "📅 Fecha vencimiento: {$cuenta['fecha_ven']}\n"
+            . "Sigue pendiente de pago. Por favor, realiza el pago en BCP.\n"
+            . "Gracias.\n{$nombreEmpresa}\nJACKYFORM-ROSALINDA-VASCO";
         $resumen['recordatorio'] += 1;
     } else {
         // Si hay otro tipo de notificación, se puede manejar aquí
         continue; // Saltar si el tipo de notificación no es reconocido
     }
 
+    $telefono = $entorno === "pruebas" ? $numeroPrueba : "51" . $cuenta['telefono'];
+
     $mensajes[] = [
-        'telefono' => $cuenta['telefono'],
+        'telefono' => $telefono,
         'mensaje'  => $mensaje,
         'tipo'     => $cuenta['tipo_notificacion']
     ];
+
+    $contenido = [
+        "number" => $telefono,
+        "text" => $mensaje,
+    ];
+
+    $response = ControladorClientes::ctrEnviarNotificaciones($instancia, json_encode($contenido), $token);
+    $responseDecoded = json_decode($response, true);
+
+    $exito = isset($responseDecoded['status']) && $responseDecoded['status'] === 200;
 
     // Incrementar el contador total de mensajes
     $resumen['total_mensajes'] += 1;
 
     // Agregar los detalles del documento al resumen
     $resumen['documentos'][] = [
-        //'tipo_doc'       => $cuenta['tipo_doc'],
         'num_cta'        => $cuenta['num_cta'],
-        //'doc_origen'     => $cuenta['doc_origen'],
-        //'fecha'          => $cuenta['fecha'],
         'fecha_ven'      => $cuenta['fecha_ven'],
-        //'vendedor'       => $cuenta['vendedor'],
-        //'monto'          => $cuenta['monto'],
         'saldo'          => $cuenta['saldo'],
         'num_unico'      => $cuenta['num_unico'],
-        //'cliente'        => $cuenta['cliente'],
         'nombre'         => $cuenta['nombre'],
-        'telefono'       => $cuenta['telefono'],
-        'tipo_notificacion' => $cuenta['tipo_notificacion']
+        'telefono'       => $telefono,
+        'tipo_notificacion' => $cuenta['tipo_notificacion'],
+        'exito'          => $exito
     ];
 
     // Agregar la notificación al registro de notificaciones
     $registroNotificaciones[] = [
-        'telefono' => $cuenta['telefono'],
+        'telefono' => $telefono,
         'mensaje'  => $mensaje,
         'tipo'     => $cuenta['tipo_notificacion'],
-        'fecha_envio' => $fechaActual
+        'fecha_envio' => $fechaActual,
+        'exito'       => $exito
     ];
+
+    // Pausar 5 segundos antes de enviar el siguiente mensaje
+    sleep(5);
 }
 
 // Opcional: Guardar los mensajes en un archivo TXT para pruebas

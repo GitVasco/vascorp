@@ -298,7 +298,8 @@ class ModeloCuentas
 				cc.num_unico ,
 				cc.cliente ,
 				c.nombre ,
-				replace(c.telefono, ' ', '') as telefono
+				replace(c.telefono, ' ', '') as telefono,
+				case when cc.num_unico = '' || c.telefono = '' then 'NO' else 'SI' end as notificacion
 			from
 				cuenta_ctejf cc
 			left join clientesjf c 
@@ -1129,7 +1130,36 @@ class ModeloCuentas
 			return $stmt->fetchAll();
 		} else {
 
-			$stmt = Conexion::conectar()->prepare("SELECT c.*,cli.nombre FROM $tabla c LEFT JOIN clientesjf cli ON c.cliente=cli.codigo WHERE YEAR(c.fecha) = '" . $ano . "' AND c.tip_mov ='+'");
+			$stmt = Conexion::conectar()->prepare("SELECT
+					c.id,
+					c.tipo_doc ,
+					c.num_cta ,
+					c.cod_pago,
+					c.doc_origen,
+					c.fecha,
+					c.fecha_ven,
+					c.monto,
+					c.saldo,
+					c.tip_cambio,
+					c.ult_pago,
+					c.cliente,
+					cli.nombre,
+					c.vendedor,
+					c.fecha_cep,
+					c.banco,
+					c.num_unico,
+					c.renovacion,
+					c.protesta,
+					c.tip_mon,
+					c.estado,
+					c.estado_doc,
+					c.fecha_envio,
+					c.fecha_creacion
+					from
+						cuenta_ctejf c
+					left join clientesjf cli on
+						c.cliente = cli.codigo
+					where YEAR(c.fecha) = '" . $ano . "' AND c.tip_mov ='+'");
 
 			$stmt->bindParam(":fecha", $fechaFinal, PDO::PARAM_STR);
 

@@ -388,4 +388,37 @@ class ControladorClientes
 			}
 		}
 	}
+
+	//funcion pra enviar las notificaciones
+	static public function ctrEnviarNotificaciones($instancia, $contenido, $token)
+	{
+
+		$curl = curl_init();
+
+		curl_setopt_array($curl, [
+			CURLOPT_URL => "https://apiwsp.factiliza.com/v1/message/sendtext/{$instancia}",
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_ENCODING => "",
+			CURLOPT_MAXREDIRS => 10,
+			CURLOPT_TIMEOUT => 30,
+			CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+			CURLOPT_CUSTOMREQUEST => "POST",
+			CURLOPT_POSTFIELDS => "$contenido",
+			CURLOPT_HTTPHEADER => [
+				"Authorization: Bearer {$token}",
+				"Content-Type: application/json"
+			],
+		]);
+
+		$response = curl_exec($curl);
+		$err = curl_error($curl);
+
+		curl_close($curl);
+
+		if ($err) {
+			return "cURL Error #:" . $err;
+		} else {
+			return $response;
+		}
+	}
 }

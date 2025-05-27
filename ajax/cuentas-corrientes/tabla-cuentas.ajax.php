@@ -21,77 +21,54 @@ class TablaCuentas
             $datosJson = '{
         "data": [';
 
-            for ($i = 0; $i < count($cuenta); $i++) {
-                /*=============================================
-                TRAEMOS LAS ACCIONES
-                =============================================*/
-                if ($cuenta[$i]["estado"] == 'PENDIENTE') {
-                    $estado =  "<button class='btn btn-danger btn-xs btnCancelacionDirecta' idCta='{$cuenta[$i]['id']}' tipo_doc='{$cuenta[$i]['tipo_doc']}' num_cta='{$cuenta[$i]['num_cta']}' cliente='{$cuenta[$i]['cliente']}' vendedor='{$cuenta[$i]['vendedor']}' monto='{$cuenta[$i]['monto']}' saldo='{$cuenta[$i]['saldo']}' fecha='{$cuenta[$i]['fecha']}' fecha_ven='{$cuenta[$i]['fecha_ven']}' doc_origen='{$cuenta[$i]['doc_origen']}'>PENDIENTE</button>";
+
+            foreach ($cuenta as $item) {
+                $estado = $item["estado"] === 'PENDIENTE'
+                    ? "<button class='btn btn-danger btn-xs btnCancelacionDirecta' idCta='{$item['id']}' tipo_doc='{$item['tipo_doc']}' num_cta='{$item['num_cta']}' cliente='{$item['cliente']}' vendedor='{$item['vendedor']}' monto='{$item['monto']}' saldo='{$item['saldo']}' fecha='{$item['fecha']}' fecha_ven='{$item['fecha_ven']}' doc_origen='{$item['doc_origen']}'>PENDIENTE</button>"
+                    : "<button class='btn btn-success btn-xs'>CANCELADO</button>";
+
+                $botones = "<button class='btn btn-xs btn-primary btnVisualizarCuenta' style='margin-right: 10px;' numCta='{$item["num_cta"]}' codCta='{$item["tipo_doc"]}' title='Visualizar cuenta'><i class='fa fa-eye'></i></button>";
+
+                if ($item["saldo"] == 0) {
+                    $botones .= "<button class='btn btn-xs btn-warning btnEditarCuenta' idCuenta='{$item["id"]}' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button>";
+                    $botones .= "<button class='btn btn-xs btn-danger btnEliminarCuenta' idCuenta='{$item["id"]}' title='Eliminar cuenta'><i class='fa fa-times'></i></button>";
                 } else {
-                    $estado =  "<button class='btn btn-success btn-xs'>CANCELADO</button>";
-                }
-
-
-                if ($cuenta[$i]["saldo"] == 0) {
-
-                    $botones =  "<div class='btn-group'><button class='btn btn-xs btn-primary btnVisualizarCuenta' numCta='" . $cuenta[$i]["num_cta"] . "'  codCta='" . $cuenta[$i]["tipo_doc"] . "' title='Visualizar cuenta' ><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-warning btnEditarCuenta' idCuenta='" . $cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarCuenta' idCuenta='" . $cuenta[$i]["id"] . "' title='Eliminar cuenta'><i class='fa fa-times'></i></button></div>";
-                } else {
-
-                    if ($cuenta[$i]["tipo_doc"] == "01" || $cuenta[$i]["tipo_doc"] == "03") {
-
-                        if ($cuenta[$i]["monto"] ==  $cuenta[$i]["saldo"]) {
-
-                            $botones =  "<button class='btn btn-xs btn-primary btnVisualizarCuenta' style='margin-right: 10px;' numCta='" . $cuenta[$i]["num_cta"] . "' codCta='" . $cuenta[$i]["tipo_doc"] . "' title='Visualizar cuenta' ><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-info btnAgregarLetra' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' cliente='" . $cuenta[$i]["nombre"] . "' data-toggle='modal' data-target='#modalAgregarLetras' title='Agregar letra'><i style='color:white'  class='fa fa-usd'></i></button><button class='btn btn-xs btn-warning btnEditarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' title='Eliminar cuenta'><i class='fa fa-times'></i></button>";
-                        } else {
-
-                            $botones =  "<button class='btn btn-xs btn-primary btnVisualizarCuenta' style='margin-right: 10px;' numCta='" . $cuenta[$i]["num_cta"] . "' codCta='" . $cuenta[$i]["tipo_doc"] . "' title='Visualizar cuenta' ><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-warning btnEditarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' title='Eliminar cuenta'><i class='fa fa-times'></i></button>";
+                    if (in_array($item["tipo_doc"], ["01", "03"])) {
+                        if ($item["monto"] == $item["saldo"]) {
+                            $botones .= "<button class='btn btn-xs btn-info btnAgregarLetra' style='margin-right: 10px;' idCuenta='{$item["id"]}' cliente='{$item["nombre"]}' data-toggle='modal' data-target='#modalAgregarLetras' title='Agregar letra'><i style='color:white' class='fa fa-usd'></i></button>";
                         }
-                    } else if ($cuenta[$i]["tipo_doc"] == "85" && $cuenta[$i]["estado"] == "PENDIENTE") {
-
-                        if ($cuenta[$i]["protesta"] == "1") {
-
-                            $botones =  "<button class='btn btn-xs btn-info btnDividirLetra' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' cliente='" . $cuenta[$i]["nombre"] . "'data-toggle='modal' data-target='#modalDividirLetra' title='Dividir letra'><i class='fa fa-random'></i></button><button class='btn btn-xs btn-primary btnVisualizarCuenta' style='margin-right: 10px;' numCta='" . $cuenta[$i]["num_cta"] . "' codCta='" . $cuenta[$i]["tipo_doc"] . "' title='Visualizar cuenta' ><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-warning btnEditarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-success btnImprimirLetra' style='margin-right: 10px;' numCuenta='" . $cuenta[$i]["num_cta"] . "' ><i class='fa fa-print'></i></button><button class='btn btn-xs btn-danger btnEliminarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' title='Eliminar cuenta'><i class='fa fa-times'></i></button><button class='btn btn-xs btn-basic btnCargoProtesto' style='margin-right: 10px;' num_cta='" . $cuenta[$i]["num_cta"] . "' cliente='" . $cuenta[$i]["cliente"] . "' title='Cargo de Protesto'><i class='fa fa-file'></i></button>";
-                        } else {
-
-                            $botones =  "<button class='btn btn-xs btn-info btnDividirLetra' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' cliente='" . $cuenta[$i]["nombre"] . "'data-toggle='modal' data-target='#modalDividirLetra' title='Dividir letra'><i class='fa fa-random'></i></button><button class='btn btn-xs btn-primary btnVisualizarCuenta' style='margin-right: 10px;' numCta='" . $cuenta[$i]["num_cta"] . "' codCta='" . $cuenta[$i]["tipo_doc"] . "' title='Visualizar cuenta' ><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-warning btnEditarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-success btnImprimirLetra' style='margin-right: 10px;' numCuenta='" . $cuenta[$i]["num_cta"] . "' ><i class='fa fa-print'></i></button><button class='btn btn-xs btn-danger btnEliminarCuenta' idCuenta='" . $cuenta[$i]["id"] . "' title='Eliminar cuenta'><i class='fa fa-times'></i></button>";
+                    } elseif ($item["tipo_doc"] == "85" && $item["estado"] === "PENDIENTE") {
+                        $botones .= "<button class='btn btn-xs btn-info btnDividirLetra' style='margin-right: 10px;' idCuenta='{$item["id"]}' cliente='{$item["nombre"]}' data-toggle='modal' data-target='#modalDividirLetra' title='Dividir letra'><i class='fa fa-random'></i></button>";
+                        $botones .= "<button class='btn btn-xs btn-success btnImprimirLetra' style='margin-right: 10px;' numCuenta='{$item["num_cta"]}'><i class='fa fa-print'></i></button>";
+                        if ($item["protesta"] == "1") {
+                            $botones .= "<button class='btn btn-xs btn-basic btnCargoProtesto' style='margin-right: 10px;' num_cta='{$item["num_cta"]}' cliente='{$item["cliente"]}' title='Cargo de Protesto'><i class='fa fa-file'></i></button>";
                         }
-                    } else {
-
-                        $botones =  "<button class='btn btn-xs btn-primary btnVisualizarCuenta' style='margin-right: 10px;' numCta='" . $cuenta[$i]["num_cta"] . "' codCta='" . $cuenta[$i]["tipo_doc"] . "' title='Visualizar cuenta' ><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-warning btnEditarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarCuenta' style='margin-right: 10px;' idCuenta='" . $cuenta[$i]["id"] . "' title='Eliminar cuenta'><i class='fa fa-times'></i></button>";
                     }
+                    $botones .= "<button class='btn btn-xs btn-warning btnEditarCuenta' style='margin-right: 10px;' idCuenta='{$item["id"]}' data-toggle='modal' data-target='#modalEditarCuenta' title='Editar cuenta'><i class='fa fa-pencil'></i></button>";
+                    $botones .= "<button class='btn btn-xs btn-danger btnEliminarCuenta' style='margin-right: 10px;' idCuenta='{$item["id"]}' title='Eliminar cuenta'><i class='fa fa-times'></i></button>";
                 }
 
-
-                if ($cuenta[$i]["protesta"] == "1") {
-
-                    $protesta =  "<button class='btn btn-danger btn-xs'>SI</button>";
-                } else {
-
-                    $protesta =  "";
-                }
+                $protesta = $item["protesta"] == "1" ? "<button class='btn btn-danger btn-xs'>SI</button>" : "";
 
                 $datosJson .= '[
-                    "C' . $cuenta[$i]["tipo_doc"] . '",
-                    "' . $cuenta[$i]["num_cta"] . '",
-                    "' . $cuenta[$i]["cliente"] . " - " . $cuenta[$i]["nombre"] . '",
-                    "' . $cuenta[$i]["vendedor"] . '",
-                    "' . $cuenta[$i]["fecha"] . '",
-                    "' . $cuenta[$i]["fecha_ven"] . '",
-                    "' . number_format($cuenta[$i]["monto"], 2) . '",
-                    "' . number_format($cuenta[$i]["saldo"], 2) . '",
-                    "' . $estado . '",
-                    "' . $cuenta[$i]["num_unico"] . '",
-                    "<center>' . $protesta . '</center>",
-                    "' . $cuenta[$i]["doc_origen"] . '",
-                    "' . $botones . '"
-                    ],';
+        "C' . $item["tipo_doc"] . '",
+        "' . $item["num_cta"] . '",
+        "' . $item["cliente"] . " - " . $item["nombre"] . '",
+        "' . $item["vendedor"] . '",
+        "' . $item["fecha"] . '",
+        "' . $item["fecha_ven"] . '",
+        "' . number_format($item["monto"], 2) . '",
+        "' . number_format($item["saldo"], 2) . '",
+        "' . $estado . '",
+        "' . $item["num_unico"] . '",
+        "<center>' . $protesta . '</center>",
+        "' . $item["doc_origen"] . '",
+        "' . $botones . '"
+    ],';
             }
 
             $datosJson = substr($datosJson, 0, -1);
-
-            $datosJson .= '] 
-
-            }';
+            $datosJson .= ']}';
 
             echo $datosJson;
         } else {
