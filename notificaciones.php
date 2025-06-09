@@ -4,13 +4,14 @@ require_once "controladores/cuentas.controlador.php";
 require_once "modelos/cuentas.modelo.php";
 require_once "controladores/clientes.controlador.php";
 require_once "modelos/clientes.modelo.php";
+require_once "controladores/config.php";
 
 // Definir el nombre de la empresa
 $nombreEmpresa = "CORPORACION VASCO SAC";
 $instancia = "NTE5NDU0NzA3Mzg=";
-$entorno = "pruebas"; // Cambiar a "produccion" para el entorno real
-$numeroPrueba = "51982009013"; // Número de teléfono para pruebas
-$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MzQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJjb25zdWx0b3IifQ.9GRIzGaSQz9MHipVCyy6Ie-pIMo_aFDIjwt4Xd5rX2s";
+$entorno = "produccion"; // Cambiar a "produccion" para el entorno real
+$numeroPrueba = NUMERO_PRUEBAS; // Número de teléfono para pruebas
+$token = TOKEN_WHATSAPP; // Token de WhatsApp
 
 // Obtener cuentas con notificaciones pendientes
 $cuentas = ControladorCuentas::ctrNotificacionesPendientes();
@@ -54,16 +55,16 @@ foreach ($cuentasHoy as $index => $cuenta) {
             . "🆔 Nro único: {$cuenta['num_unico']}\n"
             . "💰 Monto: S/{$cuenta['monto']}\n"
             . "📅 Fecha vencimiento: {$cuenta['fecha_ven']}\n"
-            . "Por favor, realiza tu pago en BCP.\n"
+            . "Por favor, realiza su cancelación desde la ventanilla de cualquier agencia BCP o desde su web.\n"
             . "Gracias.\n{$nombreEmpresa}\nJACKYFORM-ROSALINDA-VASCO";
         $resumen['vencimiento'] += 1;
     } elseif ($cuenta['tipo_notificacion'] === 'RECORDATORIO') {
         $mensaje = "Hola {$cuenta['nombre']} 👋\n"
-            . "Han pasado 5 días desde el vencimiento de tu letra.\n"
+            . "Este mensaje es para recordarte que han pasado 5 días desde el vencimiento de tu letra.\n"
             . "🆔 Nro único: {$cuenta['num_unico']}\n"
             . "💰 Monto: S/{$cuenta['monto']}\n"
             . "📅 Fecha vencimiento: {$cuenta['fecha_ven']}\n"
-            . "Sigue pendiente de pago. Por favor, realiza el pago en BCP.\n"
+            . "Por favor, realiza su cancelación desde la ventanilla de cualquier agencia BCP o desde su web.\n"
             . "Gracias.\n{$nombreEmpresa}\nJACKYFORM-ROSALINDA-VASCO";
         $resumen['recordatorio'] += 1;
     } else {
