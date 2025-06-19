@@ -2861,6 +2861,7 @@ class ModeloCuentas
 							cc.fecha,
 							'' AS cliente,
 							'' AS nombre,
+							'' as vendedor,
 							'' AS cod_pago,
 							'' AS doc_origen,
 							'' AS fact,
@@ -2890,6 +2891,7 @@ class ModeloCuentas
 							cc.fecha,
 							cc.cliente,
 							c.nombre,
+							cc.vendedor,
 							cc.cod_pago,
 							cc.doc_origen,
 							CASE
@@ -2924,6 +2926,7 @@ class ModeloCuentas
 							'999' AS tipo_doc,
 							'Fecha de pago:',
 							cc.fecha,
+							'',
 							'',
 							'',
 							'',
@@ -2980,6 +2983,7 @@ class ModeloCuentas
 							CONCAT( m.codigo , ' ', m.descripcion) AS fecha,
 							'' AS cliente,
 							'' AS nombre,
+							'' AS vendedor,
 							'' AS cod_pago,
 							'' AS doc_origen,
 							'' AS fact,
@@ -2996,6 +3000,7 @@ class ModeloCuentas
 							cc.fecha,
 							cc.cliente,
 							c.nombre,
+							cc.vendedor,
 							cc.cod_pago,
 							cc.doc_origen,
 							CASE
@@ -3033,6 +3038,7 @@ class ModeloCuentas
 							'9999-12-31' AS fecha,
 							'' AS cliente,
 							'' AS nombre,
+							'' AS vendedor,
 							cc.cod_pago,
 							'' AS doc_origen,
 							FORMAT(
@@ -3089,6 +3095,7 @@ class ModeloCuentas
 					cc.fecha,
 					cc.cliente,
 					c.nombre,
+					cc.vendedor,
 					cc.cod_pago,
 					cc.doc_origen,
 					CASE
@@ -3126,6 +3133,7 @@ class ModeloCuentas
 					cc.fecha,
 					'' AS cliente,
 					'' AS nombre,
+					'' AS vendedor,
 					'' AS cod_pago,
 					'' AS doc_origen,
 					'' AS fact,
@@ -3154,6 +3162,7 @@ class ModeloCuentas
 					'999' AS tipo_doc,
 					'Fecha de pago:',
 					cc.fecha,
+					'',
 					'',
 					'',
 					'',
@@ -4895,6 +4904,40 @@ class ModeloCuentas
 								tipo_doc,
 								fecha,
 								num_cta");
+
+
+		$stmt->execute();
+
+		return $stmt->fetchAll();
+
+		$stmt->close();
+
+		$stmt = null;
+	}
+
+	static public function ctrVerCredipagos()
+	{
+
+		$stmt = Conexion::conectar()
+			->prepare("SELECT 
+				cc.id ,
+				cc.tipo_doc,
+				cc.num_cta,
+				cc.doc_origen,
+				cc.fecha,
+				cc.monto,
+				cc.cliente,
+				c.nombre,
+				cc.vendedor,
+				cc.notas
+			from
+				cuenta_ctejf cc
+				left join clientesjf c 
+				on cc.cliente=c.codigo
+			where
+				cc.tip_mov = '-'
+				and cc.cod_pago = '82'
+			and cc.fecha > '2015-12-31'");
 
 
 		$stmt->execute();

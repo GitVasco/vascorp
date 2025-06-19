@@ -61,6 +61,7 @@ $(".tablaMpKardex").on("click", ".btnCodpro", function () {
     $("#modalMP").modal("toggle");
 
     document.getElementById("filtrar").disabled = false;
+    document.getElementById("exportar").disabled = false;
 });
 
 $(".btnFiltrar").click(function () {
@@ -124,6 +125,21 @@ $(".btnFiltrar").click(function () {
             },
         },
     });
+});
+
+$(".btnExportar").click(function () {
+    var codigo = document.getElementById("codpro").value;
+    var ano = document.getElementById("ano").value;
+
+    if (ano == "") {
+        ano = 2024;
+    }
+
+    window.location =
+        "vistas/reportes_excel/rpt_kardex_mp.php?codigo=" +
+        codigo +
+        "&ano=" +
+        ano;
 });
 
 //*KARDEX DE COSTOS*************************************************************************************

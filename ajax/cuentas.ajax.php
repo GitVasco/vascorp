@@ -317,6 +317,57 @@ class AjaxCuentas
 
         echo json_encode($respuesta);
     }
+
+    public $idsCredipagos;
+    public function ajaxEliminarCredipagos()
+    {
+        $ids = $this->idsCredipagos;
+        $ids = json_decode($ids, true);
+
+        // configuramos la zona horaria
+        date_default_timezone_set('America/Asuncion');
+
+        $errores = 0;
+
+        foreach ($ids as $id) {
+            $cancelaciones = ModeloCuentas::mdlMostrarCancelacion("cuenta_ctejf", "id", $id);
+
+            $origen = ControladorCuentas::ctrMostrarCuentasV2($cancelaciones["num_cta"], $cancelaciones["tipo_doc"]);
+
+            $idOrigen = $origen["id"];
+
+            $saldoNuevo = $origen["saldo"] + $cancelaciones["monto"];
+
+            $saldoNuevo >= 0 ? ModeloCuentas::mdlActualizarEstado($idOrigen) : "";
+
+            ModeloCuentas::mdlActualizarUnDato(
+                "cuenta_ctejf",
+                "saldo",
+                $saldoNuevo,
+                $idOrigen
+            );
+
+            $datosBackup = [
+                "id" => $cancelaciones["id"],
+                "usuario_bkp" => $_SESSION["nombre"],
+                "fecha_bkp" => date("Y-m-d H:i:s"),
+                "pc_bkp" => gethostbyaddr($_SERVER['REMOTE_ADDR'])
+            ];
+            ModeloCuentas::mdlIngresarCuentaBckp2("cuenta_cte_bkpjf", $datosBackup);
+
+            $respuesta = ModeloCuentas::mdlEliminarCuenta("cuenta_ctejf", $id);
+
+            if (!$respuesta) {
+                $errores++;
+            }
+        }
+
+        if ($errores === 0) {
+            echo json_encode(["status" => 200, "message" => "Todos los IDs fueron procesados correctamente"]);
+        } else {
+            echo json_encode(["status" => 400, "message" => "Hubo errores en el procesamiento", "errores" => $errores]);
+        }
+    }
 }
 
 
@@ -470,4 +521,10 @@ if (isset($_POST["idCta"])) {
     $cancelaCuenta->montoCancelacion = $_POST["montoCancelacion"];
     $cancelaCuenta->notaCancelacion = $_POST["notaCancelacion"];
     $cancelaCuenta->ajaxCancelarDocumento();
+}
+
+if (isset($_POST["idsCredipagos"])) {
+    $eliminarCredipagos = new AjaxCuentas();
+    $eliminarCredipagos->idsCredipagos = $_POST["idsCredipagos"];
+    $eliminarCredipagos->ajaxEliminarCredipagos();
 }

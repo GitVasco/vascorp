@@ -2716,3 +2716,152 @@ $(".tablaNotificacionesPendientes").DataTable({
         },
     },
 });
+
+const table = $(".tablaCredipagos").DataTable({
+    ajax: "ajax/cuentas-corrientes/tabla-credipagos.ajax.php",
+    deferRender: true,
+    retrieve: true,
+    processing: true,
+    order: [[2, "asc"]],
+    pageLength: 100,
+    lengthMenu: [
+        [100, 200, 300, -1],
+        [100, 200, 300, "Todos"],
+    ],
+    language: {
+        sProcessing: "Procesando...",
+        sLengthMenu: "Mostrar _MENU_ registros",
+        sZeroRecords: "No se encontraron resultados",
+        sEmptyTable: "Ningún dato disponible en esta tabla",
+        sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+        sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+        sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+        sInfoPostFix: "",
+        sSearch: "Buscar:",
+        sUrl: "",
+        sInfoThousands: ",",
+        sLoadingRecords: "Cargando...",
+        oPaginate: {
+            sFirst: "Primero",
+            sLast: "Último",
+            sNext: "Siguiente",
+            sPrevious: "Anterior",
+        },
+        oAria: {
+            sSortAscending:
+                ": Activar para ordenar la columna de manera ascendente",
+            sSortDescending:
+                ": Activar para ordenar la columna de manera descendente",
+        },
+    },
+});
+
+const $eliminar = $("#eliminarSeleccionados");
+const $contador = $("#contadorSeleccionados strong");
+
+function actualizarEstado() {
+    const count = $(".credipagoCheck:checked").length;
+    $contador.text(count);
+    $eliminar.prop("disabled", count === 0);
+}
+
+// Al hacer check/uncheck en cualquier checkbox de la tabla
+$(".tablaCredipagos tbody").on("change", ".credipagoCheck", actualizarEstado);
+
+// Botón seleccionar todos
+$("#marcarTodos").on("click", function () {
+    $(".credipagoCheck").prop("checked", true);
+    $("#checkHeader").prop("checked", true);
+    actualizarEstado();
+});
+
+// Botón desmarcar todos
+$("#desmarcarTodos").on("click", function () {
+    $(".credipagoCheck").prop("checked", false);
+    $("#checkHeader").prop("checked", false);
+    actualizarEstado();
+});
+
+// Checkbox en header para seleccionar/deseleccionar toda la página visible
+$("#checkHeader").on("change", function () {
+    const estado = $(this).is(":checked");
+    $(".credipagoCheck").prop("checked", estado);
+    actualizarEstado();
+});
+
+// Al cambiar página o filtrar, mantenemos el estado del header
+table.on("draw", function () {
+    const allChecked =
+        $(".credipagoCheck").length === $(".credipagoCheck:checked").length &&
+        $(".credipagoCheck").length > 0;
+    $("#checkHeader").prop("checked", allChecked);
+});
+
+// Acción de eliminar seleccionados
+document.addEventListener("DOMContentLoaded", function () {
+    document
+        .getElementById("eliminarSeleccionados")
+        .addEventListener("click", function () {
+            // Recogemos los IDs seleccionados
+            const checks = document.querySelectorAll(".credipagoCheck:checked");
+            const ids = Array.from(checks).map((chk) =>
+                chk.getAttribute("data-id-credipago")
+            );
+            const count = ids.length;
+
+            if (count === 0) {
+                swal(
+                    "Atención",
+                    "Debes seleccionar al menos un CrediPago.",
+                    "info"
+                );
+                return;
+            }
+
+            // SweetAlert clásico con botón Cancelar
+            swal({
+                title: `¿Eliminar ${count} elemento${count > 1 ? "s" : ""}?`,
+                text: `Se eliminarán ${count} CrediPago${
+                    count > 1 ? "s" : ""
+                }.`,
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Sí, eliminar",
+                cancelButtonText: "Cancelar",
+            }).then(function (result) {
+                if (result.value) {
+                    // Confirmó: imprimimos en consola
+                    console.log("IDs seleccionados:", ids);
+
+                    let datos = new FormData();
+                    datos.append("idsCredipagos", JSON.stringify(ids));
+
+                    $.ajax({
+                        url: "ajax/cuentas.ajax.php",
+                        type: "POST",
+                        data: datos,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (respuesta) {
+                            respuesta = JSON.parse(respuesta);
+                            status = respuesta.status;
+                            message = respuesta.message;
+
+                            if (status == 200) {
+                                swal("Eliminados", message, "success").then(
+                                    () => {
+                                        window.location.reload();
+                                    }
+                                );
+                            } else {
+                                swal("Error", message, "error");
+                            }
+                        },
+                    });
+                }
+            });
+        });
+});

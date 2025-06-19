@@ -879,7 +879,7 @@ class ControladorCuentas
 
 					if ($existe["saldo"] > 0) {
 
-						$intoA .= "('85'" . ",'" . $existe["num_cta"] . "','" . $existe["cliente"] . "','" . $existe["vendedor"] . "','" . substr($fecha, 6, 4) . "-" . substr($fecha, 3, 2) . "-" . substr($fecha, 0, 2) . "','" . substr($fecha_ven, 6, 4) . "-" . substr($fecha_ven, 3, 2) . "-" . substr($fecha_ven, 0, 2) . "','Soles'," . $montoReducido . ",'Pago Telecredito','PENDIENTE','00','" . $existe["doc_origen"] . "','" . $usuario . "'," . $saldo . ",'" . $unico . "','-','" . $usureg . "','" . $pcreg . "'),";
+						$intoA .= "('85'" . ",'" . $existe["num_cta"] . "','" . $existe["cliente"] . "','" . $existe["vendedor"] . "','" . substr($fecha, 6, 4) . "-" . substr($fecha, 3, 2) . "-" . substr($fecha, 0, 2) . "','" . substr($fecha_ven, 6, 4) . "-" . substr($fecha_ven, 3, 2) . "-" . substr($fecha_ven, 0, 2) . "','Soles'," . $montoReducido . ",'NO-" . $unico . "','PENDIENTE','00','" . $existe["doc_origen"] . "','" . $usuario . "'," . $saldo . ",'" . $unico . "','-','" . $usureg . "','" . $pcreg . "'),";
 
 						$saldoImportar = $existe["saldo"] - $montoReducido;
 						$actualizarSaldo = ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "saldo", $saldoImportar, $existe["id"]);
@@ -1640,6 +1640,14 @@ class ControladorCuentas
 	{
 
 		$respuesta = ModeloCuentas::mdlSaldoFecha($inicio, $fin);
+
+		return $respuesta;
+	}
+
+	static public function ctrVerCredipagos()
+	{
+
+		$respuesta = ModeloCuentas::ctrVerCredipagos();
 
 		return $respuesta;
 	}

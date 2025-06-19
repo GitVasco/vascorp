@@ -107,9 +107,12 @@ $(".tablaAbonosCancelar").on("click", ".chkAbono", function () {
     var saldo = $(this).attr("saldo");
     var idAbono = $(this).attr("idAbono");
     var fecAbono = $(this).attr("fecAbono");
+    var opAbono = $(this).attr("opAbono");
     $(".btnCancelarAbono").attr("idAbono", idAbono);
+    $(".btnCancelarAbono").attr("opAbono", opAbono);
     localStorage.setItem("saldo", saldo);
     localStorage.setItem("fecAbono", fecAbono);
+    localStorage.setItem("opAbono", opAbono);
     cargarTablaCuentasCancelar(localStorage.getItem("saldo"));
 });
 
@@ -221,8 +224,25 @@ $(".tablaCuentasCancelar").on("click", ".chkCancelar", function () {
  * CONFIRMAR CANCELACIÓN DE ABONO
  */
 $(".btnCancelarAbono").click(function () {
+    console.log("click");
     var idCuenta = $(this).attr("idCuenta");
+
+    if (!idCuenta) {
+        //toastr.error("No hay idCuenta para cancelar el abono");
+        Command: toastr["error"]("No hay selección para cancelar el abono");
+        return;
+    }
+
     var idAbono = $(this).attr("idAbono");
+    var opAbono = $(this).attr("opAbono");
+    console.log("🚀 ~ opAbono:", opAbono);
+
+    if (!idAbono) {
+        console.log("🚀 ~ idAbono:", idAbono);
+        //toastr.error("No hay idAbono para cancelar el abono");
+        Command: toastr["error"]("No hay selección para cancelar el abono");
+        return;
+    }
 
     // Get the account information
     var datos = new FormData();
@@ -249,6 +269,7 @@ $(".btnCancelarAbono").click(function () {
             $("#fechaVen").val(respuesta["fecha_ven"]);
             $("#editarAbono").val(localStorage.getItem("saldo"));
             $("#idAbono").val(idAbono);
+            $("#opAbono").val(opAbono);
         },
     });
 });

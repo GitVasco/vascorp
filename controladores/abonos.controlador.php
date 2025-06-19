@@ -240,7 +240,7 @@ class ControladorAbonos
 				"monto"		=> $abono,
 				"saldo"		=> 0,
 				"tip_mov"	=> "-",
-				"notas"		=> "Dep.en Cta BCP",
+				"notas"		=> "OP-" . $_POST["opAbono"],
 				"renovacion"	=> 0,
 				"protesta"	=> 0,
 				"estado"		=> "PENDIENTE",

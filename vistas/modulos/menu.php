@@ -1273,7 +1273,8 @@
                                         $_GET["ruta"] == "ver-envio-letras" ||
                                         $_GET["ruta"] == "envio-letras" ||
                                         $_GET["ruta"] == "reportes-generales" ||
-                                        $_GET["ruta"] == "notificaciones"
+                                        $_GET["ruta"] == "notificaciones" ||
+                                        $_GET["ruta"] == "credipagos"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1300,7 +1301,8 @@
                                                 $_GET["ruta"] == "consultar-cuentas" ||
                                                 $_GET["ruta"] == "ver-envio-letras" ||
                                                 $_GET["ruta"] == "reportes-generales" ||
-                                                $_GET["ruta"] == "notificaciones"
+                                                $_GET["ruta"] == "notificaciones" ||
+                                                $_GET["ruta"] == "credipagos"
                                             ) echo 'active'; ?>">
 
                             <a href="#"><i class="fa fa-clipboard"></i> Cuentas
@@ -1396,6 +1398,15 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Envio letras</span>
+
+                            </a>
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "credipagos") echo 'active'; ?>">
+                            <a href="credipagos">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Credipagos</span>
 
                             </a>
                         </li>
