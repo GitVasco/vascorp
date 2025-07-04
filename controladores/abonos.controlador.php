@@ -251,8 +251,6 @@ class ControladorAbonos
 				"pcreg" 		=> $pcreg
 			);
 
-			#var_dump($datos);
-
 			$respuesta = ModeloCuentas::mdlIngresarCuenta($tabla, $datos);
 			$saldoNuevo = $_POST["editarSaldo"] - $_POST["editarAbono"];
 			var_dump($saldoNuevo);
