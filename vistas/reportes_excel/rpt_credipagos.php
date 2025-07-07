@@ -456,7 +456,7 @@ while ($respDetalle = mysql_fetch_array($sqlDetalle)) {
   $objPHPExcel->getActiveSheet()->SetCellValue("F$fila", utf8_encode($respDetalle["cod_pago"]));
   $objPHPExcel->getActiveSheet()->setCellValueExplicit("G$fila", $respDetalle["doc_origen"], PHPExcel_Cell_DataType::TYPE_STRING);
 
-  if ($respDetalle["monto"] >= 1 && $respDetalle["monto"] < 1000) {
+  if ($respDetalle["monto"] >= 0 && $respDetalle["monto"] < 1000) {
 
     $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", $respDetalle["monto"]);
     $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getNumberFormat()->setFormatCode("0.00");
@@ -508,7 +508,7 @@ $fila += 1;
 $objPHPExcel->getActiveSheet()->SetCellValue("G$fila", 'TOTAL');
 $objPHPExcel->getActiveSheet()->setSharedStyle($borde7, "G$fila");
 
-if ($respTotal["monto"] >= 1 && $respTotal["monto"] < 1000) {
+if ($respTotal["monto"] >= 0 && $respTotal["monto"] < 1000) {
 
   $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", $respTotal["monto"]);
   $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getNumberFormat()->setFormatCode("0.00");
@@ -612,7 +612,7 @@ while ($respDetalle2 = mysql_fetch_array($sqlDetalle2)) {
   $objPHPExcel->getActiveSheet()->setCellValueExplicit("G$fila", $respDetalle2["num_cta"], PHPExcel_Cell_DataType::TYPE_STRING);
 
 
-  if ($respDetalle2["monto"] >= 1 && $respDetalle2["monto"] < 1000) {
+  if ($respDetalle2["monto"] >= 0 && $respDetalle2["monto"] < 1000) {
 
     $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", $respDetalle2["monto"]);
     $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getNumberFormat()->setFormatCode("0.00");
@@ -668,7 +668,7 @@ $fila += 1;
 $objPHPExcel->getActiveSheet()->SetCellValue("G$fila", 'TOTAL');
 $objPHPExcel->getActiveSheet()->setSharedStyle($borde7, "G$fila");
 
-if ($respTotal["monto"] >= 1 && $respTotal["monto"] < 1000) {
+if ($respTotal["monto"] >= 0 && $respTotal["monto"] < 1000) {
 
   $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", $respTotal["monto"]);
   $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getNumberFormat()->setFormatCode("0.00");
