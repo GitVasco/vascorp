@@ -181,6 +181,11 @@ class ControladorMateriaPrima
 
 			$FamPro = $_POST["nuevaLinea"] . $_POST["nuevaSubLinea"];
 
+			// quiero un array con caracteres especial para en la siguietne linea eliminarla de nuevaDescripcion
+			$caracteresEspeciales = array("'", '"', ',', '.');
+			// elimino los caracteres especiales de nuevaDescripcion
+			$_POST["nuevaDescripcion"] = str_replace($caracteresEspeciales, '', $_POST["nuevaDescripcion"]);
+
 			$datos2 = array(
 				"CodAlt" => $_POST["nuevoCodigoAlt"],
 				"Cod_Local" => '01',

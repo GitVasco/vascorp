@@ -2,14 +2,16 @@
 
 require_once "conexion.php";
 
-class ModeloMantenimiento{
+class ModeloMantenimiento
+{
 
     //*MOSTRAR EQUIPOS
-    static public function mdlMostrarEquipos($valor){
+    static public function mdlMostrarEquipos($valor)
+    {
 
-		if($valor != null){
+        if ($valor != null) {
 
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     e.id,
                                                     e.cod_tipo,
                                                     e.cod_tip_maquina,
@@ -67,15 +69,14 @@ class ModeloMantenimiento{
                                                 WHERE e.id = :valor 
                                                 ORDER BY e.cod_tipo ");
 
-			$stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+            $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetch();
+            return $stmt->fetch();
+        } else {
 
-		}else{
-
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     e.id,
                                                     e.cod_tipo,
                                                     e.cod_tip_maquina,
@@ -129,20 +130,19 @@ class ModeloMantenimiento{
                                                     equipos_jf e 
                                                 ORDER BY e.cod_tipo");
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetchAll();
+            return $stmt->fetchAll();
+        }
 
-		}
+        $stmt->close();
 
-		$stmt -> close();
-
-		$stmt = null;
-
-	}
+        $stmt = null;
+    }
 
     //*TRAER EL UTIMO CODIGO EQUIPO
-    static public function mdlTraerUltCod($valor){
+    static public function mdlTraerUltCod($valor)
+    {
 
         $stmt = Conexion::conectar()->prepare("SELECT 
                                         LEFT(e.cod_tipo, 3) AS tipo,
@@ -155,22 +155,22 @@ class ModeloMantenimiento{
                                         equipos_jf e 
                                     WHERE e.cod_tip_maquina = :valor");
 
-        $stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);                                    
+        $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-        $stmt -> execute();
+        $stmt->execute();
 
-        return $stmt -> fetch();
+        return $stmt->fetch();
 
-		$stmt -> close();
+        $stmt->close();
 
-		$stmt = null;
-
-    }    
+        $stmt = null;
+    }
 
     //*CREAR MAQUINA
-	static public function mdlCrearMaquina($datos){
+    static public function mdlCrearMaquina($datos)
+    {
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO equipos_jf (
+        $stmt = Conexion::conectar()->prepare("INSERT INTO equipos_jf (
                                                         cod_tipo,
                                                         cod_tip_maquina,
                                                         descripcion,
@@ -224,9 +224,9 @@ class ModeloMantenimiento{
                                                         :fecreg
                                                         )");
 
-		$stmt->bindParam(":cod_tipo", $datos["cod_tipo"], PDO::PARAM_STR);
-		$stmt->bindParam(":cod_tip_maquina", $datos["cod_tip_maquina"], PDO::PARAM_STR);
-		$stmt->bindParam(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
+        $stmt->bindParam(":cod_tipo", $datos["cod_tipo"], PDO::PARAM_STR);
+        $stmt->bindParam(":cod_tip_maquina", $datos["cod_tip_maquina"], PDO::PARAM_STR);
+        $stmt->bindParam(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
         $stmt->bindParam(":cod_ubicacion", $datos["cod_ubicacion"], PDO::PARAM_STR);
         $stmt->bindParam(":cod_marca_equi", $datos["cod_marca_equi"], PDO::PARAM_STR);
         $stmt->bindParam(":modelo_equipo", $datos["modelo_equipo"], PDO::PARAM_STR);
@@ -249,25 +249,23 @@ class ModeloMantenimiento{
         $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
         $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
 
-		if($stmt->execute()){
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else{
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		
-		}
-
-		$stmt->close();
-		$stmt = null;
-
-	}     
+        $stmt->close();
+        $stmt = null;
+    }
 
     //*PROGRAMAR MANTENIMIENTO en calendario
-	static public function mdlCrearCalendario($datos){
+    static public function mdlCrearCalendario($datos)
+    {
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO calendario_jf (
+        $stmt = Conexion::conectar()->prepare("INSERT INTO calendario_jf (
                                                 tipo,
                                                 titulo,
                                                 cod_interno,
@@ -297,9 +295,9 @@ class ModeloMantenimiento{
                                                 :fecreg
                                                 )");
 
-		$stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-		$stmt->bindParam(":titulo", $datos["titulo"], PDO::PARAM_STR);
-		$stmt->bindParam(":cod_interno", $datos["cod_interno"], PDO::PARAM_STR);
+        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+        $stmt->bindParam(":titulo", $datos["titulo"], PDO::PARAM_STR);
+        $stmt->bindParam(":cod_interno", $datos["cod_interno"], PDO::PARAM_STR);
         $stmt->bindParam(":inicio", $datos["inicio"], PDO::PARAM_STR);
         $stmt->bindParam(":fin", $datos["fin"], PDO::PARAM_STR);
         $stmt->bindParam(":allday", $datos["allday"], PDO::PARAM_STR);
@@ -310,37 +308,34 @@ class ModeloMantenimiento{
         $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
         $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
 
-		if($stmt->execute()){
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else{
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		
-		}
-
-		$stmt->close();
-		$stmt = null;
-
-	}    
+        $stmt->close();
+        $stmt = null;
+    }
 
     //*MOSTRAR CALENDARIOS
-    static public function mdlMostrarCalendario($valor){
+    static public function mdlMostrarCalendario($valor)
+    {
 
-		if($valor != null){
+        if ($valor != null) {
 
-			$stmt = Conexion::conectar()->prepare("SELECT c.*,cli.nombre FROM $tabla c LEFT JOIN clientesjf cli ON c.cliente=cli.codigo WHERE c.tip_mov ='+' AND c.$item = :$item ");
+            $stmt = Conexion::conectar()->prepare("SELECT c.*,cli.nombre FROM $tabla c LEFT JOIN clientesjf cli ON c.cliente=cli.codigo WHERE c.tip_mov ='+' AND c.$item = :$item ");
 
-			$stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+            $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetch();
+            return $stmt->fetch();
+        } else {
 
-		}else{
-
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     c.id,
                                                     c.tipo,
                                                     c.titulo,
@@ -364,22 +359,21 @@ class ModeloMantenimiento{
                                                     calendario_jf c 
                                                 WHERE c.estado = 'Pendiente'");
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetchAll();
+            return $stmt->fetchAll();
+        }
 
-		}
+        $stmt->close();
 
-		$stmt -> close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ACTUALIZAR MAQUINA
+    static public function mdlEditarMaquina($datos)
+    {
 
-	}    
-
-	//*ACTUALIZAR MAQUINA
-	static public function mdlEditarMaquina($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                     equipos_jf 
                                                 SET
                                                     descripcion = UPPER(:descripcion),
@@ -431,48 +425,47 @@ class ModeloMantenimiento{
         $stmt->bindParam(":fecmod", $datos["fecmod"], PDO::PARAM_STR);
 
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
-
-	}  
-    
     //*MOSTRAR CALENDARIOS - PENDIENTE
-    static public function mdlMostrarCalendarioPendiente($valor){
+    static public function mdlMostrarCalendarioPendiente($valor)
+    {
 
-			$stmt = Conexion::conectar()->prepare("SELECT 
+        $stmt = Conexion::conectar()->prepare("SELECT 
                                                     * 
                                                 FROM
                                                     calendario_jf c 
                                                 WHERE c.cod_interno = :valor 
                                                     AND c.estado = 'Pendiente'");
 
-			$stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+        $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-			$stmt -> execute();
+        $stmt->execute();
 
-			return $stmt -> fetch();
+        return $stmt->fetch();
 
 
-		$stmt -> close();
+        $stmt->close();
 
-		$stmt = null;
+        $stmt = null;
+    }
 
-	}   
-    
-	//*ACTUALIZAR MAQUINA
-	static public function mdlActualizarCalendarioMaquina($datos){
+    //*ACTUALIZAR MAQUINA
+    static public function mdlActualizarCalendarioMaquina($datos)
+    {
 
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                     calendario_jf 
                                                 SET
                                                     inicio = :inicio,
@@ -488,25 +481,24 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcmod", $datos["pcmod"], PDO::PARAM_STR);
         $stmt->bindParam(":fecmod", $datos["fecmod"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
-
-	}  
-    
     //*CREAR MAQUINA
-	static public function mdlCrearMantenimiento($datos){
+    static public function mdlCrearMantenimiento($datos)
+    {
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO mantenimientojf (
+        $stmt = Conexion::conectar()->prepare("INSERT INTO mantenimientojf (
                                                 cod_interno,
                                                 tipo_mante,
                                                 mante_inicio,
@@ -555,25 +547,23 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
         $stmt->bindParam(":fecreg", $datos["fecreg"], PDO::PARAM_STR);
 
-		if($stmt->execute()){
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else{
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		
-		}
+        $stmt->close();
+        $stmt = null;
+    }
 
-		$stmt->close();
-		$stmt = null;
+    //*ACTUALIZAR MANTENIMIENTO
+    static public function mdlActualizarCalendarioMantenimiento($datos)
+    {
 
-	}       
-
-	//*ACTUALIZAR MANTENIMIENTO
-	static public function mdlActualizarCalendarioMantenimiento($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                 mantenimientojf 
                                             SET
                                                 mante_inicio = :inicio,
@@ -589,27 +579,26 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcmod", $datos["pcmod"], PDO::PARAM_STR);
         $stmt->bindParam(":fecmod", $datos["fecmod"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
-
-	}  
-    
     //*MOSTRAR MANTENIMIENTO
-    static public function mdlMostrarMantenimiento($valor){
+    static public function mdlMostrarMantenimiento($valor)
+    {
 
-		if($valor != null){
+        if ($valor != null) {
 
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     m.id,
                                                     m.cod_interno,
                                                     m.tipo_mante,
@@ -655,15 +644,14 @@ class ModeloMantenimiento{
                                                     ON m.cod_maquina = e.cod_tipo
                                                 WHERE m.id = :valor");
 
-			$stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+            $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetch();
+            return $stmt->fetch();
+        } else {
 
-		}else{
-
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     m.id,
                                                     m.cod_interno,
                                                     m.tipo_mante,
@@ -702,20 +690,19 @@ class ModeloMantenimiento{
                                                     LEFT JOIN equipos_jf e 
                                                     ON m.cod_maquina = e.cod_tipo");
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetchAll();
+            return $stmt->fetchAll();
+        }
 
-		}
+        $stmt->close();
 
-		$stmt -> close();
-
-		$stmt = null;
-
-	}    
+        $stmt = null;
+    }
 
     //*MOSTRAR MANTENIMIENTO DETALLE
-    static public function mdlMostrarMantenimientoDetalle($valor){
+    static public function mdlMostrarMantenimientoDetalle($valor)
+    {
 
         $stmt = Conexion::conectar()->prepare("SELECT 
                                                 md.id,
@@ -737,55 +724,62 @@ class ModeloMantenimiento{
                                             WHERE m.cod_interno = :valor 
                                                 AND md.estado='REGISTRADO'");
 
-        $stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+        $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-        $stmt -> execute();
+        $stmt->execute();
 
-        return $stmt -> fetchAll();
+        return $stmt->fetchAll();
 
-		$stmt -> close();
+        $stmt->close();
 
-		$stmt = null;
-
-	}       
+        $stmt = null;
+    }
 
     //*MOSTRAR MANTENIMIENTO REPUESTOS
-    static public function mdlMostrarMantenimientoRepuestos($valor){
+    static public function mdlMostrarMantenimientoRepuestos($valor)
+    {
 
-		if($valor != null){
+        if ($valor != null) {
 
-			$stmt = Conexion::conectar()->prepare("SELECT DISTINCT 
-                                                    CodPro AS codpro,
-                                                    CodFab AS codfab,
-                                                    SUBSTR(DesPro,1,20) AS despro,
-                                                    TbCol.Des_Larga AS color,
-                                                    TbTal.Des_Larga AS talla,
-                                                    TbUnd.Des_Corta AS unidad,
-                                                    ROUND(CodAlm01, 2) AS stock,
-                                                    pro.cospro 
-                                                FROM
-                                                    Producto AS Pro 
-                                                    INNER JOIN Tabla_M_Detalle AS TbUnd 
-                                                    ON Pro.UndPro = TbUnd.Cod_Argumento 
-                                                    AND (TbUnd.Cod_Tabla = 'TUND') 
-                                                    INNER JOIN Tabla_M_Detalle AS TbCol 
-                                                    ON Pro.ColPro = TbCol.Cod_Argumento 
-                                                    AND (TbCol.Cod_Tabla = 'TCOL') 
-                                                    INNER JOIN Tabla_M_Detalle AS TbTal 
-                                                    ON Pro.TalPro = TbTal.Cod_Argumento 
-                                                    AND (TbTal.Cod_Tabla = 'TTAL') 
-                                                WHERE Pro.EstPro = '1' 
-                                                    AND LEFT(pro.fampro, 3) = :valor");
+            $stmt = Conexion::conectar()->prepare("SELECT
+                                        distinct 
+                                        CodPro as codpro,
+                                        CodFab as codfab,
+                                        SUBSTR(DesPro, 1, 20) as despro,
+                                        TbCol.Des_Larga as color,
+                                        TbTal.Des_Larga as talla,
+                                        TbUnd.Des_Corta as unidad,
+                                        ROUND(CodAlm01, 2) as stock,
+                                        pro.cospro
+                                    from
+                                        Producto as Pro
+                                    inner join Tabla_M_Detalle as TbUnd 
+                                        on
+                                        Pro.UndPro = TbUnd.Cod_Argumento
+                                        and (TbUnd.Cod_Tabla = 'TUND')
+                                    inner join Tabla_M_Detalle as TbCol 
+                                        on
+                                        Pro.ColPro = TbCol.Cod_Argumento
+                                        and (TbCol.Cod_Tabla = 'TCOL')
+                                    inner join Tabla_M_Detalle as TbTal 
+                                        on
+                                        Pro.TalPro = TbTal.Cod_Argumento
+                                        and (TbTal.Cod_Tabla = 'TTAL')
+                                    where
+                                        Pro.EstPro = '1'
+                                    --     and left(pro.fampro, 3) in ('RMC', 'RYA', 'RCO', 'MAP', 'RME', 'RLP', 'RMS', 'MC', 'RPC', 'EDM', 'MPT', 'INT', 'RAC')
+                                    -- order by codpro
+                                    -- limit 1,935
+                                                    ");
 
-			$stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+            $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetchAll();
+            return $stmt->fetchAll();
+        } else {
 
-		}else{
-
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     m.id,
                                                     m.cod_interno,
                                                     m.tipo_mante,
@@ -824,40 +818,39 @@ class ModeloMantenimiento{
                                                     LEFT JOIN equipos_jf e 
                                                     ON m.cod_maquina = e.cod_tipo");
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetchAll();
+            return $stmt->fetchAll();
+        }
 
-		}
+        $stmt->close();
 
-		$stmt -> close();
-
-		$stmt = null;
-
-	}      
+        $stmt = null;
+    }
 
     //*MOSTRAR CORRELATIVO MANTENIMIENTO
-    static public function mdlMostrarCorrelativo(){
+    static public function mdlMostrarCorrelativo()
+    {
 
         $stmt = Conexion::conectar()->prepare("SELECT 
                                                     IFNULL(MAX(cod_interno) + 1, 1001) AS correlativo 
                                                 FROM
                                                     mantenimientojf m");
 
-        $stmt -> execute();
+        $stmt->execute();
 
-        return $stmt -> fetch();
+        return $stmt->fetch();
 
-        $stmt -> close();
+        $stmt->close();
 
         $stmt = null;
+    }
 
-    }   
-    
-	//*ACTUALIZAR EQUIPO CON LA FECHA DEL MANTENIMIENTO PROGRAMADO
-	static public function mdlActualizarEquipoMantProg($datos){
+    //*ACTUALIZAR EQUIPO CON LA FECHA DEL MANTENIMIENTO PROGRAMADO
+    static public function mdlActualizarEquipoMantProg($datos)
+    {
 
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                     equipos_jf 
                                                 SET
                                                     fec_pro_mant = :fec_pro_mant,
@@ -872,25 +865,24 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
         $stmt->bindParam(":fecreg", $datos["fecreg"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ACTUALIZAR EQUIPO CON LA FECHA DEL MANTENIMIENTO ULTIMO
+    static public function mdlActualizarEquipoMantUlt($datos)
+    {
 
-	}    
-
-	//*ACTUALIZAR EQUIPO CON LA FECHA DEL MANTENIMIENTO ULTIMO
-	static public function mdlActualizarEquipoMantUlt($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                     equipos_jf 
                                                 SET
                                                     fec_ult_mant = :fec_ult_mant,
@@ -905,23 +897,22 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcmod", $datos["pcmod"], PDO::PARAM_STR);
         $stmt->bindParam(":fecmod", $datos["fecmod"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
-
-		$stmt = null;
-
-	}    
+        $stmt = null;
+    }
 
     //*TRAER UBICACION
-    static public function mdlTraerUbicacion($valor){
+    static public function mdlTraerUbicacion($valor)
+    {
 
         $stmt = Conexion::conectar()->prepare("SELECT 
                             e.id,
@@ -938,22 +929,22 @@ class ModeloMantenimiento{
                         WHERE e.cod_tipo = :valor 
                         ORDER BY e.cod_tipo ");
 
-        $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);                        
+        $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-        $stmt -> execute();
+        $stmt->execute();
 
-        return $stmt -> fetch();
+        return $stmt->fetch();
 
-        $stmt -> close();
+        $stmt->close();
 
         $stmt = null;
+    }
 
-    }     
-    
-	//*AGREGAR A DETALLE - REPUESTO
-	static public function mdlAgregarRepuesto($codInterno, $codpro, $cospro, $usureg, $pcreg, $fecreg){
+    //*AGREGAR A DETALLE - REPUESTO
+    static public function mdlAgregarRepuesto($codInterno, $codpro, $cospro, $usureg, $pcreg, $fecreg)
+    {
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO mantenimiento_detallejf (
+        $stmt = Conexion::conectar()->prepare("INSERT INTO mantenimiento_detallejf (
                                                     id_mante,
                                                     codpro,
                                                     cantidad,
@@ -979,30 +970,29 @@ class ModeloMantenimiento{
 
         $stmt->bindParam(":codInterno", $codInterno, PDO::PARAM_STR);
         $stmt->bindParam(":codpro", $codpro, PDO::PARAM_STR);
-        $stmt->bindParam(":precio", $cospro, PDO::PARAM_STR);        
+        $stmt->bindParam(":precio", $cospro, PDO::PARAM_STR);
         $stmt->bindParam(":usureg", $usureg, PDO::PARAM_STR);
         $stmt->bindParam(":pcreg", $pcreg, PDO::PARAM_STR);
         $stmt->bindParam(":fecreg", $fecreg, PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ACTUALIZAR TOTAL DE ITEMS Y SOLES
+    static public function mdlActualizarManteTotales($valor)
+    {
 
-	} 
-
-	//*ACTUALIZAR TOTAL DE ITEMS Y SOLES
-	static public function mdlActualizarManteTotales($valor){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                 mantenimientojf m 
                                                 LEFT JOIN 
                                                 (SELECT 
@@ -1020,25 +1010,24 @@ class ModeloMantenimiento{
 
         $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ACTUALIZAR TOTAL DE ITEMS Y SOLES
+    static public function mdlEditarMantenimiento($datos)
+    {
 
-	}  
-    
-	//*ACTUALIZAR TOTAL DE ITEMS Y SOLES
-	static public function mdlEditarMantenimiento($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                     mantenimientojf 
                                                 SET
                                                     mante_inicio = :mante_inicio,
@@ -1063,23 +1052,22 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcmod", $datos["pcmod"], PDO::PARAM_STR);
         $stmt->bindParam(":fecmod", $datos["fecmod"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
-
-		$stmt = null;
-
-	}     
+        $stmt = null;
+    }
 
     //*MOSTRAR MANTENIMIENTO DETALLE EDITAR
-    static public function mdlMostrarMantenimientoDetalleEditar($valor){
+    static public function mdlMostrarMantenimientoDetalleEditar($valor)
+    {
 
         $stmt = Conexion::conectar()->prepare("SELECT 
                                                 md.id,
@@ -1100,22 +1088,22 @@ class ModeloMantenimiento{
                                                 ON md.codpro = p.codpro 
                                             WHERE md.id = :valor ");
 
-        $stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+        $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-        $stmt -> execute();
+        $stmt->execute();
 
-        return $stmt -> fetch();
+        return $stmt->fetch();
 
-		$stmt -> close();
+        $stmt->close();
 
-		$stmt = null;
+        $stmt = null;
+    }
 
-	}     
+    //*ACTUALIZAR PRECIO Y CANTIDAD DEL DETALLE
+    static public function mdlEditarMantenimientoDetalle($datos)
+    {
 
-	//*ACTUALIZAR PRECIO Y CANTIDAD DEL DETALLE
-	static public function mdlEditarMantenimientoDetalle($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                 mantenimiento_detallejf 
                                             SET
                                                 cantidad = :cantidad,
@@ -1136,25 +1124,24 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcmod", $datos["pcmod"], PDO::PARAM_STR);
         $stmt->bindParam(":fecmod", $datos["fecmod"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ANULAR DETALLE
+    static public function mdlAnularMantenimientoDetalle($datos)
+    {
 
-	}  
-
-	//*ANULAR DETALLE
-	static public function mdlAnularMantenimientoDetalle($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                             mantenimiento_detallejf 
                                         SET
                                             estado = 'ANULADO',
@@ -1168,27 +1155,26 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcanu", $datos["pcanu"], PDO::PARAM_STR);
         $stmt->bindParam(":fecanu", $datos["fecanu"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
-
-		$stmt = null;
-
-	}       
+        $stmt = null;
+    }
 
     //*MOSTRAR EQUIPOS
-    static public function mdlTraerCalendario($valor){
+    static public function mdlTraerCalendario($valor)
+    {
 
-		if($valor != null){
+        if ($valor != null) {
 
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                     c.id,
                                                     c.tipo,
                                                     c.titulo,
@@ -1214,15 +1200,14 @@ class ModeloMantenimiento{
                                                     calendario_jf c
                                                 WHERE c.id = :valor");
 
-			$stmt -> bindParam(":valor", $valor, PDO::PARAM_STR);
+            $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetch();
+            return $stmt->fetch();
+        } else {
 
-		}else{
-
-			$stmt = Conexion::conectar()->prepare("SELECT 
+            $stmt = Conexion::conectar()->prepare("SELECT 
                                                 c.id,
                                                 c.tipo,
                                                 c.titulo,
@@ -1278,22 +1263,21 @@ class ModeloMantenimiento{
                                                 calendario_jf c
                                             WHERE c.estado = 'Pendiente'");
 
-			$stmt -> execute();
+            $stmt->execute();
 
-			return $stmt -> fetchAll();
+            return $stmt->fetchAll();
+        }
 
-		}
+        $stmt->close();
 
-		$stmt -> close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ACTUALIZAR PRECIO Y CANTIDAD DEL DETALLE
+    static public function mdlEditarCalendario($datos)
+    {
 
-	}    
-
-	//*ACTUALIZAR PRECIO Y CANTIDAD DEL DETALLE
-	static public function mdlEditarCalendario($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                                 calendario_jf 
                                             SET
                                                 tipo = :tipo,
@@ -1310,7 +1294,7 @@ class ModeloMantenimiento{
                                                 fecmod = :fecmod 
                                             WHERE id = :id");
 
-        $stmt->bindParam(":id", $datos["id"], PDO::PARAM_STR); 
+        $stmt->bindParam(":id", $datos["id"], PDO::PARAM_STR);
         $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
         $stmt->bindParam(":titulo", $datos["titulo"], PDO::PARAM_STR);
         $stmt->bindParam(":cod_interno", $datos["cod_interno"], PDO::PARAM_STR);
@@ -1324,25 +1308,24 @@ class ModeloMantenimiento{
         $stmt->bindParam(":usumod", $datos["usumod"], PDO::PARAM_STR);
         $stmt->bindParam(":pcmod", $datos["pcmod"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
+        $stmt = null;
+    }
 
-		$stmt = null;
+    //*ANULAR DETALLE
+    static public function mdlAnularCalendario($datos)
+    {
 
-	}    
-
-	//*ANULAR DETALLE
-	static public function mdlAnularCalendario($datos){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE 
+        $stmt = Conexion::conectar()->prepare("UPDATE 
                                             calendario_jf 
                                         SET
                                             estado = 'Anulado',
@@ -1356,19 +1339,16 @@ class ModeloMantenimiento{
         $stmt->bindParam(":pcanu", $datos["pcanu"], PDO::PARAM_STR);
         $stmt->bindParam(":fecanu", $datos["fecanu"], PDO::PARAM_STR);
 
-		if ($stmt->execute()) {
+        if ($stmt->execute()) {
 
-			return "ok";
+            return "ok";
+        } else {
 
-		}else {
+            return $stmt->ErrorInfo();
+        }
 
-			return $stmt->ErrorInfo();
-		}
+        $stmt->close();
 
-		$stmt->close();
-
-		$stmt = null;
-
-	}      
-
+        $stmt = null;
+    }
 }
