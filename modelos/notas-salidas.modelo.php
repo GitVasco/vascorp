@@ -475,7 +475,13 @@ class ModeloNotasSalidas
 		$stmt->bindParam(":UsuReg", $datos["UsuReg"], PDO::PARAM_STR);
 
 
-		$stmt->execute();
+		if ($stmt->execute()) {
+
+			return "ok";
+		} else {
+
+			return $stmt->errorInfo();
+		}
 
 		$stmt = null;
 	}

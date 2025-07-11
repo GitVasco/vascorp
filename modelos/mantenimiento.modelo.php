@@ -941,7 +941,7 @@ class ModeloMantenimiento
     }
 
     //*AGREGAR A DETALLE - REPUESTO
-    static public function mdlAgregarRepuesto($codInterno, $codpro, $cospro, $usureg, $pcreg, $fecreg)
+    static public function mdlAgregarRepuesto($codInterno, $codpro, $cantidad, $cospro, $usureg, $pcreg, $fecreg)
     {
 
         $stmt = Conexion::conectar()->prepare("INSERT INTO mantenimiento_detallejf (
@@ -959,9 +959,9 @@ class ModeloMantenimiento
                                                     (
                                                     :codInterno,
                                                     :codpro,
-                                                    1,
+                                                    :cantidad,
                                                     :precio,
-                                                    (1* :precio),
+                                                    (:cantidad* :precio),
                                                     'REGISTRADO',
                                                     :usureg,
                                                     :pcreg,
@@ -970,6 +970,7 @@ class ModeloMantenimiento
 
         $stmt->bindParam(":codInterno", $codInterno, PDO::PARAM_STR);
         $stmt->bindParam(":codpro", $codpro, PDO::PARAM_STR);
+        $stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_STR);
         $stmt->bindParam(":precio", $cospro, PDO::PARAM_STR);
         $stmt->bindParam(":usureg", $usureg, PDO::PARAM_STR);
         $stmt->bindParam(":pcreg", $pcreg, PDO::PARAM_STR);
