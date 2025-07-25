@@ -225,10 +225,6 @@ class ControladorIngresos
             isset($_POST["nuevoTalleres"]) &&
             isset($_POST["idUsuario"])
         ) {
-            echo '<pre>';
-            print_r($_POST);
-            echo '</pre>';
-            return;
 
             #var_dump("nuevaOrdenCorte", $_POST["nuevaOrdenCorte"]);
 

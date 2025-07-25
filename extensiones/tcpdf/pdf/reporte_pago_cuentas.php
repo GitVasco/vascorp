@@ -55,12 +55,33 @@ $pdf->setPage(1, true);
 
 //parametros GET
 $consulta = $_GET["consulta"];
+// echo '<pre>consulta ';
+// print_r($consulta);
+// echo '</pre>';
 $orden1 = $_GET["orden1"];
+// echo '<pre>orden1 ';
+// print_r($orden1);
+// echo '</pre>';
 $orden2 = $_GET["orden2"];
+// echo '<pre>orden2 ';
+// print_r($orden2);
+// echo '</pre>';
 $inicio = $_GET["inicio"];
+// echo '<pre>inicio ';
+// print_r($inicio);
+// echo '</pre>';
 $fin = $_GET["fin"];
+// echo '<pre>fin ';
+// print_r($fin);
+// echo '</pre>';
 $canc = $_GET["canc"];
+// echo '<pre>canc ';
+// print_r($canc);
+// echo '</pre>';
 $vend = $_GET["vend"];
+// echo '<pre>vend ';
+// print_r($vend);
+// echo '</pre>';
 
 // convert TTF font to TCPDF format and store it on the fonts folder
 $fontname = TCPDF_FONTS::addTTFfont('../../lucida-console.ttf', 'TrueTypeUnicode', '', 96);

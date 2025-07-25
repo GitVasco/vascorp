@@ -2880,8 +2880,8 @@ class ModeloCuentas
 							ON cc.vendedor = v.codigo 
 						WHERE cc.tip_mov = '-' 
 							AND (
-							cc.fecha BETWEEN '" . $inicio . "' 
-							AND '" . $fin . "'
+							cc.fecha BETWEEN '$inicio' 
+							AND '$fin'
 							) 
 						GROUP BY cc.fecha 
 						UNION
@@ -2918,8 +2918,8 @@ class ModeloCuentas
 							ON cc.vendedor = v.codigo 
 						WHERE cc.tip_mov = '-' 
 							AND (
-							cc.fecha BETWEEN BETWEEN '" . $inicio . "' 
-							AND '" . $fin . "'
+							cc.fecha BETWEEN '$inicio' 
+							AND '$fin'
 							) 
 							UNION
 							SELECT 
@@ -2965,16 +2965,12 @@ class ModeloCuentas
 								ON cc.vendedor = v.codigo 
 							WHERE cc.tip_mov = '-' 
 							AND (
-								cc.fecha BETWEEN BETWEEN '" . $inicio . "' 
-								AND '" . $fin . "'
+								cc.fecha BETWEEN '$inicio' 
+								AND '$fin'
 							) 
 							GROUP BY cc.fecha 
 							ORDER BY fecha,
 							tipo_doc");
-
-			$stmt->execute();
-
-			return $stmt->fetchAll();
 		} else if ($orden1 == "vendedor" && $orden2 == "ordNumCuenta") {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
@@ -2992,7 +2988,7 @@ class ModeloCuentas
 						FROM
 							maestrajf m 
 						WHERE m.tipo_dato = 'tvend' 
-							AND m.codigo = '" . $vend . "' 
+							AND m.codigo = '$vend' 
 					UNION
 						SELECT 
 							cc.tipo_doc,
@@ -3027,10 +3023,10 @@ class ModeloCuentas
 							ON cc.vendedor = v.codigo 
 						WHERE cc.tip_mov = '-' 
 							AND (
-							cc.fecha BETWEEN '" . $inicio . "' 
-							AND '" . $fin . "'
+							cc.fecha BETWEEN '$inicio' 
+							AND '$fin'
 							) 
-							AND cc.vendedor = '" . $vend . "'  
+							AND cc.vendedor = '$vend'  
 				UNION
 						SELECT 
 							'999' AS tipo_doc,
@@ -3075,20 +3071,17 @@ class ModeloCuentas
 							ON cc.vendedor = v.codigo 
 						WHERE cc.tip_mov = '-' 
 							AND (
-							cc.fecha BETWEEN '" . $inicio . "' 
-							AND '" . $fin . "'
+							cc.fecha BETWEEN '$inicio' 
+							AND '$fin'
 							) 
-							AND cc.vendedor = '" . $vend . "' 
+							AND cc.vendedor = '$vend' 
 						GROUP BY cc.cod_pago 
 						ORDER BY cod_pago,
 							tipo_doc,
 							fecha,
-							num_cta ");
+							num_cta");
+		} else if ($orden1 == "fecha_pag" && $orden2 == "ordVencimiento" && $canc != "todo") {
 
-			$stmt->execute();
-
-			return $stmt->fetchAll();
-		} else if ($orden1 == "fecha_pag" && $orden2 == "ordNumCuenta" && $canc != "todo") {
 			$stmt = Conexion::conectar()->prepare("SELECT 
 					cc.tipo_doc,
 					cc.num_cta,
@@ -3122,10 +3115,10 @@ class ModeloCuentas
 					ON cc.vendedor = v.codigo 
 				WHERE cc.tip_mov = '-' 
 					AND (
-					cc.fecha BETWEEN '" . $inicio . "' 
-					AND '" . $fin . "'
+					cc.fecha BETWEEN '$inicio' 
+					AND '$fin'
 					) 
-					AND cc.cod_pago = '" . $canc . "' 
+					AND cc.cod_pago = '$canc' 
 				UNION ALL
 				SELECT 
 					'-1' AS tipo_doc,
@@ -3152,10 +3145,10 @@ class ModeloCuentas
 					ON cc.vendedor = v.codigo 
 				WHERE cc.tip_mov = '-' 
 					AND (
-					cc.fecha BETWEEN '" . $inicio . "' 
-					AND '" . $fin . "'
+					cc.fecha BETWEEN '$inicio' 
+					AND '$fin'
 					) 
-					AND cc.cod_pago = '" . $canc . "' 
+					AND cc.cod_pago = '$canc' 
 				GROUP BY cc.fecha 
 				UNION ALL
 				SELECT 
@@ -3201,23 +3194,23 @@ class ModeloCuentas
 					ON cc.vendedor = v.codigo 
 				WHERE cc.tip_mov = '-' 
 					AND (
-					cc.fecha BETWEEN '" . $inicio . "' 
-					AND '" . $fin . "'
+					cc.fecha BETWEEN '$inicio' 
+					AND '$fin'
 					) 
-					AND cc.cod_pago = '" . $canc . "' 
+					AND cc.cod_pago = '$canc' 
 					GROUP BY cc.fecha 
 					ORDER BY fecha,
 					tipo_doc,
-					num_cta ");
-
-			$stmt->execute();
-
-			return $stmt->fetchAll();
+					num_cta");
 		}
 
-		$stmt->close();
+		$stmt->execute();
 
-		$stmt = null;
+		return $stmt->fetchAll();
+
+		// $stmt->close();
+
+		// $stmt = null;
 	}
 
 	static public function mdlMostrarReporteTotalCobrar($tabla, $orden1, $orden2, $tip_doc, $cli, $vend, $banco)
@@ -3398,7 +3391,7 @@ class ModeloCuentas
 			$stmt->execute();
 
 			return $stmt->fetch();
-		} else if ($canc != "" && $orden2 == "ordNumCuenta") {
+		} else if ($canc != "" && $orden2 == "ordVencimiento") {
 			$stmt = Conexion::conectar()->prepare("SELECT 
 					'Total General' AS total_gral,
 					cc.vendedor, 
