@@ -1073,7 +1073,6 @@ class ModeloIngresos
 					WHERE DATE(m.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'
 					AND m.tipo IN ('S27', 'S26', 'S25', 'E20','E33') 
 				  GROUP BY m.documento,
-					GROUP BY m.documento,
 					a.modelo,
 					a.nombre,
 					a.cod_color,
