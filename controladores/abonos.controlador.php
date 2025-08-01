@@ -233,7 +233,7 @@ class ControladorAbonos
 				"id" 		=> $_POST["idCuenta4"],
 				"tipo_doc"	=> $_POST["editarTipo"],
 				"num_cta"	=> $_POST["editarCuenta"],
-				"cod_pago"	=> '05',
+				"cod_pago"	=> $_POST["editarOperacion"],
 				"doc_origen"	=> $_POST["editarCuenta"],
 				"cliente"	=> $_POST["editarCliente"],
 				"vendedor"	=> $_POST["editarVendedor"],

@@ -17,77 +17,64 @@
     </ol>
 
   </section>
-  <div class="col-md-7">
-    <section class="content">
-      <div class="box">
-        <div class="box-header">
-          <h3 class="text-center text-danger">Cuentas</h3>
-          <button class="btn btn-success btnCancelarAbono" data-toggle='modal' data-target='#modalCancelarAbono' idCuenta><i class="fa fa-save"></i> Cancelar cuenta</button>
+  <div class="row" style="margin:0;">
+    <div class="col-md-7" style="padding-right:5px;">
+      <section class="content" style="padding:0;">
+        <div class="box" style="margin-bottom:10px;">
+          <div class="box-header">
+            <h3 class="text-center text-danger">Cuentas</h3>
+            <button class="btn btn-success btnCancelarAbono" data-toggle='modal' data-target='#modalCancelarAbono' idCuenta><i class="fa fa-save"></i> Cancelar cuenta</button>
+          </div>
+          <div class="box-body" style="padding:5px;">
+            <div style="overflow-x:auto;">
+              <table class="table table-bordered table-striped dt-responsive tablaCuentasCancelar" style="width:100%; font-size:13px;">
+                <thead>
+                  <tr>
+                    <th>T. Doc.</th>
+                    <th>Nro Doc.</th>
+                    <th>Cliente</th>
+                    <th>Documento</th>
+                    <th>Fecha</th>
+                    <th>Vencimiento</th>
+                    <th>Monto</th>
+                    <th>Saldo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-
-        <div class="box-body">
-          <table class="table table-bordered table-striped dt-responsive tablaCuentasCancelar" width="100%">
-
-            <thead>
-
-              <tr>
-                <th>Tipo Doc.</th>
-                <th>Nro Doc.</th>
-                <th>Cliente</th>
-                <th>Documento</th>
-                <th>Fecha</th>
-                <th>Vencimiento</th>
-                <th>Monto</th>
-                <th>Saldo</th>
-                <th>Acciones</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-            </tbody>
-
-          </table>
+      </section>
+    </div>
+    <div class="col-md-5" style="padding-left:5px;">
+      <section class="content" style="padding:0;">
+        <div class="box" style="margin-bottom:10px;">
+          <h3 class="text-center text-green">Abonos</h3>
+          <div class="box-header">
+            <button class="btn btn-success" id="btnRecargar"><i class="fa fa-refresh"></i> Actualizar</button>
+          </div>
+          <div class="box-body" style="padding:5px;">
+            <div style="overflow-x:auto;">
+              <table class="table table-bordered table-striped dt-responsive tablaAbonosCancelar" style="width:100%; font-size:13px;">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Agencia</th>
+                    <th>Operación</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
-  </div>
-  <div class="col-md-5">
-    <section class="content">
-
-      <div class="box">
-        <h3 class="text-center text-green">Abonos</h3>
-        <div class="box-header">
-          <button class="btn btn-success" id="btnRecargar"><i class="fa fa-refresh"></i> Actualizar</button>
-        </div>
-        <div class="box-body">
-
-          <table class="table table-bordered table-striped dt-responsive tablaAbonosCancelar" width="100%">
-
-            <thead>
-
-              <tr>
-
-                <th>Fecha</th>
-                <th>Descripción</th>
-                <th>Monto</th>
-                <th>Agencia</th>
-                <th>Operación</th>
-                <th>Acciones</th>
-
-              </tr>
-
-            </thead>
-
-          </table>
-
-        </div>
-
-      </div>
-
-    </section>
+      </section>
+    </div>
   </div>
 
 </div>
@@ -236,6 +223,22 @@ MODAL CANCELAR ABONO
                 <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
 
                 <input type="date" class="form-control input-lg" name="editarFecha" id="editarFecha" value="<?php echo $fecha->format("Y-m-d") ?>" required>
+              </div>
+
+            </div>
+
+            <!-- ENTRADA PARA EL TIPO DE OPERACION -->
+            <div class="form-group col-lg-6">
+              <label for="">Operación</label>
+              <div class="input-group">
+
+                <span class="input-group-addon"><i class="fa fa-cogs"></i></span>
+
+                <select class="form-control input-lg" name="editarOperacion" id="editarOperacion" required>
+                  <option value="05">DEP. CTACTE</option>
+                  <option value="15">YAPE-BCP</option>
+                </select>
+
               </div>
 
             </div>

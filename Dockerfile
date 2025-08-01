@@ -15,7 +15,7 @@ RUN sed -i '/deb.debian.org\/debian stretch-updates/d' /etc/apt/sources.list \
     && apt-get -o Acquire::Check-Valid-Until=false update
 
 # Instala las dependencias necesarias para las extensiones de PHP, incluyendo GD
-RUN apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
+RUN apt-get install --allow-unauthenticated -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
     && docker-php-ext-install gd mysqli pdo pdo_mysql
 
