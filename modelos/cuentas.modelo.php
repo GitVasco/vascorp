@@ -3202,6 +3202,128 @@ class ModeloCuentas
 					ORDER BY fecha,
 					tipo_doc,
 					num_cta");
+		} else if ($orden1 == "fecha_pag" && $orden2 == "ordNumCuenta" && $canc != "todo") {
+
+			$stmt = Conexion::conectar()->prepare("SELECT 
+					cc.tipo_doc,
+					cc.num_cta,
+					cc.fecha,
+					cc.cliente,
+					c.nombre,
+					cc.vendedor,
+					cc.cod_pago,
+					cc.doc_origen,
+					CASE
+					WHEN cc.tipo_doc IN ('01', '03', '09', '08', '07') 
+					THEN FORMAT(cc.monto, 2) 
+					ELSE '' 
+					END AS fact,
+					CASE
+					WHEN cc.tipo_doc IN ('85') 
+					THEN FORMAT(cc.monto, 2) 
+					ELSE '' 
+					END AS letra,
+					cc.notas 
+				FROM
+					cuenta_ctejf cc 
+					LEFT JOIN clientesjf c 
+					ON cc.cliente = c.codigo 
+					LEFT JOIN 
+					(SELECT 
+						* 
+					FROM
+						maestrajf 
+					WHERE tipo_dato = 'tvend') v 
+					ON cc.vendedor = v.codigo 
+				WHERE cc.tip_mov = '-' 
+					AND (
+					cc.fecha BETWEEN '$inicio' 
+					AND '$fin'
+					) 
+					AND cc.cod_pago = '$canc' 
+				UNION ALL
+				SELECT 
+					'-1' AS tipo_doc,
+					'Fecha de pago:' AS num_cta,
+					cc.fecha,
+					'' AS cliente,
+					'' AS nombre,
+					'' AS vendedor,
+					'' AS cod_pago,
+					'' AS doc_origen,
+					'' AS fact,
+					'' AS letra,
+					'' as notas 
+				FROM
+					cuenta_ctejf cc 
+					LEFT JOIN clientesjf c 
+					ON cc.cliente = c.codigo 
+					LEFT JOIN 
+					(SELECT 
+						* 
+					FROM
+						maestrajf 
+					WHERE tipo_dato = 'tvend') v 
+					ON cc.vendedor = v.codigo 
+				WHERE cc.tip_mov = '-' 
+					AND (
+					cc.fecha BETWEEN '$inicio' 
+					AND '$fin'
+					) 
+					AND cc.cod_pago = '$canc' 
+				GROUP BY cc.fecha 
+				UNION ALL
+				SELECT 
+					'999' AS tipo_doc,
+					'Fecha de pago:',
+					cc.fecha,
+					'',
+					'',
+					'',
+					'',
+					'',
+					FORMAT(
+					SUM(
+						CASE
+						WHEN cc.tipo_doc IN ('01', '03', '09', '08', '07') 
+						THEN cc.monto 
+						ELSE '' 
+						END
+					),
+					2
+					) AS fact,
+					FORMAT(
+					SUM(
+						CASE
+						WHEN cc.tipo_doc IN ('85') 
+						THEN cc.monto 
+						ELSE '' 
+						END
+					),
+					2
+					) AS letra,
+					'' as notas 
+				FROM
+					cuenta_ctejf cc 
+					LEFT JOIN clientesjf c 
+					ON cc.cliente = c.codigo 
+					LEFT JOIN 
+					(SELECT 
+						* 
+					FROM
+						maestrajf 
+					WHERE tipo_dato = 'tvend') v 
+					ON cc.vendedor = v.codigo 
+				WHERE cc.tip_mov = '-' 
+					AND (
+					cc.fecha BETWEEN '$inicio' 
+					AND '$fin'
+					) 
+					AND cc.cod_pago = '$canc' 
+					GROUP BY cc.fecha 
+					ORDER BY fecha,
+					tipo_doc,
+					num_cta");
 		}
 
 		$stmt->execute();
