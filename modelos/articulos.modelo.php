@@ -428,7 +428,7 @@ class ModeloArticulos
 	*/
 	static public function mdlMostrarArticulosTaller($sectorIngreso)
 	{
-		if ($sectorIngreso == "T4" || $sectorIngreso == "T6" || $sectorIngreso == "T9" || $sectorIngreso == "T2" || $sectorIngreso == "T8" || $sectorIngreso == "T0" || $sectorIngreso == "TA" || $sectorIngreso == "T7" || $sectorIngreso == "T10" || $sectorIngreso == "TB" || $sectorIngreso == "T11" || $sectorIngreso == "T14" || $sectorIngreso == "TD") {
+		if ($sectorIngreso == "T4" || $sectorIngreso == "T6" || $sectorIngreso == "T9" || $sectorIngreso == "T2" || $sectorIngreso == "T8" || $sectorIngreso == "T0" || $sectorIngreso == "TA" || $sectorIngreso == "T7" || $sectorIngreso == "T10" || $sectorIngreso == "TB" || $sectorIngreso == "T11" || $sectorIngreso == "T14" || $sectorIngreso == "TD" || $sectorIngreso == "TE") {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
 			a.articulo,
