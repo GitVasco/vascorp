@@ -300,47 +300,126 @@ class ControladorProduccion
         return $respuesta;
     }
 
-    // prehormado
-    static public function ctrCrearPrehormado()
+    // // prehormado
+    // static public function ctrCrearPrehormado()
+    // {
+    //     if (isset($_POST["tipoPrehormado"])) {
+
+    //         // declaramos las variables
+    //         $tipo = $_POST["tipoPrehormado"];
+    //         $fecha_registro = $_POST["fechaPrehormado"];
+    //         $articulo = $_POST["articulosPrehormado"];
+    //         $cantidad = $_POST["cantidadPrehormado"];
+    //         $usureg = $_SESSION["usuario"];
+    //         $fecreg = date("Y-m-d");
+    //         $pcreg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
+
+    //         // creamos el array
+    //         $datos = array(
+    //             "tipo" => $tipo,
+    //             "fecha_registro" => $fecha_registro,
+    //             "articulo" => $articulo,
+    //             "cantidad" => $cantidad,
+    //             "usureg" => $usureg,
+    //             "fecreg" => $fecreg,
+    //             "pcreg" => $pcreg
+    //         );
+
+    //         $respuesta = ModeloProduccion::mdlCrearPrehormado($datos);
+
+    //         if ($respuesta == "ok") {
+
+    //             echo '<script>
+
+    //             // toast de exito
+    //             Command: toastr["success"](
+    //                 "Editado de materia prima exitosamente!"
+    //             );
+    //             window.location = "prehormado";
+
+    //             </script>';
+    //         }
+    //     }
+    // }
+
+    public static function ctrCrearPrehormado()
     {
-        if (isset($_POST["tipoPrehormado"])) {
+        // Solo continuar con POST y si viene el campo clave
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+        if (!isset($_POST['tipoPrehormadoPS'])) return;
 
-            // declaramos las variables
-            $tipo = $_POST["tipoPrehormado"];
-            $fecha_registro = $_POST["fechaPrehormado"];
-            $articulo = $_POST["articulosPrehormado"];
-            $cantidad = $_POST["cantidadPrehormado"];
-            $usureg = $_SESSION["usuario"];
-            $fecreg = date("Y-m-d");
-            $pcreg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
+        // Datos del formulario (sin ??)
+        $tipoPS   = isset($_POST['tipoPrehormadoPS']) ? $_POST['tipoPrehormadoPS'] : null;     // 'producto' | 'servicio'
+        $fecha    = isset($_POST['nuevaFecha']) ? $_POST['nuevaFecha'] : null;                 // YYYY-MM-DD
+        $jsonList = isset($_POST['listaArticulosPrehormado']) ? $_POST['listaArticulosPrehormado'] : '[]';
+        $totalUI  = isset($_POST['totalTaller']) ? (int)$_POST['totalTaller'] : 0;
 
-            // creamos el array
-            $datos = array(
-                "tipo" => $tipo,
-                "fecha_registro" => $fecha_registro,
-                "articulo" => $articulo,
-                "cantidad" => $cantidad,
-                "usureg" => $usureg,
-                "fecreg" => $fecreg,
-                "pcreg" => $pcreg
-            );
+        // Metadatos
+        $usureg = isset($_SESSION['usuario']) ? $_SESSION['usuario'] : 'sistema';
+        $fecreg = date('Y-m-d');
+        $pcreg  = (isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] !== '')
+            ? gethostbyaddr($_SERVER['REMOTE_ADDR'])
+            : '127.0.0.1';
 
-            $respuesta = ModeloProduccion::mdlCrearPrehormado($datos);
+        // Validaciones básicas
+        $items = json_decode($jsonList, true);
+        if (!is_array($items)) {
+            $items = array();
+        }
 
-            if ($respuesta == "ok") {
+        if (!$tipoPS || !$fecha || empty($items)) {
+            echo '<script>Command: toastr["error"]("Faltan datos: tipo, fecha o lista vacía.");</script>';
+            return;
+        }
 
-                echo '<script>
+        // Normalizar lista
+        $rows = array();
+        $totalCalc = 0;
+        foreach ($items as $it) {
+            $id       = isset($it['id']) ? trim((string)$it['id']) : '';
+            $cantidad = isset($it['cantidad']) ? (int)$it['cantidad'] : 0;
 
-                // toast de exito
-                Command: toastr["success"](
-                    "Editado de materia prima exitosamente!"
-                );
-                window.location = "prehormado";
-
-                </script>';
+            if ($id === '' || $cantidad < 1) {
+                continue;
             }
+
+            $rows[] = array(
+                'tipo'           => $tipoPS,
+                'fecha_registro' => $fecha,
+                'articulo'       => $id,      // tu código
+                'cantidad'       => $cantidad,
+                'usureg'         => $usureg,
+                'fecreg'         => $fecreg,
+                'pcreg'          => $pcreg,
+            );
+            $totalCalc += $cantidad;
+        }
+
+        if (empty($rows)) {
+            echo '<script>Command: toastr["error"]("La lista no contiene artículos válidos.");</script>';
+            return;
+        }
+
+        if ($totalUI > 0 && $totalUI !== $totalCalc) {
+            echo '<script>Command: toastr["warning"]("El total calculado (' . $totalCalc . ') difiere del mostrado (' . $totalUI . '). Se usará el calculado.");</script>';
+        }
+
+        // Inserción masiva (asegúrate de tener este método en tu modelo)
+        $resp = ModeloProduccion::mdlCrearPrehormadoMasivo($rows);
+        echo '<pre>';
+        print_r($resp);
+        echo '</pre>';
+
+        if ($resp === 'ok') {
+            echo '<script>
+            Command: toastr["success"]("Prehormado creado con ' . count($rows) . ' ítems (total: ' . $totalCalc . ').");
+            window.location = "prehormado";
+        </script>';
+        } else {
+            echo '<script>Command: toastr["error"]("No se pudo registrar el prehormado. Intenta nuevamente.");</script>';
         }
     }
+
 
     static public function ctrEditarPrehormado($id)
     {

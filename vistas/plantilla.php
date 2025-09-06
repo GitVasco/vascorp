@@ -590,6 +590,8 @@ CUERPO DOCUMENTO
     <script src="vistas/js/mantenimiento.js"></script>
     <script src="vistas/js/transferencia.js"></script>
     <script src="vistas/js/arreglos.js"></script>
+    <script src="vistas/js/prehormado.js"></script>
+
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {

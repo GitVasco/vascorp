@@ -23,11 +23,10 @@ class TablaPrehormado
             for ($i = 0; $i < count($prehormado); $i++) {
 
                 // tipo de prehormado
-                $prehormado[$i]["tipo"] = ($prehormado[$i]["tipo"] == "01") ? "Servicio" : "Produccion";
+                //$prehormado[$i]["tipo"] = ($prehormado[$i]["tipo"] == "01") ? "Servicio" : "Produccion";
 
                 $id = $prehormado[$i]["id"];
-
-                $editAction = "<a href='index.php?ruta=prehormado&id={$id}' class='btn btn-xs btn-warning' role='button'>
+                $editAction = "<a href='index.php?ruta=prehormado&id={$id}' class='btn btn-xs btn-warning disabled' role='button' aria-disabled='true' tabindex='-1'>
                     <i class='fa fa-pencil'></i>
                 </a>";
 

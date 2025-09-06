@@ -475,68 +475,68 @@ function cargarArticulos(tipoPrehormado, select) {
     });
 }
 
-// Evento change para el select de tipo de prehormado
-$("#tipoPrehormado").change(function () {
-    var articulo = $("#articulo").val();
-    var select = articulo ? articulo : "";
+// // Evento change para el select de tipo de prehormado
+// $("#tipoPrehormado").change(function () {
+//     var articulo = $("#articulo").val();
+//     var select = articulo ? articulo : "";
 
-    cargarArticulos($(this).val(), select);
-});
+//     cargarArticulos($(this).val(), select);
+// });
 
-// Cargar artículos al cargar la página, si ya hay un tipo de prehormado seleccionado
-$(document).ready(function () {
-    var tipoPrehormadoInicial = $("#tipoPrehormado").val();
-    var articulo = $("#articulo").val();
-    var select = articulo ? articulo : "";
-    if (tipoPrehormadoInicial) {
-        cargarArticulos(tipoPrehormadoInicial, select);
-    }
-});
+// // Cargar artículos al cargar la página, si ya hay un tipo de prehormado seleccionado
+// $(document).ready(function () {
+//     var tipoPrehormadoInicial = $("#tipoPrehormado").val();
+//     var articulo = $("#articulo").val();
+//     var select = articulo ? articulo : "";
+//     if (tipoPrehormadoInicial) {
+//         cargarArticulos(tipoPrehormadoInicial, select);
+//     }
+// });
 
-// tabla prehormado
-function cargarTablaPrehormado() {
-    $(".tablaPrehormado").DataTable({
-        ajax: "ajax/produccion/tabla-prehormado.ajax.php",
-        deferRender: true,
-        retrieve: true,
-        processing: true,
-        order: [[0, "desc"]],
-        pageLength: 20,
-        lengthMenu: [
-            [20, 40, 60, -1],
-            [20, 40, 60, "Todos"],
-        ],
-        language: {
-            sProcessing: "Procesando...",
-            sLengthMenu: "Mostrar _MENU_ registros",
-            sZeroRecords: "No se encontraron resultados",
-            sEmptyTable: "Ningún dato disponible en esta tabla",
-            sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
-            sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
-            sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
-            sInfoPostFix: "",
-            sSearch: "Buscar:",
-            sUrl: "",
-            sInfoThousands: ",",
-            sLoadingRecords: "Cargando...",
-            oPaginate: {
-                sFirst: "Primero",
-                sLast: "Último",
-                sNext: "Siguiente",
-                sPrevious: "Anterior",
-            },
-            oAria: {
-                sSortAscending:
-                    ": Activar para ordenar la columna de manera ascendente",
-                sSortDescending:
-                    ": Activar para ordenar la columna de manera descendente",
-            },
-        },
-    });
-}
+// // tabla prehormado
+// function cargarTablaPrehormado() {
+//     $(".tablaPrehormado").DataTable({
+//         ajax: "ajax/produccion/tabla-prehormado.ajax.php",
+//         deferRender: true,
+//         retrieve: true,
+//         processing: true,
+//         order: [[0, "desc"]],
+//         pageLength: 20,
+//         lengthMenu: [
+//             [20, 40, 60, -1],
+//             [20, 40, 60, "Todos"],
+//         ],
+//         language: {
+//             sProcessing: "Procesando...",
+//             sLengthMenu: "Mostrar _MENU_ registros",
+//             sZeroRecords: "No se encontraron resultados",
+//             sEmptyTable: "Ningún dato disponible en esta tabla",
+//             sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+//             sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+//             sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+//             sInfoPostFix: "",
+//             sSearch: "Buscar:",
+//             sUrl: "",
+//             sInfoThousands: ",",
+//             sLoadingRecords: "Cargando...",
+//             oPaginate: {
+//                 sFirst: "Primero",
+//                 sLast: "Último",
+//                 sNext: "Siguiente",
+//                 sPrevious: "Anterior",
+//             },
+//             oAria: {
+//                 sSortAscending:
+//                     ": Activar para ordenar la columna de manera ascendente",
+//                 sSortDescending:
+//                     ": Activar para ordenar la columna de manera descendente",
+//             },
+//         },
+//     });
+// }
 
-// cargar tabla prehormado
-cargarTablaPrehormado();
+// // cargar tabla prehormado
+// cargarTablaPrehormado();
 
 $(".tablaPrehormado tbody").on(
     "click",

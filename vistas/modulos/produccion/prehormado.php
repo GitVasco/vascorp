@@ -1,156 +1,197 @@
-<?php
-// revisamos si viene $get['id'] para editar
-if (isset($_GET['id'])) {
-    $id = $_GET['id'];
-
-    $prehormado = ModeloProduccion::verPrehormado($id);
-
-    $tipo = $prehormado["tipo"];
-    $fecha = $prehormado["fecha_registro"];
-    $cantidad = $prehormado["cantidad"];
-    $articulo = $prehormado["articulo"];
-
-    $styleNew = "style='display:none;'";
-    $styleEdit = "";
-
-    $typeNew = "button";
-    $typeEdit = "submit";
-} else {
-    $id = null;
-    $tipo = "";
-    $fecha = date("Y-m-d");
-    $cantidad = "";
-    $articulo = "";
-
-    $styleNew = "";
-    $styleEdit = "style='display:none;'";
-
-    $typeNew = "submit";
-    $typeEdit = "button";
-}
-
-?>
 <div class="content-wrapper">
-
     <section class="content-header">
-        <h1>
-            Prehormado
-        </h1>
+        <h1>Crear prehormado</h1>
         <ol class="breadcrumb">
-            <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li class="active">Prehormado</li>
+            <li><a href="#"><i class="fa fa-dashboard"></i> Inicio</a></li>
+            <li class="active">Crear prehormado</li>
         </ol>
     </section>
 
     <section class="content">
         <div class="row">
-            <div class="col-lg-7">
-                <div class="box">
-                    <div class="box-body">
-                        <table class="table table-bordered table-striped dt-responsive tablaPrehormado" width="100%">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Tipo</th>
-                                    <th>Codigo</th>
-                                    <th>Nombre</th>
-                                    <th>Color</th>
-                                    <th>Talla</th>
-                                    <th>Cantidad</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                        </table>
+            <!-- FORMULARIO (IZQUIERDA) -->
+            <div class="col-lg-6 col-xs-12">
+                <div class="box box-success">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Datos del prehormado</h3>
                     </div>
-                </div>
-            </div>
 
-            <div class="col-lg-5">
-                <div class="box box-warning">
-                    <form role="form" method="post" class="formularioRegistrarPrehormado" id="formPrehormado">
-                        <?php if (isset($_GET["id"])) : ?>
-                            <input type="hidden" id="idPrehormado" name="idPrehormado" value=<?= $id ?>>
-                            <input type="hidden" id="articulo" name="articulo" value=<?= $articulo ?>>
-                        <?php endif ?>
+                    <form role="form" method="post" id="formPrehormado" class="formularioIngreso">
                         <div class="box-body">
-                            <div class="box">
 
-                                <!-- CODIGO DEL CORTE -->
-                                <div class="form-group col-lg-4">
-                                    <label>Tipo</label>
-                                    <div class="input-group">
-                                        <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                                        <?php
-                                        $tipoPrehormado = ControladorPlantilla::obtenerInfoJson("vistas/json/common.json", "tipo_prehormado", null);
-                                        ?>
-                                        <select class="form-control input-sm selectpicker" name="tipoPrehormado" id="tipoPrehormado" data-live-search="true" data-size="10" required>
-                                            <option value="">Tipo</option>
-                                            <?php foreach ($tipoPrehormado as $key => $value) : ?>
-                                                <option value="<?= $value['id']; ?>" <?= $value["id"] == $tipo ? "selected" : "" ?>>
-                                                    <?= $value['id'] . ' - ' . $value['nombre']; ?>
-                                                </option>
-                                            <?php endforeach; ?>
+                            <!-- Panel: Tipo prehormado -->
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <i class="fa fa-tags"></i> <strong>Tipo de prehormado</strong>
+                                </div>
+                                <div class="panel-body">
+
+                                    <!-- Producto / Servicio -->
+                                    <div class="form-group">
+                                        <label for="tipoPrehormadoPS" class="control-label">¿Qué vas a prehormar?</label>
+                                        <select class="form-control" name="tipoPrehormadoPS" id="tipoPrehormadoPS" required>
+                                            <option value="producto" selected>Producto</option>
+                                            <option value="servicio">Servicio</option>
                                         </select>
+                                        <p class="help-block">Marcador informativo para tu backend (no modifica el select).</p>
                                     </div>
-                                </div>
 
-                                <!-- Fecha de registro -->
-                                <div class="form-group col-lg-4">
-                                    <label>Fecha</label>
-                                    <div class="input-group">
-                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-                                        <input type="date" class="form-control input-sm" name="fechaPrehormado" id="fechaPrehormado" value="<?= $fecha ?>" required>
+                                    <!-- Fecha -->
+                                    <div class="form-group">
+                                        <label for="nuevaFecha" class="control-label">Fecha</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input type="date" class="form-control" id="nuevaFecha" name="nuevaFecha"
+                                                value="<?php date_default_timezone_set('America/Lima');
+                                                        echo date('Y-m-d'); ?>" required>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <!-- Cantidad -->
-                                <div class="form-group col-lg-4">
-                                    <label>Cantidad</label>
-                                    <div class="input-group">
-                                        <span class="input-group-addon"><i class="fa fa-sort-numeric-asc"></i></span>
-                                        <input type="number" class="form-control input-sm" name="cantidadPrehormado" id="cantidadPrehormado" min="0" value="<?= $cantidad ?>" required>
-                                    </div>
                                 </div>
+                            </div>
 
-                                <!-- articulos del corte -->
-                                <div class="form-group col-lg-12">
-                                    <label>ARTÍCULOS</label>
-                                    <div class="input-group">
-                                        <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                                        <select class="form-control input-sm selectpicker" name="articulosPrehormado" id="articulosPrehormado" data-live-search="true" data-size="10" required>
-                                            <option value="">Seleccionar Artículo</option>
-                                        </select>
+                            <!-- Panel: Lista por agregar -->
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">
+                                    <i class="fa fa-list-ul"></i> <strong>Lista por agregar</strong>
+                                </div>
+                                <div class="panel-body">
+
+                                    <!-- Etiquetas de columnas -->
+                                    <div class="well well-sm">
+                                        <div class="row">
+                                            <div class="col-xs-10"><strong>Artículo</strong></div>
+                                            <div class="col-xs-2 text-center"><strong>Cantidad</strong></div>
+                                        </div>
                                     </div>
+
+                                    <input type="hidden" id="listaArticulosPrehormado" name="listaArticulosPrehormado">
+
+                                    <!-- Resumen / Totales -->
+                                    <div class="panel panel-info">
+                                        <div class="panel-heading">
+                                            <i class="fa fa-check-square-o"></i> <strong>Resumen</strong>
+                                        </div>
+                                        <div class="panel-body">
+                                            <div class="row">
+                                                <div class="col-sm-6">
+                                                    <label for="nuevoTotalTaller" class="control-label">Total de unidades</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-addon"><i class="fa fa-calculator"></i></span>
+                                                        <input type="text" class="form-control input-lg" id="nuevoTotalTaller"
+                                                            name="nuevoTotalTaller" placeholder="0" readonly required>
+                                                        <input type="hidden" name="totalTaller" id="totalTaller">
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-6 text-right">
+                                                    <span class="label label-default">Se calculará al agregar cantidades</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div> <!-- /box-body -->
+
+                        <div class="box-footer">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <p class="text-muted">Revisa cantidades antes de guardar.</p>
+                                </div>
+                                <div class="col-sm-6 text-right">
+                                    <a href="prehormado" id="cancel" name="cancel" class="btn btn-default">
+                                        <i class="fa fa-times-circle"></i> Cancelar
+                                    </a>
+
+                                    <?php
+                                    $crear = new ControladorProduccion();
+                                    $crear->ctrCrearPrehormado();
+                                    ?>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa fa-floppy-o"></i> Guardar prehormado
+                                    </button>
                                 </div>
                             </div>
                         </div>
+                    </form>
 
-                        <div class="box-footer">
-                            <button type="<?= $typeNew ?>" class="btn btn-primary pull-right" id="btnGuardarPrehormado" <?= $styleNew ?>><i class="fa fa-floppy-o"></i> Guardar Registro</button>
-                            <button type="<?= $typeEdit ?>" class="btn btn-warning pull-right" id="btnActualizarPrehormado" <?= $styleEdit ?>><i class="fa fa-floppy-o"></i> Actualizar Registro</button>
-                            <a href="prehormado" id="cancel" name="cancel" class="btn btn-danger"><i class="fa fa-times-circle"></i> Cancelar</a>
+                </div>
+            </div>
+
+            <!-- TABLA DE ARTÍCULOS (DERECHA) -->
+            <div class="col-lg-6 hidden-md hidden-sm hidden-xs">
+                <div class="box box-warning">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Artículos disponibles</h3>
+                    </div>
+                    <div class="box-body">
+                        <p class="text-muted">
+                            Selecciona artículos aquí (cuando añadas la lógica) para agregarlos en la “Lista por agregar”.
+                        </p>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-condensed tablaArticulosPrehormado" width="100%">
+
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Color</th>
+                                        <th>Talla</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se llena por tu DataTable / servidor -->
+                                </tbody>
+                            </table>
                         </div>
 
-                    </form>
-                    <?php
+                    </div>
+                </div>
+            </div>
+        </div> <!-- /row -->
 
-                    if (isset($_GET['id'])) {
-                        $editar = new ControladorProduccion();
-                        $editar->ctrEditarPrehormado($id);
-                    } else {
-
-                        $crear = new ControladorProduccion();
-                        $crear->ctrCrearPrehormado();
-                    }
-
-                    ?>
+        <!-- TABLA DE PREHORMADOS CREADOS -->
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="box">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Prehormados ya creados</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped dt-responsive tablaPrehormado" width="100%">
+                                <caption class="hidden-xs">Histórico de registros</caption>
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Color</th>
+                                        <th>Talla</th>
+                                        <th>Cantidad</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se llena por servidor -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted">Usa esta tabla para revisar o editar registros existentes.</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
+    </section>
 </div>
 
 <script>
-    window.document.title = "Prehormado"
+    window.document.title = "Crear prehormado";
+    localStorage.setItem("sectorIngreso", null);
 </script>

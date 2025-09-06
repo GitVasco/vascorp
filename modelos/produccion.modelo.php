@@ -2623,6 +2623,54 @@ class ModeloProduccion
     $stmt = null;
   }
 
+  public static function mdlCrearPrehormadoMasivo($lista)
+  {
+    if (empty($lista)) return "vacio";
+
+    $pdo = null;
+    $stmt = null;
+    try {
+      $pdo = Conexion::conectar();
+      $pdo->beginTransaction();
+
+      $sql = "INSERT INTO prehormado
+                (tipo, fecha_registro, articulo, cantidad, usureg, fecreg, pcreg)
+                VALUES
+                (:tipo, :fecha_registro, :articulo, :cantidad, :usureg, :fecreg, :pcreg)";
+      $stmt = $pdo->prepare($sql);
+
+      foreach ($lista as $datos) {
+        $stmt->bindValue(":tipo",           $datos["tipo"],           PDO::PARAM_STR);
+        $stmt->bindValue(":fecha_registro", $datos["fecha_registro"], PDO::PARAM_STR);
+        $stmt->bindValue(":articulo",       $datos["articulo"],       PDO::PARAM_STR);
+        $stmt->bindValue(":cantidad",       (int)$datos["cantidad"],  PDO::PARAM_INT);
+        $stmt->bindValue(":usureg",         $datos["usureg"],         PDO::PARAM_STR);
+        $stmt->bindValue(":fecreg",         $datos["fecreg"],         PDO::PARAM_STR);
+        $stmt->bindValue(":pcreg",          $datos["pcreg"],          PDO::PARAM_STR);
+
+        if (!$stmt->execute()) {
+          $pdo->rollBack();
+          $stmt = null;
+          $pdo = null;
+          return "error";
+        }
+      }
+
+      $pdo->commit();
+      $stmt = null;
+      $pdo = null;
+      return "ok";
+    } catch (Exception $e) {
+      if ($pdo && $pdo->inTransaction()) {
+        $pdo->rollBack();
+      }
+      $stmt = null;
+      $pdo = null;
+      return "error";
+    }
+  }
+
+
   static public function mdlMostrarPrehormados()
   {
 
@@ -2640,7 +2688,7 @@ class ModeloProduccion
                 join articulojf a on
                     p.articulo = a.articulo
                 where
-                    p.tipo = '01'
+                    p.tipo = 'producto'
                 union all
                 select
                     p.id,
@@ -2699,7 +2747,7 @@ class ModeloProduccion
                     on
                     p.articulo = p1.codfab
                 where
-                    p.tipo <> '01'
+                    p.tipo <> 'producto'
                 order by
                     fecha_registro desc,
                     tipo,
