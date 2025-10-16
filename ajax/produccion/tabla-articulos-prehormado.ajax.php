@@ -34,7 +34,7 @@ class TablaPrehormado
 
                 $codigo = $tipo == "producto"
                     ? $respuesta[$i]["articulo"]
-                    : $respuesta[$i]["codpro"];
+                    : $respuesta[$i]["codfab"];
 
                 $nombre = $tipo == "producto"
                     ? $respuesta[$i]["nombre"]
