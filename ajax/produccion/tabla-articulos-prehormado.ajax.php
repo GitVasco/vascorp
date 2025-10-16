@@ -34,11 +34,11 @@ class TablaPrehormado
 
                 $codigo = $tipo == "producto"
                     ? $respuesta[$i]["articulo"]
-                    : $respuesta[$i]["codfab"];
+                    : $respuesta[$i]["codpro"];
 
                 $nombre = $tipo == "producto"
                     ? $respuesta[$i]["nombre"]
-                    : $respuesta[$i]["despro"];
+                    : $respuesta[$i]["codfab"] . " - " . $respuesta[$i]["despro"];
 
                 $botones = "<div class='btn-group'><button class='btn btn-primary btn-xs btnAgregarArticuloPrehormado recuperarArticuloPrehormado' idArticulo='" . $codigo . "' nombreArticulo='" . $nombre . "' colorArticulo='" . $respuesta[$i]["color"] . "' tallaArticulo='" . $respuesta[$i]["talla"] . "'><i class='fa fa-plus'></i></button></div>";
 
