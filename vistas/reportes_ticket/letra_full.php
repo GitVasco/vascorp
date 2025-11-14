@@ -16,6 +16,7 @@ if (!$soloPlantilla && $numCuenta !== null) {
 
     /* Establecer datos para la letra */
     $lugar = "LIMA";
+    $referencia = isset($respuesta["referencia"]) ? $respuesta["referencia"] : "";
     $diaEmision = substr($respuesta["fecha"], 8, 2);
     $mesEmision = substr($respuesta["fecha"], 5, 2);
     $anoEmision = substr($respuesta["fecha"], 0, 4);
@@ -161,6 +162,40 @@ if (!$soloPlantilla && $numCuenta !== null) {
             border: 1px solid #ccc;
         }
 
+        .page.page-extra {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            border: none;
+            background: #fff;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 20mm 0 0 30mm;
+            box-sizing: border-box;
+            page-break-before: always;
+        }
+
+        .page.page-extra img {
+            width: 20%;
+            height: auto;
+            max-width: 20%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .plantilla-fondo-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .page.plantilla-solo-imagen {
+            position: relative;
+        }
+
         .overlay {
             position: absolute;
             inset: 0;
@@ -206,6 +241,19 @@ if (!$soloPlantilla && $numCuenta !== null) {
 
             .page.sin-fondo {
                 background: #fff;
+            }
+
+            .page.page-extra {
+                position: relative;
+                left: 0;
+                top: 0;
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
+                border: none;
+                padding: 10mm 0 0 30mm;
+                page-break-before: always;
+                transform: none;
             }
 
             .overlay {
@@ -436,12 +484,15 @@ if (!$soloPlantilla && $numCuenta !== null) {
                             echo 'con-fondo';
                         } else {
                             echo 'sin-fondo';
-                        } ?>">
+                        } ?> <?php echo $soloPlantilla ? 'plantilla-solo-imagen' : ''; ?>">
+        <?php if ($soloPlantilla): ?>
+            <img src="./img/fondo.png" alt="Plantilla Corporación Vasco" class="plantilla-fondo-img" />
+        <?php endif; ?>
         <?php if (!$soloPlantilla && isset($respuesta)): ?>
             <div class="overlay">
                 <!-- Fila superior -->
                 <div id="f-numero" class="field center" style="--fs:13px; --fw:500;"><?php echo $respuesta["num_cta"]; ?></div>
-                <div id="f-ref" class="field center" style="--fs:13px; --fw:500;"><?php echo $respuesta["referencia"]; ?></div>
+                <div id="f-ref" class="field center" style="--fs:13px; --fw:500;"><?php echo $referencia; ?></div>
 
                 <div id="f-giro-d" class="field center" style="--fs:12px;"><?php echo $diaEmision; ?></div>
                 <div id="f-giro-m" class="field center" style="--fs:12px;"><?php echo $mesEmision; ?></div>
@@ -528,6 +579,11 @@ if (!$soloPlantilla && $numCuenta !== null) {
             </div>
         <?php endif; ?>
     </div>
+    <?php if ($soloPlantilla): ?>
+        <div class="page page-extra">
+            <img src="./img/firma.png" alt="Firma Corporación Vasco" class="plantilla-firma-img" />
+        </div>
+    <?php endif; ?>
     <!-- <script>window.print();</script> -->
 </body>
 
