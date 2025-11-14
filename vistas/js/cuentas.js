@@ -2023,13 +2023,78 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
     }
 });
 
+// ===== Gestión de preferencia de impresión de letras =====
+$(document).ready(function () {
+    // Inicializar preferencia si no existe (1 = con fondo, 0 = sin fondo)
+    var preferencia = localStorage.getItem("preferenciaImpresionLetra");
+    if (!preferencia) {
+        localStorage.setItem("preferenciaImpresionLetra", "1");
+        preferencia = "1";
+    }
+    // Actualizar el botón del header
+    if ($("#btnTogglePreferenciaLetra").length) {
+        actualizarBotonPreferencia(preferencia);
+    }
+});
+
+// Función para actualizar el texto e ícono del botón del header
+function actualizarBotonPreferencia(preferencia) {
+    var btn = $("#btnTogglePreferenciaLetra");
+    var texto = $("#textoPreferenciaLetra");
+    var icono = btn.find("i");
+
+    if (preferencia === "1") {
+        texto.text("Imprimir con fondo");
+        icono.removeClass("fa-file-text-o").addClass("fa-picture-o");
+        btn.removeClass("btn-default").addClass("btn-success");
+    } else {
+        texto.text("Imprimir sin fondo");
+        icono.removeClass("fa-picture-o").addClass("fa-file-text-o");
+        btn.removeClass("btn-success").addClass("btn-default");
+    }
+}
+
+// Toggle de preferencia al hacer clic en el botón del header
+$(".btnTogglePreferenciaLetra").on("click", function () {
+    var preferenciaActual =
+        localStorage.getItem("preferenciaImpresionLetra") || "1";
+    var nuevaPreferencia = preferenciaActual === "1" ? "0" : "1";
+
+    localStorage.setItem("preferenciaImpresionLetra", nuevaPreferencia);
+    actualizarBotonPreferencia(nuevaPreferencia);
+
+    var mensaje =
+        nuevaPreferencia === "1"
+            ? "Las letras se imprimirán CON fondo"
+            : "Las letras se imprimirán SIN fondo";
+
+    swal({
+        title: "Preferencia actualizada",
+        text: mensaje,
+        type: "success",
+        timer: 1500,
+        showConfirmButton: false,
+    });
+});
+
+// Imprimir solo la plantilla en blanco del formato
+$(".btnImprimirPlantillaLetra").on("click", function () {
+    window.open(
+        "vistas/reportes_ticket/letra_full.php?plantilla=1&fondo=1",
+        "_blank"
+    );
+});
+
 //Imprimir letra con hoja pequeña
 $(".tablaCuentas").on("click", ".btnImprimirLetra", function () {
     var numCuenta = $(this).attr("numCuenta");
-    //console.log(codigo);
+    var conFondo = localStorage.getItem("preferenciaImpresionLetra") || "1";
 
     window.open(
-        "vistas/reportes_ticket/imprimir_letra.php?numCuenta=" + numCuenta,
+        "vistas/reportes_ticket/letra_full.php?numCuenta=" +
+            numCuenta +
+            "&fondo=" +
+            conFondo,
         "_blank"
     );
 });
@@ -2049,24 +2114,30 @@ $(".tablaCuentas").on("click", ".btnCargoProtesto", function () {
     );
 });
 
-//Imprimir letra con hoja pequeña
+//Imprimir letra con hoja pequeña - Pendientes
 $(".tablaCuentasPendientes").on("click", ".btnImprimirLetra", function () {
     var numCuenta = $(this).attr("numCuenta");
-    //console.log(codigo);
+    var conFondo = localStorage.getItem("preferenciaImpresionLetra") || "1";
 
     window.open(
-        "vistas/reportes_ticket/imprimir_letra.php?numCuenta=" + numCuenta,
+        "vistas/reportes_ticket/letra_full.php?numCuenta=" +
+            numCuenta +
+            "&fondo=" +
+            conFondo,
         "_blank"
     );
 });
 
-//Imprimir letra con hoja pequeña
+//Imprimir letra con hoja pequeña - Aprobadas
 $(".tablaCuentasAprobadas").on("click", ".btnImprimirLetra", function () {
     var numCuenta = $(this).attr("numCuenta");
-    //console.log(codigo);
+    var conFondo = localStorage.getItem("preferenciaImpresionLetra") || "1";
 
     window.open(
-        "vistas/reportes_ticket/imprimir_letra.php?numCuenta=" + numCuenta,
+        "vistas/reportes_ticket/letra_full.php?numCuenta=" +
+            numCuenta +
+            "&fondo=" +
+            conFondo,
         "_blank"
     );
 });

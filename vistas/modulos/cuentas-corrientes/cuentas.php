@@ -89,6 +89,18 @@
                         <img src="vistas/img/plantilla/download.png" width="20px"> Proyección Pagos </button>
                 </div>
 
+                <div class="pull-right" style="margin-right: 10px;">
+                    <button type="button" class="btn btn-default btnTogglePreferenciaLetra" id="btnTogglePreferenciaLetra" title="Cambiar preferencia de impresión de letras">
+                        <i class="fa fa-picture-o"></i>
+                        <span id="textoPreferenciaLetra">Imprimir con fondo</span>
+                    </button>
+                </div>
+                <div class="pull-right" style="margin-right: 10px;">
+                    <button type="button" class="btn btn-default btnImprimirPlantillaLetra" title="Imprimir formato de letra">
+                        <i class="fa fa-file-o"></i> Plantilla
+                    </button>
+                </div>
+
 
             </div>
 
@@ -111,7 +123,7 @@
                             <th style="width:100px">Nro. unico</th>
                             <th>Prote.</th>
                             <th>Doc. origen</th>
-                            <th>Acciones</th>
+                            <th style="width:200px">Acciones</th>
 
                         </tr>
 

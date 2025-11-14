@@ -1,0 +1,302 @@
+@charset "utf-8";
+
+@font-face {
+    font-family: Lucida-console;
+    src: url(../../../extensiones/lucida-console.ttf);
+}
+
+/* Estilos específicos para Letra de Cambio */
+body {
+    margin: 0;
+    padding: 0;
+    background-image: url(../img/fondo.png);
+    background-repeat: repeat;
+    font-family: Lucida-console, Arial, sans-serif;
+    font-size: 12px;
+    width: 21cm;
+    height: 11cm;
+    overflow: hidden;
+}
+
+/* Contenedor principal de la letra */
+.letra-container {
+    width: 21cm;
+    height: 11cm;
+    position: relative;
+    background-image: url(../img/fondo.png);
+    background-repeat: repeat;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* Header - Información de la empresa */
+.letra-header {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    text-align: right;
+    font-size: 14px;
+    font-weight: bold;
+    color: #000;
+}
+
+.empresa-nombre {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.empresa-datos {
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+/* Campos superiores */
+.campos-superiores {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.campo-grupo {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+}
+
+.campo-label {
+    font-weight: bold;
+    margin-right: 5px;
+    font-size: 11px;
+}
+
+.campo-input {
+    border: 1px solid #000;
+    background: transparent;
+    padding: 2px 5px;
+    font-size: 11px;
+    min-width: 60px;
+}
+
+.campo-input.numero {
+    width: 80px;
+}
+
+.campo-input.referencia {
+    width: 100px;
+}
+
+.campo-input.fecha {
+    width: 30px;
+    text-align: center;
+}
+
+.campo-input.lugar {
+    width: 120px;
+}
+
+.campo-input.moneda {
+    width: 100px;
+}
+
+/* Texto principal de la letra */
+.texto-principal {
+    position: absolute;
+    top: 120px;
+    left: 20px;
+    right: 20px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.texto-beneficiario {
+    margin-bottom: 10px;
+}
+
+.beneficiario-nombre {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    min-width: 300px;
+    display: inline-block;
+    background: transparent;
+}
+
+.texto-cantidad {
+    margin-bottom: 10px;
+}
+
+.cantidad-letras {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    min-width: 400px;
+    display: inline-block;
+    background: transparent;
+}
+
+/* Información de pago */
+.info-pago {
+    position: absolute;
+    top: 200px;
+    left: 20px;
+    right: 20px;
+    font-size: 11px;
+}
+
+.lugar-pago {
+    margin-bottom: 10px;
+}
+
+.lugar-pago-input {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    min-width: 300px;
+    display: inline-block;
+    background: transparent;
+}
+
+/* Tabla de cuenta bancaria */
+.tabla-banco {
+    position: absolute;
+    top: 250px;
+    left: 20px;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.tabla-banco th,
+.tabla-banco td {
+    border: 1px solid #000;
+    padding: 3px 5px;
+    text-align: center;
+    background: transparent;
+}
+
+.tabla-banco th {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+.tabla-banco td {
+    min-width: 80px;
+}
+
+/* Sección de aceptantes */
+.aceptantes {
+    position: absolute;
+    top: 320px;
+    left: 20px;
+    width: 300px;
+    font-size: 11px;
+}
+
+.aceptante-titulo {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.aceptante-campo {
+    margin-bottom: 8px;
+}
+
+.aceptante-input {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    width: 200px;
+    background: transparent;
+    display: inline-block;
+}
+
+/* Cláusulas especiales */
+.clausulas {
+    position: absolute;
+    top: 320px;
+    left: 350px;
+    width: 400px;
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.clausulas-titulo {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.clausula-item {
+    margin-bottom: 3px;
+}
+
+/* Footer - Firma */
+.letra-footer {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    text-align: right;
+    font-size: 11px;
+}
+
+.firma-nombre {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.firma-cargo {
+    font-size: 10px;
+    margin-bottom: 3px;
+}
+
+.firma-dni {
+    font-size: 10px;
+}
+
+/* Campos de datos específicos */
+.datos-cliente {
+    position: absolute;
+    top: 180px;
+    left: 20px;
+    font-size: 11px;
+}
+
+.cliente-nombre {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    min-width: 300px;
+    display: inline-block;
+    background: transparent;
+}
+
+.cliente-direccion {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    min-width: 250px;
+    display: inline-block;
+    background: transparent;
+}
+
+.cliente-documento {
+    border-bottom: 1px solid #000;
+    padding: 2px 5px;
+    min-width: 100px;
+    display: inline-block;
+    background: transparent;
+}
+
+/* Responsive para impresión */
+@media print {
+    body {
+        width: 21cm;
+        height: 11cm;
+        margin: 0;
+        padding: 0;
+    }
+
+    .letra-container {
+        width: 21cm;
+        height: 11cm;
+    }
+}
