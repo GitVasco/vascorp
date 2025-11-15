@@ -16,7 +16,7 @@ if (!$soloPlantilla && $numCuenta !== null) {
 
     /* Establecer datos para la letra */
     $lugar = "LIMA";
-    $referencia = isset($respuesta["referencia"]) ? $respuesta["referencia"] : "";
+    $referencia = isset($respuesta["doc_origen"]) ? $respuesta["doc_origen"] : "";
     $diaEmision = substr($respuesta["fecha"], 8, 2);
     $mesEmision = substr($respuesta["fecha"], 5, 2);
     $anoEmision = substr($respuesta["fecha"], 0, 4);
@@ -171,15 +171,15 @@ if (!$soloPlantilla && $numCuenta !== null) {
             display: flex;
             align-items: flex-start;
             justify-content: flex-start;
-            padding: 20mm 0 0 30mm;
+            padding: 25mm 0 0 30mm;
             box-sizing: border-box;
             page-break-before: always;
         }
 
         .page.page-extra img {
-            width: 20%;
+            width: 30%;
             height: auto;
-            max-width: 20%;
+            max-width: 30%;
             max-height: 100%;
             object-fit: contain;
         }

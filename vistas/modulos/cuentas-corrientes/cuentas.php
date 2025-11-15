@@ -24,23 +24,21 @@
 
             <div class="box-header with-border">
 
-                <button class="btn btn-primary btnCodigoCuenta" data-toggle="modal" data-target="#modalAgregarCuenta">
-
-                    Agregar cuentas
-
+                <button class="btn btn-primary btnCodigoCuenta" data-toggle="modal" data-target="#modalAgregarCuenta" title="Agregar cuentas">
+                    <i class="fa fa-plus"></i>
+                    <span class="sr-only">Agregar cuentas</span>
                 </button>
 
-                <button class="btn btn-danger" data-toggle="modal" data-target="#modalImportarBanco">
-                    <i class="fa fa-upload"></i>
-                    Cancelar Letras
-
+                <button class="btn btn-danger" data-toggle="modal" data-target="#modalImportarBanco" title="Cancelar letras">
+                    <i class="fa fa-ban"></i>
+                    <span class="sr-only">Cancelar letras</span>
                 </button>
 
-                <button class="btn btn-warning" data-toggle="modal" data-target="#modalActualizarUnico">
-                    <i class="fa fa-upload"></i>
-                    Actualizar numero unico
-
+                <button class="btn btn-warning" data-toggle="modal" data-target="#modalActualizarUnico" title="Actualizar número único">
+                    <i class="fa fa-refresh"></i>
+                    <span class="sr-only">Actualizar número único</span>
                 </button>
+
                 <div class="col-lg-2 pull-right">
                     <select class="form-control input-lg selectpicker" name="selectAnoCuenta" id="selectAnoCuenta" data-live-search="true" data-size="10">
                         <option value="">Seleccionar Año</option>
