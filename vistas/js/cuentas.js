@@ -2023,81 +2023,113 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
     }
 });
 
-// ===== Gestión de preferencia de impresión de letras =====
-$(document).ready(function () {
-    // Inicializar preferencia si no existe (1 = con fondo, 0 = sin fondo)
-    var preferencia = localStorage.getItem("preferenciaImpresionLetra");
-    if (!preferencia) {
-        localStorage.setItem("preferenciaImpresionLetra", "1");
-        preferencia = "1";
+// ===== Configuración centralizada de impresión de letras =====
+(function () {
+    function obtenerOcrear(key, valorDefault) {
+        var valor = localStorage.getItem(key);
+        if (valor === null || valor === undefined) {
+            localStorage.setItem(key, valorDefault);
+            return valorDefault;
+        }
+        return valor;
     }
-    // Actualizar el botón del header
-    if ($("#btnTogglePreferenciaLetra").length) {
-        actualizarBotonPreferencia(preferencia);
+
+    function inicializarModalConfigLetra() {
+        var $modal = $("#modalConfigImpresionLetra");
+        var $selectFondo = $("#configLetraFondo");
+        var $selectSegunda = $("#configLetraSegunda");
+
+        if (!$modal.length) return;
+
+        function sincronizarModal() {
+            var valorFondo = obtenerOcrear("configLetraFondo", "1");
+            var valorSegunda = obtenerOcrear("configLetraSegunda", "1");
+            $selectFondo.val(valorFondo);
+            $selectSegunda.val(valorSegunda);
+        }
+
+        $(".btnAbrirConfigLetra").on("click", function () {
+            sincronizarModal();
+            $modal.modal("show");
+        });
+
+        $(".btnGuardarConfigLetra").on("click", function () {
+            var fondo = $selectFondo.val();
+            var segunda = $selectSegunda.val();
+            localStorage.setItem("configLetraFondo", fondo);
+            localStorage.setItem("configLetraSegunda", segunda);
+            $modal.modal("hide");
+            swal({
+                title: "Configuración guardada",
+                text:
+                    "Fondo: " +
+                    (fondo === "1" ? "Con fondo" : "Sin fondo") +
+                    "\nSegunda hoja: " +
+                    (segunda === "1" ? "Con 2da hoja" : "Sin 2da hoja"),
+                type: "success",
+                timer: 1600,
+                showConfirmButton: false,
+            });
+        });
     }
-});
 
-// Función para actualizar el texto e ícono del botón del header
-function actualizarBotonPreferencia(preferencia) {
-    var btn = $("#btnTogglePreferenciaLetra");
-    var texto = $("#textoPreferenciaLetra");
-    var icono = btn.find("i");
-
-    if (preferencia === "1") {
-        texto.text("Imprimir con fondo");
-        icono.removeClass("fa-file-text-o").addClass("fa-picture-o");
-        btn.removeClass("btn-default").addClass("btn-success");
-    } else {
-        texto.text("Imprimir sin fondo");
-        icono.removeClass("fa-picture-o").addClass("fa-file-text-o");
-        btn.removeClass("btn-success").addClass("btn-default");
+    function obtenerConfiguracionLetra() {
+        return {
+            fondo: localStorage.getItem("configLetraFondo") || "1",
+            segundaHoja: localStorage.getItem("configLetraSegunda") || "1",
+        };
     }
-}
 
-// Toggle de preferencia al hacer clic en el botón del header
-$(".btnTogglePreferenciaLetra").on("click", function () {
-    var preferenciaActual =
-        localStorage.getItem("preferenciaImpresionLetra") || "1";
-    var nuevaPreferencia = preferenciaActual === "1" ? "0" : "1";
+    function abrirLetraConfigurada(numCuenta) {
+        var config = obtenerConfiguracionLetra();
+        if (!numCuenta) {
+            swal("Atención", "No se pudo obtener el número de cuenta.", "info");
+            return;
+        }
 
-    localStorage.setItem("preferenciaImpresionLetra", nuevaPreferencia);
-    actualizarBotonPreferencia(nuevaPreferencia);
+        var params = [
+            "numCuenta=" + encodeURIComponent(numCuenta),
+            "fondo=" + (config.fondo === "1" ? "1" : "0"),
+            "segundaHoja=" + (config.segundaHoja === "1" ? "1" : "0"),
+        ];
 
-    var mensaje =
-        nuevaPreferencia === "1"
-            ? "Las letras se imprimirán CON fondo"
-            : "Las letras se imprimirán SIN fondo";
+        window.open(
+            "vistas/reportes_ticket/letra_full.php?" + params.join("&"),
+            "_blank"
+        );
+    }
 
-    swal({
-        title: "Preferencia actualizada",
-        text: mensaje,
-        type: "success",
-        timer: 1500,
-        showConfirmButton: false,
+    $(document).ready(function () {
+        inicializarModalConfigLetra();
+
+        var tablasImpresion = [
+            ".tablaCuentas",
+            ".tablaCuentasPendientes",
+            ".tablaCuentasAprobadas",
+        ];
+
+        for (var i = 0; i < tablasImpresion.length; i++) {
+            $(tablasImpresion[i]).on("click", ".btnImprimirLetra", function () {
+                var numCuenta = $(this).attr("numCuenta");
+                abrirLetraConfigurada(numCuenta);
+            });
+        }
+
+        // Imprimir solo la plantilla en blanco del formato
+        $(".btnImprimirPlantillaLetra").on("click", function () {
+            var config = obtenerConfiguracionLetra();
+            var params = [
+                "plantilla=1",
+                "fondo=" + (config.fondo === "1" ? "1" : "0"),
+                "segundaHoja=" + (config.segundaHoja === "1" ? "1" : "0"),
+            ];
+            window.open(
+                "vistas/reportes_ticket/letra_full.php?" + params.join("&"),
+                "_blank"
+            );
+        });
     });
-});
-
-// Imprimir solo la plantilla en blanco del formato
-$(".btnImprimirPlantillaLetra").on("click", function () {
-    window.open(
-        "vistas/reportes_ticket/letra_full.php?plantilla=1&fondo=1",
-        "_blank"
-    );
-});
-
-//Imprimir letra con hoja pequeña
-$(".tablaCuentas").on("click", ".btnImprimirLetra", function () {
-    var numCuenta = $(this).attr("numCuenta");
-    var conFondo = localStorage.getItem("preferenciaImpresionLetra") || "1";
-
-    window.open(
-        "vistas/reportes_ticket/letra_full.php?numCuenta=" +
-            numCuenta +
-            "&fondo=" +
-            conFondo,
-        "_blank"
-    );
-});
+})();
 
 //Imprimir letra con hoja pequeña
 $(".tablaCuentas").on("click", ".btnCargoProtesto", function () {
@@ -2110,34 +2142,6 @@ $(".tablaCuentas").on("click", ".btnCargoProtesto", function () {
             num_cta +
             "&cliente=" +
             cliente,
-        "_blank"
-    );
-});
-
-//Imprimir letra con hoja pequeña - Pendientes
-$(".tablaCuentasPendientes").on("click", ".btnImprimirLetra", function () {
-    var numCuenta = $(this).attr("numCuenta");
-    var conFondo = localStorage.getItem("preferenciaImpresionLetra") || "1";
-
-    window.open(
-        "vistas/reportes_ticket/letra_full.php?numCuenta=" +
-            numCuenta +
-            "&fondo=" +
-            conFondo,
-        "_blank"
-    );
-});
-
-//Imprimir letra con hoja pequeña - Aprobadas
-$(".tablaCuentasAprobadas").on("click", ".btnImprimirLetra", function () {
-    var numCuenta = $(this).attr("numCuenta");
-    var conFondo = localStorage.getItem("preferenciaImpresionLetra") || "1";
-
-    window.open(
-        "vistas/reportes_ticket/letra_full.php?numCuenta=" +
-            numCuenta +
-            "&fondo=" +
-            conFondo,
         "_blank"
     );
 });

@@ -88,9 +88,8 @@
                 </div>
 
                 <div class="pull-right" style="margin-right: 10px;">
-                    <button type="button" class="btn btn-default btnTogglePreferenciaLetra" id="btnTogglePreferenciaLetra" title="Cambiar preferencia de impresión de letras">
-                        <i class="fa fa-picture-o"></i>
-                        <span id="textoPreferenciaLetra">Imprimir con fondo</span>
+                    <button type="button" class="btn btn-default btnAbrirConfigLetra" title="Configurar impresión de letras">
+                        <i class="fa fa-cog"></i> Configuración impresión
                     </button>
                 </div>
                 <div class="pull-right" style="margin-right: 10px;">
@@ -100,6 +99,42 @@
                 </div>
 
 
+            </div>
+
+            <div class="modal fade" id="modalConfigImpresionLetra" tabindex="-1" role="dialog" aria-labelledby="modalConfigImpresionLetraLabel">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background:#3c8dbc; color:white">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title" id="modalConfigImpresionLetraLabel">Configuración de impresión de letras</h4>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="configLetraFondo">Fondo del formato</label>
+                                <select id="configLetraFondo" class="form-control">
+                                    <option value="1">Con fondo</option>
+                                    <option value="0">Sin fondo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="configLetraSegunda">Segunda hoja</label>
+                                <select id="configLetraSegunda" class="form-control">
+                                    <option value="1">Con 2da hoja</option>
+                                    <option value="0">Sin 2da hoja</option>
+                                </select>
+                            </div>
+                            <p class="text-muted">
+                                Estas opciones se aplican a todas las impresiones de letras y plantillas hasta que las cambies nuevamente.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary btnGuardarConfigLetra">Guardar configuración</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="box-body">

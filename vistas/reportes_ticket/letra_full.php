@@ -9,6 +9,13 @@ $numCuenta = isset($_GET["numCuenta"]) ? $_GET["numCuenta"] : null;
 $mostrarFondo = (isset($_GET["fondo"]) && $_GET["fondo"] === "1");
 $soloPlantilla = (isset($_GET["plantilla"]) && $_GET["plantilla"] === "1");
 $fecha = date("d-m-Y");
+$mostrarSegundaHoja = true;
+
+if (!$soloPlantilla) {
+    if (isset($_GET["segundaHoja"])) {
+        $mostrarSegundaHoja = $_GET["segundaHoja"] === "1";
+    }
+}
 
 if (!$soloPlantilla && $numCuenta !== null) {
     /* Traer datos */
@@ -633,9 +640,11 @@ if (!$soloPlantilla && $numCuenta !== null) {
             </div>
         <?php endif; ?>
     </div>
-    <div class="page page-extra">
-        <img src="./img/firma.png" alt="Firma Corporación Vasco" class="plantilla-firma-img" />
-    </div>
+    <?php if ($soloPlantilla || $mostrarSegundaHoja): ?>
+        <div class="page page-extra">
+            <img src="./img/firma.png" alt="Firma Corporación Vasco" class="plantilla-firma-img" />
+        </div>
+    <?php endif; ?>
     <!-- <script>window.print();</script> -->
 </body>
 
