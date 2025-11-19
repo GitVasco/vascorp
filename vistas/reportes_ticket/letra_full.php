@@ -45,6 +45,33 @@ if (!$soloPlantilla && $numCuenta !== null) {
     }
 
     /**
+     * Divide una cadena en dos líneas priorizando el guion.
+     * Si no existe guion, corta duro en $maxCaracteres.
+     */
+    function dividirPorGuion($texto, $maxCaracteres = 12)
+    {
+        $texto = trim((string)$texto);
+        if ($texto === '') {
+            return ['linea1' => '', 'linea2' => ''];
+        }
+
+        if (strlen($texto) <= $maxCaracteres) {
+            return ['linea1' => $texto, 'linea2' => ''];
+        }
+
+        $posGuion = strpos($texto, '-');
+        if ($posGuion !== false && $posGuion > 0 && $posGuion < strlen($texto) - 1) {
+            $linea1 = trim(substr($texto, 0, $posGuion));
+            $linea2 = trim(substr($texto, $posGuion));
+            return ['linea1' => $linea1, 'linea2' => $linea2];
+        }
+
+        $linea1 = substr($texto, 0, $maxCaracteres);
+        $linea2 = trim(substr($texto, $maxCaracteres));
+        return ['linea1' => $linea1, 'linea2' => $linea2];
+    }
+
+    /**
      * Divide texto en hasta 4 líneas para dirección completa (dirección + localidad)
      */
     function dividirDireccionCompleta($direccion, $localidad, $maxCaracteres = 30)
@@ -80,6 +107,8 @@ if (!$soloPlantilla && $numCuenta !== null) {
     }
 
     /* Campos largos */
+    $numeroDividido = dividirPorGuion($respuesta["num_cta"], 12);
+    $referenciaDividida = dividirPorGuion($referencia, 12);
     $nombreDividido = dividirTexto("", $respuesta["nombre"], 23);
     $direccionCompleta = dividirDireccionCompleta($respuesta["direccion"], $respuesta["ubcli"], 30);
 
@@ -171,15 +200,15 @@ if (!$soloPlantilla && $numCuenta !== null) {
             display: flex;
             align-items: flex-start;
             justify-content: flex-start;
-            padding: 25mm 0 0 30mm;
+            padding: 25mm 0 0 15mm;
             box-sizing: border-box;
             page-break-before: always;
         }
 
         .page.page-extra img {
-            width: 30%;
+            width: 24%;
             height: auto;
-            max-width: 30%;
+            max-width: 24%;
             max-height: 100%;
             object-fit: contain;
         }
@@ -220,9 +249,11 @@ if (!$soloPlantilla && $numCuenta !== null) {
             }
 
             .page {
-                position: absolute;
-                left: var(--page-x);
-                top: var(--page-y);
+                position: relative;
+                display: block;
+                left: 0;
+                top: 0;
+                margin: 0 auto var(--page-gap, 0);
 
                 /* tamaño físico objetivo compensado por scale */
                 width: calc(210mm / var(--scale));
@@ -251,13 +282,17 @@ if (!$soloPlantilla && $numCuenta !== null) {
                 height: 297mm;
                 margin: 0;
                 border: none;
-                padding: 10mm 0 0 30mm;
+                padding: 10mm 0 0 15mm;
                 page-break-before: always;
                 transform: none;
             }
 
             .overlay {
                 transform: translate(var(--ox), var(--oy));
+            }
+
+            .page:not(.page-extra) {
+                page-break-after: always;
             }
         }
 
@@ -308,9 +343,21 @@ if (!$soloPlantilla && $numCuenta !== null) {
             width: 3.8cm;
         }
 
+        #f-numero-linea2 {
+            left: 3.80cm;
+            top: 2.35cm;
+            width: 3.8cm;
+        }
+
         #f-ref {
             left: 6.30cm;
             top: 2.00cm;
+            width: 3.8cm;
+        }
+
+        #f-ref-linea2 {
+            left: 6.30cm;
+            top: 2.35cm;
             width: 3.8cm;
         }
 
@@ -491,8 +538,15 @@ if (!$soloPlantilla && $numCuenta !== null) {
         <?php if (!$soloPlantilla && isset($respuesta)): ?>
             <div class="overlay">
                 <!-- Fila superior -->
-                <div id="f-numero" class="field center" style="--fs:13px; --fw:500;"><?php echo $respuesta["num_cta"]; ?></div>
-                <div id="f-ref" class="field center" style="--fs:13px; --fw:500;"><?php echo $referencia; ?></div>
+                <div id="f-numero" class="field center" style="--fs:13px; --fw:500;"><?php echo $numeroDividido['linea1']; ?></div>
+                <?php if (!empty($numeroDividido['linea2'])): ?>
+                    <div id="f-numero-linea2" class="field center" style="--fs:13px; --fw:500;"><?php echo $numeroDividido['linea2']; ?></div>
+                <?php endif; ?>
+
+                <div id="f-ref" class="field center" style="--fs:13px; --fw:500;"><?php echo $referenciaDividida['linea1']; ?></div>
+                <?php if (!empty($referenciaDividida['linea2'])): ?>
+                    <div id="f-ref-linea2" class="field center" style="--fs:13px; --fw:500;"><?php echo $referenciaDividida['linea2']; ?></div>
+                <?php endif; ?>
 
                 <div id="f-giro-d" class="field center" style="--fs:12px;"><?php echo $diaEmision; ?></div>
                 <div id="f-giro-m" class="field center" style="--fs:12px;"><?php echo $mesEmision; ?></div>
@@ -579,11 +633,9 @@ if (!$soloPlantilla && $numCuenta !== null) {
             </div>
         <?php endif; ?>
     </div>
-    <?php if ($soloPlantilla): ?>
-        <div class="page page-extra">
-            <img src="./img/firma.png" alt="Firma Corporación Vasco" class="plantilla-firma-img" />
-        </div>
-    <?php endif; ?>
+    <div class="page page-extra">
+        <img src="./img/firma.png" alt="Firma Corporación Vasco" class="plantilla-firma-img" />
+    </div>
     <!-- <script>window.print();</script> -->
 </body>
 
