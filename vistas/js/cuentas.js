@@ -2038,14 +2038,20 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
         var $modal = $("#modalConfigImpresionLetra");
         var $selectFondo = $("#configLetraFondo");
         var $selectSegunda = $("#configLetraSegunda");
+        var $selectFormatoAntiguo = $("#configLetraFormatoAntiguo");
 
         if (!$modal.length) return;
 
         function sincronizarModal() {
             var valorFondo = obtenerOcrear("configLetraFondo", "1");
             var valorSegunda = obtenerOcrear("configLetraSegunda", "1");
+            var valorFormatoAntiguo = obtenerOcrear(
+                "configLetraFormatoAntiguo",
+                "0"
+            );
             $selectFondo.val(valorFondo);
             $selectSegunda.val(valorSegunda);
+            $selectFormatoAntiguo.val(valorFormatoAntiguo);
         }
 
         $(".btnAbrirConfigLetra").on("click", function () {
@@ -2056,16 +2062,22 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
         $(".btnGuardarConfigLetra").on("click", function () {
             var fondo = $selectFondo.val();
             var segunda = $selectSegunda.val();
+            var formatoAntiguo = $selectFormatoAntiguo.val();
             localStorage.setItem("configLetraFondo", fondo);
             localStorage.setItem("configLetraSegunda", segunda);
+            localStorage.setItem("configLetraFormatoAntiguo", formatoAntiguo);
             $modal.modal("hide");
+            var mensaje =
+                "Fondo: " +
+                (fondo === "1" ? "Con fondo" : "Sin fondo") +
+                "\nSegunda hoja: " +
+                (segunda === "1" ? "Con 2da hoja" : "Sin 2da hoja");
+            if (formatoAntiguo === "1") {
+                mensaje += "\nFormato: Antiguo (temporal)";
+            }
             swal({
                 title: "Configuración guardada",
-                text:
-                    "Fondo: " +
-                    (fondo === "1" ? "Con fondo" : "Sin fondo") +
-                    "\nSegunda hoja: " +
-                    (segunda === "1" ? "Con 2da hoja" : "Sin 2da hoja"),
+                text: mensaje,
                 type: "success",
                 timer: 1600,
                 showConfirmButton: false,
@@ -2077,6 +2089,8 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
         return {
             fondo: localStorage.getItem("configLetraFondo") || "1",
             segundaHoja: localStorage.getItem("configLetraSegunda") || "1",
+            formatoAntiguo:
+                localStorage.getItem("configLetraFormatoAntiguo") || "0",
         };
     }
 
@@ -2087,6 +2101,17 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             return;
         }
 
+        // Si está activado el formato antiguo, usar imprimir_letra.php
+        if (config.formatoAntiguo === "1") {
+            window.open(
+                "vistas/reportes_ticket/imprimir_letra.php?numCuenta=" +
+                    encodeURIComponent(numCuenta),
+                "_blank"
+            );
+            return;
+        }
+
+        // Formato nuevo (letra_full.php)
         var params = [
             "numCuenta=" + encodeURIComponent(numCuenta),
             "fondo=" + (config.fondo === "1" ? "1" : "0"),

@@ -128,6 +128,19 @@
                             <p class="text-muted">
                                 Estas opciones se aplican a todas las impresiones de letras y plantillas hasta que las cambies nuevamente.
                             </p>
+                            <hr style="margin: 20px 0; border-top: 2px solid #ddd;">
+                            <div class="form-group">
+                                <label for="configLetraFormatoAntiguo" style="color: #f39c12;">
+                                    <i class="fa fa-clock-o"></i> Formato antiguo (temporal)
+                                </label>
+                                <select id="configLetraFormatoAntiguo" class="form-control">
+                                    <option value="0">Usar formato nuevo</option>
+                                    <option value="1">Usar formato antiguo</option>
+                                </select>
+                                <small class="text-muted">
+                                    Esta opción permite usar el formato antiguo de impresión. Es temporal y no afecta las otras configuraciones.
+                                </small>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
