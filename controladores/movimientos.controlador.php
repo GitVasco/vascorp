@@ -26,6 +26,28 @@ class ControladorMovimientos
     }
 
     /* 
+    * total unidades vendidas por año y mes específicos
+    */
+    static public function ctrTotUndVenMesEspecifico($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlTotUndVenMesEspecifico($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
+    * total unidades producidas por año y mes específicos
+    */
+    static public function ctrTotUndProdMesEspecifico($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlTotUndProdMesEspecifico($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
     * sacar los meses codigo y nombre
     */
     static public function ctrMesesMov()
@@ -62,6 +84,17 @@ class ControladorMovimientos
     {
 
         $respuesta = ModeloMovimientos::mdlTotalMesCorte();
+
+        return $respuesta;
+    }
+
+    /* 
+    * total unidades de corte por año y mes específicos
+    */
+    static public function ctrTotUndCorteMesEspecifico($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlTotUndCorteMesEspecifico($año, $mes);
 
         return $respuesta;
     }

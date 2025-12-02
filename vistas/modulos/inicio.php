@@ -1,8 +1,7 @@
 <?php
 
-$valor = null;
-$respuesta = ControladorMantenimiento::ctrTraerCalendario($valor);
-#var_dump($respuesta);
+// $valor = null;
+// $respuesta = ControladorMantenimiento::ctrTraerCalendario($valor);
 
 ?>
 
@@ -49,7 +48,80 @@ $respuesta = ControladorMantenimiento::ctrTraerCalendario($valor);
 
         </div>
 
-        <div class="row">
+        <div class="row" id="cajas-superiores-container">
+
+            <div class="col-lg-2 col-xs-6">
+
+                <div class="small-box bg-blue">
+
+                    <div class="inner" style="position: relative; z-index: 10;">
+
+                        <h3 style="font-size: 20px; margin-bottom: 10px;">Mes</h3>
+
+                        <select class="form-control" id="selectMes" name="selectMes" style="background-color: white; color: #333; font-weight: bold; position: relative; z-index: 1000;">
+
+                            <option value="null" data-año="">Mes Actual</option>
+
+                            <?php
+
+                            $meses = array(
+                                1 => 'Enero',
+                                2 => 'Febrero',
+                                3 => 'Marzo',
+                                4 => 'Abril',
+                                5 => 'Mayo',
+                                6 => 'Junio',
+                                7 => 'Julio',
+                                8 => 'Agosto',
+                                9 => 'Septiembre',
+                                10 => 'Octubre',
+                                11 => 'Noviembre',
+                                12 => 'Diciembre'
+                            );
+
+                            $mesActual = date('n');
+                            $añoActual = date('Y');
+
+                            // Generar opciones para los últimos 12 meses
+                            for ($i = 0; $i < 12; $i++) {
+                                $mesNumero = $mesActual - $i;
+                                $año = $añoActual;
+
+                                if ($mesNumero <= 0) {
+                                    $mesNumero += 12;
+                                    $año--;
+                                }
+
+                                $nombreMes = $meses[$mesNumero];
+                                $label = $i == 0 ? 'Mes Actual' : $nombreMes . ' ' . $año;
+                                $value = $i == 0 ? 'null' : $mesNumero;
+                                $añoData = $i == 0 ? '' : $año;
+                                $selected = $i == 0 ? 'selected' : '';
+
+                                echo '<option value="' . $value . '" data-año="' . $añoData . '" ' . $selected . '>' . $label . '</option>';
+                            }
+
+                            ?>
+
+                        </select>
+
+                    </div>
+
+                    <div class="icon" style="z-index: 1; opacity: 0.3;">
+
+                        <i class="fa fa-calendar"></i>
+
+                    </div>
+
+                    <a href="#" class="small-box-footer" style="cursor: default;">
+
+                        Seleccionar <i class="fa fa-arrow-circle-right"></i>
+
+                    </a>
+
+                </div>
+
+            </div>
 
             <?php
 
@@ -122,7 +194,6 @@ $respuesta = ControladorMantenimiento::ctrTraerCalendario($valor);
 
     <section class="content">
 
-
         <div class="row">
 
             <?php
@@ -165,4 +236,46 @@ $respuesta = ControladorMantenimiento::ctrTraerCalendario($valor);
 
 <script>
     window.document.title = "Inicio"
+
+    // Función para actualizar las cajas según el mes seleccionado
+    function actualizarCajas(mes, año) {
+        $.ajax({
+            url: "ajax/inicio.ajax.php",
+            method: "POST",
+            data: {
+                mes: mes,
+                año: año
+            },
+            dataType: "json",
+            success: function(respuesta) {
+                // Actualizar caja de ventas
+                $("#cajas-superiores-container .bg-aqua .inner h3").text(respuesta.ventas + " und");
+
+                // Actualizar caja de producción
+                $("#cajas-superiores-container .bg-green .inner h3").text(respuesta.produccion + " und");
+
+                // Actualizar caja de cortes
+                $("#cajas-superiores-container .bg-purple .inner h3").text(respuesta.cortes + " und");
+
+                // Actualizar caja de pedidos
+                $("#cajas-superiores-container .bg-yellow .inner h3").text(respuesta.pedidos);
+
+                // Actualizar caja de faltantes
+                $("#cajas-superiores-container .bg-red .inner h3").text(respuesta.faltantes);
+                $("#cajas-superiores-container .bg-red .inner p").text("Unidades faltantes: " + respuesta.porcentaje + " %");
+            },
+            error: function(xhr, status, error) {
+                console.error("Error al actualizar las cajas:", error);
+            }
+        });
+    }
+
+    // Event listener para el cambio de mes
+    $(document).ready(function() {
+        $("#selectMes").on("change", function() {
+            var mesSeleccionado = $(this).val();
+            var añoSeleccionado = $(this).find("option:selected").data("año");
+            actualizarCajas(mesSeleccionado, añoSeleccionado);
+        });
+    });
 </script>

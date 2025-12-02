@@ -205,11 +205,13 @@ if (!$soloPlantilla && $numCuenta !== null) {
             border: none;
             background: #fff;
             display: flex;
-            align-items: flex-start;
-            justify-content: flex-start;
-            padding: 25mm 0 0 15mm;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 0 15mm 25mm 0;
             box-sizing: border-box;
             page-break-before: always;
+            transform: rotate(180deg);
+            transform-origin: center center;
         }
 
         .page.page-extra img {
@@ -289,9 +291,10 @@ if (!$soloPlantilla && $numCuenta !== null) {
                 height: 297mm;
                 margin: 0;
                 border: none;
-                padding: 10mm 0 0 15mm;
+                padding: 0 15mm 10mm 0;
                 page-break-before: always;
-                transform: none;
+                transform: rotate(180deg);
+                transform-origin: center center;
             }
 
             .overlay {

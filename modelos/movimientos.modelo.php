@@ -68,6 +68,72 @@ class ModeloMovimientos
    }
 
    /* 
+   * total unidades vendidas por año y mes específicos
+   */
+   static public function mdlTotUndVenMesEspecifico($año, $mes)
+   {
+
+      $año = intval($año);
+      $mes = intval($mes);
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
+         SUM(t.total_ventas) AS total_venta 
+      FROM
+         totalesjf t 
+      WHERE t.año = :anio 
+         AND t.mes = :mes");
+
+      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+
+      $stmt->execute();
+
+      $resultado = $stmt->fetch();
+
+      $stmt = null;
+
+      // Si no hay resultados, devolver 0
+      if ($resultado && isset($resultado["total_venta"])) {
+         return array("total_venta" => $resultado["total_venta"] ? $resultado["total_venta"] : 0);
+      } else {
+         return array("total_venta" => 0);
+      }
+   }
+
+   /* 
+   * total unidades producidas por año y mes específicos
+   */
+   static public function mdlTotUndProdMesEspecifico($año, $mes)
+   {
+
+      $año = intval($año);
+      $mes = intval($mes);
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
+         SUM(t.total_produccion) AS total_produccion 
+      FROM
+         totalesjf t 
+      WHERE t.año = :anio 
+         AND t.mes = :mes");
+
+      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+
+      $stmt->execute();
+
+      $resultado = $stmt->fetch();
+
+      $stmt = null;
+
+      // Si no hay resultados, devolver 0
+      if ($resultado && isset($resultado["total_produccion"])) {
+         return array("total_produccion" => $resultado["total_produccion"] ? $resultado["total_produccion"] : 0);
+      } else {
+         return array("total_produccion" => 0);
+      }
+   }
+
+   /* 
    * query para sacar los meses codigo y nombre
    */
    static public function mldMesesMov()
@@ -123,6 +189,39 @@ class ModeloMovimientos
       $stmt->execute();
 
       return $stmt->fetchall();
+   }
+
+   /* 
+   * total unidades de corte por año y mes específicos
+   */
+   static public function mdlTotUndCorteMesEspecifico($año, $mes)
+   {
+
+      $año = intval($año);
+      $mes = intval($mes);
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
+         SUM(ad.cantidad) AS total_corte 
+      FROM
+         almacencorte_detallejf ad 
+      WHERE YEAR(ad.fecha) = :anio 
+         AND MONTH(ad.fecha) = :mes");
+
+      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+
+      $stmt->execute();
+
+      $resultado = $stmt->fetch();
+
+      $stmt = null;
+
+      // Si no hay resultados, devolver 0
+      if ($resultado && isset($resultado["total_corte"])) {
+         return array("total_corte" => $resultado["total_corte"] ? $resultado["total_corte"] : 0);
+      } else {
+         return array("total_corte" => 0);
+      }
    }
 
    static public function mdlTotalMesProdTaller($taller)

@@ -11,6 +11,8 @@ $ventas = ControladorMovimientos::ctrTotUndVen($valor);
 
 $produccion = ControladorMovimientos::ctrTotUndProd($valor);
 
+$cortes = ControladorMovimientos::ctrTotUndCorteMesEspecifico(date('Y'), date('n'));
+
 $articulosP = controladorArticulos::ctrArticulosPedidos();
 
 $articulosF = controladorArticulos::ctrArticulosFaltantes();
@@ -27,7 +29,7 @@ if ($articulosF["faltantes"] == '0' || $articulosP["pedidos"] == '0') {
 
 
 
-<div class="col-lg-3 col-xs-6">
+<div class="col-lg-2 col-xs-6">
 
     <div class="small-box bg-aqua">
 
@@ -55,7 +57,7 @@ if ($articulosF["faltantes"] == '0' || $articulosP["pedidos"] == '0') {
 
 </div>
 
-<div class="col-lg-3 col-xs-6">
+<div class="col-lg-2 col-xs-6">
 
     <div class="small-box bg-green">
 
@@ -83,7 +85,35 @@ if ($articulosF["faltantes"] == '0' || $articulosP["pedidos"] == '0') {
 
 </div>
 
-<div class="col-lg-3 col-xs-6">
+<div class="col-lg-2 col-xs-6">
+
+    <div class="small-box bg-purple">
+
+        <div class="inner">
+
+            <h3><?php echo number_format($cortes["total_corte"], 0); ?> und</h3>
+
+            <p>Unidades en Corte</p>
+
+        </div>
+
+        <div class="icon">
+
+            <i class="fa fa-scissors"></i>
+
+        </div>
+
+        <a href="almacen-corte" class="small-box-footer">
+
+            Más info <i class="fa fa-arrow-circle-right"></i>
+
+        </a>
+
+    </div>
+
+</div>
+
+<div class="col-lg-2 col-xs-6">
 
     <div class="small-box bg-yellow">
 
@@ -111,7 +141,7 @@ if ($articulosF["faltantes"] == '0' || $articulosP["pedidos"] == '0') {
 
 </div>
 
-<div class="col-lg-3 col-xs-6">
+<div class="col-lg-2 col-xs-6">
 
     <div class="small-box bg-red">
 
