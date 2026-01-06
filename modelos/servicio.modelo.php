@@ -99,6 +99,7 @@ class ModeloServicios
 	// Método para guardar las ventas
 	static public function mdlGuardarDetallesServicios($tabla, $datos)
 	{
+		$cabeceraTaller = isset($datos["cabecera_taller"]) ? $datos["cabecera_taller"] : null;
 
 		$sql = "INSERT INTO $tabla(codigo,articulo,cantidad,saldo,cabecera_taller) VALUES (:codigo,:articulo,:cantidad,:saldo,:cabecera_taller)";
 
@@ -107,7 +108,7 @@ class ModeloServicios
 		$stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
 		$stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
 		$stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_INT);
-		$stmt->bindParam(":cabecera_taller", $datos["cabecera_taller"], PDO::PARAM_INT);
+		$stmt->bindParam(":cabecera_taller", $cabeceraTaller, PDO::PARAM_INT);
 
 		$stmt->execute();
 

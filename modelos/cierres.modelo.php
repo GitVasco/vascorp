@@ -227,17 +227,75 @@ class ModeloCierres
 	}
 
 	// Método para actualizar un dato CON EL ID
+	// MODIFICADO: Si es servicios_detallejf y actualiza saldo, también descuenta de entaller_cabjf
 	static public function mdlActualizarUnDato($tabla, $item1, $valor1, $valor2)
 	{
+		try {
+			$pdo = Conexion::conectar();
+			$pdo->beginTransaction();
 
-		$sql = "UPDATE $tabla SET $item1=:$item1 WHERE id=:id";
+			// Si es servicios_detallejf y se actualiza saldo, también actualizar entaller_cabjf
+			if ($tabla == "servicios_detallejf" && $item1 == "saldo") {
+				// Obtener información del servicio detalle antes de actualizar
+				$stmt = $pdo->prepare("SELECT saldo, cabecera_taller, cantidad FROM servicios_detallejf WHERE id = :id");
+				$stmt->bindParam(":id", $valor2, PDO::PARAM_INT);
+				$stmt->execute();
+				$servicioDetalle = $stmt->fetch(PDO::FETCH_ASSOC);
+				$stmt->closeCursor();
 
-		$stmt = Conexion::conectar()->prepare($sql);
+				if ($servicioDetalle && $servicioDetalle['cabecera_taller']) {
+					$saldoAnterior = $servicioDetalle['saldo'];
+					$saldoNuevo = $valor1;
+					$cabeceraTaller = $servicioDetalle['cabecera_taller'];
+					
+					// Calcular la diferencia (cuánto se descontó)
+					$cantidadDescontada = $saldoAnterior - $saldoNuevo;
+					
+					if ($cantidadDescontada > 0) {
+						// Descontar de entaller_cabjf
+						$stmt = $pdo->prepare("UPDATE entaller_cabjf 
+							SET saldo = GREATEST(saldo - :cantidad, 0)
+							WHERE id = :id_cabecera AND estado = '0'");
+						$stmt->bindParam(":cantidad", $cantidadDescontada, PDO::PARAM_INT);
+						$stmt->bindParam(":id_cabecera", $cabeceraTaller, PDO::PARAM_INT);
+						$stmt->execute();
+						$stmt->closeCursor();
 
-		$stmt->bindParam(":" . $item1, $valor1, PDO::PARAM_STR);
-		$stmt->bindParam(":id", $valor2, PDO::PARAM_STR);
+						// Verificar si el saldo llegó a cero para cerrar el registro
+						$stmt = $pdo->prepare("SELECT saldo FROM entaller_cabjf WHERE id = :id_cabecera");
+						$stmt->bindParam(":id_cabecera", $cabeceraTaller, PDO::PARAM_INT);
+						$stmt->execute();
+						$cabecera = $stmt->fetch(PDO::FETCH_ASSOC);
+						$stmt->closeCursor();
 
-		$stmt->execute();
+						// Si el saldo es 0 o menor, cerrar el registro (estado = 1)
+						if ($cabecera && $cabecera['saldo'] <= 0) {
+							$stmt = $pdo->prepare("UPDATE entaller_cabjf 
+								SET estado = 1 
+								WHERE id = :id_cabecera");
+							$stmt->bindParam(":id_cabecera", $cabeceraTaller, PDO::PARAM_INT);
+							$stmt->execute();
+							$stmt->closeCursor();
+						}
+					}
+				}
+			}
+
+			// Actualizar el registro original
+			$sql = "UPDATE $tabla SET $item1=:$item1 WHERE id=:id";
+			$stmt = $pdo->prepare($sql);
+			$stmt->bindParam(":" . $item1, $valor1, PDO::PARAM_STR);
+			$stmt->bindParam(":id", $valor2, PDO::PARAM_STR);
+			$stmt->execute();
+			$stmt->closeCursor();
+
+			$pdo->commit();
+		} catch (Exception $e) {
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+		 }
+			throw $e;
+		}
 
 		$stmt = null;
 	}
