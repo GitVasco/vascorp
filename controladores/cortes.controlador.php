@@ -128,12 +128,9 @@ class ControladorCortes
                     if ($ticket == "1" || $_POST["seleccionarSectorServicio"] == 'T1') {
 
                         /* 
-                        * Actualizamos la cantidad que queda en corte y pasa al taller en el articulo
+                        * NOTA: La actualización de articulojf (alm_corte y taller) ahora se hace dentro de la transacción
+                        * en mdlMandarTallerCabV2 para mantener consistencia. Ya no es necesario actualizarlo aquí.
                         */
-                        $articulo  = $_POST["nuevoArticulo"];
-                        $cantidad =  $_POST["nuevoAlmCorte"];
-
-                        $actualizaArticuloTaller = ModeloArticulos::mdlActualizarTallerCorte($articulo, $cantidad);
 
                         /* 
                         * Mandamos a imprimir con la orden de cut para cortar cada ticket 

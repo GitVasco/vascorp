@@ -592,6 +592,16 @@ class ModeloCortes
             $stmt->execute();
             $stmt->closeCursor();
 
+            // Actualizar articulojf: aumentar taller y disminuir alm_corte (lógica en PHP)
+            $stmt = $pdo->prepare("UPDATE articulojf 
+                SET taller = taller + :cantidad,
+                    alm_corte = GREATEST(alm_corte - :cantidad, 0)
+                WHERE articulo = :articulo");
+            $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+            $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
+            $stmt->execute();
+            $stmt->closeCursor();
+
             $pdo->commit();
             return "ok";
         } catch (Exception $e) {
@@ -950,6 +960,70 @@ class ModeloCortes
         } else {
             return $stmt->errorInfo();
         }
+    }
+
+    /*
+	* ELIMINAR BLOQUE TALLER Y REVERTIR ALMACEN CORTE
+	* Revierte el saldo en almacencorte_detallejf cuando se elimina un bloque (lógica en PHP)
+	*/
+    static public function mdlEliminarBloqueTaller($id_cabecera)
+    {
+        try {
+            $pdo = Conexion::conectar();
+            $pdo->beginTransaction();
+
+            // Obtener datos del movimiento antes de eliminarlo
+            $stmt = $pdo->prepare("SELECT 
+                id, articulo, cantidad, almacencorte_detalle_id, estado 
+                FROM entaller_cabjf 
+                WHERE id = :id_cabecera");
+            $stmt->bindParam(":id_cabecera", $id_cabecera, PDO::PARAM_INT);
+            $stmt->execute();
+            $movimiento = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            if (!$movimiento) {
+                $pdo->rollBack();
+                return "error_movimiento_no_encontrado";
+            }
+
+            $articulo = $movimiento['articulo'];
+            $cantidad = $movimiento['cantidad'];
+            $detalleId = $movimiento['almacencorte_detalle_id'];
+
+            // Revertir saldo_taller en almacencorte_detallejf si tiene referencia (lógica en PHP)
+            if ($detalleId) {
+                // Obtener cantidad original del detalle
+                $stmt = $pdo->prepare("SELECT cantidad, saldo_taller FROM almacencorte_detallejf WHERE id = :detalle_id");
+                $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
+                $stmt->execute();
+                $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt->closeCursor();
+
+                if ($detalle) {
+                    // Calcular nuevo saldo_taller (no puede exceder la cantidad original)
+                    $nuevoSaldo = min($detalle['cantidad'], ($detalle['saldo_taller'] + $cantidad));
+
+                    $stmt = $pdo->prepare("UPDATE almacencorte_detallejf
+                        SET saldo_taller = :nuevo_saldo
+                        WHERE id = :detalle_id");
+                    $stmt->bindParam(":nuevo_saldo", $nuevoSaldo, PDO::PARAM_INT);
+                    $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
+                    $stmt->execute();
+                    $stmt->closeCursor();
+                }
+            }
+
+            $pdo->commit();
+            return "ok";
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return "error: " . $e->getMessage();
+        }
+
+        $stmt = null;
     }
 
     /*

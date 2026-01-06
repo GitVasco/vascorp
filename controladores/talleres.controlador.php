@@ -1364,6 +1364,10 @@ class ControladorTalleres
             //Traemos la cabecera taller
             $cabeceraTaller = ControladorTalleres::ctrMostrarTallerCabecera("id", $cod);
 
+            // Sincronizar almacencorte_detallejf antes de eliminar (revertir saldo_taller)
+            require_once "../modelos/cortes.modelo.php";
+            $respuestaSync = ModeloCortes::mdlEliminarBloqueTaller($cod);
+
             $existeServicio = ControladorServicios::ctrMostrarDetallesServicios("cabecera_taller", $cod);
 
             if ($existeServicio) {
@@ -1390,9 +1394,6 @@ class ControladorTalleres
 
                 $respuesta = ModeloArticulos::mdlActualizarTallerEliminado($articulo, $cantidad);
             }
-
-
-
 
             $respuesta2 = ModeloTalleres::mdlEliminarTaller($tabla2, $cod);
             if ($respuesta2 == "ok") {
