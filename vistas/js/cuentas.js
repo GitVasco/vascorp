@@ -82,6 +82,91 @@ function cargarTablaCuentas(ano) {
         },
     });
 }
+
+//CUENTAS CON PAGINACIÓN SERVIDOR (OPTIMIZADO)
+function cargarTablaCuentasPaginado(ano) {
+    // Destruir tabla existente si existe
+    if ($.fn.DataTable.isDataTable(".tablaCuentasPaginado")) {
+        $(".tablaCuentasPaginado").DataTable().destroy();
+    }
+
+    var table = $(".tablaCuentasPaginado").DataTable({
+        processing: true,
+        serverSide: true,
+        searchDelay: 800, // Esperar 800ms después de que el usuario deje de escribir antes de buscar
+        ajax: {
+            url: "ajax/cuentas-corrientes/tabla-cuentas-paginado.ajax.php",
+            type: "GET",
+            data: function (d) {
+                d.ano = ano;
+                d.perfil = $("#perfilOculto").val();
+                
+                // Opción 1: Mínimo de caracteres para buscar (recomendado para tablas grandes)
+                // Solo buscar si tiene al menos 3 caracteres o está vacío (para limpiar)
+                var minChars = 3;
+                if (d.search.value.length > 0 && d.search.value.length < minChars) {
+                    // Cancelar la búsqueda si tiene menos del mínimo
+                    // Esto evita búsquedas con 1 o 2 caracteres que pueden ser muy lentas
+                    d.search.value = "";
+                }
+            }
+        },
+        order: [[4, "desc"]],
+        pageLength: 20,
+        lengthMenu: [
+            [20, 40, 60, 100],
+            [20, 40, 60, 100],
+        ],
+        language: {
+            sProcessing: "Procesando...",
+            sLengthMenu: "Mostrar _MENU_ registros",
+            sZeroRecords: "No se encontraron resultados",
+            sEmptyTable: "Ningún dato disponible en esta tabla",
+            sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+            sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+            sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+            sInfoPostFix: "",
+            sSearch: "Buscar:",
+            sUrl: "",
+            sInfoThousands: ",",
+            sLoadingRecords: "Cargando...",
+            oPaginate: {
+                sFirst: "Primero",
+                sLast: "Último",
+                sNext: "Siguiente",
+                sPrevious: "Anterior",
+            },
+            oAria: {
+                sSortAscending:
+                    ": Activar para ordenar la columna de manera ascendente",
+                sSortDescending:
+                    ": Activar para ordenar la columna de manera descendente",
+            },
+        },
+    });
+
+    // Implementación alternativa: Debounce manual con mínimo de caracteres
+    // Descomentar este bloque si prefieres más control sobre la búsqueda
+    /*
+    var searchTimeout;
+    var minSearchLength = 3; // Mínimo de caracteres para buscar
+    
+    $('.dataTables_filter input').on('keyup', function() {
+        var searchValue = $(this).val();
+        
+        // Limpiar timeout anterior
+        clearTimeout(searchTimeout);
+        
+        // Si está vacío o tiene mínimo de caracteres, buscar después del delay
+        if (searchValue.length === 0 || searchValue.length >= minSearchLength) {
+            searchTimeout = setTimeout(function() {
+                table.search(searchValue).draw();
+            }, 500); // Esperar 500ms después de dejar de escribir
+        }
+        // Si tiene menos del mínimo, no buscar (opcional: mostrar mensaje)
+    });
+    */
+}
 // Validamos que venga la variable capturaRango en el localStorage
 if (localStorage.getItem("anoP") != null) {
     $("#selectAnoCuentaP").val(localStorage.getItem("anoP"));

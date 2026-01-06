@@ -444,6 +444,7 @@ CUERPO DOCUMENTO
                 include "modulos/facturacion/" . $_GET["ruta"] . ".php";
             } else if (
                 $_GET["ruta"] == "cuentas" ||
+                $_GET["ruta"] == "cuentas-test" ||
                 $_GET["ruta"] == "modal-cuentas" ||
                 $_GET["ruta"] == "ver-cuentas" ||
                 $_GET["ruta"] == "ver-cuentas-consultar" ||
@@ -458,8 +459,28 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "notificaciones" ||
                 $_GET["ruta"] == "credipagos"
             ) {
-
-                include "modulos/cuentas-corrientes/" . $_GET["ruta"] . ".php";
+                // Manejar rutas según la configuración
+                $tipoPaginacion = (defined('TIPO_PAGINACION_CUENTAS')) ? TIPO_PAGINACION_CUENTAS : "cliente";
+                
+                if ($_GET["ruta"] == "cuentas") {
+                    // Si está en modo "ambos", permitir acceso directo a cuentas.php
+                    // Si está en modo "servidor", redirigir a cuentas-test.php
+                    if ($tipoPaginacion === "servidor") {
+                        include "modulos/cuentas-corrientes/cuentas-test.php";
+                    } else {
+                        include "modulos/cuentas-corrientes/cuentas.php";
+                    }
+                } elseif ($_GET["ruta"] == "cuentas-test") {
+                    // Solo permitir acceso a cuentas-test si está en modo "servidor" o "ambos"
+                    if ($tipoPaginacion === "servidor" || $tipoPaginacion === "ambos") {
+                        include "modulos/cuentas-corrientes/cuentas-test.php";
+                    } else {
+                        // Si está en modo "cliente", redirigir a cuentas.php
+                        include "modulos/cuentas-corrientes/cuentas.php";
+                    }
+                } else {
+                    include "modulos/cuentas-corrientes/" . $_GET["ruta"] . ".php";
+                }
             } else if (
                 $_GET["ruta"] == "detalleoperaciones" ||
                 $_GET["ruta"] == "creardetalleoperaciones" ||

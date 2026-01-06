@@ -1265,6 +1265,7 @@
             ?>
                 <li class="treeview <?php if (
                                         $_GET["ruta"] == "cuentas" ||
+                                        $_GET["ruta"] == "cuentas-test" ||
                                         $_GET["ruta"] == "cuentas-pendientes" ||
                                         $_GET["ruta"] == "cuentas-canceladas" ||
                                         $_GET["ruta"] == "abonos" ||
@@ -1294,6 +1295,7 @@
                     <ul class="treeview-menu">
                         <li class="treeview <?php if (
                                                 $_GET["ruta"] == "cuentas" ||
+                                                $_GET["ruta"] == "cuentas-test" ||
                                                 $_GET["ruta"] == "cuentas-pendientes" ||
                                                 $_GET["ruta"] == "cuentas-canceladas" ||
                                                 $_GET["ruta"] == "abonos" ||
@@ -1315,16 +1317,53 @@
 
                             <ul class="treeview-menu">
 
-                                <li class="<?php if ($_GET["ruta"] == "cuentas") echo 'active'; ?>">
+                                <?php 
+                                // Determinar qué rutas mostrar según la configuración
+                                $tipoPaginacion = (defined('TIPO_PAGINACION_CUENTAS')) ? TIPO_PAGINACION_CUENTAS : "cliente";
+                                
+                                if ($tipoPaginacion === "ambos") {
+                                    // Mostrar ambas opciones para comparar
+                                    ?>
+                                    <li class="<?php if ($_GET["ruta"] == "cuentas") echo 'active'; ?>">
 
-                                    <a href="cuentas">
+                                        <a href="cuentas">
 
-                                        <i class="fa fa-circle-o text-blue"></i>
-                                        <span>Generales</span>
+                                            <i class="fa fa-circle-o text-blue"></i>
+                                            <span>Generales (Cliente)</span>
 
-                                    </a>
+                                        </a>
 
-                                </li>
+                                    </li>
+
+                                    <li class="<?php if ($_GET["ruta"] == "cuentas-test") echo 'active'; ?>">
+
+                                        <a href="cuentas-test">
+
+                                            <i class="fa fa-circle-o text-orange"></i>
+                                            <span>Generales (Servidor)</span>
+
+                                        </a>
+
+                                    </li>
+                                    <?php
+                                } else {
+                                    // Mostrar solo una opción según la configuración
+                                    $rutaCuentas = ($tipoPaginacion === "servidor") ? "cuentas-test" : "cuentas";
+                                    $rutaActiva = ($_GET["ruta"] == "cuentas" || $_GET["ruta"] == "cuentas-test");
+                                    ?>
+                                    <li class="<?php if ($rutaActiva) echo 'active'; ?>">
+
+                                        <a href="<?php echo $rutaCuentas; ?>">
+
+                                            <i class="fa fa-circle-o text-blue"></i>
+                                            <span>Generales</span>
+
+                                        </a>
+
+                                    </li>
+                                    <?php
+                                }
+                                ?>
 
                                 <li class="<?php if ($_GET["ruta"] == "cuentas-pendientes") echo 'active'; ?>">
 

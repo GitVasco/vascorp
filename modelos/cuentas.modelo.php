@@ -5063,4 +5063,146 @@ class ModeloCuentas
 
 		$stmt = null;
 	}
+
+	/*=============================================
+	RANGO FECHAS CUENTAS CON PAGINACIÓN SERVIDOR
+	=============================================*/
+
+	static public function mdlRangoFechasCuentasPaginado($tabla, $ano, $start, $length, $search, $orderColumn, $orderDir)
+	{
+		// Construir WHERE clause
+		$where = "c.tip_mov = '+'";
+		
+		if ($ano != "null" && $ano != null) {
+			$where .= " AND YEAR(c.fecha) = :ano";
+		}
+
+		// Construir búsqueda
+		$searchWhere = "";
+		if (!empty($search)) {
+			$searchWhere = " AND (
+				c.num_cta LIKE :search1 OR 
+				c.cliente LIKE :search2 OR 
+				cli.nombre LIKE :search3 OR 
+				c.vendedor LIKE :search4 OR 
+				c.tipo_doc LIKE :search5 OR
+				c.doc_origen LIKE :search6 OR
+				c.num_unico LIKE :search7
+			)";
+		}
+
+		// Mapeo de columnas para ordenamiento
+		$columns = [
+			0 => "c.tipo_doc",
+			1 => "c.num_cta",
+			2 => "CONCAT(c.cliente, ' - ', cli.nombre)",
+			3 => "c.vendedor",
+			4 => "c.fecha",
+			5 => "c.fecha_ven",
+			6 => "c.monto",
+			7 => "c.saldo",
+			8 => "c.estado",
+			9 => "c.num_unico",
+			10 => "c.protesta",
+			11 => "c.doc_origen"
+		];
+
+		$orderBy = isset($columns[$orderColumn]) ? $columns[$orderColumn] : "c.fecha";
+		$orderDir = strtoupper($orderDir) == "ASC" ? "ASC" : "DESC";
+
+		// Consulta para obtener total de registros
+		$sqlTotal = "SELECT COUNT(*) as total 
+			FROM $tabla c 
+			LEFT JOIN clientesjf cli ON c.cliente = cli.codigo 
+			WHERE $where";
+
+		$stmtTotal = Conexion::conectar()->prepare($sqlTotal);
+		if ($ano != "null" && $ano != null) {
+			$stmtTotal->bindParam(":ano", $ano, PDO::PARAM_STR);
+		}
+		$stmtTotal->execute();
+		$totalRecords = $stmtTotal->fetch(PDO::FETCH_ASSOC)["total"];
+
+		// Consulta para obtener total filtrado
+		$sqlFiltered = "SELECT COUNT(*) as total 
+			FROM $tabla c 
+			LEFT JOIN clientesjf cli ON c.cliente = cli.codigo 
+			WHERE $where $searchWhere";
+
+		$stmtFiltered = Conexion::conectar()->prepare($sqlFiltered);
+		if ($ano != "null" && $ano != null) {
+			$stmtFiltered->bindParam(":ano", $ano, PDO::PARAM_STR);
+		}
+		if (!empty($search)) {
+			$searchParam = "%$search%";
+			$stmtFiltered->bindParam(":search1", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search2", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search3", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search4", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search5", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search6", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search7", $searchParam, PDO::PARAM_STR);
+		}
+		$stmtFiltered->execute();
+		$filteredRecords = $stmtFiltered->fetch(PDO::FETCH_ASSOC)["total"];
+
+		// Consulta principal con paginación
+		$sql = "SELECT 
+			c.id,
+			c.tipo_doc,
+			c.num_cta,
+			c.cod_pago,
+			c.doc_origen,
+			c.fecha,
+			c.fecha_ven,
+			c.monto,
+			c.saldo,
+			c.tip_cambio,
+			c.ult_pago,
+			c.cliente,
+			cli.nombre,
+			c.vendedor,
+			c.fecha_cep,
+			c.banco,
+			c.num_unico,
+			c.renovacion,
+			c.protesta,
+			c.tip_mon,
+			c.estado,
+			c.estado_doc,
+			c.fecha_envio,
+			c.fecha_creacion
+		FROM $tabla c
+		LEFT JOIN clientesjf cli ON c.cliente = cli.codigo
+		WHERE $where $searchWhere
+		ORDER BY $orderBy $orderDir
+		LIMIT :start, :length";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		
+		if ($ano != "null" && $ano != null) {
+			$stmt->bindParam(":ano", $ano, PDO::PARAM_STR);
+		}
+		if (!empty($search)) {
+			$searchParam = "%$search%";
+			$stmt->bindParam(":search1", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search2", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search3", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search4", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search5", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search6", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search7", $searchParam, PDO::PARAM_STR);
+		}
+		$stmt->bindParam(":start", $start, PDO::PARAM_INT);
+		$stmt->bindParam(":length", $length, PDO::PARAM_INT);
+		
+		$stmt->execute();
+		$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		return [
+			"data" => $data,
+			"recordsTotal" => (int)$totalRecords,
+			"recordsFiltered" => (int)$filteredRecords
+		];
+	}
 }

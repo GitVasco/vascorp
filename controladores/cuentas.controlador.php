@@ -981,6 +981,20 @@ class ControladorCuentas
 	}
 
 	/*=============================================
+	RANGO FECHAS CUENTAS CON PAGINACIÓN SERVIDOR
+	=============================================*/
+
+	static public function ctrRangoFechasCuentasPaginado($ano, $start, $length, $search, $orderColumn, $orderDir)
+	{
+
+		$tabla = "cuenta_ctejf";
+
+		$respuesta = ModeloCuentas::mdlRangoFechasCuentasPaginado($tabla, $ano, $start, $length, $search, $orderColumn, $orderDir);
+
+		return $respuesta;
+	}
+
+	/*=============================================
 	RANGO FECHAS CUENTAS
 	=============================================*/
 
