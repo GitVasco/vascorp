@@ -523,4 +523,54 @@ class ControladorMovimientos
 
         return $respuesta;
     }
+
+    /* 
+    * Obtener meses de un año específico
+    */
+    static public function ctrMesesMovPorAño($año)
+    {
+        $respuesta = ModeloMovimientos::mdlMesesMovPorAño($año);
+
+        return $respuesta;
+    }
+
+    /* 
+    * Obtener totales de producción por mes de un año específico
+    */
+    static public function ctrTotalMesProdPorAño($año)
+    {
+        $respuesta = ModeloMovimientos::mdlTotalMesProdPorAño($año);
+
+        return $respuesta;
+    }
+
+    /* 
+    * Obtener totales de ventas por mes de un año específico
+    */
+    static public function ctrTotalMesVentPorAño($año)
+    {
+        $respuesta = ModeloMovimientos::mdlTotalMesVentPorAño($año);
+
+        return $respuesta;
+    }
+
+    /* 
+    * Obtener totales de corte por mes de un año específico
+    */
+    static public function ctrTotalMesCortePorAño($año)
+    {
+        $respuesta = ModeloMovimientos::mdlTotalMesCortePorAño($año);
+
+        return $respuesta;
+    }
+
+    /* 
+    * Obtener producción por taller y mes de un año específico
+    */
+    static public function ctrTotalMesProdTallerPorAño($año, $taller = null)
+    {
+        $respuesta = ModeloMovimientos::mdlTotalMesProdTallerPorAño($año, $taller);
+
+        return $respuesta;
+    }
 }

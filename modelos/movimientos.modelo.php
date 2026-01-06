@@ -4453,4 +4453,234 @@ class ModeloMovimientos
          $stmt = null;
       }
    }
+
+   /* 
+   * Obtener meses de un año específico (todos los meses del año)
+   */
+   static public function mdlMesesMovPorAño($año)
+   {
+      $año = intval($año);
+      
+      $meses = array(
+         1 => 'Enero',
+         2 => 'Febrero',
+         3 => 'Marzo',
+         4 => 'Abril',
+         5 => 'Mayo',
+         6 => 'Junio',
+         7 => 'Julio',
+         8 => 'Agosto',
+         9 => 'Septiembre',
+         10 => 'Octubre',
+         11 => 'Noviembre',
+         12 => 'Diciembre'
+      );
+
+      $resultado = array();
+      for ($mes = 1; $mes <= 12; $mes++) {
+         $resultado[] = array(
+            'mes' => $mes,
+            'nom_mes' => $meses[$mes]
+         );
+      }
+
+      return $resultado;
+   }
+
+   /* 
+   * Obtener totales de producción por mes de un año específico
+   */
+   static public function mdlTotalMesProdPorAño($año)
+   {
+      $año = intval($año);
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
+            t.mes,
+            COALESCE(SUM(t.total_produccion), 0) as total_mesP
+         FROM
+            totalesjf t 
+         WHERE t.año = :anio
+         GROUP BY t.mes
+         ORDER BY t.mes");
+
+      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+      $stmt->execute();
+
+      $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+      
+      // Crear array con todos los meses del año, llenando con 0 los que no tienen datos
+      $mesesCompletos = array();
+      for ($mes = 1; $mes <= 12; $mes++) {
+         $encontrado = false;
+         foreach ($resultados as $resultado) {
+            if ($resultado['mes'] == $mes) {
+               $mesesCompletos[] = array(
+                  'mes' => $mes,
+                  'total_mesP' => floatval($resultado['total_mesP'])
+               );
+               $encontrado = true;
+               break;
+            }
+         }
+         if (!$encontrado) {
+            $mesesCompletos[] = array(
+               'mes' => $mes,
+               'total_mesP' => 0
+            );
+         }
+      }
+
+      return $mesesCompletos;
+   }
+
+   /* 
+   * Obtener totales de corte por mes de un año específico
+   */
+   static public function mdlTotalMesCortePorAño($año)
+   {
+      $año = intval($año);
+
+      $stmt = Conexion::conectar()->prepare("SELECT
+            MONTH(ad.fecha) as mes,
+            COALESCE(SUM(ad.cantidad), 0) as total_mesC
+         FROM
+            almacencorte_detallejf ad
+         WHERE
+            YEAR(ad.fecha) = :anio
+            AND DATE(ad.fecha) NOT LIKE CONCAT(:anio, '-01-01')
+         GROUP BY
+            MONTH(ad.fecha)
+         ORDER BY mes");
+
+      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+      $stmt->execute();
+
+      $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+      
+      // Crear array con todos los meses del año, llenando con 0 los que no tienen datos
+      $mesesCompletos = array();
+      for ($mes = 1; $mes <= 12; $mes++) {
+         $encontrado = false;
+         foreach ($resultados as $resultado) {
+            if ($resultado['mes'] == $mes) {
+               $mesesCompletos[] = array(
+                  'mes' => $mes,
+                  'total_mesC' => floatval($resultado['total_mesC'])
+               );
+               $encontrado = true;
+               break;
+            }
+         }
+         if (!$encontrado) {
+            $mesesCompletos[] = array(
+               'mes' => $mes,
+               'total_mesC' => 0
+            );
+         }
+      }
+
+      return $mesesCompletos;
+   }
+
+   /* 
+   * Obtener totales de ventas por mes de un año específico
+   */
+   static public function mdlTotalMesVentPorAño($año)
+   {
+      $año = intval($año);
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
+            t.mes,
+            COALESCE(SUM(t.total_ventas), 0) as total_mesV
+         FROM
+            totalesjf t 
+         WHERE t.año = :anio
+         GROUP BY t.mes
+         ORDER BY t.mes");
+
+      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+      $stmt->execute();
+
+      $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+      
+      // Crear array con todos los meses del año, llenando con 0 los que no tienen datos
+      $mesesCompletos = array();
+      for ($mes = 1; $mes <= 12; $mes++) {
+         $encontrado = false;
+         foreach ($resultados as $resultado) {
+            if ($resultado['mes'] == $mes) {
+               $mesesCompletos[] = array(
+                  'mes' => $mes,
+                  'total_mesV' => floatval($resultado['total_mesV'])
+               );
+               $encontrado = true;
+               break;
+            }
+         }
+         if (!$encontrado) {
+            $mesesCompletos[] = array(
+               'mes' => $mes,
+               'total_mesV' => 0
+            );
+         }
+      }
+
+      return $mesesCompletos;
+   }
+
+   /* 
+   * Obtener producción por taller y mes de un año específico
+   */
+   static public function mdlTotalMesProdTallerPorAño($año, $taller = null)
+   {
+      $año = intval($año);
+      $conexion = Conexion::conectar();
+      
+      // Construir nombre de tabla según el año
+      $tabla = "movimientosjf_" . $año;
+
+      if ($taller == null) {
+         $stmt = $conexion->prepare("SELECT
+                    MONTH(m.fecha) as mes,
+                    m.taller,
+                    s.nom_sector,
+                    COALESCE(SUM(m.cantidad), 0) as produccion
+                FROM
+                    $tabla m
+                LEFT JOIN sectorjf s 
+                    ON m.taller = s.cod_sector 
+                WHERE
+                    m.tipo = 'E20'
+                GROUP BY
+                    MONTH(m.fecha),
+                    m.taller
+                ORDER BY
+                    MONTH(m.fecha), m.taller");
+      } else {
+         $stmt = $conexion->prepare("SELECT
+                    MONTH(m.fecha) as mes,
+                    m.taller,
+                    s.nom_sector,
+                    COALESCE(SUM(m.cantidad), 0) as produccion
+                FROM
+                    $tabla m
+                LEFT JOIN sectorjf s 
+                    ON m.taller = s.cod_sector 
+                WHERE
+                    m.tipo = 'E20'
+                    AND m.taller = :taller
+                GROUP BY
+                    MONTH(m.fecha),
+                    m.taller
+                ORDER BY
+                    MONTH(m.fecha), m.taller");
+         $stmt->bindParam(':taller', $taller, PDO::PARAM_STR);
+      }
+
+      $stmt->execute();
+      $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+      $stmt->closeCursor();
+      return $result;
+   }
 }
