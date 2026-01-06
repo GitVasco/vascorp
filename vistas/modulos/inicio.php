@@ -33,11 +33,29 @@
             <?php
 
 
+            $mesActual = date('n');
+            $añoActual = date('Y');
+            $meses = array(
+                1 => 'Enero',
+                2 => 'Febrero',
+                3 => 'Marzo',
+                4 => 'Abril',
+                5 => 'Mayo',
+                6 => 'Junio',
+                7 => 'Julio',
+                8 => 'Agosto',
+                9 => 'Septiembre',
+                10 => 'Octubre',
+                11 => 'Noviembre',
+                12 => 'Diciembre'
+            );
+            $periodoActual = $meses[$mesActual] . ' ' . $añoActual;
+
             echo '<div class="box box-success">
 
                             <div class="box-header">
 
-                                <h1>Bienvenid@ ' . $_SESSION["nombre"] . '</h1>
+                                <h1>Bienvenid@ ' . $_SESSION["nombre"] . ' - <span id="periodo-actual" style="font-size: 0.8em; color: #666; font-weight: normal;">Período: <strong>' . $periodoActual . '</strong></span></h1>
 
                             </div>
 
@@ -81,9 +99,22 @@
 
                             $mesActual = date('n');
                             $añoActual = date('Y');
+                            $añoInicio = 2025;
 
-                            // Generar opciones para los últimos 12 meses
-                            for ($i = 0; $i < 12; $i++) {
+                            // Array para almacenar todas las opciones
+                            $opciones = array();
+
+                            // Agregar opción "Mes Actual"
+                            $opciones[] = array(
+                                'value' => 'null',
+                                'año' => '',
+                                'label' => 'Mes Actual',
+                                'timestamp' => $añoActual * 100 + $mesActual, // Para ordenar
+                                'selected' => true
+                            );
+
+                            // Generar opciones para los últimos 12 meses hacia atrás
+                            for ($i = 1; $i < 12; $i++) {
                                 $mesNumero = $mesActual - $i;
                                 $año = $añoActual;
 
@@ -93,12 +124,68 @@
                                 }
 
                                 $nombreMes = $meses[$mesNumero];
-                                $label = $i == 0 ? 'Mes Actual' : $nombreMes . ' ' . $año;
-                                $value = $i == 0 ? 'null' : $mesNumero;
-                                $añoData = $i == 0 ? '' : $año;
-                                $selected = $i == 0 ? 'selected' : '';
+                                $opciones[] = array(
+                                    'value' => $mesNumero,
+                                    'año' => $año,
+                                    'label' => $nombreMes . ' ' . $año,
+                                    'timestamp' => $año * 100 + $mesNumero,
+                                    'selected' => false
+                                );
+                            }
 
-                                echo '<option value="' . $value . '" data-año="' . $añoData . '" ' . $selected . '>' . $label . '</option>';
+                            // Generar opciones para meses pasados desde enero 2025 hasta el mes actual (incluido)
+                            for ($año = $añoInicio; $año <= $añoActual; $año++) {
+                                $mesInicio = 1;
+                                
+                                if ($año < $añoActual) {
+                                    $mesFin = 12;
+                                } else {
+                                    $mesFin = $mesActual;
+                                }
+
+                                for ($mesNumero = $mesInicio; $mesNumero <= $mesFin; $mesNumero++) {
+                                    // Verificar si este mes ya está en la lista de los últimos 12 meses
+                                    $yaIncluido = false;
+                                    if (!($mesNumero == $mesActual && $año == $añoActual)) {
+                                        for ($j = 1; $j < 12; $j++) {
+                                            $mesCheck = $mesActual - $j;
+                                            $añoCheck = $añoActual;
+                                            if ($mesCheck <= 0) {
+                                                $mesCheck += 12;
+                                                $añoCheck--;
+                                            }
+                                            if ($mesNumero == $mesCheck && $año == $añoCheck) {
+                                                $yaIncluido = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (!$yaIncluido) {
+                                        $nombreMes = $meses[$mesNumero];
+                                        $opciones[] = array(
+                                            'value' => $mesNumero,
+                                            'año' => $año,
+                                            'label' => $nombreMes . ' ' . $año,
+                                            'timestamp' => $año * 100 + $mesNumero,
+                                            'selected' => false
+                                        );
+                                    }
+                                }
+                            }
+
+                            // Ordenar opciones de mayor a menor (más reciente a más antiguo)
+                            // Mantener "Mes Actual" al principio
+                            $mesActualOption = array_shift($opciones);
+                            usort($opciones, function($a, $b) {
+                                return $b['timestamp'] - $a['timestamp'];
+                            });
+                            array_unshift($opciones, $mesActualOption);
+
+                            // Mostrar las opciones ordenadas
+                            foreach ($opciones as $opcion) {
+                                $selected = $opcion['selected'] ? 'selected' : '';
+                                echo '<option value="' . $opcion['value'] . '" data-año="' . $opcion['año'] . '" ' . $selected . '>' . $opcion['label'] . '</option>';
                             }
 
                             ?>
@@ -237,6 +324,37 @@
 <script>
     window.document.title = "Inicio"
 
+    // Función para actualizar el período en el saludo
+    function actualizarPeriodo(mes, año) {
+        var meses = {
+            1: 'Enero',
+            2: 'Febrero',
+            3: 'Marzo',
+            4: 'Abril',
+            5: 'Mayo',
+            6: 'Junio',
+            7: 'Julio',
+            8: 'Agosto',
+            9: 'Septiembre',
+            10: 'Octubre',
+            11: 'Noviembre',
+            12: 'Diciembre'
+        };
+
+        var periodoTexto;
+        if (mes === 'null' || mes === null) {
+            // Mes actual
+            var fechaActual = new Date();
+            var mesActual = fechaActual.getMonth() + 1;
+            var añoActual = fechaActual.getFullYear();
+            periodoTexto = meses[mesActual] + ' ' + añoActual;
+        } else {
+            periodoTexto = meses[parseInt(mes)] + ' ' + año;
+        }
+
+        $("#periodo-actual").html('Período: <strong>' + periodoTexto + '</strong>');
+    }
+
     // Función para actualizar las cajas según el mes seleccionado
     function actualizarCajas(mes, año) {
         $.ajax({
@@ -275,6 +393,11 @@
         $("#selectMes").on("change", function() {
             var mesSeleccionado = $(this).val();
             var añoSeleccionado = $(this).find("option:selected").data("año");
+            
+            // Actualizar el período en el saludo
+            actualizarPeriodo(mesSeleccionado, añoSeleccionado);
+            
+            // Actualizar las cajas
             actualizarCajas(mesSeleccionado, añoSeleccionado);
         });
     });
