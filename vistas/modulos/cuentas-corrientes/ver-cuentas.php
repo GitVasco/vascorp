@@ -54,8 +54,14 @@
             <div class="box box-success">
                 <div class="box-body">
                     <div class="col-md-3" style="margin-bottom:10px">
-
-                        <a href="<?php echo $_GET["rutas"] ?>" class="btn btn-danger"><i class="fa fa-arrow-left"> Atrás </i></a>
+                        <?php
+                        // Determinar ruta de retorno según configuración
+                        $rutaRetorno = $_GET["rutas"];
+                        if ($rutaRetorno == "cuentas") {
+                            $rutaRetorno = obtenerRutaCuentas();
+                        }
+                        ?>
+                        <a href="<?php echo $rutaRetorno ?>" class="btn btn-danger"><i class="fa fa-arrow-left"> Atrás </i></a>
 
                     </div>
                     <div class="col-md-12"></div>
