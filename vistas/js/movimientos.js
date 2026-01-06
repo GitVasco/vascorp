@@ -771,6 +771,7 @@ $(".tablaRangos").DataTable({
             )
         );
 
+        // Columnas: 0=Codigo, 1=Nombre, 2=Ventas, 3=Cobranza, 4=Vencidos, 5=2014-2020, 6=2021, 7=2022, 8=2023, 9=2024, 10=2025
         $(api.column(5).footer()).html(
             Intl.NumberFormat().format(
                 api.column(5, { page: "current" }).data().sum().toFixed(2) * -1
@@ -804,12 +805,6 @@ $(".tablaRangos").DataTable({
         $(api.column(10).footer()).html(
             Intl.NumberFormat().format(
                 api.column(10, { page: "current" }).data().sum().toFixed(2) * -1
-            )
-        );
-
-        $(api.column(11).footer()).html(
-            Intl.NumberFormat().format(
-                api.column(11, { page: "current" }).data().sum().toFixed(2) * -1
             )
         );
     },

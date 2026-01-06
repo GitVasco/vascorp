@@ -306,13 +306,12 @@
                                 <th>Ventas</th>
                                 <th>Cobranza</th>
                                 <th>Vencidos</th>
-                                <th>2014-2018</th>
-                                <th>2019</th>
-                                <th>2020</th>
+                                <th>2014-2020</th>
                                 <th>2021</th>
                                 <th>2022</th>
                                 <th>2023</th>
                                 <th>2024</th>
+                                <th>2025</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -320,7 +319,6 @@
                         <tfoot>
                             <th></th>
                             <th></th>
-                            <th style="text-align:right !important;"></th>
                             <th style="text-align:right !important;"></th>
                             <th style="text-align:right !important;"></th>
                             <th style="text-align:right !important;"></th>

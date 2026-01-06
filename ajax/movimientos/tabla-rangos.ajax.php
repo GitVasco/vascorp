@@ -81,22 +81,6 @@ class TablaMovimientos
                     $p18 = "<div style='text-align:right !important; color:red'>0</div>";
                 }
 
-                if ($movimientos[$i]["p19"] > 0) {
-
-                    $p19 = "<div style='text-align:right !important; color:red'>" . number_format($movimientos[$i]["p19"], 2) . "</div>";
-                } else {
-
-                    $p19 = "<div style='text-align:right !important; color:red'>0</div>";
-                }
-
-                if ($movimientos[$i]["p20"] > 0) {
-
-                    $p20 = "<div style='text-align:right !important; color:red'>" . number_format($movimientos[$i]["p20"], 2) . "</div>";
-                } else {
-
-                    $p20 = "<div style='text-align:right !important; color:red'>0</div>";
-                }
-
                 if ($movimientos[$i]["p21"] > 0) {
 
                     $p21 = "<div style='text-align:right !important; color:red'>" . number_format($movimientos[$i]["p21"], 2) . "</div>";
@@ -129,6 +113,13 @@ class TablaMovimientos
                     $p24 = "<div style='text-align:right !important; color:blue'>0</div>";
                 }
 
+                if ($movimientos[$i]["p25"] > 0) {
+
+                    $p25 = "<div style='text-align:right !important; color:blue'>" . number_format($movimientos[$i]["p25"], 2) . "</div>";
+                } else {
+
+                    $p25 = "<div style='text-align:right !important; color:blue'>0</div>";
+                }
 
                 // p14 ahora contiene la suma acumulada de 2014-2020
                 $p1418 = "<div style='text-align:right !important; color:red'>" . number_format($movimientos[$i]["p14"], 2) . "</div>";
@@ -140,12 +131,11 @@ class TablaMovimientos
                 "<b>' . $cobranza . '</b>",
                 "<b>' . $saldo . '</b>",
                 "' . $p1418 . '",
-                "' . $p19 . '",
-                "' . $p20 . '",
                 "' . $p21 . '",
                 "' . $p22 . '",
                 "' . $p23 . '",
-                "' . $p24 . '"
+                "' . $p24 . '",
+                "' . $p25 . '"
                 ],';
             }
 

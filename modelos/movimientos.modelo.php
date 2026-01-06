@@ -4109,12 +4109,13 @@ class ModeloMovimientos
                                     0 AS 'p16',
                                     0 AS 'p17',
                                     0 AS 'p18',
-                                    IFNULL(p.a2019, 0) AS 'p19',
-                                    IFNULL(p.a2020, 0) AS 'p20',
+                                    0 AS 'p19',
+                                    0 AS 'p20',
                                     IFNULL(p.a2021, 0) AS 'p21',
                                     IFNULL(p.a2022, 0) AS 'p22',
                                     IFNULL(p.a2023, 0) AS 'p23',
                                     IFNULL(p.a2024, 0) AS 'p24',
+                                    IFNULL(p.a2025, 0) AS 'p25',
                                     IFNULL(p.total, 0) AS 'total' 
                                  FROM
                                     maestrajf m 
@@ -4164,20 +4165,6 @@ class ModeloMovimientos
                                         ) AS 'a2014_2020',
                                         SUM(
                                             CASE
-                                            WHEN YEAR(c.fecha_ven) = '2019' 
-                                            THEN c.saldo 
-                                            ELSE 0 
-                                            END
-                                        ) AS 'a2019',
-                                        SUM(
-                                            CASE
-                                            WHEN YEAR(c.fecha_ven) = '2020' 
-                                            THEN c.saldo 
-                                            ELSE 0 
-                                            END
-                                        ) AS 'a2020',
-                                        SUM(
-                                            CASE
                                             WHEN YEAR(c.fecha_ven) = '2021' 
                                             THEN c.saldo 
                                             ELSE 0 
@@ -4204,6 +4191,13 @@ class ModeloMovimientos
                                             ELSE 0 
                                             END
                                         ) AS 'a2024',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2025' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2025',
                                         SUM(c.saldo) AS total 
                                     FROM
                                        cuenta_ctejf c 
@@ -4241,12 +4235,13 @@ class ModeloMovimientos
                                             0 AS 'p16',
                                             0 AS 'p17',
                                             0 AS 'p18',
-                                            IFNULL(p.a2019, 0) AS 'p19',
-                                            IFNULL(p.a2020, 0) AS 'p20',
+                                            0 AS 'p19',
+                                            0 AS 'p20',
                                             IFNULL(p.a2021, 0) AS 'p21',
                                             IFNULL(p.a2022, 0) AS 'p22',
                                             IFNULL(p.a2023, 0) AS 'p23',
                                             IFNULL(p.a2024, 0) AS 'p24',
+                                            IFNULL(p.a2025, 0) AS 'p25',
                                             IFNULL(p.total, 0) AS 'total'  
                                        FROM
                                           maestrajf m 
@@ -4298,20 +4293,6 @@ class ModeloMovimientos
                                              ) AS 'a2014_2020',
                                              SUM(
                                                  CASE
-                                                 WHEN YEAR(c.fecha_ven) = '2019' 
-                                                 THEN c.saldo 
-                                                 ELSE 0 
-                                                 END
-                                             ) AS 'a2019',
-                                             SUM(
-                                                 CASE
-                                                 WHEN YEAR(c.fecha_ven) = '2020' 
-                                                 THEN c.saldo 
-                                                 ELSE 0 
-                                                 END
-                                             ) AS 'a2020',
-                                             SUM(
-                                                 CASE
                                                  WHEN YEAR(c.fecha_ven) = '2021' 
                                                  THEN c.saldo 
                                                  ELSE 0 
@@ -4338,6 +4319,13 @@ class ModeloMovimientos
                                                  ELSE 0 
                                                  END
                                              ) AS 'a2024',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2025' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2025',
                                              SUM(c.saldo) AS total 
                                           FROM
                                              cuenta_ctejf c 
