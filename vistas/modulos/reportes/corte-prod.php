@@ -34,7 +34,7 @@ foreach ($corte_mes as $value) {
     </div>
     <div class="box-body">
         <div class="chart">
-            <canvas id="corprodChart" style="height:400px"></canvas>
+            <canvas id="corprodChart" style="height:350px"></canvas>
         </div>
 
         <table class="table table-bordered" style="margin-top: 20px;">
@@ -73,6 +73,7 @@ foreach ($corte_mes as $value) {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
     // Variable global para el gráfico
     var corprodChart = null;
@@ -99,9 +100,20 @@ foreach ($corte_mes as $value) {
             },
             dataType: "json",
             success: function(respuesta) {
-                // Destruir gráfico anterior si existe
-                if (corprodChart !== null) {
-                    corprodChart.destroy();
+                // Destruir gráfico anterior si existe y es válido
+                if (corprodChart !== null && typeof corprodChart === 'object' && typeof corprodChart.destroy === 'function') {
+                    try {
+                        corprodChart.destroy();
+                    } catch(e) {
+                        console.warn("Error al destruir gráfico anterior:", e);
+                    }
+                    corprodChart = null;
+                }
+
+                // Verificar que el canvas exista
+                if ($('#corprodChart').length === 0) {
+                    console.error("Canvas #corprodChart no encontrado");
+                    return;
                 }
 
                 // Get context with jQuery
@@ -117,7 +129,10 @@ foreach ($corte_mes as $value) {
                             pointBorderColor: '#fff',
                             pointHoverBackgroundColor: '#fff',
                             pointHoverBorderColor: 'rgba(75,192,192,1)',
-                            data: respuesta.produccion
+                            data: respuesta.produccion,
+                            borderWidth: 2,
+                            fill: false,
+                            lineTension: 0.1
                         },
                         {
                             label: 'Corte',
@@ -127,40 +142,55 @@ foreach ($corte_mes as $value) {
                             pointBorderColor: '#fff',
                             pointHoverBackgroundColor: '#fff',
                             pointHoverBorderColor: 'rgba(255,159,64,1)',
-                            data: respuesta.corte
+                            data: respuesta.corte,
+                            borderWidth: 2,
+                            fill: false,
+                            lineTension: 0.1
                         }
                     ]
                 };
 
                 var areaChartOptions = {
                     scales: {
-                        y: {
-                            beginAtZero: true
-                        }
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
                     },
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ' - ' + context.raw;
-                                }
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                return data.datasets[tooltipItem.datasetIndex].label + ' - ' + tooltipItem.yLabel;
                             }
                         }
                     }
                 };
 
+                // Verificar que Chart.js esté disponible
+                if (typeof Chart === 'undefined') {
+                    console.error("Chart.js no está disponible");
+                    return;
+                }
+
                 // Crear el gráfico
-                corprodChart = new Chart(areaChartCanvas, {
-                    type: 'line',
-                    data: areaChartData,
-                    options: areaChartOptions
-                });
+                try {
+                    corprodChart = new Chart(areaChartCanvas, {
+                        type: 'line',
+                        data: areaChartData,
+                        options: areaChartOptions
+                    });
+                    console.log("Gráfico Corte vs Producción creado exitosamente");
+                } catch(e) {
+                    console.error("Error al crear el gráfico:", e);
+                    return;
+                }
 
                 // Actualizar la tabla
                 actualizarTablaCorteProd(respuesta);
@@ -203,6 +233,12 @@ foreach ($corte_mes as $value) {
 
     // Crear gráfico inicial con datos PHP
     $(document).ready(function() {
+        // Verificar que el canvas exista antes de crear el gráfico
+        if ($('#corprodChart').length === 0) {
+            console.error("Canvas #corprodChart no encontrado");
+            return;
+        }
+        
         var areaChartCanvas = $('#corprodChart').get(0).getContext('2d');
 
         var areaChartData = {
@@ -226,6 +262,9 @@ foreach ($corte_mes as $value) {
                     pointBorderColor: '#fff',
                     pointHoverBackgroundColor: '#fff',
                     pointHoverBorderColor: 'rgba(75,192,192,1)',
+                    borderWidth: 2,
+                    fill: false,
+                    lineTension: 0.1,
                     data: [
                         <?php
                         $conteoP = count($arrayProduccion);
@@ -247,6 +286,9 @@ foreach ($corte_mes as $value) {
                     pointBorderColor: '#fff',
                     pointHoverBackgroundColor: '#fff',
                     pointHoverBorderColor: 'rgba(255,159,64,1)',
+                    borderWidth: 2,
+                    fill: false,
+                    lineTension: 0.1,
                     data: [
                         <?php
                         $conteoV = count($arrayCorte);
@@ -265,33 +307,44 @@ foreach ($corte_mes as $value) {
 
         var areaChartOptions = {
             scales: {
-                y: {
-                    beginAtZero: true
-                }
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
             },
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ' - ' + context.raw;
-                        }
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        return data.datasets[tooltipItem.datasetIndex].label + ' - ' + tooltipItem.yLabel;
                     }
                 }
             }
         };
 
+        // Verificar que Chart.js esté disponible
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js no está disponible para gráfico inicial");
+            return;
+        }
+
         // Crear el gráfico inicial
-        corprodChart = new Chart(areaChartCanvas, {
-            type: 'line',
-            data: areaChartData,
-            options: areaChartOptions
-        });
+        try {
+            corprodChart = new Chart(areaChartCanvas, {
+                type: 'line',
+                data: areaChartData,
+                options: areaChartOptions
+            });
+            console.log("Gráfico inicial Corte vs Producción creado exitosamente");
+        } catch(e) {
+            console.error("Error al crear el gráfico inicial:", e);
+        }
 
         // Escuchar cambios en el select de mes
         $(document).on('change', '#selectMes', function() {

@@ -136,7 +136,7 @@
                             // Generar opciones para meses pasados desde enero 2025 hasta el mes actual (incluido)
                             for ($año = $añoInicio; $año <= $añoActual; $año++) {
                                 $mesInicio = 1;
-                                
+
                                 if ($año < $añoActual) {
                                     $mesFin = 12;
                                 } else {
@@ -160,7 +160,7 @@
                                             }
                                         }
                                     }
-                                    
+
                                     if (!$yaIncluido) {
                                         $nombreMes = $meses[$mesNumero];
                                         $opciones[] = array(
@@ -177,7 +177,7 @@
                             // Ordenar opciones de mayor a menor (más reciente a más antiguo)
                             // Mantener "Mes Actual" al principio
                             $mesActualOption = array_shift($opciones);
-                            usort($opciones, function($a, $b) {
+                            usort($opciones, function ($a, $b) {
                                 return $b['timestamp'] - $a['timestamp'];
                             });
                             array_unshift($opciones, $mesActualOption);
@@ -234,28 +234,17 @@
 
                 <?php
 
-                include "reportes/movimiento_modelo.php";
-
-                ?>
-
-            </div>
-
-
-        </div>
-
-        <div class="row">
-
-            <div class="col-lg-6">
-
-                <?php
-
                 include "reportes/corte-prod.php";
 
                 ?>
 
             </div>
 
-            <div class="col-lg-6">
+        </div>
+
+        <div class="row">
+
+            <div class="col-lg-12">
 
                 <?php
 
@@ -265,12 +254,26 @@
 
             </div>
 
+            <!-- Gráfico de Movimiento por Modelo - COMENTADO -->
+            <!--
+            <div class="col-lg-6">
+
+                <?php
+
+                include "reportes/movimiento_modelo.php";
+
+                ?>
+
+            </div>
+            -->
 
         </div>
 
 
     </section>
 
+    <!-- Sección Dashboard Mes Pasado - COMENTADA para que no se cargue -->
+    <!--
     <section class="content-header">
 
         <h1>
@@ -317,6 +320,7 @@
         </div>
 
     </section>
+    -->
 
 
 </div>
@@ -393,10 +397,10 @@
         $("#selectMes").on("change", function() {
             var mesSeleccionado = $(this).val();
             var añoSeleccionado = $(this).find("option:selected").data("año");
-            
+
             // Actualizar el período en el saludo
             actualizarPeriodo(mesSeleccionado, añoSeleccionado);
-            
+
             // Actualizar las cajas
             actualizarCajas(mesSeleccionado, añoSeleccionado);
         });

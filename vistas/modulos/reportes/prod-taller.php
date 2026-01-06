@@ -52,50 +52,56 @@ $arrayProduccion = $arrayProduccionFormateado;
     </div>
     <div class="box-body">
 
-        <div class="chart">
-            <canvas id="prodtallerChart" style="height:350px"></canvas>
-        </div>
-
-        <div class="form-inline">
+        <div class="form-inline" style="margin-bottom: 15px;">
             <label for="selectAll">Seleccionar Todos</label>
             <input type="checkbox" id="selectAll" checked>
             <div class="row">
                 <?php
                 foreach ($arrayTalleres as $taller => $sector) {
-                    echo "<div class='col-xs-6 col-sm-4 col-md-3'><label for='sector-$taller'>$sector</label><input type='checkbox' class='sector-checkbox' id='sector-$taller' value='$taller' checked></div>";
+                    echo "<div class='col-xs-6 col-sm-4 col-md-2'><label for='sector-$taller'>$sector</label><input type='checkbox' class='sector-checkbox' id='sector-$taller' value='$taller' checked></div>";
                 }
                 ?>
             </div>
         </div>
 
-        <table class="table table-bordered" style="margin-top: 20px;">
-            <thead>
-                <tr>
-                    <th>Mes</th>
-                    <?php
-                    foreach ($arrayMeses as $mes) {
-                        echo "<th>$mes</th>";
-                    }
-                    ?>
-                </tr>
-            </thead>
-            <tbody id="produccionTableBody">
-                <?php
-                foreach ($arrayProduccion as $taller => $producciones) {
-                    echo "<tr class='produccion-row' data-taller='$taller'>";
-                    echo "<td>{$arrayTalleres[$taller]}</td>";
-                    foreach ($producciones as $produccion) {
-                        $produccion = number_format($produccion, 0);
-                        echo "<td>$produccion</td>";
-                    }
-                    echo "</tr>";
-                }
-                ?>
-            </tbody>
-        </table>
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="chart" style="height: 100%;">
+                    <canvas id="prodtallerChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <table class="table table-bordered" id="produccionTable">
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <?php
+                            foreach ($arrayMeses as $mes) {
+                                echo "<th>$mes</th>";
+                            }
+                            ?>
+                        </tr>
+                    </thead>
+                    <tbody id="produccionTableBody">
+                        <?php
+                        foreach ($arrayProduccion as $taller => $producciones) {
+                            echo "<tr class='produccion-row' data-taller='$taller'>";
+                            echo "<td>{$arrayTalleres[$taller]}</td>";
+                            foreach ($producciones as $produccion) {
+                                $produccion = number_format($produccion, 0);
+                                echo "<td>$produccion</td>";
+                            }
+                            echo "</tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
     // Variable global para el gráfico
     var areaChart = null;
@@ -124,9 +130,13 @@ $arrayProduccion = $arrayProduccionFormateado;
 
     // Función para crear/actualizar el gráfico
     function crearGrafico(datos) {
-        // Destruir gráfico anterior si existe
-        if (areaChart !== null) {
-            areaChart.destroy();
+        // Destruir gráfico anterior si existe y es válido
+        if (areaChart !== null && typeof areaChart === 'object' && typeof areaChart.destroy === 'function') {
+            try {
+                areaChart.destroy();
+            } catch(e) {
+                console.warn("Error al destruir gráfico anterior:", e);
+            }
             areaChart = null;
         }
 
@@ -203,42 +213,57 @@ $arrayProduccion = $arrayProduccionFormateado;
 
         var areaChartOptions = {
             scales: {
-                y: {
-                    beginAtZero: true
-                }
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
             },
             responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ' - ' + context.raw;
-                        }
+            maintainAspectRatio: false,
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        return data.datasets[tooltipItem.datasetIndex].label + ' - ' + tooltipItem.yLabel;
                     }
                 }
             }
         };
 
-        // Crear el gráfico con los datasets iniciales
-        areaChart = new Chart(areaChartCanvas, {
-            type: 'line',
-            data: areaChartData,
-            options: areaChartOptions
-        });
+        // Verificar que Chart.js esté disponible
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js no está disponible");
+            return;
+        }
 
-        console.log("Gráfico creado con", datasetsIniciales.length, "datasets");
-        console.log("Primer dataset:", datasetsIniciales[0]);
+        // Crear el gráfico con los datasets iniciales
+        try {
+            areaChart = new Chart(areaChartCanvas, {
+                type: 'line',
+                data: areaChartData,
+                options: areaChartOptions
+            });
+            console.log("Gráfico Producción por Taller creado exitosamente con", datasetsIniciales.length, "datasets");
+            console.log("Primer dataset:", datasetsIniciales[0]);
+        } catch(e) {
+            console.error("Error al crear el gráfico:", e);
+            return;
+        }
 
         // Actualizar tabla
         actualizarTablaCompleta(datos);
 
         // Actualizar checkboxes de talleres (esto también reasignará los eventos)
         actualizarCheckboxes(datos.talleres);
+        
+        // Ajustar altura del gráfico a la altura de la tabla
+        setTimeout(function() {
+            ajustarAlturaGrafico();
+        }, 100);
     }
 
     // Función para actualizar el gráfico según talleres seleccionados
@@ -293,7 +318,7 @@ $arrayProduccion = $arrayProduccionFormateado;
                         pointHoverBackgroundColor: '#fff',
                         pointHoverBorderColor: borderColor,
                         data: datosTaller,
-                        tension: 0.1,
+                        lineTension: 0.1,
                         fill: false,
                         borderWidth: 2
                     });
@@ -333,6 +358,11 @@ $arrayProduccion = $arrayProduccionFormateado;
             
             tbody.append(row);
         }
+        
+        // Ajustar altura del gráfico después de actualizar la tabla
+        setTimeout(function() {
+            ajustarAlturaGrafico();
+        }, 100);
     }
 
     // Función para actualizar checkboxes de talleres
@@ -342,7 +372,7 @@ $arrayProduccion = $arrayProduccionFormateado;
         
         var talleresArray = Object.keys(talleres);
         talleresArray.forEach(function(taller) {
-            var col = $('<div class="col-xs-6 col-sm-4 col-md-3"></div>');
+            var col = $('<div class="col-xs-6 col-sm-4 col-md-2"></div>');
             var label = $('<label for="sector-' + taller + '">' + talleres[taller] + '</label>');
             var checkbox = $('<input type="checkbox" class="sector-checkbox" id="sector-' + taller + '" value="' + taller + '" checked>');
             
@@ -379,6 +409,11 @@ $arrayProduccion = $arrayProduccionFormateado;
                 $(this).hide();
             }
         });
+        
+        // Ajustar altura del gráfico después de actualizar la tabla
+        setTimeout(function() {
+            ajustarAlturaGrafico();
+        }, 100);
     }
 
     // Función helper para formatear números
@@ -423,6 +458,21 @@ $arrayProduccion = $arrayProduccionFormateado;
         });
     }
 
+    // Función para ajustar la altura del gráfico a la altura de la tabla
+    function ajustarAlturaGrafico() {
+        var tabla = $('#produccionTable');
+        var chartContainer = $('.chart');
+        if (tabla.length > 0 && chartContainer.length > 0) {
+            var alturaTabla = tabla.outerHeight();
+            chartContainer.css('height', alturaTabla + 'px');
+            $('#prodtallerChart').css('height', alturaTabla + 'px');
+            // Actualizar el gráfico si existe
+            if (areaChart !== null) {
+                areaChart.resize();
+            }
+        }
+    }
+
     // Crear gráfico inicial con datos PHP
     $(document).ready(function() {
         console.log("Inicializando gráfico con datos PHP");
@@ -438,9 +488,20 @@ $arrayProduccion = $arrayProduccionFormateado;
         // Verificar que los datos estén correctos
         if (datosIniciales.meses && datosIniciales.produccion && datosIniciales.talleres) {
             crearGrafico(datosIniciales);
+            // Ajustar altura después de crear el gráfico
+            setTimeout(function() {
+                ajustarAlturaGrafico();
+            }, 100);
         } else {
             console.error("Datos iniciales inválidos:", datosIniciales);
         }
+        
+        // Ajustar altura cuando se actualice la tabla
+        $(document).on('DOMSubtreeModified', '#produccionTableBody', function() {
+            setTimeout(function() {
+                ajustarAlturaGrafico();
+            }, 100);
+        });
 
         // Escuchar cambios en el select de mes
         $(document).on('change', '#selectMes', function() {

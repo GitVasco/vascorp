@@ -47,10 +47,44 @@ if (count($produccion_mes) != 0) {
                 <canvas id="areaChart" style="height:350px"></canvas>
             </div>
 
+            <table class="table table-bordered" style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th>Mes</th>
+                        <?php
+                        foreach ($arrayMeses as $mes) {
+                            echo "<th>$mes</th>";
+                        }
+                        ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="background-color: rgba(60,141,188,0.2);">Producción</td>
+                        <?php
+                        foreach ($arrayProduccion as $produccion) {
+                            $produccion = number_format($produccion, 0);
+                            echo "<td>$produccion</td>";
+                        }
+                        ?>
+                    </tr>
+                    <tr>
+                        <td style="background-color: rgba(210, 214, 222, 0.2);">Ventas</td>
+                        <?php
+                        foreach ($arrayVentas as $venta) {
+                            $venta = number_format($venta, 0);
+                            echo "<td>$venta</td>";
+                        }
+                        ?>
+                    </tr>
+                </tbody>
+            </table>
+
         </div>
 
     </div>
 <?php } ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
     // Variable global para el gráfico de ventas vs producción (nombre único)
     var vtasProdChart = null;
@@ -69,10 +103,20 @@ if (count($produccion_mes) != 0) {
             return;
         }
 
-        // Destruir gráfico anterior si existe
-        if (vtasProdChart !== null) {
-            vtasProdChart.destroy();
+        // Destruir gráfico anterior si existe y es válido
+        if (vtasProdChart !== null && typeof vtasProdChart === 'object' && typeof vtasProdChart.destroy === 'function') {
+            try {
+                vtasProdChart.destroy();
+            } catch(e) {
+                console.warn("Error al destruir gráfico anterior:", e);
+            }
             vtasProdChart = null;
+        }
+
+        // Verificar que el canvas exista
+        if ($('#areaChart').length === 0) {
+            console.error("Canvas #areaChart no encontrado");
+            return;
         }
 
         // Get context with jQuery
@@ -89,7 +133,9 @@ if (count($produccion_mes) != 0) {
                     pointHoverBackgroundColor: '#fff',
                     pointHoverBorderColor: 'rgba(60,141,188,1)',
                     data: datos.produccion,
-                    tension: 0.3
+                    borderWidth: 2,
+                    fill: false,
+                    lineTension: 0.3
                 },
                 {
                     label: 'Ventas',
@@ -100,40 +146,83 @@ if (count($produccion_mes) != 0) {
                     pointHoverBackgroundColor: '#fff',
                     pointHoverBorderColor: 'rgba(220,220,220,1)',
                     data: datos.ventas,
-                    tension: 0.3
+                    borderWidth: 2,
+                    fill: false,
+                    lineTension: 0.3
                 }
             ]
         };
 
         var areaChartOptions = {
             scales: {
-                y: {
-                    beginAtZero: true
-                }
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
             },
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ' - ' + context.raw;
-                        }
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        return data.datasets[tooltipItem.datasetIndex].label + ' - ' + tooltipItem.yLabel;
                     }
                 }
             }
         };
 
+        // Verificar que Chart.js esté disponible
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js no está disponible");
+            return;
+        }
+
         // Create the line chart usando sintaxis moderna de Chart.js
-        vtasProdChart = new Chart(areaChartCanvas, {
-            type: 'line',
-            data: areaChartData,
-            options: areaChartOptions
+        try {
+            vtasProdChart = new Chart(areaChartCanvas, {
+                type: 'line',
+                data: areaChartData,
+                options: areaChartOptions
+            });
+            console.log("Gráfico Ventas vs Producción creado exitosamente");
+        } catch(e) {
+            console.error("Error al crear el gráfico:", e);
+        }
+    }
+
+    // Función para actualizar la tabla
+    function actualizarTablaVtasProd(datos) {
+        // Actualizar encabezados de meses
+        var thead = $('.box-body .table thead tr');
+        thead.html('<th>Mes</th>');
+        datos.meses.forEach(function(mes) {
+            thead.append('<th>' + mes + '</th>');
         });
+
+        // Actualizar fila de producción
+        var filaProd = $('.box-body .table tbody tr').eq(0);
+        filaProd.html('<td style="background-color: rgba(60,141,188,0.2);">Producción</td>');
+        datos.produccion.forEach(function(prod) {
+            filaProd.append('<td>' + number_format(prod, 0) + '</td>');
+        });
+
+        // Actualizar fila de ventas
+        var filaVtas = $('.box-body .table tbody tr').eq(1);
+        filaVtas.html('<td style="background-color: rgba(210, 214, 222, 0.2);">Ventas</td>');
+        datos.ventas.forEach(function(venta) {
+            filaVtas.append('<td>' + number_format(venta, 0) + '</td>');
+        });
+    }
+
+    // Función helper para formatear números
+    function number_format(number, decimals) {
+        number = parseFloat(number);
+        return number.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
     // Función para actualizar el gráfico según el período seleccionado
@@ -164,6 +253,8 @@ if (count($produccion_mes) != 0) {
                 // Verificar que la respuesta sea válida
                 if (respuesta && respuesta.meses && respuesta.meses.length > 0) {
                     crearGraficoVtasProd(respuesta);
+                    // Actualizar la tabla
+                    actualizarTablaVtasProd(respuesta);
                 } else {
                     console.error("Datos inválidos recibidos:", respuesta);
                 }
