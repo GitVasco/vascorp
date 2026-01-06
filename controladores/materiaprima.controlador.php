@@ -47,6 +47,16 @@ class ControladorMateriaPrima
 		return $respuesta;
 	}
 
+	/*=============================================
+	MOSTRAR MATERIA PRIMA CON PAGINACIÓN SERVIDOR
+	=============================================*/
+	static public function ctrMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir)
+	{
+		$respuesta = ModeloMateriaPrima::mdlMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir);
+
+		return $respuesta;
+	}
+
 
 	/* 
 	* VALIDAR CODIGO DE FABRICA EN MATERIA PRIMA

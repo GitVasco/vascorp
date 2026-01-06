@@ -1,41 +1,104 @@
-$(".tablaMateriaPrima").DataTable({
-    ajax: "ajax/materiaprima/tabla-materiaprima.ajax.php",
-    deferRender: true,
-    retrieve: true,
-    processing: true,
-    order: [[0, "desc"]],
-    pageLength: 20,
-    lengthMenu: [
-        [20, 40, 60, -1],
-        [20, 40, 60, "Todos"],
-    ],
-    language: {
-        sProcessing: "Procesando...",
-        sLengthMenu: "Mostrar _MENU_ registros",
-        sZeroRecords: "No se encontraron resultados",
-        sEmptyTable: "Ningún dato disponible en esta tabla",
-        sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
-        sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
-        sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
-        sInfoPostFix: "",
-        sSearch: "Buscar:",
-        sUrl: "",
-        sInfoThousands: ",",
-        sLoadingRecords: "Cargando...",
-        oPaginate: {
-            sFirst: "Primero",
-            sLast: "Último",
-            sNext: "Siguiente",
-            sPrevious: "Anterior",
+//MATERIA PRIMA CON PAGINACIÓN CLIENTE (ORIGINAL)
+function cargarTablaMateriaPrima() {
+    $(".tablaMateriaPrima").DataTable({
+        ajax: "ajax/materiaprima/tabla-materiaprima.ajax.php",
+        deferRender: true,
+        retrieve: true,
+        processing: true,
+        order: [[0, "desc"]],
+        pageLength: 20,
+        lengthMenu: [
+            [20, 40, 60, -1],
+            [20, 40, 60, "Todos"],
+        ],
+        language: {
+            sProcessing: "Procesando...",
+            sLengthMenu: "Mostrar _MENU_ registros",
+            sZeroRecords: "No se encontraron resultados",
+            sEmptyTable: "Ningún dato disponible en esta tabla",
+            sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+            sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+            sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+            sInfoPostFix: "",
+            sSearch: "Buscar:",
+            sUrl: "",
+            sInfoThousands: ",",
+            sLoadingRecords: "Cargando...",
+            oPaginate: {
+                sFirst: "Primero",
+                sLast: "Último",
+                sNext: "Siguiente",
+                sPrevious: "Anterior",
+            },
+            oAria: {
+                sSortAscending:
+                    ": Activar para ordenar la columna de manera ascendente",
+                sSortDescending:
+                    ": Activar para ordenar la columna de manera descendente",
+            },
         },
-        oAria: {
-            sSortAscending:
-                ": Activar para ordenar la columna de manera ascendente",
-            sSortDescending:
-                ": Activar para ordenar la columna de manera descendente",
+    });
+}
+
+//MATERIA PRIMA CON PAGINACIÓN SERVIDOR (OPTIMIZADO)
+function cargarTablaMateriaPrimaPaginado() {
+    // Destruir tabla existente si existe
+    if ($.fn.DataTable.isDataTable(".tablaMateriaPrimaPaginado")) {
+        $(".tablaMateriaPrimaPaginado").DataTable().destroy();
+    }
+
+    var table = $(".tablaMateriaPrimaPaginado").DataTable({
+        processing: true,
+        serverSide: true,
+        searchDelay: 800, // Esperar 800ms después de que el usuario deje de escribir antes de buscar
+        ajax: {
+            url: "ajax/materiaprima/tabla-materiaprima-paginado.ajax.php",
+            type: "GET",
+            data: function (d) {
+                // Opción 1: Mínimo de caracteres para buscar (recomendado para tablas grandes)
+                // Solo buscar si tiene al menos 3 caracteres o está vacío (para limpiar)
+                var minChars = 3;
+                if (d.search.value.length > 0 && d.search.value.length < minChars) {
+                    // Cancelar la búsqueda si tiene menos del mínimo
+                    // Esto evita búsquedas con 1 o 2 caracteres que pueden ser muy lentas
+                    d.search.value = "";
+                }
+            }
         },
-    },
-});
+        order: [[0, "desc"]],
+        pageLength: 20,
+        lengthMenu: [
+            [20, 40, 60, 100],
+            [20, 40, 60, 100],
+        ],
+        language: {
+            sProcessing: "Procesando...",
+            sLengthMenu: "Mostrar _MENU_ registros",
+            sZeroRecords: "No se encontraron resultados",
+            sEmptyTable: "Ningún dato disponible en esta tabla",
+            sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+            sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+            sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+            sInfoPostFix: "",
+            sSearch: "Buscar:",
+            sUrl: "",
+            sInfoThousands: ",",
+            sLoadingRecords: "Cargando...",
+            oPaginate: {
+                sFirst: "Primero",
+                sLast: "Último",
+                sNext: "Siguiente",
+                sPrevious: "Anterior",
+            },
+            oAria: {
+                sSortAscending:
+                    ": Activar para ordenar la columna de manera ascendente",
+                sSortDescending:
+                    ": Activar para ordenar la columna de manera descendente",
+            },
+        },
+    });
+}
 
 /*
  * tabla paraa cargar la lista de materia - URGENCIA
@@ -84,105 +147,115 @@ $(".tablaUrgenciasAMP").DataTable({
 /*
  * EDITAR NOMBRE MATERIA PRIMA
  */
+// Función común para manejar la edición
+function editarMateriaPrima(idMateriaPrima) {
+    var datos = new FormData();
+    datos.append("idMateriaPrima", idMateriaPrima);
+
+    $.ajax({
+        url: "ajax/materiaprima.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            // console.log(respuesta);
+            var linea = respuesta["FamPro"].substr(0, 3);
+            var sublinea = respuesta["FamPro"].substr(3, 6);
+            var fecha = respuesta["FecReg"].substr(0, 10);
+            // console.log(linea);
+            // console.log(sublinea);
+
+            var datos2 = new FormData();
+            datos2.append("linea2", linea);
+            datos2.append("sublinea", sublinea);
+
+            $.ajax({
+                url: "ajax/materiaprima.ajax.php",
+                method: "POST",
+                data: datos2,
+                cache: false,
+                contentType: false,
+                processData: false,
+                dataType: "json",
+                success: function (respuesta2) {
+                    $("#editarSubLinea2").val(
+                        respuesta2["Valor_3"] +
+                            " - " +
+                            respuesta2["Des_Larga"]
+                    );
+                    $("#editarSubLinea").val(respuesta2["Valor_3"]);
+                },
+            });
+            $("#editarCodigoPro").val(respuesta["codpro"]);
+            $("#editarCodigoFab").val(respuesta["codfab"]);
+            $("#editarCodigoAlt").val(respuesta["CodAlt"]);
+            $("#editarFechaEmision").val(fecha);
+            $("#editarLinea").val(linea);
+            $("#editarUsuarioReg").val(respuesta["UsuReg"]);
+            $("#editarLinea").selectpicker("refresh");
+            $("#editarColorMateria").val(respuesta["ColPro"]);
+            $("#editarColorMateria").selectpicker("refresh");
+            $("#editarTallaMateria").val(respuesta["TalPro"]);
+            $("#editarTallaMateria").selectpicker("refresh");
+            $("#editarUnidadMedida").val(respuesta["UndPro"]);
+            $("#editarUnidadMedida").selectpicker("refresh");
+            $("#editarPeso").val(respuesta["PesPro"]);
+            $("#editarAdVal").val(respuesta["Por_Adval"]);
+            $("#editarSeguro").val(respuesta["Por_Seg"]);
+            $("#editarStockActual").val(respuesta["Stk_Act"]);
+            $("#editarStockMinimo").val(respuesta["Stk_Min"]);
+            $("#editarStockMaximo").val(respuesta["Stk_Max"]);
+            $("#editarDescripcion").val(respuesta["despro"]);
+            $("#editarProveedor").val(respuesta["CodProv1"]);
+            $("#editarProveedor").selectpicker("refresh");
+            $("#editarMoneda").val(respuesta["MonProv1"]);
+            $("#editarMoneda").selectpicker("refresh");
+            $("#editarPrecioSIGV").val(respuesta["PreProv1"]);
+            $("#editarProveedor1").val(respuesta["CodProv2"]);
+            $("#editarProveedor1").selectpicker("refresh");
+            $("#editarMoneda1").val(respuesta["MonProv2"]);
+            $("#editarMoneda1").selectpicker("refresh");
+            $("#editarPrecioSIGV1").val(respuesta["PreProv2"]);
+            $("#editarProveedor2").val(respuesta["CodProv3"]);
+            $("#editarProveedor2").selectpicker("refresh");
+            $("#editarMoneda2").val(respuesta["MonProv3"]);
+            $("#editarMoneda2").selectpicker("refresh");
+            $("#editarPrecioSIGV2").val(respuesta["PreProv3"]);
+            $("#editarObservacion1").val(respuesta["ObsProv1"]);
+            $("#editarObservacion2").val(respuesta["ObsProv2"]);
+            $("#editarObservacion3").val(respuesta["ObsProv3"]);
+        },
+    });
+}
+
+// Evento para tabla cliente
 $(".tablaMateriaPrima tbody").on(
     "click",
     "button.btnEditarMateriaPrima",
     function () {
         var idMateriaPrima = $(this).attr("idMateriaPrima");
+        editarMateriaPrima(idMateriaPrima);
+    }
+);
 
-        /* console.log("idMateriaPrima", idMateriaPrima); */
-
-        var datos = new FormData();
-        datos.append("idMateriaPrima", idMateriaPrima);
-
-        $.ajax({
-            url: "ajax/materiaprima.ajax.php",
-            method: "POST",
-            data: datos,
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: "json",
-            success: function (respuesta) {
-                // console.log(respuesta);
-                var linea = respuesta["FamPro"].substr(0, 3);
-                var sublinea = respuesta["FamPro"].substr(3, 6);
-                var fecha = respuesta["FecReg"].substr(0, 10);
-                // console.log(linea);
-                // console.log(sublinea);
-
-                var datos2 = new FormData();
-                datos2.append("linea2", linea);
-                datos2.append("sublinea", sublinea);
-
-                $.ajax({
-                    url: "ajax/materiaprima.ajax.php",
-                    method: "POST",
-                    data: datos2,
-                    cache: false,
-                    contentType: false,
-                    processData: false,
-                    dataType: "json",
-                    success: function (respuesta2) {
-                        $("#editarSubLinea2").val(
-                            respuesta2["Valor_3"] +
-                                " - " +
-                                respuesta2["Des_Larga"]
-                        );
-                        $("#editarSubLinea").val(respuesta2["Valor_3"]);
-                    },
-                });
-                $("#editarCodigoPro").val(respuesta["codpro"]);
-                $("#editarCodigoFab").val(respuesta["codfab"]);
-                $("#editarCodigoAlt").val(respuesta["CodAlt"]);
-                $("#editarFechaEmision").val(fecha);
-                $("#editarLinea").val(linea);
-                $("#editarUsuarioReg").val(respuesta["UsuReg"]);
-                $("#editarLinea").selectpicker("refresh");
-                $("#editarColorMateria").val(respuesta["ColPro"]);
-                $("#editarColorMateria").selectpicker("refresh");
-                $("#editarTallaMateria").val(respuesta["TalPro"]);
-                $("#editarTallaMateria").selectpicker("refresh");
-                $("#editarUnidadMedida").val(respuesta["UndPro"]);
-                $("#editarUnidadMedida").selectpicker("refresh");
-                $("#editarPeso").val(respuesta["PesPro"]);
-                $("#editarAdVal").val(respuesta["Por_Adval"]);
-                $("#editarSeguro").val(respuesta["Por_Seg"]);
-                $("#editarStockActual").val(respuesta["Stk_Act"]);
-                $("#editarStockMinimo").val(respuesta["Stk_Min"]);
-                $("#editarStockMaximo").val(respuesta["Stk_Max"]);
-                $("#editarDescripcion").val(respuesta["despro"]);
-                $("#editarProveedor").val(respuesta["CodProv1"]);
-                $("#editarProveedor").selectpicker("refresh");
-                $("#editarMoneda").val(respuesta["MonProv1"]);
-                $("#editarMoneda").selectpicker("refresh");
-                $("#editarPrecioSIGV").val(respuesta["PreProv1"]);
-                $("#editarProveedor1").val(respuesta["CodProv2"]);
-                $("#editarProveedor1").selectpicker("refresh");
-                $("#editarMoneda1").val(respuesta["MonProv2"]);
-                $("#editarMoneda1").selectpicker("refresh");
-                $("#editarPrecioSIGV1").val(respuesta["PreProv2"]);
-                $("#editarProveedor2").val(respuesta["CodProv3"]);
-                $("#editarProveedor2").selectpicker("refresh");
-                $("#editarMoneda2").val(respuesta["MonProv3"]);
-                $("#editarMoneda2").selectpicker("refresh");
-                $("#editarPrecioSIGV2").val(respuesta["PreProv3"]);
-                $("#editarObservacion1").val(respuesta["ObsProv1"]);
-                $("#editarObservacion2").val(respuesta["ObsProv2"]);
-                $("#editarObservacion3").val(respuesta["ObsProv3"]);
-            },
-        });
+// Evento para tabla servidor
+$(".tablaMateriaPrimaPaginado tbody").on(
+    "click",
+    "button.btnEditarMateriaPrima",
+    function () {
+        var idMateriaPrima = $(this).attr("idMateriaPrima");
+        editarMateriaPrima(idMateriaPrima);
     }
 );
 
 /*
  * VISUALIZAR DETALLE DE ARTICULOS QUE LLEVAN ESA MATERIA PRIMA
  */
-$(".tablaMateriaPrima").on("click", ".btnVisualizarArticulos", function () {
-    var articuloMP = $(this).attr("articuloMP");
-
-    /* console.log("articuloMP", articuloMP); */
-
+// Función común para visualizar artículos
+function visualizarArticulos(articuloMP) {
     var datos = new FormData();
     datos.append("articuloMP", articuloMP);
 
@@ -221,7 +294,7 @@ $(".tablaMateriaPrima").on("click", ".btnVisualizarArticulos", function () {
         },
     });
 
-    var articuloMPDetalle = $(this).attr("articuloMP");
+    var articuloMPDetalle = articuloMP;
 
     /* console.log("articuloMPDetalle", articuloMPDetalle); */
 
@@ -273,16 +346,25 @@ $(".tablaMateriaPrima").on("click", ".btnVisualizarArticulos", function () {
             }
         },
     });
+}
+
+// Evento para tabla cliente
+$(".tablaMateriaPrima").on("click", ".btnVisualizarArticulos", function () {
+    var articuloMP = $(this).attr("articuloMP");
+    visualizarArticulos(articuloMP);
+});
+
+// Evento para tabla servidor
+$(".tablaMateriaPrimaPaginado").on("click", ".btnVisualizarArticulos", function () {
+    var articuloMP = $(this).attr("articuloMP");
+    visualizarArticulos(articuloMP);
 });
 
 /*
  * EDITAR COSTO MATERIA PRIMA
  */
-$(".tablaMateriaPrima tbody").on("click", "button.btnEditarCosto", function () {
-    var materiaPrima = $(this).attr("materiaPrima");
-
-    /* console.log("materiaPrima", materiaPrima); */
-
+// Función común para editar costo
+function editarCostoMateriaPrima(materiaPrima) {
     var datosCosto = new FormData();
     datosCosto.append("materiaPrima", materiaPrima);
 
@@ -308,6 +390,18 @@ $(".tablaMateriaPrima tbody").on("click", "button.btnEditarCosto", function () {
             $("#costo").val(respuestaCostos["cospro"]);
         },
     });
+}
+
+// Evento para tabla cliente
+$(".tablaMateriaPrima tbody").on("click", "button.btnEditarCosto", function () {
+    var materiaPrima = $(this).attr("materiaPrima");
+    editarCostoMateriaPrima(materiaPrima);
+});
+
+// Evento para tabla servidor
+$(".tablaMateriaPrimaPaginado tbody").on("click", "button.btnEditarCosto", function () {
+    var materiaPrima = $(this).attr("materiaPrima");
+    editarCostoMateriaPrima(materiaPrima);
 });
 
 /* 
@@ -681,89 +775,102 @@ $("#btnLimpiarProveedor3").click(function () {
 /*
  * DUPLICAR MATERIA PRIMA
  */
+// Función común para duplicar materia prima
+function duplicarMateriaPrima(idMateriaPrima) {
+    var datos = new FormData();
+    datos.append("idMateriaPrima", idMateriaPrima);
+
+    $.ajax({
+        url: "ajax/materiaprima.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            // console.log(respuesta);
+            var linea = respuesta["FamPro"].substr(0, 3);
+            var sublinea = respuesta["FamPro"].substr(3, 6);
+            var datos2 = new FormData();
+            datos2.append("linea2", linea);
+            datos2.append("sublinea", sublinea);
+
+            $.ajax({
+                url: "ajax/materiaprima.ajax.php",
+                method: "POST",
+                data: datos2,
+                cache: false,
+                contentType: false,
+                processData: false,
+                dataType: "json",
+                success: function (respuesta2) {
+                    $("#duplicarSubLinea2").val(
+                        respuesta2["Valor_3"] +
+                            " - " +
+                            respuesta2["Des_Larga"]
+                    );
+                    $("#duplicarSubLinea").val(respuesta2["Valor_3"]);
+                },
+            });
+            $("#duplicarCodigoPro").val(respuesta["codpro"]);
+            $("#duplicarCodigoFab").val(respuesta["codfab"]);
+            $("#duplicarCodigoAlt").val(respuesta["CodAlt"]);
+            $("#duplicarLinea").val(linea);
+            $("#duplicarLinea").selectpicker("refresh");
+            $("#duplicarColorMateria").val(respuesta["ColPro"]);
+            $("#duplicarFamPro").val(respuesta["FamPro"]);
+            $("#duplicarColorMateria").selectpicker("refresh");
+            $("#duplicarTallaMateria").val(respuesta["TalPro"]);
+            $("#duplicarTallaMateria").selectpicker("refresh");
+            $("#duplicarUnidadMedida").val(respuesta["UndPro"]);
+            $("#duplicarUnidadMedida").selectpicker("refresh");
+            $("#duplicarPeso").val(respuesta["PesPro"]);
+            $("#duplicarAdVal").val(respuesta["Por_Adval"]);
+            $("#duplicarSeguro").val(respuesta["Por_Seg"]);
+            $("#duplicarStockActual").val(respuesta["Stk_Act"]);
+            $("#duplicarStockMinimo").val(respuesta["Stk_Min"]);
+            $("#duplicarStockMaximo").val(respuesta["Stk_Max"]);
+            $("#duplicarDescripcion").val(respuesta["despro"]);
+            $("#duplicarProveedor").val(respuesta["CodProv1"]);
+            $("#duplicarProveedor").selectpicker("refresh");
+            $("#duplicarMoneda").val(respuesta["MonProv1"]);
+            $("#duplicarMoneda").selectpicker("refresh");
+            $("#duplicarPrecioSIGV").val(respuesta["PreProv1"]);
+            $("#duplicarProveedor1").val(respuesta["CodProv2"]);
+            $("#duplicarProveedor1").selectpicker("refresh");
+            $("#duplicarMoneda1").val(respuesta["MonProv2"]);
+            $("#duplicarMoneda1").selectpicker("refresh");
+            $("#duplicarPrecioSIGV1").val(respuesta["PreProv2"]);
+            $("#duplicarProveedor2").val(respuesta["CodProv3"]);
+            $("#duplicarProveedor2").selectpicker("refresh");
+            $("#duplicarMoneda2").val(respuesta["MonProv3"]);
+            $("#duplicarMoneda2").selectpicker("refresh");
+            $("#duplicarPrecioSIGV2").val(respuesta["PreProv3"]);
+            $("#duplicarObservacion1").val(respuesta["ObsProv1"]);
+            $("#duplicarObservacion2").val(respuesta["ObsProv2"]);
+            $("#duplicarObservacion3").val(respuesta["ObsProv3"]);
+        },
+    });
+}
+
+// Evento para tabla cliente
 $(".tablaMateriaPrima tbody").on(
     "click",
     "button.btnDuplicarMateriaPrima",
     function () {
         var idMateriaPrima = $(this).attr("idMateriaPrima");
+        duplicarMateriaPrima(idMateriaPrima);
+    }
+);
 
-        /* console.log("idMateriaPrima", idMateriaPrima); */
-
-        var datos = new FormData();
-        datos.append("idMateriaPrima", idMateriaPrima);
-
-        $.ajax({
-            url: "ajax/materiaprima.ajax.php",
-            method: "POST",
-            data: datos,
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: "json",
-            success: function (respuesta) {
-                // console.log(respuesta);
-                var linea = respuesta["FamPro"].substr(0, 3);
-                var sublinea = respuesta["FamPro"].substr(3, 6);
-                var datos2 = new FormData();
-                datos2.append("linea2", linea);
-                datos2.append("sublinea", sublinea);
-
-                $.ajax({
-                    url: "ajax/materiaprima.ajax.php",
-                    method: "POST",
-                    data: datos2,
-                    cache: false,
-                    contentType: false,
-                    processData: false,
-                    dataType: "json",
-                    success: function (respuesta2) {
-                        $("#duplicarSubLinea2").val(
-                            respuesta2["Valor_3"] +
-                                " - " +
-                                respuesta2["Des_Larga"]
-                        );
-                        $("#duplicarSubLinea").val(respuesta2["Valor_3"]);
-                    },
-                });
-                $("#duplicarCodigoPro").val(respuesta["codpro"]);
-                $("#duplicarCodigoFab").val(respuesta["codfab"]);
-                $("#duplicarCodigoAlt").val(respuesta["CodAlt"]);
-                $("#duplicarLinea").val(linea);
-                $("#duplicarLinea").selectpicker("refresh");
-                $("#duplicarColorMateria").val(respuesta["ColPro"]);
-                $("#duplicarFamPro").val(respuesta["FamPro"]);
-                $("#duplicarColorMateria").selectpicker("refresh");
-                $("#duplicarTallaMateria").val(respuesta["TalPro"]);
-                $("#duplicarTallaMateria").selectpicker("refresh");
-                $("#duplicarUnidadMedida").val(respuesta["UndPro"]);
-                $("#duplicarUnidadMedida").selectpicker("refresh");
-                $("#duplicarPeso").val(respuesta["PesPro"]);
-                $("#duplicarAdVal").val(respuesta["Por_Adval"]);
-                $("#duplicarSeguro").val(respuesta["Por_Seg"]);
-                $("#duplicarStockActual").val(respuesta["Stk_Act"]);
-                $("#duplicarStockMinimo").val(respuesta["Stk_Min"]);
-                $("#duplicarStockMaximo").val(respuesta["Stk_Max"]);
-                $("#duplicarDescripcion").val(respuesta["despro"]);
-                $("#duplicarProveedor").val(respuesta["CodProv1"]);
-                $("#duplicarProveedor").selectpicker("refresh");
-                $("#duplicarMoneda").val(respuesta["MonProv1"]);
-                $("#duplicarMoneda").selectpicker("refresh");
-                $("#duplicarPrecioSIGV").val(respuesta["PreProv1"]);
-                $("#duplicarProveedor1").val(respuesta["CodProv2"]);
-                $("#duplicarProveedor1").selectpicker("refresh");
-                $("#duplicarMoneda1").val(respuesta["MonProv2"]);
-                $("#duplicarMoneda1").selectpicker("refresh");
-                $("#duplicarPrecioSIGV1").val(respuesta["PreProv2"]);
-                $("#duplicarProveedor2").val(respuesta["CodProv3"]);
-                $("#duplicarProveedor2").selectpicker("refresh");
-                $("#duplicarMoneda2").val(respuesta["MonProv3"]);
-                $("#duplicarMoneda2").selectpicker("refresh");
-                $("#duplicarPrecioSIGV2").val(respuesta["PreProv3"]);
-                $("#duplicarObservacion1").val(respuesta["ObsProv1"]);
-                $("#duplicarObservacion2").val(respuesta["ObsProv2"]);
-                $("#duplicarObservacion3").val(respuesta["ObsProv3"]);
-            },
-        });
+// Evento para tabla servidor
+$(".tablaMateriaPrimaPaginado tbody").on(
+    "click",
+    "button.btnDuplicarMateriaPrima",
+    function () {
+        var idMateriaPrima = $(this).attr("idMateriaPrima");
+        duplicarMateriaPrima(idMateriaPrima);
     }
 );
 
@@ -891,9 +998,8 @@ $("#editarProveedor2").change(function () {
 /*=============================================
 ANULAR MATERIA PRIMA
 =============================================*/
-$(".tablaMateriaPrima").on("click", ".btnAnularMateriaPrima", function () {
-    var idMateriaPrima = $(this).attr("idMateriaPrima");
-
+// Función común para anular materia prima
+function anularMateriaPrima(idMateriaPrima) {
     swal({
         title: "¿Está seguro de anular la materia prima?",
         text: "¡Si no lo está puede cancelar la acción!",
@@ -905,10 +1011,24 @@ $(".tablaMateriaPrima").on("click", ".btnAnularMateriaPrima", function () {
         confirmButtonText: "Si, anular materia prima!",
     }).then(function (result) {
         if (result.value) {
+            // Determinar la ruta según la configuración
+            var ruta = window.RUTA_MATERIAPRIMA || "materiaprima";
             window.location =
-                "index.php?ruta=materiaprima&idMateriaPrima=" + idMateriaPrima;
+                "index.php?ruta=" + ruta + "&idMateriaPrima=" + idMateriaPrima;
         }
     });
+}
+
+// Evento para tabla cliente
+$(".tablaMateriaPrima").on("click", ".btnAnularMateriaPrima", function () {
+    var idMateriaPrima = $(this).attr("idMateriaPrima");
+    anularMateriaPrima(idMateriaPrima);
+});
+
+// Evento para tabla servidor
+$(".tablaMateriaPrimaPaginado").on("click", ".btnAnularMateriaPrima", function () {
+    var idMateriaPrima = $(this).attr("idMateriaPrima");
+    anularMateriaPrima(idMateriaPrima);
 });
 
 /*=============================================
@@ -980,9 +1100,19 @@ $("#formularioEditarMateria").on(
             success: function (respuesta) {
                 // console.log(respuesta);
                 if (respuesta == "ok") {
-                    $(".tablaMateriaPrima")
-                        .DataTable()
-                        .ajax.reload(null, false);
+                    // Recargar tabla según la configuración (RUTA_MATERIAPRIMA)
+                    var ruta = window.RUTA_MATERIAPRIMA || "materiaprima";
+                    if (ruta === "materiaprima-test") {
+                        // Si estamos en modo servidor, recargar tabla paginada
+                        if ($.fn.DataTable.isDataTable(".tablaMateriaPrimaPaginado")) {
+                            $(".tablaMateriaPrimaPaginado").DataTable().ajax.reload(null, false);
+                        }
+                    } else {
+                        // Si estamos en modo cliente, recargar tabla cliente
+                        if ($.fn.DataTable.isDataTable(".tablaMateriaPrima")) {
+                            $(".tablaMateriaPrima").DataTable().ajax.reload(null, false);
+                        }
+                    }
                     $("#modalEditarMateriaPrima").modal("hide");
                     Command: toastr["success"](
                         "Editado de materia prima exitosamente!"
@@ -1831,3 +1961,4 @@ $("#formularioSaldosMatPri").on(
         window.location = `vistas/reportes_excel/saldos_materiaprima.php?fin=${fin}`;
     }
 );
+

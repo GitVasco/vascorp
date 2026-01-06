@@ -2118,4 +2118,268 @@ class ModeloMateriaPrima
 
 		$stmt = null;
 	}
+
+	/*=============================================
+	MOSTRAR MATERIA PRIMA CON PAGINACIÓN SERVIDOR
+	=============================================*/
+
+	static public function mdlMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir)
+	{
+		// Construir WHERE clause base
+		$where = "1=1";
+
+		// Construir búsqueda
+		$searchWhere = "";
+		if (!empty($search)) {
+			$searchWhere = " AND (
+				pro.CodPro LIKE :search1 OR 
+				pro.CodFab LIKE :search2 OR 
+				pro.DesPro LIKE :search3 OR 
+				TbCol.Des_Larga LIKE :search4 OR 
+				TbTal.Des_larga LIKE :search5 OR
+				TbUnd.Des_Corta LIKE :search6 OR
+				pmp.Proveedores LIKE :search7
+			)";
+		}
+
+		// Mapeo de columnas para ordenamiento
+		$columns = [
+			0 => "pro.CodPro",
+			1 => "pro.CodFab",
+			2 => "pro.DesPro",
+			3 => "TbCol.Des_Larga",
+			4 => "TbTal.Des_larga",
+			5 => "TbUnd.Des_Corta",
+			6 => "pmp.Proveedores",
+			7 => "pro.CodAlm01",
+			8 => "pro.estpro"
+		];
+
+		$orderBy = isset($columns[$orderColumn]) ? $columns[$orderColumn] : "pro.CodPro";
+		$orderDir = strtoupper($orderDir) == "ASC" ? "ASC" : "DESC";
+
+		// Consulta para obtener total de registros
+		$sqlTotal = "SELECT COUNT(DISTINCT pro.CodPro) as total 
+			FROM Producto pro 
+			LEFT JOIN 
+			(SELECT DISTINCT 
+				p.codpro,
+				CONCAT_WS(
+				' - ',
+				IFNULL(p1.razpro, ''),
+				IFNULL(p2.razpro, ''),
+				IFNULL(p3.razpro, '')
+				) AS proveedores,
+				GREATEST(
+				p.preprov1,
+				p.preprov2,
+				p.preprov2
+				) AS precio 
+			FROM
+				preciomp p 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p1 
+				ON p.codprov1 = p1.codruc 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p2 
+				ON p.codprov2 = p2.codruc 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p3 
+				ON p.codprov3 = p3.codruc) AS pmp 
+			ON pmp.CodPro = pro.CodPro 
+			INNER JOIN Tabla_M_Detalle AS TbUnd 
+			ON pro.UndPro = TbUnd.Cod_Argumento 
+			AND (TbUnd.Cod_Tabla = 'TUND') 
+			INNER JOIN Tabla_M_Detalle AS TbCol 
+			ON pro.ColPro = TbCol.Cod_Argumento 
+			AND (TbCol.Cod_Tabla = 'TCOL') 
+			INNER JOIN Tabla_M_Detalle AS TbTal 
+			ON pro.TalPro = TbTal.Cod_Argumento 
+			AND (TbTal.Cod_Tabla = 'TTAL') 
+			WHERE $where";
+
+		$stmtTotal = Conexion::conectar()->prepare($sqlTotal);
+		$stmtTotal->execute();
+		$totalRecords = $stmtTotal->fetch(PDO::FETCH_ASSOC)["total"];
+
+		// Consulta para obtener total filtrado
+		$sqlFiltered = "SELECT COUNT(DISTINCT pro.CodPro) as total 
+			FROM Producto pro 
+			LEFT JOIN 
+			(SELECT DISTINCT 
+				p.codpro,
+				CONCAT_WS(
+				' - ',
+				IFNULL(p1.razpro, ''),
+				IFNULL(p2.razpro, ''),
+				IFNULL(p3.razpro, '')
+				) AS proveedores,
+				GREATEST(
+				p.preprov1,
+				p.preprov2,
+				p.preprov2
+				) AS precio 
+			FROM
+				preciomp p 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p1 
+				ON p.codprov1 = p1.codruc 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p2 
+				ON p.codprov2 = p2.codruc 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p3 
+				ON p.codprov3 = p3.codruc) AS pmp 
+			ON pmp.CodPro = pro.CodPro 
+			INNER JOIN Tabla_M_Detalle AS TbUnd 
+			ON pro.UndPro = TbUnd.Cod_Argumento 
+			AND (TbUnd.Cod_Tabla = 'TUND') 
+			INNER JOIN Tabla_M_Detalle AS TbCol 
+			ON pro.ColPro = TbCol.Cod_Argumento 
+			AND (TbCol.Cod_Tabla = 'TCOL') 
+			INNER JOIN Tabla_M_Detalle AS TbTal 
+			ON pro.TalPro = TbTal.Cod_Argumento 
+			AND (TbTal.Cod_Tabla = 'TTAL') 
+			WHERE $where $searchWhere";
+
+		$stmtFiltered = Conexion::conectar()->prepare($sqlFiltered);
+		if (!empty($search)) {
+			$searchParam = "%$search%";
+			$stmtFiltered->bindParam(":search1", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search2", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search3", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search4", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search5", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search6", $searchParam, PDO::PARAM_STR);
+			$stmtFiltered->bindParam(":search7", $searchParam, PDO::PARAM_STR);
+		}
+		$stmtFiltered->execute();
+		$filteredRecords = $stmtFiltered->fetch(PDO::FETCH_ASSOC)["total"];
+
+		// Consulta principal con paginación
+		$sql = "SELECT DISTINCT 
+			'MP' AS Mp,
+			pro.CodAlt,
+			pro.CodFab,
+			pro.DesPro,
+			pro.CodPro,
+			pro.CodAlm01,
+			pro.Stk_Min,
+			pro.Stk_Max,
+			TbUnd.Des_Corta AS Unidad,
+			TbCol.Cod_Argumento AS CodigoColor,
+			TbCol.Des_Larga AS Color,
+			pro.TalPro,
+			TbTal.Des_larga AS Talla,
+			pmp.Proveedores,
+			IFNULL(pmp.precio, 0.000000) AS precio,
+			CASE
+			WHEN pro.estpro = 1 THEN 'Activo'
+			ELSE 'Inactivo'END AS estpro
+		FROM
+			Producto pro 
+			LEFT JOIN 
+			(SELECT DISTINCT 
+				p.codpro,
+				CONCAT_WS(
+				' - ',
+				IFNULL(p1.razpro, ''),
+				IFNULL(p2.razpro, ''),
+				IFNULL(p3.razpro, '')
+				) AS proveedores,
+				GREATEST(
+				p.preprov1,
+				p.preprov2,
+				p.preprov2
+				) AS precio 
+			FROM
+				preciomp p 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p1 
+				ON p.codprov1 = p1.codruc 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p2 
+				ON p.codprov2 = p2.codruc 
+				LEFT JOIN 
+				(SELECT DISTINCT 
+					codruc,
+					razpro 
+				FROM
+					proveedor prov) AS p3 
+				ON p.codprov3 = p3.codruc) AS pmp 
+			ON pmp.CodPro = pro.CodPro 
+			INNER JOIN Tabla_M_Detalle AS TbUnd 
+			ON pro.UndPro = TbUnd.Cod_Argumento 
+			AND (TbUnd.Cod_Tabla = 'TUND') 
+			INNER JOIN Tabla_M_Detalle AS TbCol 
+			ON pro.ColPro = TbCol.Cod_Argumento 
+			AND (TbCol.Cod_Tabla = 'TCOL') 
+			INNER JOIN Tabla_M_Detalle AS TbTal 
+			ON pro.TalPro = TbTal.Cod_Argumento 
+			AND (TbTal.Cod_Tabla = 'TTAL') 
+			WHERE $where $searchWhere
+			GROUP BY pro.CodPro 
+			ORDER BY $orderBy $orderDir
+			LIMIT :start, :length";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		
+		if (!empty($search)) {
+			$searchParam = "%$search%";
+			$stmt->bindParam(":search1", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search2", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search3", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search4", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search5", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search6", $searchParam, PDO::PARAM_STR);
+			$stmt->bindParam(":search7", $searchParam, PDO::PARAM_STR);
+		}
+		
+		$stmt->bindParam(":start", $start, PDO::PARAM_INT);
+		$stmt->bindParam(":length", $length, PDO::PARAM_INT);
+		
+		$stmt->execute();
+		$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		return [
+			"data" => $data,
+			"recordsTotal" => $totalRecords,
+			"recordsFiltered" => $filteredRecords
+		];
+
+		$stmt->close();
+		$stmt = null;
+	}
 }

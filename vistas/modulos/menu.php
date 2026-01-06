@@ -914,6 +914,7 @@
 
                         <li class="treeview <?php if (
                                                 $_GET["ruta"] == "materiaprima" ||
+                                                $_GET["ruta"] == "materiaprima-test" ||
                                                 $_GET["ruta"] == "almacen-01"
                                             ) echo 'active'; ?>">
 
@@ -927,13 +928,44 @@
 
                             <ul class="treeview-menu">
 
-                                <li class="<?php if ($_GET["ruta"] == "materiaprima") echo 'active'; ?>">
+                                <?php 
+                                // Determinar qué rutas mostrar según la configuración
+                                $tipoPaginacionMP = (defined('TIPO_PAGINACION_MATERIAPRIMA')) ? TIPO_PAGINACION_MATERIAPRIMA : "cliente";
+                                
+                                if ($tipoPaginacionMP === "ambos") {
+                                    // Mostrar ambas opciones para comparar
+                                    ?>
+                                    <li class="<?php if ($_GET["ruta"] == "materiaprima") echo 'active'; ?>">
 
-                                    <a href="materiaprima">
-                                        <i class="fa fa-circle-o"></i> Materia Prima
-                                    </a>
+                                        <a href="materiaprima">
+                                            <i class="fa fa-circle-o text-blue"></i>
+                                            <span>Materia Prima (Cliente)</span>
+                                        </a>
 
-                                </li>
+                                    </li>
+
+                                    <li class="<?php if ($_GET["ruta"] == "materiaprima-test") echo 'active'; ?>">
+
+                                        <a href="materiaprima-test">
+                                            <i class="fa fa-circle-o text-orange"></i>
+                                            <span>Materia Prima (Servidor)</span>
+                                        </a>
+
+                                    </li>
+                                    <?php
+                                } else {
+                                    // Mostrar solo una opción según la configuración
+                                    ?>
+                                    <li class="<?php if ($_GET["ruta"] == "materiaprima" || $_GET["ruta"] == "materiaprima-test") echo 'active'; ?>">
+
+                                        <a href="<?php echo obtenerRutaMateriaPrima(); ?>">
+                                            <i class="fa fa-circle-o"></i> Materia Prima
+                                        </a>
+
+                                    </li>
+                                    <?php
+                                }
+                                ?>
 
                                 <li class="<?php if ($_GET["ruta"] == "almacen-01") echo 'active'; ?>">
 

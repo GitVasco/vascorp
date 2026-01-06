@@ -2011,6 +2011,24 @@ $anularMateriaPrima->ctrAnularMateriaPrima();
 
 ?>
 
+<script src="vistas/js/materiaprima.js"></script>
 <script>
     window.document.title = "Materia Prima";
+    window.RUTA_MATERIAPRIMA = "<?php echo obtenerRutaMateriaPrima(); ?>";
+
+    // Inicializar tabla con paginación del cliente (solo si no estamos en modo servidor)
+    <?php if (!isset($modo_servidor_materiaprima) || !$modo_servidor_materiaprima): ?>
+        $(document).ready(function() {
+            var tipoPaginacion = "<?php echo (defined('TIPO_PAGINACION_MATERIAPRIMA')) ? TIPO_PAGINACION_MATERIAPRIMA : 'cliente'; ?>";
+            // En materiaprima.php siempre usamos la tabla cliente
+            if (tipoPaginacion === "servidor") {
+                // Si solo está configurado servidor, redirigir a materiaprima-test
+                // Pero si estamos aquí, significa que la configuración permite cliente
+                cargarTablaMateriaPrima();
+            } else {
+                // Para "cliente" o "ambos", usar tabla cliente
+                cargarTablaMateriaPrima();
+            }
+        });
+    <?php endif; ?>
 </script>

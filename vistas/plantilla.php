@@ -303,6 +303,7 @@ CUERPO DOCUMENTO
                 include "modulos/maestros/" . $_GET["ruta"] . ".php";
             } else if (
                 $_GET["ruta"] == "materiaprima" ||
+                $_GET["ruta"] == "materiaprima-test" ||
                 $_GET["ruta"] == "notas-ingresos" ||
                 $_GET["ruta"] == "crear-nota-ingreso" ||
                 $_GET["ruta"] == "notas-salidas" ||
@@ -323,8 +324,28 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "crear-copas-prod" ||
                 $_GET["ruta"] == "tabla-produccion"
             ) {
-
-                include "modulos/materiaprima/" . $_GET["ruta"] . ".php";
+                // Manejar rutas según la configuración
+                $tipoPaginacionMP = (defined('TIPO_PAGINACION_MATERIAPRIMA')) ? TIPO_PAGINACION_MATERIAPRIMA : "cliente";
+                
+                if ($_GET["ruta"] == "materiaprima") {
+                    // Si está en modo "ambos", permitir acceso directo a materiaprima.php
+                    // Si está en modo "servidor", redirigir a materiaprima-test.php
+                    if ($tipoPaginacionMP === "servidor") {
+                        include "modulos/materiaprima/materiaprima-test.php";
+                    } else {
+                        include "modulos/materiaprima/materiaprima.php";
+                    }
+                } elseif ($_GET["ruta"] == "materiaprima-test") {
+                    // Solo permitir acceso a materiaprima-test si está en modo "servidor" o "ambos"
+                    if ($tipoPaginacionMP === "servidor" || $tipoPaginacionMP === "ambos") {
+                        include "modulos/materiaprima/materiaprima-test.php";
+                    } else {
+                        // Si está en modo "cliente", redirigir a materiaprima.php
+                        include "modulos/materiaprima/materiaprima.php";
+                    }
+                } else {
+                    include "modulos/materiaprima/" . $_GET["ruta"] . ".php";
+                }
             } else if (
                 $_GET["ruta"] == "ordencorte" ||
                 $_GET["ruta"] == "crear-ordencorte" ||
