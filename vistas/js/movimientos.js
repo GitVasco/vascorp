@@ -511,27 +511,86 @@ $(".box").on("click", ".btnReporteSalida", function () {
 });
 
 /*
- * BOTON ACEPTAR
+ * MANEJO DE FILTROS AÑO Y MES PARA INICIO-GERENCIA
  */
-$("#mesGerencia").change(function () {
-    var mes = $(this).val();
+function actualizarFiltrosGerencia() {
+    var año = $("#añoGerencia").val() || "";
+    var mes = $("#mesGerencia").val() || "";
 
+    localStorage.setItem("añoGerencia", año);
     localStorage.setItem("mesGerencia", mes);
 
-    //console.log(mes)
+    // Construir URL con parámetros
+    var url = "index.php?ruta=inicio-gerencia";
+    if (año != "") {
+        url += "&año=" + año;
+    }
+    if (mes != "") {
+        url += "&mes=" + mes;
+    }
 
-    window.location = "index.php?ruta=inicio-gerencia&mes=" + mes;
+    window.location = url;
+}
 
-    $(".tablaVtasGerencia").DataTable().destroy();
+// Cargar valores de la URL o localStorage al cargar la página
+$(document).ready(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const añoURL = urlParams.get("año");
+    const mesURL = urlParams.get("mes");
+    
+    // Si hay parámetros en la URL, usarlos (el PHP ya los estableció como selected)
+    // Si no hay parámetros en la URL, usar localStorage o valores por defecto
+    if (!añoURL && !mesURL) {
+        var añoGuardado = localStorage.getItem("añoGerencia");
+        var mesGuardado = localStorage.getItem("mesGerencia");
+        
+        // Solo usar localStorage si no hay parámetros en la URL
+        if (añoGuardado) {
+            $("#añoGerencia").val(añoGuardado);
+            $("#añoGerencia").selectpicker('refresh');
+        } else {
+            // Si no hay localStorage ni URL, establecer año actual
+            var añoActual = new Date().getFullYear();
+            $("#añoGerencia").val(añoActual);
+            $("#añoGerencia").selectpicker('refresh');
+        }
+        
+        if (mesGuardado) {
+            $("#mesGerencia").val(mesGuardado);
+            $("#mesGerencia").selectpicker('refresh');
+        } else {
+            // Si no hay localStorage ni URL, establecer mes actual
+            var mesActual = new Date().getMonth() + 1; // getMonth() devuelve 0-11
+            $("#mesGerencia").val(mesActual);
+            $("#mesGerencia").selectpicker('refresh');
+        }
+    }
+    // Si hay parámetros en la URL, el PHP ya estableció los valores correctos
+    // Solo necesitamos refrescar el selectpicker para que se muestren correctamente
+    $("#añoGerencia").selectpicker('refresh');
+    $("#mesGerencia").selectpicker('refresh');
+});
 
-    //cargarVtasGerencia(mes);
+$("#añoGerencia").change(function () {
+    actualizarFiltrosGerencia();
+});
+
+$("#mesGerencia").change(function () {
+    actualizarFiltrosGerencia();
 });
 
 const urlParams = new URLSearchParams(window.location.search);
 const myParam = urlParams.get("mes");
+const myAñoParam = urlParams.get("año") || "";
+
+// Construir parámetros para las URLs de AJAX
+var ajaxParams = "mes=" + (myParam || "");
+if (myAñoParam != "") {
+    ajaxParams += "&año=" + myAñoParam;
+}
 
 $(".tablaVtasGerencia").DataTable({
-    ajax: "ajax/movimientos/tabla-vtasgerencia.ajax.php?mes=" + myParam,
+    ajax: "ajax/movimientos/tabla-vtasgerencia.ajax.php?" + ajaxParams,
     deferRender: true,
     retrieve: true,
     processing: true,
@@ -567,7 +626,7 @@ $(".tablaVtasGerencia").DataTable({
 });
 
 $(".tablaVtasGerenciaVdor").DataTable({
-    ajax: "ajax/movimientos/tabla-vtasgerenciavdor.ajax.php?mes=" + myParam,
+    ajax: "ajax/movimientos/tabla-vtasgerenciavdor.ajax.php?" + ajaxParams,
     deferRender: true,
     retrieve: true,
     processing: true,
@@ -659,7 +718,7 @@ $(".tablaCtasVdor").DataTable({
 });
 
 $(".tablaRangos").DataTable({
-    ajax: "ajax/movimientos/tabla-rangos.ajax.php?mes=" + myParam,
+    ajax: "ajax/movimientos/tabla-rangos.ajax.php?" + ajaxParams,
     deferRender: true,
     retrieve: true,
     processing: true,

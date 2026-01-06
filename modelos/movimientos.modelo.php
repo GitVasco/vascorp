@@ -3824,4 +3824,645 @@ class ModeloMovimientos
 
       $stmt = null;
    }
+
+   /*
+	* NUEVOS MÉTODOS PARA INICIO-GERENCIA CON AÑO Y MES
+	* Estos métodos aceptan año y mes como parámetros para consultas históricas
+	* No modifican los métodos existentes para mantener compatibilidad
+	*/
+
+   /*
+	* MOSTRAR TOTALES DEL MES CON AÑO ESPECÍFICO
+	*/
+   static public function mdlTotalesSolesGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+      
+      if ($mes == null || $mes == "TODO" || $mes == "") {
+
+         $stmt = Conexion::conectar()->prepare("SELECT 
+         t.año,
+         SUM(total_ventas_soles) AS vtas_soles,
+         SUM(total_pagos_soles) AS pagos_soles 
+       FROM
+         totalesjf t 
+       WHERE t.año = :anio
+       GROUP BY t.año");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetch();
+
+         $stmt->close();
+
+         $stmt = null;
+      } else {
+
+         $mes = intval($mes);
+         
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                        t.año,
+                        t.mes,
+                        SUM(total_ventas_soles) AS vtas_soles,
+                        SUM(total_pagos_soles) AS pagos_soles 
+                     FROM
+                        totalesjf t 
+                     WHERE t.año = :anio
+                        AND t.mes = :mes
+                     GROUP BY t.año,
+                        t.mes");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetch();
+
+         $stmt->close();
+
+         $stmt = null;
+      }
+   }
+
+   /*
+	* MOSTRAR RESUMEN DE VENTAS CON AÑO Y MES ESPECÍFICOS
+	*/
+   static public function mdlMostrarResumenVtasGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+
+      if ($mes == "null" || $mes == "TODO" || $mes == "") {
+
+         $stmt = Conexion::conectar()->prepare("SELECT 
+         v.tipo,
+         v.tipo_documento,
+         SUM(v.neto) AS neto,
+         SUM(v.igv) AS igv,
+         SUM(v.dscto) AS dscto,
+         SUM(v.total) AS total 
+       FROM
+         ventajf v 
+       WHERE YEAR(v.fecha) = :anio 
+       AND v.tipo IN ('E05', 'S02', 'S03', 'S70','S05') 
+       AND v.vendedor NOT IN ('99','23') 
+       GROUP BY v.tipo,
+         v.tipo_documento 
+       UNION
+       SELECT 
+         YEAR(v.fecha) AS anno,
+         '' AS mes,
+         SUM(v.neto) AS neto,
+         SUM(v.igv) AS igv,
+         SUM(v.dscto) AS dscto,
+         SUM(v.total) AS total 
+       FROM
+         ventajf v 
+       WHERE YEAR(v.fecha) = :anio
+       AND v.tipo IN ('E05', 'S02', 'S03', 'S70','S05') 
+       AND v.vendedor NOT IN ('99','23') 
+       GROUP BY YEAR(v.fecha)");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetchAll();
+
+         $stmt->close();
+
+         $stmt = null;
+      } else {
+
+         $mes = intval($mes);
+         
+         $stmt = Conexion::conectar()->prepare("SELECT 
+         v.tipo,
+         v.tipo_documento,
+         SUM(v.neto) AS neto,
+         SUM(v.igv) AS igv,
+         SUM(v.dscto) AS dscto,
+         SUM(v.total) AS total 
+       FROM
+         ventajf v 
+       WHERE YEAR(v.fecha) = :anio
+         AND MONTH(v.fecha) = :mes 
+         AND v.tipo IN ('E05', 'S02', 'S03', 'S70','S05') 
+         AND v.vendedor NOT IN ('99','23') 
+       GROUP BY v.tipo,
+         v.tipo_documento 
+       UNION
+       SELECT 
+         YEAR(v.fecha) AS anno,
+         '' AS mes,
+         SUM(v.neto) AS neto,
+         SUM(v.igv) AS igv,
+         SUM(v.dscto) AS dscto,
+         SUM(v.total) AS total 
+       FROM
+         ventajf v 
+       WHERE YEAR(v.fecha) = :anio
+         AND MONTH(v.fecha) = :mes 
+         AND v.tipo IN ('E05', 'S02', 'S03', 'S70','S05') 
+         AND v.vendedor NOT IN ('99','23') 
+       GROUP BY YEAR(v.fecha),
+         MONTH(fecha)");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetchAll();
+
+         $stmt->close();
+
+         $stmt = null;
+      }
+   }
+
+   /*
+	* MOSTRAR RESUMEN POR VENDEDOR CON AÑO Y MES ESPECÍFICOS
+	*/
+   static public function mdlMostrarResumenVdorGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+
+      if ($mes == "null" || $mes == "TODO" || $mes == "") {
+
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                        m.codigo,
+                        m.descripcion,
+                        IFNULL(p.pedidos, 0) AS pedidos,
+                        IFNULL(v.ventas, 0) AS ventas,
+                        (
+                        IFNULL(p.pedidos, 0) + IFNULL(v.ventas, 0)
+                        ) AS total 
+                     FROM
+                        maestrajf m 
+                        LEFT JOIN 
+                        (SELECT 
+                           t.vendedor,
+                           SUM(op_gravada) AS pedidos 
+                        FROM
+                           temporaljf t 
+                        WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO') 
+                           AND YEAR(t.fecha) = :anio
+                        GROUP BY t.vendedor) AS p 
+                        ON m.codigo = p.vendedor 
+                        LEFT JOIN 
+                        (SELECT 
+                           v.vendedor,
+                           SUM(v.neto) AS ventas 
+                        FROM
+                           ventajf v 
+                        WHERE YEAR(v.fecha) = :anio
+                           AND v.tipo IN ('E05', 'S02', 'S03', 'S70', 'S05') 
+                        GROUP BY v.vendedor) AS v 
+                        ON m.codigo = v.vendedor 
+                     WHERE m.tipo_dato = 'TVEND' 
+                        AND (
+                        IFNULL(p.pedidos, 0) + IFNULL(v.ventas, 0)
+                        ) <> 0 
+                        AND m.codigo NOT IN ('99','23')");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetchAll();
+
+         $stmt->close();
+
+         $stmt = null;
+      } else {
+
+         $mes = intval($mes);
+         
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                           m.codigo,
+                           m.descripcion,
+                           IFNULL(p.pedidos, 0) AS pedidos,
+                           IFNULL(v.ventas, 0) AS ventas,
+                           (
+                           IFNULL(p.pedidos, 0) + IFNULL(v.ventas, 0)
+                           ) AS total 
+                        FROM
+                           maestrajf m 
+                           LEFT JOIN 
+                           (SELECT 
+                              t.vendedor,
+                              SUM(op_gravada) AS pedidos 
+                           FROM
+                              temporaljf t 
+                           WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO') 
+                              AND YEAR(t.fecha) = :anio 
+                           GROUP BY t.vendedor) AS p 
+                           ON m.codigo = p.vendedor 
+                           LEFT JOIN 
+                           (SELECT 
+                              v.vendedor,
+                              SUM(v.neto) AS ventas 
+                           FROM
+                              ventajf v 
+                           WHERE YEAR(v.fecha) = :anio 
+                              AND MONTH(v.fecha) = :mes 
+                              AND v.tipo IN ('E05', 'S02', 'S03', 'S70','S05') 
+                           GROUP BY v.vendedor) AS v 
+                           ON m.codigo = v.vendedor 
+                        WHERE m.tipo_dato = 'TVEND' 
+                           AND (
+                           IFNULL(p.pedidos, 0) + IFNULL(v.ventas, 0)
+                           ) <> 0 
+                           AND m.codigo NOT IN ('99','23')");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetchAll();
+
+         $stmt->close();
+
+         $stmt = null;
+      }
+   }
+
+   /*
+	* MOSTRAR RANGOS CON AÑO Y MES ESPECÍFICOS
+	*/
+   static public function mdlMostrarRangosGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+
+      if ($mes == "null" || $mes == "TODO" || $mes == "") {
+
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                                    m.codigo,
+                                    m.descripcion,
+                                    IFNULL(v.ventas, 0) AS ventas,
+                                    IFNULL(c.cobranza, 0) AS cobranza,
+                                    IFNULL(ve.saldo, 0) AS saldo,
+                                    IFNULL(p.a2014_2020, 0) AS 'p14',
+                                    0 AS 'p15',
+                                    0 AS 'p16',
+                                    0 AS 'p17',
+                                    0 AS 'p18',
+                                    IFNULL(p.a2019, 0) AS 'p19',
+                                    IFNULL(p.a2020, 0) AS 'p20',
+                                    IFNULL(p.a2021, 0) AS 'p21',
+                                    IFNULL(p.a2022, 0) AS 'p22',
+                                    IFNULL(p.a2023, 0) AS 'p23',
+                                    IFNULL(p.a2024, 0) AS 'p24',
+                                    IFNULL(p.total, 0) AS 'total' 
+                                 FROM
+                                    maestrajf m 
+                                    LEFT JOIN 
+                                    (SELECT 
+                                       v.vendedor,
+                                       SUM(v.neto) AS ventas 
+                                    FROM
+                                       ventajf v 
+                                    WHERE YEAR(v.fecha) = :anio
+                                       AND v.estado <> 'ANULADO' 
+                                       AND v.tipo IN ('S02', 'S03', 'S70', 'E05', 'S05') 
+                                       AND v.vendedor <> '99' 
+                                    GROUP BY v.vendedor, YEAR(v.fecha)) AS v 
+                                    ON m.codigo = v.vendedor 
+                                    LEFT JOIN 
+                                    (SELECT 
+                                       cc.vendedor,
+                                       SUM(cc.monto) AS cobranza 
+                                    FROM
+                                       cuenta_ctejf cc 
+                                    WHERE YEAR(cc.fecha) = :anio
+                                       AND cc.tip_mov = '-' 
+                                       AND cc.cod_pago IN ('00', '05', '06', '14', '80', '82', 'TR') 
+                                    GROUP BY cc.vendedor) AS c 
+                                    ON m.codigo = c.vendedor 
+                                    LEFT JOIN 
+                                    (SELECT 
+                                       c.vendedor,
+                                       SUM(c.saldo) AS saldo 
+                                    FROM
+                                       cuenta_ctejf c 
+                                    WHERE c.tip_mov = '+' 
+                                       AND c.estado = 'PENDIENTE' 
+                                       AND c.fecha_ven < DATE(NOW()) 
+                                    GROUP BY c.vendedor) AS ve 
+                                    ON m.codigo = ve.vendedor 
+                                    LEFT JOIN 
+                                    (SELECT 
+                                        c.vendedor,
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) BETWEEN '2014' AND '2020' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2014_2020',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2019' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2019',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2020' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2020',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2021' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2021',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2022' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2022',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2023' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2023',
+                                        SUM(
+                                            CASE
+                                            WHEN YEAR(c.fecha_ven) = '2024' 
+                                            THEN c.saldo 
+                                            ELSE 0 
+                                            END
+                                        ) AS 'a2024',
+                                        SUM(c.saldo) AS total 
+                                    FROM
+                                       cuenta_ctejf c 
+                                    WHERE c.tip_mov = '+' 
+                                       AND c.estado = 'PENDIENTE' 
+                                       AND c.fecha_ven < DATE(NOW()) 
+                                    GROUP BY c.vendedor) AS p 
+                                    ON m.codigo = p.vendedor 
+                                 WHERE m.tipo_dato = 'TVEND' 
+                                    AND (
+                                    IFNULL(v.ventas, 0) + IFNULL(c.cobranza, 0) + IFNULL(ve.saldo, 0)
+                                    ) > 0 
+                                 ORDER BY m.codigo");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetchAll();
+
+         $stmt->close();
+
+         $stmt = null;
+      } else {
+
+         $mes = intval($mes);
+         
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                                          m.codigo,
+                                          m.descripcion,
+                                          IFNULL(v.ventas, 0) AS ventas,
+                                          IFNULL(c.cobranza, 0) AS cobranza,
+                                          IFNULL(ve.saldo, 0) AS saldo,
+                                          IFNULL(p.a2014_2020, 0) AS 'p14',
+                                            0 AS 'p15',
+                                            0 AS 'p16',
+                                            0 AS 'p17',
+                                            0 AS 'p18',
+                                            IFNULL(p.a2019, 0) AS 'p19',
+                                            IFNULL(p.a2020, 0) AS 'p20',
+                                            IFNULL(p.a2021, 0) AS 'p21',
+                                            IFNULL(p.a2022, 0) AS 'p22',
+                                            IFNULL(p.a2023, 0) AS 'p23',
+                                            IFNULL(p.a2024, 0) AS 'p24',
+                                            IFNULL(p.total, 0) AS 'total'  
+                                       FROM
+                                          maestrajf m 
+                                          LEFT JOIN 
+                                          (SELECT 
+                                             v.vendedor,
+                                             SUM(v.neto) AS ventas 
+                                          FROM
+                                             ventajf v 
+                                          WHERE YEAR(v.fecha) = :anio 
+                                             AND MONTH(v.fecha) = :mes 
+                                             AND v.estado <> 'ANULADO' 
+                                             AND v.tipo IN ('S02', 'S03', 'S70', 'E05', 'S05') 
+                                             AND v.vendedor <> '99' 
+                                          GROUP BY v.vendedor) AS v 
+                                          ON m.codigo = v.vendedor 
+                                          LEFT JOIN 
+                                          (SELECT 
+                                             cc.vendedor,
+                                             SUM(cc.monto) AS cobranza 
+                                          FROM
+                                             cuenta_ctejf cc 
+                                          WHERE YEAR(cc.fecha) = :anio
+                                             AND MONTH(cc.fecha) = :mes
+                                             AND cc.tip_mov = '-' 
+                                             AND cc.cod_pago IN ('00', '05', '06', '14', '80', '82', 'TR') 
+                                          GROUP BY cc.vendedor) AS c 
+                                          ON m.codigo = c.vendedor 
+                                          LEFT JOIN 
+                                          (SELECT 
+                                             c.vendedor,
+                                             SUM(c.saldo) AS saldo 
+                                          FROM
+                                             cuenta_ctejf c 
+                                          WHERE c.tip_mov = '+' 
+                                             AND c.estado = 'PENDIENTE' 
+                                             AND c.fecha_ven < DATE(NOW()) 
+                                          GROUP BY c.vendedor) AS ve 
+                                          ON m.codigo = ve.vendedor 
+                                          LEFT JOIN 
+                                          (SELECT 
+                                             c.vendedor,
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) BETWEEN '2014' AND '2020' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2014_2020',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2019' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2019',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2020' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2020',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2021' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2021',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2022' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2022',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2023' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2023',
+                                             SUM(
+                                                 CASE
+                                                 WHEN YEAR(c.fecha_ven) = '2024' 
+                                                 THEN c.saldo 
+                                                 ELSE 0 
+                                                 END
+                                             ) AS 'a2024',
+                                             SUM(c.saldo) AS total 
+                                          FROM
+                                             cuenta_ctejf c 
+                                          WHERE c.tip_mov = '+' 
+                                             AND c.estado = 'PENDIENTE' 
+                                             AND c.fecha_ven < DATE(NOW()) 
+                                          GROUP BY c.vendedor) AS p 
+                                          ON m.codigo = p.vendedor 
+                                       WHERE m.tipo_dato = 'TVEND' 
+                                          AND (
+                                          IFNULL(v.ventas, 0) + IFNULL(c.cobranza, 0) + IFNULL(ve.saldo, 0)
+                                          ) > 0 
+                                       ORDER BY m.codigo");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetchAll();
+
+         $stmt->close();
+
+         $stmt = null;
+      }
+   }
+
+   /*
+	* MOSTRAR TOTALES EN FACTURAS CON AÑO Y MES ESPECÍFICOS
+	*/
+   static public function mdlFacturasGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+
+      if ($mes == null || $mes == "" || $mes == "TODO") {
+
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                                    IFNULL(SUM(neto), 0) AS neto 
+                                 FROM
+                                    ventajf v 
+                                 WHERE YEAR(v.fecha) = :anio 
+                                    AND v.tipo IN ('S02', 'S03', 'E05', 'S05') 
+                                    AND v.vendedor NOT IN ('23','99')");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetch();
+
+         $stmt->close();
+
+         $stmt = null;
+      } else {
+
+         $mes = intval($mes);
+         
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                                 IFNULL(SUM(neto), 0) AS neto 
+                              FROM
+                                 ventajf v 
+                              WHERE YEAR(v.fecha) = :anio 
+                                 AND MONTH(v.fecha) = :mes 
+                                 AND v.tipo IN ('S02', 'S03', 'E05', 'S05')
+                                 AND v.vendedor NOT IN ('23','99')");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetch();
+
+         $stmt->close();
+
+         $stmt = null;
+      }
+   }
+
+   /*
+	* MOSTRAR TOTALES EN PROFORMAS CON AÑO Y MES ESPECÍFICOS
+	*/
+   static public function mdlProformasGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+
+      if ($mes == null || $mes == "" || $mes == "TODO") {
+
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                                    IFNULL(SUM(neto), 0) AS neto 
+                                 FROM
+                                    ventajf v 
+                                 WHERE YEAR(v.fecha) = :anio 
+                                    AND v.tipo IN ('S70') 
+                                    AND v.vendedor NOT IN ('23','99')");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetch();
+
+         $stmt->close();
+
+         $stmt = null;
+      } else {
+
+         $mes = intval($mes);
+         
+         $stmt = Conexion::conectar()->prepare("SELECT 
+                                 IFNULL(SUM(neto), 0) AS neto 
+                              FROM
+                                 ventajf v 
+                              WHERE YEAR(v.fecha) = :anio 
+                                 AND MONTH(v.fecha) = :mes 
+                                 AND v.tipo IN ('S70')
+                                 AND v.vendedor NOT IN ('23','99')");
+
+         $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
+         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+         $stmt->execute();
+
+         return $stmt->fetch();
+
+         $stmt->close();
+
+         $stmt = null;
+      }
+   }
 }

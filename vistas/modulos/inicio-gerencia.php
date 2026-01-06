@@ -21,13 +21,31 @@
 
     <section class="content">
 
-        <div class="col-lg-10">
+        <div class="col-lg-12">
 
             <?php
 
             setlocale(LC_ALL, "es_ES");
 
-            if (isset($_GET["mes"]) && $_GET["mes"] != "TODO") {
+            // Si no hay parámetros GET, redirigir con año y mes actual
+            if (!isset($_GET["año"]) && !isset($_GET["mes"])) {
+                $añoActual = date("Y");
+                $mesActual = date("n");
+                $url = "index.php?ruta=inicio-gerencia&año=" . $añoActual . "&mes=" . $mesActual;
+                echo "<script>window.location.href = '" . $url . "';</script>";
+                exit;
+            }
+
+            // Obtener año y mes de los parámetros GET, por defecto año y mes actual
+            $añoActual = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : date("Y");
+            // Si no hay mes en GET o es vacío, usar mes actual. Si es "TODO", mantenerlo
+            if (isset($_GET["mes"]) && $_GET["mes"] != "") {
+                $mesActual = $_GET["mes"] == "TODO" ? "TODO" : intval($_GET["mes"]);
+            } else {
+                $mesActual = date("n"); // Mes actual (1-12)
+            }
+
+            if (isset($_GET["mes"]) && $_GET["mes"] != "TODO" && $_GET["mes"] != "") {
 
                 $mesN = $_GET["mes"];
 
@@ -42,9 +60,47 @@
 
             echo '<div class="box box-success">
 
-                    <div class="box-header">
+                    <div class="box-header" style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px;">
 
-                        <h1>Bienvenid@ ' . $_SESSION["nombre"] . ' - MES - <b>' . $nomMesA . '</b></h1>
+                        <div style="flex: 1;">
+                            <h1 style="margin: 0; line-height: 1.2;">Bienvenid@ ' . $_SESSION["nombre"] . ' - AÑO: <b>' . $añoActual . '</b> - MES: <b>' . $nomMesA . '</b></h1>
+                        </div>
+
+                        <div style="display: flex; gap: 15px; align-items: flex-start; margin-left: 20px;">
+                            <div style="min-width: 150px;">
+                                <label for="añoGerencia" style="font-weight: bold; margin-bottom: 5px; display: block; font-size: 12px;">Año:</label>
+                                <select class="form-control selectpicker" id="añoGerencia" name="añoGerencia" data-live-search="true" style="height: 38px;">
+
+                                    <option value="">Seleccionar Año</option>
+                                    <option value="2024" ' . (($añoActual == 2024) ? 'selected' : '') . '>2024</option>
+                                    <option value="2025" ' . (($añoActual == 2025) ? 'selected' : '') . '>2025</option>
+                                    <option value="2026" ' . (($añoActual == 2026) ? 'selected' : '') . '>2026</option>
+
+                                </select>
+                            </div>
+
+                            <div style="min-width: 150px;">
+                                <label for="mesGerencia" style="font-weight: bold; margin-bottom: 5px; display: block; font-size: 12px;">Mes:</label>
+                                <select class="form-control selectpicker" id="mesGerencia" name="mesGerencia" data-live-search="true" style="height: 38px;">
+
+                                    <option value="">Seleccionar Mes</option>
+                                    <option value="TODO" ' . (($mesActual == null || $mesActual == "TODO") ? 'selected' : '') . '>TODO</option>
+                                    <option value="1" ' . (($mesActual == 1) ? 'selected' : '') . '>ENERO</option>
+                                    <option value="2" ' . (($mesActual == 2) ? 'selected' : '') . '>FEBRERO</option>
+                                    <option value="3" ' . (($mesActual == 3) ? 'selected' : '') . '>MARZO</option>
+                                    <option value="4" ' . (($mesActual == 4) ? 'selected' : '') . '>ABRIL</option>
+                                    <option value="5" ' . (($mesActual == 5) ? 'selected' : '') . '>MAYO</option>
+                                    <option value="6" ' . (($mesActual == 6) ? 'selected' : '') . '>JUNIO</option>
+                                    <option value="7" ' . (($mesActual == 7) ? 'selected' : '') . '>JULIO</option>
+                                    <option value="8" ' . (($mesActual == 8) ? 'selected' : '') . '>AGOSTO</option>
+                                    <option value="9" ' . (($mesActual == 9) ? 'selected' : '') . '>SEPTIEMBRE</option>
+                                    <option value="10" ' . (($mesActual == 10) ? 'selected' : '') . '>OCTUBRE</option>
+                                    <option value="11" ' . (($mesActual == 11) ? 'selected' : '') . '>NOVIEMBRE</option>
+                                    <option value="12" ' . (($mesActual == 12) ? 'selected' : '') . '>DICIEMBRE</option>
+
+                                </select>
+                            </div>
+                        </div>
 
                     </div>
 
@@ -52,29 +108,6 @@
 
 
             ?>
-
-        </div>
-
-        <div class="col-lg-2">
-
-            <select class="form-control input-lg selectpicker" id="mesGerencia" name="mesGerencia" data-live-search="true">
-
-                <option value="">Seleccionar Mes</option>
-                <option value="TODO">TODO</option>
-                <option value="1">ENERO</option>
-                <option value="2">FEBRERO</option>
-                <option value="3">MARZO</option>
-                <option value="4">ABRIL</option>
-                <option value="5">MAYO</option>
-                <option value="6">JUNIO</option>
-                <option value="7">JULIO</option>
-                <option value="8">AGOSTO</option>
-                <option value="9">SEPTIEMBRE</option>
-                <option value="10">OCTUBRE</option>
-                <option value="11">NOVIEMBRE</option>
-                <option value="12">DICIEMBRE</option>
-
-            </select>
 
         </div>
 
@@ -120,11 +153,21 @@
 
                 <?php
 
-                $mes = isset($_GET["mes"]) && $_GET["mes"] != "TODO" ? $_GET["mes"] : null;
+                // Usar los nuevos métodos si se proporciona año, sino usar los métodos antiguos para compatibilidad
+                $añoConsulta = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : date("Y");
+                $mesConsulta = isset($_GET["mes"]) && $_GET["mes"] != "TODO" && $_GET["mes"] != "" ? $_GET["mes"] : null;
 
-                $totales = ControladorMovimientos::ctrTotalesSoles($mes);
-                $facturas = ControladorMovimientos::ctrFacturas($mes);
-                $proformas = ControladorMovimientos::ctrProformas($mes);
+                // Si se proporciona año explícitamente o es diferente al año actual, usar métodos nuevos
+                if (isset($_GET["año"]) && $_GET["año"] != "" || $añoConsulta != date("Y")) {
+                    $totales = ControladorMovimientos::ctrTotalesSolesGerencia($añoConsulta, $mesConsulta);
+                    $facturas = ControladorMovimientos::ctrFacturasGerencia($añoConsulta, $mesConsulta);
+                    $proformas = ControladorMovimientos::ctrProformasGerencia($añoConsulta, $mesConsulta);
+                } else {
+                    // Mantener compatibilidad con código existente
+                    $totales = ControladorMovimientos::ctrTotalesSoles($mesConsulta);
+                    $facturas = ControladorMovimientos::ctrFacturas($mesConsulta);
+                    $proformas = ControladorMovimientos::ctrProformas($mesConsulta);
+                }
 
                 $totalFacturas = $totales["vtas_soles"] != 0 ? ($facturas["neto"] / $totales["vtas_soles"]) * 100 : 0;
                 $totalProformas = $totales["vtas_soles"] != 0 ? ($proformas["neto"] / $totales["vtas_soles"]) * 100 : 0;

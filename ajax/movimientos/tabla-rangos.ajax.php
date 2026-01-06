@@ -3,6 +3,8 @@
 require_once "../../controladores/movimientos.controlador.php";
 require_once "../../modelos/movimientos.modelo.php";
 
+//declaracion la zona horaria
+date_default_timezone_set('America/Lima');
 
 class TablaMovimientos
 {
@@ -14,9 +16,17 @@ class TablaMovimientos
     public function mostrarTablaVtasGerencia()
     {
 
-        $mes = $_GET["mes"];
+        $mes = isset($_GET["mes"]) ? $_GET["mes"] : null;
+        $añoActual = date("Y");
+        $año = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : $añoActual;
 
-        $movimientos = ControladorMovimientos::ctrMostrarRangos($mes);
+        // Si se proporciona año explícitamente o es diferente al año actual, usar métodos nuevos
+        if (isset($_GET["año"]) && $_GET["año"] != "" || $año != $añoActual) {
+            $movimientos = ControladorMovimientos::ctrMostrarRangosGerencia($año, $mes);
+        } else {
+            // Mantener compatibilidad con código existente
+            $movimientos = ControladorMovimientos::ctrMostrarRangos($mes);
+        }
 
         if (count($movimientos) > 0) {
 
@@ -120,7 +130,8 @@ class TablaMovimientos
                 }
 
 
-                $p1418 = "<div style='text-align:right !important; color:red'>" . number_format($movimientos[$i]["p14"] + $movimientos[$i]["p15"] + $movimientos[$i]["p16"] + $movimientos[$i]["p17"] + $movimientos[$i]["p18"], 2) . "</div>";
+                // p14 ahora contiene la suma acumulada de 2014-2020
+                $p1418 = "<div style='text-align:right !important; color:red'>" . number_format($movimientos[$i]["p14"], 2) . "</div>";
 
                 $datosJson .= '[
                 "' . $movimientos[$i]["codigo"] . '",

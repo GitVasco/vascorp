@@ -3,6 +3,8 @@
 require_once "../../controladores/movimientos.controlador.php";
 require_once "../../modelos/movimientos.modelo.php";
 
+//declaracion la zona horaria
+date_default_timezone_set('America/Lima');
 
 class TablaMovimientos{
 
@@ -12,9 +14,17 @@ class TablaMovimientos{
 
     public function mostrarTablaVtasGerencia(){
 
-        $mes = $_GET["mes"];
+        $mes = isset($_GET["mes"]) ? $_GET["mes"] : null;
+        $añoActual = date("Y");
+        $año = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : $añoActual;
 
-        $movimientos = ControladorMovimientos::ctrMostrarResumenVdor($mes);	
+        // Si se proporciona año explícitamente o es diferente al año actual, usar métodos nuevos
+        if (isset($_GET["año"]) && $_GET["año"] != "" || $año != $añoActual) {
+            $movimientos = ControladorMovimientos::ctrMostrarResumenVdorGerencia($año, $mes);
+        } else {
+            // Mantener compatibilidad con código existente
+            $movimientos = ControladorMovimientos::ctrMostrarResumenVdor($mes);
+        }	
 
         if(count($movimientos)>0){
 

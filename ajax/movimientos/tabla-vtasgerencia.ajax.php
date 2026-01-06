@@ -16,9 +16,17 @@ class TablaMovimientos
     public function mostrarTablaVtasGerencia()
     {
 
-        $mes = $_GET["mes"];
+        $mes = isset($_GET["mes"]) ? $_GET["mes"] : null;
+        $añoActual = date("Y");
+        $año = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : $añoActual;
 
-        $movimientos = ControladorMovimientos::ctrMostrarResumenVtas($mes);
+        // Si se proporciona año explícitamente o es diferente al año actual, usar métodos nuevos
+        if (isset($_GET["año"]) && $_GET["año"] != "" || $año != $añoActual) {
+            $movimientos = ControladorMovimientos::ctrMostrarResumenVtasGerencia($año, $mes);
+        } else {
+            // Mantener compatibilidad con código existente
+            $movimientos = ControladorMovimientos::ctrMostrarResumenVtas($mes);
+        }
 
         if (count($movimientos) > 0) {
 

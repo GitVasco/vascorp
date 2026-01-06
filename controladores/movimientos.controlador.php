@@ -451,4 +451,76 @@ class ControladorMovimientos
 
         return $respuesta;
     }
+
+    /* 
+    * NUEVOS MÉTODOS PARA INICIO-GERENCIA CON AÑO Y MES
+    * Estos métodos aceptan año y mes como parámetros para consultas históricas
+    * No modifican los métodos existentes para mantener compatibilidad
+    */
+
+    /* 
+    * MOSTRAR TOTALES DEL MES CON AÑO ESPECÍFICO
+    */
+    static public function ctrTotalesSolesGerencia($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlTotalesSolesGerencia($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
+    * MOSTRAR RESUMEN DE VENTAS CON AÑO Y MES ESPECÍFICOS
+    */
+    static public function ctrMostrarResumenVtasGerencia($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlMostrarResumenVtasGerencia($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
+    * MOSTRAR RESUMEN POR VENDEDOR CON AÑO Y MES ESPECÍFICOS
+    */
+    static public function ctrMostrarResumenVdorGerencia($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlMostrarResumenVdorGerencia($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
+    * MOSTRAR RANGOS CON AÑO Y MES ESPECÍFICOS
+    */
+    static public function ctrMostrarRangosGerencia($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlMostrarRangosGerencia($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
+    * MOSTRAR TOTALES EN FACTURAS CON AÑO Y MES ESPECÍFICOS
+    */
+    static public function ctrFacturasGerencia($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlFacturasGerencia($año, $mes);
+
+        return $respuesta;
+    }
+
+    /* 
+    * MOSTRAR TOTALES EN PROFORMAS CON AÑO Y MES ESPECÍFICOS
+    */
+    static public function ctrProformasGerencia($año, $mes)
+    {
+
+        $respuesta = ModeloMovimientos::mdlProformasGerencia($año, $mes);
+
+        return $respuesta;
+    }
 }

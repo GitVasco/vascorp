@@ -1,10 +1,18 @@
 <?php
 
-$mes = isset($_GET["mes"]) && $_GET["mes"] != "TODO" ? $_GET["mes"] : null;
+// Usar los nuevos métodos si se proporciona año, sino usar los métodos antiguos para compatibilidad
+$añoConsulta = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : date("Y");
+$mesConsulta = isset($_GET["mes"]) && $_GET["mes"] != "TODO" && $_GET["mes"] != "" ? $_GET["mes"] : null;
 
-$totales = ControladorMovimientos::ctrTotalesSoles($mes);
+// Si se proporciona año explícitamente o es diferente al año actual, usar métodos nuevos
+if (isset($_GET["año"]) && $_GET["año"] != "" || $añoConsulta != date("Y")) {
+    $totales = ControladorMovimientos::ctrTotalesSolesGerencia($añoConsulta, $mesConsulta);
+} else {
+    // Mantener compatibilidad con código existente
+    $totales = ControladorMovimientos::ctrTotalesSoles($mesConsulta);
+}
 
-$pedidos = ControladorMovimientos::ctrTotalesSolesPedidos($mes);
+$pedidos = ControladorMovimientos::ctrTotalesSolesPedidos($mesConsulta);
 
 $totalesInicio = ModeloMovimientos::mdlTotalesInicio();
 

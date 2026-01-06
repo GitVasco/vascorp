@@ -448,7 +448,7 @@ table.toolbar a:hover {
 .zona_impresion {
     width: 2800px;
     padding: 120px 10px 10px 250px;
-    padding-top: calc(120px - 5mm);
+    padding-top: calc(120px + 5mm);
 
     float: left;
     margin-left: 00px;
