@@ -595,6 +595,10 @@ class ControladorCuentas
 			$usureg = $_SESSION["nombre"];
 			$pcreg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
 			$rutas = $_POST["rutas"];
+			// Ajustar ruta según configuración si es "cuentas"
+			if ($rutas == "cuentas") {
+				$rutas = obtenerRutaCuentas();
+			}
 
 			$datos = array(
 				"id" => $_POST["idCuenta2"],
@@ -696,6 +700,10 @@ class ControladorCuentas
 			$cancelacion = ModeloCuentas::mdlMostrarCancelacion($tabla, "id", $datos);
 
 			$rutas = $_GET["rutas"];
+			// Ajustar ruta según configuración si es "cuentas"
+			if ($rutas == "cuentas") {
+				$rutas = obtenerRutaCuentas();
+			}
 
 			$usuario = $_SESSION["nombre"];
 			$para      = 'notificacionesvascorp@gmail.com';
@@ -898,6 +906,7 @@ class ControladorCuentas
 			$respuestaMovimientos = ModeloCuentas::mdlRegistrarCancelacionLetras($detalle);
 			#var_dump($respuestaMovimientos);  
 
+			$rutaCuentas = obtenerRutaCuentas();
 			echo '<script>
 
 				swal({
@@ -908,7 +917,7 @@ class ControladorCuentas
 					}).then(function(result){
 								if (result.value) {
 
-								window.location = "cuentas";
+								window.location = "' . $rutaCuentas . '";
 
 								}
 							})
@@ -947,6 +956,7 @@ class ControladorCuentas
 							AND YEAR(fecha) >= 2019 ") or die(mysql_error());
 				}
 			}
+			$rutaCuentas = obtenerRutaCuentas();
 			echo '<script>
 
 				swal({
@@ -957,7 +967,7 @@ class ControladorCuentas
 					}).then(function(result){
 								if (result.value) {
 
-								window.location = "cuentas";
+								window.location = "' . $rutaCuentas . '";
 
 								}
 							})
@@ -1049,6 +1059,10 @@ class ControladorCuentas
 			$usureg = $_SESSION["nombre"];
 			$pcreg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
 			$rutas = $_POST["rutas"];
+			// Ajustar ruta según configuración si es "cuentas"
+			if ($rutas == "cuentas") {
+				$rutas = obtenerRutaCuentas();
+			}
 
 			$datos = array(
 				"id" 		=> $_POST["idCuenta3"],

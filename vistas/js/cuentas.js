@@ -584,6 +584,7 @@ ELIMINAR TIPO DE PAGO
 $(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnEliminarCuenta", function () {
     var idCuenta = $(this).attr("idCuenta");
     var rutas = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
+    var rutaEliminar = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
 
     swal({
         title: "¿Está seguro de borrar la cuenta?",
@@ -597,7 +598,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnEliminarCuenta", func
     }).then(function (result) {
         if (result.value) {
             window.location =
-                "index.php?ruta=cuentas&idCuenta=" +
+                "index.php?ruta=" + rutaEliminar + "&idCuenta=" +
                 idCuenta +
                 "&rutas=" +
                 rutas;
