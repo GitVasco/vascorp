@@ -100,16 +100,19 @@ function cargarTablaCuentasPaginado(ano) {
             data: function (d) {
                 d.ano = ano;
                 d.perfil = $("#perfilOculto").val();
-                
+
                 // Opción 1: Mínimo de caracteres para buscar (recomendado para tablas grandes)
                 // Solo buscar si tiene al menos 3 caracteres o está vacío (para limpiar)
                 var minChars = 3;
-                if (d.search.value.length > 0 && d.search.value.length < minChars) {
+                if (
+                    d.search.value.length > 0 &&
+                    d.search.value.length < minChars
+                ) {
                     // Cancelar la búsqueda si tiene menos del mínimo
                     // Esto evita búsquedas con 1 o 2 caracteres que pueden ser muy lentas
                     d.search.value = "";
                 }
-            }
+            },
         },
         order: [[4, "desc"]],
         pageLength: 20,
@@ -297,88 +300,92 @@ function estadoSaldo2() {
 /*=============================================
 EDITAR TIPO DE PAGO
 =============================================*/
-$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnEditarCuenta", function () {
-    var idCuenta = $(this).attr("idCuenta");
+$(".tablaCuentas, .tablaCuentasPaginado").on(
+    "click",
+    ".btnEditarCuenta",
+    function () {
+        var idCuenta = $(this).attr("idCuenta");
 
-    var datos = new FormData();
-    datos.append("idCuenta", idCuenta);
+        var datos = new FormData();
+        datos.append("idCuenta", idCuenta);
 
-    $.ajax({
-        url: "ajax/cuentas.ajax.php",
-        method: "POST",
-        data: datos,
-        cache: false,
-        contentType: false,
-        processData: false,
-        dataType: "json",
-        success: function (respuesta) {
-            $("#idCuenta").val(respuesta["id"]);
-            $("#editarCodigo").val(respuesta["tipo_doc"]);
-            $("#editarCodigo").selectpicker("refresh");
-            $("#editarDocumento").val(respuesta["num_cta"]);
-            $("#editarNota").val(respuesta["notas"]);
-            $("#editarVendedor").val(respuesta["vendedor"]);
-            $("#editarVendedor").selectpicker("refresh");
-            if (respuesta["renovacion"] == 1) {
-                $("#editarRenovacion").prop("checked", true);
-            }
-            if (respuesta["protesta"] == 1) {
-                $("#editarProtestado").prop("checked", true);
-            }
-            $("#editarBanco").val(respuesta["banco"]);
-            $("#editarBanco").selectpicker("refresh");
-            $("#editarTipoDocumento").val(respuesta["cod_pago"]);
-            $("#editarTipoDocumento").selectpicker("refresh");
-            $("#editarFecha").val(respuesta["fecha"]);
-            $("#editarFechaVenc").val(respuesta["fecha_ven"]);
-            $("#editarUnico").val(respuesta["num_unico"]);
-            $("#editarOrigen").val(respuesta["doc_origen"]);
-            $("#editarFechaAcep").val(respuesta["fecha_cep"]);
-            $("#editarFechaEnvio").val(respuesta["fecha_envio"]);
-            $("#editarSaldo").val(respuesta["saldo"]);
-            $("#editarFechaUltima").val(respuesta["ult_pago"]);
-            $("#editarMoneda").val(respuesta["tip_mon"]);
-            $("#editarMoneda").selectpicker("refresh");
-            $("#editarFechaAbono").val(respuesta["fecha_abono"]);
-            $("#editarEstado1").val(respuesta["estado"]);
-            $("#editarMonto").val(respuesta["monto"]);
-            $("#editarTipoCambio").val(respuesta["tip_cambio"]);
-            $("#editarEstado").val(respuesta["estado_doc"]);
-            $("#editarEstado").selectpicker("refresh");
+        $.ajax({
+            url: "ajax/cuentas.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                $("#idCuenta").val(respuesta["id"]);
+                $("#editarCodigo").val(respuesta["tipo_doc"]);
+                $("#editarCodigo").selectpicker("refresh");
+                $("#editarDocumento").val(respuesta["num_cta"]);
+                $("#editarNota").val(respuesta["notas"]);
+                $("#editarVendedor").val(respuesta["vendedor"]);
+                $("#editarVendedor").selectpicker("refresh");
+                if (respuesta["renovacion"] == 1) {
+                    $("#editarRenovacion").prop("checked", true);
+                }
+                if (respuesta["protesta"] == 1) {
+                    $("#editarProtestado").prop("checked", true);
+                }
+                $("#editarBanco").val(respuesta["banco"]);
+                $("#editarBanco").selectpicker("refresh");
+                $("#editarTipoDocumento").val(respuesta["cod_pago"]);
+                $("#editarTipoDocumento").selectpicker("refresh");
+                $("#editarFecha").val(respuesta["fecha"]);
+                $("#editarFechaVenc").val(respuesta["fecha_ven"]);
+                $("#editarUnico").val(respuesta["num_unico"]);
+                $("#editarOrigen").val(respuesta["doc_origen"]);
+                $("#editarFechaAcep").val(respuesta["fecha_cep"]);
+                $("#editarFechaEnvio").val(respuesta["fecha_envio"]);
+                $("#editarSaldo").val(respuesta["saldo"]);
+                $("#editarFechaUltima").val(respuesta["ult_pago"]);
+                $("#editarMoneda").val(respuesta["tip_mon"]);
+                $("#editarMoneda").selectpicker("refresh");
+                $("#editarFechaAbono").val(respuesta["fecha_abono"]);
+                $("#editarEstado1").val(respuesta["estado"]);
+                $("#editarMonto").val(respuesta["monto"]);
+                $("#editarTipoCambio").val(respuesta["tip_cambio"]);
+                $("#editarEstado").val(respuesta["estado_doc"]);
+                $("#editarEstado").selectpicker("refresh");
 
-            var clienteCuenta = "1";
+                var clienteCuenta = "1";
 
-            var datos = new FormData();
-            datos.append("clienteCuenta", clienteCuenta);
-            $.ajax({
-                url: "ajax/clientes.ajax.php",
-                method: "POST",
-                data: datos,
-                cache: false,
-                contentType: false,
-                processData: false,
-                dataType: "json",
-                success: function (respuesta2) {
-                    $("#editarCliente").find("option").remove();
+                var datos = new FormData();
+                datos.append("clienteCuenta", clienteCuenta);
+                $.ajax({
+                    url: "ajax/clientes.ajax.php",
+                    method: "POST",
+                    data: datos,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    dataType: "json",
+                    success: function (respuesta2) {
+                        $("#editarCliente").find("option").remove();
 
-                    for (let i = 0; i < respuesta2.length; i++) {
-                        $("#editarCliente").append(
-                            "<option value='" +
-                                respuesta2[i]["codigo"] +
-                                "'>" +
-                                respuesta2[i]["codigo"] +
-                                " - " +
-                                respuesta2[i]["nombre"] +
-                                "</option>"
-                        );
-                    }
-                    $("#editarCliente").val(respuesta["cliente"]);
-                    $("#editarCliente").selectpicker("refresh");
-                },
-            });
-        },
-    });
-});
+                        for (let i = 0; i < respuesta2.length; i++) {
+                            $("#editarCliente").append(
+                                "<option value='" +
+                                    respuesta2[i]["codigo"] +
+                                    "'>" +
+                                    respuesta2[i]["codigo"] +
+                                    " - " +
+                                    respuesta2[i]["nombre"] +
+                                    "</option>"
+                            );
+                        }
+                        $("#editarCliente").val(respuesta["cliente"]);
+                        $("#editarCliente").selectpicker("refresh");
+                    },
+                });
+            },
+        });
+    }
+);
 
 $(".tablaCuentasPendientes").on("click", ".btnEditarCuenta", function () {
     var idCuenta = $(this).attr("idCuenta");
@@ -581,30 +588,42 @@ function estadoSaldo() {
 /*=============================================
 ELIMINAR TIPO DE PAGO
 =============================================*/
-$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnEliminarCuenta", function () {
-    var idCuenta = $(this).attr("idCuenta");
-    var rutas = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
-    var rutaEliminar = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
+$(".tablaCuentas, .tablaCuentasPaginado").on(
+    "click",
+    ".btnEliminarCuenta",
+    function () {
+        var idCuenta = $(this).attr("idCuenta");
+        var rutas =
+            typeof window.RUTA_CUENTAS !== "undefined"
+                ? window.RUTA_CUENTAS
+                : "cuentas";
+        var rutaEliminar =
+            typeof window.RUTA_CUENTAS !== "undefined"
+                ? window.RUTA_CUENTAS
+                : "cuentas";
 
-    swal({
-        title: "¿Está seguro de borrar la cuenta?",
-        text: "¡Si no lo está puede cancelar la acción!",
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        cancelButtonText: "Cancelar",
-        confirmButtonText: "Si, borrar cuenta!",
-    }).then(function (result) {
-        if (result.value) {
-            window.location =
-                "index.php?ruta=" + rutaEliminar + "&idCuenta=" +
-                idCuenta +
-                "&rutas=" +
-                rutas;
-        }
-    });
-});
+        swal({
+            title: "¿Está seguro de borrar la cuenta?",
+            text: "¡Si no lo está puede cancelar la acción!",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            cancelButtonText: "Cancelar",
+            confirmButtonText: "Si, borrar cuenta!",
+        }).then(function (result) {
+            if (result.value) {
+                window.location =
+                    "index.php?ruta=" +
+                    rutaEliminar +
+                    "&idCuenta=" +
+                    idCuenta +
+                    "&rutas=" +
+                    rutas;
+            }
+        });
+    }
+);
 
 $(".tablaCuentasPendientes").on("click", ".btnEliminarCuenta", function () {
     var idCuenta = $(this).attr("idCuenta");
@@ -710,20 +729,27 @@ $(".box").on("click", ".btnCodigoCuenta", function () {
     });
 });
 
-$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnVisualizarCuenta", function () {
-    var codCuenta = $(this).attr("codCta");
-    var numCuenta = $(this).attr("numCta");
-    localStorage.setItem("numCta2", numCuenta);
-    localStorage.setItem("codCta2", codCuenta);
-    var rutas = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
-    window.location =
-        "index.php?ruta=ver-cuentas&numCta=" +
-        numCuenta +
-        "&codCuenta=" +
-        codCuenta +
-        "&rutas=" +
-        rutas;
-});
+$(".tablaCuentas, .tablaCuentasPaginado").on(
+    "click",
+    ".btnVisualizarCuenta",
+    function () {
+        var codCuenta = $(this).attr("codCta");
+        var numCuenta = $(this).attr("numCta");
+        localStorage.setItem("numCta2", numCuenta);
+        localStorage.setItem("codCta2", codCuenta);
+        var rutas =
+            typeof window.RUTA_CUENTAS !== "undefined"
+                ? window.RUTA_CUENTAS
+                : "cuentas";
+        window.location =
+            "index.php?ruta=ver-cuentas&numCta=" +
+            numCuenta +
+            "&codCuenta=" +
+            codCuenta +
+            "&rutas=" +
+            rutas;
+    }
+);
 
 $(".tablaCuentasPendientes").on("click", ".btnVisualizarCuenta", function () {
     var codCuenta = $(this).attr("codCta");
@@ -851,36 +877,40 @@ $("#cancelarMonto2").change(function () {
     }
 });
 
-$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnAgregarLetra", function () {
-    var idCuenta = $(this).attr("idCuenta");
-    var cliente = $(this).attr("cliente");
-    var datos = new FormData();
-    datos.append("idCuenta", idCuenta);
+$(".tablaCuentas, .tablaCuentasPaginado").on(
+    "click",
+    ".btnAgregarLetra",
+    function () {
+        var idCuenta = $(this).attr("idCuenta");
+        var cliente = $(this).attr("cliente");
+        var datos = new FormData();
+        datos.append("idCuenta", idCuenta);
 
-    $.ajax({
-        url: "ajax/cuentas.ajax.php",
-        method: "POST",
-        data: datos,
-        cache: false,
-        contentType: false,
-        processData: false,
-        dataType: "json",
-        success: function (respuesta) {
-            $("#idCuenta3").val(respuesta["id"]);
-            $("#letraCodigo").val(respuesta["tipo_doc"]);
-            $("#letraDocumento").val(respuesta["num_cta"]);
-            $("#letraUsuario").val(respuesta["usuario"]);
-            $("#letraVendedor").val(respuesta["vendedor"]);
-            $("#letraCli").val(respuesta["cliente"]);
-            $("#letraFecha").val(respuesta["fecha"]);
-            $("#letraMonto").val(respuesta["monto"]);
-            $("#letraSaldo").val(respuesta["saldo"]);
-            $("#letraMoneda").val(respuesta["tip_mon"]);
-            $("#letraCliente").val(cliente);
-            $(".letraCuenta").remove();
-        },
-    });
-});
+        $.ajax({
+            url: "ajax/cuentas.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                $("#idCuenta3").val(respuesta["id"]);
+                $("#letraCodigo").val(respuesta["tipo_doc"]);
+                $("#letraDocumento").val(respuesta["num_cta"]);
+                $("#letraUsuario").val(respuesta["usuario"]);
+                $("#letraVendedor").val(respuesta["vendedor"]);
+                $("#letraCli").val(respuesta["cliente"]);
+                $("#letraFecha").val(respuesta["fecha"]);
+                $("#letraMonto").val(respuesta["monto"]);
+                $("#letraSaldo").val(respuesta["saldo"]);
+                $("#letraMoneda").val(respuesta["tip_mon"]);
+                $("#letraCliente").val(cliente);
+                $(".letraCuenta").remove();
+            },
+        });
+    }
+);
 
 $(".tablaCuentasPendientes").on("click", ".btnAgregarLetra", function () {
     var idCuenta = $(this).attr("idCuenta");
@@ -1334,86 +1364,90 @@ function cargarTablaCuentasConsultar(cliente) {
 
 //Dividir letra
 
-$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnDividirLetra", function () {
-    var idCuenta = $(this).attr("idCuenta");
-    var cliente = $(this).attr("cliente");
+$(".tablaCuentas, .tablaCuentasPaginado").on(
+    "click",
+    ".btnDividirLetra",
+    function () {
+        var idCuenta = $(this).attr("idCuenta");
+        var cliente = $(this).attr("cliente");
 
-    var datos = new FormData();
-    datos.append("idCuenta", idCuenta);
+        var datos = new FormData();
+        datos.append("idCuenta", idCuenta);
 
-    $.ajax({
-        url: "ajax/cuentas.ajax.php",
-        method: "POST",
-        data: datos,
-        cache: false,
-        contentType: false,
-        processData: false,
-        dataType: "json",
-        success: function (respuesta) {
-            console.log(
-                "🚀 ~ file: cuentas.js:1254 ~ respuesta:",
-                respuesta["num_unico"]
-            );
+        $.ajax({
+            url: "ajax/cuentas.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                console.log(
+                    "🚀 ~ file: cuentas.js:1254 ~ respuesta:",
+                    respuesta["num_unico"]
+                );
 
-            $("#idCuenta4").val(respuesta["id"]);
-            $("#dividirDocumento").val(respuesta["tipo_doc"]);
-            $("#dividirNroDocumento").val(respuesta["num_cta"]);
-            $("#dividirFecha").val(respuesta["fecha"]);
-            $("#dividirFechaVencimiento").val(respuesta["fecha_ven"]);
-            $("#dividirSaldo").val(respuesta["saldo"]);
-            $("#dividirVendedor").val(respuesta["vendedor"]);
-            $("#dividirCliente").val(respuesta["cliente"]);
-            $("#dividirNomCliente").val(cliente);
-            $("#dividirFecha2").val(respuesta["fecha_ven"]);
-            $("#dividirNroDocumento2").val(respuesta["num_cta"]);
+                $("#idCuenta4").val(respuesta["id"]);
+                $("#dividirDocumento").val(respuesta["tipo_doc"]);
+                $("#dividirNroDocumento").val(respuesta["num_cta"]);
+                $("#dividirFecha").val(respuesta["fecha"]);
+                $("#dividirFechaVencimiento").val(respuesta["fecha_ven"]);
+                $("#dividirSaldo").val(respuesta["saldo"]);
+                $("#dividirVendedor").val(respuesta["vendedor"]);
+                $("#dividirCliente").val(respuesta["cliente"]);
+                $("#dividirNomCliente").val(cliente);
+                $("#dividirFecha2").val(respuesta["fecha_ven"]);
+                $("#dividirNroDocumento2").val(respuesta["num_cta"]);
 
-            $("#dividirNumUnico").val(respuesta["num_unico"]);
+                $("#dividirNumUnico").val(respuesta["num_unico"]);
 
-            $("#dividirFechaCep").val(respuesta["fecha_cep"]);
+                $("#dividirFechaCep").val(respuesta["fecha_cep"]);
 
-            var fecha = new Date(respuesta["fecha_ven"]);
-            fecha.setDate(fecha.getDate() + 31);
-            var mes = fecha.getMonth() + 1;
-            var dia = fecha.getDate();
-            if (mes.toString().length == 1) {
-                if (dia.toString().length == 1) {
-                    var resultado =
-                        fecha.getFullYear() +
-                        "-0" +
-                        (fecha.getMonth() + 1) +
-                        "-" +
-                        "0" +
-                        fecha.getDate();
+                var fecha = new Date(respuesta["fecha_ven"]);
+                fecha.setDate(fecha.getDate() + 31);
+                var mes = fecha.getMonth() + 1;
+                var dia = fecha.getDate();
+                if (mes.toString().length == 1) {
+                    if (dia.toString().length == 1) {
+                        var resultado =
+                            fecha.getFullYear() +
+                            "-0" +
+                            (fecha.getMonth() + 1) +
+                            "-" +
+                            "0" +
+                            fecha.getDate();
+                    } else {
+                        var resultado =
+                            fecha.getFullYear() +
+                            "-0" +
+                            (fecha.getMonth() + 1) +
+                            "-" +
+                            fecha.getDate();
+                    }
                 } else {
-                    var resultado =
-                        fecha.getFullYear() +
-                        "-0" +
-                        (fecha.getMonth() + 1) +
-                        "-" +
-                        fecha.getDate();
+                    if (dia.toString().length == 1) {
+                        var resultado =
+                            fecha.getFullYear() +
+                            "-" +
+                            (fecha.getMonth() + 1) +
+                            "-" +
+                            "0" +
+                            fecha.getDate();
+                    } else {
+                        var resultado =
+                            fecha.getFullYear() +
+                            "-" +
+                            (fecha.getMonth() + 1) +
+                            "-" +
+                            fecha.getDate();
+                    }
                 }
-            } else {
-                if (dia.toString().length == 1) {
-                    var resultado =
-                        fecha.getFullYear() +
-                        "-" +
-                        (fecha.getMonth() + 1) +
-                        "-" +
-                        "0" +
-                        fecha.getDate();
-                } else {
-                    var resultado =
-                        fecha.getFullYear() +
-                        "-" +
-                        (fecha.getMonth() + 1) +
-                        "-" +
-                        fecha.getDate();
-                }
-            }
-            $("#dividirFechaVencimiento2").val(resultado);
-        },
-    });
-});
+                $("#dividirFechaVencimiento2").val(resultado);
+            },
+        });
+    }
+);
 
 $(".tablaCuentasPendientes").on("click", ".btnDividirLetra", function () {
     var idCuenta = $(this).attr("idCuenta");
@@ -2243,19 +2277,23 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
 })();
 
 //Imprimir letra con hoja pequeña
-$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnCargoProtesto", function () {
-    var num_cta = $(this).attr("num_cta");
-    var cliente = $(this).attr("cliente");
-    //console.log(codigo);
+$(".tablaCuentas, .tablaCuentasPaginado").on(
+    "click",
+    ".btnCargoProtesto",
+    function () {
+        var num_cta = $(this).attr("num_cta");
+        var cliente = $(this).attr("cliente");
+        //console.log(codigo);
 
-    window.open(
-        "vistas/reportes_ticket/cargo_protesto.php?num_cta=" +
-            num_cta +
-            "&cliente=" +
-            cliente,
-        "_blank"
-    );
-});
+        window.open(
+            "vistas/reportes_ticket/cargo_protesto.php?num_cta=" +
+                num_cta +
+                "&cliente=" +
+                cliente,
+            "_blank"
+        );
+    }
+);
 
 $(".box").on("change", ".optradio", function () {
     var consulta = $(this).val();
