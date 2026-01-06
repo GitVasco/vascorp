@@ -1,4 +1,4 @@
-$(".tablaCuentas").on("click", ".btnCancelacionDirecta", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnCancelacionDirecta", function () {
     const $button = $(this); // Guardar referencia al botón
     const idCta = $(this).attr("idCta");
     const tipo_doc = $(this).attr("tipo_doc");

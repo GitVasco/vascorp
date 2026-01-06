@@ -259,7 +259,7 @@ MODAL AGREGAR TIPO PAGO
                                 <span class="input-group-addon"><i class="fa fa-credit-card"></i></span>
 
                                 <input type="text" class="form-control input-lg" name="nuevoDocumento" placeholder="Numero de documento" required>
-                                <input type="hidden" name="ruta" value="cuentas">
+                                <input type="hidden" name="ruta" value="<?php echo obtenerRutaCuentas(); ?>">
 
                             </div>
 
@@ -692,7 +692,7 @@ MODAL EDITAR TIPO PAGO
                                 <span class="input-group-addon"><i class="fa fa-credit-card"></i></span>
 
                                 <input type="text" class="form-control input-lg" name="editarDocumento" id="editarDocumento" required>
-                                <input type="hidden" name="editarRuta" value="cuentas">
+                                <input type="hidden" name="editarRuta" value="<?php echo obtenerRutaCuentas(); ?>">
                             </div>
 
                         </div>
@@ -1756,5 +1756,7 @@ $eliminarCuenta->ctrEliminarCuenta();
 
 <script src="vistas/modulos/cuentas-corrientes/cuentas.js"></script>
 <script>
-    window.document.title = "Cuentas"
+    window.document.title = "Cuentas";
+    // Configuración de ruta según TIPO_PAGINACION_CUENTAS
+    window.RUTA_CUENTAS = "<?php echo obtenerRutaCuentas(); ?>";
 </script>

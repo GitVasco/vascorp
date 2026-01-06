@@ -297,7 +297,7 @@ function estadoSaldo2() {
 /*=============================================
 EDITAR TIPO DE PAGO
 =============================================*/
-$(".tablaCuentas").on("click", ".btnEditarCuenta", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnEditarCuenta", function () {
     var idCuenta = $(this).attr("idCuenta");
 
     var datos = new FormData();
@@ -581,9 +581,9 @@ function estadoSaldo() {
 /*=============================================
 ELIMINAR TIPO DE PAGO
 =============================================*/
-$(".tablaCuentas").on("click", ".btnEliminarCuenta", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnEliminarCuenta", function () {
     var idCuenta = $(this).attr("idCuenta");
-    var rutas = "cuentas";
+    var rutas = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
 
     swal({
         title: "¿Está seguro de borrar la cuenta?",
@@ -709,12 +709,12 @@ $(".box").on("click", ".btnCodigoCuenta", function () {
     });
 });
 
-$(".tablaCuentas").on("click", ".btnVisualizarCuenta", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnVisualizarCuenta", function () {
     var codCuenta = $(this).attr("codCta");
     var numCuenta = $(this).attr("numCta");
     localStorage.setItem("numCta2", numCuenta);
     localStorage.setItem("codCta2", codCuenta);
-    var rutas = "cuentas";
+    var rutas = (typeof window.RUTA_CUENTAS !== 'undefined') ? window.RUTA_CUENTAS : "cuentas";
     window.location =
         "index.php?ruta=ver-cuentas&numCta=" +
         numCuenta +
@@ -850,7 +850,7 @@ $("#cancelarMonto2").change(function () {
     }
 });
 
-$(".tablaCuentas").on("click", ".btnAgregarLetra", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnAgregarLetra", function () {
     var idCuenta = $(this).attr("idCuenta");
     var cliente = $(this).attr("cliente");
     var datos = new FormData();
@@ -1333,7 +1333,7 @@ function cargarTablaCuentasConsultar(cliente) {
 
 //Dividir letra
 
-$(".tablaCuentas").on("click", ".btnDividirLetra", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnDividirLetra", function () {
     var idCuenta = $(this).attr("idCuenta");
     var cliente = $(this).attr("cliente");
 
@@ -2242,7 +2242,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
 })();
 
 //Imprimir letra con hoja pequeña
-$(".tablaCuentas").on("click", ".btnCargoProtesto", function () {
+$(".tablaCuentas, .tablaCuentasPaginado").on("click", ".btnCargoProtesto", function () {
     var num_cta = $(this).attr("num_cta");
     var cliente = $(this).attr("cliente");
     //console.log(codigo);

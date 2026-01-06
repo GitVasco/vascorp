@@ -107,7 +107,7 @@ class ControladorCuentas
 							  }).then(function(result){
 										if (result.value) {
 	
-										window.location = "cuentas";
+										window.location = "' . obtenerRutaCuentas() . '";
 	
 										}
 									})
@@ -413,7 +413,7 @@ class ControladorCuentas
 							  }).then(function(result){
 										if (result.value) {
 	
-										window.location = "cuentas";
+										window.location = "' . obtenerRutaCuentas() . '";
 	
 										}
 									})
@@ -476,7 +476,7 @@ class ControladorCuentas
 						  }).then(function(result){
 									if (result.value) {
 
-									window.location = "cuentas";
+									window.location = "' . obtenerRutaCuentas() . '";
 
 									}
 								})
@@ -571,7 +571,7 @@ class ControladorCuentas
 						  }).then(function(result){
 									if (result.value) {
 
-									window.location = "cuentas";
+									window.location = "' . obtenerRutaCuentas() . '";
 
 									}
 								})
@@ -829,7 +829,7 @@ class ControladorCuentas
 						  }).then(function(result){
 									if (result.value) {
 
-									window.location = "cuentas";
+									window.location = "' . obtenerRutaCuentas() . '";
 
 									}
 								})
@@ -1180,7 +1180,7 @@ class ControladorCuentas
 						  }).then(function(result){
 									if (result.value) {
 
-									window.location = "index.php?ruta=cuentas";
+									window.location = "index.php?ruta=' . obtenerRutaCuentas() . '";
 
 									}
 								})

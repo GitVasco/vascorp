@@ -1365,28 +1365,6 @@
                                 }
                                 ?>
 
-                                <li class="<?php if ($_GET["ruta"] == "cuentas-pendientes") echo 'active'; ?>">
-
-                                    <a href="cuentas-pendientes">
-
-                                        <i class="fa fa-circle-o text-red"></i>
-                                        <span>Pendientes</span>
-
-                                    </a>
-
-                                </li>
-
-                                <li class="<?php if ($_GET["ruta"] == "cuentas-canceladas") echo 'active'; ?>">
-
-                                    <a href="cuentas-canceladas">
-
-                                        <i class="fa fa-circle-o text-green"></i>
-                                        <span>Canceladas</span>
-
-                                    </a>
-
-                                </li>
-
 
                             </ul>
 
