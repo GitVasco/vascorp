@@ -55,9 +55,13 @@ class ModeloCortes
 
     /*
 	* MOSTRAR TALLERES - VERSION 2
+	* MODIFICADO: Optimizado usando subconsultas agregadas (más eficiente que correlacionadas)
+	* Solo muestra datos del año actual
 	*/
     static public function mdlMostrarCortesV($modeloCorte)
     {
+        date_default_timezone_set('America/Lima');
+        $anioActual = date('Y');
 
         if ($modeloCorte != "null") {
             $stmt = Conexion::conectar()->prepare("SELECT
@@ -66,71 +70,52 @@ class ModeloCortes
                                                     a.cod_color,
                                                     a.color,
                                                     a.estado,
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 1
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '1',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 2
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '2',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 3
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '3',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 4
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '4',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 5
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '5',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 6
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '6',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 7
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '7',
-                                                    SUM(
-                                                    CASE
-                                                        WHEN a.cod_talla = 8
-                                                        THEN a.alm_corte
-                                                        ELSE 0
-                                                    END
-                                                    ) AS '8',
-                                                    SUM(a.alm_corte) AS total
-                                                FROM
-                                                    articulojf a
-                                                WHERE a.alm_corte > 0
-                                                AND a.modelo = '" . $modeloCorte . "'
-                                                GROUP BY a.modelo,
-                                                    a.cod_color,
-                                                    a.color,
-                                                    a.estado");
+                                                    SUM(CASE WHEN a.cod_talla = 1 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '1',
+                                                    SUM(CASE WHEN a.cod_talla = 2 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '2',
+                                                    SUM(CASE WHEN a.cod_talla = 3 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '3',
+                                                    SUM(CASE WHEN a.cod_talla = 4 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '4',
+                                                    SUM(CASE WHEN a.cod_talla = 5 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '5',
+                                                    SUM(CASE WHEN a.cod_talla = 6 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '6',
+                                                    SUM(CASE WHEN a.cod_talla = 7 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '7',
+                                                    SUM(CASE WHEN a.cod_talla = 8 THEN 
+                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                                    ELSE 0 END) AS '8',
+                                                    SUM(GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)) AS total
+                                                FROM articulojf a
+                                                LEFT JOIN (
+                                                    SELECT acd.articulo, SUM(COALESCE(acd.saldo_taller, acd.cantidad, 0)) AS saldo_total
+                                                    FROM almacencorte_detallejf acd
+                                                    INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
+                                                    WHERE YEAR(DATE(ac.fecha)) = :anio_actual
+                                                    GROUP BY acd.articulo
+                                                ) saldo_corte ON a.articulo = saldo_corte.articulo
+                                                LEFT JOIN (
+                                                    SELECT etc.articulo, SUM(etc.cantidad) AS cantidad_total
+                                                    FROM entaller_cabjf etc
+                                                    WHERE etc.estado = 0 
+                                                      AND YEAR(DATE(etc.fecha)) = :anio_actual
+                                                    GROUP BY etc.articulo
+                                                ) saldo_taller ON a.articulo = saldo_taller.articulo
+                                                WHERE a.modelo = :modelo
+                                                  AND (COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0)) > 0
+                                                GROUP BY a.modelo, a.cod_color, a.color, a.estado");
+
+            $stmt->bindParam(":modelo", $modeloCorte, PDO::PARAM_STR);
+            $stmt->bindParam(":anio_actual", $anioActual, PDO::PARAM_INT);
 
             $stmt->execute();
 
@@ -144,74 +129,51 @@ class ModeloCortes
                                             a.color,
                                             m.tipo,
                                             a.estado,
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 1 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '1',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 2 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '2',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 3 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '3',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 4 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '4',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 5 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '5',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 6 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '6',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 7 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '7',
-                                            SUM(
-                                            CASE
-                                                WHEN a.cod_talla = 8 
-                                                THEN a.alm_corte 
-                                                ELSE 0 
-                                            END
-                                            ) AS '8',
-                                            SUM(a.alm_corte) AS total 
-                                        FROM
-                                            articulojf a 
-                                            LEFT JOIN modelojf m
-                                            ON a.modelo=m.modelo
-                                        WHERE a.alm_corte > 0 
-                                        GROUP BY a.marca,
-                                            a.modelo,
-                                            a.cod_color,
-                                            a.color,
-                                            m.tipo,
-                                            a.estado");
+                                            SUM(CASE WHEN a.cod_talla = 1 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '1',
+                                            SUM(CASE WHEN a.cod_talla = 2 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '2',
+                                            SUM(CASE WHEN a.cod_talla = 3 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '3',
+                                            SUM(CASE WHEN a.cod_talla = 4 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '4',
+                                            SUM(CASE WHEN a.cod_talla = 5 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '5',
+                                            SUM(CASE WHEN a.cod_talla = 6 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '6',
+                                            SUM(CASE WHEN a.cod_talla = 7 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '7',
+                                            SUM(CASE WHEN a.cod_talla = 8 THEN 
+                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
+                                            ELSE 0 END) AS '8',
+                                            SUM(GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)) AS total 
+                                        FROM articulojf a 
+                                        LEFT JOIN modelojf m ON a.modelo = m.modelo
+                                        LEFT JOIN (
+                                            SELECT acd.articulo, SUM(COALESCE(acd.saldo_taller, acd.cantidad, 0)) AS saldo_total
+                                            FROM almacencorte_detallejf acd
+                                            INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
+                                            WHERE YEAR(DATE(ac.fecha)) = :anio_actual
+                                            GROUP BY acd.articulo
+                                        ) saldo_corte ON a.articulo = saldo_corte.articulo
+                                        LEFT JOIN (
+                                            SELECT etc.articulo, SUM(etc.cantidad) AS cantidad_total
+                                            FROM entaller_cabjf etc
+                                            WHERE etc.estado = 0 
+                                              AND YEAR(DATE(etc.fecha)) = :anio_actual
+                                            GROUP BY etc.articulo
+                                        ) saldo_taller ON a.articulo = saldo_taller.articulo
+                                        WHERE (COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0)) > 0
+                                        GROUP BY a.marca, a.modelo, a.cod_color, a.color, m.tipo, a.estado");
+
+            $stmt->bindParam(":anio_actual", $anioActual, PDO::PARAM_INT);
 
             $stmt->execute();
 
@@ -560,31 +522,85 @@ class ModeloCortes
         $stmt = null;
     }
 
+    /*
+	* REGISTRAR LO QUE SE MANDA A TALLER CABECERA V2
+	* MODIFICADO: Lógica en PHP para obtener saldo disponible y actualizar tracking
+	*/
     static public function mdlMandarTallerCabV2($datos)
     {
+        try {
+            $pdo = Conexion::conectar();
+            $pdo->beginTransaction();
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO entaller_cabjf
-        (articulo,usuario,cantidad,saldo,estado,guia,taller) 
-        VALUES
-        (:articulo,:usuario,:cantidad,:saldo,:estado,:guia,:taller)");
+            $articulo = $datos["articulo"];
+            $cantidad = $datos["cantidad"];
+            $cantidadRestante = $cantidad;
+            $detalleId = null;
 
-        $stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-        $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
-        $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_INT);
-        $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
-        $stmt->bindParam(":guia", $datos["guia"], PDO::PARAM_STR);
-        $stmt->bindParam(":taller", $datos["taller"], PDO::PARAM_STR);
+            // Buscar el detalle más antiguo con saldo disponible del año actual (lógica en PHP)
+            $stmt = $pdo->prepare("SELECT acd.id, COALESCE(acd.saldo_taller, acd.cantidad) AS saldo_disponible, acd.cantidad
+                FROM almacencorte_detallejf acd
+                INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
+                WHERE acd.articulo = :articulo
+                  AND COALESCE(acd.saldo_taller, acd.cantidad) > 0
+                  AND YEAR(DATE(ac.fecha)) = YEAR(NOW())
+                ORDER BY acd.id ASC
+                LIMIT 1");
+            $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+            $stmt->execute();
+            $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
 
-        if ($stmt->execute()) {
+            if (!$detalle || $detalle['saldo_disponible'] <= 0) {
+                $pdo->rollBack();
+                return "error_saldo_insuficiente";
+            }
 
+            $detalleId = $detalle['id'];
+            $saldoDisponible = $detalle['saldo_disponible'];
+
+            // Si el saldo disponible es menor a lo necesario, usar solo lo disponible
+            $cantidadAUsar = min($saldoDisponible, $cantidadRestante);
+
+            // Insertar en entaller_cabjf con referencia al detalle
+            $stmt = $pdo->prepare("INSERT INTO entaller_cabjf
+                (articulo, usuario, cantidad, saldo, estado, guia, taller, almacencorte_detalle_id) 
+                VALUES
+                (:articulo, :usuario, :cantidad, :saldo, :estado, :guia, :taller, :almacencorte_detalle_id)");
+
+            $stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
+            $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+            $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
+            $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_INT);
+            $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
+            $stmt->bindParam(":guia", $datos["guia"], PDO::PARAM_STR);
+            $stmt->bindParam(":taller", $datos["taller"], PDO::PARAM_STR);
+            $stmt->bindParam(":almacencorte_detalle_id", $detalleId, PDO::PARAM_INT);
+
+            if (!$stmt->execute()) {
+                $pdo->rollBack();
+                return "error";
+            }
+
+            // Actualizar saldo_taller del detalle (lógica en PHP)
+            $nuevoSaldo = max(0, $saldoDisponible - $cantidadAUsar);
+            $stmt = $pdo->prepare("UPDATE almacencorte_detallejf
+                SET saldo_taller = :nuevo_saldo
+                WHERE id = :detalle_id");
+            $stmt->bindParam(":nuevo_saldo", $nuevoSaldo, PDO::PARAM_INT);
+            $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
+            $stmt->execute();
+            $stmt->closeCursor();
+
+            $pdo->commit();
             return "ok";
-        } else {
-
-            return "error";
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return "error: " . $e->getMessage();
         }
 
-        $stmt->close();
         $stmt = null;
     }
 
@@ -934,5 +950,92 @@ class ModeloCortes
         } else {
             return $stmt->errorInfo();
         }
+    }
+
+    /*
+	* CANCELAR MOVIMIENTO A TALLER
+	* Revierte el saldo en almacencorte_detallejf y actualiza estado (lógica en PHP)
+	*/
+    static public function mdlCancelarMovimientoTaller($id_cabecera)
+    {
+        try {
+            $pdo = Conexion::conectar();
+            $pdo->beginTransaction();
+
+            // Obtener datos del movimiento
+            $stmt = $pdo->prepare("SELECT 
+                id, articulo, cantidad, almacencorte_detalle_id, estado 
+                FROM entaller_cabjf 
+                WHERE id = :id_cabecera");
+            $stmt->bindParam(":id_cabecera", $id_cabecera, PDO::PARAM_INT);
+            $stmt->execute();
+            $movimiento = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            if (!$movimiento) {
+                $pdo->rollBack();
+                return "error_movimiento_no_encontrado";
+            }
+
+            if ($movimiento['estado'] != '0') {
+                $pdo->rollBack();
+                return "error_movimiento_ya_procesado";
+            }
+
+            $articulo = $movimiento['articulo'];
+            $cantidad = $movimiento['cantidad'];
+            $detalleId = $movimiento['almacencorte_detalle_id'];
+
+            // Revertir saldo_taller en almacencorte_detallejf si tiene referencia (lógica en PHP)
+            if ($detalleId) {
+                // Obtener cantidad original del detalle
+                $stmt = $pdo->prepare("SELECT cantidad, saldo_taller FROM almacencorte_detallejf WHERE id = :detalle_id");
+                $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
+                $stmt->execute();
+                $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt->closeCursor();
+
+                if ($detalle) {
+                    // Calcular nuevo saldo_taller (no puede exceder la cantidad original)
+                    $nuevoSaldo = min($detalle['cantidad'], ($detalle['saldo_taller'] + $cantidad));
+
+                    $stmt = $pdo->prepare("UPDATE almacencorte_detallejf
+                        SET saldo_taller = :nuevo_saldo
+                        WHERE id = :detalle_id");
+                    $stmt->bindParam(":nuevo_saldo", $nuevoSaldo, PDO::PARAM_INT);
+                    $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
+                    $stmt->execute();
+                    $stmt->closeCursor();
+                }
+            }
+
+            // Revertir en articulosjf (lógica en PHP)
+            $stmt = $pdo->prepare("UPDATE articulojf 
+                SET alm_corte = alm_corte + :cantidad,
+                    taller = GREATEST(taller - :cantidad, 0)
+                WHERE articulo = :articulo");
+            $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+            $stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
+            $stmt->execute();
+            $stmt->closeCursor();
+
+            // Actualizar estado del movimiento
+            $stmt = $pdo->prepare("UPDATE entaller_cabjf 
+                SET estado = 'CANCELADO' 
+                WHERE id = :id_cabecera");
+            $stmt->bindParam(":id_cabecera", $id_cabecera, PDO::PARAM_INT);
+            $stmt->execute();
+            $stmt->closeCursor();
+
+            $pdo->commit();
+            return "ok";
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return "error: " . $e->getMessage();
+        }
+
+        $stmt = null;
     }
 }
