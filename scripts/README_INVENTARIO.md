@@ -488,6 +488,46 @@ php scripts/procesar_cierres.php
     - Actualiza stocks (suma a servicio)
     - Muestra resumen final con códigos generados
 
+## Scripts de Sincronización
+
+### actualizar_alm_corte.php
+
+Script para sincronizar la columna `alm_corte` en `articulojf` con la suma de `saldo_taller` de `almacencorte_detallejf`.
+
+**Propósito:**
+- Corregir inconsistencias entre `almacencorte_detallejf.saldo_taller` y `articulojf.alm_corte`
+- Asegurar que `alm_corte` refleje correctamente el stock disponible en almacén de corte
+
+**Lógica:**
+1. Suma todos los `saldo_taller` de `almacencorte_detallejf` donde `saldo_taller > 0`, agrupado por `articulo`
+2. Actualiza `alm_corte` en `articulojf` con esa suma
+3. Pone en 0 los artículos que no tienen `saldo_taller > 0` pero tienen `alm_corte > 0`
+
+**Uso:**
+
+```bash
+cd /Users/joel/Proyectos/vascorp
+php scripts/actualizar_alm_corte.php
+```
+
+**Salida:**
+- Muestra cantidad de artículos actualizados
+- Muestra estadísticas de sincronización
+- Verifica que los totales coincidan
+
+### actualizar_servicio_total.php
+
+Script para recalcular la columna `servicio` en `articulojf` basándose en:
+- `servicios_detallejf` (saldo > 0 y cerrar = 0)
+- `cierres_detallejf` (cantidad > 0)
+
+**Uso:**
+
+```bash
+cd /Users/joel/Proyectos/vascorp
+php scripts/actualizar_servicio_total.php
+```
+
 ## Notas Importantes
 
 -   Los inventarios son **físicos** (lo que realmente existe)
@@ -496,3 +536,4 @@ php scripts/procesar_cierres.php
 -   Los códigos de almacén y orden de corte se generarán automáticamente si no se proporcionan
 -   **Cierres heredan IDs de servicios**: Los cierres buscan `servicios_detallejf` por artículo y taller para vincularse
 -   **Servicios y cierres suman a servicio**: Ambos procesos actualizan la columna `servicio` de `articulojf`
+-   **Sincronización**: Usar `actualizar_alm_corte.php` y `actualizar_servicio_total.php` cuando haya inconsistencias en los stocks

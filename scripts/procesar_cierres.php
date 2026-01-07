@@ -80,9 +80,11 @@ function leerCSV($archivo)
     $encabezados = fgetcsv($handle);
 
     // Validar encabezados
-    if (!$encabezados || strtolower($encabezados[0]) !== 'articulo' || 
-        strtolower($encabezados[1]) !== 'cantidad' || 
-        strtolower($encabezados[2]) !== 'taller') {
+    if (
+        !$encabezados || strtolower($encabezados[0]) !== 'articulo' ||
+        strtolower($encabezados[1]) !== 'cantidad' ||
+        strtolower($encabezados[2]) !== 'taller'
+    ) {
         throw new Exception("El CSV debe tener encabezados: articulo,cantidad,taller");
     }
 
@@ -304,17 +306,17 @@ function crearAlmacenCorte($codigoAC, $codigoOC, $guia, $articulos, $usuario)
             $stmt = $pdo->prepare("INSERT INTO almacencorte_detallejf 
                 (almacencorte, ordencorte, detordencorte, articulo, cantidad) 
                 VALUES (:almacencorte, :ordencorte, :detordencorte, :articulo, :cantidad)");
-            
+
             $stmt->bindParam(":almacencorte", $codigoAC, PDO::PARAM_INT);
             $stmt->bindParam(":ordencorte", $codigoOC, PDO::PARAM_INT);
             $stmt->bindParam(":detordencorte", $mapaDetalles[$artLimpio], PDO::PARAM_INT);
             $stmt->bindParam(":articulo", $artLimpio, PDO::PARAM_STR); // IMPORTANTE: STR no INT
             $stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
-            
+
             if (!$stmt->execute()) {
                 throw new Exception("Error al crear detalle de almacén de corte para artículo $artLimpio");
             }
-            
+
             // Obtener el ID del detalle recién creado e inicializar saldo_taller
             $stmt = $pdo->prepare("SELECT id FROM almacencorte_detallejf 
                 WHERE almacencorte = :almacencorte 
@@ -382,17 +384,17 @@ function buscarIdServicioDetalle($articulo, $taller, $pdo)
         AND sd.saldo > 0
         ORDER BY sd.id ASC
         LIMIT 1");
-    
+
     $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
     $stmt->bindParam(":taller", $taller, PDO::PARAM_STR);
     $stmt->execute();
     $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
     $stmt->closeCursor();
-    
+
     if ($resultado) {
         return $resultado['id'];
     }
-    
+
     // Si no encuentra activos, buscar cualquier servicio del mismo artículo/taller
     $stmt = $pdo->prepare("SELECT sd.id 
         FROM servicios_detallejf sd
@@ -401,13 +403,13 @@ function buscarIdServicioDetalle($articulo, $taller, $pdo)
         AND s.taller = :taller
         ORDER BY sd.id DESC
         LIMIT 1");
-    
+
     $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
     $stmt->bindParam(":taller", $taller, PDO::PARAM_STR);
     $stmt->execute();
     $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
     $stmt->closeCursor();
-    
+
     return $resultado ? $resultado['id'] : null;
 }
 
@@ -475,12 +477,12 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
                 $stmt->execute();
                 $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
                 $stmt->closeCursor();
-                
+
                 if (!$detalle) {
                     mensaje("Advertencia: No se encontró detalle de almacén de corte para artículo $articulo", 'warning');
                     continue;
                 }
-                
+
                 // Inicializar saldo_taller si no estaba inicializado
                 $stmt = $pdo->prepare("UPDATE almacencorte_detallejf 
                     SET saldo_taller = :cantidad 
@@ -489,7 +491,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
                 $stmt->bindParam(":id", $detalle['id'], PDO::PARAM_INT);
                 $stmt->execute();
                 $stmt->closeCursor();
-                
+
                 $detalle['saldo_disponible'] = $detalle['saldo_disponible'];
             }
 
@@ -520,13 +522,13 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
 
             // Obtener el ID del registro recién creado en entaller_cabjf
             $entallerCabId = $pdo->lastInsertId();
-            
+
             if (!$entallerCabId || $entallerCabId == 0) {
                 throw new Exception("Error: No se obtuvo ID de entaller_cabjf para artículo $articulo");
             }
-            
+
             $contadorEntaller++;
-            
+
             if ($contadorEntaller % 50 == 0) {
                 mensaje("  Procesados $contadorEntaller artículos en entaller_cabjf...", 'info');
             }
@@ -550,7 +552,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
             $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
             $stmt->execute();
             $stmt->closeCursor();
-            
+
             mensaje("  Registrado en entaller_cabjf: $articulo (cantidad: $cantidadAUsar, taller: $taller)", 'info');
 
             // Guardar para crear servicios después
@@ -583,7 +585,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
             mensaje("  Procesando taller: $taller", 'info');
             // Obtener último código de servicio para este taller
             $codigoServicio = obtenerUltimoCodigoServicio($taller);
-            
+
             // Calcular total para este taller
             $totalTaller = 0;
             foreach ($itemsTaller as $item) {
@@ -602,7 +604,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
             ];
 
             $resultado = ModeloServicios::mdlGuardarServicios('serviciosjf', $datosServicio);
-            
+
             if ($resultado !== 'ok') {
                 throw new Exception("Error al crear cabecera de servicio para taller $taller");
             }
@@ -613,41 +615,51 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
                 $cantidad = $item['cantidad'];
                 $entallerCabId = $item['entaller_cab_id'];
 
-                // Crear detalle de servicio
+                // Crear detalle de servicio con saldo = 0 porque inmediatamente pasará a cierre
+                // Esto evita sumar a servicio en articulojf dos veces
                 $datosDetalle = [
                     'codigo' => $codigoServicio,
                     'articulo' => $articulo,
                     'cantidad' => $cantidad,
-                    'saldo' => $cantidad,
+                    'saldo' => 0, // Saldo en 0 porque inmediatamente pasa a cierre
                     'cabecera_taller' => $entallerCabId
                 ];
 
                 ModeloServicios::mdlGuardarDetallesServicios('servicios_detallejf', $datosDetalle);
 
-                // Obtener el ID del servicio_detallejf recién creado
-                $stmt = $pdo->prepare("SELECT id FROM servicios_detallejf 
-                    WHERE codigo = :codigo 
-                    AND articulo = :articulo 
-                    ORDER BY id DESC LIMIT 1");
-                $stmt->bindParam(":codigo", $codigoServicio, PDO::PARAM_STR);
-                $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
-                $stmt->execute();
-                $servicioDetalle = $stmt->fetch(PDO::FETCH_ASSOC);
-                $stmt->closeCursor();
+                // Obtener el ID del servicio_detallejf recién creado usando lastInsertId
+                $servicioDetalleId = $pdo->lastInsertId();
 
-                if ($servicioDetalle) {
-                    // Guardar en mapa para vincular con cierres después
-                    $mapaServiciosDetalle[$articulo . '|' . $taller] = $servicioDetalle['id'];
+                // Si lastInsertId no funciona, buscar el registro recién creado
+                if (!$servicioDetalleId || $servicioDetalleId == 0) {
+                    $stmt = $pdo->prepare("SELECT id FROM servicios_detallejf 
+                        WHERE codigo = :codigo 
+                        AND articulo = :articulo 
+                        ORDER BY id DESC LIMIT 1");
+                    $stmt->bindParam(":codigo", $codigoServicio, PDO::PARAM_STR);
+                    $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+                    $stmt->execute();
+                    $servicioDetalle = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $stmt->closeCursor();
+
+                    if ($servicioDetalle) {
+                        $servicioDetalleId = $servicioDetalle['id'];
+                    }
                 }
 
-                // Actualizar articulojf: sumar a servicio
-                $stmt = $pdo->prepare("UPDATE articulojf 
-                    SET servicio = servicio + :cantidad
-                    WHERE articulo = :articulo");
-                $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
-                $stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
-                $stmt->execute();
-                $stmt->closeCursor();
+                // Guardar en mapa para vincular con cierres después
+                // Usar una clave única que incluya el índice para evitar sobrescritura
+                $claveMapa = $articulo . '|' . $taller . '|' . $servicioDetalleId;
+                $mapaServiciosDetalle[$claveMapa] = $servicioDetalleId;
+
+                // También guardar por artículo+taller para búsqueda rápida
+                if (!isset($mapaServiciosDetalle[$articulo . '|' . $taller])) {
+                    $mapaServiciosDetalle[$articulo . '|' . $taller] = [];
+                }
+                $mapaServiciosDetalle[$articulo . '|' . $taller][] = $servicioDetalleId;
+
+                // NO actualizar articulojf aquí porque el servicio tiene saldo = 0
+                // Solo se sumará cuando se cree el cierre
             }
 
             $serviciosCreados[] = [
@@ -666,7 +678,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
             mensaje("  Procesando taller: $taller", 'info');
             // Obtener último código de cierre para este taller
             $codigoCierre = obtenerUltimoCodigoCierre($taller);
-            
+
             // Calcular total para este taller
             $totalTaller = 0;
             foreach ($itemsTaller as $item) {
@@ -686,7 +698,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
             ];
 
             $resultado = ModeloCierres::mdlGuardarCierres('cierresjf', $datosCierre);
-            
+
             if ($resultado !== 'ok') {
                 throw new Exception("Error al crear cabecera de cierre para taller $taller");
             }
@@ -697,29 +709,62 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
                 $cantidad = $item['cantidad'];
 
                 // Obtener ID de servicios_detallejf del mapa (recién creado)
-                $codServicioId = isset($mapaServiciosDetalle[$articulo . '|' . $taller]) 
-                    ? $mapaServiciosDetalle[$articulo . '|' . $taller] 
-                    : null;
+                $codServicioId = null;
 
-                // Descontar saldo del servicio_detallejf correspondiente (el cierre cierra el servicio)
+                // Buscar en el mapa por artículo+taller (puede ser array o ID directo)
+                if (isset($mapaServiciosDetalle[$articulo . '|' . $taller])) {
+                    $serviciosEncontrados = $mapaServiciosDetalle[$articulo . '|' . $taller];
+
+                    // Si es un array, tomar el primero disponible
+                    if (is_array($serviciosEncontrados) && !empty($serviciosEncontrados)) {
+                        $codServicioId = $serviciosEncontrados[0];
+                    } elseif (is_numeric($serviciosEncontrados)) {
+                        // Si es un ID directo (formato antiguo)
+                        $codServicioId = $serviciosEncontrados;
+                    }
+                }
+
+                // Si no se encuentra en el mapa, buscar directamente por artículo y taller
+                // Buscar el servicio_detallejf más reciente creado en esta transacción
+                if (!$codServicioId) {
+                    $stmt = $pdo->prepare("SELECT sd.id 
+                        FROM servicios_detallejf sd
+                        INNER JOIN serviciosjf s ON sd.codigo = s.codigo
+                        WHERE sd.articulo = :articulo 
+                        AND s.taller = :taller
+                        AND sd.saldo = 0
+                        ORDER BY sd.id DESC
+                        LIMIT 1");
+                    $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+                    $stmt->bindParam(":taller", $taller, PDO::PARAM_STR);
+                    $stmt->execute();
+                    $servicioEncontrado = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $stmt->closeCursor();
+
+                    if ($servicioEncontrado) {
+                        $codServicioId = $servicioEncontrado['id'];
+                    }
+                }
+
+                // Asegurar que el saldo del servicio esté en 0 (ya se creó con saldo = 0)
+                // y obtener información para actualizar entaller_cabjf
                 if ($codServicioId) {
                     // Obtener información del servicio para actualizar también entaller_cabjf
-                    $stmt = $pdo->prepare("SELECT saldo, cabecera_taller FROM servicios_detallejf WHERE id = :id");
+                    $stmt = $pdo->prepare("SELECT saldo, cantidad, cabecera_taller FROM servicios_detallejf WHERE id = :id");
                     $stmt->bindParam(":id", $codServicioId, PDO::PARAM_INT);
                     $stmt->execute();
                     $servicioDetalle = $stmt->fetch(PDO::FETCH_ASSOC);
                     $stmt->closeCursor();
-                    
+
                     if ($servicioDetalle) {
-                        // Descontar saldo del servicio
+                        // Asegurar que el saldo esté en 0 (por si acaso)
                         $stmt = $pdo->prepare("UPDATE servicios_detallejf 
-                            SET saldo = GREATEST(saldo - :cantidad, 0)
+                            SET saldo = 0
                             WHERE id = :id");
-                        $stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
                         $stmt->bindParam(":id", $codServicioId, PDO::PARAM_INT);
                         $stmt->execute();
                         $stmt->closeCursor();
-                        
+
                         // También descontar de entaller_cabjf si está vinculado
                         if ($servicioDetalle['cabecera_taller']) {
                             $stmt = $pdo->prepare("UPDATE entaller_cabjf 
@@ -729,14 +774,14 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
                             $stmt->bindParam(":id_cabecera", $servicioDetalle['cabecera_taller'], PDO::PARAM_INT);
                             $stmt->execute();
                             $stmt->closeCursor();
-                            
+
                             // Si el saldo llegó a cero, cerrar el registro en entaller_cabjf
                             $stmt = $pdo->prepare("SELECT saldo FROM entaller_cabjf WHERE id = :id_cabecera");
                             $stmt->bindParam(":id_cabecera", $servicioDetalle['cabecera_taller'], PDO::PARAM_INT);
                             $stmt->execute();
                             $cabecera = $stmt->fetch(PDO::FETCH_ASSOC);
                             $stmt->closeCursor();
-                            
+
                             if ($cabecera && $cabecera['saldo'] <= 0) {
                                 $stmt = $pdo->prepare("UPDATE entaller_cabjf 
                                     SET estado = 1 
@@ -747,6 +792,9 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
                             }
                         }
                     }
+                } else {
+                    // Advertencia si no se encontró el servicio para descontar
+                    mensaje("  Advertencia: No se encontró servicios_detallejf para artículo $articulo en taller $taller para descontar saldo", 'warning');
                 }
 
                 // Crear detalle de cierre
@@ -760,7 +808,10 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
 
                 ModeloCierres::mdlGuardarDetallesCierres('cierres_detallejf', $datosDetalle);
 
-                // Actualizar articulojf: sumar a servicio (cierres van de la mano con servicios)
+                // Actualizar articulojf: sumar a servicio solo cuando se crea el cierre
+                // NOTA: Los servicios se crean con saldo = 0 y NO se suma a servicio en articulojf
+                // Solo se suma cuando se crea el cierre (servicio = servicios + cierres)
+                // Como los servicios tienen saldo = 0, solo contamos los cierres
                 $stmt = $pdo->prepare("UPDATE articulojf 
                     SET servicio = servicio + :cantidad
                     WHERE articulo = :articulo");
@@ -784,7 +835,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
         mensaje("Confirmando transacción...", 'info');
         $pdo->commit();
         mensaje("✓ Transacción confirmada", 'success');
-        
+
         // Actualizar servicio total (suma servicios + cierres) - FUERA de la transacción para evitar bloqueos
         mensaje("Actualizando servicio total...", 'info');
         try {
@@ -795,7 +846,7 @@ function crearServiciosYCierres($articulos, $codigoAC, $usuario)
             // Continuar aunque falle la actualización del servicio total
         }
         return [
-            'registros' => $registrosCreados, 
+            'registros' => $registrosCreados,
             'guia_servicios' => $guiaServicios,
             'guia_cierres' => $guiaCierres,
             'servicios' => $serviciosCreados,
@@ -829,7 +880,7 @@ function procesarInventario()
         }
 
         mensaje("Líneas encontradas: " . count($articulos), 'success');
-        
+
         // Contar artículos únicos y talleres únicos
         $articulosUnicos = [];
         $talleresUnicos = [];
@@ -844,7 +895,7 @@ function procesarInventario()
             $talleresUnicos[$taller] = true;
             $totalUnidades += $item['cantidad'];
         }
-        
+
         mensaje("Artículos únicos: " . count($articulosUnicos), 'success');
         mensaje("Talleres únicos: " . count($talleresUnicos), 'success');
         mensaje("Total de unidades: " . $totalUnidades, 'success');
@@ -880,13 +931,13 @@ function procesarInventario()
         mensaje("✓ Registrados {$resultado['registros']} registros", 'success');
         mensaje("  Guía de servicios: {$resultado['guia_servicios']}", 'info');
         mensaje("  Guía de cierres: {$resultado['guia_cierres']}", 'info');
-        
+
         // Mostrar servicios creados
         mensaje("✓ Servicios creados:", 'success');
         foreach ($resultado['servicios'] as $servicio) {
             mensaje("  - {$servicio['codigo']} (Taller: {$servicio['taller']}, Total: {$servicio['total']})", 'info');
         }
-        
+
         // Mostrar cierres creados
         mensaje("✓ Cierres creados:", 'success');
         foreach ($resultado['cierres'] as $cierre) {
@@ -922,4 +973,3 @@ function procesarInventario()
 
 // Ejecutar
 procesarInventario();
-

@@ -54,15 +54,13 @@ class ModeloCortes
     }
 
     /*
-	* MOSTRAR TALLERES - VERSION 2
-	* MODIFICADO: Optimizado usando subconsultas agregadas (más eficiente que correlacionadas)
-	* Solo muestra datos del año actual
+	* MOSTRAR TALLERES - VERSION 3
+	* MODIFICADO: Usa directamente alm_corte de articulojf (ya sincronizado)
+	* Más simple y confiable que calcular dinámicamente restando entaller_cabjf
+	* NOTA: Ejecutar actualizar_alm_corte.php periódicamente para mantener alm_corte sincronizado
 	*/
     static public function mdlMostrarCortesV($modeloCorte)
     {
-        date_default_timezone_set('America/Lima');
-        $anioActual = date('Y');
-
         if ($modeloCorte != "null") {
             $stmt = Conexion::conectar()->prepare("SELECT
                                                     a.modelo,
@@ -70,52 +68,21 @@ class ModeloCortes
                                                     a.cod_color,
                                                     a.color,
                                                     a.estado,
-                                                    SUM(CASE WHEN a.cod_talla = 1 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '1',
-                                                    SUM(CASE WHEN a.cod_talla = 2 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '2',
-                                                    SUM(CASE WHEN a.cod_talla = 3 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '3',
-                                                    SUM(CASE WHEN a.cod_talla = 4 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '4',
-                                                    SUM(CASE WHEN a.cod_talla = 5 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '5',
-                                                    SUM(CASE WHEN a.cod_talla = 6 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '6',
-                                                    SUM(CASE WHEN a.cod_talla = 7 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '7',
-                                                    SUM(CASE WHEN a.cod_talla = 8 THEN 
-                                                        GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                                    ELSE 0 END) AS '8',
-                                                    SUM(GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)) AS total
+                                                    SUM(CASE WHEN a.cod_talla = 1 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '1',
+                                                    SUM(CASE WHEN a.cod_talla = 2 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '2',
+                                                    SUM(CASE WHEN a.cod_talla = 3 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '3',
+                                                    SUM(CASE WHEN a.cod_talla = 4 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '4',
+                                                    SUM(CASE WHEN a.cod_talla = 5 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '5',
+                                                    SUM(CASE WHEN a.cod_talla = 6 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '6',
+                                                    SUM(CASE WHEN a.cod_talla = 7 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '7',
+                                                    SUM(CASE WHEN a.cod_talla = 8 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '8',
+                                                    SUM(GREATEST(a.alm_corte, 0)) AS total
                                                 FROM articulojf a
-                                                LEFT JOIN (
-                                                    SELECT acd.articulo, SUM(COALESCE(acd.saldo_taller, acd.cantidad, 0)) AS saldo_total
-                                                    FROM almacencorte_detallejf acd
-                                                    INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
-                                                    WHERE YEAR(DATE(ac.fecha)) = :anio_actual
-                                                    GROUP BY acd.articulo
-                                                ) saldo_corte ON a.articulo = saldo_corte.articulo
-                                                LEFT JOIN (
-                                                    SELECT etc.articulo, SUM(etc.cantidad) AS cantidad_total
-                                                    FROM entaller_cabjf etc
-                                                    WHERE etc.estado = 0 
-                                                      AND YEAR(DATE(etc.fecha)) = :anio_actual
-                                                    GROUP BY etc.articulo
-                                                ) saldo_taller ON a.articulo = saldo_taller.articulo
                                                 WHERE a.modelo = :modelo
-                                                  AND (COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0)) > 0
+                                                  AND a.alm_corte > 0
                                                 GROUP BY a.modelo, a.cod_color, a.color, a.estado");
 
             $stmt->bindParam(":modelo", $modeloCorte, PDO::PARAM_STR);
-            $stmt->bindParam(":anio_actual", $anioActual, PDO::PARAM_INT);
 
             $stmt->execute();
 
@@ -129,51 +96,19 @@ class ModeloCortes
                                             a.color,
                                             m.tipo,
                                             a.estado,
-                                            SUM(CASE WHEN a.cod_talla = 1 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '1',
-                                            SUM(CASE WHEN a.cod_talla = 2 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '2',
-                                            SUM(CASE WHEN a.cod_talla = 3 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '3',
-                                            SUM(CASE WHEN a.cod_talla = 4 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '4',
-                                            SUM(CASE WHEN a.cod_talla = 5 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '5',
-                                            SUM(CASE WHEN a.cod_talla = 6 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '6',
-                                            SUM(CASE WHEN a.cod_talla = 7 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '7',
-                                            SUM(CASE WHEN a.cod_talla = 8 THEN 
-                                                GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)
-                                            ELSE 0 END) AS '8',
-                                            SUM(GREATEST(COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0), 0)) AS total 
+                                            SUM(CASE WHEN a.cod_talla = 1 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '1',
+                                            SUM(CASE WHEN a.cod_talla = 2 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '2',
+                                            SUM(CASE WHEN a.cod_talla = 3 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '3',
+                                            SUM(CASE WHEN a.cod_talla = 4 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '4',
+                                            SUM(CASE WHEN a.cod_talla = 5 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '5',
+                                            SUM(CASE WHEN a.cod_talla = 6 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '6',
+                                            SUM(CASE WHEN a.cod_talla = 7 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '7',
+                                            SUM(CASE WHEN a.cod_talla = 8 THEN GREATEST(a.alm_corte, 0) ELSE 0 END) AS '8',
+                                            SUM(GREATEST(a.alm_corte, 0)) AS total 
                                         FROM articulojf a 
                                         LEFT JOIN modelojf m ON a.modelo = m.modelo
-                                        LEFT JOIN (
-                                            SELECT acd.articulo, SUM(COALESCE(acd.saldo_taller, acd.cantidad, 0)) AS saldo_total
-                                            FROM almacencorte_detallejf acd
-                                            INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
-                                            WHERE YEAR(DATE(ac.fecha)) = :anio_actual
-                                            GROUP BY acd.articulo
-                                        ) saldo_corte ON a.articulo = saldo_corte.articulo
-                                        LEFT JOIN (
-                                            SELECT etc.articulo, SUM(etc.cantidad) AS cantidad_total
-                                            FROM entaller_cabjf etc
-                                            WHERE etc.estado = 0 
-                                              AND YEAR(DATE(etc.fecha)) = :anio_actual
-                                            GROUP BY etc.articulo
-                                        ) saldo_taller ON a.articulo = saldo_taller.articulo
-                                        WHERE (COALESCE(saldo_corte.saldo_total, 0) - COALESCE(saldo_taller.cantidad_total, 0)) > 0
+                                        WHERE a.alm_corte > 0
                                         GROUP BY a.marca, a.modelo, a.cod_color, a.color, m.tipo, a.estado");
-
-            $stmt->bindParam(":anio_actual", $anioActual, PDO::PARAM_INT);
 
             $stmt->execute();
 
