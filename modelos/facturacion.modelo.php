@@ -6,13 +6,13 @@ date_default_timezone_set('America/Lima'); // Reemplaza 'America/Lima' con tu zo
 class ModeloFacturacion
 {
 
-    /*
+  /*
 	* REGISTAR MOVIMIENTOS 
 	*/
-    static public function mdlRegistrarMovimientos($detalle)
-    {
+  static public function mdlRegistrarMovimientos($detalle)
+  {
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO movimientosjf_2025 (
+    $stmt = Conexion::conectar()->prepare("INSERT INTO movimientosjf_2026 (
                                                     tipo,
                                                     documento,
                                                     fecha,
@@ -29,26 +29,26 @@ class ModeloFacturacion
                                                 )
                                                 VALUES
                                                     $detalle");
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
 	* REGISTAR DOCUMENTO
 	*/
-    static public function mdlRegistrarDocumento($datos)
-    {
+  static public function mdlRegistrarDocumento($datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO ventajf (
+    $stmt = Conexion::conectar()->prepare("INSERT INTO ventajf (
                                                         tipo,
                                                         documento,
                                                         neto,
@@ -104,218 +104,218 @@ class ModeloFacturacion
                                                         :tipo_moneda
                                                         )");
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":neto", $datos["neto"], PDO::PARAM_STR);
-        $stmt->bindParam(":igv", $datos["igv"], PDO::PARAM_STR);
-        $stmt->bindParam(":dscto", $datos["dscto"], PDO::PARAM_STR);
-        $stmt->bindParam(":total", $datos["total"], PDO::PARAM_STR);
-        $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
-        $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
-        $stmt->bindParam(":agencia", $datos["agencia"], PDO::PARAM_STR);
-        $stmt->bindParam(":lista_precios", $datos["lista_precios"], PDO::PARAM_STR);
-        $stmt->bindParam(":condicion_venta", $datos["condicion_venta"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_destino", $datos["doc_destino"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
-        $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
-        $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":neto", $datos["neto"], PDO::PARAM_STR);
+    $stmt->bindParam(":igv", $datos["igv"], PDO::PARAM_STR);
+    $stmt->bindParam(":dscto", $datos["dscto"], PDO::PARAM_STR);
+    $stmt->bindParam(":total", $datos["total"], PDO::PARAM_STR);
+    $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
+    $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
+    $stmt->bindParam(":agencia", $datos["agencia"], PDO::PARAM_STR);
+    $stmt->bindParam(":lista_precios", $datos["lista_precios"], PDO::PARAM_STR);
+    $stmt->bindParam(":condicion_venta", $datos["condicion_venta"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_destino", $datos["doc_destino"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
+    $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
+    $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
 
-        $stmt->bindParam(":chofer", $datos["chofer"], PDO::PARAM_STR);
-        $stmt->bindParam(":carro", $datos["carro"], PDO::PARAM_STR);
-        $stmt->bindParam(":bultos", $datos["bultos"], PDO::PARAM_STR);
-        $stmt->bindParam(":peso", $datos["peso"], PDO::PARAM_STR);
+    $stmt->bindParam(":chofer", $datos["chofer"], PDO::PARAM_STR);
+    $stmt->bindParam(":carro", $datos["carro"], PDO::PARAM_STR);
+    $stmt->bindParam(":bultos", $datos["bultos"], PDO::PARAM_STR);
+    $stmt->bindParam(":peso", $datos["peso"], PDO::PARAM_STR);
 
-        $stmt->bindParam(":exportacion", $datos["exportacion"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_moneda", $datos["tipo_moneda"], PDO::PARAM_STR);
+    $stmt->bindParam(":exportacion", $datos["exportacion"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_moneda", $datos["tipo_moneda"], PDO::PARAM_STR);
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR TALONARIO + 1 GUIA
     */
-    static public function mdlActualizarTalonarioGuia($serie)
-    {
+  static public function mdlActualizarTalonarioGuia($serie)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     talonariosjf
                 SET
                     guias_remision = guias_remision + 1
                 WHERE serie_guias = :valor";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
+    $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR TALONARIO + 1 FACTURA
     */
-    static public function mdlActualizarTalonarioFactura($serie)
-    {
+  static public function mdlActualizarTalonarioFactura($serie)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     talonariosjf
                 SET
                     facturas = facturas + 1
                 WHERE serie_factura = :valor";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
+    $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR TALONARIO + 1 BOLETA
     */
-    static public function mdlActualizarTalonarioBoleta($serie)
-    {
+  static public function mdlActualizarTalonarioBoleta($serie)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     talonariosjf
                 SET
                     boletas = boletas + 1
                 WHERE serie_boletas = :valor";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
+    $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR TALONARIO + 1 PROFORMA
     */
-    static public function mdlActualizarTalonarioProforma($serie)
-    {
+  static public function mdlActualizarTalonarioProforma($serie)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     talonariosjf
                 SET
                     proformas = proformas + 1
                 WHERE serie_proformas = :valor";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
+    $stmt->bindParam(":valor", $serie, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
+    $stmt = null;
+  }
 
 
-    /*
+
+  /*
     * ACTUALIZAR PEDIDO A FACTURADO
     */
-    static public function mdlActualizarPedidoF($codigo)
-    {
+  static public function mdlActualizarPedidoF($codigo)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     temporaljf
                 SET
                     estado = 'FACTURADOS'
                 WHERE codigo = :codigo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR PEDIDO A FACTURADO
     */
-    static public function mdlActualizarPedidoB($codigo)
-    {
+  static public function mdlActualizarPedidoB($codigo)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     temporaljf_bkp
                 SET
                     estado = 'FACTURADOS'
                 WHERE codigo = :codigo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR TALONARIO + 1 FACTURA
     */
-    static public function mdlGenerarCtaCte($datos)
-    {
+  static public function mdlGenerarCtaCte($datos)
+  {
 
-        $sql = "INSERT INTO cuenta_ctejf (
+    $sql = "INSERT INTO cuenta_ctejf (
                         tipo_doc,
                         num_cta,
                         cliente,
@@ -347,40 +347,40 @@ class ModeloFacturacion
                         :pcreg
                         )";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
-        $stmt->bindParam(":num_cta", $datos["num_cta"], PDO::PARAM_STR);
-        $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
-        $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_ven", $datos["fecha_ven"], PDO::PARAM_STR);
-        $stmt->bindParam(":monto", $datos["monto"], PDO::PARAM_STR);
-        $stmt->bindParam(":cod_pago", $datos["cod_pago"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-        $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_STR);
-        $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
-        $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
+    $stmt->bindParam(":num_cta", $datos["num_cta"], PDO::PARAM_STR);
+    $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
+    $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_ven", $datos["fecha_ven"], PDO::PARAM_STR);
+    $stmt->bindParam(":monto", $datos["monto"], PDO::PARAM_STR);
+    $stmt->bindParam(":cod_pago", $datos["cod_pago"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_STR);
+    $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
+    $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * MOSTRAR DETALLE DE TEMPORAL
     */
-    static public function mdlMostrarTablas($tipo, $estado, $valor)
-    {
+  static public function mdlMostrarTablas($tipo, $estado, $valor)
+  {
 
-        if ($valor == null) {
+    if ($valor == null) {
 
-            $sql = "SELECT
+      $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -411,17 +411,17 @@ class ModeloFacturacion
                 WHERE v.tipo = :tipo
                     AND v.estado in (:estado)";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-            $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
+      $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+      $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
+      return $stmt->fetchAll();
+    } else {
 
-            $sql = "SELECT
+      $sql = "SELECT
                     v.tipo_documento,
                     v.documento,
                     v.total,
@@ -452,28 +452,28 @@ class ModeloFacturacion
                     AND v.estado = :estado
                     AND v.documento = :valor";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-            $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
-            $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
+      $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+      $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
+      $stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetch();
-        }
-
-        $stmt = null;
+      return $stmt->fetch();
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * MOSTRAR DETALLE DE TEMPORAL
     */
-    static public function mdlMostrarTablasB()
-    {
+  static public function mdlMostrarTablasB()
+  {
 
 
-        $sql = "SELECT
+    $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -512,22 +512,22 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
                     v.documento DESC";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
 	* REGISTAR MOVIMIENTO DESDE GUIA
 	*/
-    static public function mdlFacturarGuiaM($datos)
-    {
+  static public function mdlFacturarGuiaM($datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO movimientosjf_2025 (
+    $stmt = Conexion::conectar()->prepare("INSERT INTO movimientosjf_2026 (
                                                             tipo,
                                                             documento,
                                                             fecha,
@@ -553,41 +553,41 @@ class ModeloFacturacion
                                                             m.total,
                                                             :nombre_tipo
                                                         FROM
-                                                            movimientosjf_2025 m
+                                                            movimientosjf_2026 m
                                                         WHERE m.documento = :codigo
                                                             AND m.tipo = :tipo_documento)");
 
-        $stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
-        $stmt->bindParam(":nombre_tipo", $datos["nombre_tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
+    $stmt->bindParam(":nombre_tipo", $datos["nombre_tipo"], PDO::PARAM_STR);
 
 
 
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
 	* REGISTAR VENTA DESDE GUIA
 	*/
-    static public function mdlFacturarGuiaV($datos)
-    {
+  static public function mdlFacturarGuiaV($datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO ventajf (
+    $stmt = Conexion::conectar()->prepare("INSERT INTO ventajf (
                                                                 tipo,
                                                                 documento,
                                                                 neto,
@@ -631,77 +631,77 @@ class ModeloFacturacion
                                                             WHERE v.documento = :codigo
                                                                 AND v.tipo = :tipo_ori)");
 
-        $stmt->bindParam(":codigo", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_ori", $datos["tipo_ori"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-        $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
-        $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_ori", $datos["tipo_ori"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
+    $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR GUIA A FACTURADO
     */
-    static public function mdlActualizarGuiaF($codigo)
-    {
+  static public function mdlActualizarGuiaF($codigo)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     ventajf
                 SET
                     estado = 'FACTURADO'
                 WHERE documento = :codigo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * MOSTRAR DETALLE DE TEMPORAL
     */
-    static public function mdlMostraVentaDocumento($valor, $tipoDoc)
-    {
+  static public function mdlMostraVentaDocumento($valor, $tipoDoc)
+  {
 
-        if ($valor == null) {
+    if ($valor == null) {
 
-            $sql = "SELECT
+      $sql = "SELECT
                         *
                     FROM
                         ventajf v";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
+      return $stmt->fetchAll();
+    } else {
 
-            $sql = "SELECT
+      $sql = "SELECT
                         v.tipo,
                         v.documento,
                         v.neto,
@@ -726,26 +726,26 @@ class ModeloFacturacion
                     WHERE v.documento = :codigo
                         AND v.tipo = :tipo_doc";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
-            $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
+      $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
+      $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetch();
-        }
-
-        $stmt = null;
+      return $stmt->fetch();
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * MOSTRAR IMPRESION DE NOTA DE DEBITO
     */
-    static public function mdlMostrarDebitoImpresion($valor, $tipoDoc)
-    {
+  static public function mdlMostrarDebitoImpresion($valor, $tipoDoc)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
             v.tipo,
             v.documento,
             v.neto,
@@ -808,26 +808,26 @@ class ModeloFacturacion
             WHERE v.documento = :codigo
             AND v.tipo = :tipo_doc";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
     * MOSTRAR IMPRESION DE FACTURA
     */
-    static public function mdlMostrarVentaImpresion($valor, $tipoDoc)
-    {
+  static public function mdlMostrarVentaImpresion($valor, $tipoDoc)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 v.tipo,
                 v.documento,
                 v.neto,
@@ -961,26 +961,26 @@ class ModeloFacturacion
                     WHERE v.documento = :codigo 
                     AND v.tipo = :tipo_doc";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
     * MOSTRAR MODELO PARA NC , FACTURA Y BOLETA
     */
-    static public function mdlMostrarModeloImpresion($valor, $tipoDoc)
-    {
+  static public function mdlMostrarModeloImpresion($valor, $tipoDoc)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
             a.modelo,
             ROUND(SUM(cantidad), 2) AS cantidad,
             CASE
@@ -993,33 +993,33 @@ class ModeloFacturacion
             ROUND(m.dscto1, 2) AS dscto1,
             ROUND(SUM(m.cantidad * m.precio), 2) AS total 
             FROM
-            movimientosjf_2025 m 
+            movimientosjf_2026 m 
             LEFT JOIN articulojf a 
                 ON m.articulo = a.articulo 
             WHERE m.tipo = :tipo_doc 
             AND m.documento = :codigo 
             GROUP BY a.modelo ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
     * MOSTRAR MODELO PARA NC , FACTURA Y BOLETA
     */
-    static public function mdlMostrarModeloImpresionV2($tabla, $valor, $tipoDoc, $ini, $fin)
-    {
+  static public function mdlMostrarModeloImpresionV2($tabla, $valor, $tipoDoc, $ini, $fin)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
             a.modelo,
             ROUND(SUM(cantidad), 2) AS cantidad,
             CASE
@@ -1042,24 +1042,24 @@ class ModeloFacturacion
             GROUP BY a.modelo 
             LIMIT $ini, $fin";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
-
-
-        $stmt = null;
-    }
+    return $stmt->fetchAll();
 
 
-    static public function mdlMostrarModeloImpresionV3($tabla, $valor, $tipoDoc, $ini, $fin)
-    {
+    $stmt = null;
+  }
 
-        $sql = "SELECT 
+
+  static public function mdlMostrarModeloImpresionV3($tabla, $valor, $tipoDoc, $ini, $fin)
+  {
+
+    $sql = "SELECT 
             LEFT(a.articulo,8) as modelo,
             ROUND(cantidad,2) AS cantidad,
             'KGM' AS unidad,
@@ -1075,26 +1075,26 @@ class ModeloFacturacion
             AND m.documento = :codigo 
             LIMIT $ini, $fin";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
     * MOSTRAR MODELO PROFORMA IMPRESION
     */
-    static public function mdlMostrarModeloProforma($tabla, $valor, $tipoDoc)
-    {
+  static public function mdlMostrarModeloProforma($tabla, $valor, $tipoDoc)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
       a.modelo,
       ROUND(SUM(cantidad), 0) AS cantidad,
       'C62' AS unidad,
@@ -1110,109 +1110,109 @@ class ModeloFacturacion
       AND m.documento = :codigo 
     GROUP BY a.modelo ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
     * MOSTRAR NUMERO DE UNIDADES BOLETA FACTURA
     */
-    static public function mdlMostrarUnidadesImpresion($valor, $tipoDoc)
-    {
+  static public function mdlMostrarUnidadesImpresion($valor, $tipoDoc)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
       m.documento,
       ROUND(SUM(cantidad), 2) AS cantidad 
     FROM
-      movimientosjf_2025 m 
+      movimientosjf_2026 m 
     WHERE m.tipo = :tipo_doc 
       AND m.documento = :codigo 
     GROUP BY m.documento  ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
 
-        $stmt = null;
-    }
-    /*=============================================
+    $stmt = null;
+  }
+  /*=============================================
 	MOSTRAR TIPO DE PAGO
 	=============================================*/
 
-    static public function mdlMostrarTalonarios($tabla, $item, $valor)
-    {
+  static public function mdlMostrarTalonarios($tabla, $item, $valor)
+  {
 
-        if ($item != null) {
+    if ($item != null) {
 
-            $stmt = Conexion::conectar()->prepare("SELECT nota_credito FROM $tabla WHERE $item = :$item");
+      $stmt = Conexion::conectar()->prepare("SELECT nota_credito FROM $tabla WHERE $item = :$item");
 
-            $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
+      $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetch();
-        } else {
+      return $stmt->fetch();
+    } else {
 
-            $stmt = Conexion::conectar()->prepare("SELECT serie_nc FROM $tabla ");
+      $stmt = Conexion::conectar()->prepare("SELECT serie_nc FROM $tabla ");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarTalonariosDebito($tabla, $item, $valor)
-    {
+    $stmt->close();
 
-        if ($item != null) {
+    $stmt = null;
+  }
 
-            $stmt = Conexion::conectar()->prepare("SELECT nota_debito FROM $tabla WHERE $item = :$item");
+  static public function mdlMostrarTalonariosDebito($tabla, $item, $valor)
+  {
 
-            $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
+    if ($item != null) {
 
-            $stmt->execute();
+      $stmt = Conexion::conectar()->prepare("SELECT nota_debito FROM $tabla WHERE $item = :$item");
 
-            return $stmt->fetch();
-        } else {
+      $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
 
-            $stmt = Conexion::conectar()->prepare("SELECT serie_nd FROM $tabla ");
+      $stmt->execute();
 
-            $stmt->execute();
+      return $stmt->fetch();
+    } else {
 
-            return $stmt->fetchAll();
-        }
+      $stmt = Conexion::conectar()->prepare("SELECT serie_nd FROM $tabla ");
 
-        $stmt->close();
+      $stmt->execute();
 
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
 	* REGISTAR DOCUMENTO  VENTA CON NOTA DE CREDITO O DEBITO
 	*/
-    static public function mdlRegistrarVentaNota($datos)
-    {
+  static public function mdlRegistrarVentaNota($datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO ventajf (
+    $stmt = Conexion::conectar()->prepare("INSERT INTO ventajf (
                                                         tipo,
                                                         documento,
                                                         neto,
@@ -1254,42 +1254,42 @@ class ModeloFacturacion
                                                         :pcreg
                                                         )");
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":neto", $datos["neto"], PDO::PARAM_STR);
-        $stmt->bindParam(":igv", $datos["igv"], PDO::PARAM_STR);
-        $stmt->bindParam(":total", $datos["total"], PDO::PARAM_STR);
-        $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
-        $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-        $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
-        $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":neto", $datos["neto"], PDO::PARAM_STR);
+    $stmt->bindParam(":igv", $datos["igv"], PDO::PARAM_STR);
+    $stmt->bindParam(":total", $datos["total"], PDO::PARAM_STR);
+    $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
+    $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
+    $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
 
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
 	* EDITAR DOCUMENTO  VENTA CON NOTA DE CREDITO O DEBITO
 	*/
-    static public function mdlEditarVentaNota($datos)
-    {
+  static public function mdlEditarVentaNota($datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("UPDATE ventajf SET 
+    $stmt = Conexion::conectar()->prepare("UPDATE ventajf SET 
                                                         tipo = :tipo,
                                                         documento = :documento,
                                                         neto = :neto,
@@ -1303,39 +1303,39 @@ class ModeloFacturacion
                                                     WHERE tipo = :tipo
                                                     AND documento = :documento");
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":neto", $datos["neto"], PDO::PARAM_STR);
-        $stmt->bindParam(":igv", $datos["igv"], PDO::PARAM_STR);
-        $stmt->bindParam(":total", $datos["total"], PDO::PARAM_STR);
-        $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
-        $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":neto", $datos["neto"], PDO::PARAM_STR);
+    $stmt->bindParam(":igv", $datos["igv"], PDO::PARAM_STR);
+    $stmt->bindParam(":total", $datos["total"], PDO::PARAM_STR);
+    $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
+    $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
 
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
     * Ingresar Notas de credito o debito 
     */
-    static public function mdlIngresarNotaCD($datos)
-    {
+  static public function mdlIngresarNotaCD($datos)
+  {
 
-        $sql = "INSERT INTO notascd_jf (
+    $sql = "INSERT INTO notascd_jf (
                         tipo,
                         documento,
                         tipo_doc,
@@ -1359,36 +1359,36 @@ class ModeloFacturacion
                         :usuario
                         )";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_origen", $datos["fecha_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":motivo", $datos["motivo"], PDO::PARAM_STR);
-        $stmt->bindParam(":tip_cont", $datos["tip_cont"], PDO::PARAM_STR);
-        $stmt->bindParam(":observacion", $datos["observacion"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_origen", $datos["fecha_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":motivo", $datos["motivo"], PDO::PARAM_STR);
+    $stmt->bindParam(":tip_cont", $datos["tip_cont"], PDO::PARAM_STR);
+    $stmt->bindParam(":observacion", $datos["observacion"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
 	* EDITAR NOTA DE CREDITO O DEBITO
 	*/
-    static public function mdlEditarNotaCD($datos)
-    {
+  static public function mdlEditarNotaCD($datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("UPDATE notascd_jf SET 
+    $stmt = Conexion::conectar()->prepare("UPDATE notascd_jf SET 
                                                         tipo = :tipo,
                                                         documento = :documento,
                                                         tipo_doc = :tipo_doc,
@@ -1401,40 +1401,40 @@ class ModeloFacturacion
                                                     WHERE tipo = :tipo
                                                     AND documento = :documento");
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_origen", $datos["fecha_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":motivo", $datos["motivo"], PDO::PARAM_STR);
-        $stmt->bindParam(":tip_cont", $datos["tip_cont"], PDO::PARAM_STR);
-        $stmt->bindParam(":observacion", $datos["observacion"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_origen", $datos["fecha_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":motivo", $datos["motivo"], PDO::PARAM_STR);
+    $stmt->bindParam(":tip_cont", $datos["tip_cont"], PDO::PARAM_STR);
+    $stmt->bindParam(":observacion", $datos["observacion"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
 
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
 	* Método para mostrar produccion de trusas
 	*/
-    static public function mdlRangoFechasNotasCD($fechaInicial, $fechaFinal)
-    {
+  static public function mdlRangoFechasNotasCD($fechaInicial, $fechaFinal)
+  {
 
-        if ($fechaInicial == "null") {
+    if ($fechaInicial == "null") {
 
-            $sql = "SELECT 
+      $sql = "SELECT 
               v.tipo,
               v.tipo_documento,
               v.cuenta,
@@ -1467,14 +1467,14 @@ class ModeloFacturacion
             ORDER BY v.fecha DESC,
               v.tipo";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($fechaInicial == $fechaFinal) {
+      return $stmt->fetchAll();
+    } else if ($fechaInicial == $fechaFinal) {
 
-            $sql = "SELECT 
+      $sql = "SELECT 
                     v.tipo,
                     v.tipo_documento,
                     v.cuenta,
@@ -1508,25 +1508,25 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                         v.tipo";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
-            $fechaActual = new DateTime();
-            $fechaActual->add(new DateInterval("P1D"));
-            $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      return $stmt->fetchAll();
+    } else {
+      $fechaActual = new DateTime();
+      $fechaActual->add(new DateInterval("P1D"));
+      $fechaActualMasUno = $fechaActual->format("Y-m-d");
 
-            $fechaFinal2 = new DateTime($fechaFinal);
-            $fechaFinal2->add(new DateInterval("P1D"));
-            $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+      $fechaFinal2 = new DateTime($fechaFinal);
+      $fechaFinal2->add(new DateInterval("P1D"));
+      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
 
-            if ($fechaFinalMasUno == $fechaActualMasUno) {
+      if ($fechaFinalMasUno == $fechaActualMasUno) {
 
-                $sql = "SELECT 
+        $sql = "SELECT 
                                             v.tipo,
                                             v.tipo_documento,
                                             v.cuenta,
@@ -1560,16 +1560,16 @@ class ModeloFacturacion
                                             ORDER BY v.fecha DESC,
                                             v.tipo ";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            } else {
+        return $stmt->fetchAll();
+      } else {
 
-                $sql = "SELECT 
+        $sql = "SELECT 
                                             v.tipo,
                                             v.tipo_documento,
                                             v.cuenta,
@@ -1603,28 +1603,28 @@ class ModeloFacturacion
                                             ORDER BY v.fecha DESC,
                                             v.tipo ";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            }
-        }
-
-        $stmt = null;
+        return $stmt->fetchAll();
+      }
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
 	* Método para mostrar produccion de trusas
 	*/
-    static public function mdlRangoFechasFacturas($fechaInicial, $fechaFinal)
-    {
+  static public function mdlRangoFechasFacturas($fechaInicial, $fechaFinal)
+  {
 
-        if ($fechaInicial == "null" || $fechaInicial == null) {
+    if ($fechaInicial == "null" || $fechaInicial == null) {
 
-            $sql = "SELECT
+      $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -1662,14 +1662,14 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                     v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($fechaInicial == $fechaFinal) {
+      return $stmt->fetchAll();
+    } else if ($fechaInicial == $fechaFinal) {
 
-            $sql = "SELECT
+      $sql = "SELECT
       v.tipo,
       v.tipo_documento,
       v.documento,
@@ -1707,25 +1707,25 @@ class ModeloFacturacion
       ORDER BY v.fecha DESC,
   v.documento DESC ";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
+      return $stmt->fetchAll();
+    } else {
 
-            $fechaActual = new DateTime();
-            $fechaActual->add(new DateInterval("P1D"));
-            $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      $fechaActual = new DateTime();
+      $fechaActual->add(new DateInterval("P1D"));
+      $fechaActualMasUno = $fechaActual->format("Y-m-d");
 
-            $fechaFinal2 = new DateTime($fechaFinal);
-            $fechaFinal2->add(new DateInterval("P1D"));
-            $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+      $fechaFinal2 = new DateTime($fechaFinal);
+      $fechaFinal2->add(new DateInterval("P1D"));
+      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
 
-            if ($fechaFinalMasUno == $fechaActualMasUno) {
-                $sql = "SELECT
+      if ($fechaFinalMasUno == $fechaActualMasUno) {
+        $sql = "SELECT
         v.tipo,
         v.tipo_documento,
         v.documento,
@@ -1763,16 +1763,16 @@ class ModeloFacturacion
         ORDER BY v.fecha DESC,
   v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            } else {
+        return $stmt->fetchAll();
+      } else {
 
-                $sql = "SELECT
+        $sql = "SELECT
         v.tipo,
         v.tipo_documento,
         v.documento,
@@ -1811,28 +1811,28 @@ class ModeloFacturacion
   v.documento DESC
         ";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            }
-        }
-
-        $stmt = null;
+        return $stmt->fetchAll();
+      }
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
 	* Método para mostrar produccion de trusas
 	*/
-    static public function mdlRangoFechasBoletas($fechaInicial, $fechaFinal)
-    {
+  static public function mdlRangoFechasBoletas($fechaInicial, $fechaFinal)
+  {
 
-        if ($fechaInicial == "null") {
+    if ($fechaInicial == "null") {
 
-            $sql = "SELECT
+      $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -1870,14 +1870,14 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
                 v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($fechaInicial == $fechaFinal) {
+      return $stmt->fetchAll();
+    } else if ($fechaInicial == $fechaFinal) {
 
-            $sql = "SELECT
+      $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -1915,24 +1915,24 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
                 v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
-            $fechaActual = new DateTime();
-            $fechaActual->add(new DateInterval("P1D"));
-            $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      return $stmt->fetchAll();
+    } else {
+      $fechaActual = new DateTime();
+      $fechaActual->add(new DateInterval("P1D"));
+      $fechaActualMasUno = $fechaActual->format("Y-m-d");
 
-            $fechaFinal2 = new DateTime($fechaFinal);
-            $fechaFinal2->add(new DateInterval("P1D"));
-            $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+      $fechaFinal2 = new DateTime($fechaFinal);
+      $fechaFinal2->add(new DateInterval("P1D"));
+      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
 
-            if ($fechaFinalMasUno == $fechaActualMasUno) {
-                $sql = "SELECT
+      if ($fechaFinalMasUno == $fechaActualMasUno) {
+        $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -1970,16 +1970,16 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                 v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            } else {
+        return $stmt->fetchAll();
+      } else {
 
-                $sql = "SELECT
+        $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -2017,28 +2017,28 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
             v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            }
-        }
-
-        $stmt = null;
+        return $stmt->fetchAll();
+      }
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
 	* Método para mostrar produccion de trusas
 	*/
-    static public function mdlRangoFechasProformas($fechaInicial, $fechaFinal)
-    {
+  static public function mdlRangoFechasProformas($fechaInicial, $fechaFinal)
+  {
 
-        if ($fechaInicial == "null") {
+    if ($fechaInicial == "null") {
 
-            $sql = "SELECT
+      $sql = "SELECT
       v.tipo,
       v.tipo_documento,
       v.documento,
@@ -2072,14 +2072,14 @@ class ModeloFacturacion
   WHERE v.tipo = 'S70'
       AND YEAR(v.fecha) = YEAR(NOW())";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($fechaInicial == $fechaFinal) {
+      return $stmt->fetchAll();
+    } else if ($fechaInicial == $fechaFinal) {
 
-            $sql = "SELECT
+      $sql = "SELECT
       v.tipo,
       v.tipo_documento,
       v.documento,
@@ -2113,24 +2113,24 @@ class ModeloFacturacion
   WHERE v.tipo = 'S70'
       AND DATE(v.fecha)  like '%$fechaFinal%' ";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
-            $fechaActual = new DateTime();
-            $fechaActual->add(new DateInterval("P1D"));
-            $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      return $stmt->fetchAll();
+    } else {
+      $fechaActual = new DateTime();
+      $fechaActual->add(new DateInterval("P1D"));
+      $fechaActualMasUno = $fechaActual->format("Y-m-d");
 
-            $fechaFinal2 = new DateTime($fechaFinal);
-            $fechaFinal2->add(new DateInterval("P1D"));
-            $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+      $fechaFinal2 = new DateTime($fechaFinal);
+      $fechaFinal2->add(new DateInterval("P1D"));
+      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
 
-            if ($fechaFinalMasUno == $fechaActualMasUno) {
-                $sql = "SELECT
+      if ($fechaFinalMasUno == $fechaActualMasUno) {
+        $sql = "SELECT
         v.tipo,
         v.tipo_documento,
         v.documento,
@@ -2164,16 +2164,16 @@ class ModeloFacturacion
     WHERE v.tipo = 'S70'
         AND DATE(v.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            } else {
+        return $stmt->fetchAll();
+      } else {
 
-                $sql = "SELECT
+        $sql = "SELECT
         v.tipo,
         v.tipo_documento,
         v.documento,
@@ -2207,80 +2207,80 @@ class ModeloFacturacion
     WHERE v.tipo = 'S70'
         AND DATE(v.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            }
-        }
-
-        $stmt = null;
+        return $stmt->fetchAll();
+      }
     }
 
+    $stmt = null;
+  }
 
-    /*
+
+  /*
     * ACTUALIZAR PEDIDO A FACTURADO
     */
-    static public function mdlActualizarPedido($codigo, $estado, $usuario)
-    {
+  static public function mdlActualizarPedido($codigo, $estado, $usuario)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                     temporaljf
                 SET
                     estado = :estado,
                     usuario_estado = :usuario_estado
                 WHERE codigo = :codigo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
-        $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
-        $stmt->bindParam(":usuario_estado", $usuario, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+    $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
+    $stmt->bindParam(":usuario_estado", $usuario, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
+    $stmt = null;
+  }
 
-    /*
+
+  /*
     * ACTUALIZAR PEDIDO DE ARTICULO
     */
-    static public function mdlActualizarArticuloPedido($codigo, $pedido)
-    {
+  static public function mdlActualizarArticuloPedido($codigo, $pedido)
+  {
 
-        $sql = "UPDATE articulojf SET pedidos = pedidos + :pedido WHERE articulo = :codigo";
+    $sql = "UPDATE articulojf SET pedidos = pedidos + :pedido WHERE articulo = :codigo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
-        $stmt->bindParam(":pedido", $pedido, PDO::PARAM_STR);
+    $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+    $stmt->bindParam(":pedido", $pedido, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    static public function mdlMostrarVentaResumen($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt = null;
+  }
 
-        if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+  static public function mdlMostrarVentaResumen($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         ve.descripcion,
         SUM(total) AS total 
@@ -2300,12 +2300,12 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
       GROUP BY v.vendedor");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         ve.descripcion,
         ROUND(SUM(total)/1.18,2) AS total
@@ -2325,11 +2325,11 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
       GROUP BY v.vendedor");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
                             v.vendedor,
                             ve.descripcion,
                             ROUND(SUM(total) / 1.18, 2) AS total 
@@ -2350,14 +2350,14 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
                             GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2378,14 +2378,14 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           ROUND(SUM(total) / 1.18, 2) AS total 
@@ -2407,16 +2407,16 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2438,14 +2438,14 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2466,14 +2466,14 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           ROUND(SUM(total) / 1.18, 2) AS total 
@@ -2494,23 +2494,23 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarTipoVentaResumen($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMostrarTipoVentaResumen($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2531,14 +2531,14 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           ROUND(SUM(total)/1.18,2) AS total
@@ -2559,13 +2559,13 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           ROUND(SUM(total) / 1.18, 2) AS total 
@@ -2587,15 +2587,15 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2617,15 +2617,15 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           ROUND(SUM(total) / 1.18, 2) AS total 
@@ -2648,17 +2648,17 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2681,16 +2681,16 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           SUM(total) AS total 
@@ -2712,15 +2712,15 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'resumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
           v.vendedor,
           ve.descripcion,
           ROUND(SUM(total) / 1.18, 2) AS total 
@@ -2742,25 +2742,25 @@ class ModeloFacturacion
                               AND v.vendedor <> '99'
         GROUP BY v.vendedor");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarVentaDetalle($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+    $stmt = null;
+  }
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+  static public function mdlMostrarVentaDetalle($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
                     v.vendedor,
                     v.tipo,
                     v.tipo_documento,
@@ -2834,12 +2834,12 @@ class ModeloFacturacion
                     tipo,
                     documento");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
                     v.vendedor,
                     v.tipo,
                     v.tipo_documento,
@@ -2916,11 +2916,11 @@ class ModeloFacturacion
                     tipo,
                     documento");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
                     v.vendedor,
                     v.tipo,
                     v.tipo_documento,
@@ -3002,15 +3002,15 @@ class ModeloFacturacion
                     tipo,
                     documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
                     v.vendedor,
                     v.tipo,
                     v.tipo_documento,
@@ -3092,14 +3092,14 @@ class ModeloFacturacion
                     tipo,
                     documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
                     v.vendedor,
                     v.tipo,
                     v.tipo_documento,
@@ -3185,17 +3185,17 @@ class ModeloFacturacion
                     tipo,
                     documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
                 v.vendedor,
                 v.tipo,
                 v.tipo_documento,
@@ -3281,15 +3281,15 @@ class ModeloFacturacion
                 tipo,
                 documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
                     v.vendedor,
                     v.tipo,
                     v.tipo_documento,
@@ -3371,14 +3371,14 @@ class ModeloFacturacion
                     tipo,
                     documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
                                     v.vendedor,
                                     v.tipo,
                                     v.tipo_documento,
@@ -3460,23 +3460,23 @@ class ModeloFacturacion
                                     tipo,
                                     documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarTipoVentaDetalle($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMostrarTipoVentaDetalle($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -3562,14 +3562,14 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -3655,13 +3655,13 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -3751,15 +3751,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -3849,15 +3849,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -3951,16 +3951,16 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -4054,16 +4054,16 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -4153,15 +4153,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'detallado' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         v.tipo,
         v.tipo_documento,
@@ -4251,24 +4251,24 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarVentaPostalRsm($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMostrarVentaPostalRsm($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4323,12 +4323,12 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4383,11 +4383,11 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4445,14 +4445,14 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4510,14 +4510,14 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4578,16 +4578,16 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4648,14 +4648,14 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4713,14 +4713,14 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4778,23 +4778,23 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarTipoVentaPostalRsm($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMostrarTipoVentaPostalRsm($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4852,13 +4852,13 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4916,13 +4916,13 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -4983,15 +4983,15 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -5052,15 +5052,15 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -5124,17 +5124,17 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -5198,15 +5198,15 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -5267,15 +5267,15 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalResumen' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         v.vendedor,
         c.ubigeo,
         CONCAT(
@@ -5336,24 +5336,24 @@ class ModeloFacturacion
       ORDER BY vendedor,
         ubigeo");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarVentaPostalDet($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMostrarVentaPostalDet($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -5442,12 +5442,12 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
           c.ubigeo,
           v.vendedor,
           'S98' AS tipo,
@@ -5536,11 +5536,11 @@ class ModeloFacturacion
           tipo,
           documento");
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -5633,14 +5633,14 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -5733,14 +5733,14 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -5837,16 +5837,16 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -5943,14 +5943,14 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6043,14 +6043,14 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento == 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6143,23 +6143,23 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    static public function mdlMostrarTipoVentaPostalDet($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
-    {
+    $stmt->close();
 
-        if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMostrarTipoVentaPostalDet($optipo, $opdocumento, $impuesto, $vend, $inicio, $fin)
+  {
+
+    if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6252,14 +6252,14 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
           c.ubigeo,
           v.vendedor,
           'S98' AS tipo,
@@ -6352,13 +6352,13 @@ class ModeloFacturacion
           tipo,
           documento");
 
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6455,15 +6455,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend == 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6560,15 +6560,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6669,17 +6669,17 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio != 'todos' && $fin != 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6780,15 +6780,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
-            $stmt->execute();
+      $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+      $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '1' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6885,15 +6885,15 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
+      return $stmt->fetchAll();
+    } else if ($optipo == 'postalDetalle' && $opdocumento != 'todos' && $impuesto == '0' && $vend != 'todos' && $inicio == 'todos' && $fin == 'todos') {
 
-            $stmt = Conexion::conectar()->prepare("SELECT 
+      $stmt = Conexion::conectar()->prepare("SELECT 
         c.ubigeo,
         v.vendedor,
         'S98' AS tipo,
@@ -6990,28 +6990,28 @@ class ModeloFacturacion
         tipo,
         documento");
 
-            $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
+      $stmt->bindParam(":vendedor", $vend, PDO::PARAM_STR);
+      $stmt->bindParam(":documento", $opdocumento, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->fetchAll();
     }
 
-    /*
+    $stmt->close();
+
+    $stmt = null;
+  }
+
+  /*
 	* Método para mostrar produccion de trusas
 	*/
-    static public function mdlRangoFechasProcesarCE($fechaInicial, $fechaFinal, $tipo)
-    {
+  static public function mdlRangoFechasProcesarCE($fechaInicial, $fechaFinal, $tipo)
+  {
 
-        if ($fechaInicial == "null") {
+    if ($fechaInicial == "null") {
 
-            $sql = "SELECT
+      $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -7048,16 +7048,16 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                         v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+      $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($fechaInicial == $fechaFinal) {
+      return $stmt->fetchAll();
+    } else if ($fechaInicial == $fechaFinal) {
 
-            $sql = "SELECT
+      $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -7094,24 +7094,24 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
                     v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+      $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
-            $fechaActual = new DateTime();
-            $fechaActual->add(new DateInterval("P1D"));
-            $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      return $stmt->fetchAll();
+    } else {
+      $fechaActual = new DateTime();
+      $fechaActual->add(new DateInterval("P1D"));
+      $fechaActualMasUno = $fechaActual->format("Y-m-d");
 
-            $fechaFinal2 = new DateTime($fechaFinal);
-            $fechaFinal2->add(new DateInterval("P1D"));
-            $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+      $fechaFinal2 = new DateTime($fechaFinal);
+      $fechaFinal2->add(new DateInterval("P1D"));
+      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
 
-            if ($fechaFinalMasUno == $fechaActualMasUno) {
-                $sql = "SELECT
+      if ($fechaFinalMasUno == $fechaActualMasUno) {
+        $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -7148,16 +7148,16 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                         v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            } else {
+        return $stmt->fetchAll();
+      } else {
 
-                $sql = "SELECT
+        $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -7194,129 +7194,129 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                         v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            }
-        }
-
-        $stmt = null;
+        return $stmt->fetchAll();
+      }
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR NOTA DE CREDITO O DEBITO + 1 POR SERIE
     */
-    static public function mdlActualizarNotaSerie($item, $item2, $valor2)
-    {
+  static public function mdlActualizarNotaSerie($item, $item2, $valor2)
+  {
 
-        $sql = "UPDATE
+    $sql = "UPDATE
                       talonariosjf
                   SET
                       $item = $item + 1
                   WHERE $item2 = :$item2";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":" . $item2, $valor2, PDO::PARAM_STR);
+    $stmt->bindParam(":" . $item2, $valor2, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
-    /*
+
+    $stmt = null;
+  }
+  /*
     * ACTUALIZAR ESTADO DE FACTURACION ELECTRONICA 
     */
-    static public function mdlActualizarProcesoFacturacion($estado, $tipo, $documento)
-    {
+  static public function mdlActualizarProcesoFacturacion($estado, $tipo, $documento)
+  {
 
-        $sql = "UPDATE 
+    $sql = "UPDATE 
                 ventajf 
             SET
                 facturacion = :estado 
             WHERE tipo = :tipo 
                 AND documento = :documento ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
 
-        $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":estado", $estado, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * ACTUALIZAR TOKEN DE CONSULTA DE COMPROBANTES DE LA SUNAT
     */
-    static public function mdlActualizarToken($valor, $valor2)
-    {
+  static public function mdlActualizarToken($valor, $valor2)
+  {
 
-        $sql = "UPDATE 
+    $sql = "UPDATE 
       maestrajf 
     SET
       descripcion = :descripcion,
       token = :token 
     WHERE tipo_dato = 'TOKEN' ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindParam(":descripcion", $valor2, PDO::PARAM_STR);
-        $stmt->bindParam(":token", $valor, PDO::PARAM_STR);
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":descripcion", $valor2, PDO::PARAM_STR);
+    $stmt->bindParam(":token", $valor, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * CONSULTA DE TOKEN
     */
-    static public function mdlConsultarToken()
-    {
+  static public function mdlConsultarToken()
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
       *
       FROM maestrajf 
     WHERE tipo_dato = 'TOKEN' ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* METODO EFACT
-    static public function mdlFEFacturaCab($tipo, $documento)
-    {
+  //* METODO EFACT
+  static public function mdlFEFacturaCab($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
               /*FILA 1*/
               v.fecha AS a1,
               CONCAT(
@@ -7404,7 +7404,7 @@ class ModeloFacturacion
                   a.modelo,
                   SUM(m.cantidad) AS cantidad 
                 FROM
-                  movimientosjf_2025 m 
+                  movimientosjf_2026 m 
                   LEFT JOIN articulojf a 
                     ON m.articulo = a.articulo 
                 WHERE m.tipo = :tipo 
@@ -7426,23 +7426,23 @@ class ModeloFacturacion
             WHERE v.tipo = :tipo 
               AND v.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlFEFacturaDet($tipo, $documento)
-    {
+  static public function mdlFEFacturaDet($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
       'C62' AS b9,
       ROUND(SUM(m.cantidad), 2) AS c9,
       REPLACE(a.nombre, 'Ñ', 'N') AS d9,
@@ -7465,7 +7465,7 @@ class ModeloFacturacion
       ) AS ak9,
       ROUND((m.precio * SUM(m.cantidad))*1.18, 2) AS al9
     FROM
-      movimientosjf_2025 m 
+      movimientosjf_2026 m 
       LEFT JOIN articulojf a 
         ON m.articulo = a.articulo 
     WHERE m.tipo = :tipo 
@@ -7474,24 +7474,24 @@ class ModeloFacturacion
       m.documento,
       a.modelo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* METODO NUBE NACIONAL
-    static public function mdlFEFacturaCabA($tipo, $documento)
-    {
+  //* METODO NUBE NACIONAL
+  static public function mdlFEFacturaCabA($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
              /*FILA 1*/
             DATE_FORMAT(v.fecha, '%d/%m/%Y') AS a1,
             CONCAT(
@@ -7648,7 +7648,7 @@ class ModeloFacturacion
                         a.modelo,
                         SUM(m.cantidad) AS cantidad 
                     FROM
-                        movimientosjf_2025 m 
+                        movimientosjf_2026 m 
                         LEFT JOIN articulojf a 
                         ON m.articulo = a.articulo 
                     WHERE m.tipo = :tipo
@@ -7670,22 +7670,22 @@ class ModeloFacturacion
                 WHERE v.tipo = :tipo
                     AND v.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* METODO EFACT EXPORTACION
-    static public function mdlFEFacturaCabB($documento)
-    {
-        $sql = "SELECT
+  //* METODO EFACT EXPORTACION
+  static public function mdlFEFacturaCabB($documento)
+  {
+    $sql = "SELECT
                 /*FILA 1*/
                 DATE_FORMAT(v.fecha, '%d/%m/%Y') as a1,
                 CONCAT(
@@ -7805,7 +7805,7 @@ class ModeloFacturacion
                     a.modelo,
                     SUM(m.cantidad) as cantidad
                 from
-                    movimientosjf_2025 m
+                    movimientosjf_2026 m
                 left join articulojf a
             on
                     m.articulo = a.articulo
@@ -7836,23 +7836,23 @@ class ModeloFacturacion
                 v.tipo = 'S03'
                 and v.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
 
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* METODO NUBE
-    static public function mdlFEGuia($tipo, $documento)
-    {
+  //* METODO NUBE
+  static public function mdlFEGuia($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 /*FILA 1*/
                 v.fecha AS a1,
                 CONCAT(
@@ -8109,7 +8109,7 @@ class ModeloFacturacion
                     a.modelo,
                     SUM(m.cantidad) AS cantidad 
                 FROM
-                    movimientosjf_2025 m 
+                    movimientosjf_2026 m 
                     LEFT JOIN articulojf a 
                     ON m.articulo = a.articulo 
                 WHERE m.tipo = 'S01' 
@@ -8134,23 +8134,23 @@ class ModeloFacturacion
                 AND v.documento = :documento ;
             ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* MODELO SEGUN NUBE    
-    static public function mdlFEFacturaDetA($tipo, $documento)
-    {
+  //* MODELO SEGUN NUBE    
+  static public function mdlFEFacturaDetA($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                   CASE
                   WHEN a.marca = 'ELASTICOS'
                     THEN 'MTR' 
@@ -8184,7 +8184,7 @@ class ModeloFacturacion
                     2
                 ) AS ap9 
       FROM
-        movimientosjf_2025 m 
+        movimientosjf_2026 m 
         LEFT JOIN articulojf a 
           ON m.articulo = a.articulo 
       WHERE m.tipo = :tipo 
@@ -8193,23 +8193,23 @@ class ModeloFacturacion
         m.documento,
         a.modelo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlFEFacturaDetAExportacion($documento)
-    {
+  static public function mdlFEFacturaDetAExportacion($documento)
+  {
 
-        $sql = "SELECT
+    $sql = "SELECT
                     a.linea,
                     case
                         when a.marca = 'ELASTICOS'
@@ -8249,7 +8249,7 @@ class ModeloFacturacion
                 ) as al9,
                     0 as ap9
             from
-                movimientosjf_2025 m
+                movimientosjf_2026 m
             left join articulojf a
             on
                 m.articulo = a.articulo
@@ -8261,22 +8261,22 @@ class ModeloFacturacion
                 m.documento,
                 a.modelo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* MODELO SEGUN NUBE    
-    static public function mdlFEGuiaDetA($tipo, $documento)
-    {
+  //* MODELO SEGUN NUBE    
+  static public function mdlFEGuiaDetA($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                     CASE
                     WHEN a.marca = 'ELASTICOS' 
                     THEN 'MTR' 
@@ -8293,7 +8293,7 @@ class ModeloFacturacion
                     REPLACE(a.nombre, 'Ñ', 'N') AS e12,
                     a.modelo AS f12 
                 FROM
-                    movimientosjf_2025 m 
+                    movimientosjf_2026 m 
                     LEFT JOIN articulojf a 
                     ON m.articulo = a.articulo 
                 WHERE m.tipo = :tipo
@@ -8302,24 +8302,24 @@ class ModeloFacturacion
                     m.documento,
                     a.modelo ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* METODO NUBE CREDITO
-    static public function mdlFENCACabA($tipo, $documento)
-    {
+  //* METODO NUBE CREDITO
+  static public function mdlFENCACabA($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 /*FILA 1*/
                 DATE_FORMAT(v.fecha, '%d/%m/%Y') AS a1,
                 CONCAT(
@@ -8412,7 +8412,7 @@ class ModeloFacturacion
                       a.modelo,
                       SUM(m.cantidad) AS cantidad 
                     FROM
-                      movimientosjf_2025 m 
+                      movimientosjf_2026 m 
                       LEFT JOIN articulojf a 
                         ON m.articulo = a.articulo 
                     WHERE m.tipo = :tipo 
@@ -8437,23 +8437,23 @@ class ModeloFacturacion
                 WHERE v.tipo = :tipo 
                   AND v.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* MODELO SEGUN NUBE    
-    static public function mdlFENCDetA($tipo, $documento)
-    {
+  //* MODELO SEGUN NUBE    
+  static public function mdlFENCDetA($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 'C62' AS b9,
                 ROUND(SUM(m.cantidad)*-1, 3) AS c9,
                 REPLACE(a.nombre, 'Ñ', 'N') AS d9,
@@ -8485,7 +8485,7 @@ class ModeloFacturacion
                     2
                 ) AS ad9 
                     FROM
-                    movimientosjf_2025 m 
+                    movimientosjf_2026 m 
                     LEFT JOIN articulojf a 
                         ON m.articulo = a.articulo 
                     WHERE m.tipo = :tipo 
@@ -8494,24 +8494,24 @@ class ModeloFacturacion
                     m.documento,
                     a.modelo";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* MODELO SEGUN NUBE    
-    static public function mdlFENCDetB($tipo, $documento)
-    {
+  //* MODELO SEGUN NUBE    
+  static public function mdlFENCDetB($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 'ZZ' AS b8,
                 '1' AS c8,
                 n.observacion AS d8,
@@ -8534,26 +8534,26 @@ class ModeloFacturacion
                 WHERE n.tipo = :tipo 
                     AND n.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
   * MOSTRAR IMPRESION DE NOTA DE CREDITO
   */
-    static public function mdlMostrarCreditoImpresion($valor, $tipoDoc)
-    {
+  static public function mdlMostrarCreditoImpresion($valor, $tipoDoc)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
               v.tipo,
               v.documento,
               v.neto,
@@ -8616,25 +8616,25 @@ class ModeloFacturacion
               WHERE v.documento = :codigo
               AND v.tipo = :tipo_doc";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
-        $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
+    $stmt->bindParam(":codigo", $valor, PDO::PARAM_INT);
+    $stmt->bindParam(":tipo_doc", $tipoDoc, PDO::PARAM_INT);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
-
-
-        $stmt = null;
-    }
+    return $stmt->fetch();
 
 
-    //* METODO NUBE DEBITP
-    static public function mdlFENDACabA($tipo, $documento)
-    {
+    $stmt = null;
+  }
 
-        $sql = "SELECT 
+
+  //* METODO NUBE DEBITP
+  static public function mdlFENDACabA($tipo, $documento)
+  {
+
+    $sql = "SELECT 
                 /*FILA 1*/
                 DATE_FORMAT(v.fecha, '%d/%m/%Y') AS a1,
                 CONCAT(
@@ -8733,7 +8733,7 @@ class ModeloFacturacion
                     a.modelo,
                     SUM(m.cantidad) AS cantidad 
                   FROM
-                    movimientosjf_2025 m 
+                    movimientosjf_2026 m 
                     LEFT JOIN articulojf a 
                       ON m.articulo = a.articulo 
                   WHERE m.tipo = :tipo 
@@ -8758,23 +8758,23 @@ class ModeloFacturacion
               WHERE v.tipo = :tipo 
                 AND v.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    //* MODELO SEGUN NUBE    
-    static public function mdlFENDDetA($tipo, $documento)
-    {
+  //* MODELO SEGUN NUBE    
+  static public function mdlFENDDetA($tipo, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 'ZZ' AS b8,
                 '1' AS c8,
                 n.observacion AS d8,
@@ -8797,26 +8797,26 @@ class ModeloFacturacion
             WHERE n.tipo = :tipo 
                 AND n.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
 	* ESTADO PROCESAR DOCUMENTO
 	*/
-    static public function mdlEnviarTXT($tipo, $documento)
-    {
+  static public function mdlEnviarTXT($tipo, $documento)
+  {
 
-        $stmt = Conexion::conectar()->prepare("UPDATE 
+    $stmt = Conexion::conectar()->prepare("UPDATE 
                                                     ventajf 
                                                 SET
                                                     estado = 'ENVIADO',
@@ -8824,78 +8824,78 @@ class ModeloFacturacion
                                                 WHERE tipo = :tipo 
                                                     AND documento = :documento");
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return "error";
     }
 
-    static public function mdlRegresarStock($tipo, $documento)
-    {
+    $stmt->close();
 
-        $sql = "UPDATE 
+    $stmt = null;
+  }
+
+  static public function mdlRegresarStock($tipo, $documento)
+  {
+
+    $sql = "UPDATE 
             articulojf a 
-            LEFT JOIN movimientosjf_2025 m 
+            LEFT JOIN movimientosjf_2026 m 
               ON a.articulo = m.articulo SET a.stock = a.stock + m.cantidad 
           WHERE m.tipo = :tipo 
             AND m.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    static public function mdlEliminarDetalle($tipo, $documento)
-    {
+    $stmt = null;
+  }
 
-        $sql = "DELETE 
+  static public function mdlEliminarDetalle($tipo, $documento)
+  {
+
+    $sql = "DELETE 
               FROM
-                movimientosjf_2025  
+                movimientosjf_2026  
               WHERE tipo = :tipo
                 AND documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
+    $stmt = null;
+  }
 
-    static public function mdlAnularCabecera($tipo, $documento, $usuario, $usureg, $pcreg)
-    {
 
-        $sql = "UPDATE 
+  static public function mdlAnularCabecera($tipo, $documento, $usuario, $usureg, $pcreg)
+  {
+
+    $sql = "UPDATE 
                   ventajf 
                 SET
                   neto = 0,
@@ -8916,83 +8916,83 @@ class ModeloFacturacion
                 WHERE tipo = :tipo 
                   AND documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $usuario, PDO::PARAM_STR);
-        $stmt->bindParam(":usureg", $usureg, PDO::PARAM_STR);
-        $stmt->bindParam(":pcreg", $pcreg, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $usuario, PDO::PARAM_STR);
+    $stmt->bindParam(":usureg", $usureg, PDO::PARAM_STR);
+    $stmt->bindParam(":pcreg", $pcreg, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    static public function mdlEliminarCta($tip, $documento)
-    {
+    $stmt = null;
+  }
 
-        $sql = "DELETE 
+  static public function mdlEliminarCta($tip, $documento)
+  {
+
+    $sql = "DELETE 
                 FROM
                   cuenta_ctejf 
                 WHERE tipo_doc = :tipo 
                   AND num_cta = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tip, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tip, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    static public function mdlEliminarDocumento($tipo, $documento)
-    {
+    $stmt = null;
+  }
 
-        $sql = "DELETE 
+  static public function mdlEliminarDocumento($tipo, $documento)
+  {
+
+    $sql = "DELETE 
               FROM
                 ventajf 
               WHERE tipo = :tipo 
                 AND documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
     * MOSTRAR DETALLE DE TEMPORAL
     */
-    static public function mdlVerDocumento($tipo, $documento)
-    {
+  static public function mdlVerDocumento($tipo, $documento)
+  {
 
 
-        $sql = "SELECT 
+    $sql = "SELECT 
               v.tipo,
               v.documento,
               v.neto,
@@ -9034,23 +9034,23 @@ class ModeloFacturacion
                 WHERE v.tipo = :tipo 
                     AND v.documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
 
-        $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlActualizarCarRep($datos)
-    {
+  static public function mdlActualizarCarRep($datos)
+  {
 
-        $sql = "UPDATE 
+    $sql = "UPDATE 
                     ventajf 
                 SET
                     cargo = :cargo,
@@ -9058,83 +9058,83 @@ class ModeloFacturacion
                 WHERE tipo = :tipo 
                     AND documento = :documento";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":cargo", $datos["cargo"], PDO::PARAM_STR);
-        $stmt->bindParam(":recepcion", $datos["recepcion"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":cargo", $datos["cargo"], PDO::PARAM_STR);
+    $stmt->bindParam(":recepcion", $datos["recepcion"], PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    /*
+    $stmt = null;
+  }
+
+  /*
 	* ACTUALIZAR LA CANTIDAD DE STOCK DEL ARTICULO
 	*/
-    static public function mdlActualizarTalonariGuia($guia)
-    {
+  static public function mdlActualizarTalonariGuia($guia)
+  {
 
-        $stmt = Conexion::conectar()->prepare("UPDATE 
+    $stmt = Conexion::conectar()->prepare("UPDATE 
 												talonariosjf 
 											SET
                       guias_remision = :guia 
 											WHERE serie_guias = '003'");
 
-        $stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
+    $stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    static public function mdlActualizarCuenta($datos)
-    {
+    $stmt->close();
 
-        $sql = "UPDATE 
+    $stmt = null;
+  }
+
+  static public function mdlActualizarCuenta($datos)
+  {
+
+    $sql = "UPDATE 
                     ventajf 
                 SET
                     cuenta = :cuenta 
                 WHERE tipo = :tipo 
                     AND documento = :documento ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    //*Tabla Errores
-    static public function mdlErrores()
-    {
-        /* $sql = "SELECT 
+    $stmt = null;
+  }
+
+  //*Tabla Errores
+  static public function mdlErrores()
+  {
+    /* $sql = "SELECT 
                 v.tipo,
                 v.tipo_documento,
                 LEFT(v.documento, 4) AS serie,
@@ -9162,7 +9162,7 @@ class ModeloFacturacion
                     m.documento,
                     SUM(m.total) AS total 
                 FROM
-                    movimientosjf_2025 m 
+                    movimientosjf_2026 m 
                 WHERE m.tipo IN ('S02', 'S03', 'E05', 'S05') 
                 GROUP BY m.tipo,
                     m.documento) m 
@@ -9199,7 +9199,7 @@ class ModeloFacturacion
                 v.documento DESC
         "; */
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                     v.tipo,
                     v.tipo_documento,
                     LEFT(v.documento, 4) AS serie,
@@ -9227,7 +9227,7 @@ class ModeloFacturacion
                         m.documento,
                         SUM(m.total) AS total 
                     FROM
-                        movimientosjf_2025 m 
+                        movimientosjf_2026 m 
                     WHERE m.tipo IN ('S02', 'S03', 'E05', 'S05') 
                     GROUP BY m.tipo,
                         m.documento) m 
@@ -9276,19 +9276,19 @@ class ModeloFacturacion
                     v.documento DESC
         ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlCorregirVenta($tipo, $documento, $neto, $igv, $total)
-    {
+  static public function mdlCorregirVenta($tipo, $documento, $neto, $igv, $total)
+  {
 
-        $stmt = Conexion::conectar()->prepare("UPDATE 
+    $stmt = Conexion::conectar()->prepare("UPDATE 
                                                 ventajf 
                                             SET
                                                 neto = $neto,
@@ -9296,46 +9296,46 @@ class ModeloFacturacion
                                                 total = $total 
                                             WHERE tipo='$tipo' 
                                             AND documento = '$documento'");
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    static public function mdlCorregirCuenta($tipo, $documento, $total)
-    {
+    $stmt->close();
 
-        $stmt = Conexion::conectar()->prepare("UPDATE 
+    $stmt = null;
+  }
+
+  static public function mdlCorregirCuenta($tipo, $documento, $total)
+  {
+
+    $stmt = Conexion::conectar()->prepare("UPDATE 
                                 cuenta_ctejf 
                             SET
                                 monto = $total ,
                                 saldo = $total 
                             WHERE tipo_doc = '$tipo' 
                                 AND num_cta = '$documento'");
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return $stmt->errorInfo();
-        }
-
-        $stmt->close();
-
-        $stmt = null;
+      return $stmt->errorInfo();
     }
 
-    static public function mdlMaxMin($tipo, $serie)
-    {
+    $stmt->close();
 
-        $sql = "SELECT 
+    $stmt = null;
+  }
+
+  static public function mdlMaxMin($tipo, $serie)
+  {
+
+    $sql = "SELECT 
                     CAST(RIGHT(MIN(v.documento), 8) AS SIGNED) AS minnum,
                     CAST(RIGHT(MAX(v.documento), 8) AS SIGNED) AS maxnum 
                 FROM
@@ -9344,19 +9344,19 @@ class ModeloFacturacion
                     AND v.tipo IN ('$tipo') 
                     AND LEFT(v.documento, 4) = '$serie'";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetch();
+    return $stmt->fetch();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlTodos($tipo, $serie)
-    {
+  static public function mdlTodos($tipo, $serie)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                     CAST(RIGHT(v.documento, 8) AS SIGNED) AS numero 
                 FROM
                     ventajf v 
@@ -9364,19 +9364,19 @@ class ModeloFacturacion
                 AND v.tipo IN ('$tipo') 
                     AND LEFT(v.documento, 4) = '$serie'";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlDocumentosCuadre($fecha)
-    {
+  static public function mdlDocumentosCuadre($fecha)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                 v.fecha,
                 v.tipo_documento,
                 v.tipo,
@@ -9395,38 +9395,38 @@ class ModeloFacturacion
             ORDER BY v.tipo,
                 v.documento DESC ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlDocumentosCuadrePagos($tipoDocumento, $documento)
-    {
+  static public function mdlDocumentosCuadrePagos($tipoDocumento, $documento)
+  {
 
-        $sql = "SELECT 
+    $sql = "SELECT 
                     * 
                 FROM
                     cuadrar_caja cc 
                 WHERE cc.tipo_doc = '$tipoDocumento'
                 AND cc.num_cta = '$documento'";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    static public function mdlIngresarCuenta($tabla, $datos)
-    {
+  static public function mdlIngresarCuenta($tabla, $datos)
+  {
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO $tabla (
+    $stmt = Conexion::conectar()->prepare("INSERT INTO $tabla (
 			tipo_doc,
 			num_cta,
 			cliente,
@@ -9488,53 +9488,53 @@ class ModeloFacturacion
 			  :fecha_ori
 			)");
 
-        $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
-        $stmt->bindParam(":num_cta", $datos["num_cta"], PDO::PARAM_STR);
-        $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
-        $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_ven", $datos["fecha_ven"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_cep", $datos["fecha_cep"], PDO::PARAM_STR);
-        $stmt->bindParam(":tip_mon", $datos["tip_mon"], PDO::PARAM_STR);
-        $stmt->bindParam(":monto", $datos["monto"], PDO::PARAM_STR);
-        $stmt->bindParam(":tip_cambio", $datos["tip_cambio"], PDO::PARAM_STR);
-        $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
-        $stmt->bindParam(":notas", $datos["notas"], PDO::PARAM_STR);
-        $stmt->bindParam(":cod_pago", $datos["cod_pago"], PDO::PARAM_STR);
-        $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
-        $stmt->bindParam(":renovacion", $datos["renovacion"], PDO::PARAM_STR);
-        $stmt->bindParam(":protesta", $datos["protesta"], PDO::PARAM_STR);
-        $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-        $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_STR);
-        $stmt->bindParam(":ult_pago", $datos["ult_pago"], PDO::PARAM_STR);
-        $stmt->bindParam(":estado_doc", $datos["estado_doc"], PDO::PARAM_STR);
-        $stmt->bindParam(":banco", $datos["banco"], PDO::PARAM_STR);
-        $stmt->bindParam(":num_unico", $datos["num_unico"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_envio", $datos["fecha_envio"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_abono", $datos["fecha_abono"], PDO::PARAM_STR);
-        $stmt->bindParam(":tip_mov", $datos["tip_mov"], PDO::PARAM_STR);
-        $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
-        $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_ori", $datos["fecha_ori"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo_doc", $datos["tipo_doc"], PDO::PARAM_STR);
+    $stmt->bindParam(":num_cta", $datos["num_cta"], PDO::PARAM_STR);
+    $stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
+    $stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_ven", $datos["fecha_ven"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_cep", $datos["fecha_cep"], PDO::PARAM_STR);
+    $stmt->bindParam(":tip_mon", $datos["tip_mon"], PDO::PARAM_STR);
+    $stmt->bindParam(":monto", $datos["monto"], PDO::PARAM_STR);
+    $stmt->bindParam(":tip_cambio", $datos["tip_cambio"], PDO::PARAM_STR);
+    $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
+    $stmt->bindParam(":notas", $datos["notas"], PDO::PARAM_STR);
+    $stmt->bindParam(":cod_pago", $datos["cod_pago"], PDO::PARAM_STR);
+    $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindParam(":renovacion", $datos["renovacion"], PDO::PARAM_STR);
+    $stmt->bindParam(":protesta", $datos["protesta"], PDO::PARAM_STR);
+    $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
+    $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_STR);
+    $stmt->bindParam(":ult_pago", $datos["ult_pago"], PDO::PARAM_STR);
+    $stmt->bindParam(":estado_doc", $datos["estado_doc"], PDO::PARAM_STR);
+    $stmt->bindParam(":banco", $datos["banco"], PDO::PARAM_STR);
+    $stmt->bindParam(":num_unico", $datos["num_unico"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_envio", $datos["fecha_envio"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_abono", $datos["fecha_abono"], PDO::PARAM_STR);
+    $stmt->bindParam(":tip_mov", $datos["tip_mov"], PDO::PARAM_STR);
+    $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
+    $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
+    $stmt->bindParam(":fecha_ori", $datos["fecha_ori"], PDO::PARAM_STR);
 
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt->close();
-        $stmt = null;
+      return "error";
     }
 
-    static public function mdlTotalCuadre($fechaCuadre)
-    {
+    $stmt->close();
+    $stmt = null;
+  }
+
+  static public function mdlTotalCuadre($fechaCuadre)
+  {
 
 
-        $stmt = Conexion::conectar()->prepare("SELECT 
+    $stmt = Conexion::conectar()->prepare("SELECT 
                     cc.cod_pago,
                     SUM(cc.monto) AS monto 
                 FROM
@@ -9542,22 +9542,22 @@ class ModeloFacturacion
                 WHERE cc.fecha = '$fechaCuadre' 
                 GROUP BY cc.cod_pago");
 
-        $stmt->execute();
+    $stmt->execute();
 
-        return $stmt->fetchAll();
+    return $stmt->fetchAll();
 
-        $stmt->close();
+    $stmt->close();
 
-        $stmt = null;
-    }
+    $stmt = null;
+  }
 
-    /*
+  /*
     * ACTUALIZAR PEDIDO A FACTURADO
     */
-    static public function mdlActualizarGuiaRemision($datos)
-    {
+  static public function mdlActualizarGuiaRemision($datos)
+  {
 
-        $sql = "UPDATE 
+    $sql = "UPDATE 
                     ventajf 
                 SET
                     chofer = :chofer,
@@ -9567,32 +9567,32 @@ class ModeloFacturacion
                 WHERE tipo = :tipo 
                     AND documento = :documento ";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
-        $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
-        $stmt->bindParam(":chofer", $datos["chofer"], PDO::PARAM_STR);
-        $stmt->bindParam(":carro", $datos["carro"], PDO::PARAM_STR);
-        $stmt->bindParam(":bultos", $datos["bultos"], PDO::PARAM_STR);
-        $stmt->bindParam(":peso", $datos["peso"], PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
+    $stmt->bindParam(":chofer", $datos["chofer"], PDO::PARAM_STR);
+    $stmt->bindParam(":carro", $datos["carro"], PDO::PARAM_STR);
+    $stmt->bindParam(":bultos", $datos["bultos"], PDO::PARAM_STR);
+    $stmt->bindParam(":peso", $datos["peso"], PDO::PARAM_STR);
 
-        if ($stmt->execute()) {
+    if ($stmt->execute()) {
 
-            return "ok";
-        } else {
+      return "ok";
+    } else {
 
-            return "error";
-        }
-
-        $stmt = null;
+      return "error";
     }
 
-    static public function mdlRangoFechasGuiaRemision($fechaInicial, $fechaFinal)
-    {
+    $stmt = null;
+  }
 
-        if ($fechaInicial == "null") {
+  static public function mdlRangoFechasGuiaRemision($fechaInicial, $fechaFinal)
+  {
 
-            $sql = "SELECT
+    if ($fechaInicial == "null") {
+
+      $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -9635,14 +9635,14 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
                 v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else if ($fechaInicial == $fechaFinal) {
+      return $stmt->fetchAll();
+    } else if ($fechaInicial == $fechaFinal) {
 
-            $sql = "SELECT
+      $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -9685,24 +9685,24 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
                 v.documento DESC";
 
-            $stmt = Conexion::conectar()->prepare($sql);
+      $stmt = Conexion::conectar()->prepare($sql);
 
-            $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+      $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-            $stmt->execute();
+      $stmt->execute();
 
-            return $stmt->fetchAll();
-        } else {
-            $fechaActual = new DateTime();
-            $fechaActual->add(new DateInterval("P1D"));
-            $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      return $stmt->fetchAll();
+    } else {
+      $fechaActual = new DateTime();
+      $fechaActual->add(new DateInterval("P1D"));
+      $fechaActualMasUno = $fechaActual->format("Y-m-d");
 
-            $fechaFinal2 = new DateTime($fechaFinal);
-            $fechaFinal2->add(new DateInterval("P1D"));
-            $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+      $fechaFinal2 = new DateTime($fechaFinal);
+      $fechaFinal2->add(new DateInterval("P1D"));
+      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
 
-            if ($fechaFinalMasUno == $fechaActualMasUno) {
-                $sql = "SELECT
+      if ($fechaFinalMasUno == $fechaActualMasUno) {
+        $sql = "SELECT
                         v.tipo,
                         v.tipo_documento,
                         v.documento,
@@ -9745,16 +9745,16 @@ class ModeloFacturacion
                         ORDER BY v.fecha DESC,
                 v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            } else {
+        return $stmt->fetchAll();
+      } else {
 
-                $sql = "SELECT
+        $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -9797,16 +9797,16 @@ class ModeloFacturacion
                     ORDER BY v.fecha DESC,
             v.documento DESC";
 
-                $stmt = Conexion::conectar()->prepare($sql);
+        $stmt = Conexion::conectar()->prepare($sql);
 
-                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
 
-                $stmt->execute();
+        $stmt->execute();
 
-                return $stmt->fetchAll();
-            }
-        }
-
-        $stmt = null;
+        return $stmt->fetchAll();
+      }
     }
+
+    $stmt = null;
+  }
 }

@@ -209,7 +209,7 @@ class ControladorArreglos
                         "almacen" => "01",
                         "idcierre" => $value["id"]
                     ];
-                    ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2025", $datosMovimientos);
+                    ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2026", $datosMovimientos);
                 }
 
                 if ($detalle == "ok") {

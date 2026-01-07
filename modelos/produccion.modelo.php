@@ -2542,7 +2542,7 @@ class ModeloProduccion
     $stmt = Conexion::conectar()->prepare("SELECT 
                                     * 
                                 FROM
-                                    movimientosjf_2025 
+                                    movimientosjf_2026 
                                 WHERE documento = '$documento' 
                                     AND articulo = '$articulo'");
 

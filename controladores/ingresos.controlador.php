@@ -22,7 +22,7 @@ class ControladorIngresos
     static public function ctrMostrarDetallesIngresos($item, $valor)
     {
 
-        $tabla = "movimientosjf_2025";
+        $tabla = "movimientosjf_2026";
 
         $respuesta = ModeloIngresos::mdlMostarDetallesIngresos($tabla, $item, $valor);
 
@@ -176,7 +176,7 @@ class ControladorIngresos
 
                         #var_dump("datosD", $datosD);
 
-                        ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2025", $datosD);
+                        ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2026", $datosD);
                     }
 
                     # Mostramos una alerta suave
@@ -337,7 +337,7 @@ class ControladorIngresos
 
                         #var_dump("datosD", $datosD);
 
-                        ModeloIngresos::mdlGuardarDetalleSegunda("movimientosjf_2025", $datosD);
+                        ModeloIngresos::mdlGuardarDetalleSegunda("movimientosjf_2026", $datosD);
                     }
 
                     # Mostramos una alerta suave
@@ -402,7 +402,7 @@ class ControladorIngresos
                 /* 
                 todo: Traemos los datos del detalle de ingreso
                 */
-                $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2025", "documento", $_POST["editarCodigo"]);
+                $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2026", "documento", $_POST["editarCodigo"]);
                 #var_dump("detaOC", $detaOC);
 
                 /* 
@@ -500,7 +500,7 @@ class ControladorIngresos
                     todo: Editamos los cambios del detalle Ingreso, primero eliminamos los detalles
                     */
 
-                    $eliminarDato = ModeloIngresos::mdlEliminarDato("movimientosjf_2025", "documento", $_POST["editarCodigo"]);
+                    $eliminarDato = ModeloIngresos::mdlEliminarDato("movimientosjf_2026", "documento", $_POST["editarCodigo"]);
 
                     $eliminarDato = "ok";
 
@@ -522,7 +522,7 @@ class ControladorIngresos
                             );
                             #var_dump("datosD", $datosD);
 
-                            ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2025", $datosD);
+                            ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2026", $datosD);
                         }
 
                         # Mostramos una alerta suave
@@ -599,7 +599,7 @@ class ControladorIngresos
                 /* 
                 todo: Traemos los datos del detalle de ingresos segunda
                 */
-                $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2025", "documento", $_POST["editarCodigo"]);
+                $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2026", "documento", $_POST["editarCodigo"]);
                 #var_dump("detaOC", $detaOC);
 
                 /* 
@@ -687,7 +687,7 @@ class ControladorIngresos
                     todo: Editamos los cambios del detalle Ingreso Segunda, primero eliminamos los detalles
                     */
 
-                    $eliminarDato = ModeloIngresos::mdlEliminarDato("movimientosjf_2025", "documento", $_POST["editarCodigo"]);
+                    $eliminarDato = ModeloIngresos::mdlEliminarDato("movimientosjf_2026", "documento", $_POST["editarCodigo"]);
 
                     $eliminarDato = "ok";
 
@@ -710,7 +710,7 @@ class ControladorIngresos
                             );
                             #var_dump("datosD", $datosD);
 
-                            ModeloIngresos::mdlGuardarDetalleSegunda("movimientosjf_2025", $datosD);
+                            ModeloIngresos::mdlGuardarDetalleSegunda("movimientosjf_2026", $datosD);
                         }
 
                         # Mostramos una alerta suave
@@ -770,7 +770,7 @@ class ControladorIngresos
             $item = "documento";
             $codigo = $_GET["documento"];
 
-            $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2025", "documento", $codigo);
+            $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2026", "documento", $codigo);
             #var_dump("detaOC", $detaOC);
 
             $cabeceraIngreso = ModeloIngresos::mdlMostarIngresos("movimientos_cabecerajf", "id", $_GET["idIngreso"]);
@@ -837,7 +837,7 @@ class ControladorIngresos
             $valorOC = $_GET["idIngreso"];
 
             $respuesta = ModeloIngresos::mdlEliminarDato($tablaOC, $itemOC, $valorOC);
-            $respuesta = ModeloIngresos::mdlEliminarDato("movimientosjf_2025", "documento", $codigo);
+            $respuesta = ModeloIngresos::mdlEliminarDato("movimientosjf_2026", "documento", $codigo);
 
             if ($respuesta == "ok") {
 
@@ -871,7 +871,7 @@ class ControladorIngresos
             $item = "documento";
             $codigo = $_GET["documento"];
 
-            $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2025", "documento", $codigo);
+            $detaOC = ModeloIngresos::mdlMostarDetallesIngresos("movimientosjf_2026", "documento", $codigo);
             #var_dump("detaOC", $detaOC);
 
             $cabeceraIngreso = ModeloIngresos::mdlMostarIngresos("movimientos_cabecerajf", "id", $_GET["idSegunda"]);
@@ -921,7 +921,7 @@ class ControladorIngresos
             $valorOC = $_GET["idSegunda"];
 
             $respuesta = ModeloIngresos::mdlEliminarDato($tablaOC, $itemOC, $valorOC);
-            $respuesta = ModeloIngresos::mdlEliminarDato("movimientosjf_2025", "documento", $codigo);
+            $respuesta = ModeloIngresos::mdlEliminarDato("movimientosjf_2026", "documento", $codigo);
 
             if ($respuesta == "ok") {
 
@@ -1096,7 +1096,7 @@ class ControladorIngresos
                 "idcierre"  => 0
             );
 
-            // $ingreso = ModeloIngresos::mdlGuardarDetalleSegunda("movimientosjf_2025", $datosD);
+            // $ingreso = ModeloIngresos::mdlGuardarDetalleSegunda("movimientosjf_2026", $datosD);
 
             $agregar = ModeloArticulos::mdlActualizarTallerIngreso($_POST["articulo"], $_POST["cantidad"]);
             if ($agregar == "ok") {
@@ -1286,7 +1286,7 @@ class ControladorIngresos
                 "corte" => strtoupper($taller . $value["corte"]) . $fechaEncode
             );
 
-            ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2025", $datosD);
+            ModeloIngresos::mdlGuardarDetalleIngreso("movimientosjf_2026", $datosD);
         }
     }
 

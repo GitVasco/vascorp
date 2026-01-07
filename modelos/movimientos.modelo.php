@@ -235,7 +235,7 @@ class ModeloMovimientos
                     s.nom_sector,
                     sum(m.cantidad) as produccion
                 FROM
-                    movimientosjf_2025 m
+                    movimientosjf_2026 m
                 LEFT JOIN sectorjf s 
                     ON m.taller = s.cod_sector 
                 WHERE
@@ -250,7 +250,7 @@ class ModeloMovimientos
                     s.nom_sector,
                     sum(m.cantidad) as produccion
                 FROM
-                    movimientosjf_2025 m
+                    movimientosjf_2026 m
                 LEFT JOIN sectorjf s 
                     ON m.taller = s.cod_sector 
                 WHERE
@@ -674,7 +674,7 @@ class ModeloMovimientos
                      ) AS '12',
                      ROUND(SUM(m.cantidad)) AS total 
                   FROM
-                  movimientosjf_2025 m 
+                  movimientosjf_2026 m 
                      LEFT JOIN articulojf a1 
                      ON m.articulo = a1.articulo 
                   WHERE YEAR(m.fecha) = YEAR(NOW()) 
@@ -781,7 +781,7 @@ class ModeloMovimientos
                      ) AS '12',
                      ROUND(SUM(m.cantidad)) AS total 
                   FROM
-                  movimientosjf_2025 m 
+                  movimientosjf_2026 m 
                      LEFT JOIN articulojf a2 
                      ON m.articulo = a2.articulo 
                      LEFT JOIN modelojf mo 
@@ -895,7 +895,7 @@ class ModeloMovimientos
                      ) AS '12',
                      ROUND(SUM(m.cantidad)) AS total 
                   FROM
-                  movimientosjf_2025 m 
+                  movimientosjf_2026 m 
                      LEFT JOIN articulojf a1 
                      ON m.articulo = a1.articulo 
                   WHERE YEAR(m.fecha) = YEAR(NOW()) 
@@ -1003,7 +1003,7 @@ class ModeloMovimientos
                      ) AS '12',
                      ROUND(SUM(m.cantidad)) AS total 
                   FROM
-                  movimientosjf_2025 m 
+                  movimientosjf_2026 m 
                      LEFT JOIN articulojf a2 
                      ON m.articulo = a2.articulo 
                      LEFT JOIN modelojf mo 
@@ -1130,7 +1130,7 @@ class ModeloMovimientos
                   ) AS '12',
                   ROUND(SUM(m.cantidad)) AS total 
                FROM
-               movimientosjf_2025 m 
+               movimientosjf_2026 m 
                   LEFT JOIN articulojf a1 
                   ON m.articulo = a1.articulo 
                WHERE YEAR(m.fecha) = YEAR(NOW()) 
@@ -1237,7 +1237,7 @@ class ModeloMovimientos
                   ) AS '12',
                   ROUND(SUM(m.cantidad)) AS total 
                FROM
-               movimientosjf_2025 m 
+               movimientosjf_2026 m 
                   LEFT JOIN articulojf a2 
                   ON m.articulo = a2.articulo 
                WHERE YEAR(m.fecha) = YEAR(NOW()) 
@@ -1348,7 +1348,7 @@ class ModeloMovimientos
                ) AS '12',
                ROUND(SUM(m.cantidad)) AS total 
             FROM
-            movimientosjf_2025 m 
+            movimientosjf_2026 m 
                LEFT JOIN articulojf a1 
                ON m.articulo = a1.articulo 
             WHERE YEAR(m.fecha) = YEAR(NOW()) 
@@ -1456,7 +1456,7 @@ class ModeloMovimientos
                ) AS '12',
                ROUND(SUM(m.cantidad)) AS total 
             FROM
-            movimientosjf_2025 m 
+            movimientosjf_2026 m 
                LEFT JOIN articulojf a2 
                ON m.articulo = a2.articulo 
             WHERE YEAR(m.fecha) = YEAR(NOW()) 
@@ -3838,7 +3838,7 @@ class ModeloMovimientos
    {
 
       $año = intval($año);
-      
+
       if ($mes == null || $mes == "TODO" || $mes == "") {
 
          $stmt = Conexion::conectar()->prepare("SELECT 
@@ -3861,7 +3861,7 @@ class ModeloMovimientos
       } else {
 
          $mes = intval($mes);
-         
+
          $stmt = Conexion::conectar()->prepare("SELECT 
                         t.año,
                         t.mes,
@@ -3936,7 +3936,7 @@ class ModeloMovimientos
       } else {
 
          $mes = intval($mes);
-         
+
          $stmt = Conexion::conectar()->prepare("SELECT 
          v.tipo,
          v.tipo_documento,
@@ -4038,7 +4038,7 @@ class ModeloMovimientos
       } else {
 
          $mes = intval($mes);
-         
+
          $stmt = Conexion::conectar()->prepare("SELECT 
                            m.codigo,
                            m.descripcion,
@@ -4223,7 +4223,7 @@ class ModeloMovimientos
       } else {
 
          $mes = intval($mes);
-         
+
          $stmt = Conexion::conectar()->prepare("SELECT 
                                           m.codigo,
                                           m.descripcion,
@@ -4381,7 +4381,7 @@ class ModeloMovimientos
       } else {
 
          $mes = intval($mes);
-         
+
          $stmt = Conexion::conectar()->prepare("SELECT 
                                  IFNULL(SUM(neto), 0) AS neto 
                               FROM
@@ -4432,7 +4432,7 @@ class ModeloMovimientos
       } else {
 
          $mes = intval($mes);
-         
+
          $stmt = Conexion::conectar()->prepare("SELECT 
                                  IFNULL(SUM(neto), 0) AS neto 
                               FROM
@@ -4460,7 +4460,7 @@ class ModeloMovimientos
    static public function mdlMesesMovPorAño($año)
    {
       $año = intval($año);
-      
+
       $meses = array(
          1 => 'Enero',
          2 => 'Febrero',
@@ -4507,7 +4507,7 @@ class ModeloMovimientos
       $stmt->execute();
 
       $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-      
+
       // Crear array con todos los meses del año, llenando con 0 los que no tienen datos
       $mesesCompletos = array();
       for ($mes = 1; $mes <= 12; $mes++) {
@@ -4556,7 +4556,7 @@ class ModeloMovimientos
       $stmt->execute();
 
       $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-      
+
       // Crear array con todos los meses del año, llenando con 0 los que no tienen datos
       $mesesCompletos = array();
       for ($mes = 1; $mes <= 12; $mes++) {
@@ -4602,7 +4602,7 @@ class ModeloMovimientos
       $stmt->execute();
 
       $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-      
+
       // Crear array con todos los meses del año, llenando con 0 los que no tienen datos
       $mesesCompletos = array();
       for ($mes = 1; $mes <= 12; $mes++) {
@@ -4635,7 +4635,7 @@ class ModeloMovimientos
    {
       $año = intval($año);
       $conexion = Conexion::conectar();
-      
+
       // Construir nombre de tabla según el año
       $tabla = "movimientosjf_" . $año;
 
