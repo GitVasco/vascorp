@@ -290,6 +290,31 @@ function crearAlmacenCorte($codigoAC, $codigoOC, $guia, $articulos, $usuario)
                 throw new Exception("Error al crear detalle de almacén de corte para artículo $artLimpio");
             }
 
+            // Obtener el ID del detalle recién creado e inicializar saldo_taller
+            // En este proceso, todo el stock está disponible para taller/servicios
+            $stmt = $pdo->prepare("SELECT id FROM almacencorte_detallejf 
+                WHERE almacencorte = :almacencorte 
+                AND articulo = :articulo 
+                AND ordencorte = :ordencorte
+                ORDER BY id DESC LIMIT 1");
+            $stmt->bindParam(":almacencorte", $codigoAC, PDO::PARAM_INT);
+            $stmt->bindParam(":articulo", $artLimpio, PDO::PARAM_STR);
+            $stmt->bindParam(":ordencorte", $codigoOC, PDO::PARAM_INT);
+            $stmt->execute();
+            $detalleCreado = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            if ($detalleCreado) {
+                // Inicializar saldo_taller con la cantidad completa (todo disponible para taller/servicios)
+                $stmt = $pdo->prepare("UPDATE almacencorte_detallejf 
+                    SET saldo_taller = :cantidad 
+                    WHERE id = :id");
+                $stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
+                $stmt->bindParam(":id", $detalleCreado['id'], PDO::PARAM_INT);
+                $stmt->execute();
+                $stmt->closeCursor();
+            }
+
             // Actualizar stocks en articulojf
             // Sumar a alm_corte
             ModeloAlmacenCorte::mdlActualizarAlmCorte($artLimpio, $cantidad);

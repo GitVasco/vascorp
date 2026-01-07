@@ -261,6 +261,100 @@ php scripts/procesar_taller.php
     - Actualiza todos los stocks
     - Muestra resumen final con códigos generados
 
+---
+
+## Proceso de Servicios (`procesar_servicios.php`)
+
+Este script procesa el inventario físico de **Servicios** (talleres externos). A diferencia del proceso de Taller interno, aquí cada artículo puede estar en diferentes talleres externos.
+
+### Formato CSV Requerido - Servicios
+
+Para procesar el inventario de **Servicios**, necesito un CSV con las siguientes columnas:
+
+### Columnas Requeridas:
+
+1. **articulo** (VARCHAR) - Código del artículo
+2. **cantidad** (INT) - Cantidad física enviada a ese taller
+3. **taller** (VARCHAR) - Código del taller externo
+
+### Notas Importantes:
+
+-   **Múltiples talleres**: Un mismo artículo puede estar en diferentes talleres
+-   **Agrupación para orden/almacén**: Los artículos se agrupan por código (sumando cantidades) para crear orden y almacén de corte
+-   **Registro individual**: Cada línea del CSV se registra en `entaller_cabjf` con su taller específico
+
+### Ejemplo de CSV:
+
+```csv
+articulo,cantidad,taller
+ART001,50,TALLER01
+ART001,30,TALLER02
+ART002,25,TALLER01
+ART003,40,TALLER03
+```
+
+En este ejemplo:
+
+-   ART001 tendrá 80 unidades en total (50 + 30) para crear orden/almacén de corte
+-   Se crearán 2 registros en `entaller_cabjf` para ART001:
+    -   50 unidades en TALLER01
+    -   30 unidades en TALLER02
+
+### Lógica del Script
+
+Cuando procesamos el CSV de **Servicios**:
+
+1. **Leer CSV** - Leer todas las filas manteniendo cada línea con su taller específico
+2. **Generar códigos:**
+    - Obtener último código de orden de corte → nuevo código = último + 1
+    - Obtener último código de almacén de corte → nuevo código = último + 1
+    - Generar guías automáticamente
+3. **Crear Orden de Corte (OBLIGATORIO - Grupo Independiente):**
+    - Crear cabecera en `ordencortejf`
+    - Crear detalles en `detalles_ordencortejf` (agrupando artículos únicos sumando cantidades)
+    - Actualizar `ord_corte` en `articulojf` (sumar)
+4. **Crear Almacén de Corte (OBLIGATORIO - Grupo Independiente):**
+    - Crear cabecera en `almacencortejf`
+    - Crear detalles en `almacencorte_detallejf` vinculados a la orden de corte
+    - Inicializar `saldo_taller` con la cantidad del detalle
+    - Actualizar stocks en `articulojf`:
+        - Sumar a `alm_corte`
+        - Restar de `ord_corte`
+    - Actualizar saldos en `detalles_ordencortejf`
+    - Actualizar estados de ordenes de corte (parcial/cerrado)
+5. **Registrar en Servicios (Múltiples Talleres Externos):**
+    - Para cada línea del CSV:
+        - Buscar detalle de almacén de corte con saldo disponible
+        - Registrar en `entaller_cabjf` vinculado a `almacencorte_detallejf` con el taller específico de la línea
+        - Actualizar `saldo_taller` en `almacencorte_detallejf`
+        - Actualizar stocks en `articulojf`:
+            - Aumentar `taller`
+            - Disminuir `alm_corte`
+
+### Uso del Script de Servicios
+
+1. **Preparar el CSV:**
+
+    - Crear archivo `servicios.csv` en `/scripts/csv/`
+    - Formato: `articulo,cantidad,taller` (con encabezados)
+    - Una fila por artículo/taller
+
+2. **Ejecutar el script:**
+
+```bash
+cd /Users/joel/Proyectos/vascorp
+php scripts/procesar_servicios.php
+```
+
+3. **El script:**
+    - Valida el formato del CSV
+    - Muestra resumen de artículos y talleres encontrados
+    - Crea orden de corte automáticamente (agrupando artículos)
+    - Crea almacén de corte vinculado
+    - Registra cada línea en su taller específico
+    - Actualiza todos los stocks
+    - Muestra resumen final con códigos generados
+
 ### Ejemplo de Ejecución
 
 ```bash
