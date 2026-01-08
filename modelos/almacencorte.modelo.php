@@ -239,6 +239,43 @@ class ModeloAlmacenCorte
 
 		if ($stmt->execute()) {
 
+			// Inicializar saldo_taller con la cantidad (todo disponible para taller/servicios)
+			// El stored procedure puede recibir guía o código, necesitamos obtener el código
+			// Primero intentar obtener el código del almacén de corte por guía
+			$stmt3 = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE guia = :guia ORDER BY codigo DESC LIMIT 1");
+			$stmt3->bindParam(":guia", $datos["almacencorte"], PDO::PARAM_STR);
+			$stmt3->execute();
+			$almacenCorte = $stmt3->fetch(PDO::FETCH_ASSOC);
+			$stmt3->closeCursor();
+
+			// Si no se encuentra por guía, asumir que ya es el código
+			$codigoAC = $almacenCorte ? $almacenCorte["codigo"] : $datos["almacencorte"];
+
+			// Obtener el ID del detalle recién creado
+			$stmt2 = Conexion::conectar()->prepare("SELECT id FROM almacencorte_detallejf 
+				WHERE almacencorte = :almacencorte 
+				AND articulo = :articulo 
+				AND ordencorte = :ordencorte
+				ORDER BY id DESC LIMIT 1");
+
+			$stmt2->bindParam(":almacencorte", $codigoAC, PDO::PARAM_INT);
+			$stmt2->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
+			$stmt2->bindParam(":ordencorte", $datos["ordcorte"], PDO::PARAM_INT);
+			$stmt2->execute();
+			$detalleCreado = $stmt2->fetch(PDO::FETCH_ASSOC);
+			$stmt2->closeCursor();
+
+			if ($detalleCreado) {
+				// Inicializar saldo_taller con la cantidad completa (todo disponible para taller/servicios)
+				$stmt4 = Conexion::conectar()->prepare("UPDATE almacencorte_detallejf 
+					SET saldo_taller = :cantidad 
+					WHERE id = :id");
+				$stmt4->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
+				$stmt4->bindParam(":id", $detalleCreado['id'], PDO::PARAM_INT);
+				$stmt4->execute();
+				$stmt4->closeCursor();
+			}
+
 			return "ok";
 		} else {
 

@@ -2515,7 +2515,9 @@ class ModeloArticulos
 	}
 
 	/* 
-	* Método para actualizar el corte y servicio
+	* Método para actualizar servicio eliminado
+	* Cuando se elimina un servicio, se descuenta de servicio y regresa a alm_corte
+	* porque el servicio originalmente salió de alm_corte (a través de almacencorte_detallejf)
 	*/
 	static public function mdlActualizarServicioEliminado($articulo, $cantidad)
 	{
@@ -2524,7 +2526,7 @@ class ModeloArticulos
 						articulojf 
 					SET
 						servicio = servicio - :cantidad,
-						alm_corte = alm_corte + :cantidad 
+						alm_corte = alm_corte + :cantidad
 					WHERE articulo = :articulo ";
 
 		$stmt = Conexion::conectar()->prepare($sql);

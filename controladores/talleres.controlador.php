@@ -1357,23 +1357,47 @@ class ControladorTalleres
         if (isset($_POST["nuevoCodigo2"])) {
             $tabla = "entallerjf";
             $cod = $_POST["nuevoCodigo2"];
-
-            $respuesta1 = ModeloTalleres::mdlEliminarTallerDetalle($tabla, $cod);
-            $respuestaB = ModeloTalleres::mdlEliminarTallerDetalleCab($cod);
             $tabla2 = "entaller_cabjf";
-            //Traemos la cabecera taller
+            
+            // 1. Traer la cabecera taller ANTES de eliminar cualquier dato
             $cabeceraTaller = ControladorTalleres::ctrMostrarTallerCabecera("id", $cod);
+            
+            if (!$cabeceraTaller) {
+                echo '<script>
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: "No se encontró el bloque de taller",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar"
+                })
+                </script>';
+                return;
+            }
 
-            // Sincronizar almacencorte_detallejf antes de eliminar (revertir saldo_taller)
-            require_once "../modelos/cortes.modelo.php";
+            // 2. Sincronizar almacencorte_detallejf (revertir saldo_taller)
+            // El modelo cortes.modelo.php ya está cargado desde index.php
             $respuestaSync = ModeloCortes::mdlEliminarBloqueTaller($cod);
+            
+            if ($respuestaSync != "ok") {
+                echo '<script>
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: "Error al sincronizar almacencorte_detallejf: ' . $respuestaSync . '",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar"
+                })
+                </script>';
+                return;
+            }
 
+            // 3. Actualizar articulojf (revertir taller/servicio y aumentar alm_corte)
             $existeServicio = ControladorServicios::ctrMostrarDetallesServicios("cabecera_taller", $cod);
 
             if ($existeServicio) {
-
                 /* 
-                * Actualizamos la cantidad que quedo en taller y regresa al corte en el codigo unico eliminado
+                * Actualizamos la cantidad que quedo en servicio y regresa al corte
                 */
                 $articulo  = $cabeceraTaller["articulo"];
                 $cantidad =  $cabeceraTaller["cantidad"];
@@ -1385,9 +1409,8 @@ class ControladorTalleres
                 */
                 $eliminarDeta = ModeloServicios::mdlEliminarDato("servicios_detallejf", "cabecera_taller", $cod);
             } else {
-
                 /* 
-                * Actualizamos la cantidad que quedo en taller y regresa al corte en el codigo unico eliminado
+                * Actualizamos la cantidad que quedo en taller y regresa al corte
                 */
                 $articulo  = $cabeceraTaller["articulo"];
                 $cantidad =  $cabeceraTaller["cantidad"];
@@ -1395,6 +1418,13 @@ class ControladorTalleres
                 $respuesta = ModeloArticulos::mdlActualizarTallerEliminado($articulo, $cantidad);
             }
 
+            // 4. Eliminar detalles (entallerjf)
+            $respuesta1 = ModeloTalleres::mdlEliminarTallerDetalle($tabla, $cod);
+            
+            // 5. Eliminar detalle cab (si existe)
+            $respuestaB = ModeloTalleres::mdlEliminarTallerDetalleCab($cod);
+            
+            // 6. Finalmente eliminar la cabecera (entaller_cabjf)
             $respuesta2 = ModeloTalleres::mdlEliminarTaller($tabla2, $cod);
             if ($respuesta2 == "ok") {
                 echo '<script>
