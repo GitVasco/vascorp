@@ -527,15 +527,32 @@ class ModeloCortes
             $stmt->execute();
             $stmt->closeCursor();
 
-            // Actualizar articulojf: aumentar taller y disminuir alm_corte (lógica en PHP)
-            $stmt = $pdo->prepare("UPDATE articulojf 
-                SET taller = taller + :cantidad,
-                    alm_corte = GREATEST(alm_corte - :cantidad, 0)
-                WHERE articulo = :articulo");
-            $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
-            $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
-            $stmt->execute();
-            $stmt->closeCursor();
+            // Actualizar articulojf: siempre descontar de alm_corte
+            // Si NO es servicio externo: actualizar taller y descontar alm_corte
+            // Si es servicio externo: solo descontar alm_corte (mdlActualizarServicioCorte actualizará servicio)
+            $es_servicio_externo = isset($datos["es_servicio_externo"]) ? $datos["es_servicio_externo"] : false;
+
+            if (!$es_servicio_externo) {
+                // Actualizar taller y descontar alm_corte cuando va a taller
+                $stmt = $pdo->prepare("UPDATE articulojf 
+                    SET taller = taller + :cantidad,
+                        alm_corte = GREATEST(alm_corte - :cantidad, 0)
+                    WHERE articulo = :articulo");
+                $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+                $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
+                $stmt->execute();
+                $stmt->closeCursor();
+            } else {
+                // Solo descontar alm_corte cuando va a servicio externo
+                // mdlActualizarServicioCorte se encargará de actualizar servicio
+                $stmt = $pdo->prepare("UPDATE articulojf 
+                    SET alm_corte = GREATEST(alm_corte - :cantidad, 0)
+                    WHERE articulo = :articulo");
+                $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+                $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
+                $stmt->execute();
+                $stmt->closeCursor();
+            }
 
             $pdo->commit();
             return "ok";

@@ -82,6 +82,12 @@ class ControladorCortes
                 $tallerCab = "VC";
             }
 
+            // Determinar si es servicio externo: 
+            // ticket == "1" (checkbox marcado) = taller interno → descontar alm_corte y pasar a taller
+            // ticket != "1" (checkbox NO marcado) = taller externo → descontar alm_corte y pasar a servicio
+            $ticket = isset($_POST["ticket"]) ? $_POST["ticket"] : "0";
+            $es_servicio_externo = ($ticket != "1");
+
             $datosCab = array(
                 "usuario"   => $_POST["usuario"],
                 "articulo"  => $_POST["nuevoArticulo"],
@@ -89,7 +95,8 @@ class ControladorCortes
                 "saldo"     => $_POST["nuevoAlmCorte"],
                 "estado"    => "0",
                 "guia"      => $_POST["nuevaGuia"],
-                "taller"    => $tallerCab
+                "taller"    => $tallerCab,
+                "es_servicio_externo" => $es_servicio_externo
             );
 
             $respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
@@ -202,11 +209,12 @@ class ControladorCortes
                     } else {
                         /* 
                         * Actualizamos la cantidad que queda en corte y pasa al servicio en el articulo
+                        * Nota: alm_corte ya se descontó en mdlMandarTallerCabV2, por lo que solo actualizamos servicio
                         */
                         $articulo  = $_POST["nuevoArticulo"];
                         $cantidad =  $_POST["nuevoAlmCorte"];
 
-                        $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidad);
+                        $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidad, false);
 
                         /* 
                         * Traemos el codigo del servicio cabecera creado mediante el evento 
@@ -283,6 +291,12 @@ class ControladorCortes
             }
             $listaTallas = json_decode($_POST["listaTallas"], true);
 
+            // Determinar si es servicio externo:
+            // ticket == "1" (checkbox marcado) = taller interno → descontar alm_corte y pasar a taller
+            // ticket != "1" (checkbox NO marcado) = taller externo → descontar alm_corte y pasar a servicio
+            $ticket = isset($_POST["ticketTotal"]) ? $_POST["ticketTotal"] : "0";
+            $es_servicio_externo = ($ticket != "1");
+
             foreach ($listaTallas as $key => $value) {
                 $datosCab = array(
                     "articulo"  => $value["articulo"],
@@ -291,7 +305,8 @@ class ControladorCortes
                     "saldo"     => $value["nuevaCantidad"],
                     "estado"    => "0",
                     "guia"      => $_POST["nuevaGuiaT"],
-                    "taller"    => $tallerCab
+                    "taller"    => $tallerCab,
+                    "es_servicio_externo" => $es_servicio_externo
                 );
 
                 $respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
@@ -340,11 +355,12 @@ class ControladorCortes
                             }
                         } else {
                             //* Actualizamos la cantidad que queda en corte y pasa al servicio en el articulo
+                            //* Nota: alm_corte ya se descontó en mdlMandarTallerCabV2, por lo que solo actualizamos servicio
 
                             $articulo  = $value["articulo"];
                             $cantidad =  $value["nuevaCantidad"];
 
-                            $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidad);
+                            $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidad, false);
 
                             //* Traemos el codigo del servicio cabecera creado mediante el evento 
                             $sector = $_POST["seleccionarSectorServicioTotal"];

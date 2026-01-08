@@ -2469,17 +2469,29 @@ class ModeloArticulos
 	}
 
 	/* 
-	* Método para actualizar el corte y taller
+	* Método para actualizar el corte y servicio
+	* @param $articulo: código del artículo
+	* @param $cantidad: cantidad a actualizar
+	* @param $descontar_alm_corte: si es true, descuenta de alm_corte (por defecto true para compatibilidad)
 	*/
-	static public function mdlActualizarServicioCorte($articulo, $cantidad)
+	static public function mdlActualizarServicioCorte($articulo, $cantidad, $descontar_alm_corte = true)
 	{
-
-		$sql = "UPDATE 
-						articulojf 
-					SET
-						servicio = servicio + :cantidad,
-						alm_corte = alm_corte - :cantidad 
-					WHERE articulo = :articulo ";
+		if ($descontar_alm_corte) {
+			// Actualizar servicio y descontar alm_corte
+			$sql = "UPDATE 
+							articulojf 
+						SET
+							servicio = servicio + :cantidad,
+							alm_corte = alm_corte - :cantidad 
+						WHERE articulo = :articulo ";
+		} else {
+			// Solo actualizar servicio (alm_corte ya se descontó antes)
+			$sql = "UPDATE 
+							articulojf 
+						SET
+							servicio = servicio + :cantidad
+						WHERE articulo = :articulo ";
+		}
 
 		$stmt = Conexion::conectar()->prepare($sql);
 
