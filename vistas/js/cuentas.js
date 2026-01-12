@@ -2251,6 +2251,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             ".tablaCuentas",
             ".tablaCuentasPendientes",
             ".tablaCuentasAprobadas",
+            ".tablaCuentasPaginado",
         ];
 
         for (var i = 0; i < tablasImpresion.length; i++) {

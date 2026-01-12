@@ -220,6 +220,8 @@ if (!$soloPlantilla && $numCuenta !== null) {
             max-width: 24%;
             max-height: 100%;
             object-fit: contain;
+            transform: rotate(180deg);
+            transform-origin: center center;
         }
 
         .plantilla-fondo-img {
