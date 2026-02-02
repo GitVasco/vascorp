@@ -44,7 +44,8 @@
                         $_SESSION["id"] == "6" ||
                         $_SESSION["id"] == "53" ||
                         $_SESSION["id"] == "54" ||
-                        $_SESSION["id"] == "55"
+                        $_SESSION["id"] == "55" ||
+                        $_SESSION["id"] == "74"
                     ) {
                         echo '<div class="btn-group mr-2">
                             <button class="btn btn-success btnEnviarPedido" data-toggle="modal" data-target="#modalEnviarPedido">

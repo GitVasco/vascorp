@@ -105,7 +105,7 @@ $("#seleccionarCliente").change(function () {
     });
 });
 
-const vendedoresEspeciales = new Set(["08L"]);
+const vendedoresEspeciales = new Set(["08L", "08O"]);
 
 $("#seleccionarVendedor").change(function () {
     const cliList = $("#seleccionarCliente").val();

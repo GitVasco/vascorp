@@ -202,8 +202,7 @@ class ModeloCortes
                                                 ON e.articulo = a.articulo 
                                                 LEFT JOIN sectorjf s 
                                                 ON e.taller = s.cod_sector 
-                                        WHERE e.estado = '0' 
-                                            AND a.modelo = '" . $modeloTaller . "' 
+                                        WHERE a.modelo = '" . $modeloTaller . "' 
                                             AND YEAR(e.fecha) = YEAR(NOW())
                                         GROUP BY DATE(e.fecha),
                                                     e.taller,
@@ -295,8 +294,7 @@ class ModeloCortes
                                         ON e.articulo = a.articulo 
                                         LEFT JOIN sectorjf s 
                                         ON e.taller = s.cod_sector 
-                                    WHERE e.estado = '0' 
-                                    AND YEAR(e.fecha) = YEAR(NOW())
+                                    WHERE YEAR(e.fecha) = YEAR(NOW())
                                     GROUP BY DATE(e.fecha),
                                         e.taller,
                                         a.modelo,
