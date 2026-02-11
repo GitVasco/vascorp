@@ -2454,6 +2454,65 @@ class ControladorTalleres
         }
     }
 
+    /*=============================================
+    REIMPRIMIR TICKET SIN REGISTRAR EN BD
+    Solo genera el ticket para tickets perdidos/reimpresión
+    =============================================*/
+    static public function ctrReimprimirTicket()
+    {
+        if (isset($_POST["reimprimirCantidad"])) {
+            $valor = $_POST["reimprimirArti"];
+            $rpt_articulo = ModeloArticulos::mdlMostrarArticulos($valor);
+            
+            if ($rpt_articulo) {
+                $modelo = $rpt_articulo["modelo"];
+                $nombre = $rpt_articulo["nombre"];
+                $color = $rpt_articulo["color"];
+                $talla = $rpt_articulo["talla"];
+                $cantidad = $_POST["reimprimirCantidad"];
+                $cod_ope = $_POST["reimprimirCodOP"];
+                
+                // Usar el código de barra existente
+                $ultimo = $_POST["reimprimirBar"];
+                
+                $tablaop = "operacionesjf";
+                $itemop = "codigo";
+                $rpt_operacion = ModeloOperaciones::mdlMostrarOperaciones($tablaop, $itemop, $cod_ope);
+                $nom_ope = $rpt_operacion["nombre"];
+
+                echo '<script>
+                window.open("vistas/reportes_ticket/produccion_ticket_detalle.php?ultimo=' . $ultimo . '&modelo=' . $modelo . '&nombre=' . $nombre . '&color=' . $color . '&talla=' . $talla . '&cant_taller=' . $cantidad . '&cod_operacion=' . $cod_ope . '&nom_operacion=' . $nom_ope . '","_blank");
+                </script>';
+
+                echo '<script>
+                    swal({
+                          type: "success",
+                          title: "Ticket reimpreso correctamente",
+                          showConfirmButton: true,
+                          confirmButtonText: "Cerrar"
+                          }).then(function(result){
+                                    if (result.value) {
+                                    window.location = "en-taller";
+                                    }
+                                })
+                </script>';
+            } else {
+                echo '<script>
+                    swal({
+                          type: "error",
+                          title: "Error al obtener datos del artículo",
+                          showConfirmButton: true,
+                          confirmButtonText: "Cerrar"
+                          }).then(function(result){
+                                    if (result.value) {
+                                    window.location = "en-taller";
+                                    }
+                                })
+                </script>';
+            }
+        }
+    }
+
     static public function ctrCrearCompensacion()
     {
 

@@ -29,7 +29,7 @@
         <i class="fa fa-trash"></i> Eliminar bloque
         </button>
         <button class="btn btn-warning btnCrearTicket" data-toggle="modal" data-target="#modalCrearTicket" idTaller="2021493731"> 
-        <i class="fa fa-plus-square"></i> Crear surtido
+        <i class="fa fa-print"></i> Reimprimir ticket
         </button>
 
         <button class="btn btn-primary btnCrearCompensacion" data-toggle="modal" data-target="#modalCrearCompensacion" idTaller="2021493731"> 
@@ -501,11 +501,11 @@ MODAL ELIMINAR ARTICULO
         CABEZA DEL MODAL
         ======================================-->
 
-        <div class="modal-header" style="background:#3c8dbc; color:white">
+        <div class="modal-header" style="background:#f39c12; color:white">
 
           <button type="button" class="close" data-dismiss="modal">&times;</button>
 
-          <h4 class="modal-title">Crear Ticket</h4>
+          <h4 class="modal-title"><i class="fa fa-print"></i> Reimprimir Ticket (Sin registrar)</h4>
 
         </div>
 
@@ -515,6 +515,11 @@ MODAL ELIMINAR ARTICULO
 
         <div class="modal-body">
 
+          <div class="alert alert-warning">
+            <i class="fa fa-exclamation-triangle"></i> 
+            <strong>Nota:</strong> Este formulario solo reimprime el ticket, NO registra nuevos envíos a taller.
+          </div>
+
           <div class="box-body">
 
             <div class="form-group col-lg-6">
@@ -522,7 +527,7 @@ MODAL ELIMINAR ARTICULO
               <div class="input-group">
 
                   <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                  <input type="text" class="form-control input-lg" id="verMod" name="verMod" readonly>
+                  <input type="text" class="form-control input-lg" id="verMod" name="reimprimirMod" readonly>
                   
               </div>
             </div>  
@@ -532,7 +537,7 @@ MODAL ELIMINAR ARTICULO
               <div class="input-group">
 
                   <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                  <input type="text" class="form-control input-lg" id="verCol" name="verCol" readonly>
+                  <input type="text" class="form-control input-lg" id="verCol" name="reimprimirCol" readonly>
                   
               </div>
             </div>  
@@ -542,13 +547,13 @@ MODAL ELIMINAR ARTICULO
               <div class="input-group">
 
                   <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                  <input type="text" class="form-control input-lg" id="verTal" name="verTal" value="SURTIDO"readonly>
-                  <input type="hidden" id="verArti" name="verArti">
-                  <input type="hidden" id="verCab" name="verCab">
-                  <input type="hidden" id="verPrec" name="verPrec">
-                  <input type="hidden" id="verTmp" name="verTmp">
-                  <input type="hidden" id="verBar" name="verBar">
-                  <input type="hidden"  name="verUser" value="<?php echo $_SESSION["id"]?>">
+                  <input type="text" class="form-control input-lg" id="verTal" name="reimprimirTal" value="SURTIDO" readonly>
+                  <input type="hidden" id="verArti" name="reimprimirArti">
+                  <input type="hidden" id="verCab" name="reimprimirCab">
+                  <input type="hidden" id="verPrec" name="reimprimirPrec">
+                  <input type="hidden" id="verTmp" name="reimprimirTmp">
+                  <input type="hidden" id="verBar" name="reimprimirBar">
+                  <input type="hidden" name="reimprimirUser" value="<?php echo $_SESSION["id"]?>">
                   
               </div>
             </div>  
@@ -560,7 +565,7 @@ MODAL ELIMINAR ARTICULO
 
                   <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
 
-                  <input type="text" class="form-control input-lg" id="verCodOP" name="verCodOP" readonly>
+                  <input type="text" class="form-control input-lg" id="verCodOP" name="reimprimirCodOP" readonly>
               </div>
 
             </div>
@@ -571,7 +576,7 @@ MODAL ELIMINAR ARTICULO
 
                   <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
 
-                  <input type="text" class="form-control input-lg" id="verOP" name="verOP" readonly>
+                  <input type="text" class="form-control input-lg" id="verOP" name="reimprimirOP" readonly>
               </div>
 
             </div>
@@ -582,7 +587,7 @@ MODAL ELIMINAR ARTICULO
 
                   <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
 
-                  <input type="text" class="form-control input-lg" name="verCantidad" id="verCantidad" required>
+                  <input type="text" class="form-control input-lg" name="reimprimirCantidad" id="verCantidad" required>
               </div>
 
             </div>
@@ -599,7 +604,7 @@ MODAL ELIMINAR ARTICULO
 
           <button type="button" class="btn btn-danger pull-left" data-dismiss="modal">Salir</button>
 
-          <button type="submit" class="btn btn-primary">Crear Surtido</button>
+          <button type="submit" class="btn btn-warning"><i class="fa fa-print"></i> Reimprimir Ticket</button>
 
         </div>
 
@@ -607,8 +612,8 @@ MODAL ELIMINAR ARTICULO
 
         <?php
 
-          $crearTicket = new ControladorTalleres();
-          $crearTicket -> ctrCrearTicket();
+          $reimprimirTicket = new ControladorTalleres();
+          $reimprimirTicket -> ctrReimprimirTicket();
 
         ?>  
 
