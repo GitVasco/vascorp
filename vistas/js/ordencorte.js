@@ -146,7 +146,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
 
                 if (faltantes <= 0) {
                     faltas =
-                        '<input type="number" style="color:#8B0000; background-color:pink;" class="form-control nuevaCantidadArticuloOC input-sm" name="nuevaCantidadArticuloOC" id="nuevaCantidadArticuloOC" min="1" value="' +
+                        '<input type="number" style="color:#8B0000; background-color:pink;" class="form-control nuevaCantidadArticuloOC input-sm" id="nuevaCantidadArticuloOC" min="1" value="' +
                         faltantes +
                         '" ord_corte="' +
                         ord_corte +
@@ -161,7 +161,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
                         '" required>';
                 } else {
                     faltas =
-                        '<input type="number" class="form-control nuevaCantidadArticuloOC input-sm" name="nuevaCantidadArticuloOC" id="nuevaCantidadArticuloOC" min="1" value="' +
+                        '<input type="number" class="form-control nuevaCantidadArticuloOC input-sm" id="nuevaCantidadArticuloOC" min="1" value="' +
                         faltantes +
                         '" ord_corte="' +
                         ord_corte +
@@ -190,7 +190,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
                         '"><i class="fa fa-times"></i></button></span>' +
                         '<input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloOC="' +
                         articuloOC +
-                        '" name="agregarOC" value="' +
+                        '" value="' +
                         packing +
                         '" codigoAC="' +
                         articulo +
@@ -203,9 +203,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
                         "</div>" +
                         "<!-- Cantidad de meses que va a durar -->" +
                         '<div class="col-xs-2 mes">' +
-                        '<input style="color:#8B0000; background-color:white;" type="text" class="form-control nuevoMes input-sm" name="' +
-                        articulo +
-                        '" id="' +
+                        '<input style="color:#8B0000; background-color:white;" type="text" class="form-control nuevoMes input-sm" id="' +
                         articulo +
                         "M" +
                         '" value="' +
@@ -484,6 +482,14 @@ function listarArticulosOC() {
         success: function (respuesta) {},
     });
 }
+
+/*
+ * Actualizar lista de artículos antes de enviar el formulario (crear orden de corte)
+ * Evita pérdida de datos cuando hay muchos artículos
+ */
+$(".formularioOrdenCorte").on("submit", function () {
+    listarArticulosOC();
+});
 
 /*
  * BOTON EDITAR ORDEN DE CORTE
@@ -1432,7 +1438,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
                     '"><i class="fa fa-times"></i></button></span>' +
                     '<input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloOC="' +
                     articuloOC +
-                    '" name="agregarOC" value="' +
+                    '" value="' +
                     packing +
                     '" codigoAC="' +
                     articulo +
@@ -1445,9 +1451,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
                     "</div>" +
                     "<!-- Cantidad de meses que va a durar -->" +
                     '<div class="col-xs-2 mes">' +
-                    '<input style="color:#8B0000; background-color:white;" type="text" class="form-control nuevoMes input-sm" name="' +
-                    articulo +
-                    '" id="' +
+                    '<input style="color:#8B0000; background-color:white;" type="text" class="form-control nuevoMes input-sm" id="' +
                     articulo +
                     "M" +
                     '" value="' +
@@ -1492,7 +1496,7 @@ $(".tablaArticulosOrdenCorte tbody").on(
 function createFaltasInput(faltantes, ord_corte, articulo, arriba, abajo) {
     if (faltantes <= 0) {
         return (
-            '<input type="text" style="color:#8B0000; background-color:pink;" class="form-control nuevaCantidadArticuloOC input-sm" name="nuevaCantidadArticuloOC" id="nuevaCantidadArticuloOC" min="1" value="' +
+            '<input type="text" style="color:#8B0000; background-color:pink;" class="form-control nuevaCantidadArticuloOC input-sm" id="nuevaCantidadArticuloOC" min="1" value="' +
             faltantes +
             '" ord_corte="' +
             ord_corte +
@@ -1508,7 +1512,7 @@ function createFaltasInput(faltantes, ord_corte, articulo, arriba, abajo) {
         );
     } else {
         return (
-            '<input type="text" class="form-control nuevaCantidadArticuloOC input-sm" name="nuevaCantidadArticuloOC" id="nuevaCantidadArticuloOC" min="1" value="' +
+            '<input type="text" class="form-control nuevaCantidadArticuloOC input-sm" id="nuevaCantidadArticuloOC" min="1" value="' +
             faltantes +
             '" ord_corte="' +
             ord_corte +

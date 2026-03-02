@@ -191,7 +191,7 @@
                         
                                 <span class="input-group-addon"><button type="button" class="btn btn-danger btn-xs quitarOC" articuloOC="' . $infoArticulo["articulo"] . '"><i class="fa fa-times"></i></button></span>
                         
-                                <input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloOC="' . $infoArticulo["articulo"] . '" name="agregarOC" value="' . $infoArticulo["packing"] . '" codigoAC="' . $infoArticulo["articulo"] . '" readonly required>
+                                <input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloOC="' . $infoArticulo["articulo"] . '" value="' . $infoArticulo["packing"] . '" codigoAC="' . $infoArticulo["articulo"] . '" readonly required>
                         
                               </div>
                         
@@ -199,7 +199,7 @@
                         
                             <div class="col-xs-2">
                         
-                              <input type="number" class="form-control nuevaCantidadArticuloOC input-sm" name="nuevaCantidadArticuloOC" id="nuevaCantidadArticuloOC" min="1" value="' . $value["cantidad"] . '" ord_corte="' . $ocAntiguo . '" articulo="' . $infoArticulo["articulo"] . '" nuevoOrdCorte="' . $infoArticulo["ord_corte"] . '" required>
+                              <input type="number" class="form-control nuevaCantidadArticuloOC input-sm" id="nuevaCantidadArticuloOC" min="1" value="' . $value["cantidad"] . '" ord_corte="' . $ocAntiguo . '" articulo="' . $infoArticulo["articulo"] . '" nuevoOrdCorte="' . $infoArticulo["ord_corte"] . '" required>
                         
                             </div>';
 
@@ -207,14 +207,14 @@
 
                                             echo '<div class="col-xs-2 pendiente">
 
-                              <input style="color:#008000; background-color:white;" type="text" class="form-control nuevoPendienteProy input-sm" name="' . $infoArticulo["articulo"] . '" id="' . $infoArticulo["articulo"] . '"  value="' . $pendienteReal . '" pendienteReal="' . $pendiente . '" readonly></input>
+                              <input style="color:#008000; background-color:white;" type="text" class="form-control nuevoPendienteProy input-sm" id="' . $infoArticulo["articulo"] . '" value="' . $pendienteReal . '" pendienteReal="' . $pendiente . '" readonly></input>
 
                             </div>';
                                         } else {
 
                                             echo '<div class="col-xs-2 pendiente">
 
-                              <input style="color:#FF0000; background-color:pink;" type="text" class="form-control nuevoPendienteProy input-sm" name="' . $infoArticulo["articulo"] . '" id="' . $infoArticulo["articulo"] . '"  value="' . $pendienteReal . '" pendienteReal="' . $pendiente . '" readonly></input>
+                              <input style="color:#FF0000; background-color:pink;" type="text" class="form-control nuevoPendienteProy input-sm" id="' . $infoArticulo["articulo"] . '" value="' . $pendienteReal . '" pendienteReal="' . $pendiente . '" readonly></input>
 
                             </div>';
                                         }
@@ -223,14 +223,14 @@
 
                                             echo '<div class="col-xs-2 mes">
 
-                              <input style="color:#8B0000; background-color:pink;" type="text" class="form-control nuevoMes input-sm" name="' . $infoArticulo["articulo"] . '" id="' . $infoArticulo["articulo"] . 'M" value="' . round($mes, 2) . '" mesReal="' . round($mes, 2) . '" stockG="' . $stockG . '" ventasG="' . $ventasG . '" readonly>                
+                              <input style="color:#8B0000; background-color:pink;" type="text" class="form-control nuevoMes input-sm" id="' . $infoArticulo["articulo"] . 'M" value="' . round($mes, 2) . '" mesReal="' . round($mes, 2) . '" stockG="' . $stockG . '" ventasG="' . $ventasG . '" readonly>                
 
                             </div>';
                                         } else {
 
                                             echo '<div class="col-xs-2 mes">
 
-                              <input style="color:#8B0000; background-color:white;" type="text" class="form-control nuevoMes input-sm" name="' . $infoArticulo["articulo"] . '" id="' . $infoArticulo["articulo"] . 'M" value="' . round($mes, 2) . '" mesReal="' . round($mes, 2) . '" stockG="' . $stockG . '" ventasG="' . $ventasG . '" readonly>                
+                              <input style="color:#8B0000; background-color:white;" type="text" class="form-control nuevoMes input-sm" id="' . $infoArticulo["articulo"] . 'M" value="' . round($mes, 2) . '" mesReal="' . round($mes, 2) . '" stockG="' . $stockG . '" ventasG="' . $ventasG . '" readonly>                
 
                             </div>';
                                         }
