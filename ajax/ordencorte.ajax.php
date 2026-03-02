@@ -1,5 +1,7 @@
 <?php
 
+session_start();
+
 require_once '../controladores/ordencorte.controlador.php';
 require_once '../modelos/ordencorte.modelo.php';
 
@@ -165,4 +167,15 @@ if (isset($_POST["articulos"])) {
     $mostrarOrdenCorteDetalle = new AjaxOrdenCorte();
     $mostrarOrdenCorteDetalle->articulo = json_decode($_POST["articulos"], true);
     $mostrarOrdenCorteDetalle->ajaxCargarArticulo();
+}
+
+/*
+ * CREAR ORDEN DE CORTE DESDE CSV (lista articulo,cantidad en JSON)
+ */
+if (isset($_POST["crearOrdenCorteCSV"]) && isset($_POST["listaArticulosOC"])) {
+    $respuesta = ControladorOrdenCorte::ctrCrearOrdenCorteDesdeCSV();
+    echo json_encode(array(
+        "status" => ($respuesta === "ok" ? "ok" : "error"),
+        "mensaje" => $respuesta
+    ));
 }

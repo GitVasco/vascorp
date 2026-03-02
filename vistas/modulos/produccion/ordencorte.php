@@ -33,6 +33,9 @@
                     </button>
 
                 </a>
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalSubirCSVOrdenCorte">
+                    <i class="fa fa-upload"></i> Subir CSV
+                </button>
                 <button class="btn btn-info btnOrdenCorteDeta" data-toggle='modal' data-target='#modalVerOrdenCorteDeta' ordencorte><i class="fa fa-eye"></i> Ver OC saldo</button>
                 <button class="btn btn-warning btnOrdenCorteCantidad" data-toggle='modal' data-target='#modalVerOrdenCorteCantidad' ordencorte><i class="fa fa-eye"></i> Ver OC cantidad</button>
                 <button class="btn btn-outline-success btnReporteOrdenC" modelo="" style="border:green 1px solid">
@@ -890,6 +893,40 @@ MODAL VISUALIZAR INFORMACION
     </div>
 
 </div>
+
+<!--=====================================
+MODAL SUBIR CSV - CREAR ORDEN DE CORTE
+======================================-->
+<div id="modalSubirCSVOrdenCorte" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#5cb85c; color:white">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-upload"></i> Registrar OC desde CSV</h4>
+            </div>
+            <div class="modal-body">
+                <p>Suba un archivo CSV delimitado por comas con dos columnas: <strong>código de artículo</strong> y <strong>cantidad</strong>.</p>
+                <p class="text-muted small">Ejemplo (primera línea opcional como encabezado):<br>
+                <code>articulo,cantidad</code><br>
+                <code>1010101,50</code><br>
+                <code>1010102,100</code></p>
+                <div class="form-group">
+                    <label>Archivo CSV</label>
+                    <input type="file" class="form-control" id="archivoCSVOrdenCorte" accept=".csv" required>
+                </div>
+                <div id="resumenCSVOrdenCorte" class="alert alert-info" style="display:none;"></div>
+                <div id="errorCSVOrdenCorte" class="alert alert-danger" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnProcesarCSVOrdenCorte">
+                    <i class="fa fa-check"></i> Registrar orden de corte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     window.document.title = "Orden de corte"
 </script>

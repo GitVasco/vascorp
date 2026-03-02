@@ -1556,3 +1556,97 @@ $(document).on("keyup", ".nuevaCantidadArticuloOC", function (e) {
         $(this).select();
     }
 });
+
+/*=============================================
+SUBIR CSV - REGISTRAR ORDEN DE CORTE
+Formato: codigo_articulo,cantidad (delimitado por comas)
+=============================================*/
+$(document).on("change", "#archivoCSVOrdenCorte", function () {
+    var file = this.files[0];
+    $("#resumenCSVOrdenCorte").hide().empty();
+    $("#errorCSVOrdenCorte").hide().empty();
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+        var text = e.target.result;
+        var lineas = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
+        var posibleHeader = lineas.length > 0 && /^[\w\s]*,[\w\s]*$/.test(lineas[0]) && isNaN(parseInt(lineas[0].split(",")[1], 10));
+        var inicio = posibleHeader ? 1 : 0;
+        var filas = lineas.length - inicio;
+        $("#resumenCSVOrdenCorte").text("Se detectaron " + filas + " fila(s) de datos.").show();
+    };
+    reader.readAsText(file, "UTF-8");
+});
+
+$(document).on("click", "#btnProcesarCSVOrdenCorte", function () {
+    var input = document.getElementById("archivoCSVOrdenCorte");
+    if (!input || !input.files.length) {
+        $("#errorCSVOrdenCorte").text("Seleccione un archivo CSV.").show();
+        return;
+    }
+    var file = input.files[0];
+    var $btn = $(this).prop("disabled", true);
+    $("#errorCSVOrdenCorte").hide().empty();
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+        var text = e.target.result;
+        var lineas = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
+        var lista = [];
+        var posibleHeader = lineas.length > 0 && isNaN(parseInt(lineas[0].split(",")[1], 10));
+        var inicio = posibleHeader ? 1 : 0;
+
+        for (var i = inicio; i < lineas.length; i++) {
+            var partes = lineas[i].split(",").map(function (p) { return p.trim(); });
+            if (partes.length < 2) continue;
+            var codigo = partes[0];
+            var cantidad = parseInt(partes[1], 10);
+            if (!codigo || isNaN(cantidad) || cantidad < 1) continue;
+            lista.push({ articulo: codigo, cantidad: cantidad });
+        }
+
+        if (lista.length === 0) {
+            $("#errorCSVOrdenCorte").text("No se encontraron filas válidas (código,cantidad).").show();
+            $btn.prop("disabled", false);
+            return;
+        }
+
+        var datos = new FormData();
+        datos.append("crearOrdenCorteCSV", "1");
+        datos.append("listaArticulosOC", JSON.stringify(lista));
+
+        $.ajax({
+            url: "ajax/ordencorte.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (resp) {
+                $btn.prop("disabled", false);
+                if (resp.status === "ok") {
+                    $("#modalSubirCSVOrdenCorte").modal("hide");
+                    $("#archivoCSVOrdenCorte").val("");
+                    $("#resumenCSVOrdenCorte").hide().empty();
+                    swal({
+                        type: "success",
+                        title: "Listo",
+                        text: "La orden de corte fue registrada correctamente.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    }).then(function () {
+                        $(".tablaOrdenCorte").DataTable().ajax.reload(null, false);
+                    });
+                } else {
+                    $("#errorCSVOrdenCorte").text(resp.mensaje || "Error al procesar.").show();
+                }
+            },
+            error: function () {
+                $btn.prop("disabled", false);
+                $("#errorCSVOrdenCorte").text("Error de conexión al procesar el archivo.").show();
+            }
+        });
+    };
+    reader.readAsText(file, "UTF-8");
+});

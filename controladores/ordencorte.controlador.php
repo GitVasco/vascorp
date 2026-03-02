@@ -145,6 +145,91 @@ class ControladorOrdenCorte
         }
     }
 
+    /*
+     * CREAR ORDEN DE CORTE DESDE CSV (código,cantidad)
+     * Retorna "ok" o mensaje de error (string)
+     */
+    static public function ctrCrearOrdenCorteDesdeCSV()
+    {
+        if (!isset($_POST["listaArticulosOC"]) || $_POST["listaArticulosOC"] === "") {
+            return "No se recibió la lista de artículos.";
+        }
+        if (!isset($_SESSION["id"])) {
+            return "Sesión no válida.";
+        }
+
+        $listaArticulos = json_decode($_POST["listaArticulosOC"], true);
+        if (!is_array($listaArticulos) || count($listaArticulos) === 0) {
+            return "La lista de artículos está vacía o no es válida.";
+        }
+
+        $configuracion = controladorArticulos::ctrConfiguracion();
+        $urgencia = isset($configuracion["urgencia"]) ? $configuracion["urgencia"] : 0;
+
+        $ult_codigo = ModeloOrdenCorte::mdlUltimoCodigoOC("ordencortejf");
+        $codigo = $ult_codigo ? (int)$ult_codigo[0]["ultimo_codigo"] + 1 : 1001;
+
+        $total = 0;
+        $listaValida = array();
+        $articulosNoEncontrados = array();
+
+        foreach ($listaArticulos as $item) {
+            $articulo = trim(isset($item["articulo"]) ? $item["articulo"] : "");
+            $cantidad = isset($item["cantidad"]) ? (int)$item["cantidad"] : 0;
+            if ($articulo === "" || $cantidad < 1) {
+                continue;
+            }
+            $existe = ModeloArticulos::mdlMostrarArticulos($articulo);
+            if (!$existe) {
+                $articulosNoEncontrados[] = $articulo;
+                continue;
+            }
+            $listaValida[] = array(
+                "articulo" => $articulo,
+                "cantidad" => $cantidad
+            );
+            $total += $cantidad;
+        }
+
+        if (count($articulosNoEncontrados) > 0) {
+            return "Artículos no encontrados: " . implode(", ", array_slice($articulosNoEncontrados, 0, 10)) . (count($articulosNoEncontrados) > 10 ? "..." : "");
+        }
+        if (count($listaValida) === 0) {
+            return "No hay filas válidas (código y cantidad positiva).";
+        }
+
+        $datos = array(
+            "usuario" => $_SESSION["id"],
+            "codigo" => $codigo,
+            "configuracion" => $urgencia,
+            "total" => $total,
+            "saldo" => $total,
+            "estado" => "Pendiente"
+        );
+
+        $respuesta = ModeloOrdenCorte::mdlGuardarOrdenCorte("ordencortejf", $datos);
+        if ($respuesta !== "ok") {
+            return "Error al guardar la orden de corte.";
+        }
+
+        $ultimoId = ModeloOrdenCorte::mdlUltimoId();
+        $idOrden = (int)$ultimoId[0]["ult_codigo"];
+
+        foreach ($listaValida as $value) {
+            $datosD = array(
+                "ordencorte" => $idOrden,
+                "articulo" => $value["articulo"],
+                "cantidad" => $value["cantidad"],
+                "saldo" => $value["cantidad"]
+            );
+            ModeloOrdenCorte::mdlGuardarDetallesOrdenCorte("detalles_ordencortejf", $datosD);
+            ModeloArticulos::mdlSumarOrdCorte($value["cantidad"], $value["articulo"]);
+        }
+
+        ModeloOrdenCorte::mdlEliminarArticulo();
+        return "ok";
+    }
+
     /* 
 	* MOSTRAR DATOS DEL DETALLE DE LAS TARJETAS
 	*/
