@@ -2580,50 +2580,66 @@ class ControladorTalleres
     }
 
     /*
-     * Crear ticket original: solo genera el ticket para imprimir (operación perdida/eliminada por error).
-     * NO registra en taller cabecera ni detalle, para no confundir al equipo con ítems que no se enviaron a taller.
+     * Crear ticket original: registra solo en entaller (detalle) para control, NO en cabecera (enviados a taller).
      */
     static public function ctrCrearTicketOriginal()
     {
 
         if (isset($_POST["ticketArticulo"])) {
 
-            // Código único solo para el ticket impreso (no se guarda en BD de taller)
-            $ultimo = "ORIG-" . time() . "-" . $_POST["ticketOperacion"];
+            /* Código del ticket (mismo formato): no insertamos cabecera, usamos id_cabecera=0 */
+            $ult_codigo = ModeloCortes::mdlSiguienteCodigoTaller();
 
-            $valor = $_POST["ticketArticulo"];
-            $rpt_articulo = ModeloArticulos::mdlMostrarArticulos($valor);
-            if (!$rpt_articulo) {
-                echo '<script>swal({ type: "error", title: "Error", text: "Artículo no encontrado." });</script>';
-                return;
+            $ultimo = $ult_codigo["ult_codigo"] . $_POST["ticketOperacion"];
+
+            /* Registrar solo en taller detalle (entallerjf), con id_cabecera=0 para no aparecer en "enviados a taller" */
+            $datos = array(
+                "codigo" => 0,
+                "usuario" => $_POST["ticketUser"],
+                "articulo" => $_POST["ticketArticulo"],
+                "operacion" => $_POST["ticketOperacion"],
+                "cantidad" => $_POST["ticketCantidad"],
+                "editarBarra" => $ultimo
+            );
+
+            $respuesta = ModeloTalleres::mdlIngresarTaller($datos);
+
+            if ($respuesta == "ok") {
+
+                $valor = $_POST["ticketArticulo"];
+                $rpt_articulo = ModeloArticulos::mdlMostrarArticulos($valor);
+                $modelo = $rpt_articulo["modelo"];
+                $nombre = $rpt_articulo["nombre"];
+                $color = $rpt_articulo["color"];
+                $talla = $rpt_articulo["talla"];
+                $cantidad = $_POST["ticketCantidad"];
+                $cod_ope = $_POST["ticketOperacion"];
+                $tablaop = "operacionesjf";
+                $itemop = "codigo";
+                $rpt_operacion = ModeloOperaciones::mdlMostrarOperaciones($tablaop, $itemop, $cod_ope);
+                $nom_ope = $rpt_operacion["nombre"];
+
+                echo '<script>
+    
+                    window.open("vistas/reportes_ticket/produccion_ticket_detalle.php?ultimo=' . $ultimo . '&modelo=' . $modelo . '&nombre=' . $nombre . '&color=' . $color . '&talla=' . $talla . '&cant_taller=' . $cantidad . '&cod_operacion=' . $cod_ope . '&nom_operacion=' . $nom_ope . '","_blank");
+                    </script>';
+                echo '<script>
+
+                    swal({
+                          type: "success",
+                          title: "Se mando a taller correctamente",
+                          showConfirmButton: true,
+                          confirmButtonText: "Cerrar"
+                          }).then(function(result){
+                            if (result.value) {
+
+                            window.location = "en-taller";
+
+                            }
+                        })
+
+                    </script>';
             }
-            $modelo = $rpt_articulo["modelo"];
-            $nombre = $rpt_articulo["nombre"];
-            $color = $rpt_articulo["color"];
-            $talla = $rpt_articulo["talla"];
-            $cantidad = $_POST["ticketCantidad"];
-            $cod_ope = $_POST["ticketOperacion"];
-            $tablaop = "operacionesjf";
-            $itemop = "codigo";
-            $rpt_operacion = ModeloOperaciones::mdlMostrarOperaciones($tablaop, $itemop, $cod_ope);
-            $nom_ope = $rpt_operacion ? $rpt_operacion["nombre"] : $_POST["ticketOperacion"];
-
-            echo '<script>
-            window.open("vistas/reportes_ticket/produccion_ticket_detalle.php?ultimo=' . urlencode($ultimo) . '&modelo=' . urlencode($modelo) . '&nombre=' . urlencode($nombre) . '&color=' . urlencode($color) . '&talla=' . urlencode($talla) . '&cant_taller=' . urlencode($cantidad) . '&cod_operacion=' . urlencode($cod_ope) . '&nom_operacion=' . urlencode($nom_ope) . '","_blank");
-            </script>';
-            echo '<script>
-            swal({
-                  type: "success",
-                  title: "Ticket creado correctamente",
-                  text: "Solo se generó el ticket para imprimir. No se registró envío a taller.",
-                  showConfirmButton: true,
-                  confirmButtonText: "Cerrar"
-                  }).then(function(result){
-                    if (result.value) {
-                        window.location = "en-taller";
-                    }
-                })
-            </script>';
         }
     }
 

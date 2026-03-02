@@ -100,35 +100,25 @@ class ControladorCortes
             );
 
             $respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
+            $ok = (is_array($respuestaCab) && isset($respuestaCab["status"]) && $respuestaCab["status"] === "ok");
+            $cantidadUsada = $ok ? (int) $respuestaCab["cantidad_usada"] : 0;
 
-            if ($respuestaCab == "ok") {
+            if ($ok && $cantidadUsada > 0) {
 
-                /* 
-                * ultimo codigo
-                */
                 $ult_codigo = ModeloCortes::mdlUltCodigo();
-                //var_dump($ult_codigo[ult_codigo]);
 
-                /* 
-                * Registramos en la tabla taller detalle
-                */
                 $datos = array(
                     "usuario" => $_POST["usuario"],
                     "articulo" => $_POST["nuevoArticulo"],
-                    "cantidad" => $_POST["nuevoAlmCorte"],
+                    "cantidad" => $cantidadUsada,
                     "codigo" => $ult_codigo["ult_codigo"]
                 );
-                //var_dump($datos);
 
                 $respuesta = ModeloCortes::mdlMandarTaller($datos);
 
                 if ($respuesta == "ok") {
 
                     $cod = $ult_codigo["ult_codigo"];
-
-                    /* 
-                    * Recibimos el checkbox del ticket y validamos si imprimira o no 
-                    */
 
                     $ticket = $_POST["ticket"];
 
@@ -207,34 +197,18 @@ class ControladorCortes
                             $printer->close();
                         }
                     } else {
-                        /* 
-                        * Actualizamos la cantidad que queda en corte y pasa al servicio en el articulo
-                        * Nota: alm_corte ya se descontó en mdlMandarTallerCabV2, por lo que solo actualizamos servicio
-                        */
                         $articulo  = $_POST["nuevoArticulo"];
-                        $cantidad =  $_POST["nuevoAlmCorte"];
-
-                        $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidad, false);
-
-                        /* 
-                        * Traemos el codigo del servicio cabecera creado mediante el evento 
-                        */
+                        $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);
 
                         $sector = $_POST["seleccionarSectorServicio"];
-
                         $primerServicio = ModeloServicios::mdlPrimerServicio($sector);
-
                         $codigoServicio = $primerServicio["codigo"];
-
-                        /* 
-                        * Guardamos el detalle del servicio y lo asignamos a la cabecera con el codigo de servicio 
-                        */
 
                         $datosDetalle = array(
                             "articulo" => $articulo,
-                            "cantidad" => $cantidad,
+                            "cantidad" => $cantidadUsada,
                             "codigo" => $codigoServicio,
-                            "saldo" => $cantidad,
+                            "saldo" => $cantidadUsada,
                             "cabecera_taller" => $ult_codigo["ult_codigo"]
                         );
 
@@ -310,16 +284,16 @@ class ControladorCortes
                 );
 
                 $respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
+                $okTotal = (is_array($respuestaCab) && isset($respuestaCab["status"]) && $respuestaCab["status"] === "ok");
+                $cantidadUsadaT = $okTotal ? (int) $respuestaCab["cantidad_usada"] : 0;
 
-                if ($respuestaCab == "ok") {
-                    //* ultimo codigo
+                if ($okTotal && $cantidadUsadaT > 0) {
                     $ult_codigo = ModeloCortes::mdlUltCodigo();
 
-                    //* Registramos en la tabla taller detalle
                     $datos = array(
                         "usuario" => $_POST["usuario"],
                         "articulo" => $value["articulo"],
-                        "cantidad" => $value["nuevaCantidad"],
+                        "cantidad" => $cantidadUsadaT,
                         "codigo" => $ult_codigo["ult_codigo"]
                     );
 
@@ -328,7 +302,6 @@ class ControladorCortes
 
                         $cod = $ult_codigo["ult_codigo"];
 
-                        //* Recibimos el checkbox del ticket y validamos si imprimira o no 
                         $ticket = $_POST["ticketTotal"];
 
                         if ($ticket == "1" || $_POST["seleccionarSectorServicioTotal"] == 'T1') {
@@ -351,25 +324,18 @@ class ControladorCortes
                                 $documento = "20513613939";
                             }
                         } else {
-                            //* Actualizamos la cantidad que queda en corte y pasa al servicio en el articulo
-                            //* Nota: alm_corte ya se descontó en mdlMandarTallerCabV2, por lo que solo actualizamos servicio
-
                             $articulo  = $value["articulo"];
-                            $cantidad =  $value["nuevaCantidad"];
+                            $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsadaT, false);
 
-                            $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidad, false);
-
-                            //* Traemos el codigo del servicio cabecera creado mediante el evento 
                             $sector = $_POST["seleccionarSectorServicioTotal"];
                             $primerServicio = ModeloServicios::mdlPrimerServicio($sector);
                             $codigoServicio = $primerServicio["codigo"];
 
-                            //** Guardamos el detalle del servicio y lo asignamos a la cabecera con el codigo de servicio 
                             $datosDetalle = array(
                                 "articulo" => $articulo,
-                                "cantidad" => $cantidad,
+                                "cantidad" => $cantidadUsadaT,
                                 "codigo" => $codigoServicio,
-                                "saldo" => $cantidad,
+                                "saldo" => $cantidadUsadaT,
                                 "cabecera_taller" => $ult_codigo["ult_codigo"]
                             );
 

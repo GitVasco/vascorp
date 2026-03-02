@@ -425,6 +425,18 @@ class ModeloCortes
         $stmt = null;
     }
 
+    /*
+	* SIGUIENTE CÓDIGO (sin insertar) - para ticket original
+	*/
+    static public function mdlSiguienteCodigoTaller()
+    {
+        $stmt = Conexion::conectar()->prepare("SELECT IFNULL(MAX(id), 1000000) + 1 AS ult_codigo FROM entaller_cabjf");
+        $stmt->execute();
+        return $stmt->fetch();
+        $stmt->close();
+        $stmt = null;
+    }
+
 
     /*
 	* REGISTRAR LO QUE SE MANDA A TALLER CABECERA
@@ -457,7 +469,8 @@ class ModeloCortes
 
     /*
 	* REGISTRAR LO QUE SE MANDA A TALLER CABECERA V2
-	* MODIFICADO: Lógica en PHP para obtener saldo disponible y actualizar tracking
+	* Liquida por FIFO sobre todos los detalles con saldo hasta cubrir la cantidad.
+	* Devuelve ["status"=>"ok", "cantidad_usada"=>N] o string "error...".
 	*/
     static public function mdlMandarTallerCabV2($datos)
     {
@@ -466,96 +479,96 @@ class ModeloCortes
             $pdo->beginTransaction();
 
             $articulo = $datos["articulo"];
-            $cantidad = $datos["cantidad"];
-            $cantidadRestante = $cantidad;
-            $detalleId = null;
+            $cantidadPedida = (int) $datos["cantidad"];
+            $cantidadRestante = $cantidadPedida;
+            $cantidadTotalUsada = 0;
+            $primerDetalleId = null;
 
-            // Buscar el detalle más antiguo con saldo disponible del año actual (lógica en PHP)
-            $stmt = $pdo->prepare("SELECT acd.id, COALESCE(acd.saldo_taller, acd.cantidad) AS saldo_disponible, acd.cantidad
+            // Traer todos los detalles con saldo del año, orden FIFO (más antiguo primero)
+            $stmt = $pdo->prepare("SELECT acd.id, COALESCE(acd.saldo_taller, acd.cantidad) AS saldo_disponible
                 FROM almacencorte_detallejf acd
                 INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
                 WHERE acd.articulo = :articulo
                   AND COALESCE(acd.saldo_taller, acd.cantidad) > 0
                   AND YEAR(DATE(ac.fecha)) = YEAR(NOW())
-                ORDER BY acd.id ASC
-                LIMIT 1");
+                ORDER BY acd.id ASC");
             $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
             $stmt->execute();
-            $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+            $detalles = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $stmt->closeCursor();
 
-            if (!$detalle || $detalle['saldo_disponible'] <= 0) {
+            if (empty($detalles)) {
                 $pdo->rollBack();
                 return "error_saldo_insuficiente";
             }
 
-            $detalleId = $detalle['id'];
-            $saldoDisponible = $detalle['saldo_disponible'];
+            // Liquidar de varios grupos (FIFO) hasta cubrir lo pedido
+            foreach ($detalles as $detalle) {
+                if ($cantidadRestante <= 0) break;
+                $detalleId = (int) $detalle['id'];
+                $saldoDisponible = (int) $detalle['saldo_disponible'];
+                if ($saldoDisponible <= 0) continue;
 
-            // Si el saldo disponible es menor a lo necesario, usar solo lo disponible
-            $cantidadAUsar = min($saldoDisponible, $cantidadRestante);
+                $cantidadAUsar = min($saldoDisponible, $cantidadRestante);
+                if ($cantidadAUsar <= 0) continue;
 
-            // Insertar en entaller_cabjf con referencia al detalle
+                if ($primerDetalleId === null) $primerDetalleId = $detalleId;
+
+                $nuevoSaldo = max(0, $saldoDisponible - $cantidadAUsar);
+                $stmt = $pdo->prepare("UPDATE almacencorte_detallejf SET saldo_taller = :nuevo_saldo WHERE id = :detalle_id");
+                $stmt->bindParam(":nuevo_saldo", $nuevoSaldo, PDO::PARAM_INT);
+                $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
+                $stmt->execute();
+                $stmt->closeCursor();
+
+                $cantidadTotalUsada += $cantidadAUsar;
+                $cantidadRestante -= $cantidadAUsar;
+            }
+
+            if ($cantidadTotalUsada <= 0) {
+                $pdo->rollBack();
+                return "error_saldo_insuficiente";
+            }
+
+            // Una sola cabecera con la cantidad realmente liquidada (referencia al primer detalle usado)
             $stmt = $pdo->prepare("INSERT INTO entaller_cabjf
-                (articulo, usuario, cantidad, saldo, estado, guia, taller, almacencorte_detalle_id) 
+                (articulo, usuario, cantidad, saldo, estado, guia, taller, almacencorte_detalle_id)
                 VALUES
                 (:articulo, :usuario, :cantidad, :saldo, :estado, :guia, :taller, :almacencorte_detalle_id)");
-
             $stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
             $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
-            $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
-            $stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_INT);
+            $stmt->bindParam(":cantidad", $cantidadTotalUsada, PDO::PARAM_INT);
+            $stmt->bindParam(":saldo", $cantidadTotalUsada, PDO::PARAM_INT);
             $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
             $stmt->bindParam(":guia", $datos["guia"], PDO::PARAM_STR);
             $stmt->bindParam(":taller", $datos["taller"], PDO::PARAM_STR);
-            $stmt->bindParam(":almacencorte_detalle_id", $detalleId, PDO::PARAM_INT);
-
+            $stmt->bindParam(":almacencorte_detalle_id", $primerDetalleId, PDO::PARAM_INT);
             if (!$stmt->execute()) {
                 $pdo->rollBack();
                 return "error";
             }
-
-            // Actualizar saldo_taller del detalle (lógica en PHP)
-            $nuevoSaldo = max(0, $saldoDisponible - $cantidadAUsar);
-            $stmt = $pdo->prepare("UPDATE almacencorte_detallejf
-                SET saldo_taller = :nuevo_saldo
-                WHERE id = :detalle_id");
-            $stmt->bindParam(":nuevo_saldo", $nuevoSaldo, PDO::PARAM_INT);
-            $stmt->bindParam(":detalle_id", $detalleId, PDO::PARAM_INT);
-            $stmt->execute();
             $stmt->closeCursor();
 
-            // Actualizar articulojf: siempre descontar de alm_corte
-            // Si NO es servicio externo: actualizar taller y descontar alm_corte
-            // Si es servicio externo: solo descontar alm_corte (mdlActualizarServicioCorte actualizará servicio)
+            // Articulojf: descontar solo lo realmente liquidado (evita duplicar alm_corte/servicio)
             $es_servicio_externo = isset($datos["es_servicio_externo"]) ? $datos["es_servicio_externo"] : false;
-
             if (!$es_servicio_externo) {
-                // Actualizar taller y descontar alm_corte cuando va a taller
-                $stmt = $pdo->prepare("UPDATE articulojf 
-                    SET taller = taller + :cantidad,
-                        alm_corte = GREATEST(alm_corte - :cantidad, 0)
-                    WHERE articulo = :articulo");
+                $stmt = $pdo->prepare("UPDATE articulojf SET taller = taller + :cantidad, alm_corte = GREATEST(alm_corte - :cantidad, 0) WHERE articulo = :articulo");
                 $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
-                $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
+                $stmt->bindParam(":cantidad", $cantidadTotalUsada, PDO::PARAM_INT);
                 $stmt->execute();
                 $stmt->closeCursor();
             } else {
-                // Solo descontar alm_corte cuando va a servicio externo
-                // mdlActualizarServicioCorte se encargará de actualizar servicio
-                $stmt = $pdo->prepare("UPDATE articulojf 
-                    SET alm_corte = GREATEST(alm_corte - :cantidad, 0)
-                    WHERE articulo = :articulo");
+                $stmt = $pdo->prepare("UPDATE articulojf SET alm_corte = GREATEST(alm_corte - :cantidad, 0) WHERE articulo = :articulo");
                 $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
-                $stmt->bindParam(":cantidad", $cantidadAUsar, PDO::PARAM_INT);
+                $stmt->bindParam(":cantidad", $cantidadTotalUsada, PDO::PARAM_INT);
                 $stmt->execute();
                 $stmt->closeCursor();
             }
 
             $pdo->commit();
-            return "ok";
+            return ["status" => "ok", "cantidad_usada" => $cantidadTotalUsada];
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
+            if (isset($pdo) && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             return "error: " . $e->getMessage();
