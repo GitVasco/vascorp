@@ -3945,7 +3945,7 @@ class ModeloCuentas
 											AND cc.estado = 'PENDIENTE' 
 											AND cc.tipo_doc <> '85' 
 											AND cc.fecha = cc.fecha_ven 
-											AND cc.vendedor NOT IN ('08','08C','08D','08DR','08R','06','06A','06B','99') 
+											AND cc.vendedor NOT LIKE '%08%' AND cc.vendedor NOT LIKE '%06%'
 										ORDER BY cc.vendedor,
 											cc.fecha");
 		$stmt->execute();
@@ -5072,7 +5072,7 @@ class ModeloCuentas
 	{
 		// Construir WHERE clause
 		$where = "c.tip_mov = '+'";
-		
+
 		if ($ano != "null" && $ano != null) {
 			$where .= " AND YEAR(c.fecha) = :ano";
 		}
@@ -5179,7 +5179,7 @@ class ModeloCuentas
 		LIMIT :start, :length";
 
 		$stmt = Conexion::conectar()->prepare($sql);
-		
+
 		if ($ano != "null" && $ano != null) {
 			$stmt->bindParam(":ano", $ano, PDO::PARAM_STR);
 		}
@@ -5195,7 +5195,7 @@ class ModeloCuentas
 		}
 		$stmt->bindParam(":start", $start, PDO::PARAM_INT);
 		$stmt->bindParam(":length", $length, PDO::PARAM_INT);
-		
+
 		$stmt->execute();
 		$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
