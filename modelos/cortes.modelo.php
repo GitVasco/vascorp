@@ -204,6 +204,7 @@ class ModeloCortes
                                                 ON e.taller = s.cod_sector 
                                         WHERE a.modelo = '" . $modeloTaller . "' 
                                             AND YEAR(e.fecha) = YEAR(NOW())
+                                            AND (e.taller IS NULL OR e.taller != 'TX')
                                         GROUP BY DATE(e.fecha),
                                                     e.taller,
                                             a.modelo,
@@ -295,6 +296,7 @@ class ModeloCortes
                                         LEFT JOIN sectorjf s 
                                         ON e.taller = s.cod_sector 
                                     WHERE YEAR(e.fecha) = YEAR(NOW())
+                                        AND (e.taller IS NULL OR e.taller != 'TX')
                                     GROUP BY DATE(e.fecha),
                                         e.taller,
                                         a.modelo,
@@ -436,7 +438,6 @@ class ModeloCortes
         $stmt->close();
         $stmt = null;
     }
-
 
     /*
 	* REGISTRAR LO QUE SE MANDA A TALLER CABECERA

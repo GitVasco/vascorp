@@ -2587,14 +2587,23 @@ class ControladorTalleres
 
         if (isset($_POST["ticketArticulo"])) {
 
-            /* Código del ticket (mismo formato): no insertamos cabecera, usamos id_cabecera=0 */
-            $ult_codigo = ModeloCortes::mdlSiguienteCodigoTaller();
+            /* Igual que creación global: insertar cabecera primero para obtener id_cabecera.
+               El código del ticket = id_cabecera + codigo_operacion (concatenados).
+               taller='TX' marca ticket original para excluirlo de enviados-taller. */
+            $datosCab = array(
+                "articulo" => $_POST["ticketArticulo"],
+                "usuario" => $_POST["ticketUser"],
+                "cantidad" => $_POST["ticketCantidad"],
+                "estado" => "1",
+                "taller" => "TX"
+            );
+            $respuestaCab = ModeloCortes::mdlMandarTallerCab($datosCab);
 
-            $ultimo = $ult_codigo["ult_codigo"] . $_POST["ticketOperacion"];
+            $ultId = ModeloCortes::mdlUltCodigo();
+            $ultimo = $ultId["ult_codigo"] . $_POST["ticketOperacion"];
 
-            /* Registrar solo en taller detalle (entallerjf), con id_cabecera=0 para no aparecer en "enviados a taller" */
             $datos = array(
-                "codigo" => 0,
+                "codigo" => $ultId["ult_codigo"],
                 "usuario" => $_POST["ticketUser"],
                 "articulo" => $_POST["ticketArticulo"],
                 "operacion" => $_POST["ticketOperacion"],
