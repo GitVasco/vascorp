@@ -2548,7 +2548,7 @@ $(".tablaGuiasRemision").on("click", ".btnImprimirGuia", function () {
 });
 
 /*
- *ANULAR PEDIDOS
+ *ANULAR DOCUMENTOS (proformas piden motivo de anulación)
  */
 $(".tablaFacturas, .tablaBoletas, .tablaProformas, .tablaGuiasRemision").on(
     "click",
@@ -2557,31 +2557,64 @@ $(".tablaFacturas, .tablaBoletas, .tablaProformas, .tablaGuiasRemision").on(
         var documento = $(this).attr("documento");
         var tipo = $(this).attr("tipo");
         var pagina = $(this).attr("pagina");
-        //console.log(documento,tipo,pagina);
+        var esProforma = $(this).closest(".tablaProformas").length > 0;
 
-        // Capturamos el id de la orden de compra
-        swal({
-            title: "¿Está seguro de anular el documento?",
-            text: "¡Si no lo está puede cancelar la acción!",
-            type: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            cancelButtonText: "Cancelar",
-            confirmButtonText: "Si, anular documento!",
-        }).then(function (result) {
-            if (result.value) {
-                window.location =
-                    "index.php?ruta=" +
-                    pagina +
-                    "&documento=" +
-                    documento +
-                    "&tipo=" +
-                    tipo +
-                    "&pagina=" +
-                    pagina;
-            }
-        });
+        if (esProforma) {
+            // Solo proformas: pedir motivo de anulación (SweetAlert2 v7: type, no icon; resultado en result.value)
+            swal({
+                title: "Anular proforma",
+                text: "Indique el motivo de anulación:",
+                type: "warning",
+                input: "text",
+                inputPlaceholder: "Ej: Pedido cancelado por el cliente",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: "Cancelar",
+                confirmButtonText: "Sí, anular",
+                inputValidator: function (value) {
+                    if (!value || String(value).trim() === "") {
+                        return "Debe indicar el motivo de anulación";
+                    }
+                    return null;
+                },
+            }).then(function (result) {
+                // v7 resuelve con { value: motivo } al confirmar, o { dismiss: ... } al cancelar
+                if (result && result.value !== undefined && result.value !== null) {
+                    window.location =
+                        "index.php?ruta=proformas&documento=" +
+                        documento +
+                        "&tipo=" +
+                        tipo +
+                        "&pagina=proformas&motivo=" +
+                        encodeURIComponent(String(result.value).trim());
+                }
+            });
+        } else {
+            // Resto de documentos: confirmación simple
+            swal({
+                title: "¿Está seguro de anular el documento?",
+                text: "¡Si no lo está puede cancelar la acción!",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: "Cancelar",
+                confirmButtonText: "Si, anular documento!",
+            }).then(function (result) {
+                if (result.value) {
+                    window.location =
+                        "index.php?ruta=" +
+                        pagina +
+                        "&documento=" +
+                        documento +
+                        "&tipo=" +
+                        tipo +
+                        "&pagina=" +
+                        pagina;
+                }
+            });
+        }
     }
 );
 

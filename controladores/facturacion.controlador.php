@@ -3175,9 +3175,13 @@ class ControladorFacturacion
 
             $usureg = $_SESSION["nombre"];
             $pcreg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
+            $motivo = isset($_GET["motivo"]) ? trim($_GET["motivo"]) : null;
+            if ($tipo !== "S70") {
+                $motivo = null;
+            }
 
             #anular cabecera
-            $cabecera = ModeloFacturacion::mdlAnularCabecera($tipo, $documento, $_SESSION["id"], $usureg, $pcreg);
+            $cabecera = ModeloFacturacion::mdlAnularCabecera($tipo, $documento, $_SESSION["id"], $usureg, $pcreg, $motivo);
             #var_dump($cabecera); 
 
             #eliminar cta cte
