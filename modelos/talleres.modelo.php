@@ -2818,11 +2818,11 @@ class ModeloTalleres
                 date(ec.fecha) as fecha,
                 ec.guia,
                 case 
-                    when m.tipo = 'BRASIER' then 'T1'
+                    when m.tipo IN ('BRASIER','SEAMLESS') then 'T1'
                     else 'T3'
                 end as taller ,
                 case 
-                    when m.tipo = 'BRASIER' then 'BRASIER'
+                    when m.tipo IN ('BRASIER','SEAMLESS') then 'BRASIER'
                     else 'TRUSAS'
                 end as nomtaller ,
                 ec.articulo ,

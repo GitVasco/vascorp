@@ -284,6 +284,8 @@ MODAL AGREGAR ARTICULO
 
                                     <option value="TOP">TOP</option>
 
+                                    <option value="SEAMLESS">SEAMLESS</option>
+
                                     <option value="BODY">BODY</option>
 
                                     <option value="BOXER V">BOXER V</option>

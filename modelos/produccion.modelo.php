@@ -1912,7 +1912,7 @@ class ModeloProduccion
           DATE(et.fecha_terminado) BETWEEN '" . $inicio . "' 
       AND '" . $fin . "'
         ) 
-        AND m.tipo NOT IN ('BRASIER') 
+        AND m.tipo NOT IN ('BRASIER','SEAMLESS') 
       GROUP BY et.trabajador) AS et 
       ON a.id_trabajador = et.trabajador 
     LEFT JOIN trabajadorjf t 

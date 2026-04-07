@@ -577,7 +577,7 @@ $sqlDetalle = mysql_query("SELECT
                                   DATE(et.fecha_terminado) BETWEEN '$inicio' 
                                   AND '$fin'
                                 ) 
-                                AND m.tipo IN ('BRASIER') 
+                                AND m.tipo IN ('BRASIER','SEAMLESS') 
                               GROUP BY et.trabajador) AS et 
                               ON a.id_trabajador = et.trabajador 
                             LEFT JOIN trabajadorjf t 

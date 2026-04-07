@@ -451,7 +451,7 @@ $("#nuevaMarca").change(function () {
 
     if (marca == "1") {
         $("#nuevoTipo").html(
-            "<option value=''>Seleccionar Tipo</option><option value='BRASIER'>BRASIER</option><option value='TRUSA'>TRUSA</option><option value='TOP'>TOP</option><option value='FAJA'>FAJA</option>"
+            "<option value=''>Seleccionar Tipo</option><option value='BRASIER'>BRASIER</option><option value='TRUSA'>TRUSA</option><option value='TOP'>TOP</option><option value='FAJA'>FAJA</option><option value='SEAMLESS'>SEAMLESS</option>"
         );
     } else if (marca == "2") {
         $("#nuevoTipo").html(

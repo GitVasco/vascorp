@@ -732,7 +732,7 @@ for ($i=0; $i < count($articulos)-1; $i++) {
                                 AND a.estado = 'Activo' 
                                 AND LEFT(a.modelo, 1) NOT IN ('D') 
                                 AND a.servicio = 0 
-                                AND m.tipo NOT IN ('BRASIER') 
+                                AND m.tipo NOT IN ('BRASIER','SEAMLESS') 
                                 UNION
                                 SELECT 
                                 'b' AS inicio,
@@ -912,7 +912,7 @@ for ($i=0; $i < count($articulos)-1; $i++) {
                                 ) > (a.stock - a.pedidos) 
                                 AND a.estado = 'Activo' 
                                 AND LEFT(a.modelo, 1) NOT IN ('D') 
-                                AND m.tipo IN ('BRASIER') 
+                                AND m.tipo IN ('BRASIER','SEAMLESS') 
                                 ORDER BY inicio,
                                 nom_taller,
                                 articulo"

@@ -845,10 +845,10 @@ class ModeloArticulos
 							) AS urg_plan,
 							a.defecto_taller,
 							CASE
-							WHEN m.tipo IN ('brasier') 
+							WHEN m.tipo IN ('brasier','BRASIER','SEAMLESS') 
 							THEN 'T1-BRASIER' 
 							ELSE 'T3-TRUSAS' 
-							END AS nom_taller,
+						 END AS nom_taller,
 							a.mp_faltante,
 							't' AS tipo 
 						FROM
@@ -1299,10 +1299,10 @@ class ModeloArticulos
 							) AS urg_plan,
 							a.defecto_taller,
 							CASE
-							WHEN m.tipo IN ('brasier') 
+							WHEN m.tipo IN ('brasier','BRASIER','SEAMLESS') 
 							THEN 'T1-BRASIER' 
 							ELSE 'T3-TRUSAS' 
-							END AS nom_taller,
+						 END AS nom_taller,
 							a.mp_faltante,
 							't' AS tipo 
 						FROM
@@ -3507,7 +3507,7 @@ class ModeloArticulos
 					) > (a.stock - a.pedidos) 
 					AND a.estado = 'Activo' 
 					AND LEFT(a.modelo, 1) NOT IN ('D') 
-					AND m.tipo NOT IN ('BRASIER') 
+					AND m.tipo NOT IN ('BRASIER','SEAMLESS') 
 				UNION
 				SELECT 
 					'b' AS inicio,
@@ -3687,7 +3687,7 @@ class ModeloArticulos
 					) > (a.stock - a.pedidos) 
 					AND a.estado = 'Activo' 
 					AND LEFT(a.modelo, 1) NOT IN ('D') 
-					AND m.tipo IN ('BRASIER','TOP') 
+					AND m.tipo IN ('BRASIER','TOP','SEAMLESS') 
 				ORDER BY inicio,
 					nom_taller,
 					articulo");
