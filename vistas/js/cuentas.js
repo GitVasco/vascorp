@@ -375,7 +375,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
                                     respuesta2[i]["codigo"] +
                                     " - " +
                                     respuesta2[i]["nombre"] +
-                                    "</option>"
+                                    "</option>",
                             );
                         }
                         $("#editarCliente").val(respuesta["cliente"]);
@@ -384,7 +384,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
                 });
             },
         });
-    }
+    },
 );
 
 $(".tablaCuentasPendientes").on("click", ".btnEditarCuenta", function () {
@@ -459,7 +459,7 @@ $(".tablaCuentasPendientes").on("click", ".btnEditarCuenta", function () {
                                 respuesta2[i]["codigo"] +
                                 " - " +
                                 respuesta2[i]["nombre"] +
-                                "</option>"
+                                "</option>",
                         );
                     }
                     $("#editarCliente").val(respuesta["cliente"]);
@@ -542,7 +542,7 @@ $(".tablaCuentasAprobadas").on("click", ".btnEditarCuenta", function () {
                                 respuesta2[i]["codigo"] +
                                 " - " +
                                 respuesta2[i]["nombre"] +
-                                "</option>"
+                                "</option>",
                         );
                     }
                     $("#editarCliente").val(respuesta["cliente"]);
@@ -622,7 +622,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
                     rutas;
             }
         });
-    }
+    },
 );
 
 $(".tablaCuentasPendientes").on("click", ".btnEliminarCuenta", function () {
@@ -711,7 +711,7 @@ $(".box").on("click", ".btnCodigoCuenta", function () {
             // console.log(respuesta);
             $("#nuevoClienteCuenta").find("option").remove();
             $("#nuevoClienteCuenta").append(
-                '<option value="">Seleccionar cliente</option>'
+                '<option value="">Seleccionar cliente</option>',
             );
             for (let i = 0; i < respuesta.length; i++) {
                 $("#nuevoClienteCuenta").append(
@@ -721,7 +721,7 @@ $(".box").on("click", ".btnCodigoCuenta", function () {
                         respuesta[i]["codigo"] +
                         " - " +
                         respuesta[i]["nombre"] +
-                        "</option>"
+                        "</option>",
                 );
             }
             $("#nuevoClienteCuenta").selectpicker("refresh");
@@ -748,7 +748,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
             codCuenta +
             "&rutas=" +
             rutas;
-    }
+    },
 );
 
 $(".tablaCuentasPendientes").on("click", ".btnVisualizarCuenta", function () {
@@ -789,7 +789,7 @@ $(".tablaCuentasConsultar").on(
             numCuenta +
             "&codCta=" +
             codCuenta;
-    }
+    },
 );
 
 /*=============================================
@@ -909,7 +909,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
                 $(".letraCuenta").remove();
             },
         });
-    }
+    },
 );
 
 $(".tablaCuentasPendientes").on("click", ".btnAgregarLetra", function () {
@@ -1060,7 +1060,7 @@ $(".btnGenerarLetra").click(function () {
                     '" required>' +
                     "</div>" +
                     '<div class="col-lg-12"></div><br>' +
-                    "</div>"
+                    "</div>",
             );
         } else {
             fecha.setDate(fecha.getDate() + intervalo);
@@ -1127,7 +1127,7 @@ $(".btnGenerarLetra").click(function () {
                     '" required>' +
                     "</div>" +
                     '<div class="col-lg-12"></div><br>' +
-                    "</div>"
+                    "</div>",
             );
         }
     }
@@ -1193,17 +1193,27 @@ $("#cancelarMonto3").change(function () {
     }
 });
 
-$("#tipoCliente").change(function () {
-    var cliente = $(this).val();
-    var descripcion = $(this).find("option:selected").text();
-    $(".tablaCuentasConsultar").DataTable().destroy();
-    localStorage.setItem("cliente", cliente);
-    sessionStorage.setItem("desCliente", descripcion);
-    /* console.log("codigo", codigo); */
+function refrescarCabeceraConsultarCuentas(cliente) {
+    if (!cliente) {
+        var elCli = document.getElementById("consultaCliente");
+        if (elCli) {
+            elCli.innerText = "-";
+        }
+        var elCred = document.getElementById("consultaCredito");
+        if (elCred) {
+            elCred.innerText = "0";
+        }
+        var elDeu = document.getElementById("consultaDeudaTot");
+        if (elDeu) {
+            elDeu.innerText = "0";
+        }
+        var elVen = document.getElementById("consultaDeudaVen");
+        if (elVen) {
+            elVen.innerText = "0";
+        }
+        return;
+    }
 
-    $("#CodCliBtn").val(cliente);
-
-    //traer nombre de cliente
     var datos = new FormData();
     datos.append("codigo", cliente);
 
@@ -1216,15 +1226,14 @@ $("#tipoCliente").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            //console.table(respuesta);
-
-            const resultCliente = document.getElementById("consultaCliente");
-            resultCliente.innerText =
-                respuesta["codigo"] + " - " + respuesta["nombre"];
+            var resultCliente = document.getElementById("consultaCliente");
+            if (resultCliente) {
+                resultCliente.innerText =
+                    respuesta["codigo"] + " - " + respuesta["nombre"];
+            }
         },
     });
 
-    //traer total credito
     var datos2 = new FormData();
     datos2.append("clienteCredito", cliente);
 
@@ -1237,12 +1246,14 @@ $("#tipoCliente").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta2) {
-            const resultTotalVenta = document.getElementById("consultaCredito");
-            resultTotalVenta.innerText = "S/ " + respuesta2["total_credito"];
+            var resultTotalVenta = document.getElementById("consultaCredito");
+            if (resultTotalVenta) {
+                resultTotalVenta.innerText =
+                    "S/ " + respuesta2["total_credito"];
+            }
         },
     });
 
-    //traer total deuda
     var datos3 = new FormData();
     datos3.append("clienteDeuda", cliente);
 
@@ -1255,15 +1266,14 @@ $("#tipoCliente").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta3) {
+            var resultTotalDeuda = document.getElementById("consultaDeudaTot");
+            if (!resultTotalDeuda) {
+                return;
+            }
             if (respuesta3 == false) {
-                const resultTotalDeuda =
-                    document.getElementById("consultaDeudaTot");
                 resultTotalDeuda.innerText = "S/ 0.00";
             } else {
                 var deudaVen = parseFloat(respuesta3["total_deuda"]);
-
-                const resultTotalDeuda =
-                    document.getElementById("consultaDeudaTot");
                 resultTotalDeuda.innerText =
                     "S/ " +
                     new Intl.NumberFormat("de-DE").format(deudaVen.toFixed(2));
@@ -1271,7 +1281,6 @@ $("#tipoCliente").change(function () {
         },
     });
 
-    //traer deuda vencida
     var datos4 = new FormData();
     datos4.append("clienteDeudaVencida", cliente);
 
@@ -1284,34 +1293,67 @@ $("#tipoCliente").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta4) {
+            var resultTotalDeudaVen =
+                document.getElementById("consultaDeudaVen");
+            if (!resultTotalDeudaVen) {
+                return;
+            }
             if (respuesta4 == false) {
-                const resultTotalDeudaVen =
-                    document.getElementById("consultaDeudaVen");
                 resultTotalDeudaVen.innerText = "S/ 0.00";
             } else {
                 var deudaVen = parseFloat(respuesta4["total_vencido"]);
-
-                const resultTotalDeuda =
-                    document.getElementById("consultaDeudaVen");
-                resultTotalDeuda.innerText =
+                resultTotalDeudaVen.innerText =
                     "S/ " +
                     new Intl.NumberFormat("de-DE").format(deudaVen.toFixed(2));
             }
         },
     });
+}
+
+$("#tipoCliente").change(function () {
+    var cliente = $(this).val();
+    var descripcion = $(this).find("option:selected").text();
+
+    if ($.fn.DataTable.isDataTable(".tablaCuentasConsultar")) {
+        $(".tablaCuentasConsultar").DataTable().destroy();
+    }
+
+    if (!cliente) {
+        localStorage.removeItem("cliente");
+        localStorage.removeItem("desCliente");
+        sessionStorage.removeItem("desCliente");
+        $("#CodCliBtn").val("");
+        refrescarCabeceraConsultarCuentas(null);
+        cargarTablaCuentasConsultar(null);
+        return;
+    }
+
+    localStorage.setItem("cliente", cliente);
+    localStorage.setItem("desCliente", descripcion);
+    sessionStorage.setItem("desCliente", descripcion);
+
+    $("#CodCliBtn").val(cliente);
+
+    refrescarCabeceraConsultarCuentas(cliente);
     cargarTablaCuentasConsultar(cliente);
 });
 
-// Validamos que venga la variable capturaRango en el localStorage
-if (localStorage.getItem("cliente") != null) {
+var clienteConsultarGuardado = localStorage.getItem("cliente");
+if (clienteConsultarGuardado) {
+    var desClienteGuardado =
+        localStorage.getItem("desCliente") ||
+        sessionStorage.getItem("desCliente") ||
+        clienteConsultarGuardado;
     $("#tipoCliente").find("option").remove();
-    $("#tipoCliente").append(
-        "<option value='' selected>" +
-            sessionStorage.getItem("desCliente") +
-            "</option>"
-    );
+    $("<option>", {
+        value: clienteConsultarGuardado,
+        text: desClienteGuardado,
+        selected: true,
+    }).appendTo("#tipoCliente");
     $("#tipoCliente").selectpicker("refresh");
-    cargarTablaCuentasConsultar(localStorage.getItem("cliente"));
+    $("#CodCliBtn").val(clienteConsultarGuardado);
+    refrescarCabeceraConsultarCuentas(clienteConsultarGuardado);
+    cargarTablaCuentasConsultar(clienteConsultarGuardado);
 } else {
     cargarTablaCuentasConsultar(null);
 }
@@ -1385,7 +1427,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
             success: function (respuesta) {
                 console.log(
                     "🚀 ~ file: cuentas.js:1254 ~ respuesta:",
-                    respuesta["num_unico"]
+                    respuesta["num_unico"],
                 );
 
                 $("#idCuenta4").val(respuesta["id"]);
@@ -1446,7 +1488,7 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
                 $("#dividirFechaVencimiento2").val(resultado);
             },
         });
-    }
+    },
 );
 
 $(".tablaCuentasPendientes").on("click", ".btnDividirLetra", function () {
@@ -1538,7 +1580,7 @@ $(".box").on("click", "#cargaClienteCuenta", function () {
         success: function (respuesta) {
             $("#tipoCliente").find("option").remove();
             $("#tipoCliente").append(
-                '<option value="">Seleccionar cliente</option>'
+                '<option value="">Seleccionar cliente</option>',
             );
             for (let i = 0; i < respuesta.length; i++) {
                 $("#tipoCliente").append(
@@ -1550,7 +1592,7 @@ $(".box").on("click", "#cargaClienteCuenta", function () {
                         respuesta[i]["nombre"] +
                         " - " +
                         respuesta[i]["documento"] +
-                        "</option>"
+                        "</option>",
                 );
             }
             $("#tipoCliente").selectpicker("refresh");
@@ -1561,7 +1603,7 @@ $(".box").on("click", "#cargaClienteCuenta", function () {
 if (localStorage.getItem("numCtaB") != null) {
     cargarTablaVerCuentasConsultar(
         localStorage.getItem("numCtaB"),
-        localStorage.getItem("codCtaB")
+        localStorage.getItem("codCtaB"),
     );
 } else {
     cargarTablaVerCuentasConsultar(null, null);
@@ -1618,7 +1660,7 @@ function cargarTablaVerCuentasConsultar(numCta, codCta) {
 if (localStorage.getItem("numCta2") != null) {
     cargarTablaVerCuentas(
         localStorage.getItem("numCta2"),
-        localStorage.getItem("codCta2")
+        localStorage.getItem("codCta2"),
     );
 } else {
     cargarTablaVerCuentas(null, null);
@@ -1789,7 +1831,7 @@ $(".tablaEnvioLetras tbody").on(
                         monto +
                         '" readonly required>' +
                         "</div>" +
-                        "</div>"
+                        "</div>",
                 );
 
                 // SUMAR TOTAL DE UNIDADES
@@ -1801,7 +1843,7 @@ $(".tablaEnvioLetras tbody").on(
                 listarCuentas();
             },
         });
-    }
+    },
 );
 
 /*
@@ -1812,7 +1854,7 @@ $(".tablaEnvioLetras").on("draw.dt", function () {
 
     if (localStorage.getItem("quitarEnvioCuenta") != null) {
         var listaIdEnvioCuenta = JSON.parse(
-            localStorage.getItem("quitarEnvioCuenta")
+            localStorage.getItem("quitarEnvioCuenta"),
         );
         //console.log("listaIdArticuloAC", listaIdArticuloAC);
 
@@ -1820,13 +1862,13 @@ $(".tablaEnvioLetras").on("draw.dt", function () {
             $(
                 "button.recuperarEnvioCuenta[idcuenta='" +
                     listaIdEnvioCuenta[i]["idcuenta"] +
-                    "']"
+                    "']",
             ).removeClass("btn-default");
 
             $(
                 "button.recuperarEnvioCuenta[idcuenta='" +
                     listaIdEnvioCuenta[i]["idcuenta"] +
-                    "']"
+                    "']",
             ).addClass("btn-primary agregarEnvioCuenta");
         }
     }
@@ -1862,15 +1904,15 @@ $(".formularioEnvioLetra").on("click", "button.quitarEnvioCuenta", function () {
 
     localStorage.setItem(
         "quitarEnvioCuenta",
-        JSON.stringify(idQuitarEnvioCuenta)
+        JSON.stringify(idQuitarEnvioCuenta),
     );
 
     $("button.recuperarEnvioCuenta[idcuenta='" + idcuenta + "']").removeClass(
-        "btn-default"
+        "btn-default",
     );
 
     $("button.recuperarEnvioCuenta[idcuenta='" + idcuenta + "']").addClass(
-        "btn-primary agregarEnvioCuenta"
+        "btn-primary agregarEnvioCuenta",
     );
 
     if ($(".nuevoCampoEnvio").children().length == 0) {
@@ -1951,7 +1993,7 @@ function quitarAgregarEnvioCuenta() {
 
     //Capturamos todos los botones de agregar que aparecen en la tabla
     var botonesTablaEnvio = $(
-        ".tablaEnvioLetras tbody button.agregarEnvioCuenta"
+        ".tablaEnvioLetras tbody button.agregarEnvioCuenta",
     );
     //console.log("botonesTablaAC", botonesTablaAC);
 
@@ -1964,7 +2006,7 @@ function quitarAgregarEnvioCuenta() {
         for (var j = 0; j < botonesTablaEnvio.length; j++) {
             if ($(botonesTablaEnvio[j]).attr("idCuenta") == boton) {
                 $(botonesTablaEnvio[j]).removeClass(
-                    "btn-primary agregarEnvioCuenta"
+                    "btn-primary agregarEnvioCuenta",
                 );
                 $(botonesTablaEnvio[j]).addClass("btn-default");
             }
@@ -1981,15 +2023,15 @@ $(".tablaEnvioLetras").on("draw.dt", function () {
 
 if (localStorage.getItem("capturarRango22") != null) {
     $("#daterange-btnEnvioCta span").html(
-        localStorage.getItem("capturarRango22")
+        localStorage.getItem("capturarRango22"),
     );
     cargarTablaEnvioCuentas(
         localStorage.getItem("fechaInicial"),
-        localStorage.getItem("fechaFinal")
+        localStorage.getItem("fechaFinal"),
     );
 } else {
     $("#daterange-btnEnvioCta span").html(
-        '<i class="fa fa-calendar"></i> Rango de Fecha '
+        '<i class="fa fa-calendar"></i> Rango de Fecha ',
     );
     cargarTablaEnvioCuentas(null, null);
 }
@@ -2078,7 +2120,7 @@ $("#daterange-btnEnvioCta").daterangepicker(
     },
     function (start, end) {
         $("#daterange-btnEnvioCta span").html(
-            start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY")
+            start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY"),
         );
 
         var fechaInicial = start.format("YYYY-MM-DD");
@@ -2093,7 +2135,7 @@ $("#daterange-btnEnvioCta").daterangepicker(
         // Recargamos la tabla con la información para ser mostrada en la tabla
         $(".tablaEnvioCuentas").DataTable().destroy();
         cargarTablaEnvioCuentas(fechaInicial, fechaFinal);
-    }
+    },
 );
 
 /*=============================================
@@ -2108,7 +2150,7 @@ $(".daterangepicker.opensleft .range_inputs .CancelarEnvioCta").on(
         localStorage.removeItem("fechaFinal");
         localStorage.clear();
         window.location = "ver-envio-letras";
-    }
+    },
 );
 
 /*=============================================
@@ -2167,7 +2209,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             var valorSegunda = obtenerOcrear("configLetraSegunda", "1");
             var valorFormatoAntiguo = obtenerOcrear(
                 "configLetraFormatoAntiguo",
-                "0"
+                "0",
             );
             $selectFondo.val(valorFondo);
             $selectSegunda.val(valorSegunda);
@@ -2226,7 +2268,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             window.open(
                 "vistas/reportes_ticket/imprimir_letra.php?numCuenta=" +
                     encodeURIComponent(numCuenta),
-                "_blank"
+                "_blank",
             );
             return;
         }
@@ -2240,7 +2282,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
 
         window.open(
             "vistas/reportes_ticket/letra_full.php?" + params.join("&"),
-            "_blank"
+            "_blank",
         );
     }
 
@@ -2271,7 +2313,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             ];
             window.open(
                 "vistas/reportes_ticket/letra_full.php?" + params.join("&"),
-                "_blank"
+                "_blank",
             );
         });
     });
@@ -2291,9 +2333,9 @@ $(".tablaCuentas, .tablaCuentasPaginado").on(
                 num_cta +
                 "&cliente=" +
                 cliente,
-            "_blank"
+            "_blank",
         );
-    }
+    },
 );
 
 $(".box").on("change", ".optradio", function () {
@@ -2444,7 +2486,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                         orden2 +
                         "&cli=" +
                         cli,
-                    "_blank"
+                    "_blank",
                 );
             } else if (orden1 == "tipo") {
                 window.open(
@@ -2454,7 +2496,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                         orden1 +
                         "&orden2=" +
                         orden2,
-                    "_blank"
+                    "_blank",
                 );
             } else if (orden1 == "vendedor") {
                 if (vend == "") {
@@ -2467,7 +2509,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                             orden2 +
                             "&vend=" +
                             vend,
-                        "_blank"
+                        "_blank",
                     );
                 } else {
                     window.open(
@@ -2479,7 +2521,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                             orden2 +
                             "&vend=" +
                             vend,
-                        "_blank"
+                        "_blank",
                     );
                 }
             } else if (orden1 == "fecha_ven") {
@@ -2498,7 +2540,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                         tip_doc +
                         "&fin=" +
                         fin,
-                    "_blank"
+                    "_blank",
                 );
             }
         } else if (consulta == "pagos") {
@@ -2517,7 +2559,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                     inicio +
                     "&fin=" +
                     fin,
-                "_blank"
+                "_blank",
             );
         } else if (consulta == "fechaActualSaldo") {
             window.open(
@@ -2535,7 +2577,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                     inicio +
                     "&fin=" +
                     fin,
-                "_blank"
+                "_blank",
             );
         } else if (consulta == "fechaSaldo") {
             window.open(
@@ -2553,7 +2595,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                     inicio +
                     "&fin=" +
                     fin,
-                "_blank"
+                "_blank",
             );
         }
     } else {
@@ -2573,7 +2615,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                     inicio +
                     "&fin=" +
                     fin,
-                "_blank"
+                "_blank",
             );
         } else if (consulta == "fechaActualSaldo") {
             window.open(
@@ -2591,7 +2633,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                     inicio +
                     "&fin=" +
                     fin,
-                "_blank"
+                "_blank",
             );
         } else if (consulta == "fechaSaldo") {
             window.open(
@@ -2609,7 +2651,7 @@ $(".btnGenerarReporteCuenta").click(function () {
                     inicio +
                     "&fin=" +
                     fin,
-                "_blank"
+                "_blank",
             );
         } else if (consulta == "pendiente") {
             console.log("pendiente");
@@ -2628,7 +2670,7 @@ $(".tablaClientes").on("click", ".btnImprimirEstadoCuenta", function () {
     // creamos un promp para que el usuario ingrese la linea a consultar 1. JackyForm 2. Rosalinda 3. Ambos, validamos que no sea vacio y sea un numero de las opciones
     var linea = prompt(
         "Ingrese la linea a consultar 1. JackyForm 2. Rosalinda 3. Ambos",
-        ""
+        "",
     );
 
     if (linea != "") {
@@ -2638,7 +2680,7 @@ $(".tablaClientes").on("click", ".btnImprimirEstadoCuenta", function () {
                     cliente +
                     "&linea=" +
                     linea,
-                "_blank"
+                "_blank",
             );
         } else {
             alert("Ingrese una opción válida");
@@ -2657,7 +2699,7 @@ $(".tablaVtasGerenciaVdor").on("click", ".btnRptPeds", function () {
 
     window.open(
         "vistas/reportes_ticket/pedidos_vendedor.php?vendedor=" + vendedor,
-        "_blank"
+        "_blank",
     );
 });
 
@@ -2671,7 +2713,7 @@ $(".tablaCtasVdor").on("click", ".btnEstadoCtaVdor", function () {
     window.open(
         "extensiones/tcpdf/pdf/reporte_estado_cuenta_vdor.php?vendedor=" +
             vendedor,
-        "_blank"
+        "_blank",
     );
 });
 
@@ -2685,7 +2727,7 @@ $(".tablaCtasVdor").on("click", ".btnEstadoCtaVdorNVdos", function () {
     window.open(
         "extensiones/tcpdf/pdf/reporte_estado_cuenta_vdor_nvdos.php?vendedor=" +
             vendedor,
-        "_blank"
+        "_blank",
     );
 });
 
@@ -2699,7 +2741,7 @@ $(".tablaCtasVdor").on("click", ".btnEstadoCtaVdorVdos", function () {
     window.open(
         "extensiones/tcpdf/pdf/reporte_estado_cuenta_vdor_vdos.php?vendedor=" +
             vendedor,
-        "_blank"
+        "_blank",
     );
 });
 
@@ -2784,7 +2826,7 @@ $(".btnRptPeds").click(function () {
 
     window.open(
         "vistas/reportes_ticket/pedidos_vendedor.php?vendedor=" + vendedor,
-        "_blank"
+        "_blank",
     );
 });
 
@@ -2798,12 +2840,12 @@ $(".btnRptResVtas").click(function () {
 
         window.open(
             "vistas/reportes_excel/rpt_resumen_vtas.php?año=" + año,
-            "_blank"
+            "_blank",
         );
     } else {
         window.open(
             "vistas/reportes_excel/rpt_resumen_vtas.php?año=" + año,
-            "_blank"
+            "_blank",
         );
     }
 });
@@ -2822,7 +2864,7 @@ $(".btnRptResVtaMes").click(function () {
                 mes +
                 "&año=" +
                 año,
-            "_blank"
+            "_blank",
         );
     } else {
         window.open(
@@ -2830,7 +2872,7 @@ $(".btnRptResVtaMes").click(function () {
                 mes +
                 "&año=" +
                 año,
-            "_blank"
+            "_blank",
         );
     }
 });
@@ -2841,7 +2883,7 @@ $(".btnRptResCobMes").click(function () {
 
     window.open(
         "vistas/reportes_ticket/reporte_resumen_cobs.php?mes=" + mes,
-        "_blank"
+        "_blank",
     );
 });
 
@@ -2863,41 +2905,52 @@ $("#btnCargarPagos").click(function () {
         success: function (respuesta) {
             console.table(respuesta);
 
-            $(".nuevosPagos").find("div").remove();
+            var $box = $(".nuevosPagos");
+            $box.empty();
 
-            for (let i = 0; i < respuesta.length; i++) {
-                $(".nuevosPagos").append(
-                    '<div class="row" style="padding:5px 5px">' +
-                        '<div class="form-group col-lg-2">' +
-                        '<div style="margin-top:2px"></div>' +
-                        '<label for=""><b>Año</b></label>' +
-                        '<div class="input-group">' +
-                        '<input type="text" class="form-control input-sm" name="anno" id="anno" value="' +
-                        respuesta[i]["anno"] +
-                        '" readonly>' +
-                        "</div>" +
-                        "</div>" +
-                        '<div class="form-group col-lg-4">' +
-                        '<div style="margin-top:2px"></div>' +
-                        '<label for=""><b>Mes</b></label>' +
-                        '<div class="input-group">' +
-                        '<input type="text" class="form-control input-sm" name="mes" id="mes" value="' +
-                        respuesta[i]["mes"] +
-                        '" readonly>' +
-                        "</div>" +
-                        "</div>" +
-                        '<div class="form-group col-lg-6">' +
-                        '<div style="margin-top:2px"></div>' +
-                        '<label for=""><b>Monto S/</b></label>' +
-                        '<div class="input-group">' +
-                        '<input type="text" class="form-control input-sm" name="mes" id="mes" value="' +
-                        respuesta[i]["monto"] +
-                        '" readonly>' +
-                        "</div>" +
-                        "</div>" +
-                        "</div>"
+            if (!respuesta || respuesta.length === 0) {
+                $box.html(
+                    '<p class="text-muted text-center" style="margin:14px 10px;font-size:13px;">No hay pagos en el periodo para este cliente.</p>',
                 );
+                return;
             }
+
+            var filas = "";
+            for (var i = 0; i < respuesta.length; i++) {
+                var r = respuesta[i];
+                var periodo = (r["mes"] || "") + " " + (r["anno"] || "");
+                filas +=
+                    "<tr>" +
+                    '<td style="white-space:nowrap;">' +
+                    periodo +
+                    "</td>" +
+                    '<td class="text-right" style="font-variant-numeric: tabular-nums;">' +
+                    (r["monto_jackyform"] || "0.00") +
+                    "</td>" +
+                    '<td class="text-right" style="font-variant-numeric: tabular-nums;">' +
+                    (r["monto_rosalinda"] || "0.00") +
+                    "</td>" +
+                    '<td class="text-right" style="font-variant-numeric: tabular-nums;"><strong>' +
+                    (r["monto"] || "0.00") +
+                    "</strong></td>" +
+                    "</tr>";
+            }
+
+            $box.html(
+                '<table class="table table-condensed table-striped" style="margin:0;font-size:13px;">' +
+                    "<thead>" +
+                    "<tr>" +
+                    "<th>Periodo</th>" +
+                    '<th class="text-right" style="min-width:76px;">Jackyform</th>' +
+                    '<th class="text-right" style="min-width:76px;">RosaFlor</th>' +
+                    '<th class="text-right" style="min-width:76px;">Total</th>' +
+                    "</tr>" +
+                    "</thead>" +
+                    "<tbody>" +
+                    filas +
+                    "</tbody>" +
+                    "</table>",
+            );
         },
     });
 });
@@ -3030,7 +3083,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Recogemos los IDs seleccionados
             const checks = document.querySelectorAll(".credipagoCheck:checked");
             const ids = Array.from(checks).map((chk) =>
-                chk.getAttribute("data-id-credipago")
+                chk.getAttribute("data-id-credipago"),
             );
             const count = ids.length;
 
@@ -3038,7 +3091,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 swal(
                     "Atención",
                     "Debes seleccionar al menos un CrediPago.",
-                    "info"
+                    "info",
                 );
                 return;
             }
@@ -3079,7 +3132,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 swal("Eliminados", message, "success").then(
                                     () => {
                                         window.location.reload();
-                                    }
+                                    },
                                 );
                             } else {
                                 swal("Error", message, "error");

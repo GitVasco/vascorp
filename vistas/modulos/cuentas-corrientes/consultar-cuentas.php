@@ -119,54 +119,33 @@ MODAL AGREGAR USUARIO
 ======================================-->
 
 <div id="modalVerPagos" class="modal fade" role="dialog">
-  
-  <div class="modal-dialog">
+
+  <div class="modal-dialog" style="max-width: 640px; width: calc(100% - 24px); margin: 12px auto;">
 
     <div class="modal-content">
 
-      <form role="form" method="post">
+      <div class="modal-header" style="background:#3c8dbc; color:white; padding:10px 15px;">
 
-        <!--=====================================
-        CABEZA DEL MODAL
-        ======================================-->
+        <button type="button" class="close" data-dismiss="modal" style="margin-top:2px; opacity:0.9;">&times;</button>
 
-        <div class="modal-header" style="background:#3c8dbc; color:white">
+        <h4 class="modal-title" style="font-size:16px;">Pagos · últimos 6 meses</h4>
+        <p style="font-size:12px; opacity:0.92; margin:4px 0 0; font-weight:normal;">Montos por vendedor · S/.</p>
 
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
 
-          <h4 class="modal-title">Pagos de los últimos 6 meses</h4>
+      <div class="modal-body" style="padding:12px 15px;">
 
+        <div class="table-responsive nuevosPagos-wrap" style="max-height:60vh; overflow-y:auto; border:1px solid #e8e8e8; border-radius:3px;">
+          <div class="nuevosPagos"></div>
         </div>
 
-        <!--=====================================
-        CUERPO DEL MODAL
-        ======================================-->
+      </div>
 
-        <div class="modal-body">
+      <div class="modal-footer" style="padding:8px 15px;">
 
-            <div class="box-body">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cerrar</button>
 
-                <div class="form-group row nuevosPagos" >
-
-                </div>                          
-
-            </div>
-
-        </div>
-
-        <!--=====================================
-        PIE DEL MODAL
-        ======================================-->
-
-        <div class="modal-footer">
-
-          <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
-
-          <button type="submit" class="btn btn-primary">Guardar categoría</button>
-
-        </div>
-
-      </form>
+      </div>
 
     </div>
 

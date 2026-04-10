@@ -1050,7 +1050,8 @@ class ModeloCuentas
 			DATE_FORMAT(c.fecha_ven, '%d-%m-%Y')AS nuevaFechaVen,
 			DATE_FORMAT(c.ult_pago, '%d-%m-%Y')AS nuevaFechaPago  
 			FROM $tabla c LEFT JOIN clientesjf cli ON c.cliente=cli.codigo 
-			WHERE c.tip_mov ='+' AND c.$item = :$item ");
+			WHERE c.tip_mov ='+' AND c.$item = :$item 
+			ORDER BY c.fecha_ven DESC, c.id DESC");
 
 			$stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
 
@@ -4877,7 +4878,9 @@ class ModeloCuentas
 			THEN 'NOVIEMBRE' 
 			ELSE 'DICIEMBRE' 
 		  END AS mes,
-		  FORMAT(SUM(c.monto),2) AS monto
+		  FORMAT(SUM(c.monto),2) AS monto,
+		  FORMAT(SUM(CASE WHEN TRIM(c.vendedor) IN ('00', '00B', '00b', '04', '05', '19', '22', '27') THEN c.monto ELSE 0 END),2) AS monto_jackyform,
+		  FORMAT(SUM(CASE WHEN TRIM(c.vendedor) IN ('24', '26', '28') THEN c.monto ELSE 0 END),2) AS monto_rosalinda
 		FROM
 		  cuenta_ctejf c 
 		  CROSS JOIN (SELECT @i := 0) r
