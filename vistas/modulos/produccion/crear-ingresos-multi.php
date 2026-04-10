@@ -18,8 +18,8 @@
 
     <section class="content">
 
-        <div class="alert alert-warning">
-            <strong>Vista prueba.</strong> <strong>Internos:</strong> columna Taller según <code>modelojf.tipo</code> (BRASIER/SEAMLESS → T1; otros tipos → T3) y, si no hay maestro de modelo, por texto en modelo (trusas/boxer/boxerv → T3). Una sola consulta a <code>articulojf</code>. <strong>Externos:</strong> cierres agrupados con <code>IN</code> cuando aplica. El guardado por taller sigue pendiente.
+        <div class="alert alert-info">
+            <strong>Multi-taller:</strong> al guardar se genera <strong>un documento por cada taller</strong> distinto en las líneas; la <strong>guía</strong> es la misma en todas las cabeceras. El correlativo del documento se asigna en el servidor.
         </div>
 
         <?php
@@ -44,7 +44,7 @@
 
                     <div class="box-header with-border"></div>
 
-                    <form role="form" method="post" class="formularioIngresoMulti" onsubmit="return false;">
+                    <form role="form" method="post" class="formularioIngresoMulti">
 
                         <div class="box-body">
 
@@ -69,19 +69,7 @@
                                     <div class="input-group">
 
                                         <span class="input-group-addon"><i class="fa fa-file-text"></i></span>
-                                        <input type="text" class="form-control" id="nuevaGuiaIng" name="nuevaGuiaIng" placeholder="Ingresar guia (prueba UI)" required>
-
-
-                                    </div>
-
-                                </div>
-
-                                <div class="form-group">
-
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-key"></i></span>
-                                        <input type="text" class="form-control" id="nuevoCodigo" name="nuevoCodigo" readonly>
+                                        <input type="text" class="form-control" id="nuevaGuiaIng" name="nuevaGuiaIng" placeholder="Ingresar guía (compartida por todos los documentos)" required>
 
 
                                     </div>
@@ -108,7 +96,7 @@
                                     <div class="input-group">
 
                                         <span class="input-group-addon"><i class="fa fa-wrench"></i></span>
-                                        <select class="form-control input-sm" name="alcanceProcesoCabecera" id="alcanceProcesoCabeceraMulti" title="Proceso">
+                                        <select class="form-control input-sm selectpicker" name="alcanceProcesoCabecera" id="alcanceProcesoCabeceraMulti" data-live-search="true" title="Elija proceso">
                                             <option value="externos" selected>Externos</option>
                                             <option value="internos">Internos</option>
                                         </select>
@@ -116,7 +104,8 @@
                                     </div>
                                     <input type="hidden" name="nuevoTalleres" id="nuevoTalleres" value="<?php echo htmlspecialchars($primerCodigoExterno); ?>">
                                     <input type="hidden" id="nuevoTipoSector" name="nuevoTipoSector">
-                                    <p class="help-block text-muted" style="margin-top:8px">La tabla lista artículos según el proceso elegido. El código interno usa un taller representativo (<?php echo htmlspecialchars($primerCodigoExterno); ?> para externos, <?php echo htmlspecialchars($tallerRepresentanteInterno); ?> para internos) solo para generar documento y tipo de sector.</p>
+                                    <input type="hidden" name="ingresoMulti" value="1">
+                                    <p class="help-block text-muted" style="margin-top:8px">La tabla lista artículos según Internos o Externos. El <strong>código de documento</strong> se generará en el servidor al guardar. El taller oculto (<?php echo htmlspecialchars($primerCodigoExterno); ?> / <?php echo htmlspecialchars($tallerRepresentanteInterno); ?>) solo sirve para resolver el tipo de sector al registrar.</p>
                                 </div>
 
                                 <div class=" form-group buscador" id="elid" style="padding-bottom:25px">
@@ -135,9 +124,15 @@
 
                                     <div class="row">
 
-                                        <div class="col-xs-6">
+                                        <div class="col-xs-5">
 
                                             <label>Articulo</label>
+
+                                        </div>
+
+                                        <div class="col-xs-2">
+
+                                            <label for="">Taller</label>
 
                                         </div>
 
@@ -154,7 +149,7 @@
                                         </div>
 
 
-                                        <div class="col-xs-2">
+                                        <div class="col-xs-1">
 
                                             <label for="">Corte</label>
 
@@ -224,12 +219,17 @@
 
                         <div class="box-footer">
 
-                            <button type="submit" class="btn btn-primary pull-right" disabled title="Pendiente backend: cabecera por taller"><i class="fa fa-floppy-o"></i> Guardar Ingreso</button>
+                            <button type="submit" class="btn btn-primary pull-right"><i class="fa fa-floppy-o"></i> Guardar Ingreso</button>
 
                             <a href="ingresos" id="cancel" name="cancel" class="btn btn-danger"><i class="fa fa-times-circle"></i> Cancelar</a>
                         </div>
 
                     </form>
+
+                    <?php
+                    $guardarIngresoMulti = new ControladorIngresosMulti();
+                    $guardarIngresoMulti->ctrCrearIngresoMulti();
+                    ?>
 
                 </div>
 

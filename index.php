@@ -56,6 +56,8 @@ require_once "controladores/mensajes.controlador.php";
 
 require_once "controladores/ingresos.controlador.php";
 
+require_once "controladores/ingresos-multi.controlador.php";
+
 require_once "controladores/modelos.controlador.php";
 
 require_once "controladores/pedidos.controlador.php";

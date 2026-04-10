@@ -976,9 +976,11 @@ $("#nuevoTalleres").change(function () {
         dataType: "json",
         success: function (respuesta2) {
             //   console.log(respuesta);
-            $("#nuevoCodigo").val(
-                ingreso + ("000" + respuesta2["ultimo_codigo"]).slice(-4)
-            );
+            if ($("#nuevoCodigo").length) {
+                $("#nuevoCodigo").val(
+                    ingreso + ("000" + respuesta2["ultimo_codigo"]).slice(-4)
+                );
+            }
         },
     });
 });
@@ -1537,6 +1539,10 @@ function listarArticulosIngreso() {
             taller: $(cantidad[i]).attr("nuevoTaller"),
             idCierre: $(descripcion[i]).attr("idCierre"),
             corte: $(corte[i]).val(),
+            codSector: $(cantidad[i]).attr("data-cod-sector") || "",
+            sectorConsulta:
+                $(cantidad[i]).attr("data-sector-consulta") || "",
+            proceso: $(cantidad[i]).attr("data-proceso") || "",
         });
     }
 

@@ -13,7 +13,7 @@ class TablaArticulosTallerIngresosMulti
 {
     private static $listaTaller = ["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T8", "T9", "TA", "TB", "TC", "TD", "T11", "TE", "T12"];
 
-    private static $talleresInternos = ["T1", "T3"];
+    private static $talleresInternos = ["T1", "T3", "T5"];
 
     public function mostrar()
     {

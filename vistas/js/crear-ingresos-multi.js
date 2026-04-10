@@ -8,27 +8,121 @@
 
     var perfilOcultoSel = "#perfilOculto";
 
+    /**
+     * Desactiva el botón agregar en la tabla para cada fila ya presente en el formulario
+     * (misma idea que quitarAgregarArticuloT en talleres.js). Tras paginar o buscar, DataTables
+     * repinta los botones; hay que volver a aplicar según data-quitar-fila-key del formulario.
+     */
     function quitarAgregarArticuloTMulti() {
-        var filasEnFormulario = $(".formularioIngresoMulti .quitarTaller");
-        var botonesTablaIngreso = $(
-            ".tablaArticulosTalleresMulti tbody button.agregarArtiTaller"
-        );
-
-        for (var i = 0; i < filasEnFormulario.length; i++) {
-            var filaKey = $(filasEnFormulario[i]).attr("data-quitar-fila-key");
-            if (!filaKey) {
-                continue;
+        var keysEnFormulario = {};
+        $(".formularioIngresoMulti .quitarTaller").each(function () {
+            var fk = $(this).attr("data-quitar-fila-key");
+            if (fk) {
+                keysEnFormulario[fk] = true;
             }
-            for (var j = 0; j < botonesTablaIngreso.length; j++) {
-                if (
-                    $(botonesTablaIngreso[j]).attr("data-fila-ingreso-key") ===
-                    filaKey
-                ) {
-                    $(botonesTablaIngreso[j])
-                        .removeClass("btn-primary agregarArtiTaller")
-                        .addClass("btn-default");
+        });
+
+        $(".tablaArticulosTalleresMulti tbody button.recuperarBoton").each(
+            function () {
+                var $b = $(this);
+                var fk = $b.attr("data-fila-ingreso-key");
+                if (fk && keysEnFormulario[fk]) {
+                    $b.removeClass("btn-primary agregarArtiTaller").addClass(
+                        "btn-default"
+                    );
                 }
             }
+        );
+    }
+
+    /**
+     * Ordena filas del formulario por taller (sector + proceso) y dentro por modelo;
+     * inserta una línea horizontal al cambiar de grupo de taller.
+     */
+    function reordenarFilasIngresoMulti() {
+        var $cont = $(".nuevoArticuloIngreso");
+        if (!$cont.length) {
+            return;
+        }
+
+        $cont.find(".separadorIngresoMultiTaller").remove();
+
+        var $filas = $cont.children(".munditoIngreso").detach();
+        var arr = $filas.toArray();
+
+        arr.sort(function (a, b) {
+            var ga = a.getAttribute("data-grupo-taller") || "";
+            var gb = b.getAttribute("data-grupo-taller") || "";
+            if (ga !== gb) {
+                return ga.localeCompare(gb, "es", { sensitivity: "base" });
+            }
+            var ma = a.getAttribute("data-sort-modelo") || "";
+            var mb = b.getAttribute("data-sort-modelo") || "";
+            if (ma !== mb) {
+                return ma.localeCompare(mb, "es", {
+                    sensitivity: "base",
+                    numeric: true,
+                });
+            }
+            var sa = a.getAttribute("data-sort-articulo") || "";
+            var sb = b.getAttribute("data-sort-articulo") || "";
+            return sa.localeCompare(sb, "es", {
+                sensitivity: "base",
+                numeric: true,
+            });
+        });
+
+        var prevGrupo = null;
+        for (var i = 0; i < arr.length; i++) {
+            var g = arr[i].getAttribute("data-grupo-taller") || "";
+            if (i > 0 && g !== prevGrupo) {
+                $cont.append(
+                    '<div class="row separadorIngresoMultiTaller" aria-hidden="true"><div class="col-xs-12"><hr style="margin:10px 15px;border-top:1px solid #bbb"></div></div>'
+                );
+            }
+            $cont.append(arr[i]);
+            prevGrupo = g;
+        }
+    }
+
+    /**
+     * Vacía líneas del ingreso multi, totales y estado de “quitar”; reactiva botones agregar en la tabla actual.
+     */
+    function limpiarFormularioIngresoMulti() {
+        var $cont = $(".nuevoArticuloIngreso");
+        if ($cont.length) {
+            $cont.find(".munditoIngreso").remove();
+            $cont.find(".separadorIngresoMultiTaller").remove();
+        }
+        localStorage.removeItem("quitarTallerMulti");
+        $("#listaArticulosIngreso").val("[]");
+        $("#nuevoTotalTaller").val(0);
+        $("#totalTaller").val(0);
+        $("#nuevoTotalTaller").attr("total", 0);
+        $(
+            ".tablaArticulosTalleresMulti tbody button.recuperarBoton"
+        )
+            .removeClass("btn-default")
+            .addClass("btn-primary agregarArtiTaller");
+    }
+
+    function restaurarBotonesAgregarDesdeQuitarMulti() {
+        if (localStorage.getItem("quitarTallerMulti") == null) {
+            return;
+        }
+        var lista = JSON.parse(localStorage.getItem("quitarTallerMulti"));
+        for (var i = 0; i < lista.length; i++) {
+            var fk = lista[i].filaKey;
+            if (!fk) {
+                continue;
+            }
+            $(
+                ".tablaArticulosTalleresMulti tbody button.recuperarBoton"
+            ).filter(function () {
+                return $(this).attr("data-fila-ingreso-key") === fk;
+            })
+                .removeClass("btn-default")
+                .addClass("btn-primary agregarArtiTaller");
         }
     }
 
@@ -98,6 +192,10 @@
                 var n = this.api().rows().count();
                 $estado.text(n + " filas cargadas");
             },
+            drawCallback: function () {
+                restaurarBotonesAgregarDesdeQuitarMulti();
+                quitarAgregarArticuloTMulti();
+            },
         });
     };
 
@@ -123,51 +221,86 @@
         if (!window.vistaCrearIngresosMulti) {
             return;
         }
-        if ($("#alcanceProcesoCabeceraMulti").length) {
-            aplicarCabeceraProcesoMulti();
-            $("#alcanceProcesoCabeceraMulti").on(
-                "change",
-                aplicarCabeceraProcesoMulti
-            );
-        }
-    });
-
-    $(".tablaArticulosTalleresMulti").on("draw.dt", function () {
-        if (localStorage.getItem("quitarTallerMulti") != null) {
-            var lista = JSON.parse(
-                localStorage.getItem("quitarTallerMulti") || "[]"
-            );
-            for (var i = 0; i < lista.length; i++) {
-                var fk = lista[i].filaKey;
-                $(
-                    "button.recuperarBoton[data-fila-ingreso-key='" + fk + "']"
-                )
-                    .removeClass("btn-default")
-                    .addClass("btn-primary agregarArtiTaller");
+        var $alc = $("#alcanceProcesoCabeceraMulti");
+        if ($alc.length) {
+            if (typeof $.fn.selectpicker === "function") {
+                $alc.selectpicker();
             }
+            aplicarCabeceraProcesoMulti();
+            $alc.on("changed.bs.select", function () {
+                limpiarFormularioIngresoMulti();
+                aplicarCabeceraProcesoMulti();
+            });
         }
-        quitarAgregarArticuloTMulti();
+
+        $(".formularioIngresoMulti").on("submit", function () {
+            if (typeof listarArticulosIngreso === "function") {
+                listarArticulosIngreso();
+            }
+        });
     });
 
-    $(".tablaArticulosTalleresMulti tbody").on(
-        "click",
-        "button.agregarArtiTaller",
-        function () {
-            var articuloIngreso = $(this).attr("articulo");
-            var tallerQty = $(this).attr("taller");
-            var idCierre = $(this).attr("idCierre") || "";
-            var codSector = $(this).attr("data-sector-cod") || "";
-            var sectorConsulta = $(this).attr("data-sector-consulta") || "";
-            var filaKey = $(this).attr("data-fila-ingreso-key");
-            var procesoCod = $(this).attr("data-proceso") || "externo";
-            var procesoEtq = procesoCod === "interno" ? "Interno" : "Externo";
+    function leerAttrBotonIngreso(el) {
+        if (!el || !el.getAttribute) {
+            return {};
+        }
+        var g = function (nombre) {
+            var v = el.getAttribute(nombre);
+            return v === null || v === undefined ? "" : String(v).trim();
+        };
+        return {
+            articuloSku: g("articulo"),
+            articuloIngresoId: g("articuloIngreso") || g("articuloingreso"),
+            idCierre: g("idCierre") || g("idcierre"),
+            tallerQty: g("taller"),
+            codSector: g("data-sector-cod"),
+            sectorConsulta: g("data-sector-consulta"),
+            filaKey: g("data-fila-ingreso-key"),
+            procesoCod: g("data-proceso") || "externo",
+        };
+    }
 
-            $(this).removeClass("btn-primary agregarArtiTaller").addClass(
+    $(document).on(
+        "click",
+        ".tablaArticulosTalleresMulti button.agregarArtiTaller",
+        function (e) {
+            if (!window.vistaCrearIngresosMulti) {
+                return;
+            }
+            var $btn = $(this);
+            if (!$btn.hasClass("agregarArtiTaller")) {
+                return;
+            }
+            var el = this;
+            var a = leerAttrBotonIngreso(el);
+            var articuloT = a.articuloSku;
+            if (!articuloT) {
+                if (typeof swal === "function") {
+                    swal({
+                        type: "error",
+                        title: "No se pudo leer el artículo",
+                        text: "Faltan datos en el botón (articulo / articuloIngreso).",
+                        confirmButtonText: "Cerrar",
+                    });
+                }
+                return;
+            }
+
+            var idCierre = a.idCierre;
+            var tallerQty = a.tallerQty;
+            var codSector = a.codSector;
+            var sectorConsulta = a.sectorConsulta;
+            var filaKey = a.filaKey;
+            var procesoCod = a.procesoCod || "externo";
+            var procesoEtq = procesoCod === "interno" ? "Interno" : "Externo";
+            var claveFormSinCierre = a.articuloIngresoId || articuloT;
+
+            $btn.removeClass("btn-primary agregarArtiTaller").addClass(
                 "btn-default"
             );
 
             var datos = new FormData();
-            datos.append("articuloT", articuloIngreso);
+            datos.append("articuloT", articuloT);
 
             $.ajax({
                 url: "ajax/articulos.ajax.php",
@@ -178,31 +311,64 @@
                 processData: false,
                 dataType: "json",
                 success: function (respuesta) {
+                    if (!respuesta || respuesta.articulo === undefined) {
+                        if (typeof swal === "function") {
+                            swal({
+                                type: "error",
+                                title: "Artículo",
+                                text: "Respuesta inválida del servidor.",
+                                confirmButtonText: "Cerrar",
+                            });
+                        }
+                        $btn.addClass("btn-primary agregarArtiTaller").removeClass(
+                            "btn-default"
+                        );
+                        return;
+                    }
                     var articulo = respuesta["articulo"];
                     var packing = respuesta["packingB"];
                     var taller = respuesta["taller"];
-                    var sufijoSector =
-                        codSector !== ""
-                            ? " <small class='text-muted'>(" +
-                              codSector +
-                              " · " +
-                              procesoEtq +
-                              ")</small>"
+                    var modeloVal =
+                        respuesta["modelo"] !== undefined &&
+                        respuesta["modelo"] !== null
+                            ? respuesta["modelo"]
+                            : respuesta["Modelo"];
+                    var modeloRaw =
+                        modeloVal !== undefined && modeloVal !== null
+                            ? String(modeloVal)
                             : "";
+                    var modeloEscAttr = modeloRaw
+                        .replace(/&/g, "&amp;")
+                        .replace(/"/g, "&quot;");
+                    var grupoTaller =
+                        codSector + "|" + (procesoCod || "externo");
+                    var textoTallerFila =
+                        codSector !== ""
+                            ? codSector + " · " + procesoEtq
+                            : "—";
+                    var packingEsc = String(packing)
+                        .replace(/&/g, "&amp;")
+                        .replace(/"/g, "&quot;");
+                    var textoTallerEsc = String(textoTallerFila)
+                        .replace(/&/g, "&amp;")
+                        .replace(/"/g, "&quot;");
 
-                    if (idCierre == "") {
+                    if (idCierre === "") {
                         $(".nuevoArticuloIngreso").append(
                             `
- <div class="row munditoIngreso" style="padding:5px 15px">
-                        <div class="col-xs-6" style="padding-right:0px">
+ <div class="row munditoIngreso" style="padding:5px 15px" data-grupo-taller="${grupoTaller}" data-sort-modelo="${modeloEscAttr}" data-sort-articulo="${articulo}">
+                        <div class="col-xs-5" style="padding-right:0px">
                             <div class="input-group">
                                 <span class="input-group-addon">
-                                    <button type="button" class="btn btn-danger btn-xs quitarTaller" articuloIngreso="${articuloIngreso}" data-quitar-fila-key="${filaKey}">
+                                    <button type="button" class="btn btn-danger btn-xs quitarTaller" articuloIngreso="${claveFormSinCierre}" data-quitar-fila-key="${filaKey}">
                                         <i class="fa fa-times"></i>
                                     </button>
                                 </span>
-                                <input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloIngreso="${articuloIngreso}" name="agregarT" value="${packing}${sufijoSector}" codigoAC="${articulo}" idCierre="${idCierre}" readonly required>
+                                <input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloIngreso="${claveFormSinCierre}" name="agregarT" value="${packingEsc}" codigoAC="${articulo}" idCierre="${idCierre}" readonly required>
                             </div>
+                        </div>
+                        <div class="col-xs-2">
+                            <input type="text" class="form-control input-sm textoTallerIngreso" value="${textoTallerEsc}" data-cod-sector="${codSector}" readonly tabindex="-1">
                         </div>
                         <div class="col-xs-2">
                             <input type="number" class="form-control nuevaCantidadArticuloIngreso input-sm" name="nuevaCantidadArticuloIngreso" min="1" value="0" taller="${tallerQty}" articulo="${articulo}" nuevoTaller="${tallerQty}" data-cod-sector="${codSector}" data-sector-consulta="${sectorConsulta}" data-proceso="${procesoCod}" cantidad="" nuevaCantidad="0" required>
@@ -210,7 +376,7 @@
                         <div class="col-xs-2 divSaldoIngreso">
                             <input type="number" class="form-control nuevoSaldoIngreso input-sm" name="nuevoSaldoIngreso" value="${taller}" readonly>
                         </div>
-                        <div class="col-xs-2 divCorte">
+                        <div class="col-xs-1 divCorte">
                             <input type="text" class="form-control nuevoCorteIngreso input-sm" name="nuevoCorteIngreso" value="">
                         </div>
                     </div>`
@@ -218,16 +384,19 @@
                     } else {
                         $(".nuevoArticuloIngreso").append(
                             `
-                    <div class="row munditoIngreso" style="padding:5px 15px">
-                        <div class="col-xs-6" style="padding-right:0px">
+                    <div class="row munditoIngreso" style="padding:5px 15px" data-grupo-taller="${grupoTaller}" data-sort-modelo="${modeloEscAttr}" data-sort-articulo="${articulo}">
+                        <div class="col-xs-5" style="padding-right:0px">
                             <div class="input-group">
                                 <span class="input-group-addon">
                                     <button type="button" class="btn btn-danger btn-xs quitarTaller" articuloIngreso="${idCierre}" data-quitar-fila-key="${filaKey}">
                                         <i class="fa fa-times"></i>
                                     </button>
                                 </span>
-                                <input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloIngreso="${idCierre}" name="agregarT" value="${packing}${sufijoSector}" codigoAC="${articulo}" idCierre="${idCierre}" readonly required>
+                                <input type="text" class="form-control nuevaDescripcionProducto input-sm" articuloIngreso="${idCierre}" name="agregarT" value="${packingEsc}" codigoAC="${articulo}" idCierre="${idCierre}" readonly required>
                             </div>
+                        </div>
+                        <div class="col-xs-2">
+                            <input type="text" class="form-control input-sm textoTallerIngreso" value="${textoTallerEsc}" data-cod-sector="${codSector}" readonly tabindex="-1">
                         </div>
                         <div class="col-xs-2">
                             <input type="number" class="form-control nuevaCantidadArticuloIngreso input-sm" name="nuevaCantidadArticuloIngreso" min="1" value="0" taller="${tallerQty}" articulo="${articulo}" nuevoTaller="${tallerQty}" data-cod-sector="${codSector}" data-sector-consulta="${sectorConsulta}" data-proceso="${procesoCod}" cantidad="" nuevaCantidad="0" required>
@@ -235,7 +404,7 @@
                         <div class="col-xs-2 divSaldoIngreso">
                             <input type="number" class="form-control nuevoSaldoIngreso input-sm" name="nuevoSaldoIngreso" value="${tallerQty}" readonly>
                         </div>
-                        <div class="col-xs-2 divCorte">
+                        <div class="col-xs-1 divCorte">
                             <input type="text" class="form-control nuevoCorteIngreso input-sm" name="nuevoCorteIngreso" value="">
                         </div>
                     </div>`
@@ -249,8 +418,27 @@
                             $(this).select();
                         });
 
+                    reordenarFilasIngresoMulti();
+
                     sumarTotalIngreso();
                     listarArticulosIngreso();
+                    quitarAgregarArticuloTMulti();
+                },
+                error: function (xhr, status, err) {
+                    $btn.addClass("btn-primary agregarArtiTaller").removeClass(
+                        "btn-default"
+                    );
+                    if (typeof swal === "function") {
+                        swal({
+                            type: "error",
+                            title: "Error al cargar artículo",
+                            text:
+                                status === "parsererror"
+                                    ? "La respuesta no es JSON válido."
+                                    : (err || status || "Error de red"),
+                            confirmButtonText: "Cerrar",
+                        });
+                    }
                 },
             });
         }
@@ -259,11 +447,11 @@
     localStorage.removeItem("quitarTallerMulti");
 
     $(".formularioIngresoMulti").on("click", "button.quitarTaller", function () {
-        if (!$(this).attr("data-quitar-fila-key")) {
+        var fk = $(this).attr("data-quitar-fila-key");
+        if (!fk) {
             return;
         }
-        $(this).parent().parent().parent().parent().remove();
-        var fk = $(this).attr("data-quitar-fila-key");
+        $(this).closest(".munditoIngreso").remove();
 
         var idQuitar = [];
         if (localStorage.getItem("quitarTallerMulti") != null) {
@@ -276,16 +464,23 @@
         );
 
         $(
-            "button.recuperarBoton[data-fila-ingreso-key='" + fk + "']"
+            ".tablaArticulosTalleresMulti tbody button.recuperarBoton"
         )
+            .filter(function () {
+                return $(this).attr("data-fila-ingreso-key") === fk;
+            })
             .removeClass("btn-default")
             .addClass("btn-primary agregarArtiTaller");
 
-        if ($(".nuevoArticuloIngreso").children().length == 0) {
+        quitarAgregarArticuloTMulti();
+
+        if ($(".nuevoArticuloIngreso .munditoIngreso").length === 0) {
             $("#nuevoTotalTaller").val(0);
             $("#totalTaller").val(0);
             $("#nuevoTotalTaller").attr("total", 0);
+            $(".nuevoArticuloIngreso .separadorIngresoMultiTaller").remove();
         } else {
+            reordenarFilasIngresoMulti();
             sumarTotalIngreso();
             listarArticulosIngreso();
         }

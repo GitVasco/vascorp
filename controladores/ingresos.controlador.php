@@ -1269,7 +1269,6 @@ class ControladorIngresos
     {
         $fecha = $postData["nuevaFecha"];
 
-        // de $postData["nuevoTalleres"] quitamos la T del inicio y dejamos lo q queda de la cadena
         $taller = substr($postData["nuevoTalleres"], 1);
         $fechaEncode = self::convertirFechaExcel($fecha);
 
