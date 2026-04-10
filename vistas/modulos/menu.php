@@ -526,7 +526,7 @@
                 $rutasActivasProduccion = [
                     "ordencorte", "crear-ordencorte", "editar-detalle-ordencorte", "editar-almacencorte-lote", "editar-consumo", "almacencorte",
                     "crear-almacencorte", "en-cortes", "en-taller", "marcar-taller", "en-tallert",
-                    "en-tallerp", "ingresos", "crear-ingresos", "crear-segunda", "asistencia",
+                    "en-tallerp", "ingresos", "crear-ingresos", "crear-ingresos-multi", "crear-segunda", "asistencia",
                     "quincena", "eficiencia-global", "produccion-trusas", "produccion-brasier",
                     "produccion-vasco", "urgencias", "urgenciasamp", "proyeccion-mp", "servicios",
                     "crear-servicio", "cierres", "crear-cierre", "precio-servicio", "pago-servicio",

@@ -559,6 +559,22 @@ class controladorArticulos
 		return $respuesta;
 	}
 
+	/**
+	 * Ingresos multi (vista prueba): internos en una query con modelojf.
+	 */
+	static public function ctrIngresosMultiArticulosInternos()
+	{
+		return ModeloArticulos::mdlIngresosMultiArticulosInternos();
+	}
+
+	/**
+	 * Ingresos multi: externos — cierres en IN + articulojf si aplica.
+	 */
+	static public function ctrIngresosMultiArticulosExternos($sectoresExternos)
+	{
+		return ModeloArticulos::mdlIngresosMultiArticulosExternos($sectoresExternos);
+	}
+
 
 	/* 
 	* MOSTRAR ARTICULOS PARA LA TABLA DE ORDENES DE CORTE - PRODUCCION

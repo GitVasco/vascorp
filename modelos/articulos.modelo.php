@@ -482,6 +482,179 @@ class ModeloArticulos
 		$stmt = null;
 	}
 
+	/**
+	 * Sectores que usan cierres_detallejf + cierresjf (misma lista que mdlMostrarArticulosTaller rama cierres).
+	 * Solo para ingresos multi y nuevas rutas; no altera mdlMostrarArticulosTaller.
+	 */
+	private static function mdlIngresosMultiSectoresDesdeCierres()
+	{
+		return ["T4", "T6", "T9", "T2", "T8", "T0", "TA", "T7", "T10", "TB", "T11", "T14", "TD", "TE", "T12", "TC"];
+	}
+
+	/**
+	 * Artículos con saldo en taller (articulojf) para vista ingresos multi — proceso interno.
+	 * Una sola query: une modelojf para T1/T3 lógicos (BRASIER/SEAMLESS → T1; resto con tipo → T3; sin maestro → texto modelo).
+	 */
+	static public function mdlIngresosMultiArticulosInternos()
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT 
+			'' AS id,
+			a.articulo,
+			'' AS guia,
+			a.modelo,
+			a.cod_color,
+			a.color,
+			a.cod_talla,
+			a.talla,
+			a.stock,
+			a.taller,
+			a.alm_corte,
+			a.ord_corte,
+			'AJF' AS sector_consulta,
+			CASE
+				WHEN m.tipo IN ('BRASIER', 'SEAMLESS') THEN 'T1'
+				WHEN m.tipo IS NOT NULL THEN 'T3'
+				WHEN LOWER(IFNULL(a.modelo, '')) LIKE '%trusas%'
+					OR LOWER(IFNULL(a.modelo, '')) LIKE '%boxerv%'
+					OR LOWER(IFNULL(a.modelo, '')) LIKE '%boxer%' THEN 'T3'
+				ELSE 'T1'
+			END AS taller_logico
+		FROM articulojf a
+		LEFT JOIN modelojf m ON a.modelo = m.modelo
+		WHERE a.taller > 0
+		ORDER BY taller_logico, a.modelo, a.articulo");
+
+		$stmt->execute();
+
+		return $stmt->fetchAll();
+	}
+
+	/**
+	 * Cierres de varios talleres externos en una sola consulta (ingresos multi).
+	 */
+	static public function mdlIngresosMultiCierresVariosTalleres($sectores)
+	{
+		if (!is_array($sectores) || count($sectores) === 0) {
+			return [];
+		}
+
+		$permitidos = self::mdlIngresosMultiSectoresDesdeCierres();
+		$limpios = [];
+		foreach ($sectores as $s) {
+			if (!is_string($s) || $s === "") {
+				continue;
+			}
+			if (in_array($s, $permitidos, true)) {
+				$limpios[] = $s;
+			}
+		}
+		$limpios = array_values(array_unique($limpios));
+		if (count($limpios) === 0) {
+			return [];
+		}
+
+		$placeholders = implode(",", array_fill(0, count($limpios), "?"));
+		$sql = "SELECT 
+			a.articulo,
+			cd.id,
+			c.guia,
+			a.modelo,
+			a.cod_color,
+			a.color,
+			a.cod_talla,
+			a.talla,
+			a.stock,
+			cd.cantidad AS taller,
+			a.alm_corte,
+			a.ord_corte,
+			c.taller AS sector_consulta
+		FROM cierres_detallejf cd
+		LEFT JOIN cierresjf c ON cd.codigo = c.codigo
+		LEFT JOIN articulojf a ON cd.articulo = a.articulo
+		WHERE c.taller IN ($placeholders)
+		AND cd.cantidad > 0
+		ORDER BY c.taller, c.guia, a.articulo";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($limpios as $i => $cod) {
+			$stmt->bindValue($i + 1, $cod, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+
+		return $stmt->fetchAll();
+	}
+
+	/**
+	 * Rama articulojf sin filtro por sector (misma idea que else de mdlMostrarArticulosTaller). Una sola pasada para ingresos multi.
+	 */
+	static public function mdlIngresosMultiArticulosSoloArticulojf()
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT 
+			'' AS id,
+			a.articulo,
+			'' AS guia,
+			a.modelo,
+			a.cod_color,
+			a.color,
+			a.cod_talla,
+			a.talla,
+			a.stock,
+			a.taller,
+			a.alm_corte,
+			a.ord_corte
+		FROM articulojf a
+		WHERE a.taller > 0
+		ORDER BY a.modelo, a.articulo");
+
+		$stmt->execute();
+
+		return $stmt->fetchAll();
+	}
+
+	/**
+	 * Externos: cierres (IN) + si hay sectores “solo articulojf”, una query articulojf etiquetada.
+	 */
+	static public function mdlIngresosMultiArticulosExternos($sectoresExternos)
+	{
+		if (!is_array($sectoresExternos) || count($sectoresExternos) === 0) {
+			return [];
+		}
+
+		$desdeCierres = self::mdlIngresosMultiSectoresDesdeCierres();
+		$paraCierres = [];
+		$paraArticulojf = [];
+
+		foreach ($sectoresExternos as $s) {
+			if (!is_string($s) || $s === "") {
+				continue;
+			}
+			if (in_array($s, $desdeCierres, true)) {
+				$paraCierres[] = $s;
+			} else {
+				$paraArticulojf[] = $s;
+			}
+		}
+
+		$paraCierres = array_values(array_unique($paraCierres));
+		$paraArticulojf = array_values(array_unique($paraArticulojf));
+
+		$salida = [];
+		if (count($paraCierres) > 0) {
+			$salida = array_merge($salida, self::mdlIngresosMultiCierresVariosTalleres($paraCierres));
+		}
+
+		if (count($paraArticulojf) > 0) {
+			$base = self::mdlIngresosMultiArticulosSoloArticulojf();
+			$etiqueta = count($paraArticulojf) === 1 ? $paraArticulojf[0] : "AJF";
+			foreach ($base as $fila) {
+				$fila["sector_consulta"] = $etiqueta;
+				$salida[] = $fila;
+			}
+		}
+
+		return $salida;
+	}
+
 	static public function mdlMostrarArticulosCierres($idCierre)
 	{
 

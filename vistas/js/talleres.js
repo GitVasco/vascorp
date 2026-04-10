@@ -940,9 +940,13 @@ function cargarTablaProduccionVasco(mesV) {
 
 $("#nuevoTalleres").change(function () {
     var ingreso = $(this).val();
-    $(".tablaArticulosTalleres").DataTable().destroy();
-    localStorage.setItem("sectorIngreso", ingreso);
-    cargarTablaArticuloTalleres(localStorage.getItem("sectorIngreso"));
+    if ($(".tablaArticulosTalleres").length) {
+        $(".tablaArticulosTalleres").DataTable().destroy();
+        localStorage.setItem("sectorIngreso", ingreso);
+        cargarTablaArticuloTalleres(localStorage.getItem("sectorIngreso"));
+    } else {
+        localStorage.setItem("sectorIngreso", ingreso);
+    }
     var datos = new FormData();
     datos.append("idSector", ingreso);
 
@@ -1000,13 +1004,18 @@ $("#editarTalleres").change(function () {
     });
 });
 
-if (localStorage.getItem("sectorIngreso") != null) {
-    cargarTablaArticuloTalleres(localStorage.getItem("sectorIngreso"));
-} else {
-    cargarTablaArticuloTalleres(null);
+if ($(".tablaArticulosTalleres").length) {
+    if (localStorage.getItem("sectorIngreso") != null) {
+        cargarTablaArticuloTalleres(localStorage.getItem("sectorIngreso"));
+    } else {
+        cargarTablaArticuloTalleres(null);
+    }
 }
 
 function cargarTablaArticuloTalleres(sectorIngreso) {
+    if (!$(".tablaArticulosTalleres").length) {
+        return;
+    }
     $(".tablaArticulosTalleres").DataTable({
         ajax:
             "ajax/produccion/tabla-articulostaller.ajax.php?perfil=" +
@@ -1301,57 +1310,65 @@ var idQuitarCierreT = [];
 localStorage.removeItem("quitarTaller");
 localStorage.removeItem("quitarTallerCierre");
 
-$(".formularioIngreso").on("click", "button.quitarTaller", function () {
-    /* console.log("boton"); */
+$(".formularioIngreso, .formularioIngresoMulti").on(
+    "click",
+    "button.quitarTaller",
+    function () {
+        /* Vista multi: lo maneja crear-ingresos-multi.js */
+        if ($(this).attr("data-quitar-fila-key")) {
+            return;
+        }
+        /* console.log("boton"); */
 
-    $(this).parent().parent().parent().parent().remove();
-    var articuloIngreso = $(this).attr("articuloIngreso");
-    // console.log(articuloIngreso);
-    /*=============================================
+        $(this).parent().parent().parent().parent().remove();
+        var articuloIngreso = $(this).attr("articuloIngreso");
+        // console.log(articuloIngreso);
+        /*=============================================
     ALMACENAR EN EL LOCALSTORAGE EL ID DEL MATERIA PRIMA A QUITAR
     =============================================*/
 
-    if (localStorage.getItem("quitarTaller") == null) {
-        idQuitarArticuloT = [];
-    } else {
-        idQuitarArticuloT.concat(localStorage.getItem("quitarTaller"));
+        if (localStorage.getItem("quitarTaller") == null) {
+            idQuitarArticuloT = [];
+        } else {
+            idQuitarArticuloT.concat(localStorage.getItem("quitarTaller"));
+        }
+
+        idQuitarArticuloT.push({
+            articuloIngreso: articuloIngreso,
+        });
+
+        localStorage.setItem("quitarTaller", JSON.stringify(idQuitarArticuloT));
+        // console.log(articuloIngreso);
+        $(
+            "button.recuperarBoton[articuloIngreso='" + articuloIngreso + "']"
+        ).removeClass("btn-default");
+
+        $(
+            "button.recuperarBoton[articuloIngreso='" + articuloIngreso + "']"
+        ).addClass("btn-primary agregarArtiTaller");
+
+        if ($(".nuevoArticuloIngreso").children().length == 0) {
+            $("#nuevoTotalTaller").val(0);
+            $("#totalTaller").val(0);
+            $("#nuevoTotalTaller").attr("total", 0);
+        } else {
+            // SUMAR TOTAL DE UNIDADES
+
+            sumarTotalIngreso();
+
+            // AGREGAR IMPUESTO
+
+            // AGRUPAR PRODUCTOS EN FORMATO JSON
+
+            listarArticulosIngreso();
+        }
     }
-
-    idQuitarArticuloT.push({
-        articuloIngreso: articuloIngreso,
-    });
-
-    localStorage.setItem("quitarTaller", JSON.stringify(idQuitarArticuloT));
-    // console.log(articuloIngreso);
-    $(
-        "button.recuperarBoton[articuloIngreso='" + articuloIngreso + "']"
-    ).removeClass("btn-default");
-
-    $(
-        "button.recuperarBoton[articuloIngreso='" + articuloIngreso + "']"
-    ).addClass("btn-primary agregarArtiTaller");
-
-    if ($(".nuevoArticuloIngreso").children().length == 0) {
-        $("#nuevoTotalTaller").val(0);
-        $("#totalTaller").val(0);
-        $("#nuevoTotalTaller").attr("total", 0);
-    } else {
-        // SUMAR TOTAL DE UNIDADES
-
-        sumarTotalIngreso();
-
-        // AGREGAR IMPUESTO
-
-        // AGRUPAR PRODUCTOS EN FORMATO JSON
-
-        listarArticulosIngreso();
-    }
-});
+);
 
 /*
  * MODIFICAR LA CANTIDAD
  */
-$(".formularioIngreso").on(
+$(".formularioIngreso, .formularioIngresoMulti").on(
     "change",
     "input.nuevaCantidadArticuloIngreso",
     function () {
@@ -1456,10 +1473,14 @@ $(".formularioIngreso").on(
 );
 
 //modificar el corte
-$(".formularioIngreso").on("change", "input.nuevoCorteIngreso", function () {
-    sumarTotalIngreso();
-    listarArticulosIngreso();
-});
+$(".formularioIngreso, .formularioIngresoMulti").on(
+    "change",
+    "input.nuevoCorteIngreso",
+    function () {
+        sumarTotalIngreso();
+        listarArticulosIngreso();
+    }
+);
 
 /*
  * SUMAR EL TOTAL DE LAS ORDENES DE CORTE

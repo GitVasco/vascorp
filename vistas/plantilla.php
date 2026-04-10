@@ -366,6 +366,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "asistencia" ||
                 $_GET["ruta"] == "ingresos" ||
                 $_GET["ruta"] == "crear-ingresos" ||
+                $_GET["ruta"] == "crear-ingresos-multi" ||
                 $_GET["ruta"] == "editar-ingreso" ||
                 $_GET["ruta"] == "crear-segunda" ||
                 $_GET["ruta"] == "editar-segunda" ||
@@ -598,6 +599,9 @@ CUERPO DOCUMENTO
     <script src="vistas/js/modelos.js"></script>
     <script src="vistas/js/cortes.js"></script>
     <script src="vistas/js/talleres.js"></script>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-ingresos-multi") { ?>
+    <script src="vistas/js/crear-ingresos-multi.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
     <script src="vistas/js/sectores.js"></script>
     <script src="vistas/js/paras.js"></script>
     <script src="vistas/js/asistencias.js"></script>

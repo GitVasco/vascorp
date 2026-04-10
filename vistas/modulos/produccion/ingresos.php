@@ -33,6 +33,15 @@
                     </button>
 
                 </a>
+                <a href="crear-ingresos-multi">
+
+                    <button class="btn btn-info" title="Vista prueba: tabla multi-taller">
+
+                        Crear ingreso (multi-taller)
+
+                    </button>
+
+                </a>
                 <a href="crear-segunda">
 
                     <button class="btn btn-danger">
