@@ -371,6 +371,20 @@ $(".tablaQuincena").on("click", ".btnReportePagosTrusas", function () {
         id;
 });
 
+$(".tablaQuincena").on("click", ".btnReportePagosTrusasProduccion", function () {
+    inicio = $(this).attr("inicio");
+    fin = $(this).attr("fin");
+    id = $(this).attr("id");
+
+    window.location =
+        "vistas/reportes_excel/rpt_pagos_trusas_produccion.php?inicio=" +
+        inicio +
+        "&fin=" +
+        fin +
+        "&id=" +
+        id;
+});
+
 /*
  * BOTON REPORTE DE PAGOS DE BRASIERES
  */

@@ -457,4 +457,22 @@ class ControladorProduccion
             }
         }
     }
+
+    /*=============================================
+    REPORTE: pagos trusas por monto producido total_precio (Excel)
+    =============================================*/
+    static public function ctrRptPagosTrusasProduccionQuincena($id)
+    {
+        return ModeloProduccion::mdlRptPagosTrusasProduccionQuincena($id);
+    }
+
+    static public function ctrRptPagosTrusasProduccionCabecera($inicio, $fin)
+    {
+        return ModeloProduccion::mdlRptPagosTrusasProduccionCabecera($inicio, $fin);
+    }
+
+    static public function ctrRptPagosTrusasProduccionDetalle($inicio, $fin)
+    {
+        return ModeloProduccion::mdlRptPagosTrusasProduccionDetalle($inicio, $fin);
+    }
 }

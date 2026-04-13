@@ -2812,4 +2812,85 @@ class ModeloProduccion
     }
     $stmt = null;
   }
+
+  /*=============================================
+  REPORTE EXCEL: pagos trusas por monto producido total_precio (bonos por rango)
+  =============================================*/
+
+  static public function mdlRptPagosTrusasProduccionQuincena($id)
+  {
+    $stmt = Conexion::conectar()->prepare("SELECT inicio, fin FROM quincenasjf WHERE id = :id LIMIT 1");
+    $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+
+  static public function mdlRptPagosTrusasProduccionCabecera($inicio, $fin)
+  {
+    $pdo = Conexion::conectar();
+    $pdo->exec("SET lc_time_names = 'es_ES'");
+    $stmt = $pdo->prepare("SELECT 
+                            MIN(DATE(t.fecha)) AS i,
+                            MAX(DATE(t.fecha)) AS f,
+                            CONCAT(
+                              'PRODUCCIÓN DE DESTAJEROS DEL ',
+                              DATE_FORMAT(MIN(DATE(t.fecha)), '%d'),
+                              ' DE ',
+                              UPPER(DATE_FORMAT(MIN(DATE(t.fecha)), '%M')),
+                              ' AL ',
+                              DATE_FORMAT(MAX(DATE(t.fecha)), '%d'),
+                              ' DE ',
+                              UPPER(DATE_FORMAT(MAX(DATE(t.fecha)), '%M')),
+                              ' DEL ',
+                              DATE_FORMAT(MIN(DATE(t.fecha)), '%Y')
+                            ) AS titulo 
+                            FROM totalesjf t 
+                            WHERE DATE(t.fecha) BETWEEN :inicio AND :fin");
+    $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+    $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+  }
+
+  static public function mdlRptPagosTrusasProduccionDetalle($inicio, $fin)
+  {
+    $stmt = Conexion::conectar()->prepare("SELECT 
+	et.trabajador AS id_trabajador,
+	CONCAT(
+		t.nom_tra,
+		' ',
+		t.ape_pat_tra,
+		' ',
+		t.ape_mat_tra) AS nombre,
+	COUNT(DISTINCT DATE(et.fecha_terminado)) AS dias,
+	ROUND(SUM(et.total_precio), 2) AS produccion,
+	CASE
+		WHEN SUM(et.total_precio) >= 631 THEN 'A'
+		WHEN SUM(et.total_precio) >= 581 AND SUM(et.total_precio) <= 630 THEN 'B'
+		WHEN SUM(et.total_precio) >= 566 AND SUM(et.total_precio) <= 580 THEN 'C'
+		WHEN SUM(et.total_precio) >= 500 AND SUM(et.total_precio) <= 565 THEN 'D'
+		ELSE '-'
+	END AS rango,
+	CASE
+		WHEN SUM(et.total_precio) >= 631 THEN 160
+		WHEN SUM(et.total_precio) >= 581 AND SUM(et.total_precio) <= 630 THEN 140
+		WHEN SUM(et.total_precio) >= 566 AND SUM(et.total_precio) <= 580 THEN 125
+		WHEN SUM(et.total_precio) >= 500 AND SUM(et.total_precio) <= 565 THEN 50
+		ELSE 0
+	END AS bono
+FROM entallerjf et
+LEFT JOIN trabajadorjf t ON et.trabajador = t.cod_tra
+LEFT JOIN articulojf a ON et.articulo = a.articulo
+LEFT JOIN modelojf m ON a.modelo = m.modelo
+WHERE DATE(et.fecha_terminado) BETWEEN :inicio AND :fin
+	AND t.cod_tip_tra = 1
+	AND COALESCE(m.tipo, '') NOT IN ('BRASIER', 'SEAMLESS')
+GROUP BY et.trabajador
+HAVING SUM(et.total_precio) > 0
+ORDER BY produccion DESC");
+    $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+    $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  }
 }

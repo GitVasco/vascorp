@@ -31,7 +31,7 @@ class TablaQuincena{
             *trusas
             */
 
-            $trusas = "<button class='btn btn-xs btn-outline-success  btnReportePagosTrusas' title='Reporte de Pagos Trusas' id='".$quincena[$i]["id"]."' inicio='".$quincena[$i]["inicio"]."' fin='".$quincena[$i]["fin"]."' style='border:green 1px solid'><img src='vistas/img/plantilla/excel.png' width='17px'></button>";
+            $trusas = "<div class='btn-group'><button class='btn btn-xs btn-outline-success btnReportePagosTrusas' title='Pagos trusas (esquema sueldo / clásico)' id='".$quincena[$i]["id"]."' inicio='".$quincena[$i]["inicio"]."' fin='".$quincena[$i]["fin"]."' style='border:green 1px solid'><img src='vistas/img/plantilla/excel.png' width='17px'></button><button class='btn btn-xs btn-outline-primary btnReportePagosTrusasProduccion' title='Pagos trusas por monto producido S/. (bonos por rango)' id='".$quincena[$i]["id"]."' inicio='".$quincena[$i]["inicio"]."' fin='".$quincena[$i]["fin"]."' style='border:#337ab7 1px solid'><img src='vistas/img/plantilla/excel.png' width='17px'></button></div>";
 
             /* 
             *brasier
