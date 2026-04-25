@@ -36,56 +36,6 @@
     }
 
     /**
-     * Ordena filas del formulario por taller (sector + proceso) y dentro por modelo;
-     * inserta una línea horizontal al cambiar de grupo de taller.
-     */
-    function reordenarFilasIngresoMulti() {
-        var $cont = $(".nuevoArticuloIngreso");
-        if (!$cont.length) {
-            return;
-        }
-
-        $cont.find(".separadorIngresoMultiTaller").remove();
-
-        var $filas = $cont.children(".munditoIngreso").detach();
-        var arr = $filas.toArray();
-
-        arr.sort(function (a, b) {
-            var ga = a.getAttribute("data-grupo-taller") || "";
-            var gb = b.getAttribute("data-grupo-taller") || "";
-            if (ga !== gb) {
-                return ga.localeCompare(gb, "es", { sensitivity: "base" });
-            }
-            var ma = a.getAttribute("data-sort-modelo") || "";
-            var mb = b.getAttribute("data-sort-modelo") || "";
-            if (ma !== mb) {
-                return ma.localeCompare(mb, "es", {
-                    sensitivity: "base",
-                    numeric: true,
-                });
-            }
-            var sa = a.getAttribute("data-sort-articulo") || "";
-            var sb = b.getAttribute("data-sort-articulo") || "";
-            return sa.localeCompare(sb, "es", {
-                sensitivity: "base",
-                numeric: true,
-            });
-        });
-
-        var prevGrupo = null;
-        for (var i = 0; i < arr.length; i++) {
-            var g = arr[i].getAttribute("data-grupo-taller") || "";
-            if (i > 0 && g !== prevGrupo) {
-                $cont.append(
-                    '<div class="row separadorIngresoMultiTaller" aria-hidden="true"><div class="col-xs-12"><hr style="margin:10px 15px;border-top:1px solid #bbb"></div></div>'
-                );
-            }
-            $cont.append(arr[i]);
-            prevGrupo = g;
-        }
-    }
-
-    /**
      * Vacía líneas del ingreso multi, totales y estado de “quitar”; reactiva botones agregar en la tabla actual.
      */
     function limpiarFormularioIngresoMulti() {
@@ -418,8 +368,6 @@
                             $(this).select();
                         });
 
-                    reordenarFilasIngresoMulti();
-
                     sumarTotalIngreso();
                     listarArticulosIngreso();
                     quitarAgregarArticuloTMulti();
@@ -480,7 +428,6 @@
             $("#nuevoTotalTaller").attr("total", 0);
             $(".nuevoArticuloIngreso .separadorIngresoMultiTaller").remove();
         } else {
-            reordenarFilasIngresoMulti();
             sumarTotalIngreso();
             listarArticulosIngreso();
         }
