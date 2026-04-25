@@ -4426,6 +4426,7 @@ class ModeloCuentas
 						c.doc_origen,
 						c.cliente,
 						cc.nombre,
+						c.monto,
 						c.saldo,
 						cc.ubigeo,
 						(SELECT 
@@ -4461,6 +4462,7 @@ class ModeloCuentas
 						'' AS doc_origen,
 						'' cliente,
 						'' AS nombre,
+						SUM(c.monto) AS monto,
 						SUM(c.saldo) AS saldo,
 						'ZZ' AS ubigeo,
 						'' AS nom_ubigeo,
@@ -4501,6 +4503,7 @@ class ModeloCuentas
 						c.doc_origen,
 						c.cliente,
 						cc.nombre,
+						c.monto,
 						c.saldo,
 						cc.ubigeo,
 						(SELECT 
@@ -4536,6 +4539,7 @@ class ModeloCuentas
 						'' AS doc_origen,
 						'' cliente,
 						'' AS nombre,
+						SUM(c.monto) AS monto,
 						SUM(c.saldo) AS saldo,
 						'ZZ' AS ubigeo,
 						'' AS nom_ubigeo,
