@@ -984,8 +984,10 @@ class ModeloFacturacion
             a.modelo,
             ROUND(SUM(cantidad), 2) AS cantidad,
             CASE
-                WHEN SUM(m.cantidad) % 1 > 0 
+                WHEN a.marca = 'TELAS'
                 THEN 'KGM' 
+                when a.marca = 'ELASTICOS'
+                then 'MTS'
                 ELSE 'C62' 
             END AS unidad,
             a.nombre,
@@ -8458,7 +8460,13 @@ class ModeloFacturacion
   {
 
     $sql = "SELECT 
-                'C62' AS b9,
+                  CASE
+                  WHEN a.marca = 'ELASTICOS'
+                    THEN 'MTR' 
+                    WHEN a.marca = 'TELAS'
+                    THEN 'KGS'
+                    ELSE 'C62' 
+                  END AS b9,
                 ROUND(SUM(m.cantidad)*-1, 3) AS c9,
                 REPLACE(a.nombre, 'Ñ', 'N') AS d9,
                 ROUND(m.precio * 1.18, 2) AS e9,
