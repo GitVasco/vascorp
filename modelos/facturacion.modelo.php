@@ -2058,7 +2058,8 @@ class ModeloFacturacion
       IFNULL(a.nombre, '') AS agencia,
       IFNULL(u.nom_ubi, '') AS ubigeo,
       v.cargo,
-      v.recepcion
+      v.recepcion,
+      v.motivo_anulacion
   FROM
       ventajf v
       LEFT JOIN clientesjf c
@@ -2099,7 +2100,8 @@ class ModeloFacturacion
       IFNULL(a.nombre, '') AS agencia,
       IFNULL(u.nom_ubi, '') AS ubigeo,
       v.cargo,
-      v.recepcion
+      v.recepcion,
+      v.motivo_anulacion
   FROM
       ventajf v
       LEFT JOIN clientesjf c
@@ -2150,7 +2152,8 @@ class ModeloFacturacion
         IFNULL(a.nombre, '') AS agencia,
         IFNULL(u.nom_ubi, '') AS ubigeo,
         v.cargo,
-      v.recepcion
+      v.recepcion,
+      v.motivo_anulacion
     FROM
         ventajf v
         LEFT JOIN clientesjf c
@@ -2193,7 +2196,8 @@ class ModeloFacturacion
         IFNULL(a.nombre, '') AS agencia,
         IFNULL(u.nom_ubi, '') AS ubigeo,
         v.cargo,
-      v.recepcion
+      v.recepcion,
+      v.motivo_anulacion
     FROM
         ventajf v
         LEFT JOIN clientesjf c

@@ -16,8 +16,7 @@ class TablaProformas{
 
         if(count($proformas)>0){
 
-        $datosJson = '{
-        "data": [';
+        $filas = [];
 
         for($i = 0; $i < count($proformas); $i++){
 
@@ -67,7 +66,6 @@ class TablaProformas{
             }else{
 
                 $recepcion = "";
-
             }            
 
             if($proformas[$i]["facturacion"] == "0"){
@@ -80,31 +78,32 @@ class TablaProformas{
 
             }            
 
-
-
-            $datosJson .= '[
-            "'.$proformas[$i]["tipo_documento"].'",
-            "<b>'.$proformas[$i]["documento"].'</b>",
-            "'.$total.'",
-            "'.$proformas[$i]["cliente"].'",
-            "<b>'.$proformas[$i]["nombre"].'</b>",
-            "'.$proformas[$i]["vendedor"].'",
-            "'.$proformas[$i]["fecha"].'",
-            "'.$proformas[$i]["doc_destino"].'",
-            "'.$proformas[$i]["estado"].'",
-            "'.$proformas[$i]["ubigeo"].'",
-            "'.$cargo." ".$recepcion.'",
-            "'.$botones.'"
-            ],';
+            if ($proformas[$i]["facturacion"] == "4") {
+                $mot = isset($proformas[$i]["motivo_anulacion"]) ? trim($proformas[$i]["motivo_anulacion"]) : "";
+                $htmlColNombre = $mot !== ""
+                    ? "<span class=\"text-danger\"><b>" . htmlspecialchars($mot, ENT_QUOTES, "UTF-8") . "</b></span>"
+                    : "<span class=\"text-danger\"><b>—</b></span>";
+            } else {
+                $htmlColNombre = "<b>" . $proformas[$i]["nombre"] . "</b>";
             }
 
-            $datosJson=substr($datosJson, 0, -1);
+            $filas[] = [
+            (string) $proformas[$i]["tipo_documento"],
+            "<b>".$proformas[$i]["documento"]."</b>",
+            $total,
+            (string) $proformas[$i]["cliente"],
+            $htmlColNombre,
+            (string) $proformas[$i]["vendedor"],
+            (string) $proformas[$i]["fecha"],
+            (string) $proformas[$i]["doc_destino"],
+            (string) $proformas[$i]["estado"],
+            (string) $proformas[$i]["ubigeo"],
+            $cargo." ".$recepcion,
+            $botones
+            ];
+            }
 
-            $datosJson .= ']
-
-            }';
-
-        echo $datosJson;
+            echo json_encode(["data" => $filas], JSON_UNESCAPED_UNICODE);
         }else{
 
             echo '{
