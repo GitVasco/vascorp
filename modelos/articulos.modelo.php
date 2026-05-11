@@ -428,7 +428,7 @@ class ModeloArticulos
 	*/
 	static public function mdlMostrarArticulosTaller($sectorIngreso)
 	{
-		if ($sectorIngreso == "T4" || $sectorIngreso == "T6" || $sectorIngreso == "T9" || $sectorIngreso == "T2" || $sectorIngreso == "T8" || $sectorIngreso == "T0" || $sectorIngreso == "TA" || $sectorIngreso == "T7" || $sectorIngreso == "T10" || $sectorIngreso == "TB" || $sectorIngreso == "T11" || $sectorIngreso == "T14" || $sectorIngreso == "TD" || $sectorIngreso == "TE" || $sectorIngreso == "T12" || $sectorIngreso == "TC") {
+		if ($sectorIngreso == "T4" || $sectorIngreso == "T6" || $sectorIngreso == "T9" || $sectorIngreso == "T2" || $sectorIngreso == "T8" || $sectorIngreso == "T0" || $sectorIngreso == "TA" || $sectorIngreso == "T7" || $sectorIngreso == "T10" || $sectorIngreso == "TB" || $sectorIngreso == "T11" || $sectorIngreso == "T14" || $sectorIngreso == "TD" || $sectorIngreso == "TE" || $sectorIngreso == "T12" || $sectorIngreso == "T13" || $sectorIngreso == "TC") {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
 			a.articulo,
@@ -488,7 +488,7 @@ class ModeloArticulos
 	 */
 	private static function mdlIngresosMultiSectoresDesdeCierres()
 	{
-		return ["T4", "T6", "T9", "T2", "T8", "T0", "TA", "T7", "T10", "TB", "T11", "T14", "TD", "TE", "T12", "TC"];
+		return ["T4", "T6", "T9", "T2", "T8", "T0", "TA", "T7", "T10", "TB", "T11", "T14", "TD", "TE", "T12", "T13", "TC"];
 	}
 
 	/**
