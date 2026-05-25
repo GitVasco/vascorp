@@ -1312,7 +1312,7 @@ var idQuitarCierreT = [];
 localStorage.removeItem("quitarTaller");
 localStorage.removeItem("quitarTallerCierre");
 
-$(".formularioIngreso, .formularioIngresoMulti").on(
+$(".formularioIngreso, .formularioIngresoMulti, .formularioSegundaMulti").on(
     "click",
     "button.quitarTaller",
     function () {
@@ -1370,7 +1370,7 @@ $(".formularioIngreso, .formularioIngresoMulti").on(
 /*
  * MODIFICAR LA CANTIDAD
  */
-$(".formularioIngreso, .formularioIngresoMulti").on(
+$(".formularioIngreso, .formularioIngresoMulti, .formularioSegundaMulti").on(
     "change",
     "input.nuevaCantidadArticuloIngreso",
     function () {
@@ -1475,7 +1475,7 @@ $(".formularioIngreso, .formularioIngresoMulti").on(
 );
 
 //modificar el corte
-$(".formularioIngreso, .formularioIngresoMulti").on(
+$(".formularioIngreso, .formularioIngresoMulti, .formularioSegundaMulti").on(
     "change",
     "input.nuevoCorteIngreso",
     function () {

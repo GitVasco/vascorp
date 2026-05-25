@@ -51,6 +51,15 @@
                     </button>
 
                 </a>
+                <a href="crear-segundas-multi">
+
+                    <button class="btn btn-warning" title="Segunda multi-taller">
+
+                        Crear segunda (multi-taller)
+
+                    </button>
+
+                </a>
 
                 <a href="cerrar-arreglos">
 

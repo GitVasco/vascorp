@@ -58,6 +58,8 @@ require_once "controladores/ingresos.controlador.php";
 
 require_once "controladores/ingresos-multi.controlador.php";
 
+require_once "controladores/ingresos-segunda-multi.controlador.php";
+
 require_once "controladores/modelos.controlador.php";
 
 require_once "controladores/pedidos.controlador.php";
