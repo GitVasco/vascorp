@@ -219,7 +219,12 @@ class ControladorPedidos
             /*
             * ACTUALIZAMOS LOS TOTALES DEL PEDIDO
             */
-            $dscto = round($_POST["descTotal"] / $_POST["nuevoSubTotalA"] * 100, 2);
+            $grav = floatval($_POST["nuevoSubTotalA"]);
+            if ($grav > 0) {
+                $dscto = round(floatval($_POST["descTotal"]) / $grav * 100, 2);
+            } else {
+                $dscto = 0;
+            }
             $datos = array(
                 "cliente" => $_POST["seleccionarCliente"],
                 "codigo" => $_POST["nuevoCodigo"],

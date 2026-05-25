@@ -210,6 +210,251 @@ class AjaxPedidos
         echo json_encode($respuesta);
     }
 
+    /**
+     * Totales para el formulario de guardado desde escaneo (sin líneas DOM como crear-pedidocv).
+     */
+    public function ajaxTotalesFormularioEscaneoCv()
+    {
+
+        $pedido = isset($_POST["pedidoTotalesCv"]) ? trim((string) $_POST["pedidoTotalesCv"]) : "";
+        if ($pedido === "") {
+            echo json_encode(array("ok" => false));
+            return;
+        }
+
+        $cab = ControladorPedidos::ctrMostrarTemporal($pedido);
+        if (!$cab || empty($cab["codigo"])) {
+            echo json_encode(array("ok" => false));
+            return;
+        }
+
+        $totalRow = ControladorPedidos::ctrMostrarTemporalTotal($pedido);
+        $bruto = 0;
+        if ($totalRow && isset($totalRow["totalArt"])) {
+            $bruto = floatval($totalRow["totalArt"]);
+        }
+
+        $lista = isset($cab["lista"]) ? trim((string) $cab["lista"]) : "";
+        $descN = 0;
+        $subTotal = $bruto;
+        $impNuevo = ($lista === "precio1") ? 0 : round($subTotal * 0.18, 2);
+        $totalFin = ($lista === "precio1") ? round($subTotal, 2) : round($subTotal + $impNuevo, 2);
+
+        echo json_encode(array(
+            "ok" => true,
+            "nuevoSubTotalA" => number_format($bruto, 2, ".", ""),
+            "descTotal" => number_format($descN, 2, ".", ""),
+            "subTotal" => number_format($subTotal, 2, ".", ""),
+            "impTotal" => number_format($impNuevo, 2, ".", ""),
+            "nuevoTotal" => number_format($totalFin, 2, ".", ""),
+        ));
+    }
+
+    /**
+     * Crea sólo la cabecera temporaljf (primer registro igual flujo AJAX de ítems),
+     * para la pantalla de escaneo por código de barras.
+     */
+    public function ajaxCrearCabeceraTemporalEscaneoCv()
+    {
+
+        $cliente = isset($_POST["clienteEscaneoCab"]) ? trim((string) $_POST["clienteEscaneoCab"]) : "";
+        $vendedor = isset($_POST["vendedorEscaneoCab"]) ? trim((string) $_POST["vendedorEscaneoCab"]) : "";
+        $lista = isset($_POST["listaEscaneoCab"]) ? trim((string) $_POST["listaEscaneoCab"]) : "";
+        $agencia = isset($_POST["agenciaEscaneoCab"]) ? trim((string) $_POST["agenciaEscaneoCab"]) : "";
+
+        if (!isset($_SESSION["id"]) || $_SESSION["id"] === "" || $_SESSION["id"] === null) {
+            echo json_encode(array("ok" => false, "mensaje" => "Sesión caducada. Volvé a iniciar sesión."));
+            return;
+        }
+
+        if ($cliente === "" || $vendedor === "") {
+            echo json_encode(array("ok" => false, "mensaje" => "Seleccioná cliente y vendedor."));
+            return;
+        }
+
+        if ($lista === "" || !preg_match('/^precio[0-9]+$/', $lista)) {
+            echo json_encode(array("ok" => false, "mensaje" => "Lista de precios no válida. Elegí cliente y revisá el vendedor."));
+            return;
+        }
+
+        $numero = ControladorMovimientos::ctrMostrarTalonario();
+        $talonario = $numero["pedido"] + 1;
+        ModeloPedidos::mdlActualizarTalonario();
+
+        $usuario = $_SESSION["id"];
+        $talonarioN = $usuario . $talonario;
+
+        $datos = array(
+            "codigo"   => $talonarioN,
+            "cliente"  => $cliente,
+            "vendedor" => $vendedor,
+            "lista"    => $lista,
+            "agencia"  => $agencia,
+        );
+
+        $cab = ModeloPedidos::mdlGuardarTemporal("temporaljf", $datos);
+
+        if ($cab == "ok") {
+            echo json_encode(array("ok" => true, "pedido" => $talonarioN));
+        } else {
+            echo json_encode(array("ok" => false, "mensaje" => "No se pudo crear la cabecera del pedido."));
+        }
+    }
+
+    /**
+     * Incrementa +1 en detalle temporal por SKU (columna articulojf.articulo), lector código de barras — crear pedido CV.
+     * No reutiliza el flujo modelo/modal; lista y pedido desde cabecera temporaljf.
+     */
+    public function ajaxIncrementarBarcodePedidoCv()
+    {
+
+        $articuloSku = isset($_POST["articuloBarcodeCv"]) ? trim((string) $_POST["articuloBarcodeCv"]) : "";
+        $pedido = isset($_POST["pedidoBarcodeCv"]) ? trim((string) $_POST["pedidoBarcodeCv"]) : "";
+
+        if ($articuloSku === "" || $pedido === "") {
+            echo json_encode(array("ok" => false, "mensaje" => "Faltan pedido o código de artículo."));
+            return;
+        }
+
+        $cabecera = ModeloPedidos::mdlMostrarTemporal("temporaljf", $pedido);
+        if (!$cabecera || empty($cabecera["codigo"])) {
+            echo json_encode(array("ok" => false, "mensaje" => "No se encontró la cabecera del pedido."));
+            return;
+        }
+
+        $lista = isset($cabecera["lista"]) ? trim((string) $cabecera["lista"]) : "";
+        if ($lista === "" || !preg_match('/^precio[0-9]+$/', $lista)) {
+            echo json_encode(array("ok" => false, "mensaje" => "Lista de precios inválida en el pedido temporal."));
+            return;
+        }
+
+        $filaArt = ModeloArticulos::mdlArticuloPorCodigo($articuloSku);
+        if (!$filaArt || empty($filaArt["modelo"])) {
+            echo json_encode(array("ok" => false, "mensaje" => "Código no existe en artículos (articulojf)."));
+            return;
+        }
+
+        $modelo = $filaArt["modelo"];
+        $precioLista = controladorArticulos::ctrVerPrecios($modelo, $lista);
+        $precioBruto = isset($precioLista["precio"]) ? floatval($precioLista["precio"]) : 0;
+
+        $advertencia = "";
+        $precio = $precioBruto;
+        if ($precio <= 0) {
+            $precio = 0;
+            $advertencia = "No hay precio en la lista seleccionada: la línea se grabará en S/ 0.00.";
+        }
+
+        $rpt = ModeloPedidos::mdlIncrementarArticuloTemporalPedidoCv($pedido, $articuloSku, $precio);
+
+        if ($rpt === "ok") {
+            echo json_encode(array(
+                "ok" => true,
+                "advertencia" => $advertencia,
+            ));
+        } else {
+            echo json_encode(array("ok" => false, "mensaje" => "No se pudo registrar la línea en el detalle."));
+        }
+    }
+
+    /**
+     * Listado JSON del detalle_temporal (+ descripción desde articulojf) para pantalla escaneo barcode.
+     */
+    public function ajaxListadoDetalleEscaneoCv()
+    {
+
+        $pedido = isset($_POST["pedidoListadoEscaneoCv"]) ? trim((string) $_POST["pedidoListadoEscaneoCv"]) : "";
+        if ($pedido === "") {
+            echo json_encode(array("ok" => false));
+            return;
+        }
+
+        $cab = ControladorPedidos::ctrMostrarTemporal($pedido);
+        if (!$cab || empty($cab["codigo"])) {
+            echo json_encode(array("ok" => false, "mensaje" => "No se encontró la cabecera del pedido."));
+            return;
+        }
+
+        $items = ControladorPedidos::ctrMostrarDetallesTemporalB($pedido);
+        echo json_encode(array(
+            "ok" => true,
+            "items" => $items,
+        ));
+    }
+
+    /**
+     * Actualiza cantidad y precio de una línea (detalle_temporal), pantalla escaneo barcode.
+     */
+    public function ajaxActualizarLineaEscaneoCv()
+    {
+
+        $pedido = isset($_POST["pedidoEscaneoLinea"]) ? trim((string) $_POST["pedidoEscaneoLinea"]) : "";
+        $articulo = isset($_POST["articuloEscaneoLinea"]) ? trim((string) $_POST["articuloEscaneoLinea"]) : "";
+        $cantRaw = isset($_POST["cantidadEscaneoLinea"]) ? $_POST["cantidadEscaneoLinea"] : "";
+        $precRaw = isset($_POST["precioEscaneoLinea"]) ? $_POST["precioEscaneoLinea"] : "";
+
+        if ($pedido === "" || $articulo === "") {
+            echo json_encode(array("ok" => false, "mensaje" => "Faltan datos del pedido o artículo."));
+            return;
+        }
+
+        $cab = ControladorPedidos::ctrMostrarTemporal($pedido);
+        if (!$cab || empty($cab["codigo"])) {
+            echo json_encode(array("ok" => false, "mensaje" => "No existe la cabecera temporal."));
+            return;
+        }
+
+        $cantidad = (int) $cantRaw;
+        $precio = floatval(str_replace(",", ".", (string) $precRaw));
+
+        $rpt = ModeloPedidos::mdlActualizarLineaDetalleTemporalEscaneo($pedido, $articulo, $cantidad, $precio);
+
+        if ($rpt === "ok") {
+            echo json_encode(array("ok" => true));
+            return;
+        }
+
+        if ($rpt === "error_validacion") {
+            echo json_encode(array(
+                "ok" => false,
+                "mensaje" => "Cantidad mínimo 1 y precio no negativo.",
+            ));
+            return;
+        }
+
+        echo json_encode(array("ok" => false, "mensaje" => "No se pudo actualizar la línea."));
+    }
+
+    /**
+     * Elimina una línea (detalle_temporal), pantalla escaneo barcode.
+     */
+    public function ajaxEliminarLineaEscaneoCv()
+    {
+
+        $pedido = isset($_POST["pedidoEscaneoLineaEliminar"]) ? trim((string) $_POST["pedidoEscaneoLineaEliminar"]) : "";
+        $articulo = isset($_POST["articuloEscaneoLineaEliminar"]) ? trim((string) $_POST["articuloEscaneoLineaEliminar"]) : "";
+
+        if ($pedido === "" || $articulo === "") {
+            echo json_encode(array("ok" => false, "mensaje" => "Faltan datos del pedido o artículo."));
+            return;
+        }
+
+        $cab = ControladorPedidos::ctrMostrarTemporal($pedido);
+        if (!$cab || empty($cab["codigo"])) {
+            echo json_encode(array("ok" => false, "mensaje" => "No existe la cabecera temporal."));
+            return;
+        }
+
+        $rpt = ModeloPedidos::mdlBorrarLineaDetalleTemporalEscaneo($pedido, $articulo);
+
+        if ($rpt === "ok") {
+            echo json_encode(array("ok" => true));
+            return;
+        }
+
+        echo json_encode(array("ok" => false, "mensaje" => "No se pudo eliminar la línea."));
+    }
+
     /* 
 	* VER TALONARIO
 	*/
@@ -422,6 +667,66 @@ if (isset($_POST["codPedido"])) {
     $verColoresyCantidades->ajaxActualizarTotales();
 }
 
+
+/* 
+ * Totales formulario escaneo (JSON).
+*/
+if (isset($_POST["ajaxTotalesFormularioEscaneoCv"])) {
+
+    $t = new AjaxPedidos();
+    $t->ajaxTotalesFormularioEscaneoCv();
+
+}
+
+/* 
+ * Cabecera temporal — pantalla escaneo código de barras (sin detalle inicial).
+*/
+if (isset($_POST["crearCabeceraEscaneoCv"])) {
+
+    $crearCabEscaneo = new AjaxPedidos();
+    $crearCabEscaneo->ajaxCrearCabeceraTemporalEscaneoCv();
+
+}
+
+/* 
+ * Lector código de barras — crear pedido CV (+1 cantidad por lectura).
+*/
+if (isset($_POST["barcodePedidoCvAccion"])) {
+
+    $incrementarBarcodePedidoCv = new AjaxPedidos();
+    $incrementarBarcodePedidoCv->ajaxIncrementarBarcodePedidoCv();
+
+}
+
+/* 
+ * Listado detalle temporal — pantalla escaneo barcode (JSON).
+*/
+if (isset($_POST["ajaxListadoDetalleEscaneoCv"])) {
+
+    $listEscaneoCv = new AjaxPedidos();
+    $listEscaneoCv->ajaxListadoDetalleEscaneoCv();
+
+}
+
+/* 
+ * Editar línea detalle temporal — pantalla escaneo barcode.
+*/
+if (isset($_POST["ajaxActualizarLineaEscaneoCv"])) {
+
+    $linEscaneoCv = new AjaxPedidos();
+    $linEscaneoCv->ajaxActualizarLineaEscaneoCv();
+
+}
+
+/* 
+ * Eliminar línea detalle temporal — pantalla escaneo barcode.
+*/
+if (isset($_POST["ajaxEliminarLineaEscaneoCv"])) {
+
+    $delLinEscaneoCv = new AjaxPedidos();
+    $delLinEscaneoCv->ajaxEliminarLineaEscaneoCv();
+
+}
 
 /* 
  * Guardar Modelo Nuevo

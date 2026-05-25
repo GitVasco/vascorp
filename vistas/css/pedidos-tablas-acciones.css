@@ -1,0 +1,44 @@
+/*
+ * Acciones pedidos CV (DataTables / Bootstrap 3).
+ * Tamaño intermedio (entre btn-xs y btn-sm) y bloque agrupado con marco.
+ */
+table.dataTable td .pedidosCvAcciones.btn-group {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    vertical-align: middle;
+    max-width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    overflow: hidden;
+    background-color: #fbfbfb;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+table.dataTable td .pedidosCvAcciones.btn-group > .btn {
+    float: none !important;
+    position: relative;
+    margin: 0 !important;
+    /* Intermedio: no tan chico como btn-xs ni tan grande como el btn-sm forzado anterior */
+    padding: 3px 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    border-radius: 0 !important;
+    min-width: 28px;
+    text-align: center;
+}
+
+table.dataTable td .pedidosCvAcciones.btn-group > .btn > .fa {
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+table.dataTable td .pedidosCvAcciones.btn-group > .btn + .btn {
+    margin-left: -1px !important;
+}
+
+table.dataTable td .pedidosCvAcciones.btn-group > .btn:hover,
+table.dataTable td .pedidosCvAcciones.btn-group > .btn:focus {
+    z-index: 2;
+}

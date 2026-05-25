@@ -2597,6 +2597,27 @@ class ModeloArticulos
 	}
 
 	/* 
+	* Fila articulojf por código articulo (lectores código de barras, etc.)
+	*/
+	static public function mdlArticuloPorCodigo($articulo)
+	{
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT articulo, modelo FROM articulojf WHERE articulo = :articulo LIMIT 1"
+		);
+
+		$stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+
+		$stmt->execute();
+
+		$fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+		return $fila ?: null;
+
+		$stmt = null;
+	}
+
+	/* 
 	* MOSTRAR PRECIOS
 	*/
 	static public function mdlVerPrecios($modelo, $lista)

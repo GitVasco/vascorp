@@ -441,6 +441,22 @@ $(".box").on("click", ".btnEditarPedidoCV", function () {
 });
 
 /*
+ * Escaneo código de barras (misma tabla que imprimir/Facturar; evita depender sólo de .box con DT)
+ */
+$(
+    ".tablaPedidosCV, .tablaPedidosGenerados, .tablaPedidosAprobados, .tablaPedidosAPT, .tablaPedidosConfirmados, .tablaPedidosFacturados"
+).on("click", ".btnEscaneoBarcodePedCv", function (e) {
+    e.preventDefault();
+    var pedido = $(this).attr("codigo");
+    if (!pedido) {
+        return;
+    }
+    window.location =
+        "index.php?ruta=escaneo-barcode-pedidocv&pedido=" +
+        encodeURIComponent(pedido);
+});
+
+/*
  * BOTON  IMPRIMIR TICKET
  */
 $(
@@ -1217,8 +1233,34 @@ $(".tablaPedidosAPT").on("click", ".btnConfirmar", function () {
 });
 
 $(document).ready(function () {
+    var pedidoCvClientesAjaxPending = false;
+    var pedidoCvClientesCatalogoListo = false;
+
     const codClienteElement = document.getElementById("codCliente");
     const codAgenciaElement = document.getElementById("agencia");
+
+    $("select#seleccionarCliente[data-carga-clientes-al-abrir]").on(
+        "show.bs.select",
+        function () {
+            var $sel = $(this);
+
+            if ($sel.prop("disabled")) {
+                return;
+            }
+
+            var nOptsIni = $sel.find("option").length;
+
+            if (
+                pedidoCvClientesAjaxPending ||
+                pedidoCvClientesCatalogoListo ||
+                nOptsIni > 1
+            ) {
+                return;
+            }
+
+            cargarClientes("1");
+        }
+    );
 
     if (codClienteElement) {
         const clientSelected = codClienteElement.value;
@@ -1229,12 +1271,12 @@ $(document).ready(function () {
         }
     }
 
-    $(".formularioPedidoCV").on("click", ".btnCargarCliente", function () {
-        // Cargar clientes al hacer clic en el botón (crear pedido)
-        cargarClientes("1");
-    });
-
     function cargarClientes(clienteCuenta) {
+        var $sel = $("select#seleccionarCliente");
+        if (!$sel.length) {
+            return;
+        }
+
         var datos = new FormData();
         datos.append("clienteCuenta", clienteCuenta);
 
@@ -1246,29 +1288,18 @@ $(document).ready(function () {
             contentType: false,
             processData: false,
             dataType: "json",
-            xhr: function () {
-                var xhr = $.ajaxSettings.xhr();
-                xhr.upload.onprogress = function (event) {
-                    var perc = Math.round((event.loaded / event.total) * 100);
-                    $("#progressBar1").html("Cargando clientes..");
-                    $("#progressBar1").css("width", perc + "%");
-                };
-                return xhr;
-            },
-            beforeSend: function (xhr) {
-                $("#progressBar1").text("0%");
-                $("#progressBar1").css("width", "0%");
+            beforeSend: function () {
+                if ($sel.is("[data-carga-clientes-al-abrir]")) {
+                    pedidoCvClientesAjaxPending = true;
+                }
             },
             success: function (respuesta2) {
-                $("#progressBar1").addClass("progress-bar");
-                $("#progressBar1").text("100% - Carga realizada");
-
-                $("#seleccionarCliente").find("option").remove();
-                $("#seleccionarCliente").append(
+                $sel.find("option").remove();
+                $sel.append(
                     "<option value='' >Seleccionar cliente</option>"
                 );
                 for (let i = 0; i < respuesta2.length; i++) {
-                    $("#seleccionarCliente").append(
+                    $sel.append(
                         "<option value='" +
                             respuesta2[i]["codigo"] +
                             "'>" +
@@ -1281,9 +1312,21 @@ $(document).ready(function () {
 
                 // Seleccionar el cliente que estaba previamente seleccionado si se está editando
                 if (clienteCuenta !== "1") {
-                    $("#seleccionarCliente").val(clienteCuenta);
+                    $sel.val(clienteCuenta);
                 }
-                $("#seleccionarCliente").selectpicker("refresh");
+                $sel.selectpicker("refresh");
+
+                if ($sel.is("[data-carga-clientes-al-abrir]")) {
+                    pedidoCvClientesCatalogoListo = true;
+                }
+            },
+            complete: function () {
+                if ($sel.is("[data-carga-clientes-al-abrir]")) {
+                    pedidoCvClientesAjaxPending = false;
+                }
+            },
+            error: function () {
+                Command: toastr["error"]("No se pudieron cargar los clientes.");
             },
         });
     }
@@ -2382,6 +2425,19 @@ $(".modificarArtPedC").click(function () {
             },
         });
     }
+});
+
+/* Igual que clic en «Agregar»: abre modal (data-toggle del botón) + carga detalle modelo */
+$("#modelo").on("keydown.pedidoCvModeloModal", function (event) {
+    if (event.key !== "Enter" && event.which !== 13) {
+        return;
+    }
+    var $btn = $(".modificarArtPedC").first();
+    if (!$btn.length) {
+        return;
+    }
+    event.preventDefault();
+    $btn.trigger("click");
 });
 
 //*nuevo modelo de guardar modelos por ajax

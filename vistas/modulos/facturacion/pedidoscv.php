@@ -37,7 +37,23 @@
                         </button>';
 
                         ?>
+
+
                     </div>
+
+
+
+                    <div class="btn-group mr-2">
+
+                        <a href="escaneo-barcode-pedidocv" class="btn btn-warning" title="Crear pedido con código de barras">
+
+                            <i class="fa fa-barcode"></i> Crear pedido
+
+                        </a>
+
+                    </div>
+
+
 
                     <?php
                     if (
@@ -97,7 +113,7 @@
                             <th>Estado</th>
                             <th>Usuario</th>
                             <th>Fecha</th>
-                            <th width="280px">Acciones</th>
+                            <th width="320px">Acciones</th>
                         </tr>
                     </thead>
 

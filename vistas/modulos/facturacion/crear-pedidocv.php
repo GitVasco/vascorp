@@ -96,22 +96,17 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 <!--=====================================
                                 ENTRADA DEL CLIENTE
                                 ======================================-->
-                                <div class="form-group">
-                                    <div class='progress progress-striped'>
-                                        <div id='progressBar1' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width: 0%'>0%</div>
-                                    </div>
-                                </div>
+                                <?php if ($pedidoCodigo == "") : ?>
+                                <p class="help-block small" style="margin-bottom:10px;margin-top:-4px;"><i class="fa fa-info-circle"></i> Abra el desplegable de <strong>Cliente</strong> para cargar el listado (la <strong>primera vez</strong> puede demorar unos segundos).</p>
+                                <?php endif; ?>
 
                                 <div class="form-group">
                                     <div class="input-group">
                                         <span class="input-group-addon"><i class="fa fa-users"></i></span>
                                         <input type="hidden" class="form-control input-sm" id="codCliente" name="codCliente" value="<?= $pedido["cliente"] ?>">
-                                        <select class="form-control selectpicker" id="seleccionarCliente" name="seleccionarCliente" data-live-search="true" data-size="10" required>
+                                        <select class="form-control selectpicker" id="seleccionarCliente" name="seleccionarCliente" data-carga-clientes-al-abrir="1" data-live-search="true" data-size="10" required>
                                             <option value="">Seleccionar Cliente</option>
                                         </select>
-                                        <?php if ($pedidoCodigo == "") : ?>
-                                            <button type='button' class='btn btn-primary btnCargarCliente'> Cargar</button>
-                                        <?php endif; ?>
                                     </div>
                                 </div>
 
@@ -786,6 +781,8 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                         <div class="form-group col-lg-2">
                             <button class='btn btn-success btn-md refreshDetalle' pedido='<?php echo $_GET["pedido"]; ?>'><i class="fa fa-refresh"></i></button>
                         </div>
+
+                        <p class="help-block small" style="clear:both;margin-top:6px;margin-bottom:0;"><i class="fa fa-info-circle"></i> Tras escribir el modelo, pulse <strong>Enter</strong> para abrir el detalle (mismo efecto que <strong>Agregar</strong>).</p>
 
                     </div>
 

@@ -281,6 +281,125 @@ class ModeloPedidos
 	}
 
 	/*
+	 * Incrementa cantidad (+1) en detalle temporal por SKU (articulo articulojf / código de barras).
+	 */
+	static public function mdlIncrementarArticuloTemporalPedidoCv($codigoPedido, $articuloSku, $precio)
+	{
+
+		$pdo = Conexion::conectar();
+
+		$stmt = $pdo->prepare(
+			"SELECT cantidad FROM detalle_temporal WHERE codigo = :codigo AND articulo = :articulo LIMIT 1"
+		);
+
+		$stmt->bindParam(":codigo", $codigoPedido, PDO::PARAM_STR);
+		$stmt->bindParam(":articulo", $articuloSku, PDO::PARAM_STR);
+		$stmt->execute();
+		$fila = $stmt->fetch(PDO::FETCH_ASSOC);
+		$stmt->closeCursor();
+		$stmt = null;
+
+		if ($fila) {
+
+			$nueva = intval($fila["cantidad"], 10) + 1;
+
+			$upd = $pdo->prepare(
+				"UPDATE detalle_temporal SET cantidad = :cant, total = (:cant * :precio), precio = :preciob WHERE codigo = :codigo2 AND articulo = :articulo2"
+			);
+
+			$upd->bindParam(":cant", $nueva, PDO::PARAM_INT);
+			$upd->bindParam(":precio", $precio, PDO::PARAM_STR);
+			$upd->bindParam(":preciob", $precio, PDO::PARAM_STR);
+			$upd->bindParam(":codigo2", $codigoPedido, PDO::PARAM_STR);
+			$upd->bindParam(":articulo2", $articuloSku, PDO::PARAM_STR);
+
+			if ($upd->execute()) {
+
+				return "ok";
+			}
+
+			return "error";
+		}
+
+		$datos = array(
+			"codigo"   => $codigoPedido,
+			"articulo" => $articuloSku,
+			"cantidad" => 1,
+			"precio"   => $precio
+		);
+
+		return self::mdlGuardarTemporalDetalle("detalle_temporal", $datos);
+	}
+
+	/*
+	 * Edición manual — línea detalle temporal (cantidad / precio) — pantalla escaneo barcode.
+	 */
+	static public function mdlActualizarLineaDetalleTemporalEscaneo($codigoPedido, $articuloSku, $cantidad, $precio)
+	{
+
+		$cantidad = (int) $cantidad;
+		if ($cantidad < 1) {
+			return "error_validacion";
+		}
+
+		$precio = round(floatval($precio), 4);
+		if ($precio < 0) {
+			return "error_validacion";
+		}
+
+		$total = round($cantidad * $precio, 2);
+		$precStr = sprintf("%.4f", $precio);
+
+		$pdo = Conexion::conectar();
+		$upd = $pdo->prepare(
+			"UPDATE detalle_temporal SET cantidad = :cant, precio = :prec, total = :tot WHERE codigo = :cod AND articulo = :art"
+		);
+		$upd->bindParam(":cant", $cantidad, PDO::PARAM_INT);
+		$upd->bindParam(":prec", $precStr, PDO::PARAM_STR);
+		$upd->bindParam(":tot", $total, PDO::PARAM_STR);
+		$upd->bindParam(":cod", $codigoPedido, PDO::PARAM_STR);
+		$upd->bindParam(":art", $articuloSku, PDO::PARAM_STR);
+
+		if (!$upd->execute()) {
+			return "error";
+		}
+
+		/* MySQL puede devolver rowCount 0 si cant./precio iguales; verificamos que la línea exista */
+		$chk = $pdo->prepare(
+			"SELECT 1 FROM detalle_temporal WHERE codigo = :cod2 AND articulo = :art2 LIMIT 1"
+		);
+		$chk->bindParam(":cod2", $codigoPedido, PDO::PARAM_STR);
+		$chk->bindParam(":art2", $articuloSku, PDO::PARAM_STR);
+		$chk->execute();
+
+		return $chk->fetchColumn() !== false ? "ok" : "error";
+	}
+
+	/*
+	 * Elimina línea por pedido temporal + SKU — pantalla escaneo barcode (prepared stmt).
+	 */
+	static public function mdlBorrarLineaDetalleTemporalEscaneo($codigoPedido, $articuloSku)
+	{
+
+		$pdo = Conexion::conectar();
+		$del = $pdo->prepare(
+			"DELETE FROM detalle_temporal WHERE codigo = :cod AND articulo = :art LIMIT 1"
+		);
+		$del->bindParam(":cod", $codigoPedido, PDO::PARAM_STR);
+		$del->bindParam(":art", $articuloSku, PDO::PARAM_STR);
+
+		if (!$del->execute()) {
+			return "error";
+		}
+
+		if ($del->rowCount() > 0) {
+			return "ok";
+		}
+
+		return "error";
+	}
+
+	/*
 	* GUARDAR DETALLE DE TEMPORAL
 	*/
 	static public function mdlGuardarTemporalDetalleB($detalle)

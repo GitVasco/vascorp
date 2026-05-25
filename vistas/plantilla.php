@@ -13,7 +13,19 @@ if (!isset($_SESSION)) {
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="google" content="notranslate">
-    <title>Vasco System</title>
+    <?php
+
+    $__tituloVentana = "Vasco System";
+    if (isset($_GET["ruta"])) {
+        if ($_GET["ruta"] === "escaneo-barcode-pedidocv") {
+            $__tituloVentana = "Crear pedido · Código de barras | Vasco System";
+        } elseif ($_GET["ruta"] === "crear-pedidocv") {
+            $__tituloVentana = "Crear pedido | Vasco System";
+        }
+    }
+    ?>
+
+    <title><?php echo htmlspecialchars($__tituloVentana, ENT_QUOTES, "UTF-8"); ?></title>
 
     <!-- Tell the browser to be responsive to screen width -->
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
@@ -46,6 +58,10 @@ if (!isset($_SESSION)) {
     <link rel="stylesheet" href="vistas/bower_components/datatables.net-bs/css/dataTables.bootstrap.min.css">
     <link rel="stylesheet" href="vistas/bower_components/datatables.net-bs/css/responsive.bootstrap.min.css">
     <link rel="stylesheet" href="vistas/bower_components/datatables.net-bs/css/fixedHeader.dataTables.min.css">
+
+    <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["pedidoscv", "pedidos-generados", "pedidos-aprobados", "pedidos-apt", "pedidos-confirmados", "pedidos-facturados"], true)) : ?>
+    <link rel="stylesheet" href="vistas/css/pedidos-tablas-acciones.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
     <link rel="stylesheet" href="vistas/plugins/iCheck/all.css">
@@ -447,6 +463,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "pedidos-facturados" ||
                 $_GET["ruta"] == "clientes" ||
                 $_GET["ruta"] == "crear-pedidocv" ||
+                $_GET["ruta"] == "escaneo-barcode-pedidocv" ||
                 $_GET["ruta"] == "crear-facturascv" ||
                 $_GET["ruta"] == "guias-remision" ||
                 $_GET["ruta"] == "guias-remision" ||
@@ -593,6 +610,10 @@ CUERPO DOCUMENTO
     <script src="vistas/js/contactos.js"></script>
     <script src="vistas/js/mensajes.js"></script>
     <script src="vistas/js/pedidoscv.js"></script>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "escaneo-barcode-pedidocv") : ?>
+        <script src="vistas/js/escaneo-barcode-pedidocv-app.js?v=<?php echo rand(); ?>"></script>
+        <script src="vistas/js/crear-pedidocv-barcode.js?v=<?php echo rand(); ?>"></script>
+    <?php endif; ?>
     <script src="vistas/js/almacencorte.js"></script>
     <script src="vistas/js/operaciones.js"></script>
     <script src="vistas/js/trabajador.js"></script>
