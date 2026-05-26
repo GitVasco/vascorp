@@ -114,6 +114,8 @@ require_once "controladores/unidadmedida.controlador.php";
 
 require_once "controladores/vendedor.controlador.php";
 
+require_once "controladores/dashboard-cobranzas.controlador.php";
+
 require_once "controladores/centro-costos.controlador.php";
 
 require_once "controladores/compras.controlador.php";
@@ -202,6 +204,8 @@ require_once "modelos/servicio.modelo.php";
 require_once "modelos/bancos.modelo.php";
 
 require_once "modelos/cuentas.modelo.php";
+
+require_once "modelos/dashboard-cobranzas.modelo.php";
 
 require_once "modelos/vendedor.modelo.php";
 

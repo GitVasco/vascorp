@@ -269,6 +269,7 @@ CUERPO DOCUMENTO
             if (
                 $_GET["ruta"] == "inicio" ||
                 $_GET["ruta"] == "inicio-gerencia" ||
+                $_GET["ruta"] == "dashboard-cobranzas" ||
                 $_GET["ruta"] == "refrescar"
             ) {
 
@@ -626,6 +627,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-segundas-multi") { ?>
     <script src="vistas/js/crear-segundas-multi.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cobranzas") { ?>
+    <script src="vistas/js/dashboard-cobranzas.js?v=5"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js"></script>
     <script src="vistas/js/paras.js"></script>
