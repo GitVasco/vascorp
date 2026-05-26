@@ -17,7 +17,7 @@ $mes = intval($_GET["mes"]);
 $vendedor = isset($_GET["vendedor"]) ? trim($_GET["vendedor"]) : "";
 $vendedorTop = isset($_GET["vendedor_top"]) ? trim($_GET["vendedor_top"]) : "";
 
-$sparklines = ControladorDashboardCobranzas::ctrSparklines(
+$datos = ControladorDashboardCobranzas::ctrDatosGraficos(
     $anno,
     $mes,
     $vendedor,
@@ -26,5 +26,6 @@ $sparklines = ControladorDashboardCobranzas::ctrSparklines(
 
 echo json_encode(array(
     "ok" => true,
-    "sparklines" => $sparklines,
+    "sparklines" => $datos["sparklines"],
+    "cobranza_semana" => $datos["cobranza_semana"],
 ));

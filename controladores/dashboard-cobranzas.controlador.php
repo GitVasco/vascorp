@@ -113,15 +113,27 @@ class ControladorDashboardCobranzas
             $promedioAcum[] = $diasConDato > 0 ? round($acumulado / $diasConDato, 2) : 0;
         }
 
-        return [
+        $totalMes = array_sum($montos);
+        $diasConMovimiento = 0;
+        foreach ($montos as $montoDia) {
+            if ($montoDia > 0) {
+                $diasConMovimiento++;
+            }
+        }
+        $promedioLinea = $diasConMovimiento > 0
+            ? round($totalMes / $diasConMovimiento, 2)
+            : 0;
+
+        return array(
             "labels" => $labels,
             "cobranza_total" => $montos,
             "promedio_diario" => $promedioAcum,
+            "promedio_diario_linea" => $promedioLinea,
             "mejor_dia" => $montos,
             "operaciones" => $operaciones,
             "mejor_vendedor" => $vendedorTop,
             "dev_descuentos" => $devoluciones,
-        ];
+        );
     }
 
     static public function ctrKpisSuperiores($anno, $mes, $vendedor = "")
@@ -180,6 +192,22 @@ class ControladorDashboardCobranzas
             (int) $mes,
             trim((string) $vendedor),
             trim((string) $codigoMejorVendedor)
+        );
+    }
+
+    static public function ctrDatosGraficos($anno, $mes, $vendedor = "", $codigoMejorVendedor = "")
+    {
+        $anno = (int) $anno;
+        $mes = (int) $mes;
+        $vendedor = trim((string) $vendedor);
+
+        return array(
+            "sparklines" => self::ctrSparklines($anno, $mes, $vendedor, $codigoMejorVendedor),
+            "cobranza_semana" => ModeloDashboardCobranzas::mdlCobranzaPromedioSemana(
+                $anno,
+                $mes,
+                $vendedor
+            ),
         );
     }
 

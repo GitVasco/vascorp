@@ -46,6 +46,111 @@ class ModeloDashboardCobranzas
             AND (:vendedor = '' OR {$alias}.vendedor = :vendedor)";
     }
 
+    /**
+     * Semana del mes por día calendario (no CEIL(día/7), que desalinea la semana 5).
+     * 1: 01-07, 2: 08-14, 3: 15-21, 4: 22-28, 5: 29-fin de mes
+     */
+    private static function sqlSemanaMes($alias = "cc")
+    {
+        return "CASE
+            WHEN DAY({$alias}.fecha) <= 7 THEN 1
+            WHEN DAY({$alias}.fecha) <= 14 THEN 2
+            WHEN DAY({$alias}.fecha) <= 21 THEN 3
+            WHEN DAY({$alias}.fecha) <= 28 THEN 4
+            ELSE 5
+        END";
+    }
+
+    private static function diasDelMes($anno, $mes)
+    {
+        $mes = (int) $mes;
+        $anno = (int) $anno;
+
+        if (function_exists("cal_days_in_month")) {
+            return (int) cal_days_in_month(CAL_GREGORIAN, $mes, $anno);
+        }
+
+        $diasPorMes = array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+        if ($mes === 2) {
+            $bisiesto = ($anno % 400 === 0) || ($anno % 4 === 0 && $anno % 100 !== 0);
+            return $bisiesto ? 29 : 28;
+        }
+
+        return isset($diasPorMes[$mes - 1]) ? $diasPorMes[$mes - 1] : 31;
+    }
+
+    private static function diasCalendarioSemana($semana, $ultimoDia)
+    {
+        $semana = (int) $semana;
+        $ultimoDia = (int) $ultimoDia;
+        $inicio = (($semana - 1) * 7) + 1;
+        $fin = min($semana * 7, $ultimoDia);
+
+        if ($inicio > $ultimoDia) {
+            return 0;
+        }
+
+        return $fin - $inicio + 1;
+    }
+
+    private static function etiquetaRangoSemana($semana, $ultimoDia)
+    {
+        $inicio = (($semana - 1) * 7) + 1;
+        $fin = min($semana * 7, $ultimoDia);
+
+        if ($inicio > $ultimoDia) {
+            return "";
+        }
+
+        return sprintf("%02d - %02d", $inicio, $fin);
+    }
+
+    static public function mdlCobranzaPromedioSemana($anno, $mes, $vendedor = "")
+    {
+        $sqlSemana = self::sqlSemanaMes("cc");
+
+        $sql = "SELECT
+            {$sqlSemana} AS semana_mes,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        WHERE " . self::wherePeriodo("cc") . "
+        GROUP BY {$sqlSemana}
+        ORDER BY semana_mes ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
+        $stmt->execute();
+
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $porSemana = array();
+
+        foreach ($filas as $fila) {
+            $porSemana[(int) $fila["semana_mes"]] = (float) $fila["total"];
+        }
+
+        $ultimoDia = self::diasDelMes($anno, $mes);
+        $labels = array();
+        $promedios = array();
+        $totales = array();
+
+        for ($semana = 1; $semana <= 5; $semana++) {
+            $diasCal = self::diasCalendarioSemana($semana, $ultimoDia);
+            $total = isset($porSemana[$semana]) ? $porSemana[$semana] : 0;
+            $promedio = $diasCal > 0 ? round($total / $diasCal, 2) : 0;
+            $rango = self::etiquetaRangoSemana($semana, $ultimoDia);
+
+            $labels[] = "Sem " . $semana . " (" . $rango . ")";
+            $promedios[] = $promedio;
+            $totales[] = $total;
+        }
+
+        return array(
+            "labels" => $labels,
+            "promedios" => $promedios,
+            "totales" => $totales,
+        );
+    }
+
     static public function mdlComparativoDosPeriodos($anno, $mes, $annoAnt, $mesAnt, $vendedor = "")
     {
         $sqlIngreso = self::sqlIngreso("cc");

@@ -62,7 +62,7 @@ function dcCrearSparkline(canvas, valores, labels, esOperaciones, colorAccent) {
         pointDot: false,
         pointDotRadius: 0,
         datasetStrokeWidth: 2,
-        bezierCurve: true,
+        bezierCurve: false,
         datasetFill: true,
         responsive: true,
         maintainAspectRatio: false,
@@ -95,7 +95,7 @@ function dcCrearSparkline(canvas, valores, labels, esOperaciones, colorAccent) {
                         borderWidth: 2,
                         pointRadius: 0,
                         fill: true,
-                        lineTension: 0.35,
+                        lineTension: 0,
                     },
                 ],
             },
@@ -145,6 +145,198 @@ function inicializarSparklinesCobranzas(data) {
     });
 }
 
+var dcChartCobranzaDia = null;
+var dcChartCobranzaSemana = null;
+
+function dcFormatearSoles(valor) {
+    var n = Math.round(parseFloat(valor) || 0);
+    return "S/ " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function inicializarGraficoCobranzaDia(data) {
+    var $loading = $("#dcGraficoCobranzaDiaLoading");
+    var $wrap = $("#dcGraficoCobranzaDiaWrap");
+    var $el = $("#dc-grafico-cobranza-dia");
+
+    if (!$el.length || !data || !data.cobranza_total) {
+        $loading.text("Sin datos para el período");
+        return;
+    }
+
+    var labels = data.labels || [];
+    var montos = data.cobranza_total || [];
+    var morrisData = [];
+    var i;
+
+    for (i = 0; i < labels.length; i++) {
+        morrisData.push({
+            dia: labels[i],
+            cobranza: parseFloat(montos[i]) || 0,
+        });
+    }
+
+    var promedio = parseFloat(data.promedio_diario_linea) || 0;
+    var goals = promedio > 0 ? [promedio] : [];
+
+    $("#dcGraficoDiaPromedio").text(
+        "Promedio diario: " + (promedio > 0 ? dcFormatearSoles(promedio) : "—")
+    );
+
+    $el.empty();
+    if (dcChartCobranzaDia !== null) {
+        dcChartCobranzaDia = null;
+    }
+
+    $loading.hide();
+    $wrap.show();
+
+    dcChartCobranzaDia = Morris.Bar({
+        element: "dc-grafico-cobranza-dia",
+        resize: true,
+        data: morrisData,
+        xkey: "dia",
+        ykeys: ["cobranza"],
+        labels: ["Cobranza"],
+        barColors: ["#3d9970"],
+        goals: goals,
+        goalLineColors: ["#95a5a6"],
+        goalStrokeWidth: 2,
+        hideHover: "auto",
+        gridTextColor: "#666",
+        ymax: "auto",
+        preUnits: "S/ ",
+        xLabelAngle: 45,
+    });
+}
+
+function dcPintarMontosEnLinea(chartInstance) {
+    if (!chartInstance || !chartInstance.chart || !chartInstance.datasets) {
+        return;
+    }
+
+    var ctx = chartInstance.chart.ctx;
+    ctx.save();
+    ctx.font = '600 11px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = "#334155";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+
+    chartInstance.datasets.forEach(function (dataset) {
+        dataset.points.forEach(function (point) {
+            if (!point.hasValue()) {
+                return;
+            }
+            var texto = dcFormatearSoles(point.value);
+            ctx.fillText(texto, point.x, point.y - 10);
+        });
+    });
+
+    ctx.restore();
+}
+
+function inicializarGraficoCobranzaSemana(semanaData) {
+    var $loading = $("#dcGraficoCobranzaSemanaLoading");
+    var $wrap = $("#dcGraficoCobranzaSemanaWrap");
+    var canvas = document.getElementById("dcGraficoCobranzaSemanaCanvas");
+
+    if (!canvas || !semanaData || !semanaData.promedios) {
+        $loading.text("Sin datos para el período");
+        return;
+    }
+
+    var labelsFull = semanaData.labels || [];
+    var promedios = semanaData.promedios || [];
+    var labelsCortos = [];
+    var i;
+
+    for (i = 0; i < labelsFull.length; i++) {
+        labelsCortos.push("S" + (i + 1));
+    }
+
+    if (typeof Chart === "undefined") {
+        $loading.text("Gráfico no disponible");
+        return;
+    }
+
+    dcChartCobranzaSemana = null;
+
+    $loading.hide();
+    $wrap.show();
+
+    var ctx = canvas.getContext("2d");
+    var chartData = {
+        labels: labelsCortos,
+        datasets: [
+            {
+                fillColor: "rgba(60, 141, 188, 0.12)",
+                strokeColor: "#3c8dbc",
+                pointColor: "#3c8dbc",
+                pointStrokeColor: "#ffffff",
+                pointHighlightFill: "#3c8dbc",
+                pointHighlightStroke: "#ffffff",
+                data: promedios,
+            },
+        ],
+    };
+
+    var options = {
+        bezierCurve: false,
+        datasetFill: true,
+        pointDot: true,
+        pointDotRadius: 4,
+        pointDotStrokeWidth: 2,
+        datasetStrokeWidth: 2,
+        scaleBeginAtZero: true,
+        scaleShowGridLines: true,
+        scaleGridLineColor: "rgba(0,0,0,0.06)",
+        scaleFontSize: 10,
+        scaleFontColor: "#64748b",
+        responsive: true,
+        maintainAspectRatio: false,
+        showTooltips: true,
+        tooltipTemplate:
+            "<%if (label){%><%=label%>: <%}%><%= value %> (prom. diario)",
+        onAnimationComplete: function () {
+            dcPintarMontosEnLinea(this);
+        },
+    };
+
+    var chartV1 = new Chart(ctx);
+    if (typeof chartV1.Line === "function") {
+        dcChartCobranzaSemana = chartV1.Line(chartData, options);
+        return;
+    }
+
+    if (typeof Chart === "function") {
+        dcChartCobranzaSemana = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labelsCortos,
+                datasets: [
+                    {
+                        data: promedios,
+                        borderColor: "#3c8dbc",
+                        backgroundColor: "rgba(60, 141, 188, 0.12)",
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        fill: true,
+                        lineTension: 0,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                legend: { display: false },
+                tooltips: { enabled: true },
+                scales: {
+                    yAxes: [{ ticks: { beginAtZero: true } }],
+                },
+            },
+        });
+    }
+}
+
 function cargarSparklinesCobranzas() {
     var $el = $("#dashboardCobranzasData");
     if (!$el.length) {
@@ -183,13 +375,23 @@ function cargarSparklinesCobranzas() {
             if (resp && resp.ok && resp.sparklines) {
                 setTimeout(function () {
                     inicializarSparklinesCobranzas(resp.sparklines);
+                    inicializarGraficoCobranzaDia(resp.sparklines);
+                    if (resp.cobranza_semana) {
+                        inicializarGraficoCobranzaSemana(resp.cobranza_semana);
+                    } else {
+                        $("#dcGraficoCobranzaSemanaLoading").text("Sin datos");
+                    }
                 }, 50);
             } else {
                 $(".dc-kpi-card__chart-loading").text("—");
+                $("#dcGraficoCobranzaDiaLoading").text("Sin datos");
+                $("#dcGraficoCobranzaSemanaLoading").text("Sin datos");
             }
         })
         .fail(function () {
             $(".dc-kpi-card__chart-loading").text("—");
+            $("#dcGraficoCobranzaDiaLoading").text("Error al cargar");
+            $("#dcGraficoCobranzaSemanaLoading").text("Error al cargar");
         });
 }
 

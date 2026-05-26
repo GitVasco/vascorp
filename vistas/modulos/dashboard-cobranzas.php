@@ -120,6 +120,8 @@
 
             <?php
             include "dashboard-cobranzas/cajas-superiores.php";
+
+            include "dashboard-cobranzas/graficos-fila.php";
             ?>
 
         </div>
