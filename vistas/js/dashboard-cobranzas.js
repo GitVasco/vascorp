@@ -882,12 +882,10 @@ function inicializarHeatmapCobranza(heatmapData) {
         fila = filas[i];
         html.push("<tr>");
         html.push(
-            '<th scope="row" title="Semana ' +
-                fila.semana_mes +
-                " (" +
-                fila.rango +
-                ')">' +
+            '<th scope="row" title="' +
                 fila.etiqueta +
+                '">' +
+                fila.rango +
                 "</th>"
         );
 
@@ -1065,11 +1063,11 @@ function inicializarDiasSinCobranza(diasData) {
 
     $detalle.text(
         diasCon +
-            " de " +
+            "/" +
             diasMes +
-            " días con cobranza en el mes (" +
+            " días con cob. · " +
             pctTexto +
-            "% del calendario sin movimiento en efectivo)."
+            "% sin efectivo"
     );
 
     $loading.hide();
@@ -1101,8 +1099,8 @@ function inicializarGraficoTipoIngreso(tipoData) {
     var $periodo = $("#dcTipoIngresoPeriodo");
     var $total = $("#dcTipoIngresoTotal");
     var canvas = document.getElementById("dcGraficoTipoIngresoCanvas");
-    var anchoChart = 220;
-    var altoChart = 200;
+    var anchoChart = 160;
+    var altoChart = 150;
 
     if (!canvas || !tipoData || !tipoData.segmentos) {
         $loading.text("Sin datos para el período");
@@ -1306,16 +1304,14 @@ function inicializarTopClientes(clientesData) {
 
     if (totalPeriodo > 0) {
         $foot.text(
-            "Top 10 acumula " +
-                dcFormatearMontoCompleto(sumaTop) +
+            "Top 10: " +
+                dcFormatearMontoCompacto(sumaTop) +
                 " (" +
                 String(Math.round((sumaTop / totalPeriodo) * 1000) / 10).replace(
                     ".",
                     ","
                 ) +
-                "% del total del período: " +
-                dcFormatearMontoCompleto(totalPeriodo) +
-                ")."
+                "% del total)"
         );
     } else {
         $foot.text("");

@@ -1,4 +1,4 @@
-<div class="col-lg-4 col-md-6 col-sm-12 col-xs-12">
+<div class="col-lg-2 col-md-6 col-sm-12 col-xs-12">
     <div class="box box-success">
         <div class="box-header with-border">
             <h3 class="box-title">Distribución por tipo de ingreso</h3>
@@ -12,7 +12,7 @@
             </div>
             <div id="dcTipoIngresoWrap" style="display: none;">
                 <div class="dc-tipo-ingreso-chart-wrap" id="dcTipoIngresoChartWrap">
-                    <canvas id="dcGraficoTipoIngresoCanvas" width="220" height="200"></canvas>
+                    <canvas id="dcGraficoTipoIngresoCanvas" width="160" height="150"></canvas>
                 </div>
                 <ul class="dc-tipo-ingreso-leyenda" id="dcTipoIngresoLeyenda"></ul>
                 <p class="dc-tipo-ingreso-total text-muted" id="dcTipoIngresoTotal"></p>
@@ -24,15 +24,25 @@
 <style>
     .dc-tipo-ingreso-chart-wrap {
         position: relative;
-        width: 220px;
-        height: 200px;
+        width: 100%;
+        max-width: 160px;
+        height: 150px;
         margin: 0 auto 4px;
     }
 
     .dc-tipo-ingreso-chart-wrap canvas {
         display: block !important;
-        width: 220px !important;
-        height: 200px !important;
+        width: 100% !important;
+        max-width: 160px !important;
+        height: 150px !important;
+    }
+
+    .dc-tipo-ingreso-leyenda {
+        font-size: 10px;
+    }
+
+    .dc-tipo-ingreso-leyenda__monto {
+        min-width: 52px;
     }
 
     .dc-tipo-ingreso-leyenda {

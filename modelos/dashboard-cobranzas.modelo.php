@@ -818,8 +818,8 @@ class ModeloDashboardCobranzas
 
         $catalogo = array(
             array("clave" => "EFECTIVO", "label" => "Efectivo", "color" => "#3d9970"),
-            array("clave" => "DEVOLUCION", "label" => "Devolución", "color" => "#dd4b39"),
-            array("clave" => "DESCUENTOS", "label" => "Descuentos", "color" => "#f39c12"),
+            array("clave" => "DEVOLUCION", "label" => "Devolución", "color" => "#f39c12"),
+            array("clave" => "DESCUENTOS", "label" => "Descuentos", "color" => "#dd4b39"),
             array("clave" => "OTROS", "label" => "Otros", "color" => "#95a5a6"),
         );
 

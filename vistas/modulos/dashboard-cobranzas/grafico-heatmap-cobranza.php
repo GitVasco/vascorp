@@ -1,4 +1,4 @@
-<div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
+<div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
     <div class="box box-success">
         <div class="box-header with-border">
             <h3 class="box-title">Heatmap de cobranzas</h3>
@@ -52,27 +52,28 @@
         border-collapse: separate;
         border-spacing: 4px;
         table-layout: fixed;
-        font-size: 12px;
+        font-size: 10px;
     }
 
     .dc-heatmap-table thead th {
         text-align: center;
         font-weight: 600;
         color: #64748b;
-        padding: 6px 4px;
+        padding: 4px 2px;
         border: none;
         background: transparent;
     }
 
     .dc-heatmap-table__corner {
-        width: 120px;
+        width: 64px;
     }
 
     .dc-heatmap-table tbody th {
         text-align: left;
         font-weight: 600;
         color: #475569;
-        padding: 8px 10px 8px 0;
+        font-size: 9px;
+        padding: 6px 4px 6px 0;
         white-space: nowrap;
         border: none;
         background: transparent;
@@ -82,7 +83,8 @@
     .dc-heatmap-table td {
         text-align: center;
         font-weight: 700;
-        padding: 10px 6px;
+        padding: 7px 3px;
+        font-size: 9px;
         border-radius: 6px;
         border: 1px solid rgba(226, 232, 240, 0.9);
         vertical-align: middle;

@@ -1,4 +1,4 @@
-<div class="col-lg-4 col-md-6 col-sm-12 col-xs-12">
+<div class="col-lg-2 col-md-6 col-sm-12 col-xs-12">
     <div class="box box-warning">
         <div class="box-header with-border">
             <h3 class="box-title">Días sin cobranza</h3>
@@ -19,6 +19,8 @@
                         class="dc-gauge__svg"
                         id="dcGaugeSvg"
                         viewBox="0 0 220 130"
+                        width="180"
+                        height="120"
                         role="img"
                         aria-label="Indicador de días sin cobranza">
                         <g id="dcGaugeZonas"></g>
@@ -53,7 +55,7 @@
 
     .dc-gauge {
         position: relative;
-        max-width: 280px;
+        max-width: 100%;
         margin: 0 auto;
     }
 
@@ -79,7 +81,7 @@
     }
 
     .dc-gauge__valor {
-        font-size: 42px;
+        font-size: 32px;
         font-weight: 800;
         line-height: 1;
         color: #1e293b;
@@ -105,9 +107,13 @@
     }
 
     .dc-dias-sin-detalle {
-        margin: 12px 0 0;
-        font-size: 12px;
+        margin: 8px 0 0;
+        font-size: 9px;
         text-align: center;
-        line-height: 1.45;
+        line-height: 1.35;
+    }
+
+    .dc-dias-sin-body .box-title {
+        font-size: 14px;
     }
 </style>
