@@ -110,6 +110,8 @@ Derivado de `cod_pago`:
 
 Usado en: filtro «Tipo ingreso», dona tipo de ingreso, KPI devoluciones y descuentos.
 
+**Dashboard (gráficos y KPIs de cobranza / promedio):** solo movimientos con `ingreso = 'EFECTIVO'`. El KPI «Dev. y descuentos» sigue usando `DEVOLUCION` y `DESCUENTOS`.
+
 ### Tiempo
 
 | Campo | Cálculo | Uso principal |

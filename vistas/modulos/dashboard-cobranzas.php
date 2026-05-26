@@ -136,6 +136,16 @@
             include __DIR__ . "/dashboard-cobranzas/grafico-comparativo-mes.php";
             include __DIR__ . "/dashboard-cobranzas/grafico-top-vendedores.php";
             echo '</div>';
+
+            echo '<div class="row dc-graficos-cobranzas dc-graficos-fila-heatmap">';
+            include __DIR__ . "/dashboard-cobranzas/grafico-heatmap-cobranza.php";
+            include __DIR__ . "/dashboard-cobranzas/tabla-top-clientes.php";
+            echo '</div>';
+
+            echo '<div class="row dc-graficos-cobranzas dc-graficos-fila-pie">';
+            include __DIR__ . "/dashboard-cobranzas/indicador-dias-sin-cobranza.php";
+            include __DIR__ . "/dashboard-cobranzas/grafico-tipo-ingreso.php";
+            echo '</div>';
             ?>
 
             </div>

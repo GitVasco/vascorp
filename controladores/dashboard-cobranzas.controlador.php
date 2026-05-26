@@ -328,6 +328,51 @@ class ControladorDashboardCobranzas
         );
     }
 
+    static public function ctrTopClientes($anno, $mes, $vendedor = "")
+    {
+        $anno = (int) $anno;
+        $mes = (int) $mes;
+        $vendedor = trim((string) $vendedor);
+        $filas = ModeloDashboardCobranzas::mdlTopClientes($anno, $mes, $vendedor, 10);
+        $totalPeriodo = ModeloDashboardCobranzas::mdlSumaCobranzaEfectivoPeriodo(
+            $anno,
+            $mes,
+            $vendedor
+        );
+        $items = array();
+        $maxMonto = 0;
+
+        foreach ($filas as $fila) {
+            $monto = (float) $fila["total"];
+            $codigo = trim((string) $fila["codigo"]);
+            $nombre = trim((string) $fila["nombre"]);
+            $porcentaje = 0;
+
+            if ($totalPeriodo > 0) {
+                $porcentaje = round(($monto / $totalPeriodo) * 100, 1);
+            }
+
+            if ($monto > $maxMonto) {
+                $maxMonto = $monto;
+            }
+
+            $items[] = array(
+                "codigo" => $codigo,
+                "nombre" => $nombre !== "" ? $nombre : $codigo,
+                "monto" => $monto,
+                "porcentaje" => $porcentaje,
+            );
+        }
+
+        return array(
+            "items" => $items,
+            "max_monto" => $maxMonto,
+            "total_periodo" => $totalPeriodo,
+            "anno" => $anno,
+            "mes" => $mes,
+        );
+    }
+
     static public function ctrTopVendedores($anno, $mes)
     {
         $anno = (int) $anno;
@@ -385,6 +430,22 @@ class ControladorDashboardCobranzas
             "evolucion_acumulada" => self::ctrEvolucionAcumulada($mes, $vendedor),
             "comparativo_mensual" => self::ctrComparativoMensual($vendedor),
             "top_vendedores" => self::ctrTopVendedores($anno, $mes),
+            "heatmap_cobranza" => ModeloDashboardCobranzas::mdlHeatmapCobranza(
+                $anno,
+                $mes,
+                $vendedor
+            ),
+            "top_clientes" => self::ctrTopClientes($anno, $mes, $vendedor),
+            "dias_sin_cobranza" => ModeloDashboardCobranzas::mdlDiasSinCobranza(
+                $anno,
+                $mes,
+                $vendedor
+            ),
+            "distribucion_tipo_ingreso" => ModeloDashboardCobranzas::mdlDistribucionTipoIngreso(
+                $anno,
+                $mes,
+                $vendedor
+            ),
         );
     }
 

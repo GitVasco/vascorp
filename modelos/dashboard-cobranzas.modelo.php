@@ -51,12 +51,25 @@ class ModeloDashboardCobranzas
         $stmt->bindParam(":vendedor", $vendedor, PDO::PARAM_STR);
     }
 
+    /** Solo cod_pago clasificados como EFECTIVO (gráficos y totales de cobranza del dashboard). */
+    private static function filtroSoloEfectivo($alias = "cc")
+    {
+        $sqlIngreso = self::sqlIngreso($alias);
+
+        return " AND {$sqlIngreso} = 'EFECTIVO'";
+    }
+
     private static function wherePeriodo($alias = "cc")
     {
         return "{$alias}.tip_mov = '-'
             AND {$alias}.fecha >= :fecha_ini
             AND {$alias}.fecha < :fecha_fin
             AND (:vendedor = '' OR {$alias}.vendedor = :vendedor)";
+    }
+
+    private static function wherePeriodoGraficos($alias = "cc")
+    {
+        return self::wherePeriodo($alias) . self::filtroSoloEfectivo($alias);
     }
 
     /**
@@ -143,7 +156,7 @@ class ModeloDashboardCobranzas
             {$sqlSemana} AS semana_mes,
             COALESCE(SUM(cc.monto), 0) AS total
         FROM cuenta_ctejf cc
-        WHERE " . self::wherePeriodo("cc") . "
+        WHERE " . self::wherePeriodoGraficos("cc") . "
         GROUP BY {$sqlSemana}
         ORDER BY semana_mes ASC";
 
@@ -191,7 +204,7 @@ class ModeloDashboardCobranzas
             DAYOFWEEK(cc.fecha) AS num_dia_semana,
             COALESCE(SUM(cc.monto), 0) AS total
         FROM cuenta_ctejf cc
-        WHERE " . self::wherePeriodo("cc") . "
+        WHERE " . self::wherePeriodoGraficos("cc") . "
         GROUP BY DAYOFWEEK(cc.fecha)";
 
         $stmt = Conexion::conectar()->prepare($sql);
@@ -249,15 +262,25 @@ class ModeloDashboardCobranzas
         $rangoAct = self::rangoMes($anno, $mes);
         $rangoAnt = self::rangoMes($annoAnt, $mesAnt);
 
+        $filtroEfectivo = self::filtroSoloEfectivo("cc");
+
         $sql = "SELECT
             COALESCE(SUM(
-                CASE WHEN cc.fecha >= :ini_act AND cc.fecha < :fin_act THEN cc.monto ELSE 0 END
+                CASE
+                    WHEN cc.fecha >= :ini_act AND cc.fecha < :fin_act {$filtroEfectivo}
+                    THEN cc.monto ELSE 0
+                END
             ), 0) AS cobranza_total,
             SUM(
-                CASE WHEN cc.fecha >= :ini_act AND cc.fecha < :fin_act THEN 1 ELSE 0 END
+                CASE
+                    WHEN cc.fecha >= :ini_act AND cc.fecha < :fin_act {$filtroEfectivo}
+                    THEN 1 ELSE 0
+                END
             ) AS operaciones,
             COUNT(DISTINCT
-                CASE WHEN cc.fecha >= :ini_act AND cc.fecha < :fin_act THEN DATE(cc.fecha) END
+                CASE
+                    WHEN cc.fecha >= :ini_act AND cc.fecha < :fin_act {$filtroEfectivo}
+                    THEN DATE(cc.fecha) END
             ) AS dias_con_movimiento,
             COALESCE(SUM(
                 CASE
@@ -267,13 +290,21 @@ class ModeloDashboardCobranzas
                 END
             ), 0) AS dev_descuentos,
             COALESCE(SUM(
-                CASE WHEN cc.fecha >= :ini_ant AND cc.fecha < :fin_ant THEN cc.monto ELSE 0 END
+                CASE
+                    WHEN cc.fecha >= :ini_ant AND cc.fecha < :fin_ant {$filtroEfectivo}
+                    THEN cc.monto ELSE 0
+                END
             ), 0) AS cobranza_total_ant,
             SUM(
-                CASE WHEN cc.fecha >= :ini_ant AND cc.fecha < :fin_ant THEN 1 ELSE 0 END
+                CASE
+                    WHEN cc.fecha >= :ini_ant AND cc.fecha < :fin_ant {$filtroEfectivo}
+                    THEN 1 ELSE 0
+                END
             ) AS operaciones_ant,
             COUNT(DISTINCT
-                CASE WHEN cc.fecha >= :ini_ant AND cc.fecha < :fin_ant THEN DATE(cc.fecha) END
+                CASE
+                    WHEN cc.fecha >= :ini_ant AND cc.fecha < :fin_ant {$filtroEfectivo}
+                    THEN DATE(cc.fecha) END
             ) AS dias_con_movimiento_ant,
             COALESCE(SUM(
                 CASE
@@ -307,7 +338,7 @@ class ModeloDashboardCobranzas
             DAY(cc.fecha) AS dia,
             COALESCE(SUM(cc.monto), 0) AS monto
         FROM cuenta_ctejf cc
-        WHERE " . self::wherePeriodo("cc") . "
+        WHERE " . self::wherePeriodoGraficos("cc") . "
         GROUP BY DAY(cc.fecha)
         ORDER BY monto DESC
         LIMIT 1";
@@ -335,7 +366,7 @@ class ModeloDashboardCobranzas
         LEFT JOIN maestrajf m
             ON cc.vendedor = m.codigo
             AND m.tipo_dato = 'TVEND'
-        WHERE " . self::wherePeriodo("cc") . "
+        WHERE " . self::wherePeriodoGraficos("cc") . "
         GROUP BY cc.vendedor
         ORDER BY monto DESC
         LIMIT 1";
@@ -359,8 +390,12 @@ class ModeloDashboardCobranzas
 
         $sql = "SELECT
             DAY(cc.fecha) AS dia,
-            COALESCE(SUM(cc.monto), 0) AS monto,
-            COUNT(*) AS operaciones,
+            COALESCE(SUM(
+                CASE WHEN {$sqlIngreso} = 'EFECTIVO' THEN cc.monto ELSE 0 END
+            ), 0) AS monto,
+            SUM(
+                CASE WHEN {$sqlIngreso} = 'EFECTIVO' THEN 1 ELSE 0 END
+            ) AS operaciones,
             COALESCE(SUM(
                 CASE
                     WHEN {$sqlIngreso} IN ('DEVOLUCION', 'DESCUENTOS') THEN cc.monto
@@ -391,7 +426,7 @@ class ModeloDashboardCobranzas
             DAY(cc.fecha) AS dia,
             COALESCE(SUM(cc.monto), 0) AS monto
         FROM cuenta_ctejf cc
-        WHERE " . self::wherePeriodo("cc") . "
+        WHERE " . self::wherePeriodoGraficos("cc") . "
         GROUP BY DAY(cc.fecha)
         ORDER BY dia ASC";
 
@@ -419,7 +454,8 @@ class ModeloDashboardCobranzas
             AND cc.fecha >= :fecha_ini
             AND cc.fecha < :fecha_fin
             AND cc.vendedor IS NOT NULL
-            AND cc.vendedor != ''
+            AND cc.vendedor != ''"
+            . self::filtroSoloEfectivo("cc") . "
         ORDER BY descripcion ASC";
 
         $stmt = Conexion::conectar()->prepare($sql);
@@ -465,7 +501,8 @@ class ModeloDashboardCobranzas
         FROM cuenta_ctejf cc
         WHERE cc.tip_mov = '-'
             AND (" . implode(" OR ", $placeholders) . ")
-            AND (:vendedor = '' OR cc.vendedor = :vendedor)
+            AND (:vendedor = '' OR cc.vendedor = :vendedor)"
+            . self::filtroSoloEfectivo("cc") . "
         GROUP BY YEAR(cc.fecha), DAY(cc.fecha)
         ORDER BY anno ASC, dia ASC";
 
@@ -497,7 +534,8 @@ class ModeloDashboardCobranzas
         WHERE cc.tip_mov = '-'
             AND cc.fecha >= :fecha_ini
             AND cc.fecha < :fecha_fin
-            AND (:vendedor = '' OR cc.vendedor = :vendedor)
+            AND (:vendedor = '' OR cc.vendedor = :vendedor)"
+            . self::filtroSoloEfectivo("cc") . "
         GROUP BY YEAR(cc.fecha), MONTH(cc.fecha)
         ORDER BY mes ASC, anno ASC";
 
@@ -505,6 +543,56 @@ class ModeloDashboardCobranzas
         $stmt->bindParam(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
         $stmt->bindParam(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
         $stmt->bindParam(":vendedor", $vendedor, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Total cobranza efectivo del período (base para % en rankings).
+     */
+    static public function mdlSumaCobranzaEfectivoPeriodo($anno, $mes, $vendedor = "")
+    {
+        $sql = "SELECT COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        WHERE " . self::wherePeriodoGraficos("cc");
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
+        $stmt->execute();
+
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $fila ? (float) $fila["total"] : 0;
+    }
+
+    /**
+     * Top clientes por cobranza efectivo en el período (respeta filtro vendedor).
+     */
+    static public function mdlTopClientes($anno, $mes, $vendedor = "", $limite = 10)
+    {
+        $limite = (int) $limite;
+
+        if ($limite < 1) {
+            $limite = 10;
+        }
+
+        $sql = "SELECT
+            cc.cliente AS codigo,
+            COALESCE(MAX(c.nombre), cc.cliente) AS nombre,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        LEFT JOIN clientesjf c
+            ON cc.cliente = c.codigo
+        WHERE " . self::wherePeriodoGraficos("cc") . "
+            AND cc.cliente IS NOT NULL
+            AND cc.cliente != ''
+        GROUP BY cc.cliente
+        ORDER BY total DESC
+        LIMIT " . $limite;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -531,7 +619,7 @@ class ModeloDashboardCobranzas
         LEFT JOIN maestrajf m
             ON cc.vendedor = m.codigo
             AND m.tipo_dato = 'TVEND'
-        WHERE " . self::wherePeriodo("cc") . "
+        WHERE " . self::wherePeriodoGraficos("cc") . "
             AND cc.vendedor IS NOT NULL
             AND cc.vendedor != ''
         GROUP BY cc.vendedor
@@ -544,5 +632,227 @@ class ModeloDashboardCobranzas
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Matriz semana del mes (1–5) × día de la semana (Lun–Dom), suma de cobranza efectivo.
+     */
+    static public function mdlHeatmapCobranza($anno, $mes, $vendedor = "")
+    {
+        $sqlSemana = self::sqlSemanaMes("cc");
+
+        $sql = "SELECT
+            {$sqlSemana} AS semana_mes,
+            DAYOFWEEK(cc.fecha) AS num_dia_semana,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        WHERE " . self::wherePeriodoGraficos("cc") . "
+        GROUP BY {$sqlSemana}, DAYOFWEEK(cc.fecha)";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
+        $stmt->execute();
+
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $mapa = array();
+        $maxMonto = 0;
+
+        foreach ($filas as $fila) {
+            $semana = (int) $fila["semana_mes"];
+            $dia = (int) $fila["num_dia_semana"];
+            $monto = (float) $fila["total"];
+
+            if (!isset($mapa[$semana])) {
+                $mapa[$semana] = array();
+            }
+
+            $mapa[$semana][$dia] = $monto;
+
+            if ($monto > $maxMonto) {
+                $maxMonto = $monto;
+            }
+        }
+
+        $ordenDias = array(
+            2 => array("corto" => "Lun", "nombre" => "Lunes"),
+            3 => array("corto" => "Mar", "nombre" => "Martes"),
+            4 => array("corto" => "Mie", "nombre" => "Miércoles"),
+            5 => array("corto" => "Jue", "nombre" => "Jueves"),
+            6 => array("corto" => "Vie", "nombre" => "Viernes"),
+            7 => array("corto" => "Sab", "nombre" => "Sábado"),
+            1 => array("corto" => "Dom", "nombre" => "Domingo"),
+        );
+
+        $columnas = array();
+
+        foreach ($ordenDias as $num => $meta) {
+            $columnas[] = array(
+                "num_dia_semana" => $num,
+                "nom_dia_corto" => $meta["corto"],
+                "nom_dia" => $meta["nombre"],
+            );
+        }
+
+        $ultimoDia = self::diasDelMes($anno, $mes);
+        $filasMatriz = array();
+
+        for ($semana = 1; $semana <= 5; $semana++) {
+            $rango = self::etiquetaRangoSemana($semana, $ultimoDia);
+
+            if ($rango === "") {
+                continue;
+            }
+
+            $celdas = array();
+
+            foreach ($ordenDias as $num => $meta) {
+                $monto = 0;
+
+                if (isset($mapa[$semana]) && isset($mapa[$semana][$num])) {
+                    $monto = $mapa[$semana][$num];
+                }
+
+                $celdas[] = array(
+                    "num_dia_semana" => $num,
+                    "nom_dia" => $meta["nombre"],
+                    "nom_dia_corto" => $meta["corto"],
+                    "monto" => $monto,
+                );
+            }
+
+            $filasMatriz[] = array(
+                "semana_mes" => $semana,
+                "rango" => $rango,
+                "etiqueta" => "Sem " . $semana . " (" . $rango . ")",
+                "celdas" => $celdas,
+            );
+        }
+
+        return array(
+            "columnas" => $columnas,
+            "filas" => $filasMatriz,
+            "max_monto" => $maxMonto,
+            "anno" => (int) $anno,
+            "mes" => (int) $mes,
+        );
+    }
+
+    /**
+     * Días del mes sin cobranza efectivo (sin movimiento con monto > 0).
+     */
+    static public function mdlDiasSinCobranza($anno, $mes, $vendedor = "")
+    {
+        $diasMes = self::diasDelMes($anno, $mes);
+
+        $sql = "SELECT COUNT(*) AS dias_con
+        FROM (
+            SELECT DAY(cc.fecha) AS dia
+            FROM cuenta_ctejf cc
+            WHERE " . self::wherePeriodoGraficos("cc") . "
+            GROUP BY DAY(cc.fecha)
+            HAVING SUM(cc.monto) > 0
+        ) AS dias_cobranza";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
+        $stmt->execute();
+
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+        $diasCon = $fila ? (int) $fila["dias_con"] : 0;
+
+        if ($diasCon < 0) {
+            $diasCon = 0;
+        }
+
+        if ($diasCon > $diasMes) {
+            $diasCon = $diasMes;
+        }
+
+        $diasSin = $diasMes - $diasCon;
+        $porcentajeSin = 0;
+        $porcentajeCon = 0;
+        $escalaMax = $diasMes > 10 ? $diasMes : 10;
+
+        if ($diasMes > 0) {
+            $porcentajeSin = round(($diasSin / $diasMes) * 100, 1);
+            $porcentajeCon = round(($diasCon / $diasMes) * 100, 1);
+        }
+
+        return array(
+            "dias_mes" => $diasMes,
+            "dias_con_cobranza" => $diasCon,
+            "dias_sin" => $diasSin,
+            "porcentaje_sin" => $porcentajeSin,
+            "porcentaje_con" => $porcentajeCon,
+            "escala_max" => $escalaMax,
+            "anno" => (int) $anno,
+            "mes" => (int) $mes,
+        );
+    }
+
+    /**
+     * Distribución por tipo de ingreso (EFECTIVO, DEVOLUCION, DESCUENTOS, OTROS).
+     * Incluye todos los tipos; no aplica filtro solo efectivo.
+     */
+    static public function mdlDistribucionTipoIngreso($anno, $mes, $vendedor = "")
+    {
+        $sqlIngreso = self::sqlIngreso("cc");
+
+        $sql = "SELECT
+            {$sqlIngreso} AS tipo_ingreso,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        WHERE " . self::wherePeriodo("cc") . "
+        GROUP BY {$sqlIngreso}";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
+        $stmt->execute();
+
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $porTipo = array();
+
+        foreach ($filas as $fila) {
+            $porTipo[(string) $fila["tipo_ingreso"]] = (float) $fila["total"];
+        }
+
+        $catalogo = array(
+            array("clave" => "EFECTIVO", "label" => "Efectivo", "color" => "#3d9970"),
+            array("clave" => "DEVOLUCION", "label" => "Devolución", "color" => "#dd4b39"),
+            array("clave" => "DESCUENTOS", "label" => "Descuentos", "color" => "#f39c12"),
+            array("clave" => "OTROS", "label" => "Otros", "color" => "#95a5a6"),
+        );
+
+        $segmentos = array();
+        $totalGeneral = 0;
+
+        foreach ($catalogo as $item) {
+            $monto = isset($porTipo[$item["clave"]]) ? $porTipo[$item["clave"]] : 0;
+            $totalGeneral += $monto;
+        }
+
+        foreach ($catalogo as $item) {
+            $monto = isset($porTipo[$item["clave"]]) ? $porTipo[$item["clave"]] : 0;
+            $porcentaje = 0;
+
+            if ($totalGeneral > 0) {
+                $porcentaje = round(($monto / $totalGeneral) * 100, 1);
+            }
+
+            $segmentos[] = array(
+                "clave" => $item["clave"],
+                "label" => $item["label"],
+                "color" => $item["color"],
+                "monto" => $monto,
+                "porcentaje" => $porcentaje,
+            );
+        }
+
+        return array(
+            "segmentos" => $segmentos,
+            "total" => $totalGeneral,
+            "anno" => (int) $anno,
+            "mes" => (int) $mes,
+        );
     }
 }

@@ -32,4 +32,8 @@ echo json_encode(array(
     "evolucion_acumulada" => $datos["evolucion_acumulada"],
     "comparativo_mensual" => $datos["comparativo_mensual"],
     "top_vendedores" => $datos["top_vendedores"],
+    "heatmap_cobranza" => $datos["heatmap_cobranza"],
+    "top_clientes" => $datos["top_clientes"],
+    "dias_sin_cobranza" => $datos["dias_sin_cobranza"],
+    "distribucion_tipo_ingreso" => $datos["distribucion_tipo_ingreso"],
 ));
