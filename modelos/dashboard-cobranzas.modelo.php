@@ -437,33 +437,78 @@ class ModeloDashboardCobranzas
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Lista fija de vendedores del filtro (dashboard-cobranzas/vendedores-filtro.php).
+     */
+    private static function codigosVendedoresFiltroDashboard()
+    {
+        $ruta = dirname(__DIR__) . "/dashboard-cobranzas/vendedores-filtro.php";
+
+        if (!is_file($ruta)) {
+            return array();
+        }
+
+        $lista = require $ruta;
+
+        if (!is_array($lista)) {
+            return array();
+        }
+
+        $codigos = array();
+
+        foreach ($lista as $codigo) {
+            $codigo = trim((string) $codigo);
+
+            if ($codigo !== "") {
+                $codigos[] = $codigo;
+            }
+        }
+
+        return $codigos;
+    }
+
+    /**
+     * Opciones del filtro «Vendedor» (solo códigos de vendedores-filtro.php, en ese orden).
+     */
     static public function mdlVendedoresConCobranza($anno)
     {
-        $anno = (int) $anno;
-        $inicio = $anno . "-01-01";
-        $fin = ($anno + 1) . "-01-01";
+        $codigos = self::codigosVendedoresFiltroDashboard();
 
-        $sql = "SELECT DISTINCT
-            cc.vendedor AS codigo,
-            COALESCE(m.descripcion, cc.vendedor) AS descripcion
-        FROM cuenta_ctejf cc
-        LEFT JOIN maestrajf m
-            ON cc.vendedor = m.codigo
-            AND m.tipo_dato = 'TVEND'
-        WHERE cc.tip_mov = '-'
-            AND cc.fecha >= :fecha_ini
-            AND cc.fecha < :fecha_fin
-            AND cc.vendedor IS NOT NULL
-            AND cc.vendedor != ''"
-            . self::filtroSoloEfectivo("cc") . "
-        ORDER BY descripcion ASC";
+        if (count($codigos) === 0) {
+            return array();
+        }
+
+        $nombres = array();
+        $listaIn = array();
+
+        foreach ($codigos as $codigo) {
+            $listaIn[] = "'" . str_replace("'", "''", $codigo) . "'";
+        }
+
+        $sql = "SELECT
+            m.codigo AS codigo,
+            COALESCE(m.descripcion, m.codigo) AS descripcion
+        FROM maestrajf m
+        WHERE m.tipo_dato = 'TVEND'
+            AND m.codigo IN (" . implode(",", $listaIn) . ")";
 
         $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindParam(":fecha_ini", $inicio, PDO::PARAM_STR);
-        $stmt->bindParam(":fecha_fin", $fin, PDO::PARAM_STR);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+            $nombres[trim((string) $fila["codigo"])] = trim((string) $fila["descripcion"]);
+        }
+
+        $resultado = array();
+
+        foreach ($codigos as $codigo) {
+            $resultado[] = array(
+                "codigo" => $codigo,
+                "descripcion" => isset($nombres[$codigo]) ? $nombres[$codigo] : $codigo,
+            );
+        }
+
+        return $resultado;
     }
 
     /**
