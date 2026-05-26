@@ -72,6 +72,17 @@
 
                 </li>
 
+                <li class="<?php if ($_GET["ruta"] == "dashboard-cobranzas") echo 'active'; ?>">
+
+                    <a href="index.php?ruta=dashboard-cobranzas">
+
+                        <i class="fa fa-money"></i>
+                        <span>Dashboard Cobranzas</span>
+
+                    </a>
+
+                </li>
+
             <?php
             }
             ?>

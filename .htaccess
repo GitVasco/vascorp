@@ -2,4 +2,9 @@ Options All -Indexes
 
 RewriteEngine On
 
-RewriteRule ^([-a-zA-Z0-9]+)$ index.php?ruta=$1
+# La carpeta /dashboard-cobranzas/ (docs) existe en disco; forzar la ruta de la app.
+RewriteRule ^dashboard-cobranzas/?$ index.php?ruta=dashboard-cobranzas [L,QSA]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-zA-Z0-9-]+)/?$ index.php?ruta=$1 [L,QSA]
