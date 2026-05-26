@@ -195,6 +195,175 @@ class ControladorDashboardCobranzas
         );
     }
 
+    private static function construirSerieAcumulada($porDia, $ultimoDia, $diasCalendarioAnno)
+    {
+        $acumulado = array();
+        $suma = 0;
+        $ultimoValor = 0;
+
+        for ($dia = 1; $dia <= $ultimoDia; $dia++) {
+            if ($dia <= $diasCalendarioAnno) {
+                $montoDia = isset($porDia[$dia]) ? (float) $porDia[$dia] : 0;
+                $suma += $montoDia;
+                $ultimoValor = round($suma, 2);
+            }
+
+            $acumulado[] = $ultimoValor;
+        }
+
+        return $acumulado;
+    }
+
+    static public function ctrEvolucionAcumulada($mes, $vendedor = "")
+    {
+        $mes = (int) $mes;
+        $vendedor = trim((string) $vendedor);
+        $annosSerie = ModeloDashboardCobranzas::annosDashboard();
+
+        $ultimoDia = 0;
+        foreach ($annosSerie as $annoSerie) {
+            $d = self::diasDelMes($annoSerie, $mes);
+            if ($d > $ultimoDia) {
+                $ultimoDia = $d;
+            }
+        }
+
+        if ($ultimoDia <= 0) {
+            return array(
+                "labels" => array(),
+                "series" => array(),
+            );
+        }
+
+        $filas = ModeloDashboardCobranzas::mdlCobranzaDiariaAnnosMes($mes, $vendedor, $annosSerie);
+        $porAnnoDia = array();
+
+        foreach ($filas as $fila) {
+            $a = (int) $fila["anno"];
+            $d = (int) $fila["dia"];
+
+            if (!isset($porAnnoDia[$a])) {
+                $porAnnoDia[$a] = array();
+            }
+
+            $porAnnoDia[$a][$d] = (float) $fila["monto"];
+        }
+
+        $labels = array();
+        for ($dia = 1; $dia <= $ultimoDia; $dia++) {
+            $labels[] = (string) $dia;
+        }
+
+        $series = array();
+        foreach ($annosSerie as $annoSerie) {
+            $diasAnno = self::diasDelMes($annoSerie, $mes);
+            $mapaDia = isset($porAnnoDia[$annoSerie]) ? $porAnnoDia[$annoSerie] : array();
+            $acum = self::construirSerieAcumulada($mapaDia, $ultimoDia, $diasAnno);
+            $total = count($acum) > 0 ? (float) $acum[count($acum) - 1] : 0;
+
+            $series[] = array(
+                "anno" => $annoSerie,
+                "nombre" => (string) $annoSerie,
+                "acumulado" => $acum,
+                "total" => $total,
+            );
+        }
+
+        return array(
+            "labels" => $labels,
+            "ultimo_dia" => $ultimoDia,
+            "series" => $series,
+        );
+    }
+
+    static public function ctrComparativoMensual($vendedor = "")
+    {
+        $vendedor = trim((string) $vendedor);
+        $filas = ModeloDashboardCobranzas::mdlCobranzaComparativoMensual($vendedor);
+        $porAnnoMes = array(2025 => array(), 2026 => array());
+
+        foreach ($filas as $fila) {
+            $anno = (int) $fila["anno"];
+            $mes = (int) $fila["mes"];
+
+            if (!isset($porAnnoMes[$anno])) {
+                continue;
+            }
+
+            $porAnnoMes[$anno][$mes] = (float) $fila["total"];
+        }
+
+        $nombresCortos = array(
+            1 => "Ene", 2 => "Feb", 3 => "Mar", 4 => "Abr", 5 => "May", 6 => "Jun",
+            7 => "Jul", 8 => "Ago", 9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dic",
+        );
+
+        $labels = array();
+        $montos2025 = array();
+        $montos2026 = array();
+        $morris = array();
+        $mes;
+
+        for ($mes = 1; $mes <= 12; $mes++) {
+            $m25 = isset($porAnnoMes[2025][$mes]) ? $porAnnoMes[2025][$mes] : 0;
+            $m26 = isset($porAnnoMes[2026][$mes]) ? $porAnnoMes[2026][$mes] : 0;
+
+            $labels[] = $nombresCortos[$mes];
+            $montos2025[] = $m25;
+            $montos2026[] = $m26;
+            $morris[] = array(
+                "mes" => $nombresCortos[$mes],
+                "y2025" => $m25,
+                "y2026" => $m26,
+            );
+        }
+
+        return array(
+            "labels" => $labels,
+            "2025" => $montos2025,
+            "2026" => $montos2026,
+            "morris" => $morris,
+            "total_2025" => array_sum($montos2025),
+            "total_2026" => array_sum($montos2026),
+        );
+    }
+
+    static public function ctrTopVendedores($anno, $mes)
+    {
+        $anno = (int) $anno;
+        $mes = (int) $mes;
+        $filas = ModeloDashboardCobranzas::mdlTopVendedores($anno, $mes, 10);
+        $items = array();
+        $maxMonto = 0;
+        $totalTop = 0;
+
+        foreach ($filas as $fila) {
+            $monto = (float) $fila["total"];
+            $codigo = trim((string) $fila["codigo"]);
+            $nombre = trim((string) $fila["nombre"]);
+
+            if ($monto > $maxMonto) {
+                $maxMonto = $monto;
+            }
+
+            $totalTop += $monto;
+
+            $items[] = array(
+                "codigo" => $codigo,
+                "nombre" => $nombre !== "" ? $nombre : $codigo,
+                "monto" => $monto,
+            );
+        }
+
+        return array(
+            "items" => $items,
+            "max_monto" => $maxMonto,
+            "total_top" => $totalTop,
+            "anno" => $anno,
+            "mes" => $mes,
+        );
+    }
+
     static public function ctrDatosGraficos($anno, $mes, $vendedor = "", $codigoMejorVendedor = "")
     {
         $anno = (int) $anno;
@@ -213,6 +382,9 @@ class ControladorDashboardCobranzas
                 $mes,
                 $vendedor
             ),
+            "evolucion_acumulada" => self::ctrEvolucionAcumulada($mes, $vendedor),
+            "comparativo_mensual" => self::ctrComparativoMensual($vendedor),
+            "top_vendedores" => self::ctrTopVendedores($anno, $mes),
         );
     }
 

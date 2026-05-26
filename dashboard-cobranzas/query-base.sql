@@ -63,5 +63,5 @@ LEFT JOIN clientesjf c
     ON cc.cliente = c.codigo
 
 WHERE
-    YEAR(cc.fecha) IN (2024, 2025, 2026)
+    YEAR(cc.fecha) IN (2025, 2026)
     AND cc.tip_mov = '-';

@@ -1,4 +1,4 @@
-<div class="content-wrapper">
+<div class="content-wrapper dc-dashboard-cobranzas">
     <section class="content-header">
         <h1>
             Dashboard de Cobranzas
@@ -11,7 +11,8 @@
     </section>
 
     <section class="content">
-        <div class="col-lg-12">
+        <div class="row">
+            <div class="col-xs-12">
             <?php
             if (!isset($_GET["año"]) && !isset($_GET["mes"])) {
                 $añoRedirect = date("Y");
@@ -23,6 +24,13 @@
 
             $añoActual = isset($_GET["año"]) && $_GET["año"] != "" ? intval($_GET["año"]) : date("Y");
             $mesActual = isset($_GET["mes"]) && $_GET["mes"] != "" ? intval($_GET["mes"]) : date("n");
+            $annosPermitidos = array(2025, 2026);
+
+            if (!in_array($añoActual, $annosPermitidos, true)) {
+                $añoActual = in_array((int) date("Y"), $annosPermitidos, true)
+                    ? (int) date("Y")
+                    : 2026;
+            }
             $vendedorActual = isset($_GET["vendedor"]) ? trim($_GET["vendedor"]) : "";
 
             $meses = [
@@ -72,7 +80,7 @@
                             <label for="añoCobranzas" style="font-weight: bold; margin-bottom: 5px; display: block; font-size: 12px;">Año</label>
                             <select class="form-control selectpicker" id="añoCobranzas" name="añoCobranzas" data-live-search="true">
                                 <option value="">Seleccionar año</option>
-                                <?php foreach ([2024, 2025, 2026] as $año) : ?>
+                                <?php foreach ([2025, 2026] as $año) : ?>
                                     <option value="<?php echo $año; ?>" <?php echo ($añoActual == $año) ? "selected" : ""; ?>><?php echo $año; ?></option>
                                 <?php endforeach; ?>
                             </select>
@@ -122,8 +130,40 @@
             include "dashboard-cobranzas/cajas-superiores.php";
 
             include "dashboard-cobranzas/graficos-fila.php";
+
+            echo '<div class="row dc-graficos-cobranzas dc-graficos-fila-inferior">';
+            include __DIR__ . "/dashboard-cobranzas/grafico-evolucion-acumulada.php";
+            include __DIR__ . "/dashboard-cobranzas/grafico-comparativo-mes.php";
+            include __DIR__ . "/dashboard-cobranzas/grafico-top-vendedores.php";
+            echo '</div>';
             ?>
 
+            </div>
         </div>
     </section>
 </div>
+
+<style>
+    .dc-dashboard-cobranzas .content {
+        padding-bottom: 48px;
+    }
+
+    .dc-dashboard-cobranzas .dc-graficos-fila-inferior {
+        margin-bottom: 8px;
+    }
+
+    .dc-dashboard-cobranzas .dc-graficos-fila-inferior .box {
+        margin-bottom: 0;
+    }
+
+    .dc-dashboard-cobranzas .dc-graficos-fila-inferior .box-body {
+        overflow: visible;
+        padding-bottom: 12px;
+    }
+
+    @media (min-width: 1200px) {
+        .dc-dashboard-cobranzas .dc-graficos-fila-inferior .box-body {
+            min-height: 340px;
+        }
+    }
+</style>

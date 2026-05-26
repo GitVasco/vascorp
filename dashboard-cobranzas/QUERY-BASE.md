@@ -68,7 +68,7 @@ LEFT JOIN clientesjf c
     ON cc.cliente = c.codigo
 
 WHERE
-    YEAR(cc.fecha) IN ('2024','2025','2026')
+    YEAR(cc.fecha) IN (2025, 2026)
     AND cc.tip_mov = '-';
 ```
 
@@ -80,7 +80,7 @@ WHERE
 |----------|--------|-------------|
 | Tabla principal | `cuenta_ctejf` | Movimientos de cuenta corriente |
 | `tip_mov = '-'` | Solo cobranzas / abonos (salida de deuda del cliente) |
-| Años | 2024, 2025, 2026 | Histórico para comparativos; el filtro de UI acotará el período activo |
+| Años | 2025, 2026 | Comparativos del dashboard; el filtro de UI acota el período activo |
 | Join | `clientesjf` | Nombre del cliente para rankings y filtros |
 
 ---
@@ -115,7 +115,7 @@ Usado en: filtro «Tipo ingreso», dona tipo de ingreso, KPI devoluciones y desc
 | Campo | Cálculo | Uso principal |
 |-------|---------|---------------|
 | `fecha` | `cc.fecha` | Filtros, orden, acumulados |
-| `anno` | `YEAR(fecha)` | Comparativo anual, evolución 2024 vs 2025 |
+| `anno` | `YEAR(fecha)` | Comparativo anual 2025 vs 2026 |
 | `mes` | `MONTH(fecha)` | Filtro mes, agrupación mensual |
 | `nom_mes` | `ELT(mes, …)` | Etiquetas en gráficos |
 | `dia` | `DAY(fecha)` | Cobranza por día, mejor día, días sin cobranza |
@@ -156,7 +156,7 @@ AND <ingreso CASE> = :tipo_ingreso  -- opcional; o repetir CASE en HAVING
 Lista para iterar la query sin cambiar el contrato del dashboard:
 
 1. **Rendimiento:** índice compuesto sugerido `(tip_mov, fecha)` y opcional `(vendedor, fecha)`, `(cliente, fecha)`.
-2. **WHERE años:** usar enteros `IN (2024, 2025, 2026)` en lugar de strings.
+2. **WHERE años:** usar enteros `IN (2025, 2026)` en lugar de strings.
 3. **Vista o CTE:** materializar el `CASE ingreso` una vez (`WITH base AS (…)`) y agregar en consultas hijas por widget.
 4. **Agregación en SQL:** evitar traer todas las filas al PHP; un endpoint por familia de widgets (KPIs, series diarias, rankings).
 5. **Signo de montos:** confirmar si devoluciones/descuentos ya vienen negativos en `monto`; alinear KPI «Dev. y descuentos» con negocio.

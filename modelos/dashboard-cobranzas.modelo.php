@@ -4,6 +4,19 @@ require_once "conexion.php";
 
 class ModeloDashboardCobranzas
 {
+    public static function annosDashboard()
+    {
+        return array(2025, 2026);
+    }
+
+    private static function rangoAnnosDashboard()
+    {
+        return array(
+            "inicio" => "2025-01-01",
+            "fin" => "2027-01-01",
+        );
+    }
+
     private static function sqlIngreso($alias = "cc")
     {
         return "CASE
@@ -412,6 +425,122 @@ class ModeloDashboardCobranzas
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindParam(":fecha_ini", $inicio, PDO::PARAM_STR);
         $stmt->bindParam(":fecha_fin", $fin, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Cobranza diaria del mes para varios años (comparativo evolución acumulada).
+     */
+    static public function mdlCobranzaDiariaAnnosMes($mes, $vendedor, $annos)
+    {
+        $mes = (int) $mes;
+        $vendedor = trim((string) $vendedor);
+        $annos = array_map("intval", (array) $annos);
+        $annos = array_values(array_unique($annos));
+
+        if ($mes < 1 || $mes > 12 || count($annos) === 0) {
+            return array();
+        }
+
+        $placeholders = array();
+        $params = array();
+
+        foreach ($annos as $i => $anno) {
+            $keyAnno = ":anno_" . $i;
+            $keyIni = ":ini_" . $i;
+            $keyFin = ":fin_" . $i;
+            $rango = self::rangoMes($anno, $mes);
+
+            $placeholders[] = "(cc.fecha >= {$keyIni} AND cc.fecha < {$keyFin})";
+            $params[$keyIni] = $rango["inicio"];
+            $params[$keyFin] = $rango["fin"];
+        }
+
+        $sql = "SELECT
+            YEAR(cc.fecha) AS anno,
+            DAY(cc.fecha) AS dia,
+            COALESCE(SUM(cc.monto), 0) AS monto
+        FROM cuenta_ctejf cc
+        WHERE cc.tip_mov = '-'
+            AND (" . implode(" OR ", $placeholders) . ")
+            AND (:vendedor = '' OR cc.vendedor = :vendedor)
+        GROUP BY YEAR(cc.fecha), DAY(cc.fecha)
+        ORDER BY anno ASC, dia ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+
+        foreach ($params as $clave => $valor) {
+            $stmt->bindValue($clave, $valor, PDO::PARAM_STR);
+        }
+
+        $stmt->bindParam(":vendedor", $vendedor, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Total cobrado por mes y año (2025 vs 2026). Ignora filtro de mes del dashboard.
+     */
+    static public function mdlCobranzaComparativoMensual($vendedor = "")
+    {
+        $vendedor = trim((string) $vendedor);
+        $rango = self::rangoAnnosDashboard();
+
+        $sql = "SELECT
+            YEAR(cc.fecha) AS anno,
+            MONTH(cc.fecha) AS mes,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        WHERE cc.tip_mov = '-'
+            AND cc.fecha >= :fecha_ini
+            AND cc.fecha < :fecha_fin
+            AND (:vendedor = '' OR cc.vendedor = :vendedor)
+        GROUP BY YEAR(cc.fecha), MONTH(cc.fecha)
+        ORDER BY mes ASC, anno ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindParam(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
+        $stmt->bindParam(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
+        $stmt->bindParam(":vendedor", $vendedor, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Top vendedores por cobranza en el período (año + mes). Sin filtro por vendedor.
+     */
+    static public function mdlTopVendedores($anno, $mes, $limite = 10)
+    {
+        $anno = (int) $anno;
+        $mes = (int) $mes;
+        $limite = (int) $limite;
+
+        if ($limite < 1) {
+            $limite = 10;
+        }
+
+        $sql = "SELECT
+            cc.vendedor AS codigo,
+            COALESCE(MAX(m.descripcion), cc.vendedor) AS nombre,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        LEFT JOIN maestrajf m
+            ON cc.vendedor = m.codigo
+            AND m.tipo_dato = 'TVEND'
+        WHERE " . self::wherePeriodo("cc") . "
+            AND cc.vendedor IS NOT NULL
+            AND cc.vendedor != ''
+        GROUP BY cc.vendedor
+        ORDER BY total DESC
+        LIMIT " . $limite;
+
+        $vendedorTodos = "";
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedorTodos);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

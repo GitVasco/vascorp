@@ -148,6 +148,8 @@ function inicializarSparklinesCobranzas(data) {
 var dcChartCobranzaDia = null;
 var dcChartCobranzaSemana = null;
 var dcChartCobranzaDiaSemana = null;
+var dcChartEvolucionAcumulada = null;
+var dcChartComparativoMensual = null;
 
 function dcFormatearSoles(valor) {
     var n = Math.round(parseFloat(valor) || 0);
@@ -599,6 +601,287 @@ function inicializarGraficoCobranzaDiaSemana(diaSemanaData) {
     }
 }
 
+function dcPintarEvolucionDecoracion(chartInstance) {
+    dcPintarEjeYCompacto(chartInstance);
+
+    if (!chartInstance || !chartInstance.chart || !chartInstance.datasets) {
+        return;
+    }
+
+    var ctx = chartInstance.chart.ctx;
+    var dataset;
+    var puntos;
+    var ultimo;
+    var etiqueta;
+    var i;
+
+    ctx.save();
+    ctx.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+
+    for (i = 0; i < chartInstance.datasets.length; i++) {
+        dataset = chartInstance.datasets[i];
+        puntos = dataset.points;
+
+        if (!puntos || !puntos.length) {
+            continue;
+        }
+
+        ultimo = puntos[puntos.length - 1];
+
+        if (!ultimo || !ultimo.hasValue()) {
+            continue;
+        }
+
+        etiqueta = dataset.label || "";
+
+        if (!etiqueta) {
+            continue;
+        }
+
+        ctx.fillStyle = dataset.strokeColor || "#334155";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(etiqueta, ultimo.x + 6, ultimo.y);
+    }
+
+    ctx.restore();
+}
+
+function inicializarGraficoEvolucionAcumulada(evData) {
+    var $loading = $("#dcGraficoEvolucionLoading");
+    var $wrap = $("#dcGraficoEvolucionWrap");
+    var canvas = document.getElementById("dcGraficoEvolucionCanvas");
+
+    if (!canvas || !evData || !evData.labels || !evData.series || !evData.series.length) {
+        $loading.text("Sin datos para el período");
+        return;
+    }
+
+    if (typeof Chart === "undefined") {
+        $loading.text("Gráfico no disponible");
+        return;
+    }
+
+    var datasets = [];
+    var todosValores = [];
+    var i;
+    var serie;
+    var colorSerie;
+    var escalaLinea;
+    var options;
+
+    var coloresAnno = {
+        2025: "#3d9970",
+        2026: "#3c8dbc",
+    };
+
+    for (i = 0; i < evData.series.length; i++) {
+        serie = evData.series[i];
+        colorSerie = coloresAnno[serie.anno] || "#607d8b";
+
+        datasets.push({
+            label: serie.nombre,
+            fillColor: "rgba(0, 0, 0, 0)",
+            strokeColor: colorSerie,
+            pointColor: colorSerie,
+            pointStrokeColor: "#ffffff",
+            pointHighlightFill: colorSerie,
+            pointHighlightStroke: "#ffffff",
+            data: serie.acumulado || [],
+        });
+
+        if (serie.acumulado) {
+            todosValores = todosValores.concat(serie.acumulado);
+        }
+    }
+
+    dcChartEvolucionAcumulada = null;
+    $loading.hide();
+    $wrap.show();
+
+    escalaLinea = dcOpcionesEscalaChartLinea(todosValores);
+
+    options = {
+        bezierCurve: false,
+        datasetFill: false,
+        pointDot: true,
+        pointDotRadius: 3,
+        pointDotStrokeWidth: 1,
+        datasetStrokeWidth: 2,
+        scaleBeginAtZero: true,
+        scaleShowGridLines: true,
+        scaleGridLineColor: "rgba(0,0,0,0.06)",
+        scaleFontSize: 9,
+        scaleFontColor: "#64748b",
+        responsive: true,
+        maintainAspectRatio: false,
+        showTooltips: true,
+        tooltipTemplate: "<%if (label){%>Día <%=label%>: <%}%><%= value %>",
+        multiTooltipTemplate:
+            "<%if (datasetLabel){%><%=datasetLabel%>: <%}%><%= value %>",
+    };
+
+    if (escalaLinea.scaleOverride) {
+        options.scaleOverride = escalaLinea.scaleOverride;
+        options.scaleSteps = escalaLinea.scaleSteps;
+        options.scaleStepWidth = escalaLinea.scaleStepWidth;
+        options.scaleStartValue = escalaLinea.scaleStartValue;
+    }
+
+    var chartV1 = new Chart(canvas.getContext("2d"));
+    if (typeof chartV1.Line === "function") {
+        dcChartEvolucionAcumulada = chartV1.Line(
+            {
+                labels: evData.labels,
+                datasets: datasets,
+            },
+            options
+        );
+        dcEnlazarEtiquetasFijas(dcChartEvolucionAcumulada, dcPintarEvolucionDecoracion);
+    }
+}
+
+function inicializarGraficoComparativoMensual(compData) {
+    var $loading = $("#dcGraficoComparativoLoading");
+    var $wrap = $("#dcGraficoComparativoWrap");
+    var $el = $("#dc-grafico-comparativo-mes");
+    var $totales = $("#dcGraficoComparativoTotales");
+
+    if (!$el.length || !compData || !compData.morris || !compData.morris.length) {
+        $loading.text("Sin datos para el período");
+        return;
+    }
+
+    if (typeof Morris === "undefined") {
+        $loading.text("Gráfico no disponible");
+        return;
+    }
+
+    var morrisData = compData.morris;
+    var todos = (compData["2025"] || []).concat(compData["2026"] || []);
+    var ymaxMorris = dcCalcularYMaxMorris(todos, 0);
+
+    $totales.text(
+        "2025: " +
+            dcFormatearSoles(compData.total_2025 || 0) +
+            " · 2026: " +
+            dcFormatearSoles(compData.total_2026 || 0)
+    );
+
+    $el.empty();
+    dcChartComparativoMensual = null;
+    $loading.hide();
+    $wrap.show();
+
+    dcChartComparativoMensual = Morris.Bar({
+        element: "dc-grafico-comparativo-mes",
+        resize: true,
+        data: morrisData,
+        xkey: "mes",
+        ykeys: ["y2025", "y2026"],
+        labels: ["2025", "2026"],
+        barColors: ["#3d9970", "#3c8dbc"],
+        hideHover: "auto",
+        gridTextColor: "#666",
+        ymax: ymaxMorris !== null ? ymaxMorris : "auto",
+        ymin: 0,
+        barSizeRatio: 0.75,
+        barGap: 3,
+        padding: 12,
+        numLines: 4,
+        gridTextSize: 10,
+        xLabelAngle: 0,
+        yLabelFormat: function (y) {
+            return dcFormatearMontoCompacto(y);
+        },
+    });
+}
+
+var dcMesesNombre = {
+    1: "Enero",
+    2: "Febrero",
+    3: "Marzo",
+    4: "Abril",
+    5: "Mayo",
+    6: "Junio",
+    7: "Julio",
+    8: "Agosto",
+    9: "Septiembre",
+    10: "Octubre",
+    11: "Noviembre",
+    12: "Diciembre",
+};
+
+function inicializarTopVendedores(topData) {
+    var $loading = $("#dcTopVendedoresLoading");
+    var $wrap = $("#dcTopVendedoresWrap");
+    var $lista = $("#dc-top-vendedores-list");
+    var $periodo = $("#dcTopVendedoresPeriodo");
+
+    if (!topData || !topData.items || !topData.items.length) {
+        $loading.text("Sin datos para el período");
+        return;
+    }
+
+    var items = topData.items;
+    var maxMonto = parseFloat(topData.max_monto) || 0;
+    var html = [];
+    var i;
+    var item;
+    var pct;
+    var rankClass;
+
+    $periodo.text(
+        (dcMesesNombre[topData.mes] || topData.mes) + " " + topData.anno
+    );
+
+    for (i = 0; i < items.length; i++) {
+        item = items[i];
+        pct = maxMonto > 0 ? Math.round((item.monto / maxMonto) * 100) : 0;
+        rankClass = "dc-top-vendedor-row__rank";
+
+        if (i === 0) {
+            rankClass += " dc-top-vendedor-row__rank--1";
+        } else if (i === 1 || i === 2) {
+            rankClass += " dc-top-vendedor-row__rank--" + (i + 1);
+        }
+
+        html.push(
+            '<div class="dc-top-vendedor-row">' +
+                '<span class="' +
+                rankClass +
+                '">' +
+                (i + 1) +
+                "</span>" +
+                '<div class="dc-top-vendedor-row__info">' +
+                '<div class="dc-top-vendedor-row__nombre" title="' +
+                item.codigo +
+                " - " +
+                item.nombre +
+                '">' +
+                '<span class="dc-top-vendedor-row__codigo">' +
+                item.codigo +
+                "</span> " +
+                item.nombre +
+                "</div>" +
+                "</div>" +
+                '<div class="dc-top-vendedor-row__bar-wrap">' +
+                '<div class="dc-top-vendedor-row__bar" style="width:' +
+                pct +
+                '%;"></div>' +
+                "</div>" +
+                '<div class="dc-top-vendedor-row__monto">' +
+                dcFormatearMontoCompacto(item.monto) +
+                "</div>" +
+                "</div>"
+        );
+    }
+
+    $lista.html(html.join(""));
+    $loading.hide();
+    $wrap.show();
+}
+
 function cargarSparklinesCobranzas() {
     var $el = $("#dashboardCobranzasData");
     if (!$el.length) {
@@ -648,12 +931,30 @@ function cargarSparklinesCobranzas() {
                     } else {
                         $("#dcGraficoDiaSemanaLoading").text("Sin datos");
                     }
+                    if (resp.evolucion_acumulada) {
+                        inicializarGraficoEvolucionAcumulada(resp.evolucion_acumulada);
+                    } else {
+                        $("#dcGraficoEvolucionLoading").text("Sin datos");
+                    }
+                    if (resp.comparativo_mensual) {
+                        inicializarGraficoComparativoMensual(resp.comparativo_mensual);
+                    } else {
+                        $("#dcGraficoComparativoLoading").text("Sin datos");
+                    }
+                    if (resp.top_vendedores) {
+                        inicializarTopVendedores(resp.top_vendedores);
+                    } else {
+                        $("#dcTopVendedoresLoading").text("Sin datos");
+                    }
                 }, 50);
             } else {
                 $(".dc-kpi-card__chart-loading").text("—");
                 $("#dcGraficoCobranzaDiaLoading").text("Sin datos");
                 $("#dcGraficoCobranzaSemanaLoading").text("Sin datos");
                 $("#dcGraficoDiaSemanaLoading").text("Sin datos");
+                $("#dcGraficoEvolucionLoading").text("Sin datos");
+                $("#dcGraficoComparativoLoading").text("Sin datos");
+                $("#dcTopVendedoresLoading").text("Sin datos");
             }
         })
         .fail(function () {
@@ -661,6 +962,9 @@ function cargarSparklinesCobranzas() {
             $("#dcGraficoCobranzaDiaLoading").text("Error al cargar");
             $("#dcGraficoCobranzaSemanaLoading").text("Error al cargar");
             $("#dcGraficoDiaSemanaLoading").text("Error al cargar");
+            $("#dcGraficoEvolucionLoading").text("Error al cargar");
+            $("#dcGraficoComparativoLoading").text("Error al cargar");
+            $("#dcTopVendedoresLoading").text("Error al cargar");
         });
 }
 

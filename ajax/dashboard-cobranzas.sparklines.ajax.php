@@ -29,4 +29,7 @@ echo json_encode(array(
     "sparklines" => $datos["sparklines"],
     "cobranza_semana" => $datos["cobranza_semana"],
     "cobranza_dia_semana" => $datos["cobranza_dia_semana"],
+    "evolucion_acumulada" => $datos["evolucion_acumulada"],
+    "comparativo_mensual" => $datos["comparativo_mensual"],
+    "top_vendedores" => $datos["top_vendedores"],
 ));

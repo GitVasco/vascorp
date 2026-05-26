@@ -48,7 +48,7 @@ Todos los widgets inferiores deben respetar estos filtros (salvo gráficos compa
 | # | Caja | Tipo | Qué muestra | Campos | Agregación |
 |---|------|------|-------------|--------|------------|
 | 10 | **Evolución acumulada del mes** | Líneas | Curva acumulada día a día: año actual vs anterior + meta | `fecha`, `dia`, `anno`, `monto` | Acumulado: `SUM(monto) OVER (ORDER BY dia)` por `anno`; meta = configuración externa |
-| 11 | **Cobranza por mes (comparativo)** | Barras agrupadas | Total por mes: 2024 vs 2025 (y años en query) | `nom_mes`, `mes`, `anno`, `monto` | `SUM(monto) GROUP BY anno, mes`; ignorar filtro de mes, mantener año si aplica |
+| 11 | **Cobranza por mes (comparativo)** | Barras agrupadas | Total por mes: 2025 vs 2026 | `nom_mes`, `mes`, `anno`, `monto` | `SUM(monto) GROUP BY anno, mes`; ignorar filtro de mes; respeta vendedor |
 | 12 | **Top 10 vendedores** | Barras horizontales | Ranking por monto cobrado | `vendedor`, `monto` | `SUM(monto) GROUP BY vendedor ORDER BY total DESC LIMIT 10` |
 
 ---

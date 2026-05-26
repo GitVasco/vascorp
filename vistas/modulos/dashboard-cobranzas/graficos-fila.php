@@ -23,6 +23,11 @@
             flex: 1;
             width: 100%;
             margin-bottom: 15px;
+            min-height: 0;
+        }
+
+        .dc-graficos-cobranzas .box-body {
+            overflow: visible;
         }
     }
 </style>
