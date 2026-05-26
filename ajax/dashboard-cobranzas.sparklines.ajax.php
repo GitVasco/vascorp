@@ -1,11 +1,19 @@
 <?php
 
+session_start();
+
 date_default_timezone_set("America/Lima");
 
+require_once "../controladores/config.php";
 require_once "../controladores/dashboard-cobranzas.controlador.php";
 require_once "../modelos/dashboard-cobranzas.modelo.php";
 
 header("Content-Type: application/json; charset=utf-8");
+
+if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboardCobranzas()) {
+    echo json_encode(array("ok" => false, "msg" => "Sin permiso para el dashboard de cobranzas"));
+    exit;
+}
 
 if (!isset($_GET["anno"]) || !isset($_GET["mes"])) {
     echo json_encode(array("ok" => false, "msg" => "Parámetros incompletos"));

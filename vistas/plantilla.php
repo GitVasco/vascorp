@@ -21,6 +21,8 @@ if (!isset($_SESSION)) {
             $__tituloVentana = "Crear pedido · Código de barras | Vasco System";
         } elseif ($_GET["ruta"] === "crear-pedidocv") {
             $__tituloVentana = "Crear pedido | Vasco System";
+        } elseif ($_GET["ruta"] === "dashboard-cobranzas") {
+            $__tituloVentana = "Dashboard de Cobranzas | Vasco System";
         }
     }
     ?>

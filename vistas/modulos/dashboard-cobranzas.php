@@ -1,3 +1,10 @@
+<?php
+if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboardCobranzas()) {
+    echo '<script>window.location = "inicio";</script>';
+    return;
+}
+?>
+
 <div class="content-wrapper dc-dashboard-cobranzas">
     <section class="content-header">
         <h1>

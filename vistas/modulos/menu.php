@@ -72,6 +72,15 @@
 
                 </li>
 
+            <?php
+            }
+            ?>
+
+            <!--  Dashboard Cobranzas (lista de IDs en controladores/config.php) -->
+            <?php
+            if (function_exists("usuarioPuedeDashboardCobranzas") && usuarioPuedeDashboardCobranzas()) {
+            ?>
+
                 <li class="<?php if ($_GET["ruta"] == "dashboard-cobranzas") echo 'active'; ?>">
 
                     <a href="index.php?ruta=dashboard-cobranzas">
