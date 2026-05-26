@@ -147,10 +147,117 @@ function inicializarSparklinesCobranzas(data) {
 
 var dcChartCobranzaDia = null;
 var dcChartCobranzaSemana = null;
+var dcChartCobranzaDiaSemana = null;
 
 function dcFormatearSoles(valor) {
     var n = Math.round(parseFloat(valor) || 0);
     return "S/ " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** Etiquetas sobre puntos/barras: 10k, 15k, 13,4k */
+function dcFormatearMontoCompacto(valor) {
+    var n = parseFloat(valor) || 0;
+    var abs = Math.abs(n);
+
+    if (abs < 1000) {
+        return String(Math.round(n));
+    }
+
+    var k = n / 1000;
+    var texto = k.toFixed(1).replace(".", ",");
+    texto = texto.replace(/,0$/, "");
+
+    return texto + "k";
+}
+
+/** Tope del eje Y en Morris: evita mucho espacio vacío arriba (p. ej. 200k con pico 110k). */
+function dcCalcularYMaxMorris(montos, lineaReferencia) {
+    var maxValor = 0;
+    var i;
+
+    for (i = 0; i < montos.length; i++) {
+        if (montos[i] > maxValor) {
+            maxValor = montos[i];
+        }
+    }
+
+    if (lineaReferencia > maxValor) {
+        maxValor = lineaReferencia;
+    }
+
+    if (maxValor <= 0) {
+        return null;
+    }
+
+    var techo = maxValor * 1.12;
+
+    if (techo >= 10000) {
+        return Math.ceil(techo / 5000) * 5000;
+    }
+
+    if (techo >= 1000) {
+        return Math.ceil(techo / 500) * 500;
+    }
+
+    return Math.ceil(techo / 50) * 50;
+}
+
+function dcEtiquetasRangoSemana(semanaData) {
+    if (semanaData.rangos && semanaData.rangos.length) {
+        return semanaData.rangos;
+    }
+
+    var labelsFull = semanaData.labels || [];
+    var out = [];
+    var i;
+    var m;
+
+    for (i = 0; i < labelsFull.length; i++) {
+        m = String(labelsFull[i]).match(/\((\d{2}\s*-\s*\d{2})\)/);
+        if (m) {
+            out.push(m[1].replace(/\s/g, "").replace("-", " al "));
+        } else {
+            out.push(labelsFull[i]);
+        }
+    }
+
+    return out;
+}
+
+/** Escala fija en Chart.js 1: tope con margen para etiquetas sobre el pico (S3, etc.). */
+function dcOpcionesEscalaChartLinea(valores) {
+    var ymax = dcCalcularYMaxMorris(valores, 0);
+
+    if (!ymax) {
+        return {};
+    }
+
+    ymax = Math.ceil((ymax * 1.15) / 5000) * 5000;
+    var steps = 4;
+    var stepWidth = ymax / steps;
+
+    return {
+        scaleOverride: true,
+        scaleSteps: steps,
+        scaleStepWidth: stepWidth,
+        scaleStartValue: 0,
+    };
+}
+
+/** Chart.js 1.x redibuja al hover y borra texto pintado en canvas; re-pintar tras cada draw */
+function dcEnlazarEtiquetasFijas(chartInstance, pintarFn) {
+    if (!chartInstance || typeof chartInstance.draw !== "function" || chartInstance._dcMontosEtiquetasOk) {
+        return;
+    }
+
+    chartInstance._dcMontosEtiquetasOk = true;
+    var drawOriginal = chartInstance.draw;
+
+    chartInstance.draw = function (ease) {
+        var ret = drawOriginal.apply(this, arguments);
+        pintarFn(this);
+        return ret;
+    };
 }
 
 function inicializarGraficoCobranzaDia(data) {
@@ -177,6 +284,7 @@ function inicializarGraficoCobranzaDia(data) {
 
     var promedio = parseFloat(data.promedio_diario_linea) || 0;
     var goals = promedio > 0 ? [promedio] : [];
+    var ymaxMorris = dcCalcularYMaxMorris(montos, promedio);
 
     $("#dcGraficoDiaPromedio").text(
         "Promedio diario: " + (promedio > 0 ? dcFormatearSoles(promedio) : "—")
@@ -203,10 +311,59 @@ function inicializarGraficoCobranzaDia(data) {
         goalStrokeWidth: 2,
         hideHover: "auto",
         gridTextColor: "#666",
-        ymax: "auto",
-        preUnits: "S/ ",
-        xLabelAngle: 45,
+        ymax: ymaxMorris !== null ? ymaxMorris : "auto",
+        ymin: 0,
+        barSizeRatio: 0.88,
+        barGap: 1,
+        padding: 10,
+        numLines: 4,
+        gridTextSize: 10,
+        xLabelAngle: 0,
+        yLabelFormat: function (y) {
+            return dcFormatearMontoCompacto(y);
+        },
     });
+}
+
+function dcPintarEjeYCompacto(chartInstance) {
+    var scale = chartInstance.scale;
+    var chart = chartInstance.chart;
+
+    if (!scale || !chart || !chart.ctx || !scale.yLabels || !scale.yLabels.length) {
+        return;
+    }
+
+    var ctx = chart.ctx;
+    var yLabelGap = (scale.endPoint - scale.startPoint) / scale.steps;
+    var x = Math.round(scale.xScalePaddingLeft) - 10;
+    var padIzq = Math.max(0, x - 52);
+    var i;
+    var yLabelCenter;
+    var valorNumerico;
+    var texto;
+
+    ctx.save();
+    ctx.font = scale.font || '9px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+
+    for (i = 0; i < scale.yLabels.length; i++) {
+        yLabelCenter = scale.endPoint - yLabelGap * i;
+        valorNumerico = scale.min + i * scale.stepValue;
+        texto = dcFormatearMontoCompacto(valorNumerico);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(padIzq, yLabelCenter - 8, x - padIzq + 10, 16);
+        ctx.fillStyle = scale.textColor || "#64748b";
+        ctx.fillText(texto, x, yLabelCenter);
+    }
+
+    ctx.restore();
+}
+
+function dcPintarLineaSemanaConEje(chartInstance) {
+    dcPintarEjeYCompacto(chartInstance);
+    dcPintarMontosEnLinea(chartInstance);
 }
 
 function dcPintarMontosEnLinea(chartInstance) {
@@ -226,8 +383,9 @@ function dcPintarMontosEnLinea(chartInstance) {
             if (!point.hasValue()) {
                 return;
             }
-            var texto = dcFormatearSoles(point.value);
-            ctx.fillText(texto, point.x, point.y - 10);
+            var texto = dcFormatearMontoCompacto(point.value);
+            var offsetY = point.y < 28 ? 14 : 12;
+            ctx.fillText(texto, point.x, point.y - offsetY);
         });
     });
 
@@ -246,12 +404,8 @@ function inicializarGraficoCobranzaSemana(semanaData) {
 
     var labelsFull = semanaData.labels || [];
     var promedios = semanaData.promedios || [];
-    var labelsCortos = [];
-    var i;
-
-    for (i = 0; i < labelsFull.length; i++) {
-        labelsCortos.push("S" + (i + 1));
-    }
+    var etiquetasEje = dcEtiquetasRangoSemana(semanaData);
+    var escalaLinea = dcOpcionesEscalaChartLinea(promedios);
 
     if (typeof Chart === "undefined") {
         $loading.text("Gráfico no disponible");
@@ -265,7 +419,7 @@ function inicializarGraficoCobranzaSemana(semanaData) {
 
     var ctx = canvas.getContext("2d");
     var chartData = {
-        labels: labelsCortos,
+        labels: etiquetasEje,
         datasets: [
             {
                 fillColor: "rgba(60, 141, 188, 0.12)",
@@ -289,21 +443,29 @@ function inicializarGraficoCobranzaSemana(semanaData) {
         scaleBeginAtZero: true,
         scaleShowGridLines: true,
         scaleGridLineColor: "rgba(0,0,0,0.06)",
-        scaleFontSize: 10,
+        scaleFontSize: 9,
         scaleFontColor: "#64748b",
         responsive: true,
         maintainAspectRatio: false,
         showTooltips: true,
         tooltipTemplate:
-            "<%if (label){%><%=label%>: <%}%><%= value %> (prom. diario)",
+            "<%if (label){%>Días <%=label%>: <%}%><%= value %> (prom. diario)",
         onAnimationComplete: function () {
             dcPintarMontosEnLinea(this);
         },
     };
 
+    if (escalaLinea.scaleOverride) {
+        options.scaleOverride = escalaLinea.scaleOverride;
+        options.scaleSteps = escalaLinea.scaleSteps;
+        options.scaleStepWidth = escalaLinea.scaleStepWidth;
+        options.scaleStartValue = escalaLinea.scaleStartValue;
+    }
+
     var chartV1 = new Chart(ctx);
     if (typeof chartV1.Line === "function") {
         dcChartCobranzaSemana = chartV1.Line(chartData, options);
+        dcEnlazarEtiquetasFijas(dcChartCobranzaSemana, dcPintarLineaSemanaConEje);
         return;
     }
 
@@ -311,7 +473,7 @@ function inicializarGraficoCobranzaSemana(semanaData) {
         dcChartCobranzaSemana = new Chart(ctx, {
             type: "line",
             data: {
-                labels: labelsCortos,
+                labels: etiquetasEje,
                 datasets: [
                     {
                         data: promedios,
@@ -334,6 +496,106 @@ function inicializarGraficoCobranzaSemana(semanaData) {
                 },
             },
         });
+    }
+}
+
+function dcPintarMontosEnBarras(chartInstance) {
+    if (!chartInstance || !chartInstance.chart || !chartInstance.datasets) {
+        return;
+    }
+
+    var ctx = chartInstance.chart.ctx;
+    ctx.save();
+    ctx.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = "#334155";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+
+    chartInstance.datasets.forEach(function (dataset) {
+        if (!dataset.bars) {
+            return;
+        }
+        dataset.bars.forEach(function (bar) {
+            if (!bar.value && bar.value !== 0) {
+                return;
+            }
+            ctx.fillText(dcFormatearMontoCompacto(bar.value), bar.x, bar.y - 8);
+        });
+    });
+
+    ctx.restore();
+}
+
+function inicializarGraficoCobranzaDiaSemana(diaSemanaData) {
+    var $loading = $("#dcGraficoDiaSemanaLoading");
+    var $wrap = $("#dcGraficoDiaSemanaWrap");
+    var $badge = $("#dcGraficoDiaSemanaMejor");
+    var canvas = document.getElementById("dcGraficoDiaSemanaCanvas");
+
+    if (!canvas || !diaSemanaData || !diaSemanaData.montos) {
+        $loading.text("Sin datos para el período");
+        return;
+    }
+
+    var labels = diaSemanaData.labels || [];
+    var montos = diaSemanaData.montos || [];
+
+    if (typeof Chart === "undefined") {
+        $loading.text("Gráfico no disponible");
+        return;
+    }
+
+    dcChartCobranzaDiaSemana = null;
+
+    if (diaSemanaData.mejor_dia && parseFloat(diaSemanaData.mejor_monto) > 0) {
+        $badge
+            .text(
+                "Mayor prom.: " +
+                    diaSemanaData.mejor_dia +
+                    " · " +
+                    dcFormatearSoles(diaSemanaData.mejor_monto)
+            )
+            .show();
+    } else {
+        $badge.hide();
+    }
+
+    $loading.hide();
+    $wrap.show();
+
+    var ctx = canvas.getContext("2d");
+    var chartData = {
+        labels: labels,
+        datasets: [
+            {
+                fillColor: "rgba(60, 141, 188, 0.85)",
+                strokeColor: "rgba(60, 141, 188, 1)",
+                highlightFill: "rgba(26, 122, 76, 0.9)",
+                highlightStroke: "#1a7a4c",
+                data: montos,
+            },
+        ],
+    };
+
+    var options = {
+        scaleBeginAtZero: true,
+        scaleShowGridLines: true,
+        scaleGridLineColor: "rgba(0,0,0,0.06)",
+        scaleFontSize: 11,
+        scaleFontColor: "#64748b",
+        responsive: true,
+        maintainAspectRatio: false,
+        showTooltips: true,
+        tooltipTemplate: "<%if (label){%><%=label%>: <%}%>S/ <%= value %> (prom.)",
+        onAnimationComplete: function () {
+            dcPintarMontosEnBarras(this);
+        },
+    };
+
+    var chartV1 = new Chart(ctx);
+    if (typeof chartV1.Bar === "function") {
+        dcChartCobranzaDiaSemana = chartV1.Bar(chartData, options);
+        dcEnlazarEtiquetasFijas(dcChartCobranzaDiaSemana, dcPintarMontosEnBarras);
     }
 }
 
@@ -381,17 +643,24 @@ function cargarSparklinesCobranzas() {
                     } else {
                         $("#dcGraficoCobranzaSemanaLoading").text("Sin datos");
                     }
+                    if (resp.cobranza_dia_semana) {
+                        inicializarGraficoCobranzaDiaSemana(resp.cobranza_dia_semana);
+                    } else {
+                        $("#dcGraficoDiaSemanaLoading").text("Sin datos");
+                    }
                 }, 50);
             } else {
                 $(".dc-kpi-card__chart-loading").text("—");
                 $("#dcGraficoCobranzaDiaLoading").text("Sin datos");
                 $("#dcGraficoCobranzaSemanaLoading").text("Sin datos");
+                $("#dcGraficoDiaSemanaLoading").text("Sin datos");
             }
         })
         .fail(function () {
             $(".dc-kpi-card__chart-loading").text("—");
             $("#dcGraficoCobranzaDiaLoading").text("Error al cargar");
             $("#dcGraficoCobranzaSemanaLoading").text("Error al cargar");
+            $("#dcGraficoDiaSemanaLoading").text("Error al cargar");
         });
 }
 

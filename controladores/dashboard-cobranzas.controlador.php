@@ -208,6 +208,11 @@ class ControladorDashboardCobranzas
                 $mes,
                 $vendedor
             ),
+            "cobranza_dia_semana" => ModeloDashboardCobranzas::mdlCobranzaPorDiaSemana(
+                $anno,
+                $mes,
+                $vendedor
+            ),
         );
     }
 

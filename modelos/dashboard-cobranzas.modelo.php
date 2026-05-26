@@ -93,6 +93,23 @@ class ModeloDashboardCobranzas
         return $fin - $inicio + 1;
     }
 
+    /**
+     * Cuántas veces cae cada día en el mes (DAYOFWEEK MySQL: 1=Dom … 7=Sáb).
+     */
+    private static function contarDiasSemanaEnMes($anno, $mes)
+    {
+        $ultimo = self::diasDelMes($anno, $mes);
+        $conteo = array(1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 7 => 0);
+
+        for ($dia = 1; $dia <= $ultimo; $dia++) {
+            $ts = mktime(0, 0, 0, (int) $mes, $dia, (int) $anno);
+            $numDia = (int) date("w", $ts) + 1;
+            $conteo[$numDia]++;
+        }
+
+        return $conteo;
+    }
+
     private static function etiquetaRangoSemana($semana, $ultimoDia)
     {
         $inicio = (($semana - 1) * 7) + 1;
@@ -130,6 +147,7 @@ class ModeloDashboardCobranzas
 
         $ultimoDia = self::diasDelMes($anno, $mes);
         $labels = array();
+        $rangos = array();
         $promedios = array();
         $totales = array();
 
@@ -138,16 +156,77 @@ class ModeloDashboardCobranzas
             $total = isset($porSemana[$semana]) ? $porSemana[$semana] : 0;
             $promedio = $diasCal > 0 ? round($total / $diasCal, 2) : 0;
             $rango = self::etiquetaRangoSemana($semana, $ultimoDia);
+            $rangoEtiqueta = str_replace(" - ", " al ", $rango);
 
             $labels[] = "Sem " . $semana . " (" . $rango . ")";
+            $rangos[] = $rangoEtiqueta;
             $promedios[] = $promedio;
             $totales[] = $total;
         }
 
         return array(
             "labels" => $labels,
+            "rangos" => $rangos,
             "promedios" => $promedios,
             "totales" => $totales,
+        );
+    }
+
+    static public function mdlCobranzaPorDiaSemana($anno, $mes, $vendedor = "")
+    {
+        $sql = "SELECT
+            DAYOFWEEK(cc.fecha) AS num_dia_semana,
+            COALESCE(SUM(cc.monto), 0) AS total
+        FROM cuenta_ctejf cc
+        WHERE " . self::wherePeriodo("cc") . "
+        GROUP BY DAYOFWEEK(cc.fecha)";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindFiltroPeriodo($stmt, $anno, $mes, $vendedor);
+        $stmt->execute();
+
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $porDia = array();
+
+        foreach ($filas as $fila) {
+            $porDia[(int) $fila["num_dia_semana"]] = (float) $fila["total"];
+        }
+
+        $ordenDias = array(
+            2 => array("corto" => "Lun", "nombre" => "Lunes"),
+            3 => array("corto" => "Mar", "nombre" => "Martes"),
+            4 => array("corto" => "Mie", "nombre" => "Miércoles"),
+            5 => array("corto" => "Jue", "nombre" => "Jueves"),
+            6 => array("corto" => "Vie", "nombre" => "Viernes"),
+            7 => array("corto" => "Sab", "nombre" => "Sábado"),
+            1 => array("corto" => "Dom", "nombre" => "Domingo"),
+        );
+
+        $ocurrenciasMes = self::contarDiasSemanaEnMes($anno, $mes);
+        $labels = array();
+        $montos = array();
+        $mejorMonto = 0;
+        $mejorNombre = "";
+
+        foreach ($ordenDias as $num => $info) {
+            $total = isset($porDia[$num]) ? $porDia[$num] : 0;
+            $vecesEnMes = isset($ocurrenciasMes[$num]) ? (int) $ocurrenciasMes[$num] : 0;
+            $promedio = $vecesEnMes > 0 ? round($total / $vecesEnMes, 2) : 0;
+
+            $labels[] = $info["corto"];
+            $montos[] = $promedio;
+
+            if ($promedio > $mejorMonto) {
+                $mejorMonto = $promedio;
+                $mejorNombre = $info["nombre"];
+            }
+        }
+
+        return array(
+            "labels" => $labels,
+            "montos" => $montos,
+            "mejor_dia" => $mejorNombre,
+            "mejor_monto" => $mejorMonto,
         );
     }
 

@@ -28,4 +28,5 @@ echo json_encode(array(
     "ok" => true,
     "sparklines" => $datos["sparklines"],
     "cobranza_semana" => $datos["cobranza_semana"],
+    "cobranza_dia_semana" => $datos["cobranza_dia_semana"],
 ));

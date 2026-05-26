@@ -2,6 +2,7 @@
     <?php
     include __DIR__ . "/grafico-cobranza-dia.php";
     include __DIR__ . "/grafico-cobranza-semana.php";
+    include __DIR__ . "/grafico-cobranza-dia-semana.php";
     ?>
 </div>
 
