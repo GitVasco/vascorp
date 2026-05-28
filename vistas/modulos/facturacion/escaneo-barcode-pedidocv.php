@@ -551,7 +551,7 @@ $idUsuarioSes = isset($_SESSION["id"]) ? $_SESSION["id"] : "";
 
                                 <input type="text" class="form-control input-lg" id="inputBarcodePedCv" autocomplete="off" placeholder="Enter al finalizar cada lectura" <?php echo $tienePedidoActivo ? "" : "disabled"; ?>>
 
-                                <p class="help-block small" style="margin-top:10px;margin-bottom:0;">Si no hay precio en lista igual suma cantidad (<strong>S/ 0</strong>) y muestra alerta.</p>
+                                <p class="help-block small" style="margin-top:10px;margin-bottom:0;">Ej.: <strong>0057032</strong> → <strong>10057032</strong> (1 + dígitos completos); <strong>RL271013</strong> tal cual. Si no hay precio en lista igual suma cantidad (<strong>S/ 0</strong>) y muestra alerta.</p>
 
                             </div>
 

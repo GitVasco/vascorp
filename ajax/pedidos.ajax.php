@@ -13,6 +13,32 @@ require_once '../modelos/pedidos.modelo.php';
 require_once '../controladores/movimientos.controlador.php';
 require_once '../modelos/movimientos.modelo.php';
 
+/**
+ * Normaliza lectura del escáner para match con articulojf.articulo.
+ * - Letra inicial (RL271013): código completo.
+ * - Empieza con 0 (0057032): "1" + todos los dígitos → 10057032.
+ * - Otros numéricos: todos los dígitos, sin truncar.
+ */
+function normalizarCodigoBarcodePedCv($scan)
+{
+    $limpio = trim(preg_replace('/[\r\n]+/', '', (string) $scan));
+    if ($limpio === '') {
+        return '';
+    }
+    if (preg_match('/^[a-zA-Z]/', $limpio)) {
+        return $limpio;
+    }
+    preg_match_all('/\d/', $limpio, $matches);
+    $soloDigitos = implode('', isset($matches[0]) ? $matches[0] : array());
+    if ($soloDigitos === '') {
+        return $limpio;
+    }
+    if ($soloDigitos[0] === '0') {
+        return '1' . $soloDigitos;
+    }
+    return $soloDigitos;
+}
+
 class AjaxPedidos
 {
 
@@ -308,13 +334,15 @@ class AjaxPedidos
     public function ajaxIncrementarBarcodePedidoCv()
     {
 
-        $articuloSku = isset($_POST["articuloBarcodeCv"]) ? trim((string) $_POST["articuloBarcodeCv"]) : "";
+        $articuloSkuRaw = isset($_POST["articuloBarcodeCv"]) ? trim((string) $_POST["articuloBarcodeCv"]) : "";
         $pedido = isset($_POST["pedidoBarcodeCv"]) ? trim((string) $_POST["pedidoBarcodeCv"]) : "";
 
-        if ($articuloSku === "" || $pedido === "") {
+        if ($articuloSkuRaw === "" || $pedido === "") {
             echo json_encode(array("ok" => false, "mensaje" => "Faltan pedido o código de artículo."));
             return;
         }
+
+        $articuloSku = normalizarCodigoBarcodePedCv($articuloSkuRaw);
 
         $cabecera = ModeloPedidos::mdlMostrarTemporal("temporaljf", $pedido);
         if (!$cabecera || empty($cabecera["codigo"])) {
@@ -330,7 +358,11 @@ class AjaxPedidos
 
         $filaArt = ModeloArticulos::mdlArticuloPorCodigo($articuloSku);
         if (!$filaArt || empty($filaArt["modelo"])) {
-            echo json_encode(array("ok" => false, "mensaje" => "Código no existe en artículos (articulojf)."));
+            echo json_encode(array(
+                "ok" => false,
+                "codigo" => $articuloSku,
+                "mensaje" => "Código no encontrado: " . $articuloSku . ".",
+            ));
             return;
         }
 
@@ -350,6 +382,7 @@ class AjaxPedidos
         if ($rpt === "ok") {
             echo json_encode(array(
                 "ok" => true,
+                "codigo" => $articuloSku,
                 "advertencia" => $advertencia,
             ));
         } else {
