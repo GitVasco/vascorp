@@ -253,6 +253,14 @@ class ControladorIngresos
 
                 $listaArticulos = json_decode($_POST["listaArticulosIngreso"], true);
 
+                foreach ($listaArticulos as $key => $linea) {
+                    if (!isset($linea["cantidad"]) || $linea["cantidad"] === "" || $linea["cantidad"] === null) {
+                        $listaArticulos[$key]["cantidad"] = isset($linea["nuevaCant"]) ? (int) $linea["nuevaCant"] : 0;
+                    } else {
+                        $listaArticulos[$key]["cantidad"] = (int) $linea["cantidad"];
+                    }
+                }
+
                 $entaller = self::ActualizarEnTaller($listaArticulos);
 
                 foreach ($entaller as $id => $cantidad) {
@@ -264,7 +272,10 @@ class ControladorIngresos
 
                 #var_dump("listaArticulos", $listaArticulos);
 
-                if ($_POST["nuevoTipoSector"] == "0") {
+                $talleresArticulojf = array("T1", "T3", "T5");
+                $usaArticulojf = in_array($_POST["nuevoTalleres"], $talleresArticulojf, true);
+
+                if ($usaArticulojf) {
                     foreach ($listaArticulos as $value) {
 
                         $tabla = "articulojf";
@@ -296,6 +307,7 @@ class ControladorIngresos
                         //Actualizamos servicio
 
                         ModeloArticulos::mdlActualizarArticuloServicio($articulo, $valor2);
+                        ModeloArticulos::mdlDescontarTallerArticulo($articulo, (int) $valor2);
                     }
                 }
                 /* 

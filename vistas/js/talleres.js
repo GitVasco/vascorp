@@ -1484,6 +1484,12 @@ $(".formularioIngreso, .formularioIngresoMulti, .formularioSegundaMulti").on(
     }
 );
 
+$(".formularioIngreso").on("submit", function () {
+    if (typeof listarArticulosIngreso === "function") {
+        listarArticulosIngreso();
+    }
+});
+
 /*
  * SUMAR EL TOTAL DE LAS ORDENES DE CORTE
  */

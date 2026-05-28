@@ -262,6 +262,23 @@ class ModeloArticulos
 		$stmt = null;
 	}
 
+	/**
+	 * Descuenta cantidad de articulojf.taller (mínimo 0). Usado al registrar segunda en cierres
+	 * para evitar que el mismo saldo quede disponible vía taller interno.
+	 */
+	static public function mdlDescontarTallerArticulo($articulo, $cantidad)
+	{
+		$stmt = Conexion::conectar()->prepare("UPDATE articulojf
+			SET taller = GREATEST(taller - :cantidad, 0)
+			WHERE articulo = :articulo");
+
+		$stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+		$stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
+		$stmt->execute();
+
+		$stmt = null;
+	}
+
 	/* 
 	* Método para actualizar un cierre CON EL id
 	*/

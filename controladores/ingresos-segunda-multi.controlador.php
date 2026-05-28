@@ -6,6 +6,20 @@
 class ControladorIngresosSegundaMulti
 {
 
+    /** Misma regla que ctrEliminarSegunda: internos usan articulojf, externos cierres. */
+    private static function tallerUsaArticulojf($tallerCod)
+    {
+        return in_array($tallerCod, array("T1", "T3", "T5"), true);
+    }
+
+    private static function resolverCantidadIngreso($value)
+    {
+        if (isset($value["cantidad"]) && $value["cantidad"] !== "" && $value["cantidad"] !== null) {
+            return (int) $value["cantidad"];
+        }
+        return isset($value["nuevaCant"]) ? (int) $value["nuevaCant"] : 0;
+    }
+
     public function ctrCrearSegundaMulti()
     {
         if (!isset($_POST["segundaMulti"]) || $_POST["segundaMulti"] !== "1") {
@@ -42,11 +56,7 @@ class ControladorIngresosSegundaMulti
         $lineas = array();
 
         foreach ($listaArticulos as $value) {
-            if (isset($value["cantidad"]) && $value["cantidad"] !== "") {
-                $cant = (int) $value["cantidad"];
-            } else {
-                $cant = isset($value["nuevaCant"]) ? (int) $value["nuevaCant"] : 0;
-            }
+            $cant = self::resolverCantidadIngreso($value);
             if ($cant <= 0) {
                 continue;
             }
@@ -95,6 +105,7 @@ class ControladorIngresosSegundaMulti
                     "taller" => $row["taller"],
                     "idCierre" => isset($row["idCierre"]) ? $row["idCierre"] : "",
                     "corte" => isset($row["corte"]) ? $row["corte"] : "",
+                    "codSector" => isset($row["codSector"]) ? trim((string) $row["codSector"]) : "",
                 );
             }
 
@@ -109,7 +120,8 @@ class ControladorIngresosSegundaMulti
             }
 
             foreach ($subParaMovimiento as $fila) {
-                if (!isset($fila["idCierre"]) || $fila["idCierre"] === "" || $fila["idCierre"] === null) {
+                $tallerLinea = $fila["codSector"] !== "" ? $fila["codSector"] : $tallerCod;
+                if (self::tallerUsaArticulojf($tallerLinea)) {
                     $this->actualizarArticulosSegunda(array($fila));
                 } else {
                     $this->actualizarCierresDetalleSegunda(array($fila));
@@ -186,6 +198,7 @@ class ControladorIngresosSegundaMulti
             ModeloArticulos::mdlActualizarUnCierre($tabla, $item1, $valor1, $valor);
             $valor2 = $value["cantidad"];
             ModeloArticulos::mdlActualizarArticuloServicio($articulo, $valor2);
+            ModeloArticulos::mdlDescontarTallerArticulo($articulo, (int) $valor2);
         }
     }
 
