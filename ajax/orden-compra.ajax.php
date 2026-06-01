@@ -4,6 +4,7 @@ require_once "../controladores/orden-compra.controlador.php";
 require_once "../modelos/orden-compra.modelo.php";
 require_once "../controladores/maestras.controlador.php";
 require_once "../modelos/maestras.modelo.php";
+require_once "../helpers/jsonpe.api.php";
 
 class AjaxOrdenCompra{
 
@@ -13,13 +14,8 @@ class AjaxOrdenCompra{
 	CONSULTAR API TIPO DE CAMBIO
 	=============================================*/	
 	public function ajaxConsultarTipoCambio(){
-
-
-		$ws = file_get_contents("https://api.apis.net.pe/v1/tipo-cambio-sunat");
-
-
-		echo $ws;
-
+		$respuesta = JsonPeApi::consultarTipoCambio();
+		echo json_encode($respuesta);
 	}
 
 	public function ajaxSelectColores(){

@@ -2,6 +2,7 @@
 
 require_once '../controladores/movimientos.controlador.php';
 require_once '../modelos/movimientos.modelo.php';
+require_once '../helpers/jsonpe.api.php';
 
 class AjaxMovimientos{
 
@@ -30,38 +31,15 @@ class AjaxMovimientos{
 	public function ajaxActualizarTC(){
 
 		$fecha=$this->fecha;
+		$tipoCambioSunat = JsonPeApi::consultarTipoCambio($fecha);
 
-		$curl = curl_init();
-		curl_setopt_array($curl, array(
-			CURLOPT_URL => 'https://api.apis.net.pe/v1/tipo-cambio-sunat?fecha=' . $fecha,
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_CUSTOMREQUEST => "GET",
-			CURLOPT_SSL_VERIFYPEER => false
-		));
-		$response = curl_exec($curl);
-		$err = curl_error($curl);
-		curl_close($curl);
-		if ($err) {
-			echo "cURL Error #:" . $err;
-		} else {
-
-			$tipoCambioSunat = json_decode($response, true);	
-			
-			if($tipoCambioSunat["venta"] == "Fuera de plazo permitido"){
-
-				$respuesta = "no";
-	
-			}else{
-	
-				$respuesta = ModeloMovimientos::mdlActualizarTipoCambio($tipoCambioSunat["compra"], $tipoCambioSunat["venta"], $fecha);
-	
-			}	
-	
-			
-			echo $respuesta;	
+		if($tipoCambioSunat["venta"] == "Fuera de plazo permitido"){
+			$respuesta = "no";
+		}else{
+			$respuesta = ModeloMovimientos::mdlActualizarTipoCambio($tipoCambioSunat["compra"], $tipoCambioSunat["venta"], $fecha);
 		}
 
-
+		echo $respuesta;
 	}
 
 

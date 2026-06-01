@@ -865,10 +865,11 @@ function ObtenerDatosRuc3(ruc){
 
 					
 				}else{
+					var datos = jsonx["data"];
 
-					$('#nuevaRazPro').val(jsonx["apellidoPaterno"]+" "+jsonx["apellidoMaterno"]+" "+jsonx["nombres"] );
+					$('#nuevaRazPro').val(datos["apellido_paterno"]+" "+datos["apellido_materno"]+" "+datos["nombres"] );
 
-					$('#editarRazPro').val(jsonx["apellidoPaterno"]+" "+jsonx["apellidoMaterno"]+" "+jsonx["nombres"] );
+					$('#editarRazPro').val(datos["apellido_paterno"]+" "+datos["apellido_materno"]+" "+datos["nombres"] );
 					
 				}
 			  
@@ -896,10 +897,11 @@ function ObtenerDatosRuc3(ruc){
 					$('#editarRazPro').val("");
 					
 				}else{
+					var data = jsonx["data"];
 
-					$('#nuevaRazPro').val(jsonx["razonSocial"]);
+					$('#nuevaRazPro').val(data["nombre_o_razon_social"]);
 
-					$('#editarRazPro').val(jsonx["razonSocial"]);
+					$('#editarRazPro').val(data["nombre_o_razon_social"]);
 				}
 			  
 			}
