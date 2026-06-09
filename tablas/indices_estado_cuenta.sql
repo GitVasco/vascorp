@@ -1,0 +1,23 @@
+-- Indices para reporte Estado de Cuenta (cuenta_ctejf)
+-- Verificar: SHOW INDEX FROM cuenta_ctejf;
+--
+-- Todos los indices recomendados ya existen en la base de datos:
+--   idx_cctejf_tipmov_fecha
+--   idx_cctejf_tipmov_fecha_vendedor
+--   idx_cctejf_fecha_cliente
+--   idx_cctejf_tipmov_fecha_doc
+--   idx_cctejf_cliente
+--
+-- No es necesario ejecutar nada mas.
+-- Si en otro servidor faltan, crear solo los que no aparezcan en SHOW INDEX:
+
+-- CREATE INDEX idx_cctejf_tipmov_fecha
+--     ON cuenta_ctejf (tip_mov, fecha);
+-- CREATE INDEX idx_cctejf_tipmov_fecha_vendedor
+--     ON cuenta_ctejf (tip_mov, fecha, vendedor);
+-- CREATE INDEX idx_cctejf_fecha_cliente
+--     ON cuenta_ctejf (fecha, cliente);
+-- CREATE INDEX idx_cctejf_tipmov_fecha_doc
+--     ON cuenta_ctejf (tip_mov, fecha, tipo_doc, num_cta);
+-- CREATE INDEX idx_cctejf_cliente
+--     ON cuenta_ctejf (cliente);

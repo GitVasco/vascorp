@@ -2370,12 +2370,21 @@ $(".box").on("change", ".optradio", function () {
         $(".campoCancelacion").addClass("hidden");
         $(".btnGenerarReporteCuenta").attr("canc", "");
     }
+
+    if (consulta == "fechaActualSaldo") {
+        $(".campoCliente").removeClass("hidden");
+        $(".campoVendedor").removeClass("hidden");
+    }
 });
 
 $(".box").on("change", ".radioOrd1", function () {
     var orden1 = $(this).val();
+    var consulta = $(".btnGenerarReporteCuenta").attr("consulta");
     console.log(orden1);
     $(".btnGenerarReporteCuenta").attr("orden1", orden1);
+    if (consulta == "fechaActualSaldo") {
+        return;
+    }
     if (orden1 == "vendedor") {
         $(".campoVendedor").removeClass("hidden");
         $(".campoCliente").addClass("hidden");
@@ -2618,6 +2627,40 @@ $(".btnGenerarReporteCuenta").click(function () {
                 "_blank",
             );
         } else if (consulta == "fechaActualSaldo") {
+            var maxDiasEstadoCuenta = 2190;
+            var hoyEstadoCuenta = new Date();
+            var finEstadoCuenta = fin || hoyEstadoCuenta.toISOString().slice(0, 10);
+
+            if (!inicio) {
+                swal({
+                    type: "error",
+                    title: "Fecha requerida",
+                    text: "Debe indicar la fecha de inicio para el estado de cuenta.",
+                });
+                return;
+            }
+
+            var diffEstadoCuenta =
+                (new Date(finEstadoCuenta) - new Date(inicio)) /
+                (1000 * 60 * 60 * 24);
+            if (diffEstadoCuenta < 0) {
+                swal({
+                    type: "error",
+                    title: "Rango invalido",
+                    text: "La fecha de inicio no puede ser mayor que la fecha de fin.",
+                });
+                return;
+            }
+            if (diffEstadoCuenta > maxDiasEstadoCuenta) {
+                swal({
+                    type: "warning",
+                    title: "Rango muy amplio",
+                    text:
+                        "El estado de cuenta en Excel admite un maximo de 6 anos. Reduzca el periodo o genere el reporte por partes.",
+                });
+                return;
+            }
+
             window.open(
                 "vistas/reportes_excel/rpt_estado_cuenta.php?consulta=" +
                     consulta +
@@ -2627,12 +2670,14 @@ $(".btnGenerarReporteCuenta").click(function () {
                     orden2 +
                     "&canc=" +
                     canc +
+                    "&cli=" +
+                    cli +
                     "&vend=" +
                     vend +
                     "&inicio=" +
                     inicio +
                     "&fin=" +
-                    fin,
+                    finEstadoCuenta,
                 "_blank",
             );
         } else if (consulta == "fechaSaldo") {

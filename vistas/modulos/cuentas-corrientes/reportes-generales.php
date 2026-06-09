@@ -310,7 +310,7 @@
 
                 <div class="form-check">
                     <label class="form-check-label" for="radioImpresion2">
-                        <input type="radio" class="form-check-input radioImpresion" id="radioImpresion2" name="radioImpresion" value="excel">Por archivo excel
+                        <input type="radio" class="form-check-input radioImpresion" id="radioImpresion2" name="radioImpresion" value="excel">Por archivo CSV (Excel)
                     </label>
                 </div>
             </div>
