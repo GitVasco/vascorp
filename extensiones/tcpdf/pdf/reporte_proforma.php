@@ -109,6 +109,13 @@ $pdf->Ln(0);
 $pdf->Cell(110, 7, '', 0, false, 'C', 0, '', 0, false, false, false);
 $pdf->Cell(44, 7, 'Total General S/', 0, false, 'R', 0, '', 0, false, false, false);
 $pdf->Cell(29, 7, number_format($venta["total"], 2), 0, false, 'R', 0, '', 0, false, false, false);
+
+$pdf->Ln(8);
+$pdf->SetFont('helvetica', 'B', 8);
+$pdf->MultiCell(0, 5, 'Aviso importante:', 0, 'L', 0, 1, '', '', true);
+$pdf->SetFont('helvetica', '', 8);
+$pdf->MultiCell(0, 5, 'Los pagos deben realizarse en efectivo directamente a su ejecutivo de ventas. Exija su cargo de cobranza con fecha, monto y firma. No nos responsabilizamos por pagos abonados a cuentas de ejecutivos de ventas ni de terceros. Solo el cargo de cobranza servirá de sustento ante cualquier reclamo.', 0, 'L', 0, 1, '', '', true);
+
 // convert TTF font to TCPDF format and store it on the fonts folder
 
 // ---------------------------------------------------------
