@@ -65,6 +65,10 @@ if (!isset($_SESSION)) {
     <link rel="stylesheet" href="vistas/css/pedidos-tablas-acciones.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
 
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") : ?>
+    <link rel="stylesheet" href="vistas/css/vasco-online-sync.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+
     <!-- iCheck for checkboxes and radio inputs -->
     <link rel="stylesheet" href="vistas/plugins/iCheck/all.css">
     <!-- SELECT 2 -->
@@ -279,6 +283,9 @@ CUERPO DOCUMENTO
             } else if ($_GET["ruta"] == "usuarios") {
 
                 include "modulos/usuarios/" . $_GET["ruta"] . ".php";
+            } else if ($_GET["ruta"] == "sync-vasco") {
+
+                include "modulos/vasco-online/" . $_GET["ruta"] . ".php";
             } else if (
                 $_GET["ruta"] == "backupDB" ||
                 $_GET["ruta"] == "bkplista" ||
@@ -632,6 +639,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cobranzas") { ?>
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") { ?>
+    <script src="vistas/js/vasco-online-sync.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js"></script>
     <script src="vistas/js/paras.js"></script>

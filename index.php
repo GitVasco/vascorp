@@ -130,7 +130,11 @@ require_once "controladores/transferencias.controlador.php";
 
 require_once "controladores/arreglos.controlador.php";
 
+require_once "controladores/vasco-sync.controlador.php";
+
 require_once "controladores/config.php";
+
+require_once "controladores/vasco-online.config.php";
 
 /* 
 * MODELOS
@@ -248,6 +252,8 @@ require_once "modelos/evaluacion.modelo.php";
 require_once "modelos/transferencias.modelo.php";
 
 require_once "modelos/arreglos.modelo.php";
+
+require_once "modelos/vasco-sync.modelo.php";
 
 require_once "extensiones/vendor/autoload.php";
 

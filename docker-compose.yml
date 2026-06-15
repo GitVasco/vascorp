@@ -4,6 +4,9 @@ services:
         build: .
         ports:
             - "8090:80"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+            - "api.vasco.io:host-gateway"
         environment:
             - DB_HOST=ip_de_tu_base_de_datos
             - DB_USER=tu_usuario

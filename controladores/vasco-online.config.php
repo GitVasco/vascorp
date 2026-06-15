@@ -1,0 +1,137 @@
+<?php
+
+/**
+ * Vasco Online — sync vascorp → API en internet.
+ *
+ * Ajusta SOLO este archivo al cambiar de entorno (Docker local vs XAMPP en servidor).
+ * La API key va en controladores/config.php (junto a TOKEN_WHATSAPP, etc.).
+ *
+ * Entornos:
+ *   desarrollo  — vascorp en Docker Mac, API Vasco en otro Docker (puerto 8084 en host)
+ *   produccion  — vascorp en XAMPP/servidor, API con URL pública
+ */
+
+$vasco_online_entorno = "desarrollo";
+
+if ($vasco_online_entorno === "desarrollo") {
+
+    // Conecta al puerto publicado en el Mac; Host virtual para Apache del API.
+    define("VASCO_ONLINE_API_BASE_URL", "http://host.docker.internal:8084");
+    define("VASCO_ONLINE_API_HOST", "api.vasco.io");
+
+} else {
+
+    // XAMPP / servidor: URL real del API (sin trucos Docker).
+    // Ejemplo local LAN: http://192.168.1.10:8084 o dominio público en producción.
+    define("VASCO_ONLINE_API_BASE_URL", "http://api.vasco.io:8084");
+
+}
+
+// API key en controladores/config.php (junto a otros tokens).
+// Aquí solo URLs, timeout y endpoints según entorno Docker/XAMPP.
+define("VASCO_ONLINE_SYNC_TIMEOUT", 120);
+define("VASCO_ONLINE_MAX_POR_LOTE", 500);
+define("VASCO_ONLINE_ENDPOINT_CLIENTES", "/v2/sync/customers-bulk");
+define("VASCO_ONLINE_ENDPOINT_CUENTAS", "/v2/sync/account-statements-bulk");
+
+/**
+ * @return array
+ */
+function obtenerConfigVascoOnline()
+{
+    return array(
+        "entorno" => isset($GLOBALS["vasco_online_entorno"]) ? $GLOBALS["vasco_online_entorno"] : "",
+        "base_url" => defined("VASCO_ONLINE_API_BASE_URL") ? VASCO_ONLINE_API_BASE_URL : "",
+        "api_host" => defined("VASCO_ONLINE_API_HOST") ? VASCO_ONLINE_API_HOST : "",
+        "api_key" => defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "",
+        "timeout" => defined("VASCO_ONLINE_SYNC_TIMEOUT") ? (int) VASCO_ONLINE_SYNC_TIMEOUT : 120,
+        "max_por_lote" => defined("VASCO_ONLINE_MAX_POR_LOTE") ? (int) VASCO_ONLINE_MAX_POR_LOTE : 500,
+        "endpoint_clientes" => defined("VASCO_ONLINE_ENDPOINT_CLIENTES") ? VASCO_ONLINE_ENDPOINT_CLIENTES : "/v2/sync/customers-bulk",
+        "endpoint_cuentas" => defined("VASCO_ONLINE_ENDPOINT_CUENTAS") ? VASCO_ONLINE_ENDPOINT_CUENTAS : "/v2/sync/account-statements-bulk",
+    );
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlSyncClientesVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $base = rtrim($config["base_url"], "/");
+    $endpoint = $config["endpoint_clientes"];
+
+    if ($endpoint === "" || $endpoint[0] !== "/") {
+        $endpoint = "/" . $endpoint;
+    }
+
+    return $base . $endpoint;
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlSyncCuentasVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $base = rtrim($config["base_url"], "/");
+    $endpoint = isset($config["endpoint_cuentas"]) ? $config["endpoint_cuentas"] : "/v2/sync/account-statements-bulk";
+
+    if ($endpoint === "" || $endpoint[0] !== "/") {
+        $endpoint = "/" . $endpoint;
+    }
+
+    return $base . $endpoint;
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlHealthVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $base = rtrim($config["base_url"], "/");
+
+    return $base !== "" ? $base . "/health" : "";
+}
+
+/**
+ * Host virtual para cURL (solo desarrollo Docker).
+ *
+ * @param string $url
+ * @return array
+ */
+function obtenerHeadersCurlVascoOnline($url)
+{
+    $headers = array("Accept: application/json");
+
+    if (!defined("VASCO_ONLINE_API_HOST") || VASCO_ONLINE_API_HOST === "") {
+        return $headers;
+    }
+
+    $parsed = parse_url($url);
+    $connectHost = isset($parsed["host"]) ? $parsed["host"] : "";
+
+    if ($connectHost !== "" && $connectHost !== VASCO_ONLINE_API_HOST) {
+        $headers[] = "Host: " . VASCO_ONLINE_API_HOST;
+    }
+
+    return $headers;
+}
+
+/**
+ * @return string
+ */
+function vascoOnlineApiKeyEnmascarada()
+{
+    $key = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+
+    if ($key === "") {
+        return "";
+    }
+
+    if (strlen($key) <= 8) {
+        return "••••••••";
+    }
+
+    return substr($key, 0, 4) . "••••••••" . substr($key, -4);
+}

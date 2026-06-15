@@ -221,6 +221,27 @@
             }
             ?>
 
+            <!-- Vasco Online -->
+            <?php
+            if ($_SESSION["backend"] == 1) {
+            ?>
+
+                <li class="<?php if ($_GET["ruta"] == "sync-vasco") echo 'active'; ?>">
+
+                    <a href="sync-vasco">
+
+                        <i class="fa fa-cloud text-light-blue"></i>
+
+                        <span>Vasco Online</span>
+
+                    </a>
+
+                </li>
+
+            <?php
+            }
+            ?>
+
             <!--  Movimientos-->
             <?php
             if ($_SESSION["movimientos"] == 1) {

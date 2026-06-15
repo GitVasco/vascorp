@@ -1,0 +1,224 @@
+#panelVascoOnlineSync .vasco-sync-intro {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+#panelVascoOnlineSync .vasco-conn-compact {
+    margin-bottom: 15px;
+}
+
+#panelVascoOnlineSync .vasco-conn-compact .box-body {
+    padding: 12px 15px;
+}
+
+#panelVascoOnlineSync .vasco-conn-meta {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #888;
+    word-break: break-all;
+}
+
+#panelVascoOnlineSync .vasco-module-tabs {
+    margin-bottom: 15px;
+}
+
+#panelVascoOnlineSync .vasco-step-badge {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 6px;
+}
+
+#panelVascoOnlineSync .vasco-step-badge.muted {
+    background: #bbb;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list li:last-child {
+    border-bottom: none;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list .valor {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list .valor.ok {
+    color: #00a65a;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list .valor.warn {
+    color: #f39c12;
+}
+
+#panelVascoOnlineSync .vasco-resumen-list .valor.bad {
+    color: #dd4b39;
+}
+
+#panelVascoOnlineSync .vasco-panel-accion {
+    min-height: auto;
+}
+
+#panelVascoOnlineSync .vasco-resultados-panel {
+    margin-bottom: 0;
+}
+
+#panelVascoOnlineSync .vasco-resultados-panel > .box-body {
+    padding: 0;
+}
+
+#panelVascoOnlineSync .vasco-resultados-tabs {
+    margin-bottom: 0;
+    box-shadow: none;
+}
+
+#panelVascoOnlineSync .vasco-resultados-scroll-wrap {
+    max-height: calc(100vh - 300px);
+    min-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-top: 1px solid #f4f4f4;
+}
+
+@media (max-width: 991px) {
+    #panelVascoOnlineSync .vasco-resultados-scroll-wrap {
+        max-height: 480px;
+        min-height: 240px;
+    }
+}
+
+#panelVascoOnlineSync .vasco-resultados-scroll-wrap .table {
+    margin-bottom: 0;
+}
+
+#panelVascoOnlineSync .vasco-resultados-tabs > .nav-tabs > li > a {
+    padding: 8px 14px;
+}
+
+#panelVascoOnlineSync .vasco-log-box {
+    margin-bottom: 0;
+}
+
+#panelVascoOnlineSync .vasco-log-box .box-body {
+    padding: 10px 15px;
+}
+
+#panelVascoOnlineSync .vasco-log-box pre {
+    margin: 0;
+}
+
+#panelVascoOnlineSync .vasco-empty-state {
+    padding: 28px 15px;
+    text-align: center;
+    color: #999;
+}
+
+#panelVascoOnlineSync .vasco-empty-state i {
+    font-size: 28px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+#panelVascoOnlineSync #vascoSyncLog {
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+#panelVascoOnlineSync .vasco-futuro-tab {
+    color: #aaa !important;
+    cursor: not-allowed !important;
+}
+
+#panelVascoOnlineSync .vasco-guia-sync .box-body {
+    padding: 10px 15px 12px;
+}
+
+#panelVascoOnlineSync .vasco-guia-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #f4f4f4;
+}
+
+#panelVascoOnlineSync .vasco-guia-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+#panelVascoOnlineSync .vasco-guia-item h5 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#panelVascoOnlineSync .vasco-guia-item p {
+    margin: 0 0 6px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #555;
+}
+
+#panelVascoOnlineSync .vasco-guia-item ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #555;
+}
+
+#panelVascoOnlineSync .vasco-guia-item ul li {
+    margin-bottom: 4px;
+}
+
+#panelVascoOnlineSync .vasco-guia-item ul li:last-child {
+    margin-bottom: 0;
+}
+
+#panelVascoOnlineSync .vasco-guia-resumen {
+    background: #f9f9f9;
+    margin: 4px -15px -12px;
+    padding: 10px 15px !important;
+    border-bottom: none !important;
+}
+
+#panelVascoOnlineSync .vasco-box-footnote {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+#panelVascoOnlineSync .vasco-json-sample {
+    margin: 8px 15px 15px;
+    padding: 12px;
+    font-size: 11px;
+    line-height: 1.45;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    border: none;
+    max-height: 420px;
+    overflow: auto;
+}
+
+#panelVascoOnlineSync .vasco-payload-preview {
+    padding-bottom: 8px;
+}
