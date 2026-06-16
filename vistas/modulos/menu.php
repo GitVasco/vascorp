@@ -1361,7 +1361,8 @@
                                         $_GET["ruta"] == "envio-letras" ||
                                         $_GET["ruta"] == "reportes-generales" ||
                                         $_GET["ruta"] == "notificaciones" ||
-                                        $_GET["ruta"] == "credipagos"
+                                        $_GET["ruta"] == "credipagos" ||
+                                        $_GET["ruta"] == "rendicion-vasco-caja"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1510,6 +1511,15 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Credipagos</span>
+
+                            </a>
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "rendicion-vasco-caja") echo 'active'; ?>">
+                            <a href="rendicion-vasco-caja">
+
+                                <i class="fa fa-handshake-o"></i>
+                                <span>Rendición Vasco</span>
 
                             </a>
                         </li>

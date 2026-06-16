@@ -222,16 +222,16 @@
             </tr>
             <tr></tr>
             <tr>
-                <td><b>Cuentas autorizadas para depósitos y transferencias:</b></td>
+                <td style="font-size: 15px;"><b>Cuentas autorizadas para depósitos y transferencias:</b></td>
             </tr>
             <tr>
-                <td>Bco. Crédito del Perú: 191-1553564-0-64</td>
+                <td style="font-size: 14px;">Bco. Crédito del Perú: 191-1553564-0-64</td>
             </tr>
             <tr>
-                <td>Yape empresa: 945 470 738</td>
+                <td style="font-size: 14px;">Yape empresa: 945 470 738</td>
             </tr>
             <tr>
-                <td style="padding: 4px 0; font-size: 12px;">
+                <td style="padding: 4px 0; font-size: 14px; text-align: justify;">
                     <b>Aviso importante:</b> Realice depósitos y transferencias solo en las cuentas autorizadas indicadas. Exija su cargo de cobranza con fecha, monto y firma. No abone a cuentas personales de vendedores, terceros ni ex colaboradores. Pagos fuera de estas cuentas quedan fuera de nuestra responsabilidad. Solo el cargo de cobranza servirá de sustento ante cualquier reclamo.
                 </td>
             </tr>

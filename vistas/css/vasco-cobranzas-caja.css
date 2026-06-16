@@ -1,0 +1,24 @@
+#panelRendicionVascoCaja .vasco-caja-intro {
+    margin-bottom: 16px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-log {
+    min-height: 120px;
+    max-height: 220px;
+    overflow: auto;
+    margin: 0;
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: pre-wrap;
+}
+
+#panelRendicionVascoCaja .vasco-caja-trace {
+    font-size: 11px;
+    word-break: break-all;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco td {
+    vertical-align: middle !important;
+}

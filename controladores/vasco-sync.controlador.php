@@ -922,4 +922,331 @@ class ControladorVascoSync
             "health" => is_array($json) ? $json : $body,
         );
     }
+
+    static public function generarTraceIdCobranzas()
+    {
+        $sufijo = substr(md5(uniqid("cob", true)), 0, 6);
+
+        return "vascorp-deliver-" . date("Ymd-His") . "-" . $sufijo;
+    }
+
+    /**
+     * @return array{ok:bool,msg?:string,api_key?:string,timeout?:int}
+     */
+    private static function prepararClienteVascoApi()
+    {
+        if (!function_exists("obtenerConfigVascoOnline")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $apiKey = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+        if ($apiKey === "") {
+            return array("ok" => false, "msg" => "API key no configurada en config.php");
+        }
+
+        if (!function_exists("curl_init")) {
+            return array("ok" => false, "msg" => "cURL no está disponible en este servidor");
+        }
+
+        $timeout = defined("VASCO_ONLINE_SYNC_TIMEOUT") ? (int) VASCO_ONLINE_SYNC_TIMEOUT : 120;
+
+        return array(
+            "ok" => true,
+            "api_key" => $apiKey,
+            "timeout" => $timeout,
+        );
+    }
+
+    /**
+     * GET /v2/sync/collections-pending-delivery
+     *
+     * @param array $filtros
+     * @return array
+     */
+    static public function ctrListarCobranzasPendientes($filtros = array())
+    {
+        if (!function_exists("obtenerUrlCobranzasPendientesVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $urlBase = obtenerUrlCobranzasPendientesVasco();
+        if ($urlBase === "") {
+            return array("ok" => false, "msg" => "URL de cobranzas pendientes no configurada");
+        }
+
+        $status = isset($filtros["status"]) ? trim((string) $filtros["status"]) : "pending_delivery";
+        if ($status === "") {
+            $status = "pending_delivery";
+        }
+
+        $limit = isset($filtros["limit"]) ? (int) $filtros["limit"] : 100;
+        if ($limit < 1) {
+            $limit = 100;
+        }
+        if ($limit > 500) {
+            $limit = 500;
+        }
+
+        $traceId = isset($filtros["trace_id"]) ? trim((string) $filtros["trace_id"]) : "";
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdCobranzas();
+        }
+
+        $query = array(
+            "status" => $status,
+            "limit" => $limit,
+            "trace_id" => $traceId,
+        );
+
+        $sellerUsername = isset($filtros["seller_username"]) ? trim((string) $filtros["seller_username"]) : "";
+        if ($sellerUsername !== "") {
+            $query["seller_username"] = $sellerUsername;
+        }
+
+        $since = isset($filtros["since"]) ? trim((string) $filtros["since"]) : "";
+        if ($since !== "" && preg_match("/^\d{4}-\d{2}-\d{2}$/", $since)) {
+            $query["since"] = $since;
+        }
+
+        $url = $urlBase . "?" . http_build_query($query);
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        if ($httpCode === 200) {
+            $items = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+
+            return array(
+                "ok" => true,
+                "msg" => "Consulta OK",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "count" => isset($results["count"]) ? (int) $results["count"] : count($items),
+                "total_amount" => isset($results["total_amount"]) ? (float) $results["total_amount"] : 0,
+                "status" => isset($results["status"]) ? (string) $results["status"] : $status,
+                "items" => $items,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * POST /v2/sync/collections-deliver
+     *
+     * @param array $items
+     * @param string $deliveredBy
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrEntregarCobranzas($items, $deliveredBy, $traceId = "")
+    {
+        if (!function_exists("obtenerUrlCobranzasDeliverVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $url = obtenerUrlCobranzasDeliverVasco();
+        if ($url === "") {
+            return array("ok" => false, "msg" => "URL de entrega de cobranzas no configurada");
+        }
+
+        if (!is_array($items) || count($items) === 0) {
+            return array("ok" => false, "msg" => "Seleccione al menos una cobranza");
+        }
+
+        if (count($items) > 500) {
+            return array("ok" => false, "msg" => "Máximo 500 cobranzas por confirmación");
+        }
+
+        $itemsApi = array();
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $row = array();
+            $code = isset($item["code"]) ? trim((string) $item["code"]) : "";
+            $id = isset($item["id"]) ? (int) $item["id"] : 0;
+
+            if ($code === "" && $id < 1) {
+                continue;
+            }
+
+            if ($code !== "") {
+                $row["code"] = $code;
+            }
+            if ($id > 0) {
+                $row["id"] = $id;
+            }
+
+            $externalRef = isset($item["external_reference"]) ? trim((string) $item["external_reference"]) : "";
+            if ($externalRef !== "") {
+                $row["external_reference"] = substr($externalRef, 0, 64);
+            }
+
+            $itemsApi[] = $row;
+        }
+
+        if (count($itemsApi) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem válido para confirmar");
+        }
+
+        $traceId = trim((string) $traceId);
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdCobranzas();
+        }
+
+        $deliveredBy = trim((string) $deliveredBy);
+        if ($deliveredBy === "") {
+            $deliveredBy = "caja.vascorp";
+        }
+        $deliveredBy = substr($deliveredBy, 0, 80);
+
+        $payload = array(
+            "trace_id" => $traceId,
+            "delivered_by" => $deliveredBy,
+            "items" => $itemsApi,
+        );
+
+        $jsonBody = json_encode($payload);
+        if ($jsonBody === false) {
+            return array("ok" => false, "msg" => "No se pudo serializar la confirmación a JSON");
+        }
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $itemsResult = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+
+        if ($httpCode === 200 || $httpCode === 207) {
+            $ok = count($failed) === 0;
+
+            return array(
+                "ok" => $ok,
+                "partial" => !$ok,
+                "msg" => $ok
+                    ? "Rendición confirmada en Vasco"
+                    : "Confirmación parcial (" . count($failed) . " fallidos)",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "processed" => isset($results["processed"]) ? (int) $results["processed"] : count($itemsResult),
+                "delivered" => isset($results["delivered"]) ? (int) $results["delivered"] : 0,
+                "already_delivered" => isset($results["already_delivered"]) ? (int) $results["already_delivered"] : 0,
+                "items" => $itemsResult,
+                "failed" => $failed,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "failed" => $failed,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
 }

@@ -33,6 +33,8 @@ define("VASCO_ONLINE_SYNC_TIMEOUT", 120);
 define("VASCO_ONLINE_MAX_POR_LOTE", 500);
 define("VASCO_ONLINE_ENDPOINT_CLIENTES", "/v2/sync/customers-bulk");
 define("VASCO_ONLINE_ENDPOINT_CUENTAS", "/v2/sync/account-statements-bulk");
+define("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING", "/v2/sync/collections-pending-delivery");
+define("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER", "/v2/sync/collections-deliver");
 
 /**
  * @return array
@@ -48,6 +50,8 @@ function obtenerConfigVascoOnline()
         "max_por_lote" => defined("VASCO_ONLINE_MAX_POR_LOTE") ? (int) VASCO_ONLINE_MAX_POR_LOTE : 500,
         "endpoint_clientes" => defined("VASCO_ONLINE_ENDPOINT_CLIENTES") ? VASCO_ONLINE_ENDPOINT_CLIENTES : "/v2/sync/customers-bulk",
         "endpoint_cuentas" => defined("VASCO_ONLINE_ENDPOINT_CUENTAS") ? VASCO_ONLINE_ENDPOINT_CUENTAS : "/v2/sync/account-statements-bulk",
+        "endpoint_cobranzas_pending" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING : "/v2/sync/collections-pending-delivery",
+        "endpoint_cobranzas_deliver" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER : "/v2/sync/collections-deliver",
     );
 }
 
@@ -81,6 +85,44 @@ function obtenerUrlSyncCuentasVasco()
     }
 
     return $base . $endpoint;
+}
+
+/**
+ * @param string $endpoint
+ * @return string
+ */
+function obtenerUrlVascoEndpoint($endpoint)
+{
+    $config = obtenerConfigVascoOnline();
+    $base = rtrim($config["base_url"], "/");
+
+    if ($endpoint === "" || $endpoint[0] !== "/") {
+        $endpoint = "/" . $endpoint;
+    }
+
+    return $base !== "" ? $base . $endpoint : "";
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlCobranzasPendientesVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_cobranzas_pending"]) ? $config["endpoint_cobranzas_pending"] : "/v2/sync/collections-pending-delivery";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlCobranzasDeliverVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_cobranzas_deliver"]) ? $config["endpoint_cobranzas_deliver"] : "/v2/sync/collections-deliver";
+
+    return obtenerUrlVascoEndpoint($endpoint);
 }
 
 /**

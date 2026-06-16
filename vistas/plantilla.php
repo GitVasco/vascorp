@@ -68,6 +68,9 @@ if (!isset($_SESSION)) {
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") : ?>
     <link rel="stylesheet" href="vistas/css/vasco-online-sync.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "rendicion-vasco-caja") : ?>
+    <link rel="stylesheet" href="vistas/css/vasco-cobranzas-caja.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
     <link rel="stylesheet" href="vistas/plugins/iCheck/all.css">
@@ -507,7 +510,8 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "consultar-cuentas" ||
                 $_GET["ruta"] == "reportes-generales" ||
                 $_GET["ruta"] == "notificaciones" ||
-                $_GET["ruta"] == "credipagos"
+                $_GET["ruta"] == "credipagos" ||
+                $_GET["ruta"] == "rendicion-vasco-caja"
             ) {
                 // Manejar rutas según la configuración
                 $tipoPaginacion = (defined('TIPO_PAGINACION_CUENTAS')) ? TIPO_PAGINACION_CUENTAS : "cliente";
@@ -642,6 +646,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") { ?>
     <script src="vistas/js/vasco-online-sync.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "rendicion-vasco-caja") { ?>
+    <script src="vistas/js/vasco-cobranzas-caja.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js"></script>
     <script src="vistas/js/paras.js"></script>
