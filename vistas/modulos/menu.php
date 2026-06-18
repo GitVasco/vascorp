@@ -221,27 +221,6 @@
             }
             ?>
 
-            <!-- Vasco Online -->
-            <?php
-            if ($_SESSION["backend"] == 1) {
-            ?>
-
-                <li class="<?php if ($_GET["ruta"] == "sync-vasco") echo 'active'; ?>">
-
-                    <a href="sync-vasco">
-
-                        <i class="fa fa-cloud text-light-blue"></i>
-
-                        <span>Vasco Online</span>
-
-                    </a>
-
-                </li>
-
-            <?php
-            }
-            ?>
-
             <!--  Movimientos-->
             <?php
             if ($_SESSION["movimientos"] == 1) {
@@ -1361,8 +1340,7 @@
                                         $_GET["ruta"] == "envio-letras" ||
                                         $_GET["ruta"] == "reportes-generales" ||
                                         $_GET["ruta"] == "notificaciones" ||
-                                        $_GET["ruta"] == "credipagos" ||
-                                        $_GET["ruta"] == "rendicion-vasco-caja"
+                                        $_GET["ruta"] == "credipagos"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1515,15 +1493,6 @@
                             </a>
                         </li>
 
-                        <li class="<?php if ($_GET["ruta"] == "rendicion-vasco-caja") echo 'active'; ?>">
-                            <a href="rendicion-vasco-caja">
-
-                                <i class="fa fa-handshake-o"></i>
-                                <span>Rendición Vasco</span>
-
-                            </a>
-                        </li>
-
                         <li class="<?php if ($_GET["ruta"] == "reportes-generales") echo 'active'; ?>">
                             <a href="reportes-generales">
 
@@ -1535,10 +1504,77 @@
                     </ul>
                 </li>
 
+            <?php
+            }
+            ?>
+
+            <!-- Vasco Online (API) -->
+            <?php
+            if ($_SESSION["cuenta"] == 1) {
+                $rutasActivasVascoOnline = [
+                    "sync-vasco",
+                    "rendicion-vasco-caja",
+                    "gestion-vasco-clientes",
+                    "solicitudes-atencion-vasco",
+                ];
+                $isActiveVascoOnline = in_array($_GET["ruta"], $rutasActivasVascoOnline) ? "active" : "";
+            ?>
+                <li class="treeview <?= $isActiveVascoOnline; ?>">
+
+                    <a href="#">
+
+                        <i class="fa fa-cloud text-light-blue"></i>
+
+                        <span>Vasco Online</span>
+
+                        <span class="pull-right-container">
+
+                            <i class="fa fa-angle-left pull-right"></i>
+
+                        </span>
+
+                    </a>
+
+                    <ul class="treeview-menu">
+
+                        <li class="<?= $_GET["ruta"] == "sync-vasco" ? "active" : ""; ?>">
+                            <a href="sync-vasco">
+                                <i class="fa fa-refresh"></i>
+                                <span>Sincronización</span>
+                            </a>
+                        </li>
+
+                        <li class="<?= $_GET["ruta"] == "rendicion-vasco-caja" ? "active" : ""; ?>">
+                            <a href="rendicion-vasco-caja">
+                                <i class="fa fa-handshake-o"></i>
+                                <span>Rendición cobranzas</span>
+                            </a>
+                        </li>
+
+                        <li class="<?= $_GET["ruta"] == "gestion-vasco-clientes" ? "active" : ""; ?>">
+                            <a href="gestion-vasco-clientes">
+                                <i class="fa fa-whatsapp"></i>
+                                <span>Gestión clientes</span>
+                            </a>
+                        </li>
+
+                        <li class="<?= $_GET["ruta"] == "solicitudes-atencion-vasco" ? "active" : ""; ?>">
+                            <a href="solicitudes-atencion-vasco">
+                                <i class="fa fa-bell"></i>
+                                <span>Solicitudes atención</span>
+                            </a>
+                        </li>
+
+                    </ul>
+
+                </li>
+
+            <?php
+            }
+            ?>
 
                 <!--  Costos-->
             <?php
-            }
             if ($_SESSION["caja"] == 1) {
             ?>
                 <li class="treeview <?php if (

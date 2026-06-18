@@ -611,4 +611,147 @@ class ModeloVascoSync
 
         return implode(", ", $placeholders);
     }
+
+    /**
+     * Busca cliente ERP para gestión Vasco (external_id o documento).
+     *
+     * @param string|int|null $externalId
+     * @param string $docType
+     * @param string $docNumber
+     * @return array|null
+     */
+    public static function mdlClienteParaGestionVasco($externalId, $docType, $docNumber, $codigo = "")
+    {
+        $tabla = self::$TABLA_CLIENTES;
+
+        if ($externalId !== null && trim((string) $externalId) !== "") {
+            $externalRaw = trim((string) $externalId);
+            if (ctype_digit($externalRaw)) {
+                $id = (int) $externalRaw;
+                if ($id > 0) {
+                    $stmt = Conexion::conectar()->prepare(
+                        "SELECT id, codigo, nombre, telefono, telefono2, documento, tipo_documento, vendedor
+                         FROM $tabla WHERE id = :id LIMIT 1"
+                    );
+                    $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+                    $stmt->execute();
+                    $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($fila) {
+                        return $fila;
+                    }
+                }
+            }
+        }
+
+        $codigo = trim((string) $codigo);
+        if ($codigo !== "") {
+            $stmt = Conexion::conectar()->prepare(
+                "SELECT id, codigo, nombre, telefono, telefono2, documento, tipo_documento, vendedor
+                 FROM $tabla WHERE codigo = :codigo LIMIT 1"
+            );
+            $stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+            $stmt->execute();
+            $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($fila) {
+                return $fila;
+            }
+        }
+
+        $docType = strtoupper(trim((string) $docType));
+        $docNumber = self::normalizarDocumento($docNumber);
+        if ($docType === "" || $docNumber === "") {
+            if ($docNumber !== "") {
+                $stmt = Conexion::conectar()->prepare(
+                    "SELECT id, codigo, nombre, telefono, telefono2, documento, tipo_documento, vendedor
+                     FROM $tabla
+                     WHERE UPPER(REPLACE(TRIM(IFNULL(documento, '')), ' ', '')) = :documento
+                     ORDER BY CASE WHEN estado = 1 AND fecha IS NOT NULL THEN 0 ELSE 1 END, id DESC
+                     LIMIT 1"
+                );
+                $stmt->bindParam(":documento", $docNumber, PDO::PARAM_STR);
+                $stmt->execute();
+                $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($fila) {
+                    return $fila;
+                }
+            }
+
+            return null;
+        }
+
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT id, codigo, nombre, telefono, telefono2, documento, tipo_documento, vendedor
+             FROM $tabla
+             WHERE UPPER(TRIM(IFNULL(tipo_documento, ''))) = :tipo_documento
+               AND UPPER(REPLACE(TRIM(IFNULL(documento, '')), ' ', '')) = :documento
+             ORDER BY CASE WHEN estado = 1 AND fecha IS NOT NULL THEN 0 ELSE 1 END, id DESC
+             LIMIT 1"
+        );
+        $stmt->bindParam(":tipo_documento", $docType, PDO::PARAM_STR);
+        $stmt->bindParam(":documento", $docNumber, PDO::PARAM_STR);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $fila ? $fila : null;
+    }
+
+    /**
+     * @param string $telefono 9 dígitos
+     * @param int $excluirId
+     * @return array|null
+     */
+    public static function mdlClienteConTelefonoDuplicado($telefono, $excluirId)
+    {
+        $telefono = preg_replace('/\D/', '', (string) $telefono);
+        if ($telefono === "") {
+            return null;
+        }
+
+        $tabla = self::$TABLA_CLIENTES;
+        $excluirId = (int) $excluirId;
+
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT id, codigo, nombre, telefono
+             FROM $tabla
+             WHERE id <> :excluir_id
+               AND (
+                    REPLACE(TRIM(IFNULL(telefono, '')), ' ', '') = :telefono
+                    OR REPLACE(TRIM(IFNULL(telefono2, '')), ' ', '') = :telefono
+               )
+             LIMIT 1"
+        );
+        $stmt->bindParam(":excluir_id", $excluirId, PDO::PARAM_INT);
+        $stmt->bindParam(":telefono", $telefono, PDO::PARAM_STR);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $fila ? $fila : null;
+    }
+
+    /**
+     * @param int $idCliente
+     * @param string $telefono
+     * @return string ok|error
+     */
+    public static function mdlActualizarTelefonoCliente($idCliente, $telefono)
+    {
+        $idCliente = (int) $idCliente;
+        $telefono = trim((string) $telefono);
+        if ($idCliente < 1 || $telefono === "") {
+            return "error";
+        }
+
+        $tabla = self::$TABLA_CLIENTES;
+        $stmt = Conexion::conectar()->prepare(
+            "UPDATE $tabla SET telefono = :telefono WHERE id = :id"
+        );
+        $stmt->bindParam(":telefono", $telefono, PDO::PARAM_STR);
+        $stmt->bindParam(":id", $idCliente, PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            return "ok";
+        }
+
+        return "error";
+    }
 }

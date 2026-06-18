@@ -35,6 +35,10 @@ define("VASCO_ONLINE_ENDPOINT_CLIENTES", "/v2/sync/customers-bulk");
 define("VASCO_ONLINE_ENDPOINT_CUENTAS", "/v2/sync/account-statements-bulk");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING", "/v2/sync/collections-pending-delivery");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER", "/v2/sync/collections-deliver");
+define("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES", "/v2/sync/customer-field-updates");
+define("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES_ACK", "/v2/sync/customer-field-updates/ack");
+define("VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS", "/v2/sync/portal-visit-requests");
+define("VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS_ACK", "/v2/sync/portal-visit-requests/ack");
 
 /**
  * @return array
@@ -52,6 +56,10 @@ function obtenerConfigVascoOnline()
         "endpoint_cuentas" => defined("VASCO_ONLINE_ENDPOINT_CUENTAS") ? VASCO_ONLINE_ENDPOINT_CUENTAS : "/v2/sync/account-statements-bulk",
         "endpoint_cobranzas_pending" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING : "/v2/sync/collections-pending-delivery",
         "endpoint_cobranzas_deliver" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER : "/v2/sync/collections-deliver",
+        "endpoint_field_updates" => defined("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES") ? VASCO_ONLINE_ENDPOINT_FIELD_UPDATES : "/v2/sync/customer-field-updates",
+        "endpoint_field_updates_ack" => defined("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES_ACK") ? VASCO_ONLINE_ENDPOINT_FIELD_UPDATES_ACK : "/v2/sync/customer-field-updates/ack",
+        "endpoint_portal_visit_requests" => defined("VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS") ? VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS : "/v2/sync/portal-visit-requests",
+        "endpoint_portal_visit_requests_ack" => defined("VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS_ACK") ? VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS_ACK : "/v2/sync/portal-visit-requests/ack",
     );
 }
 
@@ -121,6 +129,50 @@ function obtenerUrlCobranzasDeliverVasco()
 {
     $config = obtenerConfigVascoOnline();
     $endpoint = isset($config["endpoint_cobranzas_deliver"]) ? $config["endpoint_cobranzas_deliver"] : "/v2/sync/collections-deliver";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlGestionClienteVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_field_updates"]) ? $config["endpoint_field_updates"] : "/v2/sync/customer-field-updates";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlGestionClienteAckVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_field_updates_ack"]) ? $config["endpoint_field_updates_ack"] : "/v2/sync/customer-field-updates/ack";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlSolicitudesAtencionVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_portal_visit_requests"]) ? $config["endpoint_portal_visit_requests"] : "/v2/sync/portal-visit-requests";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlSolicitudesAtencionAckVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_portal_visit_requests_ack"]) ? $config["endpoint_portal_visit_requests_ack"] : "/v2/sync/portal-visit-requests/ack";
 
     return obtenerUrlVascoEndpoint($endpoint);
 }

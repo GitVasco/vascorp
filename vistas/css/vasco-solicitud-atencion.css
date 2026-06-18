@@ -1,0 +1,42 @@
+#panelSolicitudesAtencionVasco .vasco-atencion-intro {
+    margin-bottom: 16px;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-log {
+    min-height: 120px;
+    max-height: 220px;
+    overflow: auto;
+    margin: 0;
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: pre-wrap;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-trace {
+    font-size: 11px;
+    word-break: break-all;
+}
+
+#panelSolicitudesAtencionVasco #tablaAtencionVasco td {
+    vertical-align: middle !important;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-estado-ok {
+    color: #3c763d;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-estado-warn {
+    color: #8a6d3b;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-estado-error {
+    color: #a94442;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-mensaje {
+    max-width: 280px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

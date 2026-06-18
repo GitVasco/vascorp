@@ -1249,4 +1249,1051 @@ class ControladorVascoSync
             "url" => $url,
         );
     }
+
+    static public function generarTraceIdGestionCliente()
+    {
+        $sufijo = substr(md5(uniqid("gest", true)), 0, 6);
+
+        return "vascorp-gestion-" . date("Ymd-His") . "-" . $sufijo;
+    }
+
+    /**
+     * Convierte E.164 Perú (51987654321) a 9 dígitos locales.
+     *
+     * @param string|null $phoneE164
+     * @return string
+     */
+    static public function e164ATelefonoLocal($phoneE164)
+    {
+        $phone = preg_replace("/\D/", "", (string) $phoneE164);
+
+        if (strlen($phone) === 11 && substr($phone, 0, 2) === "51") {
+            return substr($phone, 2);
+        }
+
+        if (strlen($phone) === 9 && $phone[0] === "9") {
+            return $phone;
+        }
+
+        return "";
+    }
+
+    /**
+     * @param string $telefono
+     * @return bool
+     */
+    static public function validarTelefonoLocalPe($telefono)
+    {
+        return preg_match("/^9\d{8}$/", (string) $telefono) === 1;
+    }
+
+    /**
+     * @param array $customer
+     * @return array|null
+     */
+    private static function resolverClienteErpDesdeVasco($customer)
+    {
+        if (!is_array($customer)) {
+            $customer = array();
+        }
+
+        $externalId = isset($customer["external_id"]) ? $customer["external_id"] : null;
+        $docType = isset($customer["doc_type"]) ? (string) $customer["doc_type"] : "";
+        $docNumber = isset($customer["doc_number"]) ? (string) $customer["doc_number"] : "";
+        $codigo = isset($customer["code"]) ? (string) $customer["code"] : "";
+
+        return ModeloVascoSync::mdlClienteParaGestionVasco($externalId, $docType, $docNumber, $codigo);
+    }
+
+    /**
+     * @param array $item
+     * @return array
+     */
+    static public function previewGestionItemErp($item)
+    {
+        if (!is_array($item)) {
+            $item = array();
+        }
+
+        $customer = isset($item["customer"]) && is_array($item["customer"]) ? $item["customer"] : array();
+        $erp = self::resolverClienteErpDesdeVasco($customer);
+
+        $preview = array(
+            "encontrado" => $erp !== null,
+            "id" => $erp ? (int) $erp["id"] : 0,
+            "codigo" => $erp ? (string) $erp["codigo"] : "",
+            "nombre" => $erp ? (string) $erp["nombre"] : "",
+            "telefono_actual" => $erp ? trim((string) $erp["telefono"]) : "",
+            "telefono_nuevo" => "",
+            "puede_aplicar" => false,
+            "motivo" => "",
+        );
+
+        if ($erp === null) {
+            $preview["motivo"] = "Cliente no encontrado en ERP";
+
+            return $preview;
+        }
+
+        $phoneE164 = isset($item["phone_e164"]) ? $item["phone_e164"] : null;
+        $consent = !empty($item["whatsapp_consent"]);
+        $portalOnly = !empty($item["portal_account_requested"]) && !$consent && ($phoneE164 === null || trim((string) $phoneE164) === "");
+
+        if ($consent && $phoneE164 !== null && trim((string) $phoneE164) !== "") {
+            $telefonoLocal = self::e164ATelefonoLocal($phoneE164);
+            $preview["telefono_nuevo"] = $telefonoLocal;
+
+            if (!self::validarTelefonoLocalPe($telefonoLocal)) {
+                $preview["motivo"] = "Celular inválido (" . (string) $phoneE164 . ")";
+
+                return $preview;
+            }
+
+            $dup = ModeloVascoSync::mdlClienteConTelefonoDuplicado($telefonoLocal, (int) $erp["id"]);
+            if ($dup) {
+                $preview["motivo"] = "Celular duplicado en ERP (código " . $dup["codigo"] . ")";
+
+                return $preview;
+            }
+
+            $preview["puede_aplicar"] = true;
+            if ($telefonoLocal === $preview["telefono_actual"]) {
+                $preview["motivo"] = "Teléfono ya coincide en ERP";
+            } else {
+                $preview["motivo"] = "Actualizará teléfono en ERP";
+            }
+
+            return $preview;
+        }
+
+        if ($portalOnly) {
+            $preview["puede_aplicar"] = true;
+            $preview["motivo"] = "Solo portal (sin cambio de teléfono)";
+
+            return $preview;
+        }
+
+        $preview["puede_aplicar"] = true;
+        $preview["motivo"] = "Sin celular/consentimiento que aplicar";
+
+        return $preview;
+    }
+
+    /**
+     * @param array $items
+     * @return array
+     */
+    static public function enriquecerGestionItemsConErp($items)
+    {
+        if (!is_array($items)) {
+            return array();
+        }
+
+        $enriquecidos = array();
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $item["erp_preview"] = self::previewGestionItemErp($item);
+            $enriquecidos[] = $item;
+        }
+
+        return $enriquecidos;
+    }
+
+    /**
+     * @param array $item
+     * @return array{ok:bool,msg:string,telefono_anterior?:string,telefono_nuevo?:string,codigo?:string}
+     */
+    static public function aplicarGestionItemEnErp($item)
+    {
+        if (!is_array($item)) {
+            return array("ok" => false, "msg" => "Ítem inválido");
+        }
+
+        $customer = isset($item["customer"]) && is_array($item["customer"]) ? $item["customer"] : array();
+        $erp = self::resolverClienteErpDesdeVasco($customer);
+
+        if ($erp === null) {
+            return array("ok" => false, "msg" => "Cliente no encontrado en ERP");
+        }
+
+        $phoneE164 = isset($item["phone_e164"]) ? $item["phone_e164"] : null;
+        $consent = !empty($item["whatsapp_consent"]);
+        $portalOnly = !empty($item["portal_account_requested"]) && !$consent && ($phoneE164 === null || trim((string) $phoneE164) === "");
+
+        if ($portalOnly) {
+            return array(
+                "ok" => true,
+                "msg" => "Sin cambios en ERP (solo portal)",
+                "codigo" => (string) $erp["codigo"],
+            );
+        }
+
+        if ($consent && $phoneE164 !== null && trim((string) $phoneE164) !== "") {
+            $telefonoLocal = self::e164ATelefonoLocal($phoneE164);
+            if (!self::validarTelefonoLocalPe($telefonoLocal)) {
+                return array("ok" => false, "msg" => "Celular inválido: " . (string) $phoneE164);
+            }
+
+            $dup = ModeloVascoSync::mdlClienteConTelefonoDuplicado($telefonoLocal, (int) $erp["id"]);
+            if ($dup) {
+                return array(
+                    "ok" => false,
+                    "msg" => "Celular duplicado en ERP (código " . $dup["codigo"] . ")",
+                );
+            }
+
+            $telefonoAnterior = trim((string) $erp["telefono"]);
+            if ($telefonoLocal === $telefonoAnterior) {
+                return array(
+                    "ok" => true,
+                    "msg" => "Teléfono ya actualizado en ERP",
+                    "codigo" => (string) $erp["codigo"],
+                    "telefono_anterior" => $telefonoAnterior,
+                    "telefono_nuevo" => $telefonoLocal,
+                );
+            }
+
+            $resultado = ModeloVascoSync::mdlActualizarTelefonoCliente((int) $erp["id"], $telefonoLocal);
+            if ($resultado !== "ok") {
+                return array("ok" => false, "msg" => "No se pudo actualizar teléfono en ERP");
+            }
+
+            return array(
+                "ok" => true,
+                "msg" => "Teléfono actualizado en ERP",
+                "codigo" => (string) $erp["codigo"],
+                "telefono_anterior" => $telefonoAnterior,
+                "telefono_nuevo" => $telefonoLocal,
+            );
+        }
+
+        return array(
+            "ok" => true,
+            "msg" => "Sin cambios que aplicar",
+            "codigo" => (string) $erp["codigo"],
+        );
+    }
+
+    /**
+     * GET /v2/sync/customer-field-updates
+     *
+     * @param array $filtros
+     * @return array
+     */
+    static public function ctrListarGestionClientePendiente($filtros = array())
+    {
+        if (!function_exists("obtenerUrlGestionClienteVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $urlBase = obtenerUrlGestionClienteVasco();
+        if ($urlBase === "") {
+            return array("ok" => false, "msg" => "URL de gestión de cliente no configurada");
+        }
+
+        $status = isset($filtros["status"]) ? trim((string) $filtros["status"]) : "pending";
+        if ($status === "") {
+            $status = "pending";
+        }
+
+        $limit = isset($filtros["limit"]) ? (int) $filtros["limit"] : 100;
+        if ($limit < 1) {
+            $limit = 100;
+        }
+        if ($limit > 500) {
+            $limit = 500;
+        }
+
+        $traceId = isset($filtros["trace_id"]) ? trim((string) $filtros["trace_id"]) : "";
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdGestionCliente();
+        }
+
+        $query = array(
+            "status" => $status,
+            "limit" => $limit,
+            "trace_id" => $traceId,
+        );
+
+        $since = isset($filtros["since"]) ? trim((string) $filtros["since"]) : "";
+        if ($since !== "" && preg_match("/^\d{4}-\d{2}-\d{2}$/", $since)) {
+            $query["since"] = $since;
+        }
+
+        $url = $urlBase . "?" . http_build_query($query);
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        if ($httpCode === 200) {
+            $items = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+            $items = self::enriquecerGestionItemsConErp($items);
+
+            return array(
+                "ok" => true,
+                "msg" => "Consulta OK",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "count" => isset($results["count"]) ? (int) $results["count"] : count($items),
+                "status" => isset($results["status"]) ? (string) $results["status"] : $status,
+                "items" => $items,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * POST /v2/sync/customer-field-updates/ack
+     *
+     * @param array $ackItems
+     * @param string $ackBy
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrAckGestionCliente($ackItems, $ackBy, $traceId = "")
+    {
+        if (!function_exists("obtenerUrlGestionClienteAckVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $url = obtenerUrlGestionClienteAckVasco();
+        if ($url === "") {
+            return array("ok" => false, "msg" => "URL de ack de gestión no configurada");
+        }
+
+        if (!is_array($ackItems) || count($ackItems) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem para confirmar en Vasco");
+        }
+
+        if (count($ackItems) > 500) {
+            return array("ok" => false, "msg" => "Máximo 500 ítems por confirmación");
+        }
+
+        $itemsApi = array();
+        foreach ($ackItems as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $id = isset($item["id"]) ? (int) $item["id"] : 0;
+            $result = isset($item["result"]) ? trim((string) $item["result"]) : "";
+            if ($id < 1 || ($result !== "synced" && $result !== "rejected")) {
+                continue;
+            }
+
+            $row = array(
+                "id" => $id,
+                "result" => $result,
+            );
+
+            if ($result === "rejected") {
+                $reason = isset($item["rejection_reason"]) ? trim((string) $item["rejection_reason"]) : "";
+                if ($reason === "") {
+                    $reason = "Rechazado en vascorp";
+                }
+                $row["rejection_reason"] = substr($reason, 0, 255);
+            }
+
+            $itemsApi[] = $row;
+        }
+
+        if (count($itemsApi) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem válido para ack");
+        }
+
+        $traceId = trim((string) $traceId);
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdGestionCliente();
+        }
+
+        $ackBy = trim((string) $ackBy);
+        if ($ackBy === "") {
+            $ackBy = "vascorp";
+        }
+        $ackBy = substr($ackBy, 0, 80);
+
+        $payload = array(
+            "trace_id" => $traceId,
+            "ack_by" => $ackBy,
+            "items" => $itemsApi,
+        );
+
+        $jsonBody = json_encode($payload);
+        if ($jsonBody === false) {
+            return array("ok" => false, "msg" => "No se pudo serializar el ack a JSON");
+        }
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $itemsResult = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+
+        if ($httpCode === 200 || $httpCode === 207) {
+            $ok = count($failed) === 0;
+
+            return array(
+                "ok" => $ok,
+                "partial" => !$ok,
+                "msg" => $ok
+                    ? "Gestión confirmada en Vasco"
+                    : "Confirmación parcial (" . count($failed) . " fallidos)",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "processed" => isset($results["processed"]) ? (int) $results["processed"] : count($itemsResult),
+                "synced" => isset($results["synced"]) ? (int) $results["synced"] : 0,
+                "rejected" => isset($results["rejected"]) ? (int) $results["rejected"] : 0,
+                "already_processed" => isset($results["already_processed"]) ? (int) $results["already_processed"] : 0,
+                "items" => $itemsResult,
+                "failed" => $failed,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "failed" => $failed,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * Aplica cambios en ERP y confirma en Vasco.
+     *
+     * @param array $items [{id, action, rejection_reason?, vasco_item?}]
+     * @param string $ackBy
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrProcesarGestionCliente($items, $ackBy, $traceId = "")
+    {
+        if (!is_array($items) || count($items) === 0) {
+            return array("ok" => false, "msg" => "Seleccione al menos una gestión");
+        }
+
+        $ackItems = array();
+        $detalleErp = array();
+
+        foreach ($items as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $id = isset($entry["id"]) ? (int) $entry["id"] : 0;
+            if ($id < 1) {
+                continue;
+            }
+
+            $action = isset($entry["action"]) ? trim((string) $entry["action"]) : "synced";
+
+            if ($action === "rejected") {
+                $reason = isset($entry["rejection_reason"]) ? trim((string) $entry["rejection_reason"]) : "";
+                if ($reason === "") {
+                    $reason = "Rechazado en vascorp";
+                }
+
+                $ackItems[] = array(
+                    "id" => $id,
+                    "result" => "rejected",
+                    "rejection_reason" => $reason,
+                );
+                $detalleErp[] = array(
+                    "id" => $id,
+                    "action" => "rejected",
+                    "ok" => true,
+                    "msg" => $reason,
+                );
+                continue;
+            }
+
+            $vascoItem = isset($entry["vasco_item"]) && is_array($entry["vasco_item"])
+                ? $entry["vasco_item"]
+                : array();
+
+            $erpResult = self::aplicarGestionItemEnErp($vascoItem);
+            $detalleErp[] = array_merge(
+                array("id" => $id, "action" => "synced"),
+                $erpResult
+            );
+
+            if ($erpResult["ok"]) {
+                $ackItems[] = array("id" => $id, "result" => "synced");
+            } else {
+                $ackItems[] = array(
+                    "id" => $id,
+                    "result" => "rejected",
+                    "rejection_reason" => $erpResult["msg"],
+                );
+            }
+        }
+
+        if (count($ackItems) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem válido para procesar");
+        }
+
+        $respuesta = self::ctrAckGestionCliente($ackItems, $ackBy, $traceId);
+        $respuesta["erp"] = $detalleErp;
+
+        return $respuesta;
+    }
+
+    static public function generarTraceIdSolicitudAtencion()
+    {
+        $sufijo = substr(md5(uniqid("atencion", true)), 0, 6);
+
+        return "vascorp-atencion-" . date("Ymd-His") . "-" . $sufijo;
+    }
+
+    /**
+     * @param array $item
+     * @return array
+     */
+    static public function previewSolicitudAtencionItemErp($item)
+    {
+        if (!is_array($item)) {
+            $item = array();
+        }
+
+        $customer = isset($item["customer"]) && is_array($item["customer"]) ? $item["customer"] : array();
+        $erp = self::resolverClienteErpDesdeVasco($customer);
+
+        $preview = array(
+            "encontrado" => $erp !== null,
+            "id" => $erp ? (int) $erp["id"] : 0,
+            "codigo" => $erp ? (string) $erp["codigo"] : "",
+            "nombre" => $erp ? (string) $erp["nombre"] : "",
+            "vendedor_erp" => $erp ? trim((string) $erp["vendedor"]) : "",
+            "telefono" => $erp ? trim((string) $erp["telefono"]) : "",
+            "puede_tomar" => false,
+            "motivo" => "",
+        );
+
+        if ($erp === null) {
+            $preview["motivo"] = "Cliente no encontrado en ERP";
+
+            return $preview;
+        }
+
+        $preview["puede_tomar"] = true;
+        $preview["motivo"] = "Cliente listo para tomar solicitud";
+
+        return $preview;
+    }
+
+    /**
+     * @param array $items
+     * @return array
+     */
+    static public function enriquecerSolicitudesAtencionConErp($items)
+    {
+        if (!is_array($items)) {
+            return array();
+        }
+
+        $enriquecidos = array();
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $item["erp_preview"] = self::previewSolicitudAtencionItemErp($item);
+            $enriquecidos[] = $item;
+        }
+
+        return $enriquecidos;
+    }
+
+    /**
+     * GET /v2/sync/portal-visit-requests
+     *
+     * @param array $filtros
+     * @return array
+     */
+    static public function ctrListarSolicitudesAtencion($filtros = array())
+    {
+        if (!function_exists("obtenerUrlSolicitudesAtencionVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $urlBase = obtenerUrlSolicitudesAtencionVasco();
+        if ($urlBase === "") {
+            return array("ok" => false, "msg" => "URL de solicitudes de atención no configurada");
+        }
+
+        $status = isset($filtros["status"]) ? trim((string) $filtros["status"]) : "pending";
+        if ($status === "") {
+            $status = "pending";
+        }
+
+        $limit = isset($filtros["limit"]) ? (int) $filtros["limit"] : 100;
+        if ($limit < 1) {
+            $limit = 100;
+        }
+        if ($limit > 500) {
+            $limit = 500;
+        }
+
+        $traceId = isset($filtros["trace_id"]) ? trim((string) $filtros["trace_id"]) : "";
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdSolicitudAtencion();
+        }
+
+        $query = array(
+            "status" => $status,
+            "limit" => $limit,
+            "trace_id" => $traceId,
+        );
+
+        $since = isset($filtros["since"]) ? trim((string) $filtros["since"]) : "";
+        if ($since !== "" && preg_match("/^\d{4}-\d{2}-\d{2}$/", $since)) {
+            $query["since"] = $since;
+        }
+
+        $url = $urlBase . "?" . http_build_query($query);
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        if ($httpCode === 200) {
+            $items = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+            $items = self::enriquecerSolicitudesAtencionConErp($items);
+
+            return array(
+                "ok" => true,
+                "msg" => "Consulta OK",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "count" => isset($results["count"]) ? (int) $results["count"] : count($items),
+                "status" => isset($results["status"]) ? (string) $results["status"] : $status,
+                "items" => $items,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * POST /v2/sync/portal-visit-requests/ack
+     *
+     * @param array $ackItems
+     * @param string $ackBy
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrAckSolicitudesAtencion($ackItems, $ackBy, $traceId = "")
+    {
+        if (!function_exists("obtenerUrlSolicitudesAtencionAckVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $url = obtenerUrlSolicitudesAtencionAckVasco();
+        if ($url === "") {
+            return array("ok" => false, "msg" => "URL de ack de solicitudes no configurada");
+        }
+
+        if (!is_array($ackItems) || count($ackItems) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem para confirmar en Vasco");
+        }
+
+        if (count($ackItems) > 500) {
+            return array("ok" => false, "msg" => "Máximo 500 ítems por confirmación");
+        }
+
+        $resultadosValidos = array("acknowledged", "rejected", "completed");
+        $itemsApi = array();
+
+        foreach ($ackItems as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $id = isset($item["id"]) ? (int) $item["id"] : 0;
+            $result = isset($item["result"]) ? trim((string) $item["result"]) : "";
+            if ($id < 1 || !in_array($result, $resultadosValidos, true)) {
+                continue;
+            }
+
+            $row = array(
+                "id" => $id,
+                "result" => $result,
+            );
+
+            if ($result === "rejected") {
+                $reason = isset($item["rejection_reason"]) ? trim((string) $item["rejection_reason"]) : "";
+                if ($reason === "") {
+                    $reason = "Rechazado en vascorp";
+                }
+                $row["rejection_reason"] = substr($reason, 0, 255);
+            }
+
+            $itemsApi[] = $row;
+        }
+
+        if (count($itemsApi) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem válido para ack");
+        }
+
+        $traceId = trim((string) $traceId);
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdSolicitudAtencion();
+        }
+
+        $ackBy = trim((string) $ackBy);
+        if ($ackBy === "") {
+            $ackBy = "vascorp";
+        }
+        $ackBy = substr($ackBy, 0, 80);
+
+        $payload = array(
+            "trace_id" => $traceId,
+            "ack_by" => $ackBy,
+            "items" => $itemsApi,
+        );
+
+        $jsonBody = json_encode($payload);
+        if ($jsonBody === false) {
+            return array("ok" => false, "msg" => "No se pudo serializar el ack a JSON");
+        }
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $itemsResult = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+
+        if ($httpCode === 200 || $httpCode === 207) {
+            $ok = count($failed) === 0;
+
+            return array(
+                "ok" => $ok,
+                "partial" => !$ok,
+                "msg" => $ok
+                    ? "Solicitud confirmada en Vasco"
+                    : "Confirmación parcial (" . count($failed) . " fallidos)",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "processed" => isset($results["processed"]) ? (int) $results["processed"] : count($itemsResult),
+                "acknowledged" => isset($results["acknowledged"]) ? (int) $results["acknowledged"] : 0,
+                "completed" => isset($results["completed"]) ? (int) $results["completed"] : 0,
+                "rejected" => isset($results["rejected"]) ? (int) $results["rejected"] : 0,
+                "already_processed" => isset($results["already_processed"]) ? (int) $results["already_processed"] : 0,
+                "items" => $itemsResult,
+                "failed" => $failed,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "failed" => $failed,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * Valida en ERP y confirma solicitudes de atención en Vasco.
+     *
+     * @param array $items [{id, action, rejection_reason?, vasco_item?}]
+     * @param string $ackBy
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrProcesarSolicitudesAtencion($items, $ackBy, $traceId = "")
+    {
+        if (!is_array($items) || count($items) === 0) {
+            return array("ok" => false, "msg" => "Seleccione al menos una solicitud");
+        }
+
+        $ackItems = array();
+        $detalleErp = array();
+
+        foreach ($items as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $id = isset($entry["id"]) ? (int) $entry["id"] : 0;
+            if ($id < 1) {
+                continue;
+            }
+
+            $action = isset($entry["action"]) ? trim((string) $entry["action"]) : "acknowledged";
+            $vascoItem = isset($entry["vasco_item"]) && is_array($entry["vasco_item"])
+                ? $entry["vasco_item"]
+                : array();
+
+            if ($action === "rejected") {
+                $reason = isset($entry["rejection_reason"]) ? trim((string) $entry["rejection_reason"]) : "";
+                if ($reason === "") {
+                    $reason = "Rechazado en vascorp";
+                }
+
+                $ackItems[] = array(
+                    "id" => $id,
+                    "result" => "rejected",
+                    "rejection_reason" => $reason,
+                );
+                $detalleErp[] = array(
+                    "id" => $id,
+                    "action" => "rejected",
+                    "ok" => true,
+                    "msg" => $reason,
+                );
+                continue;
+            }
+
+            if ($action === "completed") {
+                $ackItems[] = array("id" => $id, "result" => "completed");
+                $detalleErp[] = array(
+                    "id" => $id,
+                    "action" => "completed",
+                    "ok" => true,
+                    "msg" => "Solicitud completada",
+                );
+                continue;
+            }
+
+            $preview = self::previewSolicitudAtencionItemErp($vascoItem);
+            if (!$preview["puede_tomar"]) {
+                $ackItems[] = array(
+                    "id" => $id,
+                    "result" => "rejected",
+                    "rejection_reason" => $preview["motivo"],
+                );
+                $detalleErp[] = array(
+                    "id" => $id,
+                    "action" => "acknowledged",
+                    "ok" => false,
+                    "msg" => $preview["motivo"],
+                );
+                continue;
+            }
+
+            $ackItems[] = array("id" => $id, "result" => "acknowledged");
+            $detalleErp[] = array(
+                "id" => $id,
+                "action" => "acknowledged",
+                "ok" => true,
+                "msg" => "Solicitud tomada — vendedor ERP " . ($preview["vendedor_erp"] !== "" ? $preview["vendedor_erp"] : "sin asignar"),
+                "codigo" => $preview["codigo"],
+            );
+        }
+
+        if (count($ackItems) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem válido para procesar");
+        }
+
+        $respuesta = self::ctrAckSolicitudesAtencion($ackItems, $ackBy, $traceId);
+        $respuesta["erp"] = $detalleErp;
+
+        return $respuesta;
+    }
 }

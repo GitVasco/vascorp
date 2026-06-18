@@ -1,0 +1,36 @@
+#panelGestionVascoClientes .vasco-gestion-intro {
+    margin-bottom: 16px;
+}
+
+#panelGestionVascoClientes .vasco-gestion-log {
+    min-height: 120px;
+    max-height: 220px;
+    overflow: auto;
+    margin: 0;
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: pre-wrap;
+}
+
+#panelGestionVascoClientes .vasco-gestion-trace {
+    font-size: 11px;
+    word-break: break-all;
+}
+
+#panelGestionVascoClientes #tablaGestionVasco td {
+    vertical-align: middle !important;
+}
+
+#panelGestionVascoClientes .vasco-gestion-estado-ok {
+    color: #3c763d;
+}
+
+#panelGestionVascoClientes .vasco-gestion-estado-warn {
+    color: #8a6d3b;
+}
+
+#panelGestionVascoClientes .vasco-gestion-estado-error {
+    color: #a94442;
+}
