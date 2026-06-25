@@ -199,6 +199,9 @@
                                     <button type="button" class="btn btn-default btn-block" id="btnReintentarFallidosVasco" disabled style="margin-top:6px;">
                                         <i class="fa fa-repeat"></i> Reintentar fallidos
                                     </button>
+                                    <button type="button" class="btn btn-warning btn-block" id="btnDescargarRechazadosVasco" disabled style="margin-top:6px;">
+                                        <i class="fa fa-download"></i> Descargar rechazados (CSV)
+                                    </button>
                                     <p class="text-muted" style="margin:12px 0 0;font-size:12px;">
                                         Envía <strong>activos e inactivos</strong> con documento válido.
                                         Sin vendedor ni grupo por ahora.
@@ -430,6 +433,9 @@
                                     </button>
                                     <button type="button" class="btn btn-default btn-block" id="btnReintentarFallidosCuentasVasco" disabled style="margin-top:6px;">
                                         <i class="fa fa-repeat"></i> Reintentar fallidos
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-block" id="btnDescargarRechazadosCuentasVasco" disabled style="margin-top:6px;">
+                                        <i class="fa fa-download"></i> Descargar rechazados (CSV)
                                     </button>
                                     <p class="text-muted vasco-box-footnote">
                                         Solo clientes con deuda · máx. <?php echo (int) $configVascoOnline["max_por_lote"]; ?> clientes/lote

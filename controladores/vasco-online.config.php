@@ -3,27 +3,34 @@
 /**
  * Vasco Online — sync vascorp → API en internet.
  *
- * Ajusta SOLO este archivo al cambiar de entorno (Docker local vs XAMPP en servidor).
+ * Ajusta SOLO este archivo al cambiar de entorno.
  * La API key va en controladores/config.php (junto a TOKEN_WHATSAPP, etc.).
  *
  * Entornos:
  *   desarrollo  — vascorp en Docker Mac, API Vasco en otro Docker (puerto 8084 en host)
- *   produccion  — vascorp en XAMPP/servidor, API con URL pública
+ *   pruebas     — vascorp en desarrollo, pero contra el API REAL en internet
+ *                 (https://api.jackyform.com.pe) para validar antes de producción
+ *   produccion  — vascorp en servidor, contra el API REAL en internet
+ *
+ * Para pasar de pruebas a producción: solo cambia $vasco_online_entorno a "produccion".
+ * La URL del API real es la misma; cambia solo el origen desde donde se ejecuta vascorp.
  */
 
-$vasco_online_entorno = "desarrollo";
+$vasco_online_entorno = "pruebas";
+
+// URL pública del API real (misma para pruebas y producción).
+define("VASCO_ONLINE_API_URL_REAL", "https://api.jackyform.com.pe");
 
 if ($vasco_online_entorno === "desarrollo") {
 
-    // Conecta al puerto publicado en el Mac; Host virtual para Apache del API.
+    // Conecta al puerto publicado en el Mac; Host virtual para Apache del API local.
     define("VASCO_ONLINE_API_BASE_URL", "http://host.docker.internal:8084");
     define("VASCO_ONLINE_API_HOST", "api.vasco.io");
 
 } else {
 
-    // XAMPP / servidor: URL real del API (sin trucos Docker).
-    // Ejemplo local LAN: http://192.168.1.10:8084 o dominio público en producción.
-    define("VASCO_ONLINE_API_BASE_URL", "http://api.vasco.io:8084");
+    // pruebas y produccion usan el API real público (HTTPS, sin trucos de Host).
+    define("VASCO_ONLINE_API_BASE_URL", VASCO_ONLINE_API_URL_REAL);
 
 }
 

@@ -7,6 +7,7 @@ $(function () {
     var $btnProbar = $("#btnProbarConexionVasco");
     var $btnSincronizar = $("#btnSincronizarClientesVasco");
     var $btnReintentar = $("#btnReintentarFallidosVasco");
+    var $btnDescargarRechazados = $("#btnDescargarRechazadosVasco");
     var $badgeConexion = $("#badgeConexionVasco");
     var $badgeEstadoSync = $("#badgeEstadoSync");
     var $barraProgreso = $("#barraProgresoSync");
@@ -17,12 +18,14 @@ $(function () {
         lotesEstimados: 0,
         traceId: null,
         lotesFallidos: [],
+        rechazados: [],
         sincronizando: false,
     };
 
     var $btnAnalizarCuentas = $("#btnAnalizarCuentasVasco");
     var $btnSincronizarCuentas = $("#btnSincronizarCuentasVasco");
     var $btnReintentarCuentas = $("#btnReintentarFallidosCuentasVasco");
+    var $btnDescargarRechazadosCuentas = $("#btnDescargarRechazadosCuentasVasco");
     var $badgeEstadoSyncCuentas = $("#badgeEstadoSyncCuentas");
     var $barraProgresoCuentas = $("#barraProgresoSyncCuentas");
 
@@ -31,6 +34,7 @@ $(function () {
         lotesEstimados: 0,
         traceId: null,
         lotesFallidos: [],
+        rechazados: [],
         sincronizando: false,
     };
 
@@ -290,6 +294,12 @@ $(function () {
         var totalInsert = 0;
         var totalUpdate = 0;
         var nuevosFallidos = [];
+        var lotesParciales = [];
+        var totalRechazadas = 0;
+
+        if (!esReintento) {
+            estadoSync.rechazados = [];
+        }
 
         agregarLog(
             (esReintento ? "Reintentando " : "Iniciando sync de ") +
@@ -329,20 +339,37 @@ $(function () {
                         totalInsert += parseInt(resp.inserted, 10) || 0;
                         totalUpdate += parseInt(resp.updated, 10) || 0;
 
+                        var rechazadasLote = resp.failed && resp.failed.length ? resp.failed.length : 0;
                         var detalle =
                             "Lote " +
                             numeroLote +
-                            " OK — insertados " +
+                            (rechazadasLote > 0 ? " PARCIAL" : " OK") +
+                            " — insertados " +
                             (resp.inserted || 0) +
                             ", actualizados " +
                             (resp.updated || 0);
 
-                        if (resp.partial && resp.failed && resp.failed.length > 0) {
-                            detalle += " (" + resp.failed.length + " fila(s) rechazadas)";
-                            nuevosFallidos.push(numeroLote);
+                        if (rechazadasLote > 0) {
+                            detalle += " (" + rechazadasLote + " fila(s) rechazadas)";
+                            lotesParciales.push(numeroLote);
+                            totalRechazadas += rechazadasLote;
                         }
 
                         agregarLog(detalle);
+
+                        if (rechazadasLote > 0) {
+                            logFailedClientes(resp, "  Lote " + numeroLote);
+                            resp.failed.forEach(function (f) {
+                                estadoSync.rechazados.push({
+                                    lote: numeroLote,
+                                    code: f.code || "",
+                                    doc_type: f.doc_type || "",
+                                    doc_number: f.doc_number || "",
+                                    legal_name: f.legal_name || "",
+                                    message: f.message || "error",
+                                });
+                            });
+                        }
                     }
 
                     indice++;
@@ -365,21 +392,53 @@ $(function () {
             $btnAnalizar.prop("disabled", false);
             $btnSincronizar.prop("disabled", estadoSync.listos <= 0);
             $btnReintentar.prop("disabled", nuevosFallidos.length === 0);
+            if ($btnDescargarRechazados.length) {
+                $btnDescargarRechazados.prop("disabled", estadoSync.rechazados.length === 0);
+            }
 
             if (nuevosFallidos.length > 0) {
                 agregarLog(
                     "Sync terminada con " +
                         nuevosFallidos.length +
                         " lote(s) con error: " +
-                        nuevosFallidos.join(", ")
+                        nuevosFallidos.join(", ") +
+                        (lotesParciales.length > 0
+                            ? " · " + lotesParciales.length + " lote(s) parcial(es), " + fmtNum(totalRechazadas) + " fila(s) rechazadas"
+                            : "")
                 );
                 swal({
                     type: "warning",
                     title: "Sync con errores",
                     text:
-                        "Se procesaron la mayoría de lotes pero " +
                         nuevosFallidos.length +
-                        " lote(s) fallaron. Usa Reintentar fallidos.",
+                        " lote(s) fallaron (no se enviaron). Usa Reintentar fallidos." +
+                        (lotesParciales.length > 0
+                            ? " Además " + fmtNum(totalRechazadas) + " fila(s) fueron rechazadas por Vasco."
+                            : ""),
+                });
+            } else if (lotesParciales.length > 0) {
+                agregarLog(
+                    "Sync parcial — insertados " +
+                        fmtNum(totalInsert) +
+                        ", actualizados " +
+                        fmtNum(totalUpdate) +
+                        ". " +
+                        fmtNum(totalRechazadas) +
+                        " fila(s) rechazadas en " +
+                        lotesParciales.length +
+                        " lote(s)."
+                );
+                swal({
+                    type: "warning",
+                    title: "Sync parcial",
+                    text:
+                        "Todos los lotes se enviaron. Insertados " +
+                        fmtNum(totalInsert) +
+                        ", actualizados " +
+                        fmtNum(totalUpdate) +
+                        ", pero Vasco rechazó " +
+                        fmtNum(totalRechazadas) +
+                        " fila(s) por datos inválidos (revisa el detalle).",
                 });
             } else {
                 agregarLog(
@@ -543,6 +602,76 @@ $(function () {
         $contenido.html(html);
     }
 
+    function descClienteFailed(f) {
+        var partes = [];
+        if (f.code) {
+            partes.push(String(f.code));
+        }
+        var doc = (f.doc_type || "") + " " + (f.doc_number || "");
+        doc = doc.replace(/\s+/g, " ").trim();
+        if (doc) {
+            partes.push(doc);
+        }
+        if (f.legal_name) {
+            partes.push(String(f.legal_name));
+        }
+        return partes.length ? partes.join(" · ") : "cliente sin identificar";
+    }
+
+    function logFailedClientes(resp, prefijo) {
+        var failed = resp && resp.failed ? resp.failed : [];
+        var i;
+
+        if (!failed.length) {
+            return;
+        }
+
+        for (i = 0; i < failed.length && i < 8; i++) {
+            agregarLog(prefijo + " [" + descClienteFailed(failed[i]) + "] " + (failed[i].message || "error"));
+        }
+
+        if (failed.length > 8) {
+            agregarLog(prefijo + " … y " + (failed.length - 8) + " fila(s) rechazada(s) más");
+        }
+    }
+
+    function descargarCsv(nombreArchivo, encabezados, filas) {
+        var lineas = [encabezados.join(",")];
+        filas.forEach(function (fila) {
+            var cols = fila.map(function (valor) {
+                var texto = valor == null ? "" : String(valor);
+                if (/[",\n]/.test(texto)) {
+                    texto = '"' + texto.replace(/"/g, '""') + '"';
+                }
+                return texto;
+            });
+            lineas.push(cols.join(","));
+        });
+
+        var contenido = "\ufeff" + lineas.join("\r\n");
+        var blob = new Blob([contenido], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function acumularRechazadosCuentas(resp, numeroLote) {
+        var failed = resp && resp.failed ? resp.failed : [];
+        failed.forEach(function (f) {
+            estadoSyncCuentas.rechazados.push({
+                lote: numeroLote,
+                doc_type: f.doc_type || "",
+                doc_number: f.doc_number || "",
+                message: f.message || "error",
+            });
+        });
+    }
+
     function logFailedCuentas(resp, prefijo) {
         var failed = resp && resp.failed ? resp.failed : [];
         var i;
@@ -622,6 +751,10 @@ $(function () {
         var totalDocs = 0;
         var nuevosFallidos = [];
 
+        if (!esReintento) {
+            estadoSyncCuentas.rechazados = [];
+        }
+
         agregarLog(
             (esReintento ? "Reintentando cuentas " : "Iniciando sync cuentas ") +
                 fmtNum(estadoSyncCuentas.listos) +
@@ -658,6 +791,7 @@ $(function () {
                             "Lote cuentas " + numeroLote + " ERROR — " + (resp && resp.msg ? resp.msg : "respuesta inválida")
                         );
                         logFailedCuentas(resp, "  ↳");
+                        acumularRechazadosCuentas(resp, numeroLote);
                     } else {
                         var enviados = parseInt(resp.accounts_sent, 10) || 0;
                         var guardados = parseInt(resp.processed, 10) || 0;
@@ -683,8 +817,10 @@ $(function () {
                             loteConError = true;
                             agregarLog("  ↳ Ningún cliente se guardó (¿maestro de clientes sync?)");
                             logFailedCuentas(resp, "  ↳");
+                            acumularRechazadosCuentas(resp, numeroLote);
                         } else if (resp.failed && resp.failed.length > 0) {
                             logFailedCuentas(resp, "  ↳ parcial");
+                            acumularRechazadosCuentas(resp, numeroLote);
                             if (guardados < enviados) {
                                 loteConError = true;
                             }
@@ -715,6 +851,9 @@ $(function () {
             $btnAnalizarCuentas.prop("disabled", false);
             $btnSincronizarCuentas.prop("disabled", estadoSyncCuentas.listos <= 0);
             $btnReintentarCuentas.prop("disabled", nuevosFallidos.length === 0);
+            if ($btnDescargarRechazadosCuentas.length) {
+                $btnDescargarRechazadosCuentas.prop("disabled", estadoSyncCuentas.rechazados.length === 0);
+            }
 
             if (nuevosFallidos.length > 0) {
                 agregarLog("Sync cuentas terminada con " + nuevosFallidos.length + " lote(s) con error.");
@@ -876,6 +1015,23 @@ $(function () {
         ejecutarLotesCuentas(estadoSyncCuentas.lotesFallidos.slice(), true);
     });
 
+    $btnDescargarRechazadosCuentas.on("click", function () {
+        if (!estadoSyncCuentas.rechazados.length) {
+            swal("Sin datos", "No hay cuentas rechazadas para exportar.", "info");
+            return;
+        }
+
+        var filas = estadoSyncCuentas.rechazados.map(function (r) {
+            return [r.lote, r.doc_type, r.doc_number, r.message];
+        });
+
+        descargarCsv(
+            "cuentas-rechazadas-" + (estadoSyncCuentas.traceId || "vasco") + ".csv",
+            ["lote", "tipo_doc", "documento", "motivo"],
+            filas
+        );
+    });
+
     $btnAnalizar.on("click", function () {
         var $btn = $(this);
         $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Analizando…');
@@ -956,6 +1112,23 @@ $(function () {
         }
 
         ejecutarLotes(estadoSync.lotesFallidos.slice(), true);
+    });
+
+    $btnDescargarRechazados.on("click", function () {
+        if (!estadoSync.rechazados.length) {
+            swal("Sin datos", "No hay clientes rechazados para exportar.", "info");
+            return;
+        }
+
+        var filas = estadoSync.rechazados.map(function (r) {
+            return [r.lote, r.code, r.doc_type, r.doc_number, r.legal_name, r.message];
+        });
+
+        descargarCsv(
+            "clientes-rechazados-" + (estadoSync.traceId || "vasco") + ".csv",
+            ["lote", "codigo", "tipo_doc", "documento", "nombre", "motivo"],
+            filas
+        );
     });
 
     $(document).on("click", ".btnVerGrupoDup", function () {

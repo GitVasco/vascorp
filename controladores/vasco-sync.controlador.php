@@ -146,6 +146,102 @@ class ControladorVascoSync
         return 2;
     }
 
+    /**
+     * Devuelve un celular peruano válido (9 dígitos, empieza en 9) o "".
+     * Acepta formatos con espacios, guiones o prefijo 51; descarta fijos.
+     *
+     * @param string|null $raw
+     * @return string
+     */
+    static public function telefonoMovilPeParaApi($raw)
+    {
+        $soloDigitos = preg_replace("/\D/", "", (string) $raw);
+
+        if ($soloDigitos === "" || $soloDigitos === null) {
+            return "";
+        }
+
+        if (strlen($soloDigitos) === 11 && substr($soloDigitos, 0, 2) === "51") {
+            $soloDigitos = substr($soloDigitos, 2);
+        }
+
+        if (strlen($soloDigitos) === 9 && $soloDigitos[0] === "9") {
+            return $soloDigitos;
+        }
+
+        return "";
+    }
+
+    /**
+     * Cruza el failed[] que devuelve Vasco con los clientes enviados,
+     * para que cada rechazo tenga código, documento y nombre legibles.
+     *
+     * @param array $failed
+     * @param array $customers Clientes enviados en el lote (en orden)
+     * @return array
+     */
+    static public function enriquecerFailedClientes($failed, $customers)
+    {
+        if (!is_array($failed) || count($failed) === 0) {
+            return array();
+        }
+
+        $porExternalId = array();
+        $porDoc = array();
+        foreach ($customers as $pos => $cli) {
+            if (!is_array($cli)) {
+                continue;
+            }
+            if (isset($cli["external_id"]) && $cli["external_id"] !== "") {
+                $porExternalId[(string) $cli["external_id"]] = $cli;
+            }
+            $docKey = (isset($cli["doc_type"]) ? $cli["doc_type"] : "") . "|" . (isset($cli["doc_number"]) ? $cli["doc_number"] : "");
+            $porDoc[$docKey] = $cli;
+        }
+
+        $out = array();
+        foreach ($failed as $idx => $f) {
+            if (!is_array($f)) {
+                $out[] = array("message" => (string) $f);
+                continue;
+            }
+
+            $base = null;
+            if (isset($f["index"]) && isset($customers[(int) $f["index"]]) && is_array($customers[(int) $f["index"]])) {
+                $base = $customers[(int) $f["index"]];
+            } elseif (isset($f["external_id"]) && isset($porExternalId[(string) $f["external_id"]])) {
+                $base = $porExternalId[(string) $f["external_id"]];
+            } else {
+                $docKey = (isset($f["doc_type"]) ? $f["doc_type"] : "") . "|" . (isset($f["doc_number"]) ? $f["doc_number"] : "");
+                if ($docKey !== "|" && isset($porDoc[$docKey])) {
+                    $base = $porDoc[$docKey];
+                } elseif (isset($customers[$idx]) && is_array($customers[$idx]) && count($failed) === count($customers)) {
+                    $base = $customers[$idx];
+                }
+            }
+
+            $message = "";
+            if (isset($f["message"])) {
+                $message = (string) $f["message"];
+            } elseif (isset($f["error"])) {
+                $message = (string) $f["error"];
+            } elseif (isset($f["errors"])) {
+                $message = is_array($f["errors"]) ? implode("; ", $f["errors"]) : (string) $f["errors"];
+            }
+
+            $out[] = array(
+                "external_id" => isset($f["external_id"]) ? (string) $f["external_id"] : ($base && isset($base["external_id"]) ? (string) $base["external_id"] : ""),
+                "code" => isset($f["code"]) ? (string) $f["code"] : ($base && isset($base["code"]) ? (string) $base["code"] : ""),
+                "doc_type" => isset($f["doc_type"]) ? (string) $f["doc_type"] : ($base && isset($base["doc_type"]) ? (string) $base["doc_type"] : ""),
+                "doc_number" => isset($f["doc_number"]) ? (string) $f["doc_number"] : ($base && isset($base["doc_number"]) ? (string) $base["doc_number"] : ""),
+                "legal_name" => $base && isset($base["legal_name"]) ? (string) $base["legal_name"] : "",
+                "message" => $message !== "" ? $message : "Rechazado por Vasco",
+            );
+        }
+
+        return $out;
+    }
+
     static public function mapearClienteParaApi($fila)
     {
         $nombre = trim(isset($fila["nombre"]) ? (string) $fila["nombre"] : "");
@@ -177,7 +273,10 @@ class ControladorVascoSync
             $cliente["ubigeo"] = $ubigeo;
         }
 
-        $telefono = trim(isset($fila["telefono"]) ? (string) $fila["telefono"] : "");
+        $telefono = self::telefonoMovilPeParaApi(isset($fila["telefono"]) ? $fila["telefono"] : "");
+        if ($telefono === "") {
+            $telefono = self::telefonoMovilPeParaApi(isset($fila["telefono2"]) ? $fila["telefono2"] : "");
+        }
         if ($telefono !== "") {
             $cliente["phone"] = $telefono;
         }
@@ -304,6 +403,7 @@ class ControladorVascoSync
         $inserted = isset($results["inserted"]) ? (int) $results["inserted"] : 0;
         $updated = isset($results["updated"]) ? (int) $results["updated"] : 0;
         $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $failed = self::enriquecerFailedClientes($failed, $customers);
 
         if ($httpCode === 200 || $httpCode === 207) {
             $parcial = $httpCode === 207 || count($failed) > 0;

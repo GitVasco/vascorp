@@ -216,6 +216,7 @@ class ModeloVascoSync
                     c.direccion,
                     c.ubigeo,
                     c.telefono,
+                    c.telefono2,
                     c.email,
                     c.estado,
                     c.fecha
