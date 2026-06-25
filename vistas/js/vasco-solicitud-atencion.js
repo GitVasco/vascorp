@@ -7,15 +7,26 @@ $(function () {
     var $log = $("#logAtencionVasco");
     var $boxResumen = $("#boxResumenAtencionVasco");
     var $btnTomar = $("#btnTomarSeleccionAtencionVasco");
-    var $btnCompletar = $("#btnCompletarSeleccionAtencionVasco");
-    var $filtroEstado = $("#filtroEstadoAtencionVasco");
+    var $btnAtender = $("#btnAtenderSeleccionAtencionVasco");
+    var $tabs = $("#tabsBandejaAtencionVasco");
+    var $historialFiltro = $(".vasco-atencion-historial-filtro");
+    var $thFechaSec = $("#thFechaSecundariaAtencionVasco");
 
     var estado = {
         traceId: null,
         items: [],
+        tabActiva: "pending",
         statusFiltro: "pending",
         buscando: false,
         procesando: false,
+        conteos: { pending: 0, acknowledged: 0 },
+        ultimaAccion: null,
+    };
+
+    var textosAyuda = {
+        pending: "Nuevas solicitudes del portal — confírmelas con Tomar o rechácelas.",
+        acknowledged: "Solicitudes en curso — marque atendida cuando el vendedor contactó al cliente.",
+        historial: "Consulta de solicitudes ya cerradas en Vasco.",
     };
 
     function escHtml(valor) {
@@ -42,6 +53,13 @@ $(function () {
         }
         $log.text((actual ? actual + "\n" : "") + texto);
         $log.scrollTop($log[0].scrollHeight);
+    }
+
+    function statusApiDesdeTab(tab) {
+        if (tab === "historial") {
+            return $("#filtroHistorialAtencionVasco").val() || "completed";
+        }
+        return tab;
     }
 
     function docCliente(item) {
@@ -86,8 +104,34 @@ $(function () {
         return partes.length ? escHtml(partes.join(" · ")) : "—";
     }
 
+    function badgeEstadoVasco(item) {
+        var status = item.status ? String(item.status) : estado.statusFiltro;
+        if (status === "pending") {
+            return '<span class="label label-warning">Pendiente</span>';
+        }
+        if (status === "acknowledged") {
+            return '<span class="label label-info">En curso</span>';
+        }
+        if (status === "completed") {
+            return '<span class="label label-success">Atendida</span>';
+        }
+        if (status === "cancelled") {
+            return '<span class="label label-default">Cancelada</span>';
+        }
+        return '<span class="label label-default">' + escHtml(status) + "</span>";
+    }
+
     function estadoErp(item) {
         var erp = item.erp_preview || {};
+        var status = item.status ? String(item.status) : estado.statusFiltro;
+
+        if (status === "acknowledged" || status === "completed") {
+            if (erp.encontrado) {
+                return '<span class="vasco-atencion-estado-ok">Cliente en ERP</span>';
+            }
+            return '<span class="vasco-atencion-estado-warn">Sin match ERP</span>';
+        }
+
         var clase = "vasco-atencion-estado-warn";
         if (!erp.encontrado) {
             clase = "vasco-atencion-estado-error";
@@ -109,17 +153,37 @@ $(function () {
         return n;
     }
 
+    function actualizarAyudaTab() {
+        var texto = textosAyuda[estado.tabActiva] || "";
+        $("#ayudaTabAtencionVasco").text(texto);
+
+        if (estado.tabActiva === "pending") {
+            $("#resumenLabelSecundarioAtencionVasco").text("Listas para tomar");
+            $thFechaSec.text("—");
+        } else if (estado.tabActiva === "acknowledged") {
+            $("#resumenLabelSecundarioAtencionVasco").text("Pendientes de cierre");
+            $thFechaSec.text("Tomada");
+        } else {
+            $("#resumenLabelSecundarioAtencionVasco").text("Registros");
+            $thFechaSec.text("Cierre");
+        }
+    }
+
     function actualizarBotonesMasivos() {
-        var status = estado.statusFiltro;
-        if (status === "pending") {
+        var tab = estado.tabActiva;
+        var esHistorial = tab === "historial";
+
+        $(".vasco-atencion-accion-masiva").toggle(!esHistorial);
+
+        if (tab === "pending") {
             $btnTomar.show();
-            $btnCompletar.hide();
-        } else if (status === "acknowledged") {
+            $btnAtender.hide();
+        } else if (tab === "acknowledged") {
             $btnTomar.hide();
-            $btnCompletar.show();
+            $btnAtender.show();
         } else {
             $btnTomar.hide();
-            $btnCompletar.hide();
+            $btnAtender.hide();
         }
     }
 
@@ -128,23 +192,36 @@ $(function () {
         $("#resumenSeleccionAtencionVasco").text(String(count));
         var disabled = count === 0 || estado.procesando;
         $btnTomar.prop("disabled", disabled);
-        $btnCompletar.prop("disabled", disabled);
+        $btnAtender.prop("disabled", disabled);
+    }
+
+    function actualizarBadgesConteo() {
+        $("#badgeCountPendientes").text(String(estado.conteos.pending));
+        $("#badgeCountEnCurso").text(String(estado.conteos.acknowledged));
+
+        if (estado.conteos.acknowledged > 0) {
+            $("#tabAtencionEnCurso").addClass("vasco-atencion-tab-alerta");
+        } else {
+            $("#tabAtencionEnCurso").removeClass("vasco-atencion-tab-alerta");
+        }
     }
 
     function botonesFila(item) {
-        var status = estado.statusFiltro;
+        var tab = estado.tabActiva;
         var html = "";
 
-        if (status === "pending") {
+        if (tab === "pending") {
             html +=
-                '<button type="button" class="btn btn-success btn-xs btn-tomar-una-atencion-vasco">' +
+                '<button type="button" class="btn btn-success btn-xs btn-tomar-una-atencion-vasco" title="Confirmar y pasar a En curso">' +
                 '<i class="fa fa-hand-paper-o"></i> Tomar</button> ' +
-                '<button type="button" class="btn btn-danger btn-xs btn-rechazar-una-atencion-vasco">' +
+                '<button type="button" class="btn btn-primary btn-xs btn-atender-una-atencion-vasco" title="Cerrar directo (sin pasar por En curso)">' +
+                '<i class="fa fa-check-circle"></i> Atendida</button> ' +
+                '<button type="button" class="btn btn-danger btn-xs btn-rechazar-una-atencion-vasco" title="Rechazar">' +
                 '<i class="fa fa-times"></i></button>';
-        } else if (status === "acknowledged") {
+        } else if (tab === "acknowledged") {
             html +=
-                '<button type="button" class="btn btn-primary btn-xs btn-completar-una-atencion-vasco">' +
-                '<i class="fa fa-check"></i> Completar</button>';
+                '<button type="button" class="btn btn-primary btn-xs btn-atender-una-atencion-vasco">' +
+                '<i class="fa fa-check-circle"></i> Marcar atendida</button>';
         } else {
             html = '<span class="text-muted">—</span>';
         }
@@ -152,13 +229,31 @@ $(function () {
         return html;
     }
 
+    function fechaSecundaria(item) {
+        var tab = estado.tabActiva;
+        if (tab === "acknowledged") {
+            return fmtFecha(item.acknowledged_at || item.updated_at);
+        }
+        if (tab === "historial") {
+            return fmtFecha(item.completed_at || item.cancelled_at || item.updated_at);
+        }
+        return "—";
+    }
+
     function renderTabla(items) {
         estado.items = items || [];
+        var colspan = 11;
 
         if (!estado.items.length) {
+            var vacio = "No hay solicitudes en esta bandeja.";
+            if (estado.tabActiva === "acknowledged") {
+                vacio = "No hay solicitudes en curso. Revise la pestaña Pendientes.";
+            }
             $cuerpo.html(
-                '<tr class="vasco-atencion-empty"><td colspan="9" class="text-center text-muted">' +
-                    "No hay solicitudes con los filtros indicados." +
+                '<tr class="vasco-atencion-empty"><td colspan="' +
+                    colspan +
+                    '" class="text-center text-muted">' +
+                    vacio +
                     "</td></tr>"
             );
             actualizarSeleccion();
@@ -171,7 +266,7 @@ $(function () {
             var erp = item.erp_preview || {};
             var mensaje = item.message ? String(item.message) : "—";
             var vendErp = erp.vendedor_erp ? String(erp.vendedor_erp) : "—";
-            var mostrarCheck = estado.statusFiltro === "pending" || estado.statusFiltro === "acknowledged";
+            var mostrarCheck = estado.tabActiva === "pending" || estado.tabActiva === "acknowledged";
 
             filas.push(
                 "<tr data-index=\"" +
@@ -180,12 +275,16 @@ $(function () {
                     escHtml(id) +
                     "\">" +
                     "<td>" +
-                    (mostrarCheck
-                        ? '<input type="checkbox" class="chk-atencion-vasco">'
-                        : "") +
+                    (mostrarCheck ? '<input type="checkbox" class="chk-atencion-vasco">' : "") +
+                    "</td>" +
+                    "<td>" +
+                    badgeEstadoVasco(item) +
                     "</td>" +
                     "<td>" +
                     fmtFecha(item.created_at || item.requested_at) +
+                    "</td>" +
+                    "<td>" +
+                    fechaSecundaria(item) +
                     "</td>" +
                     "<td>" +
                     nombreCliente(item) +
@@ -238,29 +337,56 @@ $(function () {
         return seleccion;
     }
 
-    function buscarSolicitudes() {
+    function consultarApi(status, traceIdOpcional) {
+        var params = {
+            accion: "listar",
+            status: status,
+            since: $.trim($("#filtroDesdeAtencionVasco").val()),
+            limit: $("#filtroLimiteAtencionVasco").val(),
+        };
+
+        if (traceIdOpcional) {
+            params.trace_id = traceIdOpcional;
+        }
+
+        return $.getJSON("ajax/cuentas-corrientes/vasco-solicitud-atencion.ajax.php", params);
+    }
+
+    function refrescarConteosTabs() {
+        var reqs = [
+            consultarApi("pending"),
+            consultarApi("acknowledged"),
+        ];
+
+        return $.when(reqs[0], reqs[1]).done(function (respPending, respAck) {
+            var p = respPending[0] || respPending;
+            var a = respAck[0] || respAck;
+
+            if (p && p.ok) {
+                estado.conteos.pending = p.count != null ? p.count : (p.items || []).length;
+            }
+            if (a && a.ok) {
+                estado.conteos.acknowledged = a.count != null ? a.count : (a.items || []).length;
+            }
+            actualizarBadgesConteo();
+        });
+    }
+
+    function buscarSolicitudes(opciones) {
+        opciones = opciones || {};
+
         if (estado.buscando) {
             return;
         }
 
         estado.buscando = true;
-        estado.statusFiltro = $filtroEstado.val() || "pending";
+        estado.statusFiltro = statusApiDesdeTab(estado.tabActiva);
         actualizarBotonesMasivos();
+        actualizarAyudaTab();
 
         $("#btnBuscarAtencionVasco").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Consultando…');
 
-        var params = {
-            accion: "listar",
-            status: estado.statusFiltro,
-            since: $.trim($("#filtroDesdeAtencionVasco").val()),
-            limit: $("#filtroLimiteAtencionVasco").val(),
-        };
-
-        if (estado.traceId) {
-            params.trace_id = estado.traceId;
-        }
-
-        $.getJSON("ajax/cuentas-corrientes/vasco-solicitud-atencion.ajax.php", params)
+        consultarApi(estado.statusFiltro, estado.traceId)
             .done(function (resp) {
                 if (!resp || !resp.ok) {
                     agregarLog("Error consulta: " + (resp && resp.msg ? resp.msg : "respuesta inválida"));
@@ -270,19 +396,29 @@ $(function () {
 
                 estado.traceId = resp.trace_id || estado.traceId;
                 var items = resp.items || [];
-                $("#resumenCountAtencionVasco").text(String(resp.count != null ? resp.count : items.length));
-                $("#resumenTomablesAtencionVasco").text(String(contarTomables(items)));
+                var count = resp.count != null ? resp.count : items.length;
+
+                $("#resumenCountAtencionVasco").text(String(count));
+                if (estado.tabActiva === "pending") {
+                    $("#resumenSecundarioAtencionVasco").text(String(contarTomables(items)));
+                    estado.conteos.pending = count;
+                } else if (estado.tabActiva === "acknowledged") {
+                    $("#resumenSecundarioAtencionVasco").text(String(count));
+                    estado.conteos.acknowledged = count;
+                } else {
+                    $("#resumenSecundarioAtencionVasco").text(String(count));
+                }
+
                 $("#resumenTraceAtencionVasco").text(estado.traceId || "—");
                 $boxResumen.show();
+                actualizarBadgesConteo();
 
                 renderTabla(items);
-                agregarLog(
-                    "Consulta OK — " +
-                        (resp.count != null ? resp.count : items.length) +
-                        " solicitud(es) [" +
-                        estado.statusFiltro +
-                        "]"
-                );
+                agregarLog("Consulta OK — " + count + " solicitud(es) [" + estado.statusFiltro + "]");
+
+                if (!opciones.omitirConteos) {
+                    refrescarConteosTabs();
+                }
             })
             .fail(function () {
                 agregarLog("Error de red al consultar Vasco");
@@ -294,15 +430,17 @@ $(function () {
             });
     }
 
-    function procesarItems(items) {
+    function procesarItems(items, opciones) {
+        opciones = opciones || {};
+
         if (!items || !items.length || estado.procesando) {
             return;
         }
 
         estado.procesando = true;
         $btnTomar.prop("disabled", true);
-        $btnCompletar.prop("disabled", true);
-        $(".btn-tomar-una-atencion-vasco, .btn-rechazar-una-atencion-vasco, .btn-completar-una-atencion-vasco").prop(
+        $btnAtender.prop("disabled", true);
+        $(".btn-tomar-una-atencion-vasco, .btn-rechazar-una-atencion-vasco, .btn-atender-una-atencion-vasco").prop(
             "disabled",
             true
         );
@@ -328,12 +466,21 @@ $(function () {
                 }
 
                 var erp = resp.erp || [];
+                var huboTomadas = false;
+                var huboAtendidas = false;
+
                 $.each(erp, function (_, row) {
                     var linea = "#" + row.id + " " + (row.action || "") + ": " + (row.msg || "");
                     if (row.ok === false) {
                         linea += " [falló]";
                     }
                     agregarLog(linea);
+                    if (row.action === "acknowledged" && row.ok !== false) {
+                        huboTomadas = true;
+                    }
+                    if (row.action === "completed" && row.ok !== false) {
+                        huboAtendidas = true;
+                    }
                 });
 
                 if (resp.ok) {
@@ -342,6 +489,16 @@ $(function () {
                     swal("Parcial", resp.msg || "Algunos ítems fallaron", "warning");
                 } else {
                     swal("Error", resp.msg || "No se pudo procesar", "error");
+                }
+
+                if (huboTomadas && estado.tabActiva === "pending") {
+                    refrescarConteosTabs();
+                    cambiarTab("acknowledged", { autoBuscar: true });
+                    return;
+                }
+
+                if (huboAtendidas) {
+                    refrescarConteosTabs();
                 }
 
                 buscarSolicitudes();
@@ -353,7 +510,7 @@ $(function () {
             .always(function () {
                 estado.procesando = false;
                 actualizarSeleccion();
-                $(".btn-tomar-una-atencion-vasco, .btn-rechazar-una-atencion-vasco, .btn-completar-una-atencion-vasco").prop(
+                $(".btn-tomar-una-atencion-vasco, .btn-rechazar-una-atencion-vasco, .btn-atender-una-atencion-vasco").prop(
                     "disabled",
                     false
                 );
@@ -401,11 +558,70 @@ $(function () {
         });
     }
 
-    $("#btnBuscarAtencionVasco").on("click", buscarSolicitudes);
+    function confirmarAtendidas(cantidad, callback) {
+        swal({
+            title: "¿Marcar como atendida?",
+            text:
+                "Se cerrará en Vasco y el cliente podrá enviar una nueva solicitud desde el portal (" +
+                cantidad +
+                " registro(s)).",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, marcar atendida",
+            cancelButtonText: "Cancelar",
+        }).then(function (result) {
+            if (result.value) {
+                callback();
+            }
+        });
+    }
 
-    $filtroEstado.on("change", function () {
-        estado.statusFiltro = $filtroEstado.val() || "pending";
+    function cambiarTab(tab, opciones) {
+        opciones = opciones || {};
+        estado.tabActiva = tab;
+        estado.statusFiltro = statusApiDesdeTab(tab);
+
+        $tabs.find("li").removeClass("active");
+        $tabs.find('a[data-status="' + tab + '"]').parent().addClass("active");
+
+        $historialFiltro.toggle(tab === "historial");
         actualizarBotonesMasivos();
+        actualizarAyudaTab();
+
+        if (opciones.autoBuscar) {
+            buscarSolicitudes({ omitirConteos: opciones.silencioso });
+        } else {
+            $cuerpo.html(
+                '<tr class="vasco-atencion-empty"><td colspan="11" class="text-center text-muted">' +
+                    "Pulse <strong>Consultar</strong> para cargar esta bandeja." +
+                    "</td></tr>"
+            );
+            actualizarSeleccion();
+        }
+    }
+
+    $tabs.on("click", "a[data-status]", function (e) {
+        e.preventDefault();
+        var tab = $(this).data("status");
+        if (tab && tab !== estado.tabActiva) {
+            cambiarTab(tab);
+        }
+    });
+
+    $("#filtroHistorialAtencionVasco").on("change", function () {
+        if (estado.tabActiva === "historial") {
+            buscarSolicitudes();
+        }
+    });
+
+    $("#btnBuscarAtencionVasco").on("click", function () {
+        buscarSolicitudes();
+    });
+
+    $("#btnRefrescarConteosAtencionVasco").on("click", function () {
+        refrescarConteosTabs().always(function () {
+            agregarLog("Contadores de pestañas actualizados");
+        });
     });
 
     $("#btnMarcarTodosAtencionVasco").on("click", function () {
@@ -428,24 +644,54 @@ $(function () {
             swal("Atención", "Seleccione al menos una solicitud", "info");
             return;
         }
-        procesarItems(items);
+        swal({
+            title: "¿Tomar solicitudes?",
+            text: "Pasarán a En curso para que el vendedor atienda al cliente (" + items.length + ").",
+            type: "info",
+            showCancelButton: true,
+            confirmButtonText: "Tomar",
+            cancelButtonText: "Cancelar",
+        }).then(function (result) {
+            if (result.value) {
+                procesarItems(items);
+            }
+        });
     });
 
-    $("#btnCompletarSeleccionAtencionVasco").on("click", function () {
+    $("#btnAtenderSeleccionAtencionVasco").on("click", function () {
         var items = itemsSeleccionados("completed");
         if (!items.length) {
             swal("Atención", "Seleccione al menos una solicitud", "info");
             return;
         }
-        procesarItems(items);
+        confirmarAtendidas(items.length, function () {
+            procesarItems(items);
+        });
     });
 
     $cuerpo.on("click", ".btn-tomar-una-atencion-vasco", function () {
-        procesarUna($(this).closest("tr"), "acknowledged");
+        var $tr = $(this).closest("tr");
+        var item = itemDesdeIndice(parseInt($tr.attr("data-index"), 10));
+        swal({
+            title: "¿Tomar solicitud?",
+            text: "La solicitud #" + (item ? item.id : "") + " pasará a En curso.",
+            type: "info",
+            showCancelButton: true,
+            confirmButtonText: "Tomar",
+            cancelButtonText: "Cancelar",
+        }).then(function (result) {
+            if (result.value) {
+                procesarUna($tr, "acknowledged");
+            }
+        });
     });
 
-    $cuerpo.on("click", ".btn-completar-una-atencion-vasco", function () {
-        procesarUna($(this).closest("tr"), "completed");
+    $cuerpo.on("click", ".btn-atender-una-atencion-vasco", function () {
+        var $tr = $(this).closest("tr");
+        var item = itemDesdeIndice(parseInt($tr.attr("data-index"), 10));
+        confirmarAtendidas(1, function () {
+            procesarUna($tr, "completed");
+        });
     });
 
     $cuerpo.on("click", ".btn-rechazar-una-atencion-vasco", function () {
@@ -456,4 +702,7 @@ $(function () {
     });
 
     actualizarBotonesMasivos();
+    actualizarAyudaTab();
+    refrescarConteosTabs();
+    buscarSolicitudes();
 });

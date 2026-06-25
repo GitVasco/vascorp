@@ -2256,7 +2256,7 @@ class ControladorVascoSync
                     "id" => $id,
                     "action" => "completed",
                     "ok" => true,
-                    "msg" => "Solicitud completada",
+                    "msg" => "Marcada como atendida en Vasco",
                 );
                 continue;
             }

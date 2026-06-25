@@ -62,18 +62,20 @@ Más adelante, ejecutar una **campaña activa** para que todos cambien la clave:
 
 ---
 
-## Notificaciones en portal (pendiente — prioridad alta)
+## Notificaciones en portal (cobranzas)
 
 Canal persistente complementario a WhatsApp (`docs/COBRANZA_NOTIFICACIONES.md`, fase 2.0).
 
-| Entrega | Detalle |
-|---------|---------|
-| Badge «nuevo» | Cobranzas no vistas desde última visita |
-| Tabla lectura | Ej. `customer_portal_notification_reads` o `date_read` por cobranza |
-| Inicio | Contador en tile Cobranzas o campana en navbar portal |
-| Alcance MVP | Solo cobranzas registradas; facturas cuando exista módulo |
+| Entrega | Estado |
+|---------|--------|
+| Badge «nuevo» en tile Cobranzas | Implementado |
+| Contador en bottom nav (móvil) | Implementado |
+| Marca lectura al abrir listado | Implementado (`mark_all`) |
+| Marca lectura al ver detalle | Implementado (una cobranza) |
+| Tabla `customer_portal_notification_reads` | Migración `0026` |
+| API admin | `GET /v2/admin/portal/unread-collections`, `POST .../mark-collections-read` |
 
-**No bloquea** operación actual; conviene después de estabilizar solicitud de visita y merge de la rama portal.
+**Alcance:** cobranzas de los últimos 30 días (mismo período que el resumen del listado). Facturas cuando exista el módulo.
 
 ---
 
@@ -90,15 +92,18 @@ El cliente puede pedir que lo visiten o lo contacten desde `/my-account/request-
 
 **Reglas MVP:**
 
-- Una solicitud **pending** por cliente; si ya existe, se muestra estado y no se duplica.
+- Una solicitud **abierta** (`pending` o `acknowledged`) por cliente; el aviso solo se muestra en `/my-account/request-visit`.
+- Al cerrar (`completed` o `cancelled` desde vascorp), el aviso **desaparece** y el cliente puede enviar una nueva solicitud.
+- Badge en inicio (tile): solo mientras la solicitud está abierta.
 - Registro en tabla `customer_portal_visit_requests` (migración `0024`, ack vascorp `0025`).
 
 ### API v2 para vascorp
 
 | Método | Ruta | Uso |
 |--------|------|-----|
-| `GET` | `/v2/sync/portal-visit-requests` | Listar solicitudes (`?status=pending`) |
-| `POST` | `/v2/sync/portal-visit-requests/ack` | Marcar `acknowledged`, `completed` o `rejected` |
+| `GET` | `/v2/sync/portal-visit-requests?status=pending` | Nuevas solicitudes |
+| `GET` | `/v2/sync/portal-visit-requests?status=acknowledged` | En curso → marcar `completed` |
+| `POST` | `/v2/sync/portal-visit-requests/ack` | `acknowledged`, `completed` o `rejected` |
 
 | Documento | Audiencia |
 |-----------|-----------|

@@ -300,13 +300,13 @@ Adjunto imagen ticket cuando exista `ticket_image_path_collection`.
 
 **Objetivo:** canal principal a medio plazo; el cliente ve cobranzas sin depender de WhatsApp.
 
-| Tarea | Detalle |
-|-------|---------|
-| Auth portal | RUC/DNI + clave (`PRODUCTO.md` fase 2) |
-| API lectura | `GET /v1/portal/collections` por cliente autenticado |
-| UI | Listado cobranzas + detalle ticket |
-| Badge «nuevo» | Desde última visita / `date_read` (tabla futura) |
-| Email respaldo | Si `email_customer` válido (opcional 1.x) |
+| Tarea | Detalle | Estado |
+|-------|---------|--------|
+| Auth portal | RUC/DNI + clave (`PRODUCTO.md` fase 2) | Hecho |
+| API lectura | Listado y detalle cobranzas por cliente autenticado | Hecho (admin v2) |
+| UI | Listado cobranzas + detalle ticket | Hecho |
+| Badge «nuevo» | `customer_portal_notification_reads` + API `portal/unread-collections` | **Hecho** — ver `PORTAL_CLIENTE.md` |
+| Email respaldo | Si `email_customer` válido (opcional 1.x) | Pendiente |
 
 **Dependencia:** portal no bloquea fases 1.1–1.3.
 

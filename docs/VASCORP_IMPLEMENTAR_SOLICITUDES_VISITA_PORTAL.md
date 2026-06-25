@@ -18,6 +18,7 @@ Contexto producto: [`PORTAL_CLIENTE.md`](PORTAL_CLIENTE.md)
 
 - [ ] Maestro de clientes ya sincronizado (`POST /v2/sync/customers-bulk`)
 - [ ] Job periódico consulta `GET /v2/sync/portal-visit-requests?status=pending`
+- [ ] **Bandeja de cierre:** consultar también `?status=acknowledged` (o pantalla en ERP con solicitudes abiertas) para marcar `completed`
 - [ ] Por cada ítem: resolver cliente en ERP (`external_id` o documento)
 - [ ] Notificar al vendedor (`seller` en la respuesta; si es `null`, usar reglas internas de ruta)
 - [ ] Ack `acknowledged` al registrar la solicitud en ERP / avisar al vendedor
@@ -35,6 +36,25 @@ Contexto producto: [`PORTAL_CLIENTE.md`](PORTAL_CLIENTE.md)
 | **Maestro** | `customers` | vascorp (`customers-bulk`) | Vasco (portal, visita, cobranzas) |
 
 **Regla:** el cliente crea la solicitud en Vasco; vascorp **no** inserta filas. Solo lee, actúa en ERP y confirma con ack.
+
+---
+
+## 2.1 Importante: marcar como completada en vascorp
+
+Tras el ack `acknowledged`, la solicitud **deja de salir** en `GET ?status=pending`.  
+Para cerrarla en Vasco y liberar al cliente en el portal, vascorp debe:
+
+1. **Listar** solicitudes en curso: `GET /v2/sync/portal-visit-requests?status=acknowledged`
+2. Cuando el vendedor atendió en ERP → **POST** ack con `result: "completed"`
+
+| Consulta GET | Cuándo usarla |
+|--------------|----------------|
+| `?status=pending` | Nuevas solicitudes del portal → ack `acknowledged` |
+| `?status=acknowledged` | Solicitudes confirmadas, pendientes de visita → ack `completed` |
+
+**Recomendación UI vascorp:** bandeja «Solicitudes portal» con columnas *Pendiente* y *En curso*; botón **Marcar atendida** que envía `completed`.
+
+La API Vasco **no cambió**: `completed` sigue disponible desde `pending` o `acknowledged`.
 
 ---
 
@@ -107,9 +127,16 @@ if ($ackItems !== []) {
 
 ### Cierre de solicitud (visita realizada)
 
-Cuando el vendedor confirme en ERP que atendió al cliente:
+Cuando el vendedor confirme en ERP que atendió al cliente, listar primero las en curso:
 
 ```php
+$open = getFromVasco('/v2/sync/portal-visit-requests', [
+    'status' => 'acknowledged',
+    'limit'  => 500,
+    'trace_id' => $traceId,
+]);
+
+// Por cada ítem cerrado en ERP:
 postToVasco('/v2/sync/portal-visit-requests/ack', [
     'trace_id' => $traceId,
     'ack_by'   => 'job.portal-visit-requests',

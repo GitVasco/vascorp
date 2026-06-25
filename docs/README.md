@@ -17,7 +17,7 @@ Mapa de **qué leer según tu rol**. Los contratos HTTP v2 viven en `postman/`; 
 
 | Documento | Para quién | Contenido |
 |-----------|------------|-----------|
-| [`PORTAL_CLIENTE.md`](PORTAL_CLIENTE.md) | Producto + frontend admin | Rutas `/my-account`, UX, contraseña, roadmap notificaciones |
+| [`PORTAL_CLIENTE.md`](PORTAL_CLIENTE.md) | Producto + frontend admin | Rutas `/my-account`, UX, contraseña, **notificaciones cobranzas** |
 | [`VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md`](VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md) | **vascorp** (job) | Consumir solicitudes de visita del portal |
 | [`../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md`](../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md) | **vascorp** + QA | Contrato HTTP GET/ack solicitudes visita |
 

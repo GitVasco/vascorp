@@ -1,5 +1,24 @@
 #panelSolicitudesAtencionVasco .vasco-atencion-intro {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-tabs {
+    margin-bottom: 0;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-tabs .badge {
+    margin-left: 4px;
+    font-size: 11px;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-filtros {
+    border-top: none;
+    margin-top: 0;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-tab-ayuda {
+    font-size: 12px;
+    font-style: italic;
 }
 
 #panelSolicitudesAtencionVasco .vasco-atencion-log {
@@ -36,7 +55,16 @@
 }
 
 #panelSolicitudesAtencionVasco .vasco-atencion-mensaje {
-    max-width: 280px;
+    max-width: 240px;
     white-space: pre-wrap;
     word-break: break-word;
+    font-size: 12px;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-tabs li.active a .badge {
+    color: #fff;
+}
+
+#panelSolicitudesAtencionVasco .vasco-atencion-tab-alerta a {
+    font-weight: 600;
 }
