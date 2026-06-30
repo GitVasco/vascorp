@@ -92,6 +92,17 @@
 
                 </li>
 
+                <li class="<?php if ($_GET["ruta"] == "descuentos-compuestos") echo 'active'; ?>">
+
+                    <a href="index.php?ruta=descuentos-compuestos">
+
+                        <i class="fa fa-percent"></i>
+                        <span>Descuentos Compuestos</span>
+
+                    </a>
+
+                </li>
+
             <?php
             }
             ?>
