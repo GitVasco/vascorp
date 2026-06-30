@@ -25,6 +25,8 @@ if (!isset($_SESSION)) {
             $__tituloVentana = "Dashboard de Cobranzas | Vasco System";
         } elseif ($_GET["ruta"] === "descuentos-compuestos") {
             $__tituloVentana = "Descuentos Compuestos ESSO | Vasco System";
+        } elseif ($_GET["ruta"] === "inteligencia-comercial") {
+            $__tituloVentana = "Inteligencia Comercial | Vasco System";
         }
     }
     ?>
@@ -294,6 +296,9 @@ CUERPO DOCUMENTO
             } else if ($_GET["ruta"] == "descuentos-compuestos") {
 
                 include "modulos/descuentos-compuestos/descuentos-compuestos.php";
+            } else if ($_GET["ruta"] == "inteligencia-comercial") {
+
+                include "modulos/inteligencia-comercial/inteligencia-comercial.php";
             } else if ($_GET["ruta"] == "usuarios") {
 
                 include "modulos/usuarios/" . $_GET["ruta"] . ".php";
@@ -659,6 +664,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "inteligencia-comercial") { ?>
+    <script src="vistas/js/inteligencia-comercial.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") { ?>
     <script src="vistas/js/vasco-online-sync.js?v=<?php echo rand(); ?>"></script>

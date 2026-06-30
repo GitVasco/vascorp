@@ -103,6 +103,17 @@
 
                 </li>
 
+                <li class="<?php if ($_GET["ruta"] == "inteligencia-comercial") echo 'active'; ?>">
+
+                    <a href="index.php?ruta=inteligencia-comercial">
+
+                        <i class="fa fa-line-chart"></i>
+                        <span>Inteligencia Comercial</span>
+
+                    </a>
+
+                </li>
+
             <?php
             }
             ?>
