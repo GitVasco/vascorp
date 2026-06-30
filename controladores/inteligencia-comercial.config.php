@@ -18,11 +18,14 @@ $ic_motor1_pesos = array(
     "incidencias"          => 5,
 );
 
-/** Días de tolerancia para considerar un pago "a tiempo" (solo documentos CANCELADOS). */
+/** Días de tolerancia (solo documentos CANCELADOS).
+ *  Historial: pago a tiempo si atraso ≤ este valor.
+ *  Atraso promedio y tendencia: solo penalizan días que superen este valor. */
 $ic_motor1_tolerancia_dias_pago = 30;
 
-/** Multiplicador para convertir días de atraso promedio en score (score = 100 − atraso × mult). */
-$ic_motor1_atraso_multiplicador = 1.2;
+/** Multiplicador para convertir días de atraso promedio en score (score = 100 − atraso × mult).
+ *  Menor valor = menos castigo. Ej.: 30 días → 1.2 resta 36 pts | 0.8 resta 24 pts | 0.6 resta 18 pts */
+$ic_motor1_atraso_multiplicador = 0.8;
 
 /** Puntos que resta cada incidencia comercial (protesta / renovación). */
 $ic_motor1_incidencia_penalizacion = 15;

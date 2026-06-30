@@ -63,7 +63,7 @@ class ModeloInteligenciaComercial
                     AVG(
                         CASE
                             WHEN c.ult_pago IS NOT NULL
-                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven), 0)
+                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_atraso, 0)
                             ELSE NULL
                         END
                     ) AS atraso_promedio,
@@ -71,7 +71,7 @@ class ModeloInteligenciaComercial
                         CASE
                             WHEN c.ult_pago IS NOT NULL
                                 AND c.ult_pago >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven), 0)
+                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_reciente, 0)
                             ELSE NULL
                         END
                     ) AS atraso_reciente,
@@ -80,7 +80,7 @@ class ModeloInteligenciaComercial
                             WHEN c.ult_pago IS NOT NULL
                                 AND c.ult_pago >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
                                 AND c.ult_pago < DATE_SUB(NOW(), INTERVAL 6 MONTH)
-                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven), 0)
+                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_anterior, 0)
                             ELSE NULL
                         END
                     ) AS atraso_anterior
@@ -123,6 +123,9 @@ class ModeloInteligenciaComercial
         $stmt->bindParam(":cliente_credito", $codigoCliente, PDO::PARAM_STR);
         $stmt->bindParam(":cliente_inc", $codigoCliente, PDO::PARAM_STR);
         $stmt->bindParam(":tolerancia_docs", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_atraso", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_reciente", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_anterior", $tolerancia, PDO::PARAM_INT);
 
         $stmt->execute();
 
@@ -176,9 +179,9 @@ class ModeloInteligenciaComercial
             $detalleHistorial = "Sin documentos cerrados; score neutro ($scoreNeutro).";
         }
 
-        // Días promedio de atraso
+        // Días promedio de atraso (penalizable = días sobre vencimiento menos tolerancia)
         $scoreAtraso = round(max(0, min(100, 100 - ($atrasoPromedio * $multAtraso))), 2);
-        $detalleAtraso = "Promedio de " . round($atrasoPromedio, 1) . " días de atraso en documentos cerrados.";
+        $detalleAtraso = "Promedio de " . round($atrasoPromedio, 1) . " días penalizables (después de descontar $tolerancia días de tolerancia).";
 
         // Utilización de línea
         if ($totalCredito <= 0) {
@@ -202,13 +205,13 @@ class ModeloInteligenciaComercial
         if ($atrasoReciente !== null && $atrasoAnterior !== null && $atrasoAnterior > 0) {
             if ($atrasoReciente < $atrasoAnterior * $tendCfg["mejorando"]["factor"]) {
                 $scoreTendencia = (int) $tendCfg["mejorando"]["score"];
-                $detalleTendencia = "Mejorando: atraso reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
+                $detalleTendencia = "Mejorando: atraso penalizable reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
             } elseif ($atrasoReciente <= $atrasoAnterior * $tendCfg["estable"]["factor"]) {
                 $scoreTendencia = (int) $tendCfg["estable"]["score"];
-                $detalleTendencia = "Estable: atraso reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
+                $detalleTendencia = "Estable: atraso penalizable reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
             } else {
                 $scoreTendencia = (int) $tendCfg["empeorando"]["score"];
-                $detalleTendencia = "Empeorando: atraso reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
+                $detalleTendencia = "Empeorando: atraso penalizable reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
             }
         } else {
             $scoreTendencia = $scoreNeutro;
@@ -257,10 +260,11 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoAtraso,
                 "score" => $scoreAtraso,
                 "detalle" => $detalleAtraso,
-                "formula" => "Score = máx(0, mín(100, 100 − (días promedio × $multAtraso)))",
-                "regla" => "Solo documentos cerrados. El multiplicador se configura en atraso_multiplicador.",
+                "formula" => "Atraso penalizable = máx(0, días desde vencimiento − $tolerancia). Score = máx(0, 100 − (promedio × $multAtraso))",
+                "regla" => "Solo documentos cerrados. Los primeros $tolerancia días de atraso no penalizan (misma tolerancia que historial de pagos).",
                 "valores" => array(
-                    array("etiqueta" => "Atraso promedio", "valor" => round($atrasoPromedio, 1) . " días"),
+                    array("etiqueta" => "Atraso penalizable promedio", "valor" => round($atrasoPromedio, 1) . " días"),
+                    array("etiqueta" => "Tolerancia descontada", "valor" => $tolerancia . " días"),
                     array("etiqueta" => "Multiplicador", "valor" => (string) $multAtraso),
                     array("etiqueta" => "Score calculado", "valor" => number_format($scoreAtraso, 1)),
                 ),
@@ -301,13 +305,14 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoTendencia,
                 "score" => $scoreTendencia,
                 "detalle" => $detalleTendencia,
-                "formula" => "Compara atraso promedio últimos 6 meses vs 6 meses anteriores",
-                "regla" => "Mejorando (<" . ($tendCfg["mejorando"]["factor"] * 100) . "% del anterior) → " . $tendCfg["mejorando"]["score"]
+                "formula" => "Compara atraso penalizable (después de tolerancia) últimos 6 meses vs 6 meses anteriores",
+                "regla" => "Atraso penalizable = máx(0, días − $tolerancia días). Mejorando (<" . ($tendCfg["mejorando"]["factor"] * 100) . "% del anterior) → " . $tendCfg["mejorando"]["score"]
                     . " | Estable (±" . (($tendCfg["estable"]["factor"] - 1) * 100) . "%) → " . $tendCfg["estable"]["score"]
                     . " | Empeorando → " . $tendCfg["empeorando"]["score"],
                 "valores" => array(
-                    array("etiqueta" => "Atraso reciente (6m)", "valor" => $atrasoReciente !== null ? round($atrasoReciente, 1) . " días" : "Sin datos"),
-                    array("etiqueta" => "Atraso anterior (6m)", "valor" => $atrasoAnterior !== null ? round($atrasoAnterior, 1) . " días" : "Sin datos"),
+                    array("etiqueta" => "Atraso penalizable reciente (6m)", "valor" => $atrasoReciente !== null ? round($atrasoReciente, 1) . " días" : "Sin datos"),
+                    array("etiqueta" => "Atraso penalizable anterior (6m)", "valor" => $atrasoAnterior !== null ? round($atrasoAnterior, 1) . " días" : "Sin datos"),
+                    array("etiqueta" => "Tolerancia descontada", "valor" => $tolerancia . " días"),
                 ),
             ),
             "equifax" => array(
@@ -341,6 +346,7 @@ class ModeloInteligenciaComercial
         );
 
         foreach ($factores as $clave => &$factor) {
+            $factor["score"] = round($factor["score"], 1);
             $factor["aportacion"] = round($factor["score"] * $pesos[$clave], 2);
         }
         unset($factor);

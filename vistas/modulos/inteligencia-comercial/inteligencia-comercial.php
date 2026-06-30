@@ -34,96 +34,140 @@ function icColorScore($score)
 
     return "#dd4b39";
 }
+
+function icColoresPastel()
+{
+    return array(
+        "#F4A6A6",
+        "#FFD4A3",
+        "#A8CCE8",
+        "#C5B4E3",
+        "#B5E0C8",
+        "#F7C5D8",
+        "#D5E8A4",
+        "#E8D4B8",
+    );
+}
 ?>
 
 <style>
-.ic-wrap .ic-score-panel {
-    background: linear-gradient(135deg, #1a2a4a 0%, #2c3e6b 100%);
-    color: #fff;
-    border-radius: 8px;
-    padding: 20px;
-    min-height: 280px;
+.ic-wrap .ic-motor-box {
+    border-radius: 6px;
+    margin-bottom: 20px;
 }
-.ic-wrap .ic-score-panel .ic-score-num {
-    font-size: 72px;
+.ic-wrap .ic-motor-score {
+    font-size: 32px;
     font-weight: 700;
-    line-height: 1;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+.ic-wrap .ic-chart-legend {
+    list-style: none;
     margin: 0;
+    padding: 0;
+}
+.ic-wrap .ic-chart-legend li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background .15s;
+}
+.ic-wrap .ic-chart-legend li:hover {
+    background: #f5f8fc;
+}
+.ic-wrap .ic-chart-legend li:last-child { border-bottom: none; }
+.ic-wrap .ic-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.ic-wrap .ic-legend-label {
+    flex: 1;
+    color: #333;
+    font-weight: 600;
+}
+.ic-wrap .ic-legend-score {
+    color: #666;
+    min-width: 52px;
+    text-align: right;
+}
+.ic-wrap .ic-legend-val {
+    font-weight: 700;
+    color: #333;
+    min-width: 72px;
+    text-align: right;
+}
+.ic-wrap .ic-legend-peso {
+    color: #999;
+    font-size: 11px;
+    min-width: 44px;
+    text-align: right;
 }
 .ic-wrap .ic-gauge-wrap {
     position: relative;
-    height: 200px;
-    max-width: 200px;
+    width: 180px;
+    height: 180px;
     margin: 0 auto;
 }
-.ic-wrap .ic-factor-card {
-    border-radius: 6px;
-    border: 1px solid #e8e8e8;
-    background: #fff;
-    padding: 14px 16px;
-    margin-bottom: 15px;
-    transition: box-shadow .2s, border-color .2s;
-    cursor: pointer;
+.ic-wrap .ic-gauge-wrap canvas {
+    display: block;
+    width: 180px !important;
+    height: 180px !important;
 }
-.ic-wrap .ic-factor-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
-    border-color: #3c8dbc;
+.ic-wrap .ic-gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    line-height: 1.15;
 }
-.ic-wrap .ic-factor-card .ic-factor-score {
-    font-size: 28px;
-    font-weight: 700;
-    line-height: 1;
-}
-.ic-wrap .ic-progress {
-    height: 8px;
-    margin: 8px 0 10px;
-    background: #ecf0f5;
-    border-radius: 4px;
-    overflow: hidden;
-}
-.ic-wrap .ic-progress-bar {
-    height: 100%;
-    border-radius: 4px;
-    transition: width .4s ease;
-}
-.ic-wrap .ic-kpi-box {
-    border-radius: 6px;
-    padding: 12px 15px;
-    background: #f9f9f9;
-    border-left: 4px solid #3c8dbc;
-    margin-bottom: 15px;
-}
-.ic-wrap .ic-kpi-box h4 {
-    margin: 0 0 4px;
-    font-size: 22px;
+.ic-wrap .ic-gauge-center .ic-gauge-num {
+    display: block;
+    font-size: 26px;
     font-weight: 700;
 }
-.ic-wrap .ic-kpi-box p {
-    margin: 0;
-    color: #777;
+.ic-wrap .ic-gauge-center .ic-gauge-label {
+    display: block;
+    font-size: 10px;
+    color: #888;
+    margin-top: 3px;
+    max-width: 90px;
+    text-align: center;
+}
+.ic-wrap .ic-aportacion-chart {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto;
+}
+.ic-wrap .ic-aportacion-chart canvas {
+    display: block;
+    width: 180px !important;
+    height: 180px !important;
+}
+.ic-wrap .ic-chart-title {
+    text-align: center;
     font-size: 12px;
-}
-.ic-wrap .ic-chart-box {
-    background: #fff;
-    border: 1px solid #e8e8e8;
-    border-radius: 6px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-.ic-wrap .ic-chart-box h4 {
-    margin: 0 0 12px;
-    font-size: 14px;
     font-weight: 600;
-    color: #444;
+    color: #666;
+    margin: 0 0 8px;
 }
 .ic-wrap .ic-motor-placeholder {
     opacity: .55;
     border: 2px dashed #ddd;
     border-radius: 6px;
-    padding: 20px;
+    padding: 16px;
     text-align: center;
     color: #999;
-    min-height: 100px;
+    margin-bottom: 15px;
 }
 .ic-wrap .ic-modal-valor {
     display: flex;
@@ -132,6 +176,172 @@ function icColorScore($score)
     border-bottom: 1px solid #f0f0f0;
 }
 .ic-wrap .ic-modal-valor:last-child { border-bottom: none; }
+
+/* Modal detalle factor */
+.ic-modal-metrics {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+}
+.ic-modal-metrics > [class*="col-"] {
+    display: flex;
+    margin-bottom: 10px;
+}
+.ic-modal-metric {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px 12px 14px;
+    background: #f8f9fb;
+    border-radius: 8px;
+    border: 1px solid #e8ecf0;
+    min-height: 130px;
+}
+.ic-modal-metric-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+.ic-modal-icon-score  { background: #fdecea; color: #dd4b39; }
+.ic-modal-icon-peso   { background: #e8f4fc; color: #3c8dbc; }
+.ic-modal-icon-aporte { background: #e8f8f0; color: #00a65a; }
+.ic-modal-metric-val {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.ic-modal-metric-lbl {
+    display: block;
+    font-size: 10px;
+    color: #888;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    line-height: 1.3;
+}
+.ic-modal-metric-footer {
+    width: 100%;
+    margin-top: auto;
+    padding-top: 10px;
+    min-height: 18px;
+}
+.ic-modal-score-bar {
+    height: 6px;
+    background: #e8ecf0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.ic-modal-score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .3s;
+}
+.ic-modal-spacer {
+    display: block;
+    height: 6px;
+}
+.ic-modal-resumen {
+    background: #e8f4fc;
+    border-left: 4px solid #3c8dbc;
+    padding: 14px 16px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+}
+.ic-modal-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #444;
+    margin: 0 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #f0f0f0;
+}
+.ic-modal-dato {
+    text-align: center;
+    padding: 12px 8px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    height: calc(100% - 12px);
+}
+.ic-modal-dato-val {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.2;
+}
+.ic-modal-dato-lbl {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+    line-height: 1.3;
+}
+.ic-modal-calculo {
+    background: #fafbfc;
+    border: 1px solid #e8ecf0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.ic-modal-formula {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 13px;
+    background: #fff;
+    border: 1px dashed #ccc;
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    color: #444;
+}
+.ic-modal-aportacion-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #e8ecf0;
+    font-size: 13px;
+}
+.ic-modal-aportacion-line strong {
+    font-size: 18px;
+    color: #333;
+}
+.ic-modal-regla-wrap {
+    margin-top: 4px;
+}
+.ic-modal-regla-wrap summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: #3c8dbc;
+    padding: 8px 0;
+    user-select: none;
+}
+.ic-modal-regla-wrap summary:hover { text-decoration: underline; }
+.ic-modal-regla-wrap p {
+    font-size: 12px;
+    color: #777;
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    line-height: 1.5;
+}
 </style>
 
 <div class="content-wrapper ic-wrap">
@@ -168,7 +378,7 @@ function icColorScore($score)
 
         <?php if ($clienteFiltro === "") : ?>
             <div class="callout callout-info">
-                <p style="margin:0;"><i class="fa fa-info-circle"></i> Seleccione un cliente para ver el análisis de riesgo crediticio.</p>
+                <p style="margin:0;"><i class="fa fa-info-circle"></i> Seleccione un cliente para ver el análisis.</p>
             </div>
         <?php elseif (!$resultadoMotor1) : ?>
             <div class="callout callout-warning">
@@ -177,121 +387,88 @@ function icColorScore($score)
         <?php else :
             $m = $resultadoMotor1;
             $cls = $m["clasificacion"];
+            $colorScore = icColorScore($m["score"]);
         ?>
 
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="ic-score-panel text-center">
-                        <p style="opacity:.8; margin:0 0 5px; font-size:13px;">
-                            <i class="fa fa-shield"></i> Motor 1 — Riesgo Crediticio
-                        </p>
-                        <p class="ic-score-num" style="color:<?php echo icColorScore($m["score"]); ?>;">
-                            <?php echo number_format($m["score"], 1); ?>
-                        </p>
-                        <span class="label label-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?>" style="font-size:14px; padding:6px 14px;">
+            <?php if ($nombreClienteFiltro !== "") : ?>
+            <p class="text-muted" style="margin:0 0 15px;">
+                <i class="fa fa-building-o"></i> <?php echo htmlspecialchars($nombreClienteFiltro, ENT_QUOTES, "UTF-8"); ?>
+            </p>
+            <?php endif; ?>
+
+            <!-- MOTOR 1 -->
+            <div class="box box-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?> ic-motor-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">
+                        <i class="fa fa-shield"></i> Motor 1 — Riesgo Crediticio
+                    </h3>
+                    <div class="box-tools pull-right" style="display:flex; align-items:center; gap:10px;">
+                        <span class="ic-motor-score" style="color:<?php echo $colorScore; ?>;">
+                            <?php echo number_format($m["score"], 1, ".", ""); ?>
+                        </span>
+                        <span class="label label-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?>" style="font-size:13px;">
                             <?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?>
                         </span>
-                        <p style="margin:12px 0 0; opacity:.75; font-size:12px;">
-                            <?php echo htmlspecialchars($nombreClienteFiltro, ENT_QUOTES, "UTF-8"); ?>
-                        </p>
-                        <div class="ic-gauge-wrap" style="margin-top:15px;">
-                            <canvas id="icGaugeScore"></canvas>
-                        </div>
                     </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="ic-chart-box" style="height:280px;">
-                        <h4><i class="fa fa-bar-chart"></i> Score por factor</h4>
-                        <canvas id="icChartFactores" height="200"></canvas>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="ic-chart-box" style="height:280px;">
-                        <h4><i class="fa fa-pie-chart"></i> Aportación al score final</h4>
-                        <canvas id="icChartAportacion" height="200"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row" style="margin-top:5px;">
-                <div class="col-md-3">
-                    <div class="ic-kpi-box" style="border-color:#00a65a;">
-                        <h4><?php echo (int) $m["metricas"]["docs_a_tiempo"]; ?> / <?php echo (int) $m["metricas"]["total_docs"]; ?></h4>
-                        <p>Cerrados a tiempo (≤<?php echo (int) $m["metricas"]["tolerancia_dias"]; ?> días)</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="ic-kpi-box" style="border-color:#f39c12;">
-                        <h4><?php echo number_format($m["metricas"]["atraso_promedio"], 1); ?> días</h4>
-                        <p>Atraso promedio</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="ic-kpi-box" style="border-color:#3c8dbc;">
-                        <h4><?php echo number_format($m["metricas"]["utilizacion_pct"], 1); ?>%</h4>
-                        <p>Utilización de crédito</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="ic-kpi-box" style="border-color:#dd4b39;">
-                        <h4><?php echo (int) $m["metricas"]["incidencias"]; ?></h4>
-                        <p>Incidencias comerciales</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title"><i class="fa fa-list-alt"></i> Factores de riesgo — clic para ver detalle</h3>
                 </div>
                 <div class="box-body">
-                    <div class="row">
-                        <?php foreach ($m["factores"] as $factor) :
-                            $colorFactor = icColorScore($factor["score"]);
-                        ?>
-                            <div class="col-md-4 col-sm-6">
-                                <div class="ic-factor-card btnDetalleFactor"
-                                     data-factor="<?php echo htmlspecialchars($factor["clave"], ENT_QUOTES, "UTF-8"); ?>">
-                                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                        <div>
-                                            <i class="fa <?php echo htmlspecialchars($factor["icono"], ENT_QUOTES, "UTF-8"); ?>" style="color:<?php echo $colorFactor; ?>;"></i>
-                                            <strong style="font-size:13px; margin-left:4px;"><?php echo htmlspecialchars($factor["nombre"], ENT_QUOTES, "UTF-8"); ?></strong>
-                                            <br><small class="text-muted">Peso <?php echo (int) $factor["peso"]; ?>% · Aporta <?php echo number_format($factor["aportacion"], 1); ?> pts</small>
-                                        </div>
-                                        <span class="ic-factor-score" style="color:<?php echo $colorFactor; ?>;">
-                                            <?php echo number_format($factor["score"], 0); ?>
-                                        </span>
-                                    </div>
-                                    <div class="ic-progress">
-                                        <div class="ic-progress-bar" style="width:<?php echo min(100, $factor["score"]); ?>%; background:<?php echo $colorFactor; ?>;"></div>
-                                    </div>
-                                    <small class="text-muted"><?php echo htmlspecialchars($factor["detalle"], ENT_QUOTES, "UTF-8"); ?></small>
-                                    <div style="margin-top:8px;">
-                                        <span class="text-primary" style="font-size:12px;"><i class="fa fa-search-plus"></i> Ver detalle</span>
-                                    </div>
+                    <div class="row" style="display:flex; align-items:center;">
+                        <div class="col-sm-3">
+                            <p class="ic-chart-title"><i class="fa fa-shield"></i> Score de riesgo</p>
+                            <div class="ic-gauge-wrap">
+                                <canvas id="icChartRiesgo" width="180" height="180"></canvas>
+                                <div class="ic-gauge-center">
+                                    <span class="ic-gauge-num" style="color:<?php echo $colorScore; ?>;">
+                                        <?php echo number_format($m["score"], 1, ".", ""); ?>
+                                    </span>
+                                    <span class="ic-gauge-label"><?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?></span>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="ic-chart-title"><i class="fa fa-pie-chart"></i> Aportación por factor</p>
+                            <div class="ic-aportacion-chart">
+                                <canvas id="icChartAportacion" width="180" height="180"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <ul class="ic-chart-legend" id="icChartAportacionLegend">
+                                <?php
+                                $coloresPastel = icColoresPastel();
+                                $idxPastel = 0;
+                                foreach ($m["factores"] as $factor) :
+                                    $colorPastel = $coloresPastel[$idxPastel % count($coloresPastel)];
+                                    $idxPastel++;
+                                ?>
+                                    <li class="ic-legend-item"
+                                        data-factor="<?php echo htmlspecialchars($factor["clave"], ENT_QUOTES, "UTF-8"); ?>"
+                                        data-color="<?php echo htmlspecialchars($colorPastel, ENT_QUOTES, "UTF-8"); ?>">
+                                        <span class="ic-legend-dot" style="background:<?php echo $colorPastel; ?>;"></span>
+                                        <span class="ic-legend-label"><?php echo htmlspecialchars($factor["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
+                                        <span class="ic-legend-score" title="Score del factor"><?php echo number_format($factor["score"], 1, ".", ""); ?></span>
+                                        <span class="ic-legend-val" title="Aportación al total">+<?php echo number_format($factor["aportacion"], 2, ".", ""); ?></span>
+                                        <span class="ic-legend-peso"><?php echo (int) $factor["peso"]; ?>%</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <p class="text-muted" style="margin:10px 0 0; font-size:12px;">
+                                <i class="fa fa-hand-pointer-o"></i> Clic en un factor para ver el detalle del cálculo.
+                                <span style="margin-left:8px;">Score factor · Aportación pts · Peso</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row">
-                <?php
-                $motoresProximos = array("Motor 2 — Comercial", "Motor 3 — Rentabilidad", "Motor 4 — Fidelidad", "Motor 5 — Línea de crédito");
-                foreach ($motoresProximos as $titulo) :
-                ?>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="ic-motor-placeholder">
-                            <i class="fa fa-lock" style="font-size:20px; display:block; margin-bottom:8px;"></i>
-                            <?php echo htmlspecialchars($titulo, ENT_QUOTES, "UTF-8"); ?>
-                            <br><small>Próximamente</small>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+            <!-- MOTORES PRÓXIMOS -->
+            <?php
+            $motoresProximos = array("Motor 2 — Comercial", "Motor 3 — Rentabilidad", "Motor 4 — Fidelidad", "Motor 5 — Línea de crédito");
+            foreach ($motoresProximos as $titulo) :
+            ?>
+                <div class="ic-motor-placeholder">
+                    <i class="fa fa-lock"></i> <?php echo htmlspecialchars($titulo, ENT_QUOTES, "UTF-8"); ?> — Próximamente
+                </div>
+            <?php endforeach; ?>
 
             <script type="application/json" id="icMotor1Data"><?php echo json_encode($m, JSON_UNESCAPED_UNICODE); ?></script>
 
@@ -303,7 +480,7 @@ function icColorScore($score)
 <!-- MODAL DETALLE FACTOR -->
 <div id="modalDetalleFactor" class="modal fade" role="dialog">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content ic-wrap">
             <div class="modal-header bg-primary">
                 <button type="button" class="close" data-dismiss="modal" style="color:#fff;">&times;</button>
                 <h4 class="modal-title" style="color:#fff;">
@@ -312,25 +489,67 @@ function icColorScore($score)
                 </h4>
             </div>
             <div class="modal-body">
-                <div class="row">
-                    <div class="col-sm-4 text-center">
-                        <p style="font-size:56px; font-weight:700; margin:10px 0;" id="icModalScore">—</p>
-                        <p class="text-muted">Score del factor (0 – 100)</p>
-                        <p><span class="label label-default" id="icModalPeso">Peso —%</span></p>
-                        <p><strong>Aportación al total:</strong> <span id="icModalAportacion">—</span> pts</p>
-                    </div>
-                    <div class="col-sm-8">
-                        <div class="callout callout-info" style="margin-bottom:12px;">
-                            <p style="margin:0;" id="icModalDetalle">—</p>
+
+                <div class="row ic-modal-metrics">
+                    <div class="col-xs-4">
+                        <div class="ic-modal-metric">
+                            <div class="ic-modal-metric-icon ic-modal-icon-score" id="icModalScoreIcon">
+                                <i class="fa fa-tachometer"></i>
+                            </div>
+                            <span class="ic-modal-metric-val" id="icModalScore">—</span>
+                            <span class="ic-modal-metric-lbl">Score del factor</span>
+                            <div class="ic-modal-metric-footer">
+                                <div class="ic-modal-score-bar">
+                                    <div class="ic-modal-score-bar-fill" id="icModalScoreBar" style="width:0;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <h5 style="font-weight:600;"><i class="fa fa-calculator"></i> Fórmula aplicada</h5>
-                        <p id="icModalFormula" class="text-muted" style="font-family:monospace; background:#f9f9f9; padding:10px; border-radius:4px;">—</p>
-                        <h5 style="font-weight:600;"><i class="fa fa-book"></i> Regla de negocio</h5>
-                        <p id="icModalRegla" class="text-muted">—</p>
-                        <h5 style="font-weight:600;"><i class="fa fa-database"></i> Datos utilizados</h5>
-                        <div id="icModalValores"></div>
+                    </div>
+                    <div class="col-xs-4">
+                        <div class="ic-modal-metric">
+                            <div class="ic-modal-metric-icon ic-modal-icon-peso">
+                                <i class="fa fa-balance-scale"></i>
+                            </div>
+                            <span class="ic-modal-metric-val" id="icModalPeso">—</span>
+                            <span class="ic-modal-metric-lbl">Peso en el motor</span>
+                            <div class="ic-modal-metric-footer">
+                                <span class="ic-modal-spacer"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-4">
+                        <div class="ic-modal-metric">
+                            <div class="ic-modal-metric-icon ic-modal-icon-aporte">
+                                <i class="fa fa-puzzle-piece"></i>
+                            </div>
+                            <span class="ic-modal-metric-val" id="icModalAportacion">—</span>
+                            <span class="ic-modal-metric-lbl">Pts al score total</span>
+                            <div class="ic-modal-metric-footer">
+                                <span class="ic-modal-spacer"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <div class="ic-modal-resumen" id="icModalDetalle">—</div>
+
+                <h5 class="ic-modal-section-title"><i class="fa fa-database"></i> Datos del cliente</h5>
+                <div class="row" id="icModalValores"></div>
+
+                <h5 class="ic-modal-section-title" style="margin-top:8px;"><i class="fa fa-calculator"></i> Cómo se calculó</h5>
+                <div class="ic-modal-calculo">
+                    <div class="ic-modal-formula" id="icModalFormula">—</div>
+                    <div class="ic-modal-aportacion-line">
+                        <span>Aportación = score × peso</span>
+                        <span><strong id="icModalAportacionCalc">—</strong> pts</span>
+                    </div>
+                </div>
+
+                <details class="ic-modal-regla-wrap">
+                    <summary><i class="fa fa-book"></i> Ver regla de negocio completa</summary>
+                    <p id="icModalRegla">—</p>
+                </details>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>

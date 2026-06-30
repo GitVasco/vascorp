@@ -18,13 +18,26 @@ $(document).ready(function () {
 
     var motorData = JSON.parse(dataEl.textContent);
     var factores = motorData.factores;
-    var scoreFinal = motorData.score;
+    var factoresPorClave = {};
 
-    icInitGauges(scoreFinal);
-    icInitCharts(factores);
-    icInitModales(factores);
+    $.each(factores, function (clave, f) {
+        factoresPorClave[f.clave || clave] = f;
+    });
+
+    icInitChartRiesgo(motorData.score);
+    icInitChartAportacion(factoresPorClave);
+    icInitModales(factoresPorClave);
 
 });
+
+var IC_COLORES_PASTEL = [
+    "#F4A6A6", "#FFD4A3", "#A8CCE8", "#C5B4E3",
+    "#B5E0C8", "#F7C5D8", "#D5E8A4", "#E8D4B8"
+];
+
+function icColorPastel(index) {
+    return IC_COLORES_PASTEL[index % IC_COLORES_PASTEL.length];
+}
 
 function icColorScore(score) {
     if (score >= 80) return "#00a65a";
@@ -33,21 +46,31 @@ function icColorScore(score) {
     return "#dd4b39";
 }
 
-function icInitGauges(score) {
-    var ctx = document.getElementById("icGaugeScore");
+function icFmtScore(val) {
+    return parseFloat(val).toFixed(1);
+}
+
+function icFmtAportacion(val) {
+    return parseFloat(val).toFixed(2);
+}
+
+function icInitChartRiesgo(scoreFinal) {
+    var ctx = document.getElementById("icChartRiesgo");
     if (!ctx) return;
 
+    var score = parseFloat(scoreFinal);
     var color = icColorScore(score);
     var restante = Math.max(0, 100 - score);
 
     new Chart(ctx.getContext("2d")).Doughnut(
         [
-            { value: score, color: color, highlight: color, label: "Score" },
-            { value: restante, color: "rgba(255,255,255,.15)", highlight: "rgba(255,255,255,.2)", label: "Restante" }
+            { value: score, color: color, highlight: color, label: "Score " + icFmtScore(score) },
+            { value: restante, color: "#ecf0f5", highlight: "#e0e5ea", label: "" }
         ],
         {
+            responsive: false,
             segmentShowStroke: false,
-            percentageInnerCutout: 75,
+            percentageInnerCutout: 78,
             animation: true,
             animationSteps: 60,
             showTooltips: false
@@ -55,100 +78,89 @@ function icInitGauges(score) {
     );
 }
 
-function icInitCharts(factores) {
-    var labels = [];
-    var scores = [];
-    var colores = [];
-    var aportaciones = [];
-    var aportColores = [];
+function icInitChartAportacion(factoresPorClave) {
+    var segmentos = [];
+    var claves = [];
 
-    $.each(factores, function (clave, f) {
-        var nombreCorto = f.nombre.length > 22 ? f.nombre.substring(0, 20) + "…" : f.nombre;
-        labels.push(nombreCorto);
-        scores.push(f.score);
-        colores.push(icColorScore(f.score));
-        aportaciones.push(f.aportacion);
-        aportColores.push(icColorScore(f.score));
-    });
-
-    var ctxFactores = document.getElementById("icChartFactores");
-    if (ctxFactores) {
-        new Chart(ctxFactores.getContext("2d")).Bar(
-            {
-                labels: labels,
-                datasets: [{
-                    label: "Score",
-                    fillColor: colores,
-                    strokeColor: colores,
-                    highlightFill: colores,
-                    highlightStroke: colores,
-                    data: scores
-                }]
-            },
-            {
-                responsive: true,
-                maintainAspectRatio: false,
-                scaleBeginAtZero: true,
-                scaleOverride: true,
-                scaleSteps: 5,
-                scaleStepWidth: 20,
-                scaleStartValue: 0,
-                barShowStroke: false,
-                barDatasetSpacing: 2
-            }
-        );
-    }
-
-    var ctxAport = document.getElementById("icChartAportacion");
-    if (ctxAport) {
-        new Chart(ctxAport.getContext("2d")).Doughnut(
-            aportaciones.map(function (val, i) {
-                return {
-                    value: val,
-                    color: aportColores[i],
-                    highlight: aportColores[i],
-                    label: labels[i]
-                };
-            }),
-            {
-                segmentShowStroke: true,
-                segmentStrokeColor: "#fff",
-                segmentStrokeWidth: 2,
-                percentageInnerCutout: 40,
-                animation: true
-            }
-        );
-    }
-}
-
-function icInitModales(factores) {
-    $(".btnDetalleFactor").on("click", function () {
+    $(".ic-legend-item").each(function (i) {
         var clave = $(this).data("factor");
-        var f = factores[clave];
+        var f = factoresPorClave[clave];
         if (!f) return;
 
-        var color = icColorScore(f.score);
+        var color = $(this).data("color") || icColorPastel(i);
 
-        $("#icModalIcon").attr("class", "fa " + f.icono);
-        $("#icModalTitulo").text(f.nombre);
-        $("#icModalScore").text(parseFloat(f.score).toFixed(1)).css("color", color);
-        $("#icModalPeso").text("Peso " + f.peso + "%");
-        $("#icModalAportacion").text(parseFloat(f.aportacion).toFixed(2));
-        $("#icModalDetalle").text(f.detalle);
-        $("#icModalFormula").text(f.formula);
-        $("#icModalRegla").text(f.regla);
+        claves.push(clave);
+        segmentos.push({
+            value: parseFloat(f.aportacion),
+            color: color,
+            highlight: color,
+            label: f.nombre
+        });
+    });
 
-        var htmlValores = "";
-        if (f.valores && f.valores.length) {
-            $.each(f.valores, function (i, v) {
-                htmlValores += '<div class="ic-modal-valor">';
-                htmlValores += '<span class="text-muted">' + v.etiqueta + '</span>';
-                htmlValores += '<strong>' + v.valor + '</strong>';
-                htmlValores += '</div>';
-            });
+    var ctxAport = document.getElementById("icChartAportacion");
+    if (!ctxAport || !segmentos.length) return;
+
+    var chartAport = new Chart(ctxAport.getContext("2d")).Doughnut(segmentos, {
+        responsive: false,
+        segmentShowStroke: true,
+        segmentStrokeColor: "#fff",
+        segmentStrokeWidth: 2,
+        percentageInnerCutout: 50,
+        animation: true,
+        tooltipTemplate: "<%if (label){%><%=label%>: +<%= value.toFixed(2) %> pts<%}%>"
+    });
+
+    $(ctxAport).css("cursor", "pointer").on("click", function (evt) {
+        var active = chartAport.getSegmentsAtEvent(evt);
+        if (!active || !active.length) return;
+
+        var idx = typeof active[0]._index !== "undefined" ? active[0]._index : 0;
+        var clave = claves[idx];
+
+        if (clave && factoresPorClave[clave]) {
+            icAbrirModalFactor(factoresPorClave[clave]);
         }
-        $("#icModalValores").html(htmlValores);
+    });
+}
 
-        $("#modalDetalleFactor").modal("show");
+function icAbrirModalFactor(f) {
+    if (!f) return;
+
+    var score = parseFloat(f.score);
+    var color = icColorScore(score);
+    var aportacion = icFmtAportacion(f.aportacion);
+
+    $("#icModalIcon").attr("class", "fa " + f.icono);
+    $("#icModalTitulo").text(f.nombre);
+    $("#icModalScore").text(icFmtScore(score)).css("color", color);
+    $("#icModalScoreIcon").css({ background: color + "22", color: color });
+    $("#icModalScoreBar").css({ width: Math.min(100, score) + "%", background: color });
+    $("#icModalPeso").text(f.peso + "%");
+    $("#icModalAportacion").text("+" + aportacion);
+    $("#icModalAportacionCalc").text(icFmtScore(score) + " × " + f.peso + "% = " + aportacion);
+    $("#icModalDetalle").html("<i class=\"fa fa-info-circle\"></i> " + f.detalle);
+    $("#icModalFormula").text(f.formula);
+    $("#icModalRegla").text(f.regla);
+
+    var htmlValores = "";
+    if (f.valores && f.valores.length) {
+        $.each(f.valores, function (i, v) {
+            htmlValores += '<div class="col-sm-6 col-xs-6">';
+            htmlValores += '<div class="ic-modal-dato">';
+            htmlValores += '<span class="ic-modal-dato-val">' + v.valor + '</span>';
+            htmlValores += '<span class="ic-modal-dato-lbl">' + v.etiqueta + '</span>';
+            htmlValores += '</div></div>';
+        });
+    }
+    $("#icModalValores").html(htmlValores);
+
+    $("#modalDetalleFactor").modal("show");
+}
+
+function icInitModales(factoresPorClave) {
+    $(".ic-legend-item").on("click", function () {
+        var clave = $(this).data("factor");
+        icAbrirModalFactor(factoresPorClave[clave]);
     });
 }
