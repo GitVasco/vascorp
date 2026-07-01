@@ -7,9 +7,11 @@ if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboard
 $clienteFiltro = isset($_GET["cliente"]) ? trim($_GET["cliente"]) : "";
 $clientes = ControladorInteligenciaComercial::ctrClientesAnalisis();
 $resultadoMotor1 = null;
+$resultadoMotor2 = null;
 
 if ($clienteFiltro !== "") {
     $resultadoMotor1 = ControladorInteligenciaComercial::ctrCalcularMotorRiesgoCredito($clienteFiltro);
+    $resultadoMotor2 = ControladorInteligenciaComercial::ctrCalcularMotorComercial($clienteFiltro);
 }
 
 $nombreClienteFiltro = "";
@@ -47,6 +49,77 @@ function icColoresPastel()
         "#D5E8A4",
         "#E8D4B8",
     );
+}
+
+function icRenderMotorPanel($m, $opciones)
+{
+    $cls = $m["clasificacion"];
+    $colorScore = icColorScore($m["score"]);
+    $coloresPastel = icColoresPastel();
+    $idxPastel = 0;
+    ?>
+    <div class="box box-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?> ic-motor-box">
+        <div class="box-header with-border">
+            <h3 class="box-title">
+                <i class="fa <?php echo htmlspecialchars($opciones["icono"], ENT_QUOTES, "UTF-8"); ?>"></i>
+                <?php echo htmlspecialchars($opciones["titulo"], ENT_QUOTES, "UTF-8"); ?>
+            </h3>
+            <div class="box-tools pull-right" style="display:flex; align-items:center; gap:10px;">
+                <span class="ic-motor-score" style="color:<?php echo $colorScore; ?>;">
+                    <?php echo number_format($m["score"], 1, ".", ""); ?>
+                </span>
+                <span class="label label-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?>" style="font-size:13px;">
+                    <?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?>
+                </span>
+            </div>
+        </div>
+        <div class="box-body">
+            <div class="row" style="display:flex; align-items:center;">
+                <div class="col-sm-3">
+                    <p class="ic-chart-title"><i class="fa <?php echo htmlspecialchars($opciones["icono"], ENT_QUOTES, "UTF-8"); ?>"></i> <?php echo htmlspecialchars($opciones["titulo_gauge"], ENT_QUOTES, "UTF-8"); ?></p>
+                    <div class="ic-gauge-wrap">
+                        <canvas id="<?php echo htmlspecialchars($opciones["chart_score"], ENT_QUOTES, "UTF-8"); ?>" width="180" height="180"></canvas>
+                        <div class="ic-gauge-center">
+                            <span class="ic-gauge-num" style="color:<?php echo $colorScore; ?>;">
+                                <?php echo number_format($m["score"], 1, ".", ""); ?>
+                            </span>
+                            <span class="ic-gauge-label"><?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <p class="ic-chart-title"><i class="fa fa-pie-chart"></i> Aportación por factor</p>
+                    <div class="ic-aportacion-chart">
+                        <canvas id="<?php echo htmlspecialchars($opciones["chart_aport"], ENT_QUOTES, "UTF-8"); ?>" width="180" height="180"></canvas>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <ul class="ic-chart-legend" id="<?php echo htmlspecialchars($opciones["legend_id"], ENT_QUOTES, "UTF-8"); ?>" data-motor="<?php echo (int) $m["motor"]; ?>">
+                        <?php foreach ($m["factores"] as $factor) :
+                            $colorPastel = $coloresPastel[$idxPastel % count($coloresPastel)];
+                            $idxPastel++;
+                        ?>
+                            <li class="ic-legend-item"
+                                data-factor="<?php echo htmlspecialchars($factor["clave"], ENT_QUOTES, "UTF-8"); ?>"
+                                data-color="<?php echo htmlspecialchars($colorPastel, ENT_QUOTES, "UTF-8"); ?>">
+                                <span class="ic-legend-dot" style="background:<?php echo $colorPastel; ?>;"></span>
+                                <span class="ic-legend-label"><?php echo htmlspecialchars($factor["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
+                                <span class="ic-legend-score" title="Score del factor"><?php echo number_format($factor["score"], 1, ".", ""); ?></span>
+                                <span class="ic-legend-val" title="Aportación al total">+<?php echo number_format($factor["aportacion"], 2, ".", ""); ?></span>
+                                <span class="ic-legend-peso"><?php echo (int) $factor["peso"]; ?>%</span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <p class="text-muted" style="margin:10px 0 0; font-size:12px;">
+                        <i class="fa fa-hand-pointer-o"></i> Clic en un factor para ver el detalle del cálculo.
+                        <span style="margin-left:8px;">Score factor · Aportación pts · Peso</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="application/json" id="<?php echo htmlspecialchars($opciones["data_id"], ENT_QUOTES, "UTF-8"); ?>"><?php echo json_encode($m, JSON_UNESCAPED_UNICODE); ?></script>
+    <?php
 }
 ?>
 
@@ -416,6 +489,49 @@ function icColoresPastel()
 .ic-modal-logica-table tr.ic-logica-resultado .ic-modal-logica-badge {
     background: #00a65a;
 }
+.ic-modal-periodos {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-left: 4px solid #3c8dbc;
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+.ic-modal-periodos-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+.ic-modal-periodos-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.ic-modal-periodos-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f0f2f5;
+    font-size: 13px;
+    line-height: 1.4;
+}
+.ic-modal-periodos-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.ic-modal-periodos-list .ic-periodo-etq {
+    color: #666;
+    flex-shrink: 0;
+}
+.ic-modal-periodos-list .ic-periodo-rango {
+    color: #333;
+    font-weight: 600;
+    text-align: right;
+}
 </style>
 
 <div class="content-wrapper ic-wrap">
@@ -460,8 +576,6 @@ function icColoresPastel()
             </div>
         <?php else :
             $m = $resultadoMotor1;
-            $cls = $m["clasificacion"];
-            $colorScore = icColorScore($m["score"]);
         ?>
 
             <?php if ($nombreClienteFiltro !== "") : ?>
@@ -470,81 +584,39 @@ function icColoresPastel()
             </p>
             <?php endif; ?>
 
-            <!-- MOTOR 1 -->
-            <div class="box box-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?> ic-motor-box">
-                <div class="box-header with-border">
-                    <h3 class="box-title">
-                        <i class="fa fa-shield"></i> Motor 1 — Riesgo Crediticio
-                    </h3>
-                    <div class="box-tools pull-right" style="display:flex; align-items:center; gap:10px;">
-                        <span class="ic-motor-score" style="color:<?php echo $colorScore; ?>;">
-                            <?php echo number_format($m["score"], 1, ".", ""); ?>
-                        </span>
-                        <span class="label label-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?>" style="font-size:13px;">
-                            <?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?>
-                        </span>
-                    </div>
-                </div>
-                <div class="box-body">
-                    <div class="row" style="display:flex; align-items:center;">
-                        <div class="col-sm-3">
-                            <p class="ic-chart-title"><i class="fa fa-shield"></i> Score de riesgo</p>
-                            <div class="ic-gauge-wrap">
-                                <canvas id="icChartRiesgo" width="180" height="180"></canvas>
-                                <div class="ic-gauge-center">
-                                    <span class="ic-gauge-num" style="color:<?php echo $colorScore; ?>;">
-                                        <?php echo number_format($m["score"], 1, ".", ""); ?>
-                                    </span>
-                                    <span class="ic-gauge-label"><?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-3">
-                            <p class="ic-chart-title"><i class="fa fa-pie-chart"></i> Aportación por factor</p>
-                            <div class="ic-aportacion-chart">
-                                <canvas id="icChartAportacion" width="180" height="180"></canvas>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <ul class="ic-chart-legend" id="icChartAportacionLegend">
-                                <?php
-                                $coloresPastel = icColoresPastel();
-                                $idxPastel = 0;
-                                foreach ($m["factores"] as $factor) :
-                                    $colorPastel = $coloresPastel[$idxPastel % count($coloresPastel)];
-                                    $idxPastel++;
-                                ?>
-                                    <li class="ic-legend-item"
-                                        data-factor="<?php echo htmlspecialchars($factor["clave"], ENT_QUOTES, "UTF-8"); ?>"
-                                        data-color="<?php echo htmlspecialchars($colorPastel, ENT_QUOTES, "UTF-8"); ?>">
-                                        <span class="ic-legend-dot" style="background:<?php echo $colorPastel; ?>;"></span>
-                                        <span class="ic-legend-label"><?php echo htmlspecialchars($factor["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
-                                        <span class="ic-legend-score" title="Score del factor"><?php echo number_format($factor["score"], 1, ".", ""); ?></span>
-                                        <span class="ic-legend-val" title="Aportación al total">+<?php echo number_format($factor["aportacion"], 2, ".", ""); ?></span>
-                                        <span class="ic-legend-peso"><?php echo (int) $factor["peso"]; ?>%</span>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <p class="text-muted" style="margin:10px 0 0; font-size:12px;">
-                                <i class="fa fa-hand-pointer-o"></i> Clic en un factor para ver el detalle del cálculo.
-                                <span style="margin-left:8px;">Score factor · Aportación pts · Peso</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <?php
+            icRenderMotorPanel($m, array(
+                "titulo"       => "Motor 1 — Riesgo Crediticio",
+                "icono"        => "fa-shield",
+                "titulo_gauge" => "Score de riesgo",
+                "chart_score"  => "icChartRiesgo",
+                "chart_aport"  => "icChartAportacion",
+                "legend_id"    => "icMotor1Legend",
+                "data_id"      => "icMotor1Data",
+            ));
+
+            if ($resultadoMotor2) {
+                icRenderMotorPanel($resultadoMotor2, array(
+                    "titulo"       => "Motor 2 — Comercial",
+                    "icono"        => "fa-line-chart",
+                    "titulo_gauge" => "Score comercial",
+                    "chart_score"  => "icChartComercial",
+                    "chart_aport"  => "icChartAportacion2",
+                    "legend_id"    => "icMotor2Legend",
+                    "data_id"      => "icMotor2Data",
+                ));
+            }
+            ?>
 
             <!-- MOTORES PRÓXIMOS -->
             <?php
-            $motoresProximos = array("Motor 2 — Comercial", "Motor 3 — Rentabilidad", "Motor 4 — Fidelidad", "Motor 5 — Línea de crédito");
+            $motoresProximos = array("Motor 3 — Rentabilidad", "Motor 4 — Fidelidad", "Motor 5 — Línea de crédito");
             foreach ($motoresProximos as $titulo) :
             ?>
                 <div class="ic-motor-placeholder">
                     <i class="fa fa-lock"></i> <?php echo htmlspecialchars($titulo, ENT_QUOTES, "UTF-8"); ?> — Próximamente
                 </div>
             <?php endforeach; ?>
-
-            <script type="application/json" id="icMotor1Data"><?php echo json_encode($m, JSON_UNESCAPED_UNICODE); ?></script>
 
         <?php endif; ?>
 
@@ -606,6 +678,11 @@ function icColoresPastel()
                 </div>
 
                 <div class="ic-modal-resumen" id="icModalDetalle">—</div>
+
+                <div class="ic-modal-periodos" id="icModalPeriodosWrap" style="display:none;">
+                    <p class="ic-modal-periodos-title" id="icModalPeriodosTitulo">Periodos de comparación</p>
+                    <ul class="ic-modal-periodos-list" id="icModalPeriodosList"></ul>
+                </div>
 
                 <div class="ic-modal-logica" id="icModalLogicaWrap" style="display:none;">
                     <h5 class="ic-modal-section-title"><i class="fa fa-table"></i> <span id="icModalLogicaTitulo">Reglas de puntuación</span></h5>

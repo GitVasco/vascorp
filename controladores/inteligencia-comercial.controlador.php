@@ -17,4 +17,15 @@ class ControladorInteligenciaComercial
 
         return ModeloInteligenciaComercial::mdlCalcularMotorRiesgoCredito($codigoCliente);
     }
+
+    public static function ctrCalcularMotorComercial($codigoCliente)
+    {
+        $codigoCliente = trim((string) $codigoCliente);
+
+        if ($codigoCliente === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularMotorComercial($codigoCliente);
+    }
 }

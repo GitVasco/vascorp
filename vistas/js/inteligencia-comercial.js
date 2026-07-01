@@ -11,22 +11,32 @@ $(document).ready(function () {
         window.location = "index.php?ruta=inteligencia-comercial&cliente=" + encodeURIComponent(cliente);
     });
 
-    var dataEl = document.getElementById("icMotor1Data");
-    if (!dataEl || typeof Chart === "undefined") {
+    if (typeof Chart === "undefined") {
         return;
     }
 
-    var motorData = JSON.parse(dataEl.textContent);
-    var factores = motorData.factores;
-    var factoresPorClave = {};
+    var factoresPorMotor = {};
 
-    $.each(factores, function (clave, f) {
-        factoresPorClave[f.clave || clave] = f;
+    $("[id^='icMotor'][id$='Data']").each(function () {
+        var motorData = JSON.parse(this.textContent);
+        var motorNum = motorData.motor;
+        var factoresPorClave = {};
+
+        $.each(motorData.factores, function (clave, f) {
+            factoresPorClave[f.clave || clave] = f;
+        });
+
+        factoresPorMotor[motorNum] = factoresPorClave;
+
+        var $legend = $(".ic-chart-legend[data-motor='" + motorNum + "']");
+        var chartScoreId = $legend.closest(".box-body").find(".ic-gauge-wrap canvas").attr("id");
+        var chartAportId = $legend.closest(".box-body").find(".ic-aportacion-chart canvas").attr("id");
+
+        icInitChartRiesgo(motorData.score, chartScoreId);
+        icInitChartAportacion(factoresPorClave, chartAportId, $legend);
     });
 
-    icInitChartRiesgo(motorData.score);
-    icInitChartAportacion(factoresPorClave);
-    icInitModales(factoresPorClave);
+    icInitModales(factoresPorMotor);
 
 });
 
@@ -54,8 +64,8 @@ function icFmtAportacion(val) {
     return parseFloat(val).toFixed(2);
 }
 
-function icInitChartRiesgo(scoreFinal) {
-    var ctx = document.getElementById("icChartRiesgo");
+function icInitChartRiesgo(scoreFinal, canvasId) {
+    var ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
     var score = parseFloat(scoreFinal);
@@ -78,11 +88,11 @@ function icInitChartRiesgo(scoreFinal) {
     );
 }
 
-function icInitChartAportacion(factoresPorClave) {
+function icInitChartAportacion(factoresPorClave, canvasId, $legend) {
     var segmentos = [];
     var claves = [];
 
-    $(".ic-legend-item").each(function (i) {
+    $legend.find(".ic-legend-item").each(function (i) {
         var clave = $(this).data("factor");
         var f = factoresPorClave[clave];
         if (!f) return;
@@ -98,7 +108,7 @@ function icInitChartAportacion(factoresPorClave) {
         });
     });
 
-    var ctxAport = document.getElementById("icChartAportacion");
+    var ctxAport = document.getElementById(canvasId);
     if (!ctxAport || !segmentos.length) return;
 
     var chartAport = new Chart(ctxAport.getContext("2d")).Doughnut(segmentos, {
@@ -144,6 +154,7 @@ function icAbrirModalFactor(f) {
     $("#icModalRegla").text(f.regla);
 
     icRenderTablaLogica(f.tabla_logica);
+    icRenderPeriodosBox(f.periodos_box);
 
     var htmlValores = "";
     if (f.valores && f.valores.length) {
@@ -203,9 +214,35 @@ function icRenderTablaLogica(tabla) {
     $wrap.show();
 }
 
-function icInitModales(factoresPorClave) {
+function icRenderPeriodosBox(periodos) {
+    var $wrap = $("#icModalPeriodosWrap");
+
+    if (!periodos || !periodos.items || !periodos.items.length) {
+        $wrap.hide();
+        return;
+    }
+
+    $("#icModalPeriodosTitulo").text(periodos.titulo || "Periodos de comparación");
+
+    var html = "";
+    $.each(periodos.items, function (i, item) {
+        html += "<li>";
+        html += '<span class="ic-periodo-etq">' + item.etiqueta + "</span>";
+        html += '<span class="ic-periodo-rango">' + item.rango + "</span>";
+        html += "</li>";
+    });
+    $("#icModalPeriodosList").html(html);
+    $wrap.show();
+}
+
+function icInitModales(factoresPorMotor) {
     $(".ic-legend-item").on("click", function () {
+        var motorNum = $(this).closest(".ic-chart-legend").data("motor");
         var clave = $(this).data("factor");
-        icAbrirModalFactor(factoresPorClave[clave]);
+        var mapa = factoresPorMotor[motorNum];
+
+        if (mapa && mapa[clave]) {
+            icAbrirModalFactor(mapa[clave]);
+        }
     });
 }

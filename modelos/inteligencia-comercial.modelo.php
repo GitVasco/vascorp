@@ -505,4 +505,424 @@ class ModeloInteligenciaComercial
             ),
         );
     }
+
+    /**
+     * Lista SQL segura para cláusulas IN (valores validados desde config).
+     */
+    private static function mdlSqlIn($valores)
+    {
+        $items = array();
+
+        foreach ($valores as $valor) {
+            $items[] = "'" . addslashes((string) $valor) . "'";
+        }
+
+        return implode(", ", $items);
+    }
+
+    /**
+     * Métricas crudas del cliente para el Motor 2 (comercial).
+     */
+    public static function mdlMetricasMotorComercial($codigoCliente)
+    {
+        $cfg = icConfigMotor2();
+        $meses = (int) $cfg["meses_periodo"];
+        $tiposSql = icMotor2TiposVentasSql();
+        $vendExclSql = self::mdlSqlIn($cfg["ventas_excluir_vendedores"]);
+        $tablaMov = icMotor2TablaMovimientos($cfg["tabla_movimientos"]);
+        $charsLinea = max(1, (int) $cfg["linea_articulo_chars"]);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                cli.codigo,
+                cli.nombre,
+                cli.ubigeo,
+                CONCAT(
+                    IFNULL(ub.departamento, ''),
+                    ' / ',
+                    IFNULL(ub.provincia, ''),
+                    ' / ',
+                    IFNULL(ub.distrito, '')
+                ) AS zona_texto,
+                IFNULL(vta.monto_reciente, 0) AS monto_reciente,
+                IFNULL(vta.monto_anterior, 0) AS monto_anterior,
+                IFNULL(vta.monto_yoy, 0) AS monto_yoy,
+                IFNULL(vta.docs_reciente, 0) AS docs_reciente,
+                IFNULL(vta.meses_con_compra, 0) AS meses_con_compra,
+                vta.ultima_compra,
+                IFNULL(zona.promedio_mensual, 0) AS zona_promedio_mensual,
+                IFNULL(lineas.lineas_cliente, 0) AS lineas_cliente,
+                IFNULL(lineas.lineas_catalogo, 0) AS lineas_catalogo
+            FROM clientesjf cli
+            LEFT JOIN ubigeo ub ON ub.codigo = cli.ubigeo
+            LEFT JOIN (
+                SELECT
+                    v.cliente,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS monto_reciente,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL " . ($meses * 2) . " MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_anterior,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH), INTERVAL 1 YEAR)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+                        THEN v.total ELSE 0 END) AS monto_yoy,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN 1 ELSE 0 END) AS docs_reciente,
+                    COUNT(DISTINCT CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN DATE_FORMAT(v.fecha, '%Y-%m') END) AS meses_con_compra,
+                    MAX(v.fecha) AS ultima_compra
+                FROM ventajf v
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+                  AND v.cliente = :cliente_vta
+                GROUP BY v.cliente
+            ) vta ON vta.cliente = cli.codigo
+            LEFT JOIN (
+                SELECT
+                    mensual.ubigeo,
+                    AVG(mensual.total_mes) AS promedio_mensual
+                FROM (
+                    SELECT
+                        c2.ubigeo,
+                        v.cliente,
+                        SUM(v.total) / {$meses} AS total_mes
+                    FROM ventajf v
+                    INNER JOIN clientesjf c2 ON c2.codigo = v.cliente
+                    WHERE v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                      AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                      AND UPPER(v.tipo) IN ({$tiposSql})
+                      AND v.vendedor NOT IN ({$vendExclSql})
+                      AND c2.ubigeo IS NOT NULL
+                      AND c2.ubigeo <> ''
+                    GROUP BY c2.ubigeo, v.cliente
+                ) mensual
+                GROUP BY mensual.ubigeo
+            ) zona ON zona.ubigeo = cli.ubigeo
+            LEFT JOIN (
+                SELECT
+                    v.cliente,
+                    COUNT(DISTINCT SUBSTRING(m.articulo, 1, {$charsLinea})) AS lineas_cliente,
+                    (
+                        SELECT COUNT(DISTINCT SUBSTRING(m2.articulo, 1, {$charsLinea}))
+                        FROM {$tablaMov} m2
+                        INNER JOIN ventajf v2 ON v2.tipo = m2.tipo AND v2.documento = m2.documento
+                        WHERE v2.fecha >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                          AND UPPER(IFNULL(v2.estado, '')) <> 'ANULADO'
+                          AND UPPER(v2.tipo) IN ({$tiposSql})
+                          AND v2.vendedor NOT IN ({$vendExclSql})
+                    ) AS lineas_catalogo
+                FROM {$tablaMov} m
+                INNER JOIN ventajf v ON v.tipo = m.tipo AND v.documento = m.documento
+                WHERE v.fecha >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+                  AND v.cliente = :cliente_lineas
+                GROUP BY v.cliente
+            ) lineas ON lineas.cliente = cli.codigo
+            WHERE cli.codigo = :cliente
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmt->bindParam(":cliente_vta", $codigoCliente, PDO::PARAM_STR);
+        $stmt->bindParam(":cliente_lineas", $codigoCliente, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch();
+    }
+
+    /**
+     * Convierte métricas comerciales en sub-scores y score ponderado final.
+     */
+    public static function mdlCalcularMotorComercial($codigoCliente)
+    {
+        $cfg = icConfigMotor2();
+        $pesos = icPesosDecimalesMotor2();
+        $pesosEfectivos = $cfg["pesos_efectivos"];
+        $meses = (int) $cfg["meses_periodo"];
+        $scoreNeutro = (int) $cfg["score_neutro"];
+
+        $metricas = self::mdlMetricasMotorComercial($codigoCliente);
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $montoReciente = (float) $metricas["monto_reciente"];
+        $montoAnterior = (float) $metricas["monto_anterior"];
+        $montoYoy = (float) $metricas["monto_yoy"];
+        $docsReciente = (int) $metricas["docs_reciente"];
+        $mesesConCompra = (int) $metricas["meses_con_compra"];
+        $zonaPromedio = (float) $metricas["zona_promedio_mensual"];
+        $lineasCliente = (int) $metricas["lineas_cliente"];
+        $lineasCatalogo = (int) $metricas["lineas_catalogo"];
+
+        $pctCrecimiento = icPctCrecimiento($montoReciente, $montoAnterior);
+        $pctEstacional = icPctCrecimiento($montoReciente, $montoYoy);
+        $frecuenciaMensual = $docsReciente / $meses;
+        $clienteMensual = $montoReciente / $meses;
+        $ratioZona = $zonaPromedio > 0 ? ($clienteMensual / $zonaPromedio) : 0;
+        $penetracion = $lineasCatalogo > 0 ? ($lineasCliente / $lineasCatalogo) * 100 : 0;
+        $periodos = icMotor2PeriodosFechas($meses);
+        $rangoReciente = icMotor2FormatearRangoFechas($periodos["reciente"]["desde"], $periodos["reciente"]["hasta"]);
+        $rangoAnterior = icMotor2FormatearRangoFechas($periodos["anterior"]["desde"], $periodos["anterior"]["hasta"]);
+        $rangoYoy = icMotor2FormatearRangoFechas($periodos["yoy"]["desde"], $periodos["yoy"]["hasta"]);
+        $rangoLineas = icMotor2FormatearRangoFechas($periodos["lineas"]["desde"], $periodos["lineas"]["hasta"]);
+
+        // Crecimiento de compras
+        if ($montoReciente <= 0 && $montoAnterior <= 0) {
+            $scoreCrecimiento = $scoreNeutro;
+            $detalleCrecimiento = "Sin compras en los periodos evaluados.";
+        } elseif ($montoAnterior <= 0 && $montoReciente > 0) {
+            $scoreCrecimiento = 90;
+            $detalleCrecimiento = "Compras nuevas en el periodo reciente (S/ " . number_format($montoReciente, 2) . ").";
+        } else {
+            $scoreCrecimiento = icScorePorUmbralesMinimos($pctCrecimiento, $cfg["crecimiento_umbrales"]);
+            $detalleCrecimiento = "Crecimiento de " . round($pctCrecimiento, 1) . "%: S/ "
+                . number_format($montoReciente, 2) . " vs S/ " . number_format($montoAnterior, 2) . " anteriores.";
+        }
+
+        // Frecuencia de compra
+        if ($docsReciente <= 0) {
+            $scoreFrecuencia = $scoreNeutro;
+            $detalleFrecuencia = "Sin compras en el periodo reciente de {$meses} meses.";
+        } else {
+            $scoreFrecuencia = icScorePorTramos($frecuenciaMensual, $cfg["frecuencia_tramos"]);
+            $detalleFrecuencia = round($frecuenciaMensual, 2) . " compras/mes ({$docsReciente} docs en {$mesesConCompra} meses activos).";
+        }
+
+        // Potencial de productos (menor penetración = mayor potencial)
+        if ($lineasCatalogo <= 0) {
+            $scorePotencial = $scoreNeutro;
+            $detallePotencial = "Sin detalle de artículos en movimientos; score neutro ({$scoreNeutro}).";
+        } else {
+            $scorePotencial = icScorePorTramos($penetracion, $cfg["penetracion_tramos"]);
+            $detallePotencial = "Penetración de líneas: {$lineasCliente} de {$lineasCatalogo} ("
+                . round($penetracion, 1) . "% del catálogo activo).";
+        }
+
+        // Tendencia de compra
+        $resultadoTendencia = icClasificarTendenciaCompra($cfg, $montoReciente, $montoAnterior);
+        $scoreTendencia = (int) $resultadoTendencia["score"];
+        $clasificacionTendencia = $resultadoTendencia["clasificacion"];
+        $detalleTendencia = $resultadoTendencia["detalle"];
+
+        // Zona o mercado
+        if ($zonaPromedio <= 0 || $montoReciente <= 0) {
+            $scoreZona = $scoreNeutro;
+            $detalleZona = $metricas["zona_texto"]
+                ? "Sin referencia de zona o sin compras recientes; score neutro ({$scoreNeutro})."
+                : "Cliente sin ubigeo registrado; score neutro ({$scoreNeutro}).";
+        } else {
+            $scoreZona = icScorePorTramos($ratioZona, $cfg["zona_tramos"]);
+            $detalleZona = "Promedio mensual S/ " . number_format($clienteMensual, 2)
+                . " vs S/ " . number_format($zonaPromedio, 2) . " de su distrito ("
+                . round($ratioZona * 100, 1) . "% del promedio). Zona: " . $metricas["zona_texto"] . ".";
+        }
+
+        // Estacionalidad (YoY mismo periodo)
+        if ($montoReciente <= 0 && $montoYoy <= 0) {
+            $scoreEstacionalidad = $scoreNeutro;
+            $detalleEstacionalidad = "Sin compras para comparar estacionalidad año contra año.";
+        } elseif ($montoYoy <= 0 && $montoReciente > 0) {
+            $scoreEstacionalidad = 85;
+            $detalleEstacionalidad = "Compras en periodo actual sin equivalente el año anterior.";
+        } else {
+            $scoreEstacionalidad = icScorePorUmbralesMinimos($pctEstacional, $cfg["estacionalidad_umbrales"]);
+            $detalleEstacionalidad = "Variación YoY de " . round($pctEstacional, 1) . "%: S/ "
+                . number_format($montoReciente, 2) . " vs S/ " . number_format($montoYoy, 2) . " mismo periodo año anterior.";
+        }
+
+        $factores = array(
+            "crecimiento_compras" => array(
+                "clave" => "crecimiento_compras",
+                "nombre" => "Crecimiento de compras",
+                "icono" => "fa-line-chart",
+                "peso" => (int) $pesosEfectivos["crecimiento_compras"],
+                "score" => $scoreCrecimiento,
+                "detalle" => $detalleCrecimiento,
+                "formula" => "Crecimiento % = (monto reciente − anterior) ÷ anterior × 100",
+                "regla" => "Compara montos de compra en periodos consecutivos de {$meses} meses cada uno.",
+                "valores" => array(
+                    array("etiqueta" => "Monto reciente ({$meses}m)", "valor" => "S/ " . number_format($montoReciente, 2)),
+                    array("etiqueta" => "Monto anterior ({$meses}m)", "valor" => "S/ " . number_format($montoAnterior, 2)),
+                    array("etiqueta" => "Crecimiento", "valor" => round($pctCrecimiento, 1) . "%"),
+                ),
+                "tabla_logica" => icTablaLogicaPorUmbrales(
+                    "Tramos de crecimiento",
+                    "Comparación de montos de compra entre periodos consecutivos de {$meses} meses.",
+                    array("Crecimiento", "Condición", "Score"),
+                    $cfg["crecimiento_umbrales"],
+                    $pctCrecimiento,
+                    $scoreCrecimiento
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo reciente ({$meses} meses)", "rango" => $rangoReciente),
+                    array("etiqueta" => "Periodo anterior ({$meses} meses)", "rango" => $rangoAnterior),
+                )),
+            ),
+            "frecuencia_compra" => array(
+                "clave" => "frecuencia_compra",
+                "nombre" => "Frecuencia de compra",
+                "icono" => "fa-refresh",
+                "peso" => (int) $pesosEfectivos["frecuencia_compra"],
+                "score" => $scoreFrecuencia,
+                "detalle" => $detalleFrecuencia,
+                "formula" => "Frecuencia = documentos de venta ÷ {$meses} meses",
+                "regla" => "Cuenta facturas/boletas válidas en ventajf del periodo reciente.",
+                "valores" => array(
+                    array("etiqueta" => "Documentos recientes", "valor" => (string) $docsReciente),
+                    array("etiqueta" => "Meses con compra", "valor" => (string) $mesesConCompra),
+                    array("etiqueta" => "Compras/mes", "valor" => round($frecuenciaMensual, 2)),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Tramos de frecuencia",
+                    "Promedio de documentos de compra por mes en los últimos {$meses} meses.",
+                    " compras/mes",
+                    round($frecuenciaMensual, 2),
+                    $cfg["frecuencia_tramos"],
+                    $scoreFrecuencia
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo analizado ({$meses} meses)", "rango" => $rangoReciente),
+                )),
+            ),
+            "potencial_productos" => array(
+                "clave" => "potencial_productos",
+                "nombre" => "Potencial de productos",
+                "icono" => "fa-cubes",
+                "peso" => (int) $pesosEfectivos["potencial_productos"],
+                "score" => $scorePotencial,
+                "detalle" => $detallePotencial,
+                "formula" => "Penetración = líneas del cliente ÷ líneas activas del catálogo × 100",
+                "regla" => "Línea = primeros " . $cfg["linea_articulo_chars"] . " caracteres del artículo en movimientos de venta.",
+                "valores" => array(
+                    array("etiqueta" => "Líneas del cliente", "valor" => (string) $lineasCliente),
+                    array("etiqueta" => "Líneas en catálogo", "valor" => (string) $lineasCatalogo),
+                    array("etiqueta" => "Penetración", "valor" => round($penetracion, 1) . "%"),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Penetración de líneas (menor = más potencial)",
+                    "Menor penetración implica más líneas de producto por desarrollar con el cliente.",
+                    "%",
+                    round($penetracion, 1),
+                    $cfg["penetracion_tramos"],
+                    $scorePotencial
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo analizado (12 meses)", "rango" => $rangoLineas),
+                )),
+            ),
+            "tendencia_compra" => array(
+                "clave" => "tendencia_compra",
+                "nombre" => "Tendencia de compra",
+                "icono" => "fa-area-chart",
+                "peso" => (int) $pesosEfectivos["tendencia_compra"],
+                "score" => $scoreTendencia,
+                "detalle" => $detalleTendencia,
+                "formula" => "Compara monto de compras periodo reciente vs anterior ({$meses}m c/u)",
+                "regla" => "Mejorando ≥ " . ($cfg["tendencia_compra"]["mejorando"]["factor"] * 100) . "% | Estable ≥ "
+                    . ($cfg["tendencia_compra"]["estable"]["factor"] * 100) . "% del anterior.",
+                "valores" => array(
+                    array("etiqueta" => "Monto reciente", "valor" => "S/ " . number_format($montoReciente, 2)),
+                    array("etiqueta" => "Monto anterior", "valor" => "S/ " . number_format($montoAnterior, 2)),
+                    array("etiqueta" => "Última compra", "valor" => $metricas["ultima_compra"] ? date("d/m/Y", strtotime($metricas["ultima_compra"])) : "Sin compras"),
+                ),
+                "tabla_logica" => icTablaLogicaTendenciaCompra($cfg, $clasificacionTendencia),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo reciente ({$meses} meses)", "rango" => $rangoReciente),
+                    array("etiqueta" => "Periodo anterior ({$meses} meses)", "rango" => $rangoAnterior),
+                )),
+            ),
+            "zona_mercado" => array(
+                "clave" => "zona_mercado",
+                "nombre" => "Zona o mercado",
+                "icono" => "fa-map-marker",
+                "peso" => (int) $pesosEfectivos["zona_mercado"],
+                "score" => $scoreZona,
+                "detalle" => $detalleZona,
+                "formula" => "Ratio = promedio mensual cliente ÷ promedio mensual del distrito",
+                "regla" => "Compara con clientes del mismo ubigeo (distrito) en el periodo reciente.",
+                "valores" => array(
+                    array("etiqueta" => "Zona", "valor" => $metricas["zona_texto"] ?: "Sin ubigeo"),
+                    array("etiqueta" => "Promedio cliente/mes", "valor" => "S/ " . number_format($clienteMensual, 2)),
+                    array("etiqueta" => "Promedio zona/mes", "valor" => "S/ " . number_format($zonaPromedio, 2)),
+                    array("etiqueta" => "Ratio vs zona", "valor" => round($ratioZona, 2) . "×"),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Desempeño vs promedio del distrito",
+                    "Ratio del promedio mensual del cliente frente al promedio de su distrito.",
+                    "× promedio",
+                    round($ratioZona, 2),
+                    $cfg["zona_tramos"],
+                    $scoreZona
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo de referencia ({$meses} meses)", "rango" => $rangoReciente),
+                )),
+            ),
+            "estacionalidad" => array(
+                "clave" => "estacionalidad",
+                "nombre" => "Estacionalidad",
+                "icono" => "fa-calendar-check-o",
+                "peso" => (int) $pesosEfectivos["estacionalidad"],
+                "score" => $scoreEstacionalidad,
+                "detalle" => $detalleEstacionalidad,
+                "formula" => "Variación YoY = (periodo actual − mismo periodo año anterior) ÷ año anterior × 100",
+                "regla" => "Compara los últimos {$meses} meses con el mismo rango del año anterior.",
+                "valores" => array(
+                    array("etiqueta" => "Monto periodo actual", "valor" => "S/ " . number_format($montoReciente, 2)),
+                    array("etiqueta" => "Monto mismo periodo YoY", "valor" => "S/ " . number_format($montoYoy, 2)),
+                    array("etiqueta" => "Variación YoY", "valor" => round($pctEstacional, 1) . "%"),
+                ),
+                "tabla_logica" => icTablaLogicaPorUmbrales(
+                    "Variación estacional año contra año",
+                    "Mide si el cliente compra más o menos que en el mismo periodo del año anterior.",
+                    array("Variación YoY", "Condición", "Score"),
+                    $cfg["estacionalidad_umbrales"],
+                    $pctEstacional,
+                    $scoreEstacionalidad
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo actual ({$meses} meses)", "rango" => $rangoReciente),
+                    array("etiqueta" => "Mismo periodo año anterior", "rango" => $rangoYoy),
+                )),
+            ),
+        );
+
+        foreach ($factores as $clave => &$factor) {
+            $factor["score"] = round($factor["score"], 1);
+            $factor["aportacion"] = round($factor["score"] * $pesos[$clave], 2);
+        }
+        unset($factor);
+
+        $scoreFinal = 0;
+        foreach ($factores as $clave => $factor) {
+            $scoreFinal += $factor["score"] * $pesos[$clave];
+        }
+        $scoreFinal = round($scoreFinal, 2);
+
+        return array(
+            "cliente" => array(
+                "codigo" => $metricas["codigo"],
+                "nombre" => $metricas["nombre"],
+            ),
+            "motor" => 2,
+            "nombre_motor" => "Score Comercial",
+            "score" => $scoreFinal,
+            "clasificacion" => icClasificarScore($scoreFinal),
+            "factores" => $factores,
+            "metricas" => array(
+                "monto_reciente" => round($montoReciente, 2),
+                "monto_anterior" => round($montoAnterior, 2),
+                "pct_crecimiento" => round($pctCrecimiento, 2),
+                "frecuencia_mensual" => round($frecuenciaMensual, 2),
+                "penetracion_lineas" => round($penetracion, 2),
+                "ratio_zona" => round($ratioZona, 2),
+            ),
+        );
+    }
 }
