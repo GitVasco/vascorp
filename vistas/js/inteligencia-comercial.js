@@ -143,6 +143,8 @@ function icAbrirModalFactor(f) {
     $("#icModalFormula").text(f.formula);
     $("#icModalRegla").text(f.regla);
 
+    icRenderTablaLogica(f.tabla_logica);
+
     var htmlValores = "";
     if (f.valores && f.valores.length) {
         $.each(f.valores, function (i, v) {
@@ -156,6 +158,49 @@ function icAbrirModalFactor(f) {
     $("#icModalValores").html(htmlValores);
 
     $("#modalDetalleFactor").modal("show");
+}
+
+function icRenderTablaLogica(tabla) {
+    var $wrap = $("#icModalLogicaWrap");
+
+    if (!tabla || !tabla.filas || !tabla.filas.length) {
+        $wrap.hide();
+        return;
+    }
+
+    $("#icModalLogicaTitulo").text(tabla.titulo || "Reglas de puntuación");
+
+    if (tabla.intro) {
+        $("#icModalLogicaIntro").text(tabla.intro).show();
+    } else {
+        $("#icModalLogicaIntro").hide();
+    }
+
+    var columnas = tabla.columnas || ["Situación", "Condición", "Score"];
+    var headHtml = "";
+    $.each(columnas, function (i, col) {
+        headHtml += "<th>" + col + "</th>";
+    });
+    $("#icModalLogicaHead").html(headHtml);
+
+    var bodyHtml = "";
+    $.each(tabla.filas, function (i, fila) {
+        var clases = [];
+        if (fila.aplica) clases.push("ic-logica-aplica");
+        if (fila.es_resultado) clases.push("ic-logica-resultado");
+
+        var badge = fila.aplica
+            ? '<span class="ic-modal-logica-badge">' + (fila.es_resultado ? "Su caso" : "Aplica") + "</span>"
+            : "";
+
+        bodyHtml += '<tr class="' + clases.join(" ") + '">';
+        bodyHtml += "<td>" + fila.situacion + badge + "</td>";
+        bodyHtml += "<td>" + fila.condicion + "</td>";
+        bodyHtml += "<td>" + fila.score + "</td>";
+        bodyHtml += "</tr>";
+    });
+    $("#icModalLogicaBody").html(bodyHtml);
+    $wrap.show();
 }
 
 function icInitModales(factoresPorClave) {

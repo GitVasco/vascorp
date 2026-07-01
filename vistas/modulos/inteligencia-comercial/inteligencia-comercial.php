@@ -342,6 +342,80 @@ function icColoresPastel()
     border-radius: 4px;
     line-height: 1.5;
 }
+.ic-modal-logica {
+    margin-bottom: 20px;
+}
+.ic-modal-logica-intro {
+    font-size: 12px;
+    color: #666;
+    margin: 0 0 10px;
+    line-height: 1.45;
+}
+.ic-modal-logica-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e8ecf0;
+    border-radius: 8px;
+    background: #fff;
+}
+.ic-modal-logica-table {
+    width: 100%;
+    margin: 0;
+    font-size: 12px;
+    border-collapse: collapse;
+}
+.ic-modal-logica-table th {
+    background: #f4f6f9;
+    color: #555;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: .3px;
+    padding: 10px 12px;
+    border-bottom: 2px solid #e8ecf0;
+    white-space: nowrap;
+}
+.ic-modal-logica-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f2f5;
+    color: #444;
+    vertical-align: top;
+    line-height: 1.4;
+}
+.ic-modal-logica-table tr:last-child td {
+    border-bottom: none;
+}
+.ic-modal-logica-table tr.ic-logica-aplica td {
+    background: #e8f4fc;
+    font-weight: 600;
+}
+.ic-modal-logica-table tr.ic-logica-aplica td:last-child {
+    color: #3c8dbc;
+    font-size: 14px;
+}
+.ic-modal-logica-table tr.ic-logica-resultado td {
+    background: #e8f8f0;
+    border-top: 2px solid #00a65a;
+}
+.ic-modal-logica-table tr.ic-logica-resultado td:last-child {
+    color: #00a65a;
+    font-size: 15px;
+}
+.ic-modal-logica-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-radius: 10px;
+    background: #3c8dbc;
+    color: #fff;
+    vertical-align: middle;
+}
+.ic-modal-logica-table tr.ic-logica-resultado .ic-modal-logica-badge {
+    background: #00a65a;
+}
 </style>
 
 <div class="content-wrapper ic-wrap">
@@ -532,6 +606,19 @@ function icColoresPastel()
                 </div>
 
                 <div class="ic-modal-resumen" id="icModalDetalle">—</div>
+
+                <div class="ic-modal-logica" id="icModalLogicaWrap" style="display:none;">
+                    <h5 class="ic-modal-section-title"><i class="fa fa-table"></i> <span id="icModalLogicaTitulo">Reglas de puntuación</span></h5>
+                    <p class="ic-modal-logica-intro" id="icModalLogicaIntro"></p>
+                    <div class="ic-modal-logica-table-wrap">
+                        <table class="ic-modal-logica-table">
+                            <thead>
+                                <tr id="icModalLogicaHead"></tr>
+                            </thead>
+                            <tbody id="icModalLogicaBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
                 <h5 class="ic-modal-section-title"><i class="fa fa-database"></i> Datos del cliente</h5>
                 <div class="row" id="icModalValores"></div>

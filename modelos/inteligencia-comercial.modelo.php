@@ -30,15 +30,28 @@ class ModeloInteligenciaComercial
     {
         $cfg = icConfigMotor1();
         $tolerancia = (int) $cfg["tolerancia_dias_pago"];
+        $mesesTendencia = (int) $cfg["tendencia_meses_periodo"];
+        $mesesTendenciaTotal = $mesesTendencia * 2;
 
         $stmt = Conexion::conectar()->prepare("
             SELECT
                 cli.codigo,
                 cli.nombre,
                 cli.fecreg,
-                TIMESTAMPDIFF(MONTH, cli.fecreg, NOW()) AS meses_antiguedad,
+                vta.fecha_primera_venta,
+                IFNULL(
+                    TIMESTAMPDIFF(
+                        MONTH,
+                        COALESCE(vta.fecha_primera_venta, cli.fecreg),
+                        NOW()
+                    ),
+                    0
+                ) AS meses_antiguedad,
                 IFNULL(doc.total_docs, 0) AS total_docs,
                 IFNULL(doc.docs_a_tiempo, 0) AS docs_a_tiempo,
+                IFNULL(doc.docs_cerrados, 0) AS docs_cerrados,
+                IFNULL(doc.pendientes_vencidos, 0) AS pendientes_vencidos,
+                IFNULL(doc.pendientes_fuera_tolerancia, 0) AS pendientes_fuera_tolerancia,
                 IFNULL(doc.atraso_promedio, 0) AS atraso_promedio,
                 IFNULL(doc.atraso_reciente, 0) AS atraso_reciente,
                 IFNULL(doc.atraso_anterior, 0) AS atraso_anterior,
@@ -49,44 +62,97 @@ class ModeloInteligenciaComercial
             LEFT JOIN (
                 SELECT
                     c.cliente,
+                    SUM(CASE WHEN UPPER(c.estado) = 'CANCELADO' THEN 1 ELSE 0 END) AS docs_cerrados,
+                    SUM(
+                        CASE
+                            WHEN UPPER(c.estado) = 'PENDIENTE'
+                                AND IFNULL(c.saldo, 0) > 0
+                                AND c.fecha_ven < CURDATE()
+                                THEN 1
+                            ELSE 0
+                        END
+                    ) AS pendientes_vencidos,
+                    SUM(
+                        CASE
+                            WHEN UPPER(c.estado) = 'PENDIENTE'
+                                AND IFNULL(c.saldo, 0) > 0
+                                AND c.fecha_ven < CURDATE()
+                                AND DATEDIFF(CURDATE(), c.fecha_ven) > :tolerancia_pend
+                                THEN 1
+                            ELSE 0
+                        END
+                    ) AS pendientes_fuera_tolerancia,
                     COUNT(*) AS total_docs,
                     SUM(
                         CASE
-                            WHEN c.ult_pago IS NOT NULL
+                            WHEN UPPER(c.estado) = 'CANCELADO'
+                                AND c.ult_pago IS NOT NULL
                                 AND GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven), 0) <= :tolerancia_docs
                                 THEN 1
-                            WHEN c.ult_pago IS NULL AND IFNULL(c.saldo, 0) = 0
+                            WHEN UPPER(c.estado) = 'CANCELADO'
+                                AND c.ult_pago IS NULL
+                                AND IFNULL(c.saldo, 0) = 0
+                                THEN 1
+                            WHEN UPPER(c.estado) = 'PENDIENTE'
+                                AND IFNULL(c.saldo, 0) > 0
+                                AND (
+                                    c.fecha_ven >= CURDATE()
+                                    OR DATEDIFF(CURDATE(), c.fecha_ven) <= :tolerancia_pend_hist
+                                )
                                 THEN 1
                             ELSE 0
                         END
                     ) AS docs_a_tiempo,
                     AVG(
                         CASE
-                            WHEN c.ult_pago IS NOT NULL
-                                THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_atraso, 0)
+                            WHEN UPPER(c.estado) = 'CANCELADO' AND c.ult_pago IS NOT NULL THEN
+                                GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_atraso, 0)
+                            WHEN UPPER(c.estado) = 'PENDIENTE'
+                                AND IFNULL(c.saldo, 0) > 0
+                                AND c.fecha_ven < CURDATE()
+                                THEN GREATEST(DATEDIFF(CURDATE(), c.fecha_ven) - :tolerancia_atraso_pend, 0)
                             ELSE NULL
                         END
                     ) AS atraso_promedio,
                     AVG(
                         CASE
-                            WHEN c.ult_pago IS NOT NULL
-                                AND c.ult_pago >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                            WHEN UPPER(c.estado) = 'CANCELADO'
+                                AND c.ult_pago IS NOT NULL
+                                AND c.ult_pago >= DATE_SUB(NOW(), INTERVAL {$mesesTendencia} MONTH)
                                 THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_reciente, 0)
+                            WHEN UPPER(c.estado) = 'PENDIENTE'
+                                AND IFNULL(c.saldo, 0) > 0
+                                AND c.fecha_ven < CURDATE()
+                                AND c.fecha_ven >= DATE_SUB(NOW(), INTERVAL {$mesesTendencia} MONTH)
+                                THEN GREATEST(DATEDIFF(CURDATE(), c.fecha_ven) - :tolerancia_reciente_pend, 0)
                             ELSE NULL
                         END
                     ) AS atraso_reciente,
                     AVG(
                         CASE
-                            WHEN c.ult_pago IS NOT NULL
-                                AND c.ult_pago >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-                                AND c.ult_pago < DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                            WHEN UPPER(c.estado) = 'CANCELADO'
+                                AND c.ult_pago IS NOT NULL
+                                AND c.ult_pago >= DATE_SUB(NOW(), INTERVAL {$mesesTendenciaTotal} MONTH)
+                                AND c.ult_pago < DATE_SUB(NOW(), INTERVAL {$mesesTendencia} MONTH)
                                 THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven) - :tolerancia_anterior, 0)
+                            WHEN UPPER(c.estado) = 'PENDIENTE'
+                                AND IFNULL(c.saldo, 0) > 0
+                                AND c.fecha_ven < CURDATE()
+                                AND c.fecha_ven >= DATE_SUB(NOW(), INTERVAL {$mesesTendenciaTotal} MONTH)
+                                AND c.fecha_ven < DATE_SUB(NOW(), INTERVAL {$mesesTendencia} MONTH)
+                                THEN GREATEST(DATEDIFF(CURDATE(), c.fecha_ven) - :tolerancia_anterior_pend, 0)
                             ELSE NULL
                         END
                     ) AS atraso_anterior
                 FROM cuenta_ctejf c
                 WHERE c.tip_mov = '+'
-                  AND UPPER(c.estado) = 'CANCELADO'
+                  AND (
+                    UPPER(c.estado) = 'CANCELADO'
+                    OR (
+                        UPPER(c.estado) = 'PENDIENTE'
+                        AND IFNULL(c.saldo, 0) > 0
+                    )
+                  )
                   AND c.cliente = :cliente_docs
                 GROUP BY c.cliente
             ) doc ON doc.cliente = cli.codigo
@@ -113,6 +179,13 @@ class ModeloInteligenciaComercial
                   AND (IFNULL(protesta, 0) > 0 OR IFNULL(renovacion, 0) > 0)
                 GROUP BY cliente
             ) inc ON inc.cliente = cli.codigo
+            LEFT JOIN (
+                SELECT cliente, MIN(fecha) AS fecha_primera_venta
+                FROM ventajf
+                WHERE cliente = :cliente_vta
+                  AND fecha IS NOT NULL
+                GROUP BY cliente
+            ) vta ON vta.cliente = cli.codigo
             WHERE cli.codigo = :cliente
             LIMIT 1
         ");
@@ -122,10 +195,16 @@ class ModeloInteligenciaComercial
         $stmt->bindParam(":cliente_deuda", $codigoCliente, PDO::PARAM_STR);
         $stmt->bindParam(":cliente_credito", $codigoCliente, PDO::PARAM_STR);
         $stmt->bindParam(":cliente_inc", $codigoCliente, PDO::PARAM_STR);
+        $stmt->bindParam(":cliente_vta", $codigoCliente, PDO::PARAM_STR);
         $stmt->bindParam(":tolerancia_docs", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_pend", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_pend_hist", $tolerancia, PDO::PARAM_INT);
         $stmt->bindParam(":tolerancia_atraso", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_atraso_pend", $tolerancia, PDO::PARAM_INT);
         $stmt->bindParam(":tolerancia_reciente", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_reciente_pend", $tolerancia, PDO::PARAM_INT);
         $stmt->bindParam(":tolerancia_anterior", $tolerancia, PDO::PARAM_INT);
+        $stmt->bindParam(":tolerancia_anterior_pend", $tolerancia, PDO::PARAM_INT);
 
         $stmt->execute();
 
@@ -139,7 +218,11 @@ class ModeloInteligenciaComercial
     {
         $cfg = icConfigMotor1();
         $pesos = icPesosDecimalesMotor1();
+        $pesosEfectivos = $cfg["pesos_efectivos"];
+        $equifaxActivo = $cfg["equifax_activo"];
         $tolerancia = (int) $cfg["tolerancia_dias_pago"];
+        $mesesTendencia = (int) $cfg["tendencia_meses_periodo"];
+        $mesesTendenciaTotal = $mesesTendencia * 2;
         $multAtraso = (float) $cfg["atraso_multiplicador"];
         $penalIncidencia = (int) $cfg["incidencia_penalizacion"];
         $scoreNeutro = (int) $cfg["score_neutro"];
@@ -152,6 +235,9 @@ class ModeloInteligenciaComercial
 
         $totalDocs = (int) $metricas["total_docs"];
         $docsATiempo = (int) $metricas["docs_a_tiempo"];
+        $docsCerrados = (int) $metricas["docs_cerrados"];
+        $pendientesVencidos = (int) $metricas["pendientes_vencidos"];
+        $pendientesFueraTolerancia = (int) $metricas["pendientes_fuera_tolerancia"];
         $atrasoPromedio = (float) $metricas["atraso_promedio"];
         $atrasoReciente = $metricas["atraso_reciente"] !== null ? (float) $metricas["atraso_reciente"] : null;
         $atrasoAnterior = $metricas["atraso_anterior"] !== null ? (float) $metricas["atraso_anterior"] : null;
@@ -161,27 +247,29 @@ class ModeloInteligenciaComercial
         $incidencias = (int) $metricas["incidencias"];
         $utilizacion = 0;
 
-        $pesoHistorial = (int) $cfg["pesos"]["historial_pagos"];
-        $pesoAtraso = (int) $cfg["pesos"]["dias_atraso"];
-        $pesoUtilizacion = (int) $cfg["pesos"]["utilizacion_linea"];
-        $pesoAntiguedad = (int) $cfg["pesos"]["antiguedad"];
-        $pesoTendencia = (int) $cfg["pesos"]["tendencia_pago"];
-        $pesoEquifax = (int) $cfg["pesos"]["equifax"];
-        $pesoIncidencias = (int) $cfg["pesos"]["incidencias"];
+        $pesoHistorial = (int) $pesosEfectivos["historial_pagos"];
+        $pesoAtraso = (int) $pesosEfectivos["dias_atraso"];
+        $pesoUtilizacion = (int) $pesosEfectivos["utilizacion_linea"];
+        $pesoAntiguedad = (int) $pesosEfectivos["antiguedad"];
+        $pesoTendencia = (int) $pesosEfectivos["tendencia_pago"];
+        $pesoIncidencias = (int) $pesosEfectivos["incidencias"];
 
-        // Historial de pagos — solo documentos CANCELADOS
+        // Historial — cerrados + pendientes con saldo (vencidos fuera de tolerancia cuentan en contra)
         if ($totalDocs > 0) {
             $scoreHistorial = round(($docsATiempo / $totalDocs) * 100, 2);
             $detalleHistorial = round(($docsATiempo / $totalDocs) * 100, 1)
-                . "% de documentos cerrados pagados a tiempo ($docsATiempo de $totalDocs cerrados).";
+                . "% cumplimiento ($docsATiempo de $totalDocs documentos).";
+            if ($pendientesFueraTolerancia > 0) {
+                $detalleHistorial .= " Incluye $pendientesFueraTolerancia pendiente(s) vencido(s) fuera de tolerancia.";
+            }
         } else {
             $scoreHistorial = $scoreNeutro;
-            $detalleHistorial = "Sin documentos cerrados; score neutro ($scoreNeutro).";
+            $detalleHistorial = "Sin documentos evaluables; score neutro ($scoreNeutro).";
         }
 
-        // Días promedio de atraso (penalizable = días sobre vencimiento menos tolerancia)
+        // Días promedio de atraso (cerrados + pendientes vencidos hoy)
         $scoreAtraso = round(max(0, min(100, 100 - ($atrasoPromedio * $multAtraso))), 2);
-        $detalleAtraso = "Promedio de " . round($atrasoPromedio, 1) . " días penalizables (después de descontar $tolerancia días de tolerancia).";
+        $detalleAtraso = "Promedio de " . round($atrasoPromedio, 1) . " días penalizables (cerrados pagados + pendientes vencidos hoy).";
 
         // Utilización de línea
         if ($totalCredito <= 0) {
@@ -196,31 +284,36 @@ class ModeloInteligenciaComercial
                 . " (" . round($utilizacion, 1) . "%).";
         }
 
-        // Antigüedad
+        // Antigüedad — prioridad: primera venta (ventajf), respaldo: fecreg
+        $fechaPrimeraVenta = $metricas["fecha_primera_venta"];
+        $fechaReferenciaAntiguedad = $fechaPrimeraVenta ?: $metricas["fecreg"];
+
         $scoreAntiguedad = icScorePorTramos($mesesAntiguedad, $cfg["antiguedad_tramos"]);
-        $detalleAntiguedad = $mesesAntiguedad . " meses como cliente registrado.";
+
+        if ($fechaReferenciaAntiguedad) {
+            $detalleAntiguedad = $mesesAntiguedad . " meses desde "
+                . ($fechaPrimeraVenta ? "su primera venta" : "su registro en el sistema")
+                . " (" . date("d/m/Y", strtotime($fechaReferenciaAntiguedad)) . ").";
+        } else {
+            $detalleAntiguedad = "Sin primera venta ni registro; se aplica el tramo mínimo.";
+        }
 
         // Tendencia de pago
         $tendCfg = $cfg["tendencia"];
-        if ($atrasoReciente !== null && $atrasoAnterior !== null && $atrasoAnterior > 0) {
-            if ($atrasoReciente < $atrasoAnterior * $tendCfg["mejorando"]["factor"]) {
-                $scoreTendencia = (int) $tendCfg["mejorando"]["score"];
-                $detalleTendencia = "Mejorando: atraso penalizable reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
-            } elseif ($atrasoReciente <= $atrasoAnterior * $tendCfg["estable"]["factor"]) {
-                $scoreTendencia = (int) $tendCfg["estable"]["score"];
-                $detalleTendencia = "Estable: atraso penalizable reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
-            } else {
-                $scoreTendencia = (int) $tendCfg["empeorando"]["score"];
-                $detalleTendencia = "Empeorando: atraso penalizable reciente " . round($atrasoReciente, 1) . " días vs " . round($atrasoAnterior, 1) . " días anteriores.";
-            }
-        } else {
-            $scoreTendencia = $scoreNeutro;
-            $detalleTendencia = "Datos insuficientes para comparar tendencia (últimos 12 meses).";
-        }
+        $moraLeveMax = (float) $cfg["tendencia_mora_leve_max"];
+        $antiguedadMinTendencia = (int) $cfg["tendencia_antiguedad_comparativa"];
+        $resultadoTendencia = icClasificarTendenciaPago($cfg, $atrasoReciente, $atrasoAnterior, $mesesAntiguedad);
+        $scoreTendencia = (int) $resultadoTendencia["score"];
+        $clasificacionTendencia = $resultadoTendencia["clasificacion"];
+        $detalleTendencia = $resultadoTendencia["detalle"];
 
-        // Equifax
+        // Equifax (solo si está activo en config)
         $scoreEquifax = $scoreNeutro;
         $detalleEquifax = "Sin registro Equifax en el sistema; score neutro ($scoreNeutro).";
+
+        if (!$equifaxActivo) {
+            $detalleEquifax = "Factor Equifax desactivado; se aplican los pesos_sin_equifax de configuración.";
+        }
 
         // Incidencias
         $scoreIncidencias = max(0, 100 - ($incidencias * $penalIncidencia));
@@ -244,14 +337,17 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoHistorial,
                 "score" => $scoreHistorial,
                 "detalle" => $detalleHistorial,
-                "formula" => "Score = (cerrados a tiempo ÷ total cerrados) × 100",
-                "regla" => "Solo documentos CANCELADOS. A tiempo = atraso ≤ $tolerancia días (config: tolerancia_dias_pago).",
+                "formula" => "Score = (documentos al día ÷ total evaluados) × 100",
+                "regla" => "Cerrados: a tiempo si atraso ≤ $tolerancia días. Pendientes: vigentes o en gracia cuentan bien; vencidos fuera de tolerancia cuentan en contra.",
                 "valores" => array(
-                    array("etiqueta" => "Documentos cerrados", "valor" => (string) $totalDocs),
-                    array("etiqueta" => "Cerrados a tiempo", "valor" => (string) $docsATiempo),
-                    array("etiqueta" => "Tolerancia configurada", "valor" => $tolerancia . " días"),
-                    array("etiqueta" => "Porcentaje", "valor" => $totalDocs > 0 ? round(($docsATiempo / $totalDocs) * 100, 1) . "%" : "N/A"),
+                    array("etiqueta" => "Total evaluados", "valor" => (string) $totalDocs),
+                    array("etiqueta" => "Al día / a tiempo", "valor" => (string) $docsATiempo),
+                    array("etiqueta" => "Cerrados", "valor" => (string) $docsCerrados),
+                    array("etiqueta" => "Pendientes vencidos", "valor" => (string) $pendientesVencidos),
+                    array("etiqueta" => "Pend. fuera tolerancia", "valor" => (string) $pendientesFueraTolerancia),
+                    array("etiqueta" => "Tolerancia", "valor" => $tolerancia . " días"),
                 ),
+                "tabla_logica" => icTablaLogicaHistorial($tolerancia, $docsATiempo, $totalDocs, $scoreHistorial),
             ),
             "dias_atraso" => array(
                 "clave" => "dias_atraso",
@@ -260,14 +356,15 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoAtraso,
                 "score" => $scoreAtraso,
                 "detalle" => $detalleAtraso,
-                "formula" => "Atraso penalizable = máx(0, días desde vencimiento − $tolerancia). Score = máx(0, 100 − (promedio × $multAtraso))",
-                "regla" => "Solo documentos cerrados. Los primeros $tolerancia días de atraso no penalizan (misma tolerancia que historial de pagos).",
+                "formula" => "Atraso penalizable = máx(0, días − $tolerancia). Promedio de cerrados + pendientes vencidos hoy.",
+                "regla" => "Incluye mora actual de facturas pendientes ya vencidas (aunque no estén pagadas).",
                 "valores" => array(
                     array("etiqueta" => "Atraso penalizable promedio", "valor" => round($atrasoPromedio, 1) . " días"),
-                    array("etiqueta" => "Tolerancia descontada", "valor" => $tolerancia . " días"),
+                    array("etiqueta" => "Pendientes vencidos hoy", "valor" => (string) $pendientesVencidos),
+                    array("etiqueta" => "Tolerancia", "valor" => $tolerancia . " días"),
                     array("etiqueta" => "Multiplicador", "valor" => (string) $multAtraso),
-                    array("etiqueta" => "Score calculado", "valor" => number_format($scoreAtraso, 1)),
                 ),
+                "tabla_logica" => icTablaLogicaDiasAtraso($multAtraso, $tolerancia, $atrasoPromedio, $scoreAtraso),
             ),
             "utilizacion_linea" => array(
                 "clave" => "utilizacion_linea",
@@ -283,6 +380,14 @@ class ModeloInteligenciaComercial
                     array("etiqueta" => "Crédito histórico", "valor" => "S/ " . number_format($totalCredito, 2)),
                     array("etiqueta" => "Utilización", "valor" => round($utilizacion, 1) . "%"),
                 ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Tramos de utilización",
+                    "Utilización = deuda pendiente ÷ crédito histórico. Proxy hasta tener cupo oficial (Motor 5).",
+                    "%",
+                    round($utilizacion, 1),
+                    $cfg["utilizacion_tramos"],
+                    $scoreUtilizacion
+                ),
             ),
             "antiguedad" => array(
                 "clave" => "antiguedad",
@@ -291,11 +396,19 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoAntiguedad,
                 "score" => $scoreAntiguedad,
                 "detalle" => $detalleAntiguedad,
-                "formula" => "Score por tramos según meses registrado como cliente",
-                "regla" => $reglaAntiguedad,
+                "formula" => "Meses = desde primera venta (ventajf) hasta hoy; score por tramos",
+                "regla" => $reglaAntiguedad . ". Fuente: primera venta; si no existe, fecreg del ERP.",
                 "valores" => array(
-                    array("etiqueta" => "Meses como cliente", "valor" => (string) $mesesAntiguedad),
-                    array("etiqueta" => "Fecha registro", "valor" => $metricas["fecreg"] ? date("d/m/Y", strtotime($metricas["fecreg"])) : "N/A"),
+                    array("etiqueta" => "Meses de antigüedad", "valor" => (string) $mesesAntiguedad),
+                    array("etiqueta" => "Primera venta", "valor" => $fechaPrimeraVenta ? date("d/m/Y", strtotime($fechaPrimeraVenta)) : "Sin ventas"),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Tramos de antigüedad",
+                    "Meses desde la primera venta registrada (ventajf) hasta hoy.",
+                    " meses",
+                    $mesesAntiguedad,
+                    $cfg["antiguedad_tramos"],
+                    $scoreAntiguedad
                 ),
             ),
             "tendencia_pago" => array(
@@ -305,17 +418,26 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoTendencia,
                 "score" => $scoreTendencia,
                 "detalle" => $detalleTendencia,
-                "formula" => "Compara atraso penalizable (después de tolerancia) últimos 6 meses vs 6 meses anteriores",
-                "regla" => "Atraso penalizable = máx(0, días − $tolerancia días). Mejorando (<" . ($tendCfg["mejorando"]["factor"] * 100) . "% del anterior) → " . $tendCfg["mejorando"]["score"]
-                    . " | Estable (±" . (($tendCfg["estable"]["factor"] - 1) * 100) . "%) → " . $tendCfg["estable"]["score"]
+                "formula" => "Compara atraso penalizable últimos {$mesesTendencia}m vs anteriores (pagos cerrados + pendientes vencidos por fecha de vencimiento)",
+                "regla" => "Atraso penalizable = máx(0, días − $tolerancia). Mora leve inicial (≤ {$moraLeveMax} días sin historial previo) → estable. "
+                    . "Cliente nuevo (< {$antiguedadMinTendencia} meses) con mora mayor → neutro. Mejorando (<" . ($tendCfg["mejorando"]["factor"] * 100) . "% del anterior) → " . $tendCfg["mejorando"]["score"]
+                    . " | Estable → " . $tendCfg["estable"]["score"]
                     . " | Empeorando → " . $tendCfg["empeorando"]["score"],
                 "valores" => array(
-                    array("etiqueta" => "Atraso penalizable reciente (6m)", "valor" => $atrasoReciente !== null ? round($atrasoReciente, 1) . " días" : "Sin datos"),
-                    array("etiqueta" => "Atraso penalizable anterior (6m)", "valor" => $atrasoAnterior !== null ? round($atrasoAnterior, 1) . " días" : "Sin datos"),
+                    array("etiqueta" => "Periodo configurado", "valor" => $mesesTendencia . " meses"),
+                    array("etiqueta" => "Antigüedad del cliente", "valor" => $mesesAntiguedad . " meses"),
+                    array("etiqueta" => "Atraso penalizable reciente ({$mesesTendencia}m)", "valor" => $atrasoReciente !== null ? round($atrasoReciente, 1) . " días" : "Sin datos"),
+                    array("etiqueta" => "Atraso penalizable anterior ({$mesesTendencia}m)", "valor" => $atrasoAnterior !== null ? round($atrasoAnterior, 1) . " días" : "Sin datos"),
+                    array("etiqueta" => "Umbral mora leve", "valor" => $moraLeveMax . " días"),
                     array("etiqueta" => "Tolerancia descontada", "valor" => $tolerancia . " días"),
                 ),
+                "tabla_logica" => icTablaLogicaTendencia($cfg, $mesesTendencia, $clasificacionTendencia),
             ),
-            "equifax" => array(
+        );
+
+        if ($equifaxActivo) {
+            $pesoEquifax = (int) $pesosEfectivos["equifax"];
+            $factores["equifax"] = array(
                 "clave" => "equifax",
                 "nombre" => "Equifax",
                 "icono" => "fa-university",
@@ -328,8 +450,11 @@ class ModeloInteligenciaComercial
                     array("etiqueta" => "Estado", "valor" => "Sin datos en sistema"),
                     array("etiqueta" => "Score asignado", "valor" => "$scoreNeutro (neutro)"),
                 ),
-            ),
-            "incidencias" => array(
+                "tabla_logica" => icTablaLogicaEquifax($scoreNeutro),
+            );
+        }
+
+        $factores["incidencias"] = array(
                 "clave" => "incidencias",
                 "nombre" => "Incidencias comerciales",
                 "icono" => "fa-exclamation-triangle",
@@ -342,7 +467,7 @@ class ModeloInteligenciaComercial
                     array("etiqueta" => "Incidencias detectadas", "valor" => (string) $incidencias),
                     array("etiqueta" => "Penalización", "valor" => ($incidencias * $penalIncidencia) . " pts"),
                 ),
-            ),
+                "tabla_logica" => icTablaLogicaIncidencias($penalIncidencia, $incidencias, $scoreIncidencias),
         );
 
         foreach ($factores as $clave => &$factor) {
