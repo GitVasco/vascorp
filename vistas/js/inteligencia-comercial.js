@@ -43,15 +43,45 @@ $(document).ready(function () {
 });
 
 function icInitImpresion() {
-    var $btn = $("#btnImprimirInteligencia");
-    if (!$btn.length) return;
+    var $btnV = $("#btnImprimirVertical");
+    var $btnH = $("#btnImprimirHorizontal");
+    if (!$btnV.length && !$btnH.length) return;
 
     var ahora = new Date();
     var fechaTxt = "Impreso: " + ahora.toLocaleDateString("es-PE") + " " + ahora.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
     $(".ic-print-fecha").text(fechaTxt);
 
-    $btn.on("click", function () {
+    function icImprimir(orientacion) {
+        var $body = $("body");
+        var esLandscape = orientacion === "landscape";
+        var style = document.getElementById("icPrintOrientacion");
+        if (!style) {
+            style = document.createElement("style");
+            style.id = "icPrintOrientacion";
+            document.head.appendChild(style);
+        }
+        style.textContent = "@media print { @page { size: A4 " + (esLandscape ? "landscape" : "portrait") + "; margin: " + (esLandscape ? "6mm 8mm" : "8mm 10mm") + "; } }";
+
+        $body.removeClass("ic-print-portrait ic-print-landscape");
+        $body.addClass(esLandscape ? "ic-print-landscape" : "ic-print-portrait");
+
+        var limpiar = function () {
+            $body.removeClass("ic-print-portrait ic-print-landscape");
+            if (style) {
+                style.textContent = "";
+            }
+            window.removeEventListener("afterprint", limpiar);
+        };
+        window.addEventListener("afterprint", limpiar);
+
         window.print();
+    }
+
+    $btnV.on("click", function () {
+        icImprimir("portrait");
+    });
+    $btnH.on("click", function () {
+        icImprimir("landscape");
     });
 }
 

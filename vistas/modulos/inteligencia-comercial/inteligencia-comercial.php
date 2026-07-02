@@ -118,7 +118,7 @@ function icRenderMotorPanel($m, $opciones)
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <p class="text-muted" style="margin:10px 0 0; font-size:12px;">
+                    <p class="text-muted ic-no-print" style="margin:10px 0 0; font-size:12px;">
                         <i class="fa fa-hand-pointer-o"></i> Clic en un factor para ver el detalle del cálculo.
                         <span style="margin-left:8px;">Score factor · Aportación pts · Peso</span>
                     </p>
@@ -219,7 +219,7 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <p class="text-muted" style="margin:10px 0 0; font-size:12px;">
+                    <p class="text-muted ic-no-print" style="margin:10px 0 0; font-size:12px;">
                         <i class="fa fa-hand-pointer-o"></i> Clic en un factor para ver el detalle del cálculo.
                     </p>
                 </div>
@@ -1105,14 +1105,25 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
 }
 
 @media print {
-    @page {
+    @page ic-portrait {
         size: A4 portrait;
-        margin: 10mm 12mm;
+        margin: 8mm 10mm;
+    }
+    @page ic-landscape {
+        size: A4 landscape;
+        margin: 6mm 8mm;
+    }
+    body.ic-print-portrait {
+        page: ic-portrait;
+    }
+    body.ic-print-landscape {
+        page: ic-landscape;
     }
     body {
         background: #fff !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+        font-size: 11px;
     }
     .main-header,
     .main-sidebar,
@@ -1131,25 +1142,29 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
         margin: 0 !important;
         padding: 0 !important;
         min-height: 0 !important;
+        width: 100% !important;
     }
     .ic-wrap {
         margin: 0;
         padding: 0;
     }
+    #icAreaImpresion {
+        width: 100%;
+    }
     .ic-print-header {
         display: block;
-        margin: 0 0 12px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #333;
+        margin: 0 0 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #333;
     }
     .ic-print-titulo {
-        margin: 0 0 4px;
-        font-size: 18px;
+        margin: 0 0 2px;
+        font-size: 15px;
         font-weight: 700;
     }
     .ic-print-meta {
         margin: 0;
-        font-size: 12px;
+        font-size: 10px;
         color: #333;
     }
     .ic-print-fecha::before {
@@ -1159,112 +1174,258 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     .ic-orden-motores {
         display: none !important;
     }
-    .ic-motores-grid > [class*="col-"] {
-        float: left;
-        page-break-inside: auto;
+
+    /* Layout split: horizontal = 50/50, vertical = apilado */
+    .ic-motores-layout-split {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: flex-start !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    body.ic-print-portrait .ic-motores-layout-split {
+        flex-wrap: wrap !important;
     }
     .ic-motores-layout-split > .col-md-6 {
         width: 50% !important;
-        max-width: 50%;
-        float: left;
-        page-break-inside: auto;
+        max-width: 50% !important;
+        flex: 0 0 50% !important;
+        float: none !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
     }
-    .ic-motores-layout-split::after {
-        content: "";
-        display: table;
-        clear: both;
+    body.ic-print-portrait .ic-motores-layout-split > .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
-    .ic-motores-col-analisis .ic-motor-box {
-        margin-bottom: 8px !important;
+    body.ic-print-portrait .ic-motores-col-linea {
+        page-break-before: avoid;
+        break-before: avoid-page;
+    }
+    .ic-motores-col-analisis,
+    .ic-motores-col-linea {
+        display: block !important;
+        margin-bottom: 0 !important;
+    }
+    .ic-motores-col-linea > .ic-motor-box {
+        flex: none !important;
+        display: block !important;
+        height: auto !important;
+        margin-bottom: 0 !important;
+    }
+    .ic-motores-col-analisis > .row {
+        margin: 0 !important;
+    }
+    .ic-motores-col-analisis .col-md-12 {
+        margin-bottom: 6px !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    .ic-motores-col-analisis .col-md-12:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    /* Cajas compactas */
+    .ic-motor-box {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #bbb !important;
+        margin-bottom: 6px !important;
+        border-radius: 4px !important;
+    }
+    .ic-motor-box .box-header {
+        padding: 4px 8px !important;
+        min-height: 0 !important;
+    }
+    .ic-motor-box .box-title {
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+    }
+    .ic-motor-box .box-body {
+        padding: 5px 8px !important;
+    }
+    .ic-motor-proposito {
+        display: none !important;
+    }
+    .ic-motor-score {
+        font-size: 14px !important;
+    }
+    .ic-motor-box .label {
+        font-size: 9px !important;
+        padding: 2px 5px !important;
+    }
+    .ic-motor-box .box-tools {
+        gap: 4px !important;
+    }
+
+    /* Motores 1–3: gauge + leyenda en fila */
+    .ic-motores-col-analisis .ic-motor-panel-inner {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        gap: 4px !important;
+    }
+    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-3 {
+        width: auto !important;
+        flex: 0 0 auto !important;
+        float: none !important;
+        padding: 0 2px !important;
+    }
+    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 {
+        flex: 1 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        float: none !important;
+        clear: none !important;
+        padding: 0 !important;
+    }
+    .ic-motores-col-analisis .ic-chart-title {
+        display: none !important;
     }
     .ic-motores-col-analisis .ic-aportacion-chart {
         display: none !important;
     }
+    body.ic-print-landscape .ic-motores-col-analisis .ic-aportacion-chart {
+        display: block !important;
+        width: 48px !important;
+        height: 48px !important;
+        margin: 0 auto !important;
+    }
+    body.ic-print-landscape .ic-motores-col-analisis .ic-aportacion-chart canvas {
+        width: 48px !important;
+        height: 48px !important;
+    }
     .ic-motores-col-analisis .ic-gauge-wrap {
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 2px;
+        width: 52px !important;
+        height: 52px !important;
+        margin: 0 auto !important;
     }
     .ic-motores-col-analisis .ic-gauge-wrap canvas {
-        width: 64px !important;
-        height: 64px !important;
+        width: 52px !important;
+        height: 52px !important;
     }
     .ic-motores-col-analisis .ic-gauge-center .ic-gauge-num {
-        font-size: 13px;
+        font-size: 11px !important;
     }
-    .ic-motores-col-analisis .ic-chart-title {
-        display: none;
-    }
-    .ic-motores-col-analisis .ic-chart-legend {
-        max-height: 88px;
-        overflow: hidden;
-    }
-    .ic-motores-col-analisis .ic-chart-legend li {
-        font-size: 9px;
-        padding: 2px 4px;
-    }
-    .ic-motores-col-analisis .ic-motor-proposito,
-    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 > .text-muted {
+    .ic-motores-col-analisis .ic-gauge-label {
         display: none !important;
     }
-    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-3 {
-        width: auto;
-        flex: 0 0 70px;
+    .ic-motores-col-analisis .ic-chart-legend {
+        max-height: none !important;
+        overflow: visible !important;
+        margin: 0 !important;
     }
-    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 {
-        flex: 1;
+    .ic-motores-col-analisis .ic-chart-legend li {
+        font-size: 9.5px !important;
+        padding: 2px 3px !important;
+        gap: 3px !important;
+        border-bottom: 1px solid #eee !important;
     }
+    body.ic-print-landscape .ic-motores-col-analisis .ic-chart-legend li {
+        font-size: 10px !important;
+    }
+    body.ic-print-portrait .ic-motores-col-analisis .ic-chart-legend li {
+        font-size: 10.5px !important;
+        padding: 3px 4px !important;
+    }
+    .ic-motores-col-analisis .ic-legend-dot {
+        width: 8px !important;
+        height: 8px !important;
+    }
+    .ic-motores-col-analisis .ic-legend-score {
+        min-width: 32px !important;
+        font-size: 9.5px !important;
+    }
+    .ic-motores-col-analisis .ic-legend-val {
+        min-width: 38px !important;
+        font-size: 9.5px !important;
+    }
+    .ic-motores-col-analisis .ic-legend-peso {
+        min-width: 28px !important;
+        font-size: 9px !important;
+    }
+    .ic-motores-col-analisis .ic-legend-label {
+        font-size: 9.5px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Motor 4 */
     .ic-motores-col-linea .ic-gauge-wrap,
     .ic-motores-col-linea .ic-aportacion-chart {
         display: none !important;
     }
     .ic-motores-col-linea .ic-motor-panel-inner > .col-sm-3 {
-        display: none;
+        display: none !important;
     }
     .ic-motores-col-linea .ic-motor-panel-inner > .col-sm-6 {
         width: 100% !important;
-        float: none;
+        float: none !important;
+        padding: 0 !important;
     }
     .ic-motores-col-linea .ic-linea-resumen {
-        margin-bottom: 8px;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 5px !important;
+        margin-bottom: 5px !important;
     }
     .ic-motores-col-linea .ic-linea-monto {
-        padding: 6px 8px;
-        min-width: 0;
-        flex: 1 1 100%;
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        padding: 4px 6px !important;
+        border-radius: 3px !important;
+    }
+    .ic-motores-col-linea .ic-linea-etq {
+        font-size: 7.5px !important;
     }
     .ic-motores-col-linea .ic-linea-monto strong {
-        font-size: 13px;
+        font-size: 11px !important;
+    }
+    .ic-motores-col-linea .ic-linea-monto small {
+        font-size: 7px !important;
+    }
+    .ic-motores-col-linea .ic-linea-explicacion {
+        font-size: 9px !important;
+        margin: 0 0 5px !important;
+        padding: 4px 6px !important;
     }
     .ic-motores-col-linea .ic-chart-legend {
-        max-height: 200px;
-        overflow: hidden;
+        max-height: none !important;
+        overflow: visible !important;
+        margin: 0 !important;
     }
     .ic-motores-col-linea .ic-chart-legend li {
-        font-size: 10px;
-        padding: 3px 5px;
+        font-size: 9.5px !important;
+        padding: 2px 4px !important;
+        gap: 3px !important;
     }
-    .ic-motores-col-linea .ic-linea-explicacion,
-    .ic-motores-col-linea .ic-motor-proposito {
-        font-size: 10px;
+    body.ic-print-landscape .ic-motores-col-linea .ic-chart-legend li {
+        font-size: 10px !important;
     }
-    .ic-motor-box {
-        break-inside: auto;
-        page-break-inside: auto;
-        box-shadow: none !important;
-        border: 1px solid #ccc !important;
-        margin-bottom: 8px !important;
+    body.ic-print-portrait .ic-motores-col-linea .ic-chart-legend li {
+        font-size: 10.5px !important;
+        padding: 3px 5px !important;
     }
-    .ic-motores-grid .ic-gauge-wrap,
-    .ic-motores-grid .ic-aportacion-chart {
-        width: 72px;
-        height: 72px;
+    .ic-motores-col-linea .ic-legend-dot {
+        width: 8px !important;
+        height: 8px !important;
     }
-    .ic-motores-grid .ic-gauge-wrap canvas,
-    .ic-motores-grid .ic-aportacion-chart canvas {
-        width: 72px !important;
-        height: 72px !important;
+    .ic-motores-col-linea .ic-legend-score {
+        min-width: 32px !important;
     }
+    .ic-motores-col-linea .ic-legend-val {
+        min-width: 38px !important;
+    }
+    .ic-motores-col-linea .ic-legend-peso {
+        min-width: 28px !important;
+        font-size: 9px !important;
+    }
+
     .ic-legend-item {
         cursor: default;
     }
@@ -1304,9 +1465,12 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                     </select>
                 </div>
                 <?php if ($clienteFiltro !== "" && $resultadoMotor1) : ?>
-                <div class="ic-no-print">
-                    <button type="button" class="btn btn-default" id="btnImprimirInteligencia" title="Imprimir análisis en A4">
-                        <i class="fa fa-print"></i> Imprimir A4
+                <div class="ic-no-print btn-group">
+                    <button type="button" class="btn btn-default" id="btnImprimirVertical" title="Imprimir A4 vertical (retrato)">
+                        <i class="fa fa-print"></i> Vertical
+                    </button>
+                    <button type="button" class="btn btn-default" id="btnImprimirHorizontal" title="Imprimir A4 horizontal (apaisado)">
+                        <i class="fa fa-print"></i> Horizontal
                     </button>
                 </div>
                 <?php endif; ?>
