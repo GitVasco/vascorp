@@ -8,10 +8,12 @@ $clienteFiltro = isset($_GET["cliente"]) ? trim($_GET["cliente"]) : "";
 $clientes = ControladorInteligenciaComercial::ctrClientesAnalisis();
 $resultadoMotor1 = null;
 $resultadoMotor2 = null;
+$resultadoMotor4 = null;
 
 if ($clienteFiltro !== "") {
     $resultadoMotor1 = ControladorInteligenciaComercial::ctrCalcularMotorRiesgoCredito($clienteFiltro);
     $resultadoMotor2 = ControladorInteligenciaComercial::ctrCalcularMotorComercial($clienteFiltro);
+    $resultadoMotor4 = ControladorInteligenciaComercial::ctrCalcularMotorFidelidad($clienteFiltro);
 }
 
 $nombreClienteFiltro = "";
@@ -63,6 +65,9 @@ function icRenderMotorPanel($m, $opciones)
             <h3 class="box-title">
                 <i class="fa <?php echo htmlspecialchars($opciones["icono"], ENT_QUOTES, "UTF-8"); ?>"></i>
                 <?php echo htmlspecialchars($opciones["titulo"], ENT_QUOTES, "UTF-8"); ?>
+                <?php if (!empty($opciones["proposito"])) : ?>
+                    <small class="ic-motor-proposito"><?php echo htmlspecialchars($opciones["proposito"], ENT_QUOTES, "UTF-8"); ?></small>
+                <?php endif; ?>
             </h3>
             <div class="box-tools pull-right" style="display:flex; align-items:center; gap:10px;">
                 <span class="ic-motor-score" style="color:<?php echo $colorScore; ?>;">
@@ -74,8 +79,8 @@ function icRenderMotorPanel($m, $opciones)
             </div>
         </div>
         <div class="box-body">
-            <div class="row" style="display:flex; align-items:center;">
-                <div class="col-sm-3">
+            <div class="row ic-motor-panel-inner" style="display:flex; align-items:center; flex-wrap:wrap;">
+                <div class="col-sm-3 col-xs-6">
                     <p class="ic-chart-title"><i class="fa <?php echo htmlspecialchars($opciones["icono"], ENT_QUOTES, "UTF-8"); ?>"></i> <?php echo htmlspecialchars($opciones["titulo_gauge"], ENT_QUOTES, "UTF-8"); ?></p>
                     <div class="ic-gauge-wrap">
                         <canvas id="<?php echo htmlspecialchars($opciones["chart_score"], ENT_QUOTES, "UTF-8"); ?>" width="180" height="180"></canvas>
@@ -87,13 +92,13 @@ function icRenderMotorPanel($m, $opciones)
                         </div>
                     </div>
                 </div>
-                <div class="col-sm-3">
+                <div class="col-sm-3 col-xs-6">
                     <p class="ic-chart-title"><i class="fa fa-pie-chart"></i> Aportación por factor</p>
                     <div class="ic-aportacion-chart">
                         <canvas id="<?php echo htmlspecialchars($opciones["chart_aport"], ENT_QUOTES, "UTF-8"); ?>" width="180" height="180"></canvas>
                     </div>
                 </div>
-                <div class="col-sm-6">
+                <div class="col-sm-6 col-xs-12">
                     <ul class="ic-chart-legend" id="<?php echo htmlspecialchars($opciones["legend_id"], ENT_QUOTES, "UTF-8"); ?>" data-motor="<?php echo (int) $m["motor"]; ?>">
                         <?php foreach ($m["factores"] as $factor) :
                             $colorPastel = $coloresPastel[$idxPastel % count($coloresPastel)];
@@ -127,12 +132,82 @@ function icRenderMotorPanel($m, $opciones)
 .ic-wrap .ic-motor-box {
     border-radius: 6px;
     margin-bottom: 20px;
+    height: 100%;
+}
+.ic-wrap .ic-motores-grid {
+    margin-bottom: 5px;
+}
+.ic-wrap .ic-motores-grid > [class*="col-"] {
+    margin-bottom: 20px;
+}
+.ic-motores-grid .ic-motor-score {
+    font-size: 24px;
+}
+.ic-motores-grid .ic-gauge-wrap,
+.ic-motores-grid .ic-aportacion-chart {
+    width: 150px;
+    height: 150px;
+}
+.ic-motores-grid .ic-gauge-wrap canvas,
+.ic-motores-grid .ic-aportacion-chart canvas {
+    width: 150px !important;
+    height: 150px !important;
+}
+.ic-motores-grid .ic-gauge-center .ic-gauge-num {
+    font-size: 22px;
+}
+.ic-motores-grid .ic-chart-legend li {
+    font-size: 12px;
+    padding: 7px 8px;
+    gap: 6px;
+}
+.ic-motores-grid .ic-legend-score {
+    min-width: 44px;
+}
+.ic-motores-grid .ic-legend-val {
+    min-width: 58px;
+}
+.ic-motores-grid .ic-motor-panel-inner {
+    display: block !important;
+}
+.ic-motores-grid .ic-motor-panel-inner > .col-sm-3 {
+    width: 50%;
+    float: left;
+}
+.ic-motores-grid .ic-motor-panel-inner > .col-sm-6 {
+    width: 100%;
+    clear: both;
+    float: none;
+}
+.ic-motores-grid .ic-motor-placeholder {
+    margin-bottom: 0;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.ic-motores-grid .ic-motor-placeholder-proposito {
+    font-size: 11px;
+    color: #bbb;
 }
 .ic-wrap .ic-motor-score {
     font-size: 32px;
     font-weight: 700;
     margin-right: 10px;
     vertical-align: middle;
+}
+.ic-wrap .ic-motor-proposito {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #888;
+    line-height: 1.3;
+}
+.ic-motores-grid .ic-motor-proposito {
+    font-size: 11px;
 }
 .ic-wrap .ic-chart-legend {
     list-style: none;
@@ -574,9 +649,7 @@ function icRenderMotorPanel($m, $opciones)
             <div class="callout callout-warning">
                 <p style="margin:0;">No se encontraron datos para el cliente seleccionado.</p>
             </div>
-        <?php else :
-            $m = $resultadoMotor1;
-        ?>
+        <?php else : ?>
 
             <?php if ($nombreClienteFiltro !== "") : ?>
             <p class="text-muted" style="margin:0 0 15px;">
@@ -584,39 +657,72 @@ function icRenderMotorPanel($m, $opciones)
             </p>
             <?php endif; ?>
 
-            <?php
-            icRenderMotorPanel($m, array(
-                "titulo"       => "Motor 1 — Riesgo Crediticio",
-                "icono"        => "fa-shield",
-                "titulo_gauge" => "Score de riesgo",
-                "chart_score"  => "icChartRiesgo",
-                "chart_aport"  => "icChartAportacion",
-                "legend_id"    => "icMotor1Legend",
-                "data_id"      => "icMotor1Data",
-            ));
-
-            if ($resultadoMotor2) {
-                icRenderMotorPanel($resultadoMotor2, array(
-                    "titulo"       => "Motor 2 — Comercial",
-                    "icono"        => "fa-line-chart",
-                    "titulo_gauge" => "Score comercial",
-                    "chart_score"  => "icChartComercial",
-                    "chart_aport"  => "icChartAportacion2",
-                    "legend_id"    => "icMotor2Legend",
-                    "data_id"      => "icMotor2Data",
-                ));
-            }
-            ?>
-
-            <!-- MOTORES PRÓXIMOS -->
-            <?php
-            $motoresProximos = array("Motor 3 — Rentabilidad", "Motor 4 — Fidelidad", "Motor 5 — Línea de crédito");
-            foreach ($motoresProximos as $titulo) :
-            ?>
-                <div class="ic-motor-placeholder">
-                    <i class="fa fa-lock"></i> <?php echo htmlspecialchars($titulo, ENT_QUOTES, "UTF-8"); ?> — Próximamente
+            <div class="row ic-motores-grid">
+                <div class="col-md-6">
+                    <?php
+                    icRenderMotorPanel($resultadoMotor1, array(
+                        "titulo"       => "Motor 1 — Riesgo Crediticio",
+                        "proposito"    => "¿Le puedo fiar o mantener crédito?",
+                        "icono"        => "fa-shield",
+                        "titulo_gauge" => "Score de riesgo",
+                        "chart_score"  => "icChartRiesgo",
+                        "chart_aport"  => "icChartAportacion",
+                        "legend_id"    => "icMotor1Legend",
+                        "data_id"      => "icMotor1Data",
+                    ));
+                    ?>
                 </div>
-            <?php endforeach; ?>
+                <?php if ($resultadoMotor2) : ?>
+                <div class="col-md-6">
+                    <?php
+                    icRenderMotorPanel($resultadoMotor2, array(
+                        "titulo"       => "Motor 2 — Comercial",
+                        "proposito"    => "¿Tiene potencial para venderle más?",
+                        "icono"        => "fa-line-chart",
+                        "titulo_gauge" => "Score comercial",
+                        "chart_score"  => "icChartComercial",
+                        "chart_aport"  => "icChartAportacion2",
+                        "legend_id"    => "icMotor2Legend",
+                        "data_id"      => "icMotor2Data",
+                    ));
+                    ?>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="row ic-motores-grid">
+                <?php if ($resultadoMotor4) : ?>
+                <div class="col-md-6">
+                    <?php
+                    icRenderMotorPanel($resultadoMotor4, array(
+                        "titulo"       => "Motor 4 — Fidelidad",
+                        "proposito"    => "¿Seguirá comprando con nosotros?",
+                        "icono"        => "fa-heart",
+                        "titulo_gauge" => "Score de fidelidad",
+                        "chart_score"  => "icChartFidelidad",
+                        "chart_aport"  => "icChartAportacion4",
+                        "legend_id"    => "icMotor4Legend",
+                        "data_id"      => "icMotor4Data",
+                    ));
+                    ?>
+                </div>
+                <?php endif; ?>
+                <div class="col-md-6">
+                    <div class="ic-motor-placeholder">
+                        <div><i class="fa fa-lock"></i> Motor 3 — Rentabilidad — Próximamente</div>
+                        <div class="ic-motor-placeholder-proposito">¿Cuánto beneficio genera?</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row ic-motores-grid">
+                <div class="col-md-6">
+                    <div class="ic-motor-placeholder">
+                        <div><i class="fa fa-lock"></i> Motor 5 — Línea de crédito — Próximamente</div>
+                        <div class="ic-motor-placeholder-proposito">¿Qué línea de crédito recomendar?</div>
+                    </div>
+                </div>
+            </div>
 
         <?php endif; ?>
 

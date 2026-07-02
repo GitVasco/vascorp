@@ -1007,4 +1007,293 @@ class ModeloInteligenciaComercial
             ),
         );
     }
+
+    /**
+     * Métricas crudas del cliente para el Motor 4 (fidelidad).
+     */
+    public static function mdlMetricasMotorFidelidad($codigoCliente)
+    {
+        $cfg = icConfigMotor4();
+        $meses = (int) $cfg["meses_periodo"];
+        $mitad = icMotor4MesesMitadTendencia($meses);
+        $tiposSql = icVentasTiposValidosSql();
+        $vendExclSql = self::mdlSqlIn(icConfigMotor2()["ventas_excluir_vendedores"]);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                cli.codigo,
+                cli.nombre,
+                cli.fecreg,
+                IFNULL(
+                    TIMESTAMPDIFF(
+                        MONTH,
+                        COALESCE(vta.fecha_primera_venta, cli.fecreg),
+                        NOW()
+                    ),
+                    0
+                ) AS meses_antiguedad,
+                IFNULL(vta.docs_periodo, 0) AS docs_periodo,
+                IFNULL(vta.meses_con_compra, 0) AS meses_con_compra,
+                vta.ultima_compra,
+                IFNULL(vta.monto_tendencia_ini, 0) AS monto_tendencia_ini,
+                IFNULL(vta.monto_tendencia_fin, 0) AS monto_tendencia_fin,
+                vta.fecha_primera_venta
+            FROM clientesjf cli
+            LEFT JOIN (
+                SELECT
+                    v.cliente,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN 1 ELSE 0 END) AS docs_periodo,
+                    COUNT(DISTINCT CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN DATE_FORMAT(v.fecha, '%Y-%m') END) AS meses_con_compra,
+                    MAX(v.fecha) AS ultima_compra,
+                    MIN(v.fecha) AS fecha_primera_venta,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$mitad} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_tendencia_ini,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mitad} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_tendencia_fin
+                FROM ventajf v
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+                  AND v.cliente = :cliente_vta
+                GROUP BY v.cliente
+            ) vta ON vta.cliente = cli.codigo
+            WHERE cli.codigo = :cliente
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmt->bindParam(":cliente_vta", $codigoCliente, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch();
+    }
+
+    /**
+     * Convierte métricas de fidelidad en sub-scores y score ponderado final.
+     */
+    public static function mdlCalcularMotorFidelidad($codigoCliente)
+    {
+        $cfg = icConfigMotor4();
+        $pesos = icPesosDecimalesMotor4();
+        $pesosEfectivos = $cfg["pesos_efectivos"];
+        $meses = (int) $cfg["meses_periodo"];
+        $mitad = icMotor4MesesMitadTendencia($meses);
+        $scoreNeutro = (int) $cfg["score_neutro"];
+
+        $metricas = self::mdlMetricasMotorFidelidad($codigoCliente);
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $docsPeriodo = (int) $metricas["docs_periodo"];
+        $mesesConCompra = (int) $metricas["meses_con_compra"];
+        $mesesAntiguedad = (int) $metricas["meses_antiguedad"];
+        $montoTendenciaIni = (float) $metricas["monto_tendencia_ini"];
+        $montoTendenciaFin = (float) $metricas["monto_tendencia_fin"];
+        $ultimaCompra = $metricas["ultima_compra"];
+
+        $frecuenciaMensual = $docsPeriodo / $meses;
+        $regularidadPct = ($mesesConCompra / $meses) * 100;
+        $diasUltimaCompra = $ultimaCompra ? (int) ((strtotime("today") - strtotime($ultimaCompra)) / 86400) : 99999;
+
+        $periodos = icMotor4PeriodosFechas($meses);
+        $rangoPeriodo = icMotor2FormatearRangoFechas($periodos["periodo"]["desde"], $periodos["periodo"]["hasta"]);
+        $rangoTendenciaIni = icMotor2FormatearRangoFechas($periodos["tendencia_ini"]["desde"], $periodos["tendencia_ini"]["hasta"]);
+        $rangoTendenciaFin = icMotor2FormatearRangoFechas($periodos["tendencia_fin"]["desde"], $periodos["tendencia_fin"]["hasta"]);
+
+        // Frecuencia (12 meses, sin ajuste de vendedor)
+        if ($docsPeriodo <= 0) {
+            $scoreFrecuencia = icScorePorTramos(0, $cfg["frecuencia_tramos"]);
+            $detalleFrecuencia = "Sin compras en los últimos {$meses} meses.";
+        } else {
+            $scoreFrecuencia = icScorePorTramos($frecuenciaMensual, $cfg["frecuencia_tramos"]);
+            $detalleFrecuencia = round($frecuenciaMensual, 2) . " compras/mes ({$docsPeriodo} docs en {$meses} meses).";
+        }
+
+        // Antigüedad
+        if ($mesesAntiguedad <= 0) {
+            $scoreAntiguedad = $scoreNeutro;
+            $detalleAntiguedad = "Sin antigüedad registrada; score neutro ({$scoreNeutro}).";
+        } else {
+            $scoreAntiguedad = icScorePorTramos($mesesAntiguedad, $cfg["antiguedad_tramos"]);
+            $detalleAntiguedad = "{$mesesAntiguedad} meses como cliente activo.";
+        }
+
+        // Regularidad
+        if ($docsPeriodo <= 0) {
+            $scoreRegularidad = icScorePorTramos(0, $cfg["regularidad_tramos"]);
+            $detalleRegularidad = "Sin compras en el periodo; 0 de {$meses} meses activos.";
+        } else {
+            $scoreRegularidad = icScorePorTramos($regularidadPct, $cfg["regularidad_tramos"]);
+            $detalleRegularidad = "{$mesesConCompra} de {$meses} meses con compra ("
+                . round($regularidadPct, 1) . "% de regularidad).";
+        }
+
+        // Última compra
+        if (!$ultimaCompra) {
+            $scoreUltimaCompra = icScorePorTramos(99999, $cfg["ultima_compra_tramos"]);
+            $detalleUltimaCompra = "Sin compras registradas.";
+        } else {
+            $scoreUltimaCompra = icScorePorTramos($diasUltimaCompra, $cfg["ultima_compra_tramos"]);
+            $detalleUltimaCompra = "Última compra hace {$diasUltimaCompra} días ("
+                . date("d/m/Y", strtotime($ultimaCompra)) . ").";
+        }
+
+        // Tendencia (últimos 6m vs primeros 6m de 12)
+        $resultadoTendencia = icClasificarTendenciaCompra($cfg, $montoTendenciaFin, $montoTendenciaIni);
+        $scoreTendencia = (int) $resultadoTendencia["score"];
+        $clasificacionTendencia = $resultadoTendencia["clasificacion"];
+        $detalleTendencia = $resultadoTendencia["detalle"];
+
+        $factores = array(
+            "frecuencia" => array(
+                "clave" => "frecuencia",
+                "nombre" => "Frecuencia",
+                "icono" => "fa-refresh",
+                "peso" => (int) $pesosEfectivos["frecuencia"],
+                "score" => $scoreFrecuencia,
+                "detalle" => $detalleFrecuencia,
+                "formula" => "Frecuencia = documentos ÷ {$meses} meses",
+                "regla" => "Historial de {$meses} meses (S02, S03, S70). Sin ajuste de ruta del vendedor.",
+                "valores" => array(
+                    array("etiqueta" => "Documentos ({$meses}m)", "valor" => (string) $docsPeriodo),
+                    array("etiqueta" => "Compras/mes", "valor" => round($frecuenciaMensual, 2)),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Frecuencia de compra (12 meses)",
+                    "Promedio de documentos de compra por mes.",
+                    " compras/mes",
+                    round($frecuenciaMensual, 2),
+                    $cfg["frecuencia_tramos"],
+                    $scoreFrecuencia
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo analizado ({$meses} meses)", "rango" => $rangoPeriodo),
+                )),
+            ),
+            "antiguedad" => array(
+                "clave" => "antiguedad",
+                "nombre" => "Antigüedad",
+                "icono" => "fa-calendar",
+                "peso" => (int) $pesosEfectivos["antiguedad"],
+                "score" => $scoreAntiguedad,
+                "detalle" => $detalleAntiguedad,
+                "formula" => "Meses = desde primera venta hasta hoy",
+                "regla" => "Cliente consolidado vs cliente nuevo. Tipos " . icVentasTiposValidosTexto() . ".",
+                "valores" => array(
+                    array("etiqueta" => "Meses como cliente", "valor" => (string) $mesesAntiguedad),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Tramos de antigüedad",
+                    "Meses desde la primera venta válida hasta hoy.",
+                    " meses",
+                    $mesesAntiguedad,
+                    $cfg["antiguedad_tramos"],
+                    $scoreAntiguedad
+                ),
+            ),
+            "regularidad" => array(
+                "clave" => "regularidad",
+                "nombre" => "Regularidad",
+                "icono" => "fa-check-circle",
+                "peso" => (int) $pesosEfectivos["regularidad"],
+                "score" => $scoreRegularidad,
+                "detalle" => $detalleRegularidad,
+                "formula" => "Regularidad = meses con compra ÷ {$meses} × 100",
+                "regla" => "Mide si compra de forma pareja mes a mes, no solo en picos.",
+                "valores" => array(
+                    array("etiqueta" => "Meses con compra", "valor" => $mesesConCompra . " / " . $meses),
+                    array("etiqueta" => "Regularidad", "valor" => round($regularidadPct, 1) . "%"),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Regularidad de compra",
+                    "Porcentaje de meses del periodo con al menos una compra.",
+                    "%",
+                    round($regularidadPct, 1),
+                    $cfg["regularidad_tramos"],
+                    $scoreRegularidad
+                ),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Periodo analizado ({$meses} meses)", "rango" => $rangoPeriodo),
+                )),
+            ),
+            "ultima_compra" => array(
+                "clave" => "ultima_compra",
+                "nombre" => "Última compra",
+                "icono" => "fa-clock-o",
+                "peso" => (int) $pesosEfectivos["ultima_compra"],
+                "score" => $scoreUltimaCompra,
+                "detalle" => $detalleUltimaCompra,
+                "formula" => "Días = hoy − fecha de última compra",
+                "regla" => "Menos días sin comprar = mayor probabilidad de seguir activo.",
+                "valores" => array(
+                    array("etiqueta" => "Días sin comprar", "valor" => $ultimaCompra ? (string) $diasUltimaCompra : "—"),
+                    array("etiqueta" => "Fecha última compra", "valor" => $ultimaCompra ? date("d/m/Y", strtotime($ultimaCompra)) : "Sin compras"),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Recencia de la última compra",
+                    "Cuántos días han pasado desde la última compra válida.",
+                    " días",
+                    $ultimaCompra ? $diasUltimaCompra : 0,
+                    $cfg["ultima_compra_tramos"],
+                    $scoreUltimaCompra
+                ),
+            ),
+            "tendencia" => array(
+                "clave" => "tendencia",
+                "nombre" => "Tendencia",
+                "icono" => "fa-area-chart",
+                "peso" => (int) $pesosEfectivos["tendencia"],
+                "score" => $scoreTendencia,
+                "detalle" => $detalleTendencia,
+                "formula" => "Compara montos últimos {$mitad}m vs primeros {$mitad}m del periodo de {$meses} meses",
+                "regla" => "Distinto al Motor 2: ventana de 12 meses partida en dos mitades.",
+                "valores" => array(
+                    array("etiqueta" => "Primeros {$mitad}m", "valor" => "S/ " . number_format($montoTendenciaIni, 2)),
+                    array("etiqueta" => "Últimos {$mitad}m", "valor" => "S/ " . number_format($montoTendenciaFin, 2)),
+                ),
+                "tabla_logica" => icTablaLogicaTendenciaFidelidad($cfg, $clasificacionTendencia),
+                "periodos_box" => icMotor2PeriodosBox(array(
+                    array("etiqueta" => "Primeros {$mitad} meses", "rango" => $rangoTendenciaIni),
+                    array("etiqueta" => "Últimos {$mitad} meses", "rango" => $rangoTendenciaFin),
+                )),
+            ),
+        );
+
+        foreach ($factores as $clave => &$factor) {
+            $factor["score"] = round($factor["score"], 1);
+            $factor["aportacion"] = round($factor["score"] * $pesos[$clave], 2);
+        }
+        unset($factor);
+
+        $scoreFinal = 0;
+        foreach ($factores as $clave => $factor) {
+            $scoreFinal += $factor["score"] * $pesos[$clave];
+        }
+        $scoreFinal = round($scoreFinal, 2);
+
+        return array(
+            "cliente" => array(
+                "codigo" => $metricas["codigo"],
+                "nombre" => $metricas["nombre"],
+            ),
+            "motor" => 4,
+            "nombre_motor" => "Score de Fidelidad",
+            "score" => $scoreFinal,
+            "clasificacion" => icClasificarScore($scoreFinal),
+            "factores" => $factores,
+            "metricas" => array(
+                "frecuencia_mensual" => round($frecuenciaMensual, 2),
+                "regularidad_pct" => round($regularidadPct, 1),
+                "dias_ultima_compra" => $ultimaCompra ? $diasUltimaCompra : null,
+                "meses_antiguedad" => $mesesAntiguedad,
+            ),
+        );
+    }
 }

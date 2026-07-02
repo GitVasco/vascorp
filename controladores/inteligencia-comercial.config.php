@@ -186,6 +186,59 @@ $ic_motor2_estacionalidad_umbrales = array(
     array("desde" => -999, "score" => 35),
 );
 
+// ─── Motor 4: Score de Fidelidad ─────────────────────────────────────────────
+
+/** Pesos (suman 100). Reclamos excluido: +5% regularidad, +5% última compra. */
+$ic_motor4_pesos = array(
+    "frecuencia"    => 25,
+    "antiguedad"    => 20,
+    "regularidad"   => 25,
+    "ultima_compra" => 20,
+    "tendencia"     => 10,
+);
+
+/** Ventana de análisis (12 meses — distinta al Motor 2). */
+$ic_motor4_meses_periodo = 12;
+
+$ic_motor4_score_neutro = 50;
+
+/** Compras/mes en los últimos 12 meses → score. */
+$ic_motor4_frecuencia_tramos = array(
+    array("hasta" => 0.25, "score" => 40),
+    array("hasta" => 0.5,  "score" => 55),
+    array("hasta" => 1,    "score" => 70),
+    array("hasta" => 2,    "score" => 85),
+    array("hasta" => 999,  "score" => 100),
+);
+
+/** Reutiliza tramos de antigüedad del Motor 1 (misma escala). */
+
+/** % de meses con al menos una compra en 12 meses → score. */
+$ic_motor4_regularidad_tramos = array(
+    array("hasta" => 25,  "score" => 40),
+    array("hasta" => 50,  "score" => 55),
+    array("hasta" => 75,  "score" => 70),
+    array("hasta" => 90,  "score" => 85),
+    array("hasta" => 999, "score" => 100),
+);
+
+/** Días desde la última compra → score (menos días = más fidelidad). */
+$ic_motor4_ultima_compra_tramos = array(
+    array("hasta" => 30,   "score" => 100),
+    array("hasta" => 60,   "score" => 85),
+    array("hasta" => 90,   "score" => 70),
+    array("hasta" => 180,  "score" => 55),
+    array("hasta" => 365,  "score" => 40),
+    array("hasta" => 99999, "score" => 20),
+);
+
+/** Ritmo en 12 meses: últimos 6m vs primeros 6m del periodo. */
+$ic_motor4_tendencia_fidelidad = array(
+    "mejorando"  => array("factor" => 1.1, "score" => 90),
+    "estable"    => array("factor" => 0.9, "score" => 70),
+    "empeorando" => array("score" => 40),
+);
+
 // ─── Clasificación general de scores (todos los motores) ─────────────────────
 
 $ic_clasificacion_scores = array(
@@ -893,6 +946,132 @@ function icPesosDecimalesMotor2()
     }
 
     return $decimales;
+}
+
+function icConfigMotor4()
+{
+    global $ic_motor4_pesos,
+        $ic_motor4_meses_periodo,
+        $ic_motor4_score_neutro,
+        $ic_motor4_frecuencia_tramos,
+        $ic_motor4_regularidad_tramos,
+        $ic_motor4_ultima_compra_tramos,
+        $ic_motor4_tendencia_fidelidad,
+        $ic_motor1_antiguedad_tramos;
+
+    return array(
+        "pesos"                 => $ic_motor4_pesos,
+        "pesos_efectivos"       => $ic_motor4_pesos,
+        "meses_periodo"         => icMotor4MesesPeriodo($ic_motor4_meses_periodo),
+        "score_neutro"          => (int) $ic_motor4_score_neutro,
+        "ventas_tipos"          => icVentasTiposValidos(),
+        "frecuencia_tramos"     => $ic_motor4_frecuencia_tramos,
+        "antiguedad_tramos"     => $ic_motor1_antiguedad_tramos,
+        "regularidad_tramos"    => $ic_motor4_regularidad_tramos,
+        "ultima_compra_tramos"  => $ic_motor4_ultima_compra_tramos,
+        "tendencia_fidelidad"   => $ic_motor4_tendencia_fidelidad,
+        "tendencia_compra"      => $ic_motor4_tendencia_fidelidad,
+    );
+}
+
+function icMotor4MesesPeriodo($meses = null)
+{
+    global $ic_motor4_meses_periodo;
+
+    if ($meses === null) {
+        $meses = $ic_motor4_meses_periodo;
+    }
+
+    $meses = (int) $meses;
+
+    return in_array($meses, array(6, 12), true) ? $meses : 12;
+}
+
+function icMotor4MesesMitadTendencia($meses = null)
+{
+    $meses = icMotor4MesesPeriodo($meses);
+
+    return max(1, (int) floor($meses / 2));
+}
+
+function icMotor4PeriodosFechas($meses = null)
+{
+    $meses = icMotor4MesesPeriodo($meses);
+    $mitad = icMotor4MesesMitadTendencia($meses);
+    $hoy = new DateTime("today");
+
+    $inicioPeriodo = clone $hoy;
+    $inicioPeriodo->modify("-{$meses} months");
+    $finPeriodo = clone $hoy;
+
+    $inicioTendenciaIni = clone $inicioPeriodo;
+    $finTendenciaIni = clone $hoy;
+    $finTendenciaIni->modify("-{$mitad} months");
+    $finTendenciaIni->modify("-1 day");
+    $inicioTendenciaFin = clone $hoy;
+    $inicioTendenciaFin->modify("-{$mitad} months");
+    $finTendenciaFin = clone $hoy;
+
+    return array(
+        "periodo"       => array("desde" => $inicioPeriodo, "hasta" => $finPeriodo),
+        "tendencia_ini" => array("desde" => $inicioTendenciaIni, "hasta" => $finTendenciaIni),
+        "tendencia_fin" => array("desde" => $inicioTendenciaFin, "hasta" => $finTendenciaFin),
+    );
+}
+
+function icPesosDecimalesMotor4()
+{
+    $decimales = array();
+
+    foreach (icConfigMotor4()["pesos"] as $clave => $porcentaje) {
+        if ($porcentaje > 0) {
+            $decimales[$clave] = $porcentaje / 100;
+        }
+    }
+
+    return $decimales;
+}
+
+function icTablaLogicaTendenciaFidelidad($cfg, $clasificacion)
+{
+    $t = $cfg["tendencia_fidelidad"];
+    $mejPct = round($t["mejorando"]["factor"] * 100);
+    $estPct = round($t["estable"]["factor"] * 100);
+    $neutro = (int) $cfg["score_neutro"];
+    $meses = (int) $cfg["meses_periodo"];
+    $mitad = icMotor4MesesMitadTendencia($meses);
+
+    return array(
+        "titulo"   => "Ritmo de compra en el periodo de fidelidad",
+        "intro"    => "En {$meses} meses: compara los últimos {$mitad} meses con los {$mitad} meses previos del mismo periodo.",
+        "columnas" => array("Tendencia", "Cuándo aplica", "Score"),
+        "filas"    => array(
+            array(
+                "situacion" => "Mejorando",
+                "condicion" => "Últimos {$mitad}m ≥ {$mejPct}% de los primeros {$mitad}m",
+                "score"     => (int) $t["mejorando"]["score"],
+                "aplica"    => $clasificacion === "mejorando",
+            ),
+            array(
+                "situacion" => "Estable",
+                "condicion" => "Últimos {$mitad}m entre {$estPct}% y {$mejPct}% de los primeros {$mitad}m",
+                "score"     => (int) $t["estable"]["score"],
+                "aplica"    => $clasificacion === "estable",
+            ),
+            array(
+                "situacion" => "Empeorando",
+                "condicion" => "Últimos {$mitad}m < {$estPct}% de los primeros {$mitad}m",
+                "score"     => (int) $t["empeorando"]["score"],
+                "aplica"    => $clasificacion === "empeorando",
+            ),
+            array(
+                "situacion" => "Sin datos",
+                "condicion" => "Sin compras en el periodo de {$meses} meses",
+                "score"     => $neutro,
+                "aplica"    => $clasificacion === "sin_datos",
+            ),
+        ),
+    );
 }
 
 function icScorePorUmbralesMinimos($valor, $umbrales)

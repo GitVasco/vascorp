@@ -28,4 +28,15 @@ class ControladorInteligenciaComercial
 
         return ModeloInteligenciaComercial::mdlCalcularMotorComercial($codigoCliente);
     }
+
+    public static function ctrCalcularMotorFidelidad($codigoCliente)
+    {
+        $codigoCliente = trim((string) $codigoCliente);
+
+        if ($codigoCliente === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularMotorFidelidad($codigoCliente);
+    }
 }
