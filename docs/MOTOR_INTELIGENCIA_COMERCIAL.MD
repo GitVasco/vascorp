@@ -67,49 +67,7 @@ No cambies estos pesos.
 
 ---
 
-# Motor 3: Score de Rentabilidad
-
-Objetivo:
-
-Determinar cuánto beneficio económico genera realmente cada cliente.
-
-Score de 0 a 100.
-
-Pesos:
-
-- Margen generado = **35%**
-- Utilidad neta = **25%**
-- Volumen de ventas = **15%**
-- Costos logísticos = **10%**
-- Costos comerciales = **10%**
-- Costos de cobranza = **5%**
-
-No modificar los pesos.
-
----
-
-# Motor 4: Score de Fidelidad
-
-Objetivo:
-
-Estimar la probabilidad de que el cliente continúe comprando.
-
-Score de 0 a 100.
-
-Pesos:
-
-- Frecuencia = **25%**
-- Antigüedad = **20%**
-- Regularidad = **20%**
-- Tiempo desde la última compra = **15%**
-- Tendencia = **10%**
-- Reclamos = **10%**
-
-No modificar los pesos.
-
----
-
-# Motor 5: Recomendación de Línea de Crédito
+# Motor 3: Recomendación de Línea de Crédito
 
 Este motor debe recomendar automáticamente una línea de crédito utilizando los resultados de los motores anteriores.
 
@@ -134,6 +92,48 @@ Debe recomendar una de las siguientes acciones:
 - Solicitar aprobación manual.
 
 Cada recomendación debe indicar claramente por qué fue tomada.
+
+---
+
+# Motor 4: Score de Fidelidad
+
+Objetivo:
+
+Estimar la probabilidad de que el cliente continúe comprando.
+
+Score de 0 a 100.
+
+Pesos:
+
+- Frecuencia = **25%**
+- Antigüedad = **20%**
+- Regularidad = **20%**
+- Tiempo desde la última compra = **15%**
+- Tendencia = **10%**
+- Reclamos = **10%**
+
+No modificar los pesos.
+
+---
+
+# Motor 5: Score de Rentabilidad
+
+Objetivo:
+
+Determinar cuánto beneficio económico genera realmente cada cliente.
+
+Score de 0 a 100.
+
+Pesos:
+
+- Margen generado = **35%**
+- Utilidad neta = **25%**
+- Volumen de ventas = **15%**
+- Costos logísticos = **10%**
+- Costos comerciales = **10%**
+- Costos de cobranza = **5%**
+
+No modificar los pesos.
 
 ---
 

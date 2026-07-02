@@ -217,7 +217,7 @@ class ModeloInteligenciaComercial
     /**
      * Convierte métricas en sub-scores (0-100) y score ponderado final.
      */
-    public static function mdlCalcularMotorRiesgoCredito($codigoCliente)
+    public static function mdlCalcularMotorRiesgoCredito($codigoCliente, $lineaRecomendadaMotor3 = null)
     {
         $cfg = icConfigMotor1();
         $pesos = icPesosDecimalesMotor1();
@@ -274,16 +274,28 @@ class ModeloInteligenciaComercial
         $scoreAtraso = round(max(0, min(100, 100 - ($atrasoPromedio * $multAtraso))), 2);
         $detalleAtraso = "Promedio de " . round($atrasoPromedio, 1) . " días penalizables (cerrados pagados + pendientes vencidos hoy).";
 
-        // Utilización de línea
-        if ($totalCredito <= 0) {
+        // Utilización: deuda vs línea recomendada (Motor 3) o línea operativa como respaldo
+        $lineaCredito = self::mdlLineaCreditoOperativa($codigoCliente);
+        $lineaOperativa = (float) $lineaCredito["linea_operativa"];
+        $picoHistorico = (float) $lineaCredito["pico_historico"];
+        $lineaRecomendada = $lineaRecomendadaMotor3 !== null ? (float) $lineaRecomendadaMotor3 : 0.0;
+        $usaLineaRecomendada = $lineaRecomendada > 0;
+        $lineaReferencia = $usaLineaRecomendada
+            ? $lineaRecomendada
+            : max($lineaOperativa, $totalDeuda);
+        $etiquetaLinea = $usaLineaRecomendada ? "línea recomendada (Motor 3)" : "línea operativa";
+
+        if ($lineaReferencia <= 0) {
             $utilizacion = 0;
-            $scoreUtilizacion = 100;
-            $detalleUtilizacion = "Sin crédito histórico; utilización 0%.";
+            $scoreUtilizacion = $totalDeuda > 0 ? $scoreNeutro : 100;
+            $detalleUtilizacion = $totalDeuda > 0
+                ? "Deuda S/ " . number_format($totalDeuda, 2) . " sin línea de referencia definida."
+                : "Sin deuda ni línea de referencia; utilización 0%.";
         } else {
-            $utilizacion = ($totalDeuda / $totalCredito) * 100;
+            $utilizacion = ($totalDeuda / $lineaReferencia) * 100;
             $scoreUtilizacion = icScorePorTramos($utilizacion, $cfg["utilizacion_tramos"]);
             $detalleUtilizacion = "Deuda S/ " . number_format($totalDeuda, 2)
-                . " sobre crédito histórico S/ " . number_format($totalCredito, 2)
+                . " sobre " . $etiquetaLinea . " S/ " . number_format($lineaReferencia, 2)
                 . " (" . round($utilizacion, 1) . "%).";
         }
 
@@ -376,16 +388,18 @@ class ModeloInteligenciaComercial
                 "peso" => $pesoUtilizacion,
                 "score" => $scoreUtilizacion,
                 "detalle" => $detalleUtilizacion,
-                "formula" => "Utilización = deuda pendiente ÷ crédito histórico × 100",
-                "regla" => $reglaUtilizacion . ". Proxy hasta tener cupo oficial.",
+                "formula" => "Utilización = deuda pendiente ÷ línea de referencia × 100",
+                "regla" => $reglaUtilizacion . ". Prioridad: línea recomendada del Motor 3; si no hay, línea operativa (pico histórico).",
                 "valores" => array(
                     array("etiqueta" => "Deuda pendiente", "valor" => "S/ " . number_format($totalDeuda, 2)),
-                    array("etiqueta" => "Crédito histórico", "valor" => "S/ " . number_format($totalCredito, 2)),
+                    array("etiqueta" => "Línea de referencia", "valor" => "S/ " . number_format($lineaReferencia, 2)),
+                    array("etiqueta" => "Tipo de línea", "valor" => $usaLineaRecomendada ? "Recomendada (Motor 3)" : "Operativa (pico histórico)"),
+                    array("etiqueta" => "Pico histórico", "valor" => "S/ " . number_format($picoHistorico, 2)),
                     array("etiqueta" => "Utilización", "valor" => round($utilizacion, 1) . "%"),
                 ),
                 "tabla_logica" => icTablaLogicaPorTramos(
                     "Tramos de utilización",
-                    "Utilización = deuda pendiente ÷ crédito histórico. Proxy hasta tener cupo oficial (Motor 5).",
+                    "Utilización = deuda pendiente ÷ " . ($usaLineaRecomendada ? "línea recomendada del Motor 3" : "línea operativa (máxima deuda tolerada)") . ".",
                     "%",
                     round($utilizacion, 1),
                     $cfg["utilizacion_tramos"],
@@ -503,6 +517,9 @@ class ModeloInteligenciaComercial
                 "atraso_promedio" => round($atrasoPromedio, 2),
                 "utilizacion_pct" => round($utilizacion, 2),
                 "total_deuda" => $totalDeuda,
+                "linea_operativa" => round($lineaOperativa, 2),
+                "linea_recomendada_m3" => $usaLineaRecomendada ? round($lineaRecomendada, 2) : null,
+                "linea_referencia_utilizacion" => round($lineaReferencia, 2),
                 "total_credito" => $totalCredito,
                 "meses_antiguedad" => $mesesAntiguedad,
                 "incidencias" => $incidencias,
@@ -522,6 +539,534 @@ class ModeloInteligenciaComercial
         }
 
         return implode(", ", $items);
+    }
+
+    /**
+     * Línea de crédito operativa: pico de deuda simultánea reconstruido desde cuenta corriente.
+     * No existe cupo maestro en clientesjf; este es el máximo crédito que el negocio toleró en la práctica.
+     */
+    public static function mdlLineaCreditoOperativa($codigoCliente)
+    {
+        $stmt = Conexion::conectar()->prepare("
+            SELECT tip_mov, monto
+            FROM cuenta_ctejf
+            WHERE cliente = :cliente
+            ORDER BY COALESCE(fecha_creacion, STR_TO_DATE(fecha, '%Y-%m-%d'), fecha) ASC, id ASC
+        ");
+
+        $stmt->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmt->execute();
+        $movimientos = $stmt->fetchAll();
+
+        $deuda = 0.0;
+        $pico = 0.0;
+
+        foreach ($movimientos as $mov) {
+            $monto = abs((float) $mov["monto"]);
+
+            if (trim((string) $mov["tip_mov"]) === "-") {
+                $deuda -= $monto;
+            } else {
+                $deuda += $monto;
+            }
+
+            if ($deuda < 0) {
+                $deuda = 0;
+            }
+
+            if ($deuda > $pico) {
+                $pico = $deuda;
+            }
+        }
+
+        $stmtDeuda = Conexion::conectar()->prepare("
+            SELECT IFNULL(SUM(saldo), 0) AS total_deuda
+            FROM cuenta_ctejf
+            WHERE cliente = :cliente
+              AND tip_mov = '+'
+              AND UPPER(estado) = 'PENDIENTE'
+              AND IFNULL(saldo, 0) > 0
+        ");
+        $stmtDeuda->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmtDeuda->execute();
+        $deudaActual = (float) $stmtDeuda->fetchColumn();
+
+        $lineaOperativa = max($pico, $deudaActual);
+
+        return array(
+            "pico_historico"   => round($pico, 2),
+            "deuda_actual"     => round($deudaActual, 2),
+            "linea_operativa"  => round($lineaOperativa, 2),
+            "movimientos"      => count($movimientos),
+        );
+    }
+
+    /**
+     * Métricas crudas del cliente para el Motor 3 (línea de crédito).
+     */
+    public static function mdlMetricasMotorLineaCredito($codigoCliente)
+    {
+        $cfg = icConfigMotor3();
+        $meses = (int) $cfg["meses_periodo"];
+        $tiposSql = icVentasTiposValidosSql();
+        $vendExclSql = self::mdlSqlIn(icConfigMotor2()["ventas_excluir_vendedores"]);
+        $linea = self::mdlLineaCreditoOperativa($codigoCliente);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                cli.codigo,
+                cli.nombre,
+                IFNULL(
+                    TIMESTAMPDIFF(
+                        MONTH,
+                        COALESCE(vta.fecha_primera_venta, cli.fecreg),
+                        NOW()
+                    ),
+                    0
+                ) AS meses_antiguedad,
+                IFNULL(vta.monto_reciente, 0) AS monto_reciente,
+                IFNULL(vta.monto_anterior, 0) AS monto_anterior,
+                IFNULL(vta.compra_maxima, 0) AS compra_maxima,
+                vta.fecha_primera_venta
+            FROM clientesjf cli
+            LEFT JOIN (
+                SELECT
+                    v.cliente,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS monto_reciente,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL " . ($meses * 2) . " MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_anterior,
+                    MAX(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS compra_maxima,
+                    MIN(v.fecha) AS fecha_primera_venta
+                FROM ventajf v
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+                  AND v.cliente = :cliente_vta
+                GROUP BY v.cliente
+            ) vta ON vta.cliente = cli.codigo
+            WHERE cli.codigo = :cliente
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmt->bindParam(":cliente_vta", $codigoCliente, PDO::PARAM_STR);
+        $stmt->execute();
+        $metricas = $stmt->fetch();
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $metricas["deuda_actual"] = $linea["deuda_actual"];
+        $metricas["pico_historico"] = $linea["pico_historico"];
+        $metricas["linea_operativa"] = $linea["linea_operativa"];
+        $metricas["movimientos_cta"] = $linea["movimientos"];
+
+        return $metricas;
+    }
+
+    /**
+     * Motor 3: recomendación de línea de crédito (reutiliza scores de Motores 1 y 2).
+     */
+    public static function mdlCalcularMotorLineaCredito($codigoCliente, $resultadoMotor1 = null, $resultadoMotor2 = null)
+    {
+        $cfg = icConfigMotor3();
+        $pesos = icPesosDecimalesMotor3();
+        $pesosEfectivos = $cfg["pesos_efectivos"];
+        $meses = (int) $cfg["meses_periodo"];
+        $scoreNeutro = (int) $cfg["score_neutro"];
+        $equifaxActivo = $cfg["equifax_activo"];
+
+        if ($resultadoMotor1 === null) {
+            $resultadoMotor1 = self::mdlCalcularMotorRiesgoCredito($codigoCliente);
+        }
+
+        if ($resultadoMotor2 === null) {
+            $resultadoMotor2 = self::mdlCalcularMotorComercial($codigoCliente);
+        }
+
+        $metricas = self::mdlMetricasMotorLineaCredito($codigoCliente);
+
+        if (!$metricas || !$resultadoMotor1) {
+            return null;
+        }
+
+        $scoreRiesgo = (float) $resultadoMotor1["score"];
+        $scoreComercial = $resultadoMotor2 ? (float) $resultadoMotor2["score"] : $scoreNeutro;
+        $deudaActual = (float) $metricas["deuda_actual"];
+        $lineaOperativa = (float) $metricas["linea_operativa"];
+        $picoHistorico = (float) $metricas["pico_historico"];
+        $montoReciente = (float) $metricas["monto_reciente"];
+        $montoAnterior = (float) $metricas["monto_anterior"];
+        $compraMaxima = (float) $metricas["compra_maxima"];
+        $mesesAntiguedad = (int) $metricas["meses_antiguedad"];
+        $promedioMensual = $montoReciente / max(1, $meses);
+        $pctCrecimiento = icPctCrecimiento($montoReciente, $montoAnterior);
+        $lineaReferencia = max($lineaOperativa, $deudaActual, 1.0);
+        $periodos = icMotor2PeriodosFechas($meses);
+        $rangoReciente = icMotor2FormatearRangoFechas($periodos["reciente"]["desde"], $periodos["reciente"]["hasta"]);
+        $rangoAnterior = icMotor2FormatearRangoFechas($periodos["anterior"]["desde"], $periodos["anterior"]["hasta"]);
+        $periodosBoxMotor3 = icMotor2PeriodosBox(array(
+            array("etiqueta" => "Periodo reciente ({$meses} meses)", "rango" => $rangoReciente),
+            array("etiqueta" => "Periodo anterior ({$meses} meses)", "rango" => $rangoAnterior),
+        ));
+
+        if ($deudaActual <= 0 && $lineaOperativa <= 0) {
+            $utilizacion = 0;
+            $scoreUtilizacion = 100;
+            $detalleUtilizacion = "Sin deuda ni línea operativa previa.";
+        } else {
+            $utilizacion = ($deudaActual / $lineaReferencia) * 100;
+            $scoreUtilizacion = icScorePorTramos($utilizacion, $cfg["utilizacion_tramos"]);
+            $detalleUtilizacion = "Deuda S/ " . number_format($deudaActual, 2)
+                . " sobre línea operativa S/ " . number_format($lineaReferencia, 2)
+                . " (" . round($utilizacion, 1) . "%).";
+        }
+
+        if ($promedioMensual <= 0) {
+            $scorePromedio = $scoreNeutro;
+            $detallePromedio = "Sin compras en los últimos {$meses} meses.";
+        } else {
+            $scorePromedio = icScorePorTramos($promedioMensual, $cfg["promedio_tramos"]);
+            $detallePromedio = "Promedio mensual S/ " . number_format($promedioMensual, 2)
+                . " en los últimos {$meses} meses.";
+        }
+
+        if ($compraMaxima <= 0) {
+            $scoreCompraMax = $scoreNeutro;
+            $detalleCompraMax = "Sin compras registradas en el periodo.";
+        } else {
+            $scoreCompraMax = icScorePorTramos($compraMaxima, $cfg["compra_max_tramos"]);
+            $detalleCompraMax = "Mayor compra S/ " . number_format($compraMaxima, 2) . " en {$meses} meses.";
+        }
+
+        if ($montoReciente <= 0 && $montoAnterior <= 0) {
+            $scoreCrecimiento = $scoreNeutro;
+            $detalleCrecimiento = "Sin compras en los periodos evaluados.";
+            $clasificacionCrecimiento = "sin_datos";
+        } elseif ($montoAnterior <= 0 && $montoReciente > 0) {
+            $scoreCrecimiento = 90;
+            $detalleCrecimiento = "Compras nuevas en el periodo reciente (sin base en el periodo anterior).";
+            $clasificacionCrecimiento = "compras_nuevas";
+        } else {
+            $scoreCrecimiento = icScorePorUmbralesMinimos($pctCrecimiento, $cfg["crecimiento_umbrales"]);
+            $detalleCrecimiento = "Crecimiento " . round($pctCrecimiento, 1) . "% entre periodos de {$meses} meses.";
+            $clasificacionCrecimiento = "calculado";
+        }
+
+        $tablaCrecimiento = $clasificacionCrecimiento === "compras_nuevas"
+            ? array(
+                "titulo"   => "Crecimiento de compras",
+                "intro"    => "No había compras en el periodo anterior; se asigna score 90 por reactivación o cliente nuevo en la ventana.",
+                "columnas" => array("Situación", "Condición", "Score"),
+                "filas"    => array(
+                    array(
+                        "situacion" => "Compras nuevas",
+                        "condicion" => "Monto reciente > 0 y periodo anterior = 0",
+                        "score"     => 90,
+                        "aplica"    => true,
+                        "es_resultado" => true,
+                    ),
+                ),
+            )
+            : icTablaLogicaPorUmbrales(
+                "Crecimiento de compras",
+                "Comparación de montos entre periodos consecutivos de {$meses} meses.",
+                array("Crecimiento", "Condición", "Score"),
+                $cfg["crecimiento_umbrales"],
+                $pctCrecimiento,
+                $scoreCrecimiento
+            );
+
+        $scoreAntiguedad = icScorePorTramos($mesesAntiguedad, $cfg["antiguedad_tramos"]);
+        $detalleAntiguedad = $mesesAntiguedad . " meses como cliente activo.";
+
+        $scoreEquifax = $scoreNeutro;
+        $detalleEquifax = $equifaxActivo
+            ? "Sin registro Equifax; score neutro ({$scoreNeutro})."
+            : "Factor Equifax desactivado en configuración.";
+
+        $detalleRiesgo = "Score del Motor 1: " . round($scoreRiesgo, 1) . " (" . $resultadoMotor1["clasificacion"]["etiqueta"] . ").";
+        $detalleComercial = $resultadoMotor2
+            ? "Score del Motor 2: " . round($scoreComercial, 1) . " (" . $resultadoMotor2["clasificacion"]["etiqueta"] . ")."
+            : "Sin datos comerciales; score neutro ({$scoreNeutro}).";
+
+        $factores = array(
+            "score_riesgo" => array(
+                "clave" => "score_riesgo",
+                "nombre" => "Score de Riesgo",
+                "icono" => "fa-shield",
+                "peso" => (int) $pesosEfectivos["score_riesgo"],
+                "score" => round($scoreRiesgo, 1),
+                "detalle" => $detalleRiesgo,
+                "formula" => "Score heredado = total ponderado del Motor 1",
+                "regla" => "Capacidad de pago: historial de pagos, mora, tendencia e incidencias del Motor 1. Peso 35% en este motor.",
+                "valores" => array(
+                    array("etiqueta" => "Score riesgo", "valor" => round($scoreRiesgo, 1)),
+                    array("etiqueta" => "Clasificación", "valor" => $resultadoMotor1["clasificacion"]["etiqueta"]),
+                    array("etiqueta" => "Deuda actual", "valor" => "S/ " . number_format($deudaActual, 2)),
+                ),
+                "tabla_logica" => icTablaLogicaScoreReferencia(
+                    "Motor 1 — Riesgo crediticio",
+                    $scoreRiesgo,
+                    $resultadoMotor1["factores"]
+                ),
+            ),
+            "promedio_compras" => array(
+                "clave" => "promedio_compras",
+                "nombre" => "Promedio de compras",
+                "icono" => "fa-shopping-cart",
+                "peso" => (int) $pesosEfectivos["promedio_compras"],
+                "score" => $scorePromedio,
+                "detalle" => $detallePromedio,
+                "formula" => "Promedio = monto últimos {$meses}m ÷ {$meses}",
+                "regla" => "A mayor promedio mensual, mayor capacidad para sostener una línea de crédito.",
+                "valores" => array(
+                    array("etiqueta" => "Monto periodo", "valor" => "S/ " . number_format($montoReciente, 2)),
+                    array("etiqueta" => "Promedio mensual", "valor" => "S/ " . number_format($promedioMensual, 2)),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Promedio mensual de compras",
+                    "Se ubica el promedio mensual en un tramo; ese tramo define el score del factor.",
+                    " S/",
+                    round($promedioMensual, 2),
+                    $cfg["promedio_tramos"],
+                    $scorePromedio
+                ),
+                "periodos_box" => $periodosBoxMotor3,
+            ),
+            "compra_maxima" => array(
+                "clave" => "compra_maxima",
+                "nombre" => "Compra máxima",
+                "icono" => "fa-arrow-up",
+                "peso" => (int) $pesosEfectivos["compra_maxima"],
+                "score" => $scoreCompraMax,
+                "detalle" => $detalleCompraMax,
+                "formula" => "Mayor documento de venta en los últimos {$meses} meses",
+                "regla" => "Tope observado de operación puntual.",
+                "valores" => array(
+                    array("etiqueta" => "Compra máxima", "valor" => "S/ " . number_format($compraMaxima, 2)),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Compra máxima del periodo",
+                    "El mayor monto de una sola compra determina el tramo y el score.",
+                    " S/",
+                    round($compraMaxima, 2),
+                    $cfg["compra_max_tramos"],
+                    $scoreCompraMax
+                ),
+                "periodos_box" => $periodosBoxMotor3,
+            ),
+            "crecimiento" => array(
+                "clave" => "crecimiento",
+                "nombre" => "Crecimiento",
+                "icono" => "fa-line-chart",
+                "peso" => (int) $pesosEfectivos["crecimiento"],
+                "score" => $scoreCrecimiento,
+                "detalle" => $detalleCrecimiento,
+                "formula" => "Crecimiento % = (reciente − anterior) ÷ anterior × 100",
+                "regla" => "Mismo criterio del Motor 2: últimos {$meses}m vs {$meses}m previos.",
+                "valores" => array(
+                    array("etiqueta" => "Periodo reciente", "valor" => "S/ " . number_format($montoReciente, 2)),
+                    array("etiqueta" => "Periodo anterior", "valor" => "S/ " . number_format($montoAnterior, 2)),
+                    array("etiqueta" => "Variación", "valor" => round($pctCrecimiento, 1) . "%"),
+                ),
+                "tabla_logica" => $tablaCrecimiento,
+                "periodos_box" => $periodosBoxMotor3,
+            ),
+            "utilizacion_linea" => array(
+                "clave" => "utilizacion_linea",
+                "nombre" => "Utilización de línea",
+                "icono" => "fa-pie-chart",
+                "peso" => (int) $pesosEfectivos["utilizacion_linea"],
+                "score" => $scoreUtilizacion,
+                "detalle" => $detalleUtilizacion,
+                "formula" => "Utilización = deuda actual ÷ línea operativa × 100",
+                "regla" => "Mide cuánto del crédito ya tolerado está en uso. Distinto al Motor 1, que usa la línea recomendada cuando existe.",
+                "valores" => array(
+                    array("etiqueta" => "Deuda actual", "valor" => "S/ " . number_format($deudaActual, 2)),
+                    array("etiqueta" => "Línea operativa", "valor" => "S/ " . number_format($lineaOperativa, 2)),
+                    array("etiqueta" => "Pico histórico", "valor" => "S/ " . number_format($picoHistorico, 2)),
+                    array("etiqueta" => "Utilización", "valor" => round($utilizacion, 1) . "%"),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Utilización de la línea operativa",
+                    "Porcentaje de la línea real observada (pico en cuenta corriente) que está en uso hoy.",
+                    "%",
+                    round($utilizacion, 1),
+                    $cfg["utilizacion_tramos"],
+                    $scoreUtilizacion
+                ),
+            ),
+            "antiguedad" => array(
+                "clave" => "antiguedad",
+                "nombre" => "Antigüedad",
+                "icono" => "fa-calendar",
+                "peso" => (int) $pesosEfectivos["antiguedad"],
+                "score" => $scoreAntiguedad,
+                "detalle" => $detalleAntiguedad,
+                "formula" => "Meses desde la primera venta válida hasta hoy",
+                "regla" => "Clientes con más historial soportan líneas más amplias.",
+                "valores" => array(
+                    array("etiqueta" => "Meses", "valor" => (string) $mesesAntiguedad),
+                ),
+                "tabla_logica" => icTablaLogicaPorTramos(
+                    "Antigüedad del cliente",
+                    "Meses desde la primera compra; el tramo alcanzado define el score.",
+                    " meses",
+                    $mesesAntiguedad,
+                    $cfg["antiguedad_tramos"],
+                    $scoreAntiguedad
+                ),
+            ),
+            "score_comercial" => array(
+                "clave" => "score_comercial",
+                "nombre" => "Score Comercial",
+                "icono" => "fa-line-chart",
+                "peso" => (int) $pesosEfectivos["score_comercial"],
+                "score" => round($scoreComercial, 1),
+                "detalle" => $detalleComercial,
+                "formula" => "Score heredado = total ponderado del Motor 2",
+                "regla" => "Potencial de crecimiento comercial; se hereda el score final del Motor 2.",
+                "valores" => array(
+                    array("etiqueta" => "Score comercial", "valor" => round($scoreComercial, 1)),
+                    array("etiqueta" => "Clasificación", "valor" => $resultadoMotor2 ? $resultadoMotor2["clasificacion"]["etiqueta"] : "Sin datos"),
+                ),
+                "tabla_logica" => $resultadoMotor2
+                    ? icTablaLogicaScoreReferencia(
+                        "Motor 2 — Comercial",
+                        $scoreComercial,
+                        $resultadoMotor2["factores"]
+                    )
+                    : array(
+                        "titulo"   => "Motor 2 — Comercial",
+                        "intro"    => "Sin datos comerciales; se aplica score neutro.",
+                        "columnas" => array("Situación", "Condición", "Score"),
+                        "filas"    => array(
+                            array(
+                                "situacion"    => "→ Sin datos",
+                                "condicion"    => "Score neutro " . $scoreNeutro,
+                                "score"        => $scoreNeutro,
+                                "aplica"       => true,
+                                "es_resultado" => true,
+                            ),
+                        ),
+                    ),
+            ),
+        );
+
+        if ($equifaxActivo) {
+            $factores["equifax"] = array(
+                "clave" => "equifax",
+                "nombre" => "Equifax",
+                "icono" => "fa-university",
+                "peso" => (int) $pesosEfectivos["equifax"],
+                "score" => $scoreEquifax,
+                "detalle" => $detalleEquifax,
+                "formula" => "Score externo del buró (cuando exista integración)",
+                "regla" => "Complementa la evaluación interna.",
+                "valores" => array(),
+                "tabla_logica" => icTablaLogicaEquifax($scoreNeutro),
+            );
+        }
+
+        foreach ($factores as $clave => &$factor) {
+            $factor["score"] = round($factor["score"], 1);
+            $factor["aportacion"] = round($factor["score"] * $pesos[$clave], 2);
+        }
+        unset($factor);
+
+        $scoreFinal = 0;
+        foreach ($factores as $clave => $factor) {
+            $scoreFinal += $factor["score"] * $pesos[$clave];
+        }
+        $scoreFinal = round($scoreFinal, 2);
+
+        $calculoLinea = icMotor3CalcularLineaRecomendada(
+            $cfg,
+            $promedioMensual,
+            $compraMaxima,
+            $scoreFinal,
+            $scoreRiesgo
+        );
+        $lineaRecomendada = (float) $calculoLinea["monto"];
+
+        $accion = icMotor3DeterminarAccion(
+            $cfg,
+            $scoreFinal,
+            $scoreRiesgo,
+            $utilizacion,
+            $deudaActual,
+            $lineaOperativa,
+            $lineaRecomendada
+        );
+
+        $capacidadPago = icMotor3ConstruirCapacidadPago(
+            $resultadoMotor1,
+            $pesosEfectivos,
+            $scoreUtilizacion,
+            $utilizacion,
+            $equifaxActivo
+        );
+
+        $capacidadCompra = icMotor3ConstruirCapacidadCompra(
+            $resultadoMotor2,
+            $pesosEfectivos,
+            $promedioMensual,
+            $compraMaxima,
+            $pctCrecimiento,
+            $meses,
+            $montoReciente
+        );
+
+        $explicacionLinea = icMotor3ConstruirExplicacionLinea(
+            $cfg,
+            $calculoLinea,
+            $scoreFinal,
+            $scoreRiesgo,
+            $lineaOperativa,
+            $deudaActual,
+            $accion,
+            $promedioMensual,
+            $compraMaxima,
+            $meses,
+            $capacidadPago,
+            $capacidadCompra
+        );
+
+        return array(
+            "cliente" => array(
+                "codigo" => $metricas["codigo"],
+                "nombre" => $metricas["nombre"],
+            ),
+            "motor" => 3,
+            "nombre_motor" => "Recomendación de Línea de Crédito",
+            "score" => $scoreFinal,
+            "clasificacion" => icClasificarScore($scoreFinal),
+            "factores" => $factores,
+            "accion" => $accion,
+            "capacidad_pago" => $capacidadPago,
+            "capacidad_compra" => $capacidadCompra,
+            "explicacion_linea" => $explicacionLinea,
+            "linea" => array(
+                "deuda_actual"      => round($deudaActual, 2),
+                "pico_historico"    => round($picoHistorico, 2),
+                "linea_operativa"   => round($lineaOperativa, 2),
+                "linea_recomendada" => $lineaRecomendada,
+                "utilizacion_pct"   => round($utilizacion, 2),
+                "movimientos_cta"   => (int) $metricas["movimientos_cta"],
+                "calculo"           => $calculoLinea,
+            ),
+            "metricas" => array(
+                "promedio_mensual" => round($promedioMensual, 2),
+                "compra_maxima"    => round($compraMaxima, 2),
+                "pct_crecimiento"  => round($pctCrecimiento, 2),
+                "score_riesgo"     => round($scoreRiesgo, 2),
+                "score_comercial"  => round($scoreComercial, 2),
+            ),
+        );
     }
 
     /**

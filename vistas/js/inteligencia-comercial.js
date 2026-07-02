@@ -37,6 +37,7 @@ $(document).ready(function () {
     });
 
     icInitModales(factoresPorMotor);
+    icInitModalLineaCredito();
 
 });
 
@@ -245,4 +246,174 @@ function icInitModales(factoresPorMotor) {
             icAbrirModalFactor(mapa[clave]);
         }
     });
+}
+
+function icInitModalLineaCredito() {
+    var $json = $("#icMotor3LineaExplicacion");
+    if (!$json.length) return;
+
+    $("#btnDetalleLineaCredito").on("click", function () {
+        try {
+            var data = JSON.parse($json.text());
+            icAbrirModalLinea(data);
+        } catch (e) {
+            console.error("icMotor3LineaExplicacion", e);
+        }
+    });
+}
+
+function icAbrirModalLinea(data) {
+    if (!data) return;
+
+    var accion = data.accion || {};
+    var colorMap = {
+        success: "alert-success",
+        primary: "alert-info",
+        warning: "alert-warning",
+        danger: "alert-danger",
+        info: "alert-info"
+    };
+    var alertClass = colorMap[accion.color] || "alert-info";
+
+    $("#icModalLineaTitulo").text(data.titulo || "¿Por qué esta línea de crédito?");
+    $("#icModalLineaAccion")
+        .attr("class", "alert " + alertClass);
+    $("#icModalLineaAccionEtq")
+        .html("<i class=\"fa " + (accion.icono || "fa-info-circle") + "\"></i> " + (accion.etiqueta || "Recomendación"));
+    $("#icModalLineaAccionTxt").text(accion.explicacion || data.resumen || "");
+
+    $("#icModalLineaBaseDef").text(data.definicion_base_economica || "");
+    $("#icModalLineaFormula").text(data.formula || "—");
+    $("#icModalLineaCalculo").text(data.calculo || "—");
+
+    var pasosHtml = "";
+    $.each(data.pasos || [], function (i, paso) {
+        pasosHtml += "<tr>";
+        pasosHtml += "<td>" + paso.etiqueta.replace(/^\d+\.\s*/, "") + "</td>";
+        pasosHtml += "<td><strong>" + paso.valor + "</strong></td>";
+        pasosHtml += "<td>" + paso.detalle + "</td>";
+        pasosHtml += "</tr>";
+    });
+    $("#icModalLineaPasos").html(pasosHtml);
+
+    var compHtml = "";
+    $.each(data.comparacion || [], function (i, item) {
+        compHtml += '<div class="col-sm-6 col-xs-6">';
+        compHtml += '<div class="ic-modal-dato">';
+        compHtml += '<span class="ic-modal-dato-val">' + item.valor + "</span>";
+        compHtml += '<span class="ic-modal-dato-lbl">' + item.etiqueta + "</span>";
+        compHtml += "</div></div>";
+    });
+    $("#icModalLineaComparacion").html(compHtml);
+
+    icRenderCapacidadDual(data.capacidad_pago, data.capacidad_compra, data.balance);
+
+    icRenderTablaLogicaEn(
+        data.tabla_accion,
+        "#icModalLineaAccionWrap",
+        null,
+        "#icModalLineaAccionIntro",
+        "#icModalLineaAccionHead",
+        "#icModalLineaAccionBody"
+    );
+
+    if (data.tabla_accion && data.tabla_accion.filas && data.tabla_accion.filas.length) {
+        $("#icModalLineaAccionWrap").show();
+    }
+
+    $("#modalDetalleLinea").modal("show");
+}
+
+function icRenderTablaLogicaEn(tabla, wrapSel, tituloSel, introSel, headSel, bodySel) {
+    var $wrap = $(wrapSel);
+
+    if (!tabla || !tabla.filas || !tabla.filas.length) {
+        $wrap.hide();
+        return;
+    }
+
+    if (tituloSel) {
+        $(tituloSel).text(tabla.titulo || "Reglas");
+    }
+    if (tabla.intro) {
+        $(introSel).text(tabla.intro).show();
+    } else {
+        $(introSel).hide();
+    }
+
+    var columnas = tabla.columnas || ["Situación", "Condición", "Score"];
+    var headHtml = "";
+    $.each(columnas, function (i, col) {
+        headHtml += "<th>" + col + "</th>";
+    });
+    $(headSel).html(headHtml);
+
+    var bodyHtml = "";
+    $.each(tabla.filas, function (i, fila) {
+        var clases = [];
+        if (fila.aplica) clases.push("ic-logica-aplica");
+        if (fila.es_resultado) clases.push("ic-logica-resultado");
+
+        var badge = fila.aplica
+            ? '<span class="ic-modal-logica-badge">' + (fila.es_resultado ? "Su caso" : "Aplica") + "</span>"
+            : "";
+
+        bodyHtml += '<tr class="' + clases.join(" ") + '">';
+        bodyHtml += "<td>" + fila.situacion + badge + "</td>";
+        bodyHtml += "<td>" + fila.condicion + "</td>";
+        bodyHtml += "<td>" + fila.score + "</td>";
+        bodyHtml += "</tr>";
+    });
+    $(bodySel).html(bodyHtml);
+    $wrap.show();
+}
+
+function icRenderCapacidadDual(capPago, capCompra, balance) {
+    var $wrap = $("#icModalLineaCapacidadWrap");
+    if (!capPago && !capCompra) {
+        $wrap.hide();
+        return;
+    }
+
+    if (balance) {
+        $("#icModalLineaBalance").text(balance).show();
+    } else {
+        $("#icModalLineaBalance").hide();
+    }
+
+    function renderBox(cap, $el, scoreKey) {
+        if (!cap) {
+            $el.hide();
+            return;
+        }
+        $el.show();
+        $el.find(".ic-cap-modal-titulo").text(cap.titulo);
+        $el.find(".ic-cap-modal-intro").text(cap.intro);
+        var score = scoreKey === "score_riesgo" ? cap.score_riesgo : cap.score_comercial;
+        $el.find(".ic-cap-modal-score")
+            .text(score !== null && score !== undefined ? parseFloat(score).toFixed(1) : "—")
+            .css("color", icColorScore(score || 50));
+
+        var listHtml = "";
+        $.each(cap.resumen || [], function (i, item) {
+            listHtml += "<li><span>" + item.etiqueta + "</span><strong>" + item.valor + "</strong></li>";
+        });
+        $el.find(".ic-cap-modal-lista").html(listHtml);
+
+        if (cap.indicadores && cap.indicadores.length) {
+            var indHtml = "";
+            $.each(cap.indicadores, function (i, ind) {
+                indHtml += '<li title="' + String(ind.detalle).replace(/"/g, "&quot;") + '">'
+                    + ind.nombre + ' <span>' + parseFloat(ind.score).toFixed(1) + "</span></li>";
+            });
+            $el.find(".ic-cap-modal-indicadores").html(indHtml);
+            $el.find(".ic-cap-modal-ind-wrap").show();
+        } else {
+            $el.find(".ic-cap-modal-ind-wrap").hide();
+        }
+    }
+
+    renderBox(capPago, $("#icModalCapPago"), "score_riesgo");
+    renderBox(capCompra, $("#icModalCapCompra"), "score_comercial");
+    $wrap.show();
 }

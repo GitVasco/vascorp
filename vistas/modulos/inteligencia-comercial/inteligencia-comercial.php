@@ -8,12 +8,15 @@ $clienteFiltro = isset($_GET["cliente"]) ? trim($_GET["cliente"]) : "";
 $clientes = ControladorInteligenciaComercial::ctrClientesAnalisis();
 $resultadoMotor1 = null;
 $resultadoMotor2 = null;
+$resultadoMotor3 = null;
 $resultadoMotor4 = null;
 
 if ($clienteFiltro !== "") {
-    $resultadoMotor1 = ControladorInteligenciaComercial::ctrCalcularMotorRiesgoCredito($clienteFiltro);
-    $resultadoMotor2 = ControladorInteligenciaComercial::ctrCalcularMotorComercial($clienteFiltro);
-    $resultadoMotor4 = ControladorInteligenciaComercial::ctrCalcularMotorFidelidad($clienteFiltro);
+    $analisis = ControladorInteligenciaComercial::ctrCalcularAnalisisCompleto($clienteFiltro);
+    $resultadoMotor1 = $analisis["motor1"];
+    $resultadoMotor2 = $analisis["motor2"];
+    $resultadoMotor3 = $analisis["motor3"];
+    $resultadoMotor4 = $analisis["motor4"];
 }
 
 $nombreClienteFiltro = "";
@@ -126,6 +129,109 @@ function icRenderMotorPanel($m, $opciones)
     <script type="application/json" id="<?php echo htmlspecialchars($opciones["data_id"], ENT_QUOTES, "UTF-8"); ?>"><?php echo json_encode($m, JSON_UNESCAPED_UNICODE); ?></script>
     <?php
 }
+
+function icRenderMotorLineaCreditoPanel($m, $opciones)
+{
+    $cls = $m["clasificacion"];
+    $colorScore = icColorScore($m["score"]);
+    $accion = $m["accion"];
+    $linea = $m["linea"];
+    $coloresPastel = icColoresPastel();
+    $idxPastel = 0;
+    ?>
+    <div class="box box-<?php echo htmlspecialchars($cls["color"], ENT_QUOTES, "UTF-8"); ?> ic-motor-box">
+        <div class="box-header with-border">
+            <h3 class="box-title">
+                <i class="fa <?php echo htmlspecialchars($opciones["icono"], ENT_QUOTES, "UTF-8"); ?>"></i>
+                <?php echo htmlspecialchars($opciones["titulo"], ENT_QUOTES, "UTF-8"); ?>
+                <?php if (!empty($opciones["proposito"])) : ?>
+                    <small class="ic-motor-proposito"><?php echo htmlspecialchars($opciones["proposito"], ENT_QUOTES, "UTF-8"); ?></small>
+                <?php endif; ?>
+            </h3>
+            <div class="box-tools pull-right" style="display:flex; align-items:center; gap:10px;">
+                <span class="label label-<?php echo htmlspecialchars($accion["color"], ENT_QUOTES, "UTF-8"); ?>" style="font-size:12px;">
+                    <i class="fa <?php echo htmlspecialchars($accion["icono"], ENT_QUOTES, "UTF-8"); ?>"></i>
+                    <?php echo htmlspecialchars($accion["etiqueta"], ENT_QUOTES, "UTF-8"); ?>
+                </span>
+                <span class="ic-motor-score" style="color:<?php echo $colorScore; ?>;">
+                    <?php echo number_format($m["score"], 1, ".", ""); ?>
+                </span>
+            </div>
+        </div>
+        <div class="box-body">
+            <div class="ic-linea-resumen">
+                <div class="ic-linea-monto">
+                    <span class="ic-linea-etq">Deuda actual</span>
+                    <strong>S/ <?php echo number_format($linea["deuda_actual"], 2); ?></strong>
+                </div>
+                <div class="ic-linea-monto">
+                    <span class="ic-linea-etq">Línea operativa</span>
+                    <strong>S/ <?php echo number_format($linea["linea_operativa"], 2); ?></strong>
+                    <small>Pico histórico S/ <?php echo number_format($linea["pico_historico"], 2); ?></small>
+                </div>
+                <div class="ic-linea-monto ic-linea-recomendada">
+                    <span class="ic-linea-etq">Línea recomendada</span>
+                    <strong>S/ <?php echo number_format($linea["linea_recomendada"], 2); ?></strong>
+                </div>
+            </div>
+            <p class="ic-linea-explicacion text-muted">
+                <i class="fa fa-info-circle"></i>
+                <?php echo htmlspecialchars($accion["explicacion"], ENT_QUOTES, "UTF-8"); ?>
+            </p>
+            <p style="margin:0 0 12px;">
+                <button type="button" class="btn btn-sm btn-default btn-ic-linea-detalle" id="btnDetalleLineaCredito">
+                    <i class="fa fa-question-circle"></i> ¿Por qué esta línea de crédito?
+                </button>
+            </p>
+            <div class="row ic-motor-panel-inner" style="display:flex; align-items:center; flex-wrap:wrap;">
+                <div class="col-sm-3 col-xs-6">
+                    <p class="ic-chart-title"><i class="fa <?php echo htmlspecialchars($opciones["icono"], ENT_QUOTES, "UTF-8"); ?>"></i> <?php echo htmlspecialchars($opciones["titulo_gauge"], ENT_QUOTES, "UTF-8"); ?></p>
+                    <div class="ic-gauge-wrap">
+                        <canvas id="<?php echo htmlspecialchars($opciones["chart_score"], ENT_QUOTES, "UTF-8"); ?>" width="180" height="180"></canvas>
+                        <div class="ic-gauge-center">
+                            <span class="ic-gauge-num" style="color:<?php echo $colorScore; ?>;">
+                                <?php echo number_format($m["score"], 1, ".", ""); ?>
+                            </span>
+                            <span class="ic-gauge-label"><?php echo htmlspecialchars($cls["etiqueta"], ENT_QUOTES, "UTF-8"); ?></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-3 col-xs-6">
+                    <p class="ic-chart-title"><i class="fa fa-pie-chart"></i> Aportación por factor</p>
+                    <div class="ic-aportacion-chart">
+                        <canvas id="<?php echo htmlspecialchars($opciones["chart_aport"], ENT_QUOTES, "UTF-8"); ?>" width="180" height="180"></canvas>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xs-12">
+                    <ul class="ic-chart-legend" id="<?php echo htmlspecialchars($opciones["legend_id"], ENT_QUOTES, "UTF-8"); ?>" data-motor="<?php echo (int) $m["motor"]; ?>">
+                        <?php foreach ($m["factores"] as $factor) :
+                            $colorPastel = $coloresPastel[$idxPastel % count($coloresPastel)];
+                            $idxPastel++;
+                        ?>
+                            <li class="ic-legend-item"
+                                data-factor="<?php echo htmlspecialchars($factor["clave"], ENT_QUOTES, "UTF-8"); ?>"
+                                data-color="<?php echo htmlspecialchars($colorPastel, ENT_QUOTES, "UTF-8"); ?>">
+                                <span class="ic-legend-dot" style="background:<?php echo $colorPastel; ?>;"></span>
+                                <span class="ic-legend-label"><?php echo htmlspecialchars($factor["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
+                                <span class="ic-legend-score" title="Score del factor"><?php echo number_format($factor["score"], 1, ".", ""); ?></span>
+                                <span class="ic-legend-val" title="Aportación al total">+<?php echo number_format($factor["aportacion"], 2, ".", ""); ?></span>
+                                <span class="ic-legend-peso"><?php echo (int) $factor["peso"]; ?>%</span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <p class="text-muted" style="margin:10px 0 0; font-size:12px;">
+                        <i class="fa fa-hand-pointer-o"></i> Clic en un factor para ver el detalle del cálculo.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="application/json" id="<?php echo htmlspecialchars($opciones["data_id"], ENT_QUOTES, "UTF-8"); ?>"><?php echo json_encode($m, JSON_UNESCAPED_UNICODE); ?></script>
+    <?php if (!empty($m["explicacion_linea"])) : ?>
+    <script type="application/json" id="icMotor3LineaExplicacion"><?php echo json_encode($m["explicacion_linea"], JSON_UNESCAPED_UNICODE); ?></script>
+    <?php endif; ?>
+    <?php
+}
 ?>
 
 <style>
@@ -191,6 +297,290 @@ function icRenderMotorPanel($m, $opciones)
 .ic-motores-grid .ic-motor-placeholder-proposito {
     font-size: 11px;
     color: #bbb;
+}
+.ic-linea-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.ic-linea-monto {
+    flex: 1;
+    min-width: 140px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 10px 12px;
+    border-left: 3px solid #3c8dbc;
+}
+.ic-linea-monto.ic-linea-recomendada {
+    border-left-color: #00a65a;
+    background: #f4faf6;
+}
+.ic-linea-etq {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.ic-linea-monto strong {
+    display: block;
+    font-size: 18px;
+    color: #333;
+    margin-top: 2px;
+}
+.ic-linea-monto small {
+    display: block;
+    font-size: 10px;
+    color: #999;
+    margin-top: 2px;
+}
+.ic-linea-explicacion {
+    font-size: 12px;
+    margin: 0 0 15px;
+    padding: 8px 10px;
+    background: #fffdf5;
+    border-radius: 4px;
+    border-left: 3px solid #f39c12;
+}
+.ic-capacidad-dual {
+    margin-bottom: 14px;
+}
+.ic-capacidad-box {
+    border-radius: 6px;
+    padding: 10px 12px;
+    height: 100%;
+    border: 1px solid #e8e8e8;
+}
+.ic-capacidad-pago {
+    background: #f7fbff;
+    border-left: 3px solid #3c8dbc;
+}
+.ic-capacidad-compra {
+    background: #f8fdf9;
+    border-left: 3px solid #00a65a;
+}
+.ic-capacidad-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.ic-capacidad-head strong {
+    font-size: 18px;
+}
+.ic-capacidad-intro {
+    font-size: 11px;
+    color: #777;
+    margin: 0 0 8px;
+    line-height: 1.4;
+}
+.ic-capacidad-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+}
+.ic-capacidad-lista li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px dashed #e0e0e0;
+}
+.ic-capacidad-lista li:last-child {
+    border-bottom: none;
+}
+.ic-capacidad-lista span {
+    color: #888;
+}
+.ic-capacidad-indicadores {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.ic-capacidad-indicadores li {
+    font-size: 10px;
+    background: #fff;
+    border: 1px solid #dde;
+    border-radius: 4px;
+    padding: 3px 6px;
+    cursor: help;
+}
+.ic-capacidad-indicadores li span {
+    font-weight: 700;
+    margin-left: 4px;
+    color: #3c8dbc;
+}
+.ic-capacidad-nota {
+    font-size: 11px;
+    color: #666;
+    margin: 8px 0 0;
+}
+.ic-modal-linea-body {
+    padding-top: 8px;
+}
+.ic-linea-seccion {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+.ic-linea-seccion:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.ic-linea-seccion-hero {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 16px;
+}
+.ic-linea-seccion-hero .alert {
+    margin: 0;
+}
+.ic-linea-seccion-hero #icModalLineaAccionTxt {
+    display: block;
+    margin-top: 6px;
+    font-weight: normal;
+    font-size: 13px;
+}
+.ic-linea-seccion-titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ic-linea-seccion-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.ic-linea-seccion-intro {
+    font-size: 12px;
+    color: #777;
+    margin: 0 0 10px;
+    line-height: 1.45;
+}
+.ic-linea-calculo-card {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px 14px;
+    border: 1px solid #e8e8e8;
+}
+.ic-linea-base-def {
+    font-size: 12px;
+    color: #555;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    background: #fff;
+    border-left: 3px solid #00a65a;
+    border-radius: 0 4px 4px 0;
+}
+.ic-linea-resultado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ddd;
+    font-size: 13px;
+}
+.ic-linea-resultado strong {
+    font-size: 18px;
+    color: #00a65a;
+}
+.ic-linea-ref-grid .ic-modal-dato {
+    margin-bottom: 8px;
+}
+.ic-linea-details {
+    font-size: 13px;
+    color: #555;
+}
+.ic-linea-details summary {
+    cursor: pointer;
+    padding: 8px 0;
+    font-weight: 600;
+}
+.ic-linea-details summary .fa {
+    margin-right: 6px;
+    color: #3c8dbc;
+}
+.ic-cap-modal-ind-wrap {
+    margin-top: 8px;
+}
+.ic-cap-ind-titulo {
+    font-size: 10px;
+    color: #999;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+    letter-spacing: 0.3px;
+}
+.ic-linea-pasos-table td:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+}
+.btn-ic-linea-detalle {
+    font-weight: 600;
+}
+.ic-linea-pasos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.ic-linea-pasos li {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    align-items: flex-start;
+}
+.ic-linea-pasos li:last-child {
+    border-bottom: none;
+}
+.ic-linea-paso-num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ic-linea-paso-body strong {
+    display: block;
+    font-size: 15px;
+    color: #333;
+}
+.ic-linea-paso-body span {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-top: 2px;
+}
+.ic-linea-paso-etq {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
 }
 .ic-wrap .ic-motor-score {
     font-size: 32px;
@@ -707,19 +1097,36 @@ function icRenderMotorPanel($m, $opciones)
                     ?>
                 </div>
                 <?php endif; ?>
+                <?php if ($resultadoMotor3) : ?>
+                <div class="col-md-6">
+                    <?php
+                    icRenderMotorLineaCreditoPanel($resultadoMotor3, array(
+                        "titulo"       => "Motor 3 — Línea de crédito",
+                        "proposito"    => "¿Qué línea de crédito recomendar?",
+                        "icono"        => "fa-credit-card",
+                        "titulo_gauge" => "Score de línea",
+                        "chart_score"  => "icChartLinea",
+                        "chart_aport"  => "icChartAportacion3",
+                        "legend_id"    => "icMotor3Legend",
+                        "data_id"      => "icMotor3Data",
+                    ));
+                    ?>
+                </div>
+                <?php else : ?>
                 <div class="col-md-6">
                     <div class="ic-motor-placeholder">
-                        <div><i class="fa fa-lock"></i> Motor 3 — Rentabilidad — Próximamente</div>
-                        <div class="ic-motor-placeholder-proposito">¿Cuánto beneficio genera?</div>
+                        <div><i class="fa fa-lock"></i> Motor 3 — Línea de crédito — Sin datos</div>
+                        <div class="ic-motor-placeholder-proposito">¿Qué línea de crédito recomendar?</div>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
 
             <div class="row ic-motores-grid">
                 <div class="col-md-6">
                     <div class="ic-motor-placeholder">
-                        <div><i class="fa fa-lock"></i> Motor 5 — Línea de crédito — Próximamente</div>
-                        <div class="ic-motor-placeholder-proposito">¿Qué línea de crédito recomendar?</div>
+                        <div><i class="fa fa-lock"></i> Motor 5 — Rentabilidad — Próximamente</div>
+                        <div class="ic-motor-placeholder-proposito">¿Cuánto beneficio genera?</div>
                     </div>
                 </div>
             </div>
@@ -819,6 +1226,111 @@ function icRenderMotorPanel($m, $opciones)
                     <summary><i class="fa fa-book"></i> Ver regla de negocio completa</summary>
                     <p id="icModalRegla">—</p>
                 </details>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL LÍNEA DE CRÉDITO RECOMENDADA -->
+<div id="modalDetalleLinea" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content ic-wrap">
+            <div class="modal-header bg-green">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff;">&times;</button>
+                <h4 class="modal-title" style="color:#fff;">
+                    <i class="fa fa-credit-card"></i>
+                    <span id="icModalLineaTitulo">¿Por qué esta línea de crédito?</span>
+                </h4>
+            </div>
+            <div class="modal-body ic-modal-linea-body">
+
+                <section class="ic-linea-seccion ic-linea-seccion-hero">
+                    <div class="alert" id="icModalLineaAccion">
+                        <strong id="icModalLineaAccionEtq">—</strong>
+                        <span id="icModalLineaAccionTxt"></span>
+                    </div>
+                </section>
+
+                <section class="ic-linea-seccion" id="icModalLineaCapacidadWrap" style="display:none;">
+                    <h5 class="ic-linea-seccion-titulo"><span class="ic-linea-seccion-num">1</span> Análisis: ¿puede comprar y puede pagar?</h5>
+                    <p class="ic-linea-seccion-intro" id="icModalLineaBalance"></p>
+                    <div class="row ic-capacidad-dual">
+                        <div class="col-sm-6" id="icModalCapPago">
+                            <div class="ic-capacidad-box ic-capacidad-pago">
+                                <div class="ic-capacidad-head">
+                                    <span class="ic-cap-modal-titulo">Capacidad de pago</span>
+                                    <strong class="ic-cap-modal-score">—</strong>
+                                </div>
+                                <p class="ic-capacidad-intro ic-cap-modal-intro"></p>
+                                <ul class="ic-capacidad-lista ic-cap-modal-lista"></ul>
+                                <div class="ic-cap-modal-ind-wrap">
+                                    <p class="ic-cap-ind-titulo">Indicadores (Motor 1)</p>
+                                    <ul class="ic-capacidad-indicadores ic-cap-modal-indicadores"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6" id="icModalCapCompra">
+                            <div class="ic-capacidad-box ic-capacidad-compra">
+                                <div class="ic-capacidad-head">
+                                    <span class="ic-cap-modal-titulo">Capacidad de compra</span>
+                                    <strong class="ic-cap-modal-score">—</strong>
+                                </div>
+                                <p class="ic-capacidad-intro ic-cap-modal-intro"></p>
+                                <ul class="ic-capacidad-lista ic-cap-modal-lista"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ic-linea-seccion">
+                    <h5 class="ic-linea-seccion-titulo"><span class="ic-linea-seccion-num">2</span> Cálculo del monto recomendado</h5>
+                    <div class="ic-linea-calculo-card">
+                        <p class="ic-linea-base-def" id="icModalLineaBaseDef"></p>
+                        <div class="ic-modal-formula" id="icModalLineaFormula">—</div>
+                        <div class="ic-linea-resultado">
+                            <span>Resultado</span>
+                            <strong id="icModalLineaCalculo">—</strong>
+                        </div>
+                    </div>
+                    <div class="ic-modal-logica-table-wrap" style="margin-top:10px;">
+                        <table class="ic-modal-logica-table ic-linea-pasos-table">
+                            <thead>
+                                <tr>
+                                    <th>Paso</th>
+                                    <th>Valor</th>
+                                    <th>Qué significa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="icModalLineaPasos"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="ic-linea-seccion">
+                    <h5 class="ic-linea-seccion-titulo"><span class="ic-linea-seccion-num">3</span> Referencia de líneas</h5>
+                    <div class="row ic-linea-ref-grid" id="icModalLineaComparacion"></div>
+                </section>
+
+                <section class="ic-linea-seccion ic-linea-seccion-reglas">
+                    <details class="ic-linea-details">
+                        <summary><i class="fa fa-table"></i> Ver reglas de la acción recomendada</summary>
+                        <div class="ic-modal-logica" id="icModalLineaAccionWrap" style="display:none; margin-top:10px;">
+                            <p class="ic-modal-logica-intro" id="icModalLineaAccionIntro"></p>
+                            <div class="ic-modal-logica-table-wrap">
+                                <table class="ic-modal-logica-table">
+                                    <thead>
+                                        <tr id="icModalLineaAccionHead"></tr>
+                                    </thead>
+                                    <tbody id="icModalLineaAccionBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </details>
+                </section>
 
             </div>
             <div class="modal-footer">
