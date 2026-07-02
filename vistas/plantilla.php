@@ -526,6 +526,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "consultar-cuentas" ||
                 $_GET["ruta"] == "reportes-generales" ||
                 $_GET["ruta"] == "notificaciones" ||
+                $_GET["ruta"] == "letras-plazo-protesto" ||
                 $_GET["ruta"] == "credipagos" ||
                 $_GET["ruta"] == "rendicion-vasco-caja" ||
                 $_GET["ruta"] == "gestion-vasco-clientes" ||

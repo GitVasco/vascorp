@@ -691,6 +691,11 @@ $(".box").on("click", ".btnReporteCuentasAprobadas", function () {
         "vistas/reportes_excel/rpt_cuentas_aprobadas.php?anoC=" + anoC;
 });
 
+$(".box").on("click", ".btnReporteLetrasUrgentes", function () {
+    window.location =
+        "vistas/reportes_excel/rpt_letras_urgentes_protesto.php";
+});
+
 $(".box").on("click", ".btnCodigoCuenta", function () {
     $("#nuevaMoneda").val("Soles");
     $("#nuevaMoneda").selectpicker("refresh");
@@ -3011,6 +3016,45 @@ $(".tablaNotificacionesPendientes").DataTable({
     lengthMenu: [
         [30, 40, 60, -1],
         [30, 40, 60, "Todos"],
+    ],
+    language: {
+        sProcessing: "Procesando...",
+        sLengthMenu: "Mostrar _MENU_ registros",
+        sZeroRecords: "No se encontraron resultados",
+        sEmptyTable: "Ningún dato disponible en esta tabla",
+        sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+        sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+        sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+        sInfoPostFix: "",
+        sSearch: "Buscar:",
+        sUrl: "",
+        sInfoThousands: ",",
+        sLoadingRecords: "Cargando...",
+        oPaginate: {
+            sFirst: "Primero",
+            sLast: "Último",
+            sNext: "Siguiente",
+            sPrevious: "Anterior",
+        },
+        oAria: {
+            sSortAscending:
+                ": Activar para ordenar la columna de manera ascendente",
+            sSortDescending:
+                ": Activar para ordenar la columna de manera descendente",
+        },
+    },
+});
+
+$(".tablaLetrasPlazoProtesto").DataTable({
+    ajax: "ajax/cuentas-corrientes/tabla-letras-plazo-protesto.ajax.php",
+    deferRender: true,
+    retrieve: true,
+    processing: true,
+    order: [],
+    pageLength: 50,
+    lengthMenu: [
+        [30, 50, 100, -1],
+        [30, 50, 100, "Todos"],
     ],
     language: {
         sProcessing: "Procesando...",

@@ -150,6 +150,20 @@ class ControladorCuentas
 		return $respuesta;
 	}
 
+	static public function ctrLetrasPlazoProtesto()
+	{
+		$respuesta = ModeloCuentas::mdlLetrasPlazoProtesto();
+
+		return $respuesta;
+	}
+
+	static public function ctrLetrasPlazoProtestoUrgentes()
+	{
+		$respuesta = ModeloCuentas::mdlLetrasPlazoProtestoUrgentes();
+
+		return $respuesta;
+	}
+
 
 	/*=============================================
 	MOSTRAR CUENTAS

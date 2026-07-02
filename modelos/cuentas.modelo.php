@@ -324,6 +324,196 @@ class ModeloCuentas
 		$stmt = null;
 	}
 
+	/*=============================================
+	LETRAS ENVIADAS AL BANCO - PLAZO DE PROTESTO
+	=============================================*/
+
+	static private function esDiaHabil($fecha)
+	{
+		$dow = (int)(new DateTime($fecha))->format('N');
+		return $dow < 6;
+	}
+
+	static public function sumarDiasHabiles($fecha, $dias)
+	{
+		$date = new DateTime($fecha);
+		$agregados = 0;
+
+		while ($agregados < $dias) {
+			$date->modify('+1 day');
+			if (self::esDiaHabil($date->format('Y-m-d'))) {
+				$agregados++;
+			}
+		}
+
+		return $date->format('Y-m-d');
+	}
+
+	static public function contarDiasHabilesEntre($fechaInicio, $fechaFin)
+	{
+		$start = new DateTime($fechaInicio);
+		$end = new DateTime($fechaFin);
+
+		if ($end <= $start) {
+			return 0;
+		}
+
+		$count = 0;
+		$current = clone $start;
+
+		while ($current < $end) {
+			$current->modify('+1 day');
+			if (self::esDiaHabil($current->format('Y-m-d'))) {
+				$count++;
+			}
+		}
+
+		return $count;
+	}
+
+	static public function calcularPlazoProtesto($fechaVen, $diasGracia = 8)
+	{
+		date_default_timezone_set('America/Lima');
+		$hoy = date('Y-m-d');
+		$fechaLimite = self::sumarDiasHabiles($fechaVen, $diasGracia);
+
+		if ($hoy < $fechaVen) {
+			$diasRestantes = self::contarDiasHabilesEntre($hoy, $fechaLimite);
+
+			return [
+				'fecha_limite_protesto' => $fechaLimite,
+				'dias_transcurridos' => 0,
+				'dias_restantes' => $diasRestantes,
+				'estado' => 'POR VENCER'
+			];
+		}
+
+		$diasTranscurridos = self::contarDiasHabilesEntre($fechaVen, $hoy);
+
+		if ($hoy > $fechaLimite) {
+			return [
+				'fecha_limite_protesto' => $fechaLimite,
+				'dias_transcurridos' => $diasTranscurridos,
+				'dias_restantes' => 0,
+				'estado' => 'PLAZO VENCIDO'
+			];
+		}
+
+		if ($hoy === $fechaLimite) {
+			return [
+				'fecha_limite_protesto' => $fechaLimite,
+				'dias_transcurridos' => $diasTranscurridos,
+				'dias_restantes' => 0,
+				'estado' => 'ULTIMO DIA'
+			];
+		}
+
+		$diasRestantes = self::contarDiasHabilesEntre($hoy, $fechaLimite);
+		$estado = $diasRestantes <= 2 ? 'URGENTE' : 'EN PLAZO';
+
+		return [
+			'fecha_limite_protesto' => $fechaLimite,
+			'dias_transcurridos' => $diasTranscurridos,
+			'dias_restantes' => $diasRestantes,
+			'estado' => $estado
+		];
+	}
+
+	static public function esLetraPagableHoy($fechaVen, $diasGracia = 8)
+	{
+		$plazo = self::calcularPlazoProtesto($fechaVen, $diasGracia);
+
+		return in_array($plazo['estado'], ['EN PLAZO', 'URGENTE', 'ULTIMO DIA'], true);
+	}
+
+	static private function filtrarLetrasPagablesHoy($letras)
+	{
+		$filtradas = [];
+
+		foreach ($letras as $letra) {
+			if (self::esLetraPagableHoy($letra['fecha_ven'])) {
+				$filtradas[] = $letra;
+			}
+		}
+
+		usort($filtradas, function ($a, $b) {
+			$cmpVendedor = strcmp($a['vendedor'], $b['vendedor']);
+
+			if ($cmpVendedor !== 0) {
+				return $cmpVendedor;
+			}
+
+			return strcmp($a['fecha_ven'], $b['fecha_ven']);
+		});
+
+		return $filtradas;
+	}
+
+	static public function mdlLetrasPlazoProtesto()
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT
+				cc.id,
+				cc.tipo_doc,
+				cc.num_cta,
+				cc.doc_origen,
+				cc.fecha,
+				cc.fecha_ven,
+				cc.fecha_envio,
+				cc.vendedor,
+				cc.monto,
+				cc.saldo,
+				cc.num_unico,
+				cc.cliente,
+				cc.banco,
+				c.nombre,
+				REPLACE(c.telefono, ' ', '') AS telefono
+			FROM cuenta_ctejf cc
+			LEFT JOIN clientesjf c ON cc.cliente = c.codigo
+			WHERE cc.estado = 'PENDIENTE'
+				AND cc.tip_mov = '+'
+				AND cc.tipo_doc = '85'
+				AND cc.protesta = '0'
+				AND cc.saldo > 0
+				AND cc.fecha_envio IS NOT NULL
+				AND cc.fecha_envio <> ''
+				AND cc.fecha_envio <> '-'
+				AND UPPER(TRIM(cc.num_unico)) NOT LIKE '%CARTERA%'
+				AND cc.fecha_ven <= CURDATE()
+			ORDER BY cc.vendedor ASC, cc.fecha_ven ASC");
+
+		$stmt->execute();
+
+		$resultados = $stmt->fetchAll();
+
+		return self::filtrarLetrasPagablesHoy($resultados);
+
+		$stmt->close();
+
+		$stmt = null;
+	}
+
+	static public function mdlLetrasPlazoProtestoUrgentes()
+	{
+		$letras = self::mdlLetrasPlazoProtesto();
+		$urgentes = [];
+
+		foreach ($letras as $letra) {
+			$plazo = self::calcularPlazoProtesto($letra['fecha_ven']);
+
+			if (!in_array($plazo['estado'], ['URGENTE', 'ULTIMO DIA'], true)) {
+				continue;
+			}
+
+			$letra['fecha_limite_protesto'] = $plazo['fecha_limite_protesto'];
+			$letra['dias_transcurridos'] = $plazo['dias_transcurridos'];
+			$letra['dias_restantes'] = $plazo['dias_restantes'];
+			$letra['estado_plazo'] = $plazo['estado'];
+			$urgentes[] = $letra;
+		}
+
+		return $urgentes;
+	}
+
 
 	/*=============================================
 	VALIDAR CUENTA

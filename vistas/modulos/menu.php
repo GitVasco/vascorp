@@ -1362,6 +1362,7 @@
                                         $_GET["ruta"] == "envio-letras" ||
                                         $_GET["ruta"] == "reportes-generales" ||
                                         $_GET["ruta"] == "notificaciones" ||
+                                        $_GET["ruta"] == "letras-plazo-protesto" ||
                                         $_GET["ruta"] == "credipagos"
                                     ) echo 'active'; ?>">
 
@@ -1391,6 +1392,7 @@
                                                 $_GET["ruta"] == "ver-envio-letras" ||
                                                 $_GET["ruta"] == "reportes-generales" ||
                                                 $_GET["ruta"] == "notificaciones" ||
+                                                $_GET["ruta"] == "letras-plazo-protesto" ||
                                                 $_GET["ruta"] == "credipagos"
                                             ) echo 'active'; ?>">
 
@@ -1463,6 +1465,17 @@
 
                                 <i class="fa fa-bell"></i>
                                 <span>Notificaciones</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "letras-plazo-protesto") echo 'active'; ?>">
+
+                            <a href="letras-plazo-protesto">
+
+                                <i class="fa fa-hourglass-half"></i>
+                                <span>Letras a informar hoy</span>
 
                             </a>
 
