@@ -5,6 +5,9 @@
  * Ajustar aquí pesos, tolerancias y reglas sin tocar la lógica del modelo.
  */
 
+/** Tipos ventajf válidos en todos los motores (campo `tipo`). Solo estos cuentan como compra/venta. */
+$ic_ventas_tipos_validos = array("S02", "S03", "S70");
+
 // ─── Motor 1: Score de Riesgo Crediticio ───────────────────────────────────
 
 /** Pesos con Equifax activo (deben sumar 100). */
@@ -99,17 +102,14 @@ $ic_motor2_meses_periodo = 6;
 /** Tabla de movimientos con detalle de artículos (actualizar el año si aplica). */
 $ic_motor2_tabla_movimientos = "movimientosjf_2026";
 
-/** Caracteres iniciales del código de artículo que identifican la línea de producto. */
-$ic_motor2_linea_articulo_chars = 3;
-
 /** Score neutro cuando no hay datos suficientes. */
 $ic_motor2_score_neutro = 50;
 
-/** Tipos de documento válidos en ventajf (campo `tipo`). Solo estos cuentan como compra. */
-$ic_motor2_ventas_tipos = array("S02", "S03", "E05", "S05", "S70");
-
 /** Vendedores excluidos del análisis comercial. */
 $ic_motor2_ventas_excluir_vendedores = array("99", "23");
+
+/** Prefijos de vendedor (usuario final) excluidos del benchmark de zona o mercado. */
+$ic_motor2_zona_excluir_vendedor_prefijos = array("08");
 
 /** Crecimiento % compras (reciente vs periodo anterior) → score. Umbrales mínimos descendentes. */
 $ic_motor2_crecimiento_umbrales = array(
@@ -120,7 +120,30 @@ $ic_motor2_crecimiento_umbrales = array(
     array("desde" => -999, "score" => 35),
 );
 
-/** Compras promedio por mes en el periodo reciente → score. */
+/** Solo vendedores 04 (Norte) y 05 (Sur): ruta un mes sí y un mes no. */
+$ic_motor2_frecuencia_esperada_vendedor = array(
+    "04" => array(
+        "nombre"      => "Norte",
+        "compras_mes" => 0.5,
+        "nota"        => "Ruta un mes sí y un mes no",
+    ),
+    "05" => array(
+        "nombre"      => "Sur",
+        "compras_mes" => 0.5,
+        "nota"        => "Ruta un mes sí y un mes no",
+    ),
+);
+
+/** Ratio real ÷ esperada — solo aplica a vendedores 04 y 05. */
+$ic_motor2_frecuencia_ratio_tramos = array(
+    array("hasta" => 0.5, "score" => 40),
+    array("hasta" => 0.8, "score" => 55),
+    array("hasta" => 1.0, "score" => 70),
+    array("hasta" => 1.2, "score" => 85),
+    array("hasta" => 999, "score" => 100),
+);
+
+/** Frecuencia absoluta (compras/mes) para demás vendedores. */
 $ic_motor2_frecuencia_tramos = array(
     array("hasta" => 0.5, "score" => 40),
     array("hasta" => 1,   "score" => 55),
@@ -129,7 +152,7 @@ $ic_motor2_frecuencia_tramos = array(
     array("hasta" => 999, "score" => 100),
 );
 
-/** Penetración de líneas de producto (%) → score (menor penetración = mayor potencial). */
+/** Penetración de modelos activos (%) → score (menor penetración = mayor potencial). */
 $ic_motor2_penetracion_tramos = array(
     array("hasta" => 20,  "score" => 100),
     array("hasta" => 40,  "score" => 85),
@@ -138,7 +161,7 @@ $ic_motor2_penetracion_tramos = array(
     array("hasta" => 999, "score" => 40),
 );
 
-/** Tendencia de compra (monto reciente vs anterior). */
+/** Tendencia de compra: ritmo dentro del periodo reciente (última mitad vs primera mitad). */
 $ic_motor2_tendencia_compra = array(
     "mejorando"  => array("factor" => 1.1, "score" => 90),
     "estable"    => array("factor" => 0.9, "score" => 70),
@@ -200,6 +223,7 @@ function icConfigMotor1()
         "pesos_sin_equifax"                => $ic_motor1_pesos_sin_equifax,
         "pesos_efectivos"                  => icPesosEfectivosMotor1(),
         "equifax_activo"                   => (bool) $ic_motor1_equifax_activo,
+        "ventas_tipos"                     => icVentasTiposValidos(),
         "tolerancia_dias_pago"       => (int) $ic_motor1_tolerancia_dias_pago,
         "atraso_multiplicador"       => (float) $ic_motor1_atraso_multiplicador,
         "incidencia_penalizacion"    => (int) $ic_motor1_incidencia_penalizacion,
@@ -430,22 +454,23 @@ function icTablaLogicaDiasAtraso($mult, $tolerancia, $atrasoPromedio, $score)
 function icTablaLogicaPorTramos($titulo, $intro, $unidad, $valorActual, $tramos, $scoreObtenido)
 {
     $filas = array();
-    $desde = 0;
+    $desde = 0.0;
+    $valorActual = (float) $valorActual;
 
     foreach ($tramos as $tramo) {
-        $hasta = (int) $tramo["hasta"];
+        $hasta = (float) $tramo["hasta"];
         $scoreTramo = (int) $tramo["score"];
 
         if ($hasta >= 999) {
-            $rango = "Más de {$desde}{$unidad}";
-        } elseif ($desde === 0) {
-            $rango = "Hasta {$hasta}{$unidad}";
+            $rango = "Más de " . icFormatTramoNum($desde) . $unidad;
+        } elseif ($desde <= 0) {
+            $rango = "Hasta " . icFormatTramoNum($hasta) . $unidad;
         } else {
-            $rango = "{$desde} a {$hasta}{$unidad}";
+            $rango = icFormatTramoNum($desde) . " a " . icFormatTramoNum($hasta) . $unidad;
         }
 
         $enTramo = $valorActual > $desde && ($hasta >= 999 || $valorActual <= $hasta);
-        if ($desde === 0 && $valorActual <= $hasta) {
+        if ($desde <= 0 && $valorActual <= $hasta) {
             $enTramo = true;
         }
 
@@ -465,6 +490,17 @@ function icTablaLogicaPorTramos($titulo, $intro, $unidad, $valorActual, $tramos,
         "columnas" => array("Rango", "Condición", "Score"),
         "filas"    => $filas,
     );
+}
+
+function icFormatTramoNum($numero)
+{
+    $numero = (float) $numero;
+
+    if ($numero == (int) $numero) {
+        return (string) (int) $numero;
+    }
+
+    return rtrim(rtrim(number_format($numero, 1, ".", ""), "0"), ".");
 }
 
 function icTablaLogicaTendencia($cfg, $meses, $clasificacion)
@@ -571,11 +607,12 @@ function icConfigMotor2()
     global $ic_motor2_pesos,
         $ic_motor2_meses_periodo,
         $ic_motor2_tabla_movimientos,
-        $ic_motor2_linea_articulo_chars,
         $ic_motor2_score_neutro,
-        $ic_motor2_ventas_tipos,
         $ic_motor2_ventas_excluir_vendedores,
+        $ic_motor2_zona_excluir_vendedor_prefijos,
         $ic_motor2_crecimiento_umbrales,
+        $ic_motor2_frecuencia_esperada_vendedor,
+        $ic_motor2_frecuencia_ratio_tramos,
         $ic_motor2_frecuencia_tramos,
         $ic_motor2_penetracion_tramos,
         $ic_motor2_tendencia_compra,
@@ -587,11 +624,13 @@ function icConfigMotor2()
         "pesos_efectivos"            => $ic_motor2_pesos,
         "meses_periodo"              => icMotor2MesesPeriodo($ic_motor2_meses_periodo),
         "tabla_movimientos"          => icMotor2TablaMovimientos($ic_motor2_tabla_movimientos),
-        "linea_articulo_chars"       => (int) $ic_motor2_linea_articulo_chars,
         "score_neutro"               => (int) $ic_motor2_score_neutro,
-        "ventas_tipos"               => $ic_motor2_ventas_tipos,
+        "ventas_tipos"               => icVentasTiposValidos(),
         "ventas_excluir_vendedores"  => $ic_motor2_ventas_excluir_vendedores,
+        "zona_excluir_vendedor_prefijos" => $ic_motor2_zona_excluir_vendedor_prefijos,
         "crecimiento_umbrales"       => $ic_motor2_crecimiento_umbrales,
+        "frecuencia_esperada_vendedor" => $ic_motor2_frecuencia_esperada_vendedor,
+        "frecuencia_ratio_tramos"    => $ic_motor2_frecuencia_ratio_tramos,
         "frecuencia_tramos"          => $ic_motor2_frecuencia_tramos,
         "penetracion_tramos"         => $ic_motor2_penetracion_tramos,
         "tendencia_compra"           => $ic_motor2_tendencia_compra,
@@ -614,33 +653,59 @@ function icMotor2MesesPeriodo($meses = null)
 }
 
 /** Texto legible de los tipos de documento ventajf incluidos. */
-function icMotor2TiposVentasTexto()
+function icVentasTiposValidosTexto()
 {
-    return implode(", ", icConfigMotor2()["ventas_tipos"]);
+    return implode(", ", icVentasTiposValidos());
 }
 
-/** Regla común de filtrado de ventajf para el Motor 2. */
-function icMotor2ReglaVentajf()
+/** Lista de tipos ventajf válidos para Inteligencia Comercial. */
+function icVentasTiposValidos()
+{
+    global $ic_ventas_tipos_validos;
+
+    return $ic_ventas_tipos_validos;
+}
+
+/** Regla común de filtrado de ventajf para todos los motores. */
+function icReglaVentajfInteligenciaComercial()
 {
     $cfg = icConfigMotor2();
-    $tipos = icMotor2TiposVentasTexto();
+    $tipos = icVentasTiposValidosTexto();
     $vendedores = implode(", ", $cfg["ventas_excluir_vendedores"]);
 
     return "Fuente: ventajf (campo tipo). Documentos: {$tipos}. Excluye estado ANULADO y vendedores {$vendedores}.";
 }
 
 /** Lista SQL para UPPER(v.tipo) IN (...). */
-function icMotor2TiposVentasSql()
+function icVentasTiposValidosSql()
 {
-    global $ic_motor2_ventas_tipos;
+    global $ic_ventas_tipos_validos;
 
     $items = array();
 
-    foreach ($ic_motor2_ventas_tipos as $tipo) {
+    foreach ($ic_ventas_tipos_validos as $tipo) {
         $items[] = "'" . strtoupper(addslashes((string) $tipo)) . "'";
     }
 
     return implode(", ", $items);
+}
+
+/** @deprecated Usar icVentasTiposValidosTexto() */
+function icMotor2TiposVentasTexto()
+{
+    return icVentasTiposValidosTexto();
+}
+
+/** @deprecated Usar icReglaVentajfInteligenciaComercial() */
+function icMotor2ReglaVentajf()
+{
+    return icReglaVentajfInteligenciaComercial();
+}
+
+/** @deprecated Usar icVentasTiposValidosSql() */
+function icMotor2TiposVentasSql()
+{
+    return icVentasTiposValidosSql();
 }
 
 /**
@@ -668,11 +733,22 @@ function icMotor2PeriodosFechas($meses = null)
     $inicioLineas = clone $hoy;
     $inicioLineas->modify("-12 months");
 
+    $mitad = (int) floor($meses / 2);
+    $inicioTendenciaIni = clone $inicioReciente;
+    $finTendenciaIni = clone $hoy;
+    $finTendenciaIni->modify("-{$mitad} months");
+    $finTendenciaIni->modify("-1 day");
+    $inicioTendenciaFin = clone $hoy;
+    $inicioTendenciaFin->modify("-{$mitad} months");
+    $finTendenciaFin = clone $hoy;
+
     return array(
         "reciente" => array("desde" => $inicioReciente, "hasta" => $finReciente),
         "anterior" => array("desde" => $inicioAnterior, "hasta" => $finAnterior),
         "yoy"      => array("desde" => $inicioYoy, "hasta" => $finYoy),
         "lineas"   => array("desde" => $inicioLineas, "hasta" => $finReciente),
+        "tendencia_ini" => array("desde" => $inicioTendenciaIni, "hasta" => $finTendenciaIni),
+        "tendencia_fin" => array("desde" => $inicioTendenciaFin, "hasta" => $finTendenciaFin),
     );
 }
 
@@ -692,6 +768,103 @@ function icMotor2PeriodosBox(array $items)
         "titulo" => "Periodos de comparación",
         "items"  => $items,
     );
+}
+
+/** Cliente de canal usuario final (vendedor con prefijo excluido del benchmark de zona). */
+function icMotor2EsClienteUsuarioFinalZona($codigoVendedor)
+{
+    global $ic_motor2_zona_excluir_vendedor_prefijos;
+
+    $codigo = trim((string) $codigoVendedor);
+
+    if ($codigo === "" || !$ic_motor2_zona_excluir_vendedor_prefijos) {
+        return false;
+    }
+
+    foreach ($ic_motor2_zona_excluir_vendedor_prefijos as $prefijo) {
+        $prefijo = trim((string) $prefijo);
+
+        if ($prefijo !== "" && strpos($codigo, $prefijo) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/** SQL: excluir clientes cuyo vendedor asignado inicia con prefijos de usuario final. */
+function icMotor2SqlExcluirVendedorPrefijosZona($campo = "c2.vendedor")
+{
+    global $ic_motor2_zona_excluir_vendedor_prefijos;
+
+    if (!$ic_motor2_zona_excluir_vendedor_prefijos) {
+        return "1 = 1";
+    }
+
+    $partes = array();
+
+    foreach ($ic_motor2_zona_excluir_vendedor_prefijos as $prefijo) {
+        $prefijo = trim((string) $prefijo);
+
+        if ($prefijo === "") {
+            continue;
+        }
+
+        $prefijoSql = str_replace(array("'", "\\", "%", "_"), "", $prefijo);
+        $partes[] = "TRIM({$campo}) NOT LIKE '{$prefijoSql}%'";
+    }
+
+    if (!$partes) {
+        return "1 = 1";
+    }
+
+    return implode(" AND ", $partes);
+}
+
+/** Texto legible de prefijos excluidos del benchmark de zona. */
+function icMotor2ZonaExcluirVendedorPrefijosTexto()
+{
+    global $ic_motor2_zona_excluir_vendedor_prefijos;
+
+    if (!$ic_motor2_zona_excluir_vendedor_prefijos) {
+        return "";
+    }
+
+    $items = array();
+
+    foreach ($ic_motor2_zona_excluir_vendedor_prefijos as $prefijo) {
+        $prefijo = trim((string) $prefijo);
+
+        if ($prefijo !== "") {
+            $items[] = $prefijo;
+        }
+    }
+
+    return implode(", ", $items);
+}
+
+/** Config de frecuencia esperada para un vendedor (04 Norte, 05 Sur). */
+function icMotor2FrecuenciaEsperadaVendedor($codigoVendedor)
+{
+    global $ic_motor2_frecuencia_esperada_vendedor;
+
+    $codigo = trim((string) $codigoVendedor);
+
+    if ($codigo === "") {
+        return null;
+    }
+
+    if (isset($ic_motor2_frecuencia_esperada_vendedor[$codigo])) {
+        return $ic_motor2_frecuencia_esperada_vendedor[$codigo];
+    }
+
+    $codigoPadded = str_pad($codigo, 2, "0", STR_PAD_LEFT);
+
+    if (isset($ic_motor2_frecuencia_esperada_vendedor[$codigoPadded])) {
+        return $ic_motor2_frecuencia_esperada_vendedor[$codigoPadded];
+    }
+
+    return null;
 }
 
 function icMotor2TablaMovimientos($tabla = null)
@@ -733,48 +906,59 @@ function icScorePorUmbralesMinimos($valor, $umbrales)
     return (int) end($umbrales)["score"];
 }
 
-function icClasificarTendenciaCompra($cfg, $montoReciente, $montoAnterior)
+function icMotor2MesesMitadTendencia($meses = null)
+{
+    $meses = icMotor2MesesPeriodo($meses);
+
+    return max(1, (int) floor($meses / 2));
+}
+
+function icClasificarTendenciaCompra($cfg, $montoUltimos, $montoPrimeros)
 {
     $tendCfg = $cfg["tendencia_compra"];
     $scoreNeutro = (int) $cfg["score_neutro"];
     $meses = (int) $cfg["meses_periodo"];
+    $mitad = icMotor2MesesMitadTendencia($meses);
 
-    if ($montoReciente <= 0 && $montoAnterior <= 0) {
+    if ($montoUltimos <= 0 && $montoPrimeros <= 0) {
         return array(
             "score"         => $scoreNeutro,
             "clasificacion" => "sin_datos",
-            "detalle"       => "Sin compras en los periodos evaluados de {$meses} meses.",
+            "detalle"       => "Sin compras en el periodo reciente de {$meses} meses.",
         );
     }
 
-    if ($montoAnterior <= 0 && $montoReciente > 0) {
+    if ($montoPrimeros <= 0 && $montoUltimos > 0) {
         return array(
             "score"         => (int) $tendCfg["mejorando"]["score"],
             "clasificacion" => "mejorando",
-            "detalle"       => "Mejorando: compras recientes sin historial en el periodo anterior.",
+            "detalle"       => "Mejorando: compras en los últimos {$mitad} meses sin historial en los {$mitad} meses previos del periodo.",
         );
     }
 
-    if ($montoReciente >= $montoAnterior * $tendCfg["mejorando"]["factor"]) {
+    if ($montoUltimos >= $montoPrimeros * $tendCfg["mejorando"]["factor"]) {
         return array(
             "score"         => (int) $tendCfg["mejorando"]["score"],
             "clasificacion" => "mejorando",
-            "detalle"       => "Mejorando: S/ " . number_format($montoReciente, 2) . " vs S/ " . number_format($montoAnterior, 2) . " anteriores.",
+            "detalle"       => "Mejorando: S/ " . number_format($montoUltimos, 2) . " (últimos {$mitad}m) vs S/ "
+                . number_format($montoPrimeros, 2) . " (primeros {$mitad}m del periodo).",
         );
     }
 
-    if ($montoReciente >= $montoAnterior * $tendCfg["estable"]["factor"]) {
+    if ($montoUltimos >= $montoPrimeros * $tendCfg["estable"]["factor"]) {
         return array(
             "score"         => (int) $tendCfg["estable"]["score"],
             "clasificacion" => "estable",
-            "detalle"       => "Estable: S/ " . number_format($montoReciente, 2) . " vs S/ " . number_format($montoAnterior, 2) . " anteriores.",
+            "detalle"       => "Estable: S/ " . number_format($montoUltimos, 2) . " (últimos {$mitad}m) vs S/ "
+                . number_format($montoPrimeros, 2) . " (primeros {$mitad}m del periodo).",
         );
     }
 
     return array(
         "score"         => (int) $tendCfg["empeorando"]["score"],
         "clasificacion" => "empeorando",
-        "detalle"       => "Empeorando: S/ " . number_format($montoReciente, 2) . " vs S/ " . number_format($montoAnterior, 2) . " anteriores.",
+        "detalle"       => "Empeorando: S/ " . number_format($montoUltimos, 2) . " (últimos {$mitad}m) vs S/ "
+            . number_format($montoPrimeros, 2) . " (primeros {$mitad}m del periodo).",
     );
 }
 
@@ -826,33 +1010,34 @@ function icTablaLogicaTendenciaCompra($cfg, $clasificacion)
     $estPct = round($t["estable"]["factor"] * 100);
     $neutro = (int) $cfg["score_neutro"];
     $meses = (int) $cfg["meses_periodo"];
+    $mitad = icMotor2MesesMitadTendencia($meses);
 
     return array(
-        "titulo"   => "Clasificación de la tendencia de compra",
-        "intro"    => "Compara monto de compras últimos {$meses} meses vs los {$meses} meses anteriores.",
+        "titulo"   => "Clasificación del ritmo de compra",
+        "intro"    => "Dentro de los últimos {$meses} meses: compara los últimos {$mitad} meses con los {$mitad} meses previos del mismo periodo.",
         "columnas" => array("Tendencia", "Cuándo aplica", "Score"),
         "filas"    => array(
             array(
                 "situacion" => "Mejorando",
-                "condicion" => "Monto reciente ≥ {$mejPct}% del periodo anterior, o compras nuevas sin historial previo",
+                "condicion" => "Últimos {$mitad}m ≥ {$mejPct}% de los primeros {$mitad}m, o compras nuevas solo al final del periodo",
                 "score"     => (int) $t["mejorando"]["score"],
                 "aplica"    => $clasificacion === "mejorando",
             ),
             array(
                 "situacion" => "Estable",
-                "condicion" => "Entre {$estPct}% y {$mejPct}% del periodo anterior",
+                "condicion" => "Últimos {$mitad}m entre {$estPct}% y {$mejPct}% de los primeros {$mitad}m",
                 "score"     => (int) $t["estable"]["score"],
                 "aplica"    => $clasificacion === "estable",
             ),
             array(
                 "situacion" => "Empeorando",
-                "condicion" => "Monto reciente < {$estPct}% del periodo anterior",
+                "condicion" => "Últimos {$mitad}m < {$estPct}% de los primeros {$mitad}m",
                 "score"     => (int) $t["empeorando"]["score"],
                 "aplica"    => $clasificacion === "empeorando",
             ),
             array(
                 "situacion" => "Sin datos",
-                "condicion" => "Sin compras en ambos periodos",
+                "condicion" => "Sin compras en el periodo reciente de {$meses} meses",
                 "score"     => $neutro,
                 "aplica"    => $clasificacion === "sin_datos",
             ),
