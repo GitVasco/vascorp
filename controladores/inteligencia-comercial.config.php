@@ -190,13 +190,14 @@ $ic_motor2_estacionalidad_umbrales = array(
 
 /** Pesos de cada factor (deben sumar 100). */
 $ic_motor3_pesos = array(
-    "score_riesgo"        => 35,
-    "promedio_compras"    => 20,
+    "score_riesgo"        => 40,
+    "promedio_compras"    => 10,
     "compra_maxima"       => 10,
     "crecimiento"         => 10,
     "utilizacion_linea"   => 10,
     "antiguedad"          => 5,
     "score_comercial"     => 5,
+    "score_fidelidad"     => 5,
     "equifax"             => 5,
 );
 
@@ -205,6 +206,20 @@ $ic_motor3_meses_periodo = 6;
 
 /** Meses de cobertura para estimar monto de línea recomendada (promedio mensual × este valor). */
 $ic_motor3_meses_cobertura_linea = 3;
+
+/** Ventana larga para compra máxima histórica en el cálculo de línea (pausas comerciales / letras). */
+$ic_motor3_meses_memoria_larga = 12;
+
+/**
+ * Piso de línea para buen pagador con baja utilización de la línea operativa.
+ * No cambia pesos del motor; solo evita recomendaciones irrealmente bajas.
+ */
+$ic_motor3_piso_linea = array(
+    "riesgo_min"          => 75,
+    "utilizacion_max_pct" => 30,
+    "ratio_deuda"         => 1.5,
+    "ratio_operativa"     => 0.20,
+);
 
 $ic_motor3_score_neutro = 50;
 
@@ -251,9 +266,11 @@ $ic_motor3_acciones = array(
     "score_aprobar_inicial"     => 70,
     "score_incrementar"         => 75,
     "ratio_incrementar"         => 1.15,
-    "ratio_reducir"             => 0.80,
-    "utilizacion_alta"          => 90,
-    "utilizacion_alta_riesgo"   => 75,
+    "ratio_reducir"              => 0.80,
+    "utilizacion_alta"           => 90,
+    "utilizacion_alta_riesgo"    => 75,
+    "reducir_riesgo_exento"      => 75,
+    "reducir_utilizacion_exenta" => 30,
 );
 
 // ─── Motor 4: Score de Fidelidad ─────────────────────────────────────────────
@@ -1023,6 +1040,8 @@ function icConfigMotor3()
     global $ic_motor3_pesos,
         $ic_motor3_meses_periodo,
         $ic_motor3_meses_cobertura_linea,
+        $ic_motor3_meses_memoria_larga,
+        $ic_motor3_piso_linea,
         $ic_motor3_score_neutro,
         $ic_motor3_promedio_tramos,
         $ic_motor3_compra_max_tramos,
@@ -1037,6 +1056,8 @@ function icConfigMotor3()
         "pesos_efectivos"        => $ic_motor3_pesos,
         "meses_periodo"          => (int) $ic_motor3_meses_periodo,
         "meses_cobertura_linea"  => (int) $ic_motor3_meses_cobertura_linea,
+        "meses_memoria_larga"    => (int) $ic_motor3_meses_memoria_larga,
+        "piso_linea"             => $ic_motor3_piso_linea,
         "score_neutro"           => (int) $ic_motor3_score_neutro,
         "ventas_tipos"           => icVentasTiposValidos(),
         "promedio_tramos"        => $ic_motor3_promedio_tramos,
@@ -1063,39 +1084,150 @@ function icPesosDecimalesMotor3()
 }
 
 /**
+ * Origen de la base económica (mayor entre candidatos).
+ */
+function icMotor3OrigenBaseEconomica($basePromedio, $compraMaxima, $compraMaxima12m, $baseEconomica)
+{
+    $candidatos = array(
+        "promedio_mensual"   => (float) $basePromedio,
+        "compra_maxima"      => (float) $compraMaxima,
+        "compra_maxima_12m"  => (float) $compraMaxima12m,
+    );
+
+    foreach ($candidatos as $clave => $valor) {
+        if (abs($valor - $baseEconomica) < 0.01 && $valor > 0) {
+            return $clave;
+        }
+    }
+
+    return "mixta";
+}
+
+/**
+ * Detecta pausa comercial reciente (ej. cliente a letras que deja de pedir temporalmente).
+ */
+function icMotor3DetectarPausaComercial($basePromedio, $compraMaxima, $compraMaxima12m)
+{
+    $compraMaxima12m = (float) $compraMaxima12m;
+    $compraMaxima = (float) $compraMaxima;
+    $basePromedio = (float) $basePromedio;
+
+    if ($compraMaxima12m <= 0) {
+        return array("activa" => false, "nota" => "");
+    }
+
+    $porCompraReciente = $compraMaxima > 0 && $compraMaxima12m > ($compraMaxima * 1.15);
+    $porPromedio = $basePromedio > 0 && $compraMaxima12m > ($basePromedio * 1.25);
+
+    if (!$porCompraReciente && !$porPromedio) {
+        return array("activa" => false, "nota" => "");
+    }
+
+    return array(
+        "activa" => true,
+        "nota"   => "Hay compras mayores en los últimos 12 meses que en el periodo reciente. "
+            . "Puede deberse a pausa comercial por letras/cobranza sin empeorar el historial de pago.",
+    );
+}
+
+/**
+ * Piso de línea para buen pagador con baja utilización de la línea operativa.
+ */
+function icMotor3CalcularPisoLinea($cfg, $scoreRiesgo, $deudaActual, $lineaOperativa)
+{
+    $pisoCfg = isset($cfg["piso_linea"]) ? $cfg["piso_linea"] : array();
+    $riesgoMin = isset($pisoCfg["riesgo_min"]) ? (float) $pisoCfg["riesgo_min"] : 75;
+    $utilMax = isset($pisoCfg["utilizacion_max_pct"]) ? (float) $pisoCfg["utilizacion_max_pct"] : 30;
+    $ratioDeuda = isset($pisoCfg["ratio_deuda"]) ? (float) $pisoCfg["ratio_deuda"] : 1.5;
+    $ratioOperativa = isset($pisoCfg["ratio_operativa"]) ? (float) $pisoCfg["ratio_operativa"] : 0.20;
+
+    $deudaActual = (float) $deudaActual;
+    $lineaOperativa = (float) $lineaOperativa;
+
+    if ($scoreRiesgo < $riesgoMin || $lineaOperativa <= 0) {
+        return array("monto" => 0.0, "activo" => false, "detalle" => "");
+    }
+
+    $utilizacionReal = ($deudaActual / max($lineaOperativa, $deudaActual, 1.0)) * 100;
+
+    if ($utilizacionReal >= $utilMax) {
+        return array("monto" => 0.0, "activo" => false, "detalle" => "");
+    }
+
+    $pisoDeuda = $deudaActual > 0 ? ($deudaActual * $ratioDeuda) : 0;
+    $pisoOperativa = $lineaOperativa * $ratioOperativa;
+    $piso = max($pisoDeuda, $pisoOperativa);
+
+    $detalle = "Riesgo ≥ {$riesgoMin}, utilización real " . round($utilizacionReal, 1)
+        . "% < {$utilMax}%. Piso = max(deuda×{$ratioDeuda}, operativa×{$ratioOperativa}).";
+
+    return array(
+        "monto"   => round($piso, 2),
+        "activo"  => $piso > 0,
+        "detalle" => $detalle,
+    );
+}
+
+/**
  * Monto de línea recomendada a partir de capacidad de compra y score compuesto.
  * Devuelve monto y desglose para el modal explicativo.
  */
-function icMotor3CalcularLineaRecomendada($cfg, $promedioMensual, $compraMaxima, $scoreFinal, $scoreRiesgo)
-{
+function icMotor3CalcularLineaRecomendada(
+    $cfg,
+    $promedioMensual,
+    $compraMaxima,
+    $compraMaxima12m,
+    $scoreFinal,
+    $scoreRiesgo,
+    $deudaActual = 0,
+    $lineaOperativa = 0
+) {
     $mesesCobertura = max(1, (int) $cfg["meses_cobertura_linea"]);
     $basePromedio = $promedioMensual * $mesesCobertura;
-    $baseEconomica = max($basePromedio, $compraMaxima);
+    $compraMaxima = (float) $compraMaxima;
+    $compraMaxima12m = (float) $compraMaxima12m;
+    $baseEconomica = max($basePromedio, $compraMaxima, $compraMaxima12m);
+    $pausa = icMotor3DetectarPausaComercial($basePromedio, $compraMaxima, $compraMaxima12m);
 
     if ($baseEconomica <= 0) {
         return array(
-            "monto"           => 0.0,
-            "meses_cobertura" => $mesesCobertura,
-            "base_promedio"   => round($basePromedio, 2),
-            "base_economica"  => 0.0,
-            "factor_score"    => 0.0,
-            "factor_riesgo"   => 0.0,
-            "origen_base"     => "sin_datos",
+            "monto"             => 0.0,
+            "meses_cobertura"   => $mesesCobertura,
+            "base_promedio"     => round($basePromedio, 2),
+            "compra_maxima_12m" => round($compraMaxima12m, 2),
+            "base_economica"    => 0.0,
+            "monto_bruto"       => 0.0,
+            "piso_aplicado"     => 0.0,
+            "piso_activo"       => false,
+            "factor_score"      => 0.0,
+            "factor_riesgo"     => 0.0,
+            "origen_base"       => "sin_datos",
+            "pausa_comercial"   => $pausa["activa"],
+            "nota_pausa"        => $pausa["nota"],
         );
     }
 
     $factorScore = max(0.35, min(1.0, $scoreFinal / 100));
     $factorRiesgo = max(0.5, min(1.0, $scoreRiesgo / 100));
-    $linea = $baseEconomica * $factorScore * $factorRiesgo;
+    $montoBruto = $baseEconomica * $factorScore * $factorRiesgo;
+    $piso = icMotor3CalcularPisoLinea($cfg, $scoreRiesgo, $deudaActual, $lineaOperativa);
+    $montoFinal = max($montoBruto, $piso["activo"] ? (float) $piso["monto"] : 0);
 
     return array(
-        "monto"           => round(max(0, $linea), 2),
-        "meses_cobertura" => $mesesCobertura,
-        "base_promedio"   => round($basePromedio, 2),
-        "base_economica"  => round($baseEconomica, 2),
-        "factor_score"    => round($factorScore, 4),
-        "factor_riesgo"   => round($factorRiesgo, 4),
-        "origen_base"     => $basePromedio >= $compraMaxima ? "promedio_mensual" : "compra_maxima",
+        "monto"             => round(max(0, $montoFinal), 2),
+        "meses_cobertura"   => $mesesCobertura,
+        "base_promedio"     => round($basePromedio, 2),
+        "compra_maxima_12m" => round($compraMaxima12m, 2),
+        "base_economica"    => round($baseEconomica, 2),
+        "monto_bruto"       => round($montoBruto, 2),
+        "piso_aplicado"     => $piso["activo"] ? (float) $piso["monto"] : 0.0,
+        "piso_activo"       => $montoFinal > ($montoBruto + 0.01),
+        "piso_detalle"      => $piso["detalle"],
+        "factor_score"      => round($factorScore, 4),
+        "factor_riesgo"     => round($factorRiesgo, 4),
+        "origen_base"       => icMotor3OrigenBaseEconomica($basePromedio, $compraMaxima, $compraMaxima12m, $baseEconomica),
+        "pausa_comercial"   => $pausa["activa"],
+        "nota_pausa"        => $pausa["nota"],
     );
 }
 
@@ -1171,9 +1303,23 @@ function icTablaLogicaAccionLinea($cfg, $accionClave, $scoreFinal, $scoreRiesgo,
             "aplica"    => $accionClave === "reducir" && $ratio > 0 && $ratio <= (float) $umb["ratio_reducir"],
         ),
         array(
+            "situacion" => "Mantener (baja utilización)",
+            "condicion" => "Capacidad baja vs operativa, pero riesgo ≥ " . $umb["reducir_riesgo_exento"]
+                . " y utilización < " . $umb["reducir_utilizacion_exenta"] . "%",
+            "aplica"    => $accionClave === "mantener"
+                && $ratio > 0
+                && $ratio <= (float) $umb["ratio_reducir"]
+                && $scoreRiesgo >= (float) $umb["reducir_riesgo_exento"]
+                && $utilizacion < (float) $umb["reducir_utilizacion_exenta"],
+        ),
+        array(
             "situacion" => "Mantener",
             "condicion" => "Perfil y montos dentro de parámetros",
-            "aplica"    => $accionClave === "mantener",
+            "aplica"    => $accionClave === "mantener"
+                && !($ratio > 0
+                    && $ratio <= (float) $umb["ratio_reducir"]
+                    && $scoreRiesgo >= (float) $umb["reducir_riesgo_exento"]
+                    && $utilizacion < (float) $umb["reducir_utilizacion_exenta"]),
         ),
     );
 
@@ -1313,63 +1459,98 @@ function icMotor3ConstruirExplicacionLinea(
     $mesesCobertura = (int) $calculoLinea["meses_cobertura"];
     $baseEconomica = (float) $calculoLinea["base_economica"];
     $monto = (float) $calculoLinea["monto"];
+    $montoBruto = isset($calculoLinea["monto_bruto"]) ? (float) $calculoLinea["monto_bruto"] : $monto;
+    $compraMaxima12m = isset($calculoLinea["compra_maxima_12m"]) ? (float) $calculoLinea["compra_maxima_12m"] : 0;
     $factorScore = (float) $calculoLinea["factor_score"];
     $factorRiesgo = (float) $calculoLinea["factor_riesgo"];
     $ratio = $lineaOperativa > 0 && $monto > 0 ? ($monto / $lineaOperativa) : 0;
     $utilizacion = $lineaOperativa > 0 ? ($deudaActual / max($lineaOperativa, $deudaActual, 1)) * 100 : 0;
+    $mesesLargo = isset($cfg["meses_memoria_larga"]) ? (int) $cfg["meses_memoria_larga"] : 12;
 
-    $origenBase = $calculoLinea["origen_base"] === "promedio_mensual"
-        ? "promedio mensual × {$mesesCobertura} meses de cobertura"
-        : ($calculoLinea["origen_base"] === "compra_maxima"
-            ? "compra máxima del periodo (supera al promedio × cobertura)"
-            : "sin compras recientes para estimar base");
+    $origenesBase = array(
+        "promedio_mensual"  => "promedio mensual × {$mesesCobertura} meses de cobertura",
+        "compra_maxima"     => "compra máxima del periodo reciente ({$meses} meses)",
+        "compra_maxima_12m" => "compra máxima de los últimos {$mesesLargo} meses (memoria larga)",
+        "mixta"             => "el mayor entre promedio×cobertura, compra máx. reciente y compra máx. 12m",
+        "sin_datos"         => "sin compras recientes para estimar base",
+    );
+    $origenClave = isset($calculoLinea["origen_base"]) ? $calculoLinea["origen_base"] : "mixta";
+    $origenBase = isset($origenesBase[$origenClave]) ? $origenesBase[$origenClave] : $origenesBase["mixta"];
 
     $calculoTexto = $baseEconomica > 0
         ? "S/ " . number_format($baseEconomica, 2)
             . " × " . round($factorScore, 2)
             . " × " . round($factorRiesgo, 2)
-            . " = S/ " . number_format($monto, 2)
+            . " = S/ " . number_format($montoBruto, 2)
+            . (!empty($calculoLinea["piso_activo"])
+                ? " → piso S/ " . number_format((float) $calculoLinea["piso_aplicado"], 2)
+                    . " = S/ " . number_format($monto, 2)
+                : " = S/ " . number_format($monto, 2))
         : "Sin base económica en los últimos {$meses} meses.";
+
+    $pasos = array(
+        array(
+            "etiqueta" => "1. Promedio mensual",
+            "valor"    => "S/ " . number_format($promedioMensual, 2),
+            "detalle"  => "Compras de los últimos {$meses} meses ÷ {$meses}",
+        ),
+        array(
+            "etiqueta" => "2. Compra máxima (periodo)",
+            "valor"    => "S/ " . number_format($compraMaxima, 2),
+            "detalle"  => "Mayor documento de venta en los últimos {$meses} meses",
+        ),
+        array(
+            "etiqueta" => "3. Compra máxima (12 meses)",
+            "valor"    => "S/ " . number_format($compraMaxima12m, 2),
+            "detalle"  => "Mayor documento en los últimos {$mesesLargo} meses (evita castigar pausas comerciales)",
+        ),
+        array(
+            "etiqueta" => "4. Base económica",
+            "valor"    => "S/ " . number_format($baseEconomica, 2),
+            "detalle"  => "Se usa: " . $origenBase,
+        ),
+        array(
+            "etiqueta" => "5. Factor score Motor 3",
+            "valor"    => round($factorScore, 2) . "×",
+            "detalle"  => "Score compuesto " . round($scoreFinal, 1) . " ÷ 100 (mín. 0,35)",
+        ),
+        array(
+            "etiqueta" => "6. Factor riesgo Motor 1",
+            "valor"    => round($factorRiesgo, 2) . "×",
+            "detalle"  => "Score riesgo " . round($scoreRiesgo, 1) . " ÷ 100 (mín. 0,50)",
+        ),
+        array(
+            "etiqueta" => "7. Línea bruta",
+            "valor"    => "S/ " . number_format($montoBruto, 2),
+            "detalle"  => "Base × factores de score y riesgo",
+        ),
+    );
+
+    if (!empty($calculoLinea["piso_activo"])) {
+        $pasos[] = array(
+            "etiqueta" => "8. Piso por buen pagador",
+            "valor"    => "S/ " . number_format((float) $calculoLinea["piso_aplicado"], 2),
+            "detalle"  => isset($calculoLinea["piso_detalle"]) ? $calculoLinea["piso_detalle"] : "",
+        );
+    }
+
+    $pasos[] = array(
+        "etiqueta" => (!empty($calculoLinea["piso_activo"]) ? "9" : "8") . ". Línea recomendada",
+        "valor"    => "S/ " . number_format($monto, 2),
+        "detalle"  => "Referencia para el Motor 1 (utilización) cuando es > 0",
+    );
 
     return array(
         "titulo"   => "¿Por qué esta línea de crédito?",
         "resumen"  => $accion["explicacion"],
-        "definicion_base_economica" => "Base económica = el mayor entre (promedio mensual de compras × {$mesesCobertura} meses) "
-            . "y la compra máxima del periodo. Es cuánto volumen de venta justifica, en principio, prestarle a crédito.",
-        "formula"  => "Línea = base económica × factor score Motor 3 × factor riesgo Motor 1",
+        "definicion_base_economica" => "Base económica = el mayor entre (promedio mensual × {$mesesCobertura}), "
+            . "la compra máxima de {$meses} meses y la compra máxima de {$mesesLargo} meses. "
+            . "Así no se penaliza una pausa de pedidos si el cliente sigue pagando bien.",
+        "formula"  => "Línea = max(base × factor score × factor riesgo, piso opcional)",
         "calculo"  => $calculoTexto,
-        "pasos"    => array(
-            array(
-                "etiqueta" => "1. Promedio mensual",
-                "valor"    => "S/ " . number_format($promedioMensual, 2),
-                "detalle"  => "Compras de los últimos {$meses} meses ÷ {$meses}",
-            ),
-            array(
-                "etiqueta" => "2. Compra máxima",
-                "valor"    => "S/ " . number_format($compraMaxima, 2),
-                "detalle"  => "Mayor documento de venta en el mismo periodo",
-            ),
-            array(
-                "etiqueta" => "3. Base económica",
-                "valor"    => "S/ " . number_format($baseEconomica, 2),
-                "detalle"  => "Se usa: " . $origenBase,
-            ),
-            array(
-                "etiqueta" => "4. Factor score Motor 3",
-                "valor"    => round($factorScore, 2) . "×",
-                "detalle"  => "Score compuesto " . round($scoreFinal, 1) . " ÷ 100 (mín. 0,35)",
-            ),
-            array(
-                "etiqueta" => "5. Factor riesgo Motor 1",
-                "valor"    => round($factorRiesgo, 2) . "×",
-                "detalle"  => "Score riesgo " . round($scoreRiesgo, 1) . " ÷ 100 (mín. 0,50)",
-            ),
-            array(
-                "etiqueta" => "6. Línea recomendada",
-                "valor"    => "S/ " . number_format($monto, 2),
-                "detalle"  => "Referencia para el Motor 1 (utilización) cuando es > 0",
-            ),
-        ),
+        "pasos"    => $pasos,
+        "nota_pausa" => !empty($calculoLinea["nota_pausa"]) ? $calculoLinea["nota_pausa"] : "",
+        "pausa_comercial" => !empty($calculoLinea["pausa_comercial"]),
         "comparacion" => array(
             array("etiqueta" => "Línea operativa (pico histórico)", "valor" => "S/ " . number_format($lineaOperativa, 2)),
             array("etiqueta" => "Línea recomendada", "valor" => "S/ " . number_format($monto, 2)),
@@ -1432,8 +1613,23 @@ function icMotor3DeterminarAccion($cfg, $scoreFinal, $scoreRiesgo, $utilizacion,
         $clave = "incrementar";
         $motivos[] = "Línea recomendada supera la operativa en " . round(($ratio - 1) * 100, 1) . "% con buen perfil.";
     } elseif ($lineaRecomendada > 0 && $ratio <= (float) $umb["ratio_reducir"]) {
-        $clave = "reducir";
-        $motivos[] = "Capacidad observada supera lo que el perfil justifica hoy.";
+        $utilizacionReal = $lineaOperativa > 0
+            ? ($deuda / max($lineaOperativa, $deuda, 1.0)) * 100
+            : 0;
+
+        if (
+            $scoreRiesgo >= (float) $umb["reducir_riesgo_exento"]
+            && $utilizacionReal < (float) $umb["reducir_utilizacion_exenta"]
+        ) {
+            $clave = "mantener";
+            $motivos[] = "La línea calculada es conservadora por compras recientes bajas, "
+                . "pero el riesgo es bueno (" . round($scoreRiesgo, 1) . ") "
+                . "y la utilización real es baja (" . round($utilizacionReal, 1) . "%). "
+                . "Se sugiere mantener la línea operativa.";
+        } else {
+            $clave = "reducir";
+            $motivos[] = "Capacidad observada supera lo que el perfil justifica hoy.";
+        }
     } elseif ($lineaRecomendada <= 0 && $lineaOperativa > 0 && $deuda <= 0) {
         $clave = "aprobacion_manual";
         $motivos[] = "Tiene línea operativa histórica pero sin compras recientes para recalcular monto.";

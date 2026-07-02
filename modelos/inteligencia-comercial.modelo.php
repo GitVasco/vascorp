@@ -608,6 +608,7 @@ class ModeloInteligenciaComercial
     {
         $cfg = icConfigMotor3();
         $meses = (int) $cfg["meses_periodo"];
+        $mesesLargo = isset($cfg["meses_memoria_larga"]) ? (int) $cfg["meses_memoria_larga"] : 12;
         $tiposSql = icVentasTiposValidosSql();
         $vendExclSql = self::mdlSqlIn(icConfigMotor2()["ventas_excluir_vendedores"]);
         $linea = self::mdlLineaCreditoOperativa($codigoCliente);
@@ -627,6 +628,8 @@ class ModeloInteligenciaComercial
                 IFNULL(vta.monto_reciente, 0) AS monto_reciente,
                 IFNULL(vta.monto_anterior, 0) AS monto_anterior,
                 IFNULL(vta.compra_maxima, 0) AS compra_maxima,
+                IFNULL(vta.compra_maxima_12m, 0) AS compra_maxima_12m,
+                IFNULL(vta.monto_12m, 0) AS monto_12m,
                 vta.fecha_primera_venta
             FROM clientesjf cli
             LEFT JOIN (
@@ -638,6 +641,8 @@ class ModeloInteligenciaComercial
                          AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
                         THEN v.total ELSE 0 END) AS monto_anterior,
                     MAX(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS compra_maxima,
+                    MAX(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mesesLargo} MONTH) THEN v.total ELSE 0 END) AS compra_maxima_12m,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mesesLargo} MONTH) THEN v.total ELSE 0 END) AS monto_12m,
                     MIN(v.fecha) AS fecha_primera_venta
                 FROM ventajf v
                 WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
@@ -668,10 +673,14 @@ class ModeloInteligenciaComercial
     }
 
     /**
-     * Motor 3: recomendación de línea de crédito (reutiliza scores de Motores 1 y 2).
+     * Motor 3: recomendación de línea de crédito (reutiliza scores de Motores 1, 2 y 4 fidelidad).
      */
-    public static function mdlCalcularMotorLineaCredito($codigoCliente, $resultadoMotor1 = null, $resultadoMotor2 = null)
-    {
+    public static function mdlCalcularMotorLineaCredito(
+        $codigoCliente,
+        $resultadoMotor1 = null,
+        $resultadoMotor2 = null,
+        $resultadoMotor4 = null
+    ) {
         $cfg = icConfigMotor3();
         $pesos = icPesosDecimalesMotor3();
         $pesosEfectivos = $cfg["pesos_efectivos"];
@@ -687,6 +696,10 @@ class ModeloInteligenciaComercial
             $resultadoMotor2 = self::mdlCalcularMotorComercial($codigoCliente);
         }
 
+        if ($resultadoMotor4 === null) {
+            $resultadoMotor4 = self::mdlCalcularMotorFidelidad($codigoCliente);
+        }
+
         $metricas = self::mdlMetricasMotorLineaCredito($codigoCliente);
 
         if (!$metricas || !$resultadoMotor1) {
@@ -695,12 +708,14 @@ class ModeloInteligenciaComercial
 
         $scoreRiesgo = (float) $resultadoMotor1["score"];
         $scoreComercial = $resultadoMotor2 ? (float) $resultadoMotor2["score"] : $scoreNeutro;
+        $scoreFidelidad = $resultadoMotor4 ? (float) $resultadoMotor4["score"] : $scoreNeutro;
         $deudaActual = (float) $metricas["deuda_actual"];
         $lineaOperativa = (float) $metricas["linea_operativa"];
         $picoHistorico = (float) $metricas["pico_historico"];
         $montoReciente = (float) $metricas["monto_reciente"];
         $montoAnterior = (float) $metricas["monto_anterior"];
         $compraMaxima = (float) $metricas["compra_maxima"];
+        $compraMaxima12m = (float) $metricas["compra_maxima_12m"];
         $mesesAntiguedad = (int) $metricas["meses_antiguedad"];
         $promedioMensual = $montoReciente / max(1, $meses);
         $pctCrecimiento = icPctCrecimiento($montoReciente, $montoAnterior);
@@ -792,6 +807,9 @@ class ModeloInteligenciaComercial
         $detalleComercial = $resultadoMotor2
             ? "Score del Motor 2: " . round($scoreComercial, 1) . " (" . $resultadoMotor2["clasificacion"]["etiqueta"] . ")."
             : "Sin datos comerciales; score neutro ({$scoreNeutro}).";
+        $detalleFidelidad = $resultadoMotor4
+            ? "Score del Motor 3 (Fidelidad): " . round($scoreFidelidad, 1) . " (" . $resultadoMotor4["clasificacion"]["etiqueta"] . ")."
+            : "Sin datos de fidelidad; score neutro ({$scoreNeutro}).";
 
         $factores = array(
             "score_riesgo" => array(
@@ -802,7 +820,8 @@ class ModeloInteligenciaComercial
                 "score" => round($scoreRiesgo, 1),
                 "detalle" => $detalleRiesgo,
                 "formula" => "Score heredado = total ponderado del Motor 1",
-                "regla" => "Capacidad de pago: historial de pagos, mora, tendencia e incidencias del Motor 1. Peso 35% en este motor.",
+                "regla" => "Capacidad de pago: historial de pagos, mora, tendencia e incidencias del Motor 1. Peso "
+                    . (int) $pesosEfectivos["score_riesgo"] . "% en este motor.",
                 "valores" => array(
                     array("etiqueta" => "Score riesgo", "valor" => round($scoreRiesgo, 1)),
                     array("etiqueta" => "Clasificación", "valor" => $resultadoMotor1["clasificacion"]["etiqueta"]),
@@ -813,6 +832,75 @@ class ModeloInteligenciaComercial
                     $scoreRiesgo,
                     $resultadoMotor1["factores"]
                 ),
+            ),
+            "score_comercial" => array(
+                "clave" => "score_comercial",
+                "nombre" => "Score Comercial",
+                "icono" => "fa-line-chart",
+                "peso" => (int) $pesosEfectivos["score_comercial"],
+                "score" => round($scoreComercial, 1),
+                "detalle" => $detalleComercial,
+                "formula" => "Score heredado = total ponderado del Motor 2",
+                "regla" => "Potencial de crecimiento comercial; se hereda el score final del Motor 2.",
+                "valores" => array(
+                    array("etiqueta" => "Score comercial", "valor" => round($scoreComercial, 1)),
+                    array("etiqueta" => "Clasificación", "valor" => $resultadoMotor2 ? $resultadoMotor2["clasificacion"]["etiqueta"] : "Sin datos"),
+                ),
+                "tabla_logica" => $resultadoMotor2
+                    ? icTablaLogicaScoreReferencia(
+                        "Motor 2 — Comercial",
+                        $scoreComercial,
+                        $resultadoMotor2["factores"]
+                    )
+                    : array(
+                        "titulo"   => "Motor 2 — Comercial",
+                        "intro"    => "Sin datos comerciales; se aplica score neutro.",
+                        "columnas" => array("Situación", "Condición", "Score"),
+                        "filas"    => array(
+                            array(
+                                "situacion"    => "→ Sin datos",
+                                "condicion"    => "Score neutro " . $scoreNeutro,
+                                "score"        => $scoreNeutro,
+                                "aplica"       => true,
+                                "es_resultado" => true,
+                            ),
+                        ),
+                    ),
+            ),
+            "score_fidelidad" => array(
+                "clave" => "score_fidelidad",
+                "nombre" => "Score de Fidelidad",
+                "icono" => "fa-heart",
+                "peso" => (int) $pesosEfectivos["score_fidelidad"],
+                "score" => round($scoreFidelidad, 1),
+                "detalle" => $detalleFidelidad,
+                "formula" => "Score heredado = total ponderado del Motor 3 (Fidelidad)",
+                "regla" => "Probabilidad de que el cliente siga comprando; se hereda el score del Motor 3 (Fidelidad). Peso "
+                    . (int) $pesosEfectivos["score_fidelidad"] . "% en este motor.",
+                "valores" => array(
+                    array("etiqueta" => "Score fidelidad", "valor" => round($scoreFidelidad, 1)),
+                    array("etiqueta" => "Clasificación", "valor" => $resultadoMotor4 ? $resultadoMotor4["clasificacion"]["etiqueta"] : "Sin datos"),
+                ),
+                "tabla_logica" => $resultadoMotor4
+                    ? icTablaLogicaScoreReferencia(
+                        "Motor 3 — Fidelidad",
+                        $scoreFidelidad,
+                        $resultadoMotor4["factores"]
+                    )
+                    : array(
+                        "titulo"   => "Motor 3 — Fidelidad",
+                        "intro"    => "Sin datos de fidelidad; se aplica score neutro.",
+                        "columnas" => array("Situación", "Condición", "Score"),
+                        "filas"    => array(
+                            array(
+                                "situacion"    => "→ Sin datos",
+                                "condicion"    => "Score neutro " . $scoreNeutro,
+                                "score"        => $scoreNeutro,
+                                "aplica"       => true,
+                                "es_resultado" => true,
+                            ),
+                        ),
+                    ),
             ),
             "promedio_compras" => array(
                 "clave" => "promedio_compras",
@@ -921,40 +1009,6 @@ class ModeloInteligenciaComercial
                     $scoreAntiguedad
                 ),
             ),
-            "score_comercial" => array(
-                "clave" => "score_comercial",
-                "nombre" => "Score Comercial",
-                "icono" => "fa-line-chart",
-                "peso" => (int) $pesosEfectivos["score_comercial"],
-                "score" => round($scoreComercial, 1),
-                "detalle" => $detalleComercial,
-                "formula" => "Score heredado = total ponderado del Motor 2",
-                "regla" => "Potencial de crecimiento comercial; se hereda el score final del Motor 2.",
-                "valores" => array(
-                    array("etiqueta" => "Score comercial", "valor" => round($scoreComercial, 1)),
-                    array("etiqueta" => "Clasificación", "valor" => $resultadoMotor2 ? $resultadoMotor2["clasificacion"]["etiqueta"] : "Sin datos"),
-                ),
-                "tabla_logica" => $resultadoMotor2
-                    ? icTablaLogicaScoreReferencia(
-                        "Motor 2 — Comercial",
-                        $scoreComercial,
-                        $resultadoMotor2["factores"]
-                    )
-                    : array(
-                        "titulo"   => "Motor 2 — Comercial",
-                        "intro"    => "Sin datos comerciales; se aplica score neutro.",
-                        "columnas" => array("Situación", "Condición", "Score"),
-                        "filas"    => array(
-                            array(
-                                "situacion"    => "→ Sin datos",
-                                "condicion"    => "Score neutro " . $scoreNeutro,
-                                "score"        => $scoreNeutro,
-                                "aplica"       => true,
-                                "es_resultado" => true,
-                            ),
-                        ),
-                    ),
-            ),
         );
 
         if ($equifaxActivo) {
@@ -988,8 +1042,11 @@ class ModeloInteligenciaComercial
             $cfg,
             $promedioMensual,
             $compraMaxima,
+            $compraMaxima12m,
             $scoreFinal,
-            $scoreRiesgo
+            $scoreRiesgo,
+            $deudaActual,
+            $lineaOperativa
         );
         $lineaRecomendada = (float) $calculoLinea["monto"];
 
@@ -1060,11 +1117,13 @@ class ModeloInteligenciaComercial
                 "calculo"           => $calculoLinea,
             ),
             "metricas" => array(
-                "promedio_mensual" => round($promedioMensual, 2),
-                "compra_maxima"    => round($compraMaxima, 2),
-                "pct_crecimiento"  => round($pctCrecimiento, 2),
-                "score_riesgo"     => round($scoreRiesgo, 2),
-                "score_comercial"  => round($scoreComercial, 2),
+                "promedio_mensual"  => round($promedioMensual, 2),
+                "compra_maxima"     => round($compraMaxima, 2),
+                "compra_maxima_12m" => round($compraMaxima12m, 2),
+                "pct_crecimiento"   => round($pctCrecimiento, 2),
+                "score_riesgo"      => round($scoreRiesgo, 2),
+                "score_comercial"   => round($scoreComercial, 2),
+                "score_fidelidad"   => round($scoreFidelidad, 2),
             ),
         );
     }

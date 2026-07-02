@@ -667,7 +667,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "inteligencia-comercial") { ?>
-    <script src="vistas/js/inteligencia-comercial.js?v=19"></script>
+    <script src="vistas/js/inteligencia-comercial.js?v=20"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") { ?>
     <script src="vistas/js/vasco-online-sync.js?v=<?php echo rand(); ?>"></script>

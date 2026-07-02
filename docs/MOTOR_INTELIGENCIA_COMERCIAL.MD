@@ -73,13 +73,14 @@ Este motor debe recomendar automáticamente una línea de crédito utilizando lo
 
 Pesos:
 
-- Score de Riesgo = **35%**
-- Promedio de compras = **20%**
+- Score de Riesgo = **40%**
+- Promedio de compras = **10%**
 - Compra máxima = **10%**
 - Crecimiento = **10%**
 - Utilización de la línea actual = **10%**
 - Antigüedad = **5%**
 - Score Comercial = **5%**
+- Score de Fidelidad = **5%**
 - Equifax = **5%**
 
 Debe recomendar una de las siguientes acciones:

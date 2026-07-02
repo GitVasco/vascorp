@@ -327,6 +327,12 @@ function icAbrirModalLinea(data) {
     $("#icModalLineaAccionTxt").text(accion.explicacion || data.resumen || "");
 
     $("#icModalLineaBaseDef").text(data.definicion_base_economica || "");
+    if (data.nota_pausa) {
+        $("#icModalLineaNotaPausa span").text(data.nota_pausa);
+        $("#icModalLineaNotaPausa").show();
+    } else {
+        $("#icModalLineaNotaPausa").hide();
+    }
     $("#icModalLineaFormula").text(data.formula || "—");
     $("#icModalLineaCalculo").text(data.calculo || "—");
 

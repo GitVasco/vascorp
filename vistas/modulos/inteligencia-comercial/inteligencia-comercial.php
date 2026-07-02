@@ -1740,6 +1740,9 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                     <h5 class="ic-linea-seccion-titulo"><span class="ic-linea-seccion-num">2</span> Cálculo del monto recomendado</h5>
                     <div class="ic-linea-calculo-card">
                         <p class="ic-linea-base-def" id="icModalLineaBaseDef"></p>
+                        <p class="ic-linea-nota-pausa text-muted" id="icModalLineaNotaPausa" style="display:none; margin:0 0 10px; font-size:12px;">
+                            <i class="fa fa-info-circle"></i> <span></span>
+                        </p>
                         <div class="ic-modal-formula" id="icModalLineaFormula">—</div>
                         <div class="ic-linea-resultado">
                             <span>Resultado</span>

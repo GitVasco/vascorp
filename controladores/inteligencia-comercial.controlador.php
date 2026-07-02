@@ -41,14 +41,14 @@ class ControladorInteligenciaComercial
         $motor1 = self::ctrCalcularMotorRiesgoCredito($codigoCliente);
         $motor2 = self::ctrCalcularMotorComercial($codigoCliente);
         $motor4 = self::ctrCalcularMotorFidelidad($codigoCliente);
-        $motor3 = self::ctrCalcularMotorLineaCredito($codigoCliente, $motor1, $motor2);
+        $motor3 = self::ctrCalcularMotorLineaCredito($codigoCliente, $motor1, $motor2, $motor4);
 
         if ($motor3) {
             $lineaRecomendada = (float) $motor3["linea"]["linea_recomendada"];
 
             if ($lineaRecomendada > 0) {
                 $motor1 = self::ctrCalcularMotorRiesgoCredito($codigoCliente, $lineaRecomendada);
-                $motor3 = self::ctrCalcularMotorLineaCredito($codigoCliente, $motor1, $motor2);
+                $motor3 = self::ctrCalcularMotorLineaCredito($codigoCliente, $motor1, $motor2, $motor4);
             }
         }
 
@@ -82,8 +82,12 @@ class ControladorInteligenciaComercial
         return ModeloInteligenciaComercial::mdlCalcularMotorFidelidad($codigoCliente);
     }
 
-    public static function ctrCalcularMotorLineaCredito($codigoCliente, $resultadoMotor1 = null, $resultadoMotor2 = null)
-    {
+    public static function ctrCalcularMotorLineaCredito(
+        $codigoCliente,
+        $resultadoMotor1 = null,
+        $resultadoMotor2 = null,
+        $resultadoMotor4 = null
+    ) {
         $codigoCliente = trim((string) $codigoCliente);
 
         if ($codigoCliente === "") {
@@ -93,7 +97,8 @@ class ControladorInteligenciaComercial
         return ModeloInteligenciaComercial::mdlCalcularMotorLineaCredito(
             $codigoCliente,
             $resultadoMotor1,
-            $resultadoMotor2
+            $resultadoMotor2,
+            $resultadoMotor4
         );
     }
 }
