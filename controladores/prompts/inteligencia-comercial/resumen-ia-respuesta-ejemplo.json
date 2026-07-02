@@ -1,0 +1,18 @@
+{
+    "_nota": "Ejemplo de respuesta IDEAL para el caso: riesgo 50.8, comercial 47.5, fidelidad 46, línea recomendada S/ 0, aprobación manual. No repite scores visibles en pantalla.",
+    "decision": "No otorgar crédito automático. Escalar a aprobación manual y coordinar visita comercial antes de reactivar cualquier línea.",
+    "que_significa": [
+        "Riesgo: el historial de pagos es débil; aunque hoy no tenga deuda, el sistema no confía en fiarle de nuevo sin evidencia de mejora.",
+        "Comercial: compra poco y sin ritmo; no es un cliente activo en este momento, por eso el potencial de venta está limitado.",
+        "Fidelidad: lleva tiempo sin comprar con regularidad; la relación se está enfriando y puede perderse si no se interviene.",
+        "Línea: tuvo exposición histórica (~S/ 11,500) pero el perfil actual no justifica reabrir crédito sin revisión humana."
+    ],
+    "linea_credito": "La línea recomendada queda en cero porque el riesgo crediticio no alcanza el umbral para aprobar automáticamente, aunque el pico histórico fue mayor. La acción correcta es pedir aprobación manual: primero recuperar confianza en pagos y reactivar compras, luego evaluar un monto.",
+    "como_mejorar": [
+        "Visita comercial para entender por qué dejó de comprar y acordar plan de reactivación.",
+        "Exigir pagos puntuales en los próximos documentos antes de plantear crédito.",
+        "Proponer pedido mínimo recurrente (mensual) para recuperar frecuencia.",
+        "Documentar acuerdos antes de escalar aprobación de línea.",
+        "Revisar si el problema es estacional o de competencia en su zona."
+    ]
+}

@@ -1,0 +1,90 @@
+{
+    "cliente": {
+        "codigo": "102373",
+        "nombre": "ANGIE SENSACION S.A.C."
+    },
+    "motores": [
+        {
+            "etiqueta": "Motor 1 — Riesgo crediticio",
+            "score": 80.2,
+            "clasificacion": "Bueno",
+            "requiere_atencion": false,
+            "factores_debiles": [],
+            "factores_fuertes": [
+                { "nombre": "Puntualidad de pago", "score": 92.0, "peso_pct": 25 },
+                { "nombre": "Antigüedad", "score": 85.0, "peso_pct": 10 },
+                { "nombre": "Utilización de línea", "score": 78.0, "peso_pct": 15 }
+            ]
+        },
+        {
+            "etiqueta": "Motor 2 — Comercial",
+            "score": 52.4,
+            "clasificacion": "Riesgo Alto",
+            "requiere_atencion": true,
+            "factores_debiles": [
+                { "nombre": "Frecuencia de compra", "score": 35.0, "peso_pct": 20 },
+                { "nombre": "Volumen reciente", "score": 42.0, "peso_pct": 25 },
+                { "nombre": "Tendencia", "score": 48.0, "peso_pct": 15 }
+            ],
+            "factores_fuertes": [
+                { "nombre": "Ticket promedio", "score": 72.0, "peso_pct": 15 }
+            ]
+        },
+        {
+            "etiqueta": "Motor 3 — Fidelidad",
+            "score": 66.1,
+            "clasificacion": "Riesgo Medio",
+            "requiere_atencion": true,
+            "factores_debiles": [
+                { "nombre": "Recencia de compra", "score": 45.0, "peso_pct": 20 },
+                { "nombre": "Constancia", "score": 58.0, "peso_pct": 15 }
+            ],
+            "factores_fuertes": [
+                { "nombre": "Antigüedad relación", "score": 88.0, "peso_pct": 10 }
+            ]
+        },
+        {
+            "etiqueta": "Motor 4 — Línea de crédito (recomendación global)",
+            "score": 61.5,
+            "clasificacion": "Riesgo Medio",
+            "requiere_atencion": true,
+            "factores_debiles": [
+                { "nombre": "Score Comercial (M2)", "score": 52.4, "peso_pct": 5 },
+                { "nombre": "Crecimiento", "score": 55.0, "peso_pct": 10 },
+                { "nombre": "Promedio compras", "score": 60.0, "peso_pct": 10 }
+            ],
+            "factores_fuertes": [
+                { "nombre": "Score Riesgo (M1)", "score": 80.2, "peso_pct": 40 },
+                { "nombre": "Utilización línea", "score": 75.0, "peso_pct": 10 }
+            ]
+        }
+    ],
+    "linea_credito": {
+        "score_motor": 61.5,
+        "accion": "Mantener línea actual",
+        "explicacion_accion": "Riesgo crediticio favorable (80.2) con baja utilización (18%). La recomendada es menor que la operativa; se mantiene la línea vigente.",
+        "deuda_actual": 12500.0,
+        "linea_operativa": 68000.0,
+        "linea_recomendada": 28500.0,
+        "utilizacion_pct": 18.38,
+        "pausa_comercial": true,
+        "nota_pausa": "Sin compras en los últimos 4 meses; se consideró compra máxima de 12 meses para no castigar al buen pagador.",
+        "por_que": {
+            "calculo": "S/ 45,000.00 × 0.62 × 0.80 = S/ 22,320.00 → piso S/ 28,500.00 = S/ 28,500.00",
+            "resumen_motor": "Riesgo crediticio favorable (80.2) con baja utilización (18%). La recomendada es menor que la operativa; se mantiene la línea vigente.",
+            "origen_base": "Se usa: el mayor entre promedio×cobertura, compra máx. reciente y compra máx. 12m",
+            "pasos_clave": [
+                { "etiqueta": "Base económica", "valor": "S/ 45,000.00", "detalle": "Compra máxima 12m por pausa comercial" },
+                { "etiqueta": "Factor score Motor 4", "valor": "0.62×", "detalle": "Score compuesto 61.5 ÷ 100" },
+                { "etiqueta": "Factor riesgo Motor 1", "valor": "0.80×", "detalle": "Score riesgo 80.2 ÷ 100" },
+                { "etiqueta": "Línea recomendada", "valor": "S/ 28,500.00", "detalle": "Piso por buen pagador con baja utilización" }
+            ],
+            "comparacion": [
+                { "etiqueta": "Línea operativa (pico histórico)", "valor": "S/ 68,000.00" },
+                { "etiqueta": "Línea recomendada", "valor": "S/ 28,500.00" },
+                { "etiqueta": "Deuda actual", "valor": "S/ 12,500.00" },
+                { "etiqueta": "Ratio recomendada ÷ operativa", "valor": "0.42×" }
+            ]
+        }
+    }
+}

@@ -11,6 +11,8 @@ $(document).ready(function () {
         window.location = "index.php?ruta=inteligencia-comercial&cliente=" + encodeURIComponent(cliente);
     });
 
+    icInitResumenIa();
+
     if (typeof Chart === "undefined") {
         return;
     }
@@ -41,6 +43,103 @@ $(document).ready(function () {
     icInitImpresion();
 
 });
+
+function icInitResumenIa() {
+    var $box = $("#icResumenIaBox");
+    var $btn = $("#btnIcGenerarResumenIa");
+
+    if (!$box.length || !$btn.length) {
+        return;
+    }
+
+    var cliente = $box.data("cliente");
+    var $estado = $("#icResumenIaEstado");
+    var $contenido = $("#icResumenIaContenido");
+    var $decision = $("#icResumenIaDecision");
+    var $significa = $("#icResumenIaSignifica");
+    var $lineaPorQue = $("#icResumenIaLineaPorQue");
+    var $lista = $("#icResumenIaRecomendaciones");
+    var $meta = $("#icResumenIaMeta");
+
+    function icResumenIaClaseDecision(texto) {
+        var t = (texto || "").toLowerCase();
+        if (/no otorgar|rechaz|suspender|no fiar|riesgo alto|escalar|aprobación manual|aprobacion manual/.test(t)) {
+            return "ic-decision-riesgo";
+        }
+        if (/visita|esperar|reactivar|seguimiento|revisar/.test(t)) {
+            return "ic-decision-alerta";
+        }
+        return "";
+    }
+
+    $btn.on("click", function () {
+        if (!cliente) {
+            return;
+        }
+
+        $btn.prop("disabled", true);
+        $estado.removeClass("ic-error").html('<i class="fa fa-spinner fa-spin"></i> Generando resumen…');
+        $contenido.hide();
+
+        $.ajax({
+            url: "ajax/inteligencia-comercial/resumen-ia.ajax.php",
+            type: "POST",
+            dataType: "json",
+            data: { cliente: cliente }
+        }).done(function (resp) {
+            if (!resp || !resp.ok) {
+                $estado.addClass("ic-error").text((resp && resp.msg) ? resp.msg : "No se pudo generar el resumen.");
+                return;
+            }
+
+            $estado.hide();
+
+            var decision = resp.decision || "";
+            var significa = resp.que_significa || resp.alertas || [];
+            var linea = resp.linea_credito || resp.linea_credito_por_que || "";
+            var mejorar = resp.como_mejorar || resp.recomendaciones || [];
+
+            $decision.text(decision).removeClass("ic-decision-alerta ic-decision-riesgo");
+            if (decision) {
+                $decision.addClass(icResumenIaClaseDecision(decision));
+            }
+            $("#icResumenIaBloqueDecision").toggle(!!decision);
+
+            $significa.empty();
+            if (significa.length) {
+                $.each(significa, function (_, item) {
+                    $("<li></li>").text(item).appendTo($significa);
+                });
+            }
+            $("#icResumenIaBloqueSignifica").toggle(significa.length > 0);
+
+            $lineaPorQue.text(linea);
+            $("#icResumenIaBloqueLinea").toggle(!!linea);
+
+            $lista.empty();
+            if (mejorar.length) {
+                $.each(mejorar, function (_, item) {
+                    $("<li></li>").text(item).appendTo($lista);
+                });
+            }
+            $("#icResumenIaBloqueMejorar").toggle(mejorar.length > 0);
+
+            var meta = [];
+            if (resp.modelo) {
+                meta.push("Modelo: " + resp.modelo + (resp.modelo_respaldo ? " (respaldo)" : ""));
+            }
+            if (resp.generado_en) {
+                meta.push("Generado: " + resp.generado_en);
+            }
+            $meta.text(meta.join(" · "));
+            $contenido.show();
+        }).fail(function () {
+            $estado.addClass("ic-error").text("Error de comunicación con el servidor.");
+        }).always(function () {
+            $btn.prop("disabled", false);
+        });
+    });
+}
 
 function icInitImpresion() {
     var $btnV = $("#btnImprimirVertical");

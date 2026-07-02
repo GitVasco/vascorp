@@ -101,4 +101,58 @@ class ControladorInteligenciaComercial
             $resultadoMotor4
         );
     }
+
+    /**
+     * Resumen narrativo del cliente vía OpenAI (no modifica scores).
+     */
+    public static function ctrGenerarResumenIa($codigoCliente)
+    {
+        $codigoCliente = trim((string) $codigoCliente);
+
+        if ($codigoCliente === "") {
+            return array("ok" => false, "msg" => "Seleccione un cliente.");
+        }
+
+        $cfg = icConfigOpenAi();
+
+        if (empty($cfg["activo"])) {
+            return array("ok" => false, "msg" => "El resumen con IA está desactivado.");
+        }
+
+        if ($cfg["api_key"] === "") {
+            return array(
+                "ok"  => false,
+                "msg" => "Configure su clave en OPENAI_API_KEY (controladores/config.php).",
+            );
+        }
+
+        $analisis = self::ctrCalcularAnalisisCompleto($codigoCliente);
+
+        if (empty($analisis["motor1"])) {
+            return array("ok" => false, "msg" => "No hay análisis disponible para este cliente.");
+        }
+
+        $contexto = icConstruirContextoResumenIa($analisis);
+        $resultado = icOpenAiGenerarResumenCliente($contexto);
+
+        if (empty($resultado["ok"])) {
+            return $resultado;
+        }
+
+        return array(
+            "ok"                    => true,
+            "cliente"               => $contexto["cliente"],
+            "resumen"               => $resultado["resumen"],
+            "decision"              => $resultado["decision"],
+            "que_significa"         => $resultado["que_significa"],
+            "linea_credito"         => $resultado["linea_credito"],
+            "como_mejorar"          => $resultado["como_mejorar"],
+            "alertas"               => $resultado["alertas"],
+            "linea_credito_por_que" => $resultado["linea_credito_por_que"],
+            "recomendaciones"       => $resultado["recomendaciones"],
+            "modelo"                => isset($resultado["modelo"]) ? $resultado["modelo"] : "",
+            "modelo_respaldo"       => !empty($resultado["modelo_respaldo"]),
+            "generado_en"           => date("Y-m-d H:i:s"),
+        );
+    }
 }

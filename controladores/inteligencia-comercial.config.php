@@ -1926,3 +1926,491 @@ function icTablaLogicaTendenciaCompra($cfg, $clasificacion)
         ),
     );
 }
+
+// ─── Resumen ejecutivo con OpenAI (narrativa; no calcula scores) ───────────────
+
+require_once __DIR__ . "/inteligencia-comercial.prompt.php";
+
+function icConfigOpenAi()
+{
+    $modelosRespaldo = array();
+    if (defined("OPENAI_IC_MODELOS_RESPALDO")) {
+        $partes = explode(",", (string) OPENAI_IC_MODELOS_RESPALDO);
+        foreach ($partes as $parte) {
+            $modelo = trim($parte);
+            if ($modelo !== "") {
+                $modelosRespaldo[] = $modelo;
+            }
+        }
+    }
+
+    return array(
+        "activo"           => defined("OPENAI_IC_ACTIVO") ? (bool) OPENAI_IC_ACTIVO : false,
+        "api_key"          => defined("OPENAI_API_KEY") ? trim((string) OPENAI_API_KEY) : "",
+        "modelo"           => defined("OPENAI_IC_MODELO") ? trim((string) OPENAI_IC_MODELO) : "gpt-4o-mini",
+        "modelos_respaldo" => $modelosRespaldo,
+        "reintentos"       => defined("OPENAI_IC_REINTENTOS") ? max(1, (int) OPENAI_IC_REINTENTOS) : 2,
+        "espera_reintento" => defined("OPENAI_IC_ESPERA_REINTENTO_MS") ? max(0, (int) OPENAI_IC_ESPERA_REINTENTO_MS) : 1000,
+        "timeout"          => 45,
+    );
+}
+
+function icOpenAiModelosIntentar($cfg)
+{
+    $lista = array();
+    $principal = !empty($cfg["modelo"]) ? trim((string) $cfg["modelo"]) : "gpt-4o-mini";
+
+    if ($principal !== "") {
+        $lista[] = $principal;
+    }
+
+    if (!empty($cfg["modelos_respaldo"]) && is_array($cfg["modelos_respaldo"])) {
+        foreach ($cfg["modelos_respaldo"] as $modelo) {
+            $modelo = trim((string) $modelo);
+            if ($modelo !== "" && !in_array($modelo, $lista, true)) {
+                $lista[] = $modelo;
+            }
+        }
+    }
+
+    return $lista;
+}
+
+function icOpenAiErrorEsModeloNoDisponible($detalle)
+{
+    $detalle = strtolower((string) $detalle);
+
+    return strpos($detalle, "does not have access to model") !== false
+        || strpos($detalle, "model_not_found") !== false
+        || strpos($detalle, "no tiene acceso al modelo") !== false;
+}
+
+function icOpenAiErrorEsReintentable($httpCode, $detalle)
+{
+    if ($httpCode === 429 || $httpCode === 500 || $httpCode === 502 || $httpCode === 503 || $httpCode === 504) {
+        return true;
+    }
+
+    $detalle = strtolower((string) $detalle);
+
+    return strpos($detalle, "timeout") !== false
+        || strpos($detalle, "overloaded") !== false
+        || strpos($detalle, "rate limit") !== false;
+}
+
+/**
+ * Un solo intento HTTP a Chat Completions.
+ */
+function icOpenAiChatCompletionIntento($mensajes, $modelo, $cfg)
+{
+    $payload = json_encode(array(
+        "model"       => $modelo,
+        "messages"    => $mensajes,
+        "temperature" => 0.35,
+        "max_tokens"  => 700,
+    ), JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init("https://api.openai.com/v1/chat/completions");
+    curl_setopt_array($ch, array(
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => array(
+            "Content-Type: application/json",
+            "Authorization: Bearer " . $cfg["api_key"],
+        ),
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_TIMEOUT        => (int) $cfg["timeout"],
+        CURLOPT_CONNECTTIMEOUT => 15,
+    ));
+
+    $respuesta = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $error = curl_error($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($errno) {
+        return array(
+            "ok"        => false,
+            "msg"       => "Error de conexión con OpenAI: " . $error,
+            "http_code" => 0,
+            "modelo"    => $modelo,
+            "reintentar" => true,
+            "cambiar_modelo" => false,
+        );
+    }
+
+    $json = json_decode($respuesta, true);
+
+    if ($httpCode < 200 || $httpCode >= 300) {
+        $detalle = isset($json["error"]["message"]) ? $json["error"]["message"] : ("HTTP " . $httpCode);
+
+        return array(
+            "ok"             => false,
+            "msg"            => "OpenAI: " . $detalle,
+            "http_code"      => $httpCode,
+            "modelo"         => $modelo,
+            "reintentar"     => icOpenAiErrorEsReintentable($httpCode, $detalle),
+            "cambiar_modelo" => icOpenAiErrorEsModeloNoDisponible($detalle),
+        );
+    }
+
+    if (!isset($json["choices"][0]["message"]["content"])) {
+        return array(
+            "ok"             => false,
+            "msg"            => "Respuesta vacía de OpenAI.",
+            "http_code"      => $httpCode,
+            "modelo"         => $modelo,
+            "reintentar"     => true,
+            "cambiar_modelo" => false,
+        );
+    }
+
+    return array(
+        "ok"      => true,
+        "content" => (string) $json["choices"][0]["message"]["content"],
+        "modelo"  => $modelo,
+    );
+}
+
+/**
+ * Extrae factores más débiles y más fuertes de un motor.
+ */
+function icResumenIaFactoresDestacados($factores, $limite = 3)
+{
+    $lista = array();
+
+    if (!is_array($factores)) {
+        return array("debiles" => array(), "fuertes" => array());
+    }
+
+    foreach ($factores as $factor) {
+        if (!is_array($factor) || !isset($factor["nombre"], $factor["score"])) {
+            continue;
+        }
+
+        $lista[] = array(
+            "nombre"   => (string) $factor["nombre"],
+            "score"    => round((float) $factor["score"], 1),
+            "peso_pct" => isset($factor["peso"]) ? (int) $factor["peso"] : null,
+        );
+    }
+
+    if (empty($lista)) {
+        return array("debiles" => array(), "fuertes" => array());
+    }
+
+    $debiles = $lista;
+    usort($debiles, function ($a, $b) {
+        if ($a["score"] === $b["score"]) {
+            return 0;
+        }
+
+        return ($a["score"] < $b["score"]) ? -1 : 1;
+    });
+    $debiles = array_slice($debiles, 0, $limite);
+
+    $fuertes = $lista;
+    usort($fuertes, function ($a, $b) {
+        if ($a["score"] === $b["score"]) {
+            return 0;
+        }
+
+        return ($a["score"] > $b["score"]) ? -1 : 1;
+    });
+    $fuertes = array_slice($fuertes, 0, $limite);
+
+    return array(
+        "debiles" => $debiles,
+        "fuertes" => $fuertes,
+    );
+}
+
+function icResumenIaMotorContexto($etiqueta, $resultado)
+{
+    if (!$resultado || !is_array($resultado)) {
+        return null;
+    }
+
+    $destacados = icResumenIaFactoresDestacados(isset($resultado["factores"]) ? $resultado["factores"] : array());
+
+    return array(
+        "etiqueta"         => $etiqueta,
+        "score"            => round((float) $resultado["score"], 1),
+        "clasificacion"    => isset($resultado["clasificacion"]["etiqueta"])
+            ? (string) $resultado["clasificacion"]["etiqueta"]
+            : "",
+        "requiere_atencion" => round((float) $resultado["score"], 1) < 70,
+        "factores_debiles" => $destacados["debiles"],
+        "factores_fuertes" => $destacados["fuertes"],
+    );
+}
+
+/**
+ * Contexto compacto para el prompt de OpenAI (datos ya calculados por los motores).
+ */
+function icConstruirContextoResumenIa($analisis)
+{
+    $m1 = isset($analisis["motor1"]) ? $analisis["motor1"] : null;
+    $m2 = isset($analisis["motor2"]) ? $analisis["motor2"] : null;
+    $mLinea = isset($analisis["motor3"]) ? $analisis["motor3"] : null;
+    $mFidelidad = isset($analisis["motor4"]) ? $analisis["motor4"] : null;
+
+    $cliente = array("codigo" => "", "nombre" => "");
+    if ($m1 && isset($m1["cliente"])) {
+        $cliente["codigo"] = (string) $m1["cliente"]["codigo"];
+        $cliente["nombre"] = (string) $m1["cliente"]["nombre"];
+    }
+
+    $contexto = array(
+        "cliente" => $cliente,
+        "motores" => array(),
+        "guia_para_interpretar" => array(
+            "nota" => "El usuario ya ve scores y gráficos en pantalla. Interprétalos; no repitas los números.",
+            "motores" => array(
+                "Motor 1 — Riesgo" => "¿Se le puede fiar? Pagos, atrasos, utilización de línea, antigüedad.",
+                "Motor 2 — Comercial" => "¿Vale la pena venderle más? Frecuencia, volumen, crecimiento, tendencia.",
+                "Motor 3 — Fidelidad" => "¿Sigue siendo cliente leal? Regularidad, última compra, constancia.",
+                "Motor 4 — Línea" => "Recomendación global: acción sobre la línea y monto sugerido.",
+            ),
+        ),
+    );
+
+    $mapa = array(
+        array("Motor 1 — Riesgo crediticio", $m1),
+        array("Motor 2 — Comercial", $m2),
+        array("Motor 3 — Fidelidad", $mFidelidad),
+        array("Motor 4 — Línea de crédito (recomendación global)", $mLinea),
+    );
+
+    foreach ($mapa as $item) {
+        $bloque = icResumenIaMotorContexto($item[0], $item[1]);
+        if ($bloque) {
+            $contexto["motores"][] = $bloque;
+        }
+    }
+
+    if ($mLinea && isset($mLinea["linea"])) {
+        $linea = $mLinea["linea"];
+        $explicacion = isset($mLinea["explicacion_linea"]) && is_array($mLinea["explicacion_linea"])
+            ? $mLinea["explicacion_linea"]
+            : array();
+
+        $pasosClave = array();
+        if (!empty($explicacion["pasos"]) && is_array($explicacion["pasos"])) {
+            $indices = array(3, 4, 5, 6, 7, 8);
+            foreach ($indices as $idx) {
+                if (!isset($explicacion["pasos"][$idx])) {
+                    continue;
+                }
+                $paso = $explicacion["pasos"][$idx];
+                $pasosClave[] = array(
+                    "etiqueta" => isset($paso["etiqueta"]) ? (string) $paso["etiqueta"] : "",
+                    "valor"    => isset($paso["valor"]) ? (string) $paso["valor"] : "",
+                    "detalle"  => isset($paso["detalle"]) ? (string) $paso["detalle"] : "",
+                );
+            }
+        }
+
+        $contexto["linea_credito"] = array(
+            "score_motor"        => round((float) $mLinea["score"], 1),
+            "accion"             => isset($mLinea["accion"]["etiqueta"]) ? $mLinea["accion"]["etiqueta"] : "",
+            "explicacion_accion" => isset($mLinea["accion"]["explicacion"]) ? $mLinea["accion"]["explicacion"] : "",
+            "deuda_actual"       => isset($linea["deuda_actual"]) ? (float) $linea["deuda_actual"] : 0,
+            "linea_operativa"    => isset($linea["linea_operativa"]) ? (float) $linea["linea_operativa"] : 0,
+            "linea_recomendada"  => isset($linea["linea_recomendada"]) ? (float) $linea["linea_recomendada"] : 0,
+            "utilizacion_pct"    => isset($linea["utilizacion_pct"]) ? (float) $linea["utilizacion_pct"] : 0,
+            "por_que"            => array(
+                "calculo"        => isset($explicacion["calculo"]) ? (string) $explicacion["calculo"] : "",
+                "resumen_motor"  => isset($explicacion["resumen"]) ? (string) $explicacion["resumen"] : "",
+                "origen_base"    => "",
+                "pasos_clave"    => $pasosClave,
+                "comparacion"    => isset($explicacion["comparacion"]) ? $explicacion["comparacion"] : array(),
+            ),
+        );
+
+        if (!empty($explicacion["pasos"][3]["detalle"])) {
+            $contexto["linea_credito"]["por_que"]["origen_base"] = (string) $explicacion["pasos"][3]["detalle"];
+        }
+
+        if (!empty($explicacion["pausa_comercial"])) {
+            $contexto["linea_credito"]["pausa_comercial"] = true;
+            if (!empty($explicacion["nota_pausa"])) {
+                $contexto["linea_credito"]["nota_pausa"] = $explicacion["nota_pausa"];
+            }
+        }
+    }
+
+    return $contexto;
+}
+
+function icOpenAiMensajesResumenCliente($contexto)
+{
+    $jsonContexto = json_encode($contexto, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+    return array(
+        array(
+            "role"    => "system",
+            "content" => icPromptResumenIaSistema(),
+        ),
+        array(
+            "role"    => "user",
+            "content" => icPromptResumenIaUsuario($jsonContexto),
+        ),
+    );
+}
+
+function icOpenAiParsearResumenJson($texto)
+{
+    $texto = trim((string) $texto);
+    $datos = json_decode($texto, true);
+
+    if (!is_array($datos) && preg_match('/\{[\s\S]*\}/', $texto, $coincidencias)) {
+        $datos = json_decode($coincidencias[0], true);
+    }
+
+    if (!is_array($datos)) {
+        return icOpenAiNormalizarResumenParseado(array(
+            "decision"      => "",
+            "que_significa" => array(),
+            "linea_credito" => trim($texto),
+            "como_mejorar"  => array(),
+        ));
+    }
+
+    return icOpenAiNormalizarResumenParseado($datos);
+}
+
+function icOpenAiNormalizarResumenParseado($datos)
+{
+    $decision = isset($datos["decision"]) ? trim((string) $datos["decision"]) : "";
+
+    $queSignifica = array();
+    if (isset($datos["que_significa"]) && is_array($datos["que_significa"])) {
+        $queSignifica = array_values(array_filter(array_map("trim", $datos["que_significa"])));
+    } elseif (isset($datos["alertas"]) && is_array($datos["alertas"])) {
+        $queSignifica = array_values(array_filter(array_map("trim", $datos["alertas"])));
+    } elseif (!empty($datos["resumen"])) {
+        $queSignifica = array(trim((string) $datos["resumen"]));
+    }
+
+    $lineaCredito = "";
+    if (isset($datos["linea_credito"])) {
+        $lineaCredito = trim((string) $datos["linea_credito"]);
+    } elseif (isset($datos["linea_credito_por_que"])) {
+        $lineaCredito = trim((string) $datos["linea_credito_por_que"]);
+    }
+
+    $comoMejorar = array();
+    if (isset($datos["como_mejorar"]) && is_array($datos["como_mejorar"])) {
+        $comoMejorar = array_values(array_filter(array_map("trim", $datos["como_mejorar"])));
+    } elseif (isset($datos["recomendaciones"]) && is_array($datos["recomendaciones"])) {
+        $comoMejorar = array_values(array_filter(array_map("trim", $datos["recomendaciones"])));
+    }
+
+    $resumenPartes = array();
+    if ($decision !== "") {
+        $resumenPartes[] = $decision;
+    }
+    if (!empty($queSignifica)) {
+        $resumenPartes[] = implode("\n", $queSignifica);
+    }
+    if ($lineaCredito !== "") {
+        $resumenPartes[] = $lineaCredito;
+    }
+
+    return array(
+        "decision"              => $decision,
+        "que_significa"         => $queSignifica,
+        "linea_credito"         => $lineaCredito,
+        "como_mejorar"          => $comoMejorar,
+        "alertas"               => $queSignifica,
+        "linea_credito_por_que" => $lineaCredito,
+        "recomendaciones"       => $comoMejorar,
+        "resumen"               => implode("\n\n", $resumenPartes),
+    );
+}
+
+/**
+ * Llama a la API de OpenAI Chat Completions (reintentos + modelos de respaldo).
+ */
+function icOpenAiChatCompletion($mensajes, $cfg = null)
+{
+    if ($cfg === null) {
+        $cfg = icConfigOpenAi();
+    }
+
+    if (empty($cfg["activo"])) {
+        return array("ok" => false, "msg" => "Resumen con IA desactivado en configuración.");
+    }
+
+    if (empty($cfg["api_key"])) {
+        return array("ok" => false, "msg" => "Configure OPENAI_API_KEY en controladores/config.php");
+    }
+
+    $modelos = icOpenAiModelosIntentar($cfg);
+    $maxReintentos = !empty($cfg["reintentos"]) ? (int) $cfg["reintentos"] : 2;
+    $esperaMs = isset($cfg["espera_reintento"]) ? (int) $cfg["espera_reintento"] : 1000;
+    $modeloSolicitado = !empty($cfg["modelo"]) ? $cfg["modelo"] : "gpt-4o-mini";
+    $ultimoError = "No se pudo contactar a OpenAI.";
+
+    foreach ($modelos as $modelo) {
+        $intentosModelo = $maxReintentos;
+
+        for ($intento = 1; $intento <= $intentosModelo; $intento++) {
+            $resultado = icOpenAiChatCompletionIntento($mensajes, $modelo, $cfg);
+
+            if (!empty($resultado["ok"])) {
+                $resultado["modelo_solicitado"] = $modeloSolicitado;
+                $resultado["modelo_respaldo"] = ($modelo !== $modeloSolicitado);
+
+                return $resultado;
+            }
+
+            $ultimoError = $resultado["msg"];
+
+            if (!empty($resultado["cambiar_modelo"])) {
+                break;
+            }
+
+            if (empty($resultado["reintentar"]) || $intento >= $intentosModelo) {
+                break;
+            }
+
+            if ($esperaMs > 0) {
+                usleep($esperaMs * 1000);
+            }
+        }
+    }
+
+    return array(
+        "ok"  => false,
+        "msg" => $ultimoError . " Si persiste, verifique en OpenAI que el proyecto de la API key tenga habilitado el modelo.",
+    );
+}
+
+function icOpenAiGenerarResumenCliente($contexto)
+{
+    $mensajes = icOpenAiMensajesResumenCliente($contexto);
+    $llamada = icOpenAiChatCompletion($mensajes);
+
+    if (empty($llamada["ok"])) {
+        return $llamada;
+    }
+
+    $parseado = icOpenAiParsearResumenJson($llamada["content"]);
+
+    return array(
+        "ok"                    => true,
+        "resumen"               => $parseado["resumen"],
+        "decision"              => $parseado["decision"],
+        "que_significa"         => $parseado["que_significa"],
+        "linea_credito"         => $parseado["linea_credito"],
+        "como_mejorar"          => $parseado["como_mejorar"],
+        "alertas"               => $parseado["alertas"],
+        "linea_credito_por_que" => $parseado["linea_credito_por_que"],
+        "recomendaciones"       => $parseado["recomendaciones"],
+        "modelo"                => isset($llamada["modelo"]) ? $llamada["modelo"] : "",
+        "modelo_respaldo"       => !empty($llamada["modelo_respaldo"]),
+    );
+}

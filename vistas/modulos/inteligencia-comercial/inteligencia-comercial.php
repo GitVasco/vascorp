@@ -1104,6 +1104,101 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     float: none;
 }
 
+.ic-resumen-ia-box {
+    margin-bottom: 15px;
+}
+.ic-resumen-ia-box .box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.ic-resumen-ia-box .box-title {
+    margin: 0;
+}
+.ic-resumen-ia-disclaimer {
+    font-size: 12px;
+    margin: 0 0 12px;
+}
+.ic-resumen-ia-estado {
+    font-size: 13px;
+    color: #777;
+}
+.ic-resumen-ia-estado.ic-error {
+    color: #dd4b39;
+}
+.ic-resumen-ia-texto {
+    font-size: 14px;
+    line-height: 1.55;
+    margin: 0 0 12px;
+}
+.ic-resumen-ia-decision {
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-left: 4px solid #3c8dbc;
+    background: #f4f8fc;
+    color: #333;
+    border-radius: 0 4px 4px 0;
+}
+.ic-resumen-ia-decision.ic-decision-alerta {
+    border-left-color: #f39c12;
+    background: #fef9f0;
+}
+.ic-resumen-ia-decision.ic-decision-riesgo {
+    border-left-color: #dd4b39;
+    background: #fdf4f3;
+}
+.ic-resumen-ia-seccion-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: #444;
+}
+.ic-resumen-ia-significa {
+    margin: 0 0 14px 18px;
+    padding: 0;
+}
+.ic-resumen-ia-significa li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+    font-size: 14px;
+    color: #444;
+}
+.ic-resumen-ia-linea-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: #444;
+}
+.ic-resumen-ia-linea-texto {
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 14px;
+    color: #333;
+}
+.ic-resumen-ia-rec-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: #444;
+}
+.ic-resumen-ia-recomendaciones {
+    margin: 0 0 10px 18px;
+    padding: 0;
+}
+.ic-resumen-ia-recomendaciones li {
+    margin-bottom: 6px;
+    line-height: 1.45;
+}
+.ic-resumen-ia-meta {
+    display: block;
+    font-size: 11px;
+    color: #999;
+}
+
 @media print {
     @page ic-portrait {
         size: A4 portrait;
@@ -1173,6 +1268,16 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     .ic-cliente-pantalla,
     .ic-orden-motores {
         display: none !important;
+    }
+    .ic-resumen-ia-box .box-tools,
+    .ic-resumen-ia-disclaimer,
+    #btnIcGenerarResumenIa {
+        display: none !important;
+    }
+    .ic-resumen-ia-box {
+        border: 1px solid #ccc !important;
+        margin-bottom: 10px !important;
+        page-break-inside: avoid;
     }
 
     /* Layout split: horizontal = 50/50, vertical = apilado */
@@ -1503,6 +1608,52 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                 <i class="fa fa-sort-numeric-asc"></i>
                 Motores 1 a 3: análisis por dimensión · Motor 4: recomendación global de línea de crédito
             </p>
+            <?php endif; ?>
+
+            <?php
+            $icOpenAiActivo = defined("OPENAI_IC_ACTIVO") && OPENAI_IC_ACTIVO;
+            if ($icOpenAiActivo) :
+            ?>
+            <div class="box box-default ic-resumen-ia-box" id="icResumenIaBox" data-cliente="<?php echo htmlspecialchars($clienteFiltro, ENT_QUOTES, "UTF-8"); ?>">
+                <div class="box-header with-border">
+                    <h3 class="box-title">
+                        <i class="fa fa-comments-o"></i> Resumen ejecutivo (IA)
+                    </h3>
+                    <div class="box-tools">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnIcGenerarResumenIa">
+                            <i class="fa fa-magic"></i> Generar resumen
+                        </button>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <p class="ic-resumen-ia-disclaimer">
+                        <i class="fa fa-info-circle"></i>
+                        Interpretación para decidir: no repite los scores de los gráficos ni modifica la línea de crédito.
+                    </p>
+                    <div class="ic-resumen-ia-estado" id="icResumenIaEstado">
+                        Pulse «Generar resumen» para ver qué decidir y qué significan los gráficos.
+                    </div>
+                    <div id="icResumenIaContenido" style="display:none;">
+                        <div id="icResumenIaBloqueDecision">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-gavel"></i> Decisión sugerida</p>
+                            <p class="ic-resumen-ia-decision" id="icResumenIaDecision"></p>
+                        </div>
+                        <div id="icResumenIaBloqueSignifica">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-bar-chart"></i> Qué significan los gráficos</p>
+                            <ul class="ic-resumen-ia-significa" id="icResumenIaSignifica"></ul>
+                        </div>
+                        <div id="icResumenIaBloqueLinea">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-credit-card"></i> Línea de crédito</p>
+                            <p class="ic-resumen-ia-linea-texto" id="icResumenIaLineaPorQue"></p>
+                        </div>
+                        <div id="icResumenIaBloqueMejorar">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-lightbulb-o"></i> Cómo mejorar el perfil</p>
+                            <ul class="ic-resumen-ia-recomendaciones" id="icResumenIaRecomendaciones"></ul>
+                        </div>
+                        <small class="ic-resumen-ia-meta" id="icResumenIaMeta"></small>
+                    </div>
+                </div>
+            </div>
             <?php endif; ?>
 
             <div class="row ic-motores-grid ic-motores-layout-split">
