@@ -38,8 +38,22 @@ $(document).ready(function () {
 
     icInitModales(factoresPorMotor);
     icInitModalLineaCredito();
+    icInitImpresion();
 
 });
+
+function icInitImpresion() {
+    var $btn = $("#btnImprimirInteligencia");
+    if (!$btn.length) return;
+
+    var ahora = new Date();
+    var fechaTxt = "Impreso: " + ahora.toLocaleDateString("es-PE") + " " + ahora.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+    $(".ic-print-fecha").text(fechaTxt);
+
+    $btn.on("click", function () {
+        window.print();
+    });
+}
 
 var IC_COLORES_PASTEL = [
     "#F4A6A6", "#FFD4A3", "#A8CCE8", "#C5B4E3",

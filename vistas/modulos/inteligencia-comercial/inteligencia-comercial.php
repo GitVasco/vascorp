@@ -178,7 +178,7 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                 <i class="fa fa-info-circle"></i>
                 <?php echo htmlspecialchars($accion["explicacion"], ENT_QUOTES, "UTF-8"); ?>
             </p>
-            <p style="margin:0 0 12px;">
+            <p style="margin:0 0 12px;" class="ic-no-print">
                 <button type="button" class="btn btn-sm btn-default btn-ic-linea-detalle" id="btnDetalleLineaCredito">
                     <i class="fa fa-question-circle"></i> ¿Por qué esta línea de crédito?
                 </button>
@@ -263,7 +263,7 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     font-size: 22px;
 }
 .ic-motores-grid .ic-chart-legend li {
-    font-size: 12px;
+    font-size: 13px;
     padding: 7px 8px;
     gap: 6px;
 }
@@ -610,7 +610,7 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     gap: 10px;
     padding: 9px 10px;
     border-bottom: 1px solid #f0f0f0;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     border-radius: 4px;
     transition: background .15s;
@@ -643,7 +643,7 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
 }
 .ic-wrap .ic-legend-peso {
     color: #999;
-    font-size: 11px;
+    font-size: 12px;
     min-width: 44px;
     text-align: right;
 }
@@ -997,6 +997,281 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     font-weight: 600;
     text-align: right;
 }
+.ic-print-header {
+    display: none;
+}
+.ic-motores-grid-global .ic-motor-box,
+.ic-motores-col-linea .ic-motor-box {
+    border-width: 2px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.ic-motores-layout-split {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+.ic-motores-col-analisis,
+.ic-motores-col-linea {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+.ic-motores-col-analisis > .row {
+    width: 100%;
+}
+.ic-motores-col-analisis .col-md-12 {
+    margin-bottom: 12px;
+}
+.ic-motores-col-analisis .col-md-12:last-child {
+    margin-bottom: 0;
+}
+.ic-motores-col-linea > .ic-motor-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+}
+.ic-motores-col-linea > .ic-motor-box > .box-body {
+    flex: 1;
+}
+.ic-motores-col-analisis .ic-motor-panel-inner {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+}
+.ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-3 {
+    width: auto;
+    flex: 0 0 auto;
+    float: none;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+.ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 {
+    width: auto;
+    flex: 1 1 auto;
+    clear: none;
+    float: none;
+    min-width: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+.ic-motores-col-analisis .ic-gauge-wrap,
+.ic-motores-col-analisis .ic-aportacion-chart {
+    width: 115px;
+    height: 115px;
+    margin: 0 auto;
+}
+.ic-motores-col-analisis .ic-gauge-wrap canvas,
+.ic-motores-col-analisis .ic-aportacion-chart canvas {
+    width: 115px !important;
+    height: 115px !important;
+}
+.ic-motores-col-analisis .ic-gauge-center .ic-gauge-num {
+    font-size: 20px;
+}
+.ic-motores-col-analisis .ic-chart-title {
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+.ic-motores-col-analisis .ic-chart-legend li {
+    font-size: 12px;
+    padding: 6px 6px;
+    gap: 5px;
+}
+.ic-motores-col-analisis .ic-legend-score {
+    min-width: 40px;
+}
+.ic-motores-col-analisis .ic-legend-val {
+    min-width: 52px;
+}
+.ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 > .text-muted {
+    font-size: 11px;
+    margin-top: 6px !important;
+}
+.ic-motores-col-linea .ic-motor-panel-inner {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.ic-motores-col-linea .ic-motor-panel-inner > .col-sm-3 {
+    width: 50%;
+    float: none;
+}
+.ic-motores-col-linea .ic-motor-panel-inner > .col-sm-6 {
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm 12mm;
+    }
+    body {
+        background: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .main-header,
+    .main-sidebar,
+    .left-side,
+    .main-footer,
+    .content-header,
+    .ic-no-print,
+    .modal,
+    .bootstrap-select,
+    .selectpicker {
+        display: none !important;
+    }
+    .content-wrapper,
+    .right-side,
+    .content {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+    }
+    .ic-wrap {
+        margin: 0;
+        padding: 0;
+    }
+    .ic-print-header {
+        display: block;
+        margin: 0 0 12px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #333;
+    }
+    .ic-print-titulo {
+        margin: 0 0 4px;
+        font-size: 18px;
+        font-weight: 700;
+    }
+    .ic-print-meta {
+        margin: 0;
+        font-size: 12px;
+        color: #333;
+    }
+    .ic-print-fecha::before {
+        content: " · ";
+    }
+    .ic-cliente-pantalla,
+    .ic-orden-motores {
+        display: none !important;
+    }
+    .ic-motores-grid > [class*="col-"] {
+        float: left;
+        page-break-inside: auto;
+    }
+    .ic-motores-layout-split > .col-md-6 {
+        width: 50% !important;
+        max-width: 50%;
+        float: left;
+        page-break-inside: auto;
+    }
+    .ic-motores-layout-split::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+    .ic-motores-col-analisis .ic-motor-box {
+        margin-bottom: 8px !important;
+    }
+    .ic-motores-col-analisis .ic-aportacion-chart {
+        display: none !important;
+    }
+    .ic-motores-col-analisis .ic-gauge-wrap {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 2px;
+    }
+    .ic-motores-col-analisis .ic-gauge-wrap canvas {
+        width: 64px !important;
+        height: 64px !important;
+    }
+    .ic-motores-col-analisis .ic-gauge-center .ic-gauge-num {
+        font-size: 13px;
+    }
+    .ic-motores-col-analisis .ic-chart-title {
+        display: none;
+    }
+    .ic-motores-col-analisis .ic-chart-legend {
+        max-height: 88px;
+        overflow: hidden;
+    }
+    .ic-motores-col-analisis .ic-chart-legend li {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
+    .ic-motores-col-analisis .ic-motor-proposito,
+    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 > .text-muted {
+        display: none !important;
+    }
+    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-3 {
+        width: auto;
+        flex: 0 0 70px;
+    }
+    .ic-motores-col-analisis .ic-motor-panel-inner > .col-sm-6 {
+        flex: 1;
+    }
+    .ic-motores-col-linea .ic-gauge-wrap,
+    .ic-motores-col-linea .ic-aportacion-chart {
+        display: none !important;
+    }
+    .ic-motores-col-linea .ic-motor-panel-inner > .col-sm-3 {
+        display: none;
+    }
+    .ic-motores-col-linea .ic-motor-panel-inner > .col-sm-6 {
+        width: 100% !important;
+        float: none;
+    }
+    .ic-motores-col-linea .ic-linea-resumen {
+        margin-bottom: 8px;
+    }
+    .ic-motores-col-linea .ic-linea-monto {
+        padding: 6px 8px;
+        min-width: 0;
+        flex: 1 1 100%;
+    }
+    .ic-motores-col-linea .ic-linea-monto strong {
+        font-size: 13px;
+    }
+    .ic-motores-col-linea .ic-chart-legend {
+        max-height: 200px;
+        overflow: hidden;
+    }
+    .ic-motores-col-linea .ic-chart-legend li {
+        font-size: 10px;
+        padding: 3px 5px;
+    }
+    .ic-motores-col-linea .ic-linea-explicacion,
+    .ic-motores-col-linea .ic-motor-proposito {
+        font-size: 10px;
+    }
+    .ic-motor-box {
+        break-inside: auto;
+        page-break-inside: auto;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        margin-bottom: 8px !important;
+    }
+    .ic-motores-grid .ic-gauge-wrap,
+    .ic-motores-grid .ic-aportacion-chart {
+        width: 72px;
+        height: 72px;
+    }
+    .ic-motores-grid .ic-gauge-wrap canvas,
+    .ic-motores-grid .ic-aportacion-chart canvas {
+        width: 72px !important;
+        height: 72px !important;
+    }
+    .ic-legend-item {
+        cursor: default;
+    }
+    .ic-legend-item:hover {
+        background: transparent !important;
+    }
+}
 </style>
 
 <div class="content-wrapper ic-wrap">
@@ -1013,7 +1288,7 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
 
     <section class="content">
 
-        <div class="box box-default">
+        <div class="box box-default ic-no-print">
             <div class="box-body" style="display:flex; align-items:flex-end; gap:15px; flex-wrap:wrap;">
                 <div style="flex:1; min-width:280px;">
                     <label for="clienteInteligencia" style="font-weight:bold; font-size:12px; display:block; margin-bottom:5px;">
@@ -1028,9 +1303,17 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php if ($clienteFiltro !== "" && $resultadoMotor1) : ?>
+                <div class="ic-no-print">
+                    <button type="button" class="btn btn-default" id="btnImprimirInteligencia" title="Imprimir análisis en A4">
+                        <i class="fa fa-print"></i> Imprimir A4
+                    </button>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
+        <div id="icAreaImpresion">
         <?php if ($clienteFiltro === "") : ?>
             <div class="callout callout-info">
                 <p style="margin:0;"><i class="fa fa-info-circle"></i> Seleccione un cliente para ver el análisis.</p>
@@ -1042,67 +1325,79 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
         <?php else : ?>
 
             <?php if ($nombreClienteFiltro !== "") : ?>
-            <p class="text-muted" style="margin:0 0 15px;">
+            <div class="ic-print-header">
+                <h2 class="ic-print-titulo">Inteligencia Comercial</h2>
+                <p class="ic-print-meta">
+                    <strong><?php echo htmlspecialchars($nombreClienteFiltro, ENT_QUOTES, "UTF-8"); ?></strong>
+                    <span class="ic-print-fecha"></span>
+                </p>
+            </div>
+            <p class="text-muted ic-cliente-pantalla" style="margin:0 0 8px;">
                 <i class="fa fa-building-o"></i> <?php echo htmlspecialchars($nombreClienteFiltro, ENT_QUOTES, "UTF-8"); ?>
+            </p>
+            <p class="text-muted ic-orden-motores" style="margin:0 0 15px; font-size:12px;">
+                <i class="fa fa-sort-numeric-asc"></i>
+                Motores 1 a 3: análisis por dimensión · Motor 4: recomendación global de línea de crédito
             </p>
             <?php endif; ?>
 
-            <div class="row ic-motores-grid">
-                <div class="col-md-6">
-                    <?php
-                    icRenderMotorPanel($resultadoMotor1, array(
-                        "titulo"       => "Motor 1 — Riesgo Crediticio",
-                        "proposito"    => "¿Le puedo fiar o mantener crédito?",
-                        "icono"        => "fa-shield",
-                        "titulo_gauge" => "Score de riesgo",
-                        "chart_score"  => "icChartRiesgo",
-                        "chart_aport"  => "icChartAportacion",
-                        "legend_id"    => "icMotor1Legend",
-                        "data_id"      => "icMotor1Data",
-                    ));
-                    ?>
+            <div class="row ic-motores-grid ic-motores-layout-split">
+                <div class="col-md-6 ic-motores-col-analisis">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <?php
+                            icRenderMotorPanel($resultadoMotor1, array(
+                                "titulo"       => "Motor 1 — Riesgo Crediticio",
+                                "proposito"    => "¿Le puedo fiar o mantener crédito?",
+                                "icono"        => "fa-shield",
+                                "titulo_gauge" => "Score de riesgo",
+                                "chart_score"  => "icChartRiesgo",
+                                "chart_aport"  => "icChartAportacion",
+                                "legend_id"    => "icMotor1Legend",
+                                "data_id"      => "icMotor1Data",
+                            ));
+                            ?>
+                        </div>
+                        <?php if ($resultadoMotor2) : ?>
+                        <div class="col-md-12">
+                            <?php
+                            icRenderMotorPanel($resultadoMotor2, array(
+                                "titulo"       => "Motor 2 — Comercial",
+                                "proposito"    => "¿Tiene potencial para venderle más?",
+                                "icono"        => "fa-line-chart",
+                                "titulo_gauge" => "Score comercial",
+                                "chart_score"  => "icChartComercial",
+                                "chart_aport"  => "icChartAportacion2",
+                                "legend_id"    => "icMotor2Legend",
+                                "data_id"      => "icMotor2Data",
+                            ));
+                            ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($resultadoMotor4) : ?>
+                        <div class="col-md-12">
+                            <?php
+                            icRenderMotorPanel($resultadoMotor4, array(
+                                "titulo"       => "Motor 3 — Fidelidad",
+                                "proposito"    => "¿Seguirá comprando con nosotros?",
+                                "icono"        => "fa-heart",
+                                "titulo_gauge" => "Score de fidelidad",
+                                "chart_score"  => "icChartFidelidad",
+                                "chart_aport"  => "icChartAportacion4",
+                                "legend_id"    => "icMotor4Legend",
+                                "data_id"      => "icMotor4Data",
+                            ));
+                            ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
-                <?php if ($resultadoMotor2) : ?>
-                <div class="col-md-6">
-                    <?php
-                    icRenderMotorPanel($resultadoMotor2, array(
-                        "titulo"       => "Motor 2 — Comercial",
-                        "proposito"    => "¿Tiene potencial para venderle más?",
-                        "icono"        => "fa-line-chart",
-                        "titulo_gauge" => "Score comercial",
-                        "chart_score"  => "icChartComercial",
-                        "chart_aport"  => "icChartAportacion2",
-                        "legend_id"    => "icMotor2Legend",
-                        "data_id"      => "icMotor2Data",
-                    ));
-                    ?>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <div class="row ic-motores-grid">
-                <?php if ($resultadoMotor4) : ?>
-                <div class="col-md-6">
-                    <?php
-                    icRenderMotorPanel($resultadoMotor4, array(
-                        "titulo"       => "Motor 4 — Fidelidad",
-                        "proposito"    => "¿Seguirá comprando con nosotros?",
-                        "icono"        => "fa-heart",
-                        "titulo_gauge" => "Score de fidelidad",
-                        "chart_score"  => "icChartFidelidad",
-                        "chart_aport"  => "icChartAportacion4",
-                        "legend_id"    => "icMotor4Legend",
-                        "data_id"      => "icMotor4Data",
-                    ));
-                    ?>
-                </div>
-                <?php endif; ?>
-                <?php if ($resultadoMotor3) : ?>
-                <div class="col-md-6">
+                <div class="col-md-6 ic-motores-col-linea">
+                    <?php if ($resultadoMotor3) : ?>
                     <?php
                     icRenderMotorLineaCreditoPanel($resultadoMotor3, array(
-                        "titulo"       => "Motor 3 — Línea de crédito",
-                        "proposito"    => "¿Qué línea de crédito recomendar?",
+                        "titulo"       => "Motor 4 — Línea de crédito (recomendación global)",
+                        "proposito"    => "Síntesis de motores 1–3 · ¿Qué línea asignar?",
                         "icono"        => "fa-credit-card",
                         "titulo_gauge" => "Score de línea",
                         "chart_score"  => "icChartLinea",
@@ -1111,27 +1406,18 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                         "data_id"      => "icMotor3Data",
                     ));
                     ?>
-                </div>
-                <?php else : ?>
-                <div class="col-md-6">
+                    <?php else : ?>
                     <div class="ic-motor-placeholder">
-                        <div><i class="fa fa-lock"></i> Motor 3 — Línea de crédito — Sin datos</div>
-                        <div class="ic-motor-placeholder-proposito">¿Qué línea de crédito recomendar?</div>
+                        <div><i class="fa fa-lock"></i> Motor 4 — Línea de crédito — Sin datos</div>
+                        <div class="ic-motor-placeholder-proposito">Recomendación global de línea</div>
                     </div>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <div class="row ic-motores-grid">
-                <div class="col-md-6">
-                    <div class="ic-motor-placeholder">
-                        <div><i class="fa fa-lock"></i> Motor 5 — Rentabilidad — Próximamente</div>
-                        <div class="ic-motor-placeholder-proposito">¿Cuánto beneficio genera?</div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
         <?php endif; ?>
+
+        </div><!-- #icAreaImpresion -->
 
     </section>
 </div>
