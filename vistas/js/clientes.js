@@ -8,8 +8,18 @@ $(".tablaClientes").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
+    autoWidth: false,
     order: [[0, "asc"]],
     pageLength: 20,
+    columnDefs: [
+        {
+            targets: -1,
+            orderable: false,
+            searchable: false,
+            className: "text-center clientes-col-acciones",
+            width: "120px",
+        },
+    ],
     lengthMenu: [
         [20, 40, 60, -1],
         [20, 40, 60, "Todos"],

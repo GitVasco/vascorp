@@ -20,6 +20,8 @@ require_once "controladores/productos.controlador.php";
 
 require_once "controladores/clientes.controlador.php";
 
+require_once "controladores/grupos-empresariales.controlador.php";
+
 require_once "controladores/ventas.controlador.php";
 
 require_once "controladores/marcas.controlador.php";
@@ -152,6 +154,8 @@ require_once "modelos/categorias.modelo.php";
 require_once "modelos/productos.modelo.php";
 
 require_once "modelos/clientes.modelo.php";
+
+require_once "modelos/grupos-empresariales.modelo.php";
 
 require_once "modelos/ventas.modelo.php";
 

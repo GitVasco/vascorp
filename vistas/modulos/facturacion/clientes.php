@@ -1,3 +1,6 @@
+<?php
+$gruposEmpresariales = ControladorGruposEmpresariales::ctrMostrarGruposActivos();
+?>
 <div class="content-wrapper">
 
     <section class="content-header">
@@ -474,7 +477,11 @@ MODAL AGREGAR CLIENTE
                                     <select class="form-control input-sm" id="grupo" name="grupo">
 
                                         <option value="">Grupo</option>
-                                        <option value="JOEL">Joel</option>
+                                        <?php foreach ($gruposEmpresariales as $grupoItem) : ?>
+                                            <option value="<?php echo htmlspecialchars($grupoItem["codigo"]); ?>">
+                                                <?php echo htmlspecialchars($grupoItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
 
                                     </select>
 
@@ -982,7 +989,11 @@ MODAL EDITAR CLIENTE
                                     <select class="form-control input-sm" id="editarGrupo" name="editarGrupo">
 
                                         <option value="">Grupo</option>
-                                        <option value="JOEL">Joel</option>
+                                        <?php foreach ($gruposEmpresariales as $grupoItem) : ?>
+                                            <option value="<?php echo htmlspecialchars($grupoItem["codigo"]); ?>">
+                                                <?php echo htmlspecialchars($grupoItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
 
                                     </select>
 
@@ -1245,6 +1256,27 @@ MODAL EDITAR AVAL DE CLIENTE
     </div>
 
 </div>
+
+<style>
+    table.tablaClientes td.clientes-col-acciones,
+    table.tablaClientes th.clientes-col-acciones {
+        white-space: nowrap !important;
+        width: 120px !important;
+        min-width: 120px !important;
+        text-align: center !important;
+    }
+
+    table.tablaClientes .clientesAccionesWrap {
+        display: inline-block !important;
+        white-space: nowrap !important;
+    }
+
+    table.tablaClientes .clientesAccionesWrap > .btn {
+        float: none !important;
+        display: inline-block !important;
+        margin: 0 1px 0 0 !important;
+    }
+</style>
 
 <script>
     window.document.title = "Clientes"

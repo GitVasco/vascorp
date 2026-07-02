@@ -492,6 +492,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "pedidos-confirmados" ||
                 $_GET["ruta"] == "pedidos-facturados" ||
                 $_GET["ruta"] == "clientes" ||
+                $_GET["ruta"] == "grupos-empresariales" ||
                 $_GET["ruta"] == "crear-pedidocv" ||
                 $_GET["ruta"] == "escaneo-barcode-pedidocv" ||
                 $_GET["ruta"] == "crear-facturascv" ||
@@ -628,6 +629,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/categorias.js"></script>
     <script src="vistas/js/productos.js"></script>
     <script src="vistas/js/clientes.js"></script>
+    <script src="vistas/js/grupos-empresariales.js"></script>
     <script src="vistas/js/ventas.js"></script>
     <script src="vistas/js/reportes.js"></script>
     <script src="vistas/js/tipodocumento.js"></script>

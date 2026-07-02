@@ -1,8 +1,35 @@
 /*
- * Acciones pedidos CV (DataTables / Bootstrap 3).
- * Tamaño intermedio (entre btn-xs y btn-sm) y bloque agrupado con marco.
+ * Acciones en tablas DataTables (pedidos CV, clientes).
  */
-table.dataTable td .pedidosCvAcciones.btn-group {
+table.dataTable.tablaClientes th:last-child,
+table.dataTable.tablaClientes td:last-child {
+    white-space: nowrap !important;
+    width: 120px !important;
+    min-width: 120px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+table.dataTable td .clientesAccionesWrap {
+    display: inline-block !important;
+    white-space: nowrap !important;
+    line-height: 1;
+}
+
+table.dataTable td .clientesAccionesWrap > .btn {
+    float: none !important;
+    display: inline-block !important;
+    vertical-align: middle;
+    margin: 0 1px 0 0 !important;
+    padding: 3px 7px !important;
+}
+
+table.dataTable td .clientesAccionesWrap > .btn:last-child {
+    margin-right: 0 !important;
+}
+
+table.dataTable td .pedidosCvAcciones.btn-group,
+table.dataTable td .clientesAcciones.btn-group {
     display: inline-flex;
     flex-wrap: nowrap;
     align-items: stretch;
@@ -16,7 +43,8 @@ table.dataTable td .pedidosCvAcciones.btn-group {
         0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-table.dataTable td .pedidosCvAcciones.btn-group > .btn {
+table.dataTable td .pedidosCvAcciones.btn-group > .btn,
+table.dataTable td .clientesAcciones.btn-group > .btn {
     float: none !important;
     position: relative;
     margin: 0 !important;
@@ -29,16 +57,20 @@ table.dataTable td .pedidosCvAcciones.btn-group > .btn {
     text-align: center;
 }
 
-table.dataTable td .pedidosCvAcciones.btn-group > .btn > .fa {
+table.dataTable td .pedidosCvAcciones.btn-group > .btn > .fa,
+table.dataTable td .clientesAcciones.btn-group > .btn > .fa {
     font-size: 12px;
     vertical-align: middle;
 }
 
-table.dataTable td .pedidosCvAcciones.btn-group > .btn + .btn {
+table.dataTable td .pedidosCvAcciones.btn-group > .btn + .btn,
+table.dataTable td .clientesAcciones.btn-group > .btn + .btn {
     margin-left: -1px !important;
 }
 
 table.dataTable td .pedidosCvAcciones.btn-group > .btn:hover,
-table.dataTable td .pedidosCvAcciones.btn-group > .btn:focus {
+table.dataTable td .pedidosCvAcciones.btn-group > .btn:focus,
+table.dataTable td .clientesAcciones.btn-group > .btn:hover,
+table.dataTable td .clientesAcciones.btn-group > .btn:focus {
     z-index: 2;
 }

@@ -1145,6 +1145,7 @@
                                         $_GET["ruta"] == "crear-pedidocv" ||
                                         $_GET["ruta"] == "escaneo-barcode-pedidocv" ||
                                         $_GET["ruta"] == "clientes"  ||
+                                        $_GET["ruta"] == "grupos-empresariales"  ||
                                         $_GET["ruta"] == "guias-remision"  ||
                                         $_GET["ruta"] == "crear-pedidoscv" ||
                                         $_GET["ruta"] == "pedidos-generados"  ||
@@ -1184,6 +1185,17 @@
 
                                 <i class="fa fa-users"></i>
                                 <span>Clientes</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "grupos-empresariales") echo 'active'; ?>">
+
+                            <a href="grupos-empresariales">
+
+                                <i class="fa fa-sitemap"></i>
+                                <span>Grupos empresariales</span>
 
                             </a>
 
