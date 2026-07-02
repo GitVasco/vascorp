@@ -23,13 +23,16 @@ if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboard
 }
 
 $cliente = isset($_POST["cliente"]) ? trim((string) $_POST["cliente"]) : "";
+$grupo = isset($_POST["grupo"]) ? trim((string) $_POST["grupo"]) : "";
 
-if ($cliente === "") {
-    echo json_encode(array("ok" => false, "msg" => "Cliente no indicado"));
+if ($grupo !== "") {
+    $respuesta = ControladorInteligenciaComercial::ctrGenerarResumenIaGrupo($grupo);
+} elseif ($cliente !== "") {
+    $respuesta = ControladorInteligenciaComercial::ctrGenerarResumenIa($cliente);
+} else {
+    echo json_encode(array("ok" => false, "msg" => "Cliente o grupo no indicado"));
     exit;
 }
-
-$respuesta = ControladorInteligenciaComercial::ctrGenerarResumenIa($cliente);
 
 if (defined("JSON_UNESCAPED_UNICODE")) {
     echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);

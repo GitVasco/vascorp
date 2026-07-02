@@ -2149,12 +2149,13 @@ function icResumenIaMotorContexto($etiqueta, $resultado)
 /**
  * Contexto compacto para el prompt de OpenAI (datos ya calculados por los motores).
  */
-function icConstruirContextoResumenIa($analisis)
+function icConstruirContextoResumenIa($analisis, $esGrupo = false)
 {
     $m1 = isset($analisis["motor1"]) ? $analisis["motor1"] : null;
     $m2 = isset($analisis["motor2"]) ? $analisis["motor2"] : null;
     $mLinea = isset($analisis["motor3"]) ? $analisis["motor3"] : null;
     $mFidelidad = isset($analisis["motor4"]) ? $analisis["motor4"] : null;
+    $cierre = isset($analisis["cierre"]) ? $analisis["cierre"] : null;
 
     $cliente = array("codigo" => "", "nombre" => "");
     if ($m1 && isset($m1["cliente"])) {
@@ -2164,9 +2165,12 @@ function icConstruirContextoResumenIa($analisis)
 
     $contexto = array(
         "cliente" => $cliente,
+        "consolidado" => (bool) $esGrupo,
         "motores" => array(),
         "guia_para_interpretar" => array(
-            "nota" => "El usuario ya ve scores y gráficos en pantalla. Interprétalos; no repitas los números.",
+            "nota" => $esGrupo
+                ? "Análisis consolidado de grupo empresarial (varios RUC). El usuario ya ve scores en pantalla; interprétalos sin repetir números."
+                : "El usuario ya ve scores y gráficos en pantalla. Interprétalos; no repitas los números.",
             "motores" => array(
                 "Motor 1 — Riesgo" => "¿Se le puede fiar? Pagos, atrasos, utilización de línea, antigüedad.",
                 "Motor 2 — Comercial" => "¿Vale la pena venderle más? Frecuencia, volumen, crecimiento, tendencia.",
@@ -2175,6 +2179,33 @@ function icConstruirContextoResumenIa($analisis)
             ),
         ),
     );
+
+    if ($esGrupo) {
+        $contexto["tipo_analisis"] = "grupo_empresarial";
+        $contexto["guia_para_interpretar"]["motores"]["Nota grupo"] =
+            "Las compras, deudas e historial de pagos están consolidados de todos los RUC del grupo. En la tabla de locales se resalta el RUC con peor historial individual como alerta.";
+        $peorRuc = isset($analisis["peor_ruc"]) ? $analisis["peor_ruc"] : null;
+        if ($peorRuc && !empty($peorRuc["codigo"])) {
+            $contexto["ruc_critico_grupo"] = array(
+                "codigo" => (string) $peorRuc["codigo"],
+                "nombre" => isset($peorRuc["nombre"]) ? (string) $peorRuc["nombre"] : "",
+                "nota"   => "Local con peor historial de pago individual dentro del grupo; no reemplaza el historial consolidado del Motor 1.",
+            );
+        }
+    }
+
+    if ($esGrupo && $cierre) {
+        $contexto["cierre_mensual"] = array(
+            "mes"                  => isset($cierre["mes_actual_label"]) ? $cierre["mes_actual_label"] : "",
+            "compra_mes_actual"    => isset($cierre["compra_mes_actual"]) ? (float) $cierre["compra_mes_actual"] : 0,
+            "compra_mes_anterior"  => isset($cierre["compra_mes_anterior"]) ? (float) $cierre["compra_mes_anterior"] : 0,
+            "pct_vs_anterior"      => isset($cierre["pct_vs_anterior"]) ? (float) $cierre["pct_vs_anterior"] : 0,
+            "promedio_mensual_6m"  => isset($cierre["promedio_mensual"]) ? (float) $cierre["promedio_mensual"] : 0,
+            "faltante_meta"        => isset($cierre["faltante_meta"]) ? (float) $cierre["faltante_meta"] : 0,
+            "rucs_compraron_mes"   => isset($cierre["rucs_compraron_mes"]) ? (int) $cierre["rucs_compraron_mes"] : 0,
+            "total_rucs"           => isset($cierre["total_rucs"]) ? (int) $cierre["total_rucs"] : 0,
+        );
+    }
 
     $mapa = array(
         array("Motor 1 — Riesgo crediticio", $m1),
@@ -2247,6 +2278,13 @@ function icConstruirContextoResumenIa($analisis)
 function icOpenAiMensajesResumenCliente($contexto)
 {
     $jsonContexto = json_encode($contexto, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    $userContent = icPromptResumenIaUsuario($jsonContexto);
+
+    if (!empty($contexto["consolidado"])) {
+        $userContent = "Análisis consolidado de GRUPO EMPRESARIAL (varios RUC del mismo grupo; compras y deudas sumadas). "
+            . "Incluye cierre mensual del grupo si está en el JSON. "
+            . $userContent;
+    }
 
     return array(
         array(
@@ -2255,7 +2293,7 @@ function icOpenAiMensajesResumenCliente($contexto)
         ),
         array(
             "role"    => "user",
-            "content" => icPromptResumenIaUsuario($jsonContexto),
+            "content" => $userContent,
         ),
     );
 }

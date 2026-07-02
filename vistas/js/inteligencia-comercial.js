@@ -11,6 +11,17 @@ $(document).ready(function () {
         window.location = "index.php?ruta=inteligencia-comercial&cliente=" + encodeURIComponent(cliente);
     });
 
+    $("#grupoInteligencia").on("changed.bs.select", function () {
+        var grupo = $(this).val();
+
+        if (grupo === "" || grupo === null) {
+            window.location = "index.php?ruta=inteligencia-comercial&modo=grupo";
+            return;
+        }
+
+        window.location = "index.php?ruta=inteligencia-comercial&modo=grupo&grupo=" + encodeURIComponent(grupo);
+    });
+
     icInitResumenIa();
 
     if (typeof Chart === "undefined") {
@@ -52,7 +63,12 @@ function icInitResumenIa() {
         return;
     }
 
-    var cliente = $box.data("cliente");
+    var cliente = $box.data("cliente") || "";
+    var grupo = $box.data("grupo") || "";
+
+    if (!cliente && !grupo) {
+        return;
+    }
     var $estado = $("#icResumenIaEstado");
     var $contenido = $("#icResumenIaContenido");
     var $decision = $("#icResumenIaDecision");
@@ -73,7 +89,7 @@ function icInitResumenIa() {
     }
 
     $btn.on("click", function () {
-        if (!cliente) {
+        if (!cliente && !grupo) {
             return;
         }
 
@@ -85,7 +101,7 @@ function icInitResumenIa() {
             url: "ajax/inteligencia-comercial/resumen-ia.ajax.php",
             type: "POST",
             dataType: "json",
-            data: { cliente: cliente }
+            data: grupo ? { grupo: grupo } : { cliente: cliente }
         }).done(function (resp) {
             if (!resp || !resp.ok) {
                 $estado.addClass("ic-error").text((resp && resp.msg) ? resp.msg : "No se pudo generar el resumen.");

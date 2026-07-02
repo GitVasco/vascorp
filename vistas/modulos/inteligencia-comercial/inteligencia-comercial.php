@@ -4,19 +4,40 @@ if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboard
     return;
 }
 
+$modoAnalisis = (isset($_GET["modo"]) && $_GET["modo"] === "grupo") ? "grupo" : "cliente";
 $clienteFiltro = isset($_GET["cliente"]) ? trim($_GET["cliente"]) : "";
-$clientes = ControladorInteligenciaComercial::ctrClientesAnalisis();
+$grupoFiltro = isset($_GET["grupo"]) ? trim($_GET["grupo"]) : "";
+$clientes = ($modoAnalisis === "cliente")
+    ? ControladorInteligenciaComercial::ctrClientesAnalisis()
+    : array();
+$grupos = ($modoAnalisis === "grupo")
+    ? ControladorInteligenciaComercial::ctrGruposAnalisis()
+    : array();
 $resultadoMotor1 = null;
 $resultadoMotor2 = null;
 $resultadoMotor3 = null;
 $resultadoMotor4 = null;
+$cierreGrupo = null;
+$miembrosGrupo = null;
+$peorRucGrupo = null;
+$grupoDelCliente = null;
 
-if ($clienteFiltro !== "") {
+if ($modoAnalisis === "grupo" && $grupoFiltro !== "") {
+    $analisisGrupo = ControladorInteligenciaComercial::ctrCalcularAnalisisGrupo($grupoFiltro);
+    $cierreGrupo = $analisisGrupo["cierre"];
+    $miembrosGrupo = isset($analisisGrupo["miembros"]) ? $analisisGrupo["miembros"] : null;
+    $peorRucGrupo = isset($analisisGrupo["peor_ruc"]) ? $analisisGrupo["peor_ruc"] : null;
+    $resultadoMotor1 = $analisisGrupo["motor1"];
+    $resultadoMotor2 = $analisisGrupo["motor2"];
+    $resultadoMotor3 = $analisisGrupo["motor3"];
+    $resultadoMotor4 = $analisisGrupo["motor4"];
+} elseif ($modoAnalisis === "cliente" && $clienteFiltro !== "") {
     $analisis = ControladorInteligenciaComercial::ctrCalcularAnalisisCompleto($clienteFiltro);
     $resultadoMotor1 = $analisis["motor1"];
     $resultadoMotor2 = $analisis["motor2"];
     $resultadoMotor3 = $analisis["motor3"];
     $resultadoMotor4 = $analisis["motor4"];
+    $grupoDelCliente = ControladorInteligenciaComercial::ctrGrupoDeCliente($clienteFiltro);
 }
 
 $nombreClienteFiltro = "";
@@ -26,6 +47,17 @@ foreach ($clientes as $cli) {
         break;
     }
 }
+
+$nombreGrupoFiltro = "";
+foreach ($grupos as $gr) {
+    if ($gr["codigo"] === $grupoFiltro) {
+        $nombreGrupoFiltro = $gr["codigo"] . " - " . $gr["nombre"];
+        break;
+    }
+}
+
+$hayAnalisisCliente = $modoAnalisis === "cliente" && $clienteFiltro !== "" && $resultadoMotor1;
+$hayAnalisisGrupo = $modoAnalisis === "grupo" && $grupoFiltro !== "" && $resultadoMotor1;
 
 function icColorScore($score)
 {
@@ -54,6 +86,90 @@ function icColoresPastel()
         "#D5E8A4",
         "#E8D4B8",
     );
+}
+
+function icRenderCeldaScore($score)
+{
+    if ($score === null) {
+        echo '<span class="text-muted">—</span>';
+        return;
+    }
+    ?>
+    <strong style="color:<?php echo icColorScore($score); ?>;">
+        <?php echo number_format($score, 1, ".", ""); ?>
+    </strong>
+    <?php
+}
+
+function icRenderTablaMiembrosGrupo($miembros, $peorRuc, $nombreGrupo)
+{
+    if (empty($miembros)) {
+        return;
+    }
+    ?>
+    <div class="box box-default ic-miembros-grupo-box">
+        <div class="box-header with-border">
+            <h3 class="box-title">
+                <i class="fa fa-sitemap"></i> Locales del grupo — <?php echo htmlspecialchars($nombreGrupo, ENT_QUOTES, "UTF-8"); ?>
+            </h3>
+            <div class="box-tools">
+                <span class="label label-default"><?php echo count($miembros); ?> RUC<?php echo count($miembros) === 1 ? "" : "s"; ?></span>
+            </div>
+        </div>
+        <div class="box-body">
+            <?php if (!empty($peorRuc["codigo"])) : ?>
+            <p class="text-muted" style="margin:0 0 12px; font-size:12px;">
+                <i class="fa fa-exclamation-triangle text-yellow"></i>
+                El RUC resaltado tiene el <strong>peor historial individual</strong> del grupo
+                (<?php echo htmlspecialchars($peorRuc["codigo"] . " - " . $peorRuc["nombre"], ENT_QUOTES, "UTF-8"); ?>)
+                — referencia para detectar un local crítico. El Motor 1 usa el historial <strong>consolidado</strong> de todos los RUC.
+            </p>
+            <?php endif; ?>
+            <div class="table-responsive">
+                <table class="table table-bordered table-condensed table-striped ic-tabla-rucs-grupo">
+                    <thead>
+                        <tr>
+                            <th>RUC / Cliente</th>
+                            <th class="text-right">Deuda</th>
+                            <th class="text-center" title="Motor 1 — Riesgo">Riesgo</th>
+                            <th class="text-center" title="Motor 2 — Comercial">Comercial</th>
+                            <th class="text-center" title="Motor 3 — Fidelidad">Fidelidad</th>
+                            <th class="text-center" title="Motor 4 — Línea de crédito">Línea</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($miembros as $m) :
+                            $esPeor = !empty($peorRuc["codigo"]) && $m["codigo"] === $peorRuc["codigo"];
+                        ?>
+                        <tr<?php echo $esPeor ? ' class="warning"' : ""; ?>>
+                            <td>
+                                <a href="index.php?ruta=inteligencia-comercial&cliente=<?php echo urlencode($m["codigo"]); ?>" class="ic-no-print" target="_blank" rel="noopener noreferrer">
+                                    <?php echo htmlspecialchars($m["codigo"] . " - " . $m["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                                </a>
+                                <span class="ic-print-only"><?php echo htmlspecialchars($m["codigo"] . " - " . $m["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
+                                <?php if ($esPeor) : ?>
+                                    <span class="label label-warning" style="margin-left:6px;">Local crítico</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-right">
+                                <?php if ($m["deuda"] > 0) : ?>
+                                    <span class="text-red">S/ <?php echo number_format($m["deuda"], 2); ?></span>
+                                <?php else : ?>
+                                    <span class="text-green">Al día</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center"><?php icRenderCeldaScore($m["score_riesgo"]); ?></td>
+                            <td class="text-center"><?php icRenderCeldaScore($m["score_comercial"]); ?></td>
+                            <td class="text-center"><?php icRenderCeldaScore($m["score_fidelidad"]); ?></td>
+                            <td class="text-center"><?php icRenderCeldaScore($m["score_linea"]); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <?php
 }
 
 function icRenderMotorPanel($m, $opciones)
@@ -1538,13 +1654,51 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
         background: transparent !important;
     }
 }
+
+.ic-cierre-grupo-box .ic-cierre-kpi {
+    background: #f9fafb;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 12px 14px;
+    min-height: 92px;
+}
+.ic-cierre-kpi-label {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+.ic-cierre-kpi-valor {
+    display: block;
+    font-size: 20px;
+    color: #222;
+    margin-bottom: 4px;
+}
+.ic-cierre-kpi small {
+    display: block;
+    font-size: 11px;
+}
+.ic-modo-toggle .btn.active {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.12);
+}
+.ic-banner-grupo {
+    margin-bottom: 12px;
+}
+.ic-print-only {
+    display: none;
+}
+@media print {
+    .ic-print-only { display: inline; }
+}
 </style>
 
 <div class="content-wrapper ic-wrap">
     <section class="content-header">
         <h1>
             Inteligencia Comercial
-            <small>Análisis por cliente</small>
+            <small><?php echo $modoAnalisis === "grupo" ? "Análisis por grupo empresarial" : "Análisis por cliente"; ?></small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
@@ -1556,6 +1710,23 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
 
         <div class="box box-default ic-no-print">
             <div class="box-body" style="display:flex; align-items:flex-end; gap:15px; flex-wrap:wrap;">
+                <div>
+                    <label style="font-weight:bold; font-size:12px; display:block; margin-bottom:5px;">
+                        <i class="fa fa-filter"></i> Modo de análisis
+                    </label>
+                    <div class="btn-group ic-modo-toggle" role="group">
+                        <a href="index.php?ruta=inteligencia-comercial<?php echo $clienteFiltro !== "" ? "&cliente=" . urlencode($clienteFiltro) : ""; ?>"
+                           class="btn btn-default<?php echo $modoAnalisis === "cliente" ? " active" : ""; ?>">
+                            <i class="fa fa-user"></i> Por cliente
+                        </a>
+                        <a href="index.php?ruta=inteligencia-comercial&modo=grupo<?php echo $grupoFiltro !== "" ? "&grupo=" . urlencode($grupoFiltro) : ""; ?>"
+                           class="btn btn-default<?php echo $modoAnalisis === "grupo" ? " active" : ""; ?>">
+                            <i class="fa fa-sitemap"></i> Por grupo
+                        </a>
+                    </div>
+                </div>
+
+                <?php if ($modoAnalisis === "cliente") : ?>
                 <div style="flex:1; min-width:280px;">
                     <label for="clienteInteligencia" style="font-weight:bold; font-size:12px; display:block; margin-bottom:5px;">
                         <i class="fa fa-user"></i> Cliente
@@ -1569,7 +1740,23 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <?php if ($clienteFiltro !== "" && $resultadoMotor1) : ?>
+                <?php else : ?>
+                <div style="flex:1; min-width:280px;">
+                    <label for="grupoInteligencia" style="font-weight:bold; font-size:12px; display:block; margin-bottom:5px;">
+                        <i class="fa fa-sitemap"></i> Grupo empresarial
+                    </label>
+                    <select class="form-control selectpicker" id="grupoInteligencia" data-live-search="true" data-size="10" title="Seleccione un grupo">
+                        <option value="">-- Seleccione un grupo --</option>
+                        <?php foreach ($grupos as $gr) : ?>
+                            <option value="<?php echo htmlspecialchars($gr["codigo"], ENT_QUOTES, "UTF-8"); ?>" <?php echo $grupoFiltro === $gr["codigo"] ? "selected" : ""; ?>>
+                                <?php echo htmlspecialchars($gr["codigo"] . " - " . $gr["nombre"] . " (" . $gr["total_clientes"] . " RUCs)", ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($hayAnalisisCliente || $hayAnalisisGrupo) : ?>
                 <div class="ic-no-print btn-group">
                     <button type="button" class="btn btn-default" id="btnImprimirVertical" title="Imprimir A4 vertical (retrato)">
                         <i class="fa fa-print"></i> Vertical
@@ -1583,15 +1770,171 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
         </div>
 
         <div id="icAreaImpresion">
-        <?php if ($clienteFiltro === "") : ?>
+        <?php if ($modoAnalisis === "cliente" && $clienteFiltro === "") : ?>
             <div class="callout callout-info">
                 <p style="margin:0;"><i class="fa fa-info-circle"></i> Seleccione un cliente para ver el análisis.</p>
             </div>
-        <?php elseif (!$resultadoMotor1) : ?>
+        <?php elseif ($modoAnalisis === "grupo" && $grupoFiltro === "") : ?>
+            <div class="callout callout-info">
+                <p style="margin:0;"><i class="fa fa-info-circle"></i> Seleccione un grupo empresarial para ver el análisis consolidado.</p>
+            </div>
+        <?php elseif ($modoAnalisis === "cliente" && !$resultadoMotor1) : ?>
             <div class="callout callout-warning">
                 <p style="margin:0;">No se encontraron datos para el cliente seleccionado.</p>
             </div>
-        <?php else : ?>
+        <?php elseif ($modoAnalisis === "grupo" && $grupoFiltro !== "" && !$hayAnalisisGrupo) : ?>
+            <div class="callout callout-warning">
+                <p style="margin:0;">No se encontraron datos para el grupo seleccionado.</p>
+            </div>
+        <?php elseif ($hayAnalisisGrupo) : ?>
+
+            <?php if ($nombreGrupoFiltro !== "") : ?>
+            <div class="ic-print-header">
+                <h2 class="ic-print-titulo">Inteligencia Comercial — Grupo empresarial</h2>
+                <p class="ic-print-meta">
+                    <strong><?php echo htmlspecialchars($nombreGrupoFiltro, ENT_QUOTES, "UTF-8"); ?></strong>
+                    <span class="ic-print-fecha"></span>
+                </p>
+            </div>
+            <p class="text-muted ic-cliente-pantalla" style="margin:0 0 8px;">
+                <i class="fa fa-sitemap"></i> <?php echo htmlspecialchars($nombreGrupoFiltro, ENT_QUOTES, "UTF-8"); ?>
+                <span class="label label-info" style="margin-left:6px;">Consolidado</span>
+            </p>
+            <?php endif; ?>
+
+            <?php
+            $icOpenAiActivo = defined("OPENAI_IC_ACTIVO") && OPENAI_IC_ACTIVO;
+            if ($icOpenAiActivo) :
+            ?>
+            <div class="box box-default ic-resumen-ia-box" id="icResumenIaBox" data-grupo="<?php echo htmlspecialchars($grupoFiltro, ENT_QUOTES, "UTF-8"); ?>" data-consolidado="1">
+                <div class="box-header with-border">
+                    <h3 class="box-title">
+                        <i class="fa fa-comments-o"></i> Resumen ejecutivo del grupo (IA)
+                    </h3>
+                    <div class="box-tools">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnIcGenerarResumenIa">
+                            <i class="fa fa-magic"></i> Generar resumen
+                        </button>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <p class="ic-resumen-ia-disclaimer">
+                        <i class="fa fa-info-circle"></i>
+                        Interpretación consolidada del grupo: cierre mensual, riesgo, potencial comercial y línea de crédito.
+                    </p>
+                    <div class="ic-resumen-ia-estado" id="icResumenIaEstado">
+                        Pulse «Generar resumen» para ver qué decidir a nivel de grupo empresarial.
+                    </div>
+                    <div id="icResumenIaContenido" style="display:none;">
+                        <div id="icResumenIaBloqueDecision">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-gavel"></i> Decisión sugerida</p>
+                            <p class="ic-resumen-ia-decision" id="icResumenIaDecision"></p>
+                        </div>
+                        <div id="icResumenIaBloqueSignifica">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-lightbulb-o"></i> Qué significa</p>
+                            <ul class="ic-resumen-ia-significa" id="icResumenIaSignifica"></ul>
+                        </div>
+                        <div id="icResumenIaBloqueLinea">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-credit-card"></i> Línea de crédito</p>
+                            <p class="ic-resumen-ia-linea-texto" id="icResumenIaLineaPorQue"></p>
+                        </div>
+                        <div id="icResumenIaBloqueMejorar">
+                            <p class="ic-resumen-ia-seccion-titulo"><i class="fa fa-arrow-up"></i> Cómo mejorar / acciones</p>
+                            <ul class="ic-resumen-ia-recomendaciones" id="icResumenIaRecomendaciones"></ul>
+                        </div>
+                        <small class="ic-resumen-ia-meta" id="icResumenIaMeta"></small>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <p class="text-muted ic-orden-motores" style="margin:0 0 15px; font-size:12px;">
+                <i class="fa fa-sort-numeric-asc"></i>
+                Motores 1 a 3: análisis consolidado por dimensión · Motor 4: recomendación global de línea de crédito del grupo
+            </p>
+
+            <div class="row ic-motores-grid ic-motores-layout-split">
+                <div class="col-md-6 ic-motores-col-analisis">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <?php
+                            icRenderMotorPanel($resultadoMotor1, array(
+                                "titulo"       => "Motor 1 — Riesgo (grupo)",
+                                "proposito"    => "Historial de pago y deuda consolidados de todo el grupo",
+                                "icono"        => "fa-shield",
+                                "titulo_gauge" => "Score de riesgo grupo",
+                                "chart_score"  => "icChartRiesgo",
+                                "chart_aport"  => "icChartAportacion",
+                                "legend_id"    => "icMotor1Legend",
+                                "data_id"      => "icMotor1Data",
+                            ));
+                            ?>
+                        </div>
+                        <?php if ($resultadoMotor2) : ?>
+                        <div class="col-md-12">
+                            <?php
+                            icRenderMotorPanel($resultadoMotor2, array(
+                                "titulo"       => "Motor 2 — Comercial (consolidado)",
+                                "proposito"    => "¿Tiene potencial para venderle más al grupo?",
+                                "icono"        => "fa-line-chart",
+                                "titulo_gauge" => "Score comercial grupo",
+                                "chart_score"  => "icChartComercial",
+                                "chart_aport"  => "icChartAportacion2",
+                                "legend_id"    => "icMotor2Legend",
+                                "data_id"      => "icMotor2Data",
+                            ));
+                            ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($resultadoMotor4) : ?>
+                        <div class="col-md-12">
+                            <?php
+                            icRenderMotorPanel($resultadoMotor4, array(
+                                "titulo"       => "Motor 3 — Fidelidad (consolidado)",
+                                "proposito"    => "¿El grupo seguirá comprando con nosotros?",
+                                "icono"        => "fa-heart",
+                                "titulo_gauge" => "Score de fidelidad grupo",
+                                "chart_score"  => "icChartFidelidad",
+                                "chart_aport"  => "icChartAportacion4",
+                                "legend_id"    => "icMotor4Legend",
+                                "data_id"      => "icMotor4Data",
+                            ));
+                            ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-md-6 ic-motores-col-linea">
+                    <?php if ($resultadoMotor3) : ?>
+                    <?php
+                    icRenderMotorLineaCreditoPanel($resultadoMotor3, array(
+                        "titulo"       => "Motor 4 — Línea de crédito (consolidado)",
+                        "proposito"    => "Síntesis del grupo · ¿Qué línea asignar?",
+                        "icono"        => "fa-credit-card",
+                        "titulo_gauge" => "Score de línea grupo",
+                        "chart_score"  => "icChartLinea",
+                        "chart_aport"  => "icChartAportacion3",
+                        "legend_id"    => "icMotor3Legend",
+                        "data_id"      => "icMotor3Data",
+                    ));
+                    ?>
+                    <?php else : ?>
+                    <div class="ic-motor-placeholder">
+                        <div><i class="fa fa-lock"></i> Motor 4 — Línea de crédito — Sin datos</div>
+                        <div class="ic-motor-placeholder-proposito">Recomendación global consolidada</div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php
+            $nombreGrupoTabla = $resultadoMotor1 && isset($resultadoMotor1["cliente"]["nombre"])
+                ? $resultadoMotor1["cliente"]["nombre"]
+                : $nombreGrupoFiltro;
+            icRenderTablaMiembrosGrupo($miembrosGrupo, $peorRucGrupo, $nombreGrupoTabla);
+            ?>
+
+        <?php elseif ($hayAnalisisCliente) : ?>
 
             <?php if ($nombreClienteFiltro !== "") : ?>
             <div class="ic-print-header">
@@ -1604,6 +1947,16 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
             <p class="text-muted ic-cliente-pantalla" style="margin:0 0 8px;">
                 <i class="fa fa-building-o"></i> <?php echo htmlspecialchars($nombreClienteFiltro, ENT_QUOTES, "UTF-8"); ?>
             </p>
+            <?php if ($grupoDelCliente) : ?>
+            <div class="alert alert-info ic-banner-grupo ic-no-print">
+                <i class="fa fa-sitemap"></i>
+                Este cliente pertenece al grupo
+                <strong><?php echo htmlspecialchars($grupoDelCliente["codigo"] . " - " . $grupoDelCliente["nombre"], ENT_QUOTES, "UTF-8"); ?></strong>.
+                <a href="index.php?ruta=inteligencia-comercial&modo=grupo&grupo=<?php echo urlencode($grupoDelCliente["codigo"]); ?>" class="alert-link">
+                    Ver análisis consolidado del grupo
+                </a>
+            </div>
+            <?php endif; ?>
             <p class="text-muted ic-orden-motores" style="margin:0 0 15px; font-size:12px;">
                 <i class="fa fa-sort-numeric-asc"></i>
                 Motores 1 a 3: análisis por dimensión · Motor 4: recomendación global de línea de crédito

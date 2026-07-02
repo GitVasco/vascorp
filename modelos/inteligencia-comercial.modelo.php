@@ -4,6 +4,9 @@ require_once __DIR__ . "/conexion.php";
 
 class ModeloInteligenciaComercial
 {
+    /** Cache por request: clientes y línea operativa del grupo. */
+    private static $icCacheGrupo = array();
+
     /**
      * Clientes activos con movimientos en cuenta corriente.
      */
@@ -219,8 +222,12 @@ class ModeloInteligenciaComercial
     /**
      * Convierte métricas en sub-scores (0-100) y score ponderado final.
      */
-    public static function mdlCalcularMotorRiesgoCredito($codigoCliente, $lineaRecomendadaMotor3 = null)
-    {
+    public static function mdlCalcularMotorRiesgoCredito(
+        $codigoCliente,
+        $lineaRecomendadaMotor3 = null,
+        $metricasOverride = null,
+        $lineaCreditoOverride = null
+    ) {
         $cfg = icConfigMotor1();
         $pesos = icPesosDecimalesMotor1();
         $pesosEfectivos = $cfg["pesos_efectivos"];
@@ -232,7 +239,9 @@ class ModeloInteligenciaComercial
         $penalIncidencia = (int) $cfg["incidencia_penalizacion"];
         $scoreNeutro = (int) $cfg["score_neutro"];
 
-        $metricas = self::mdlMetricasMotorRiesgo($codigoCliente);
+        $metricas = $metricasOverride !== null
+            ? $metricasOverride
+            : self::mdlMetricasMotorRiesgo($codigoCliente);
 
         if (!$metricas) {
             return null;
@@ -277,7 +286,9 @@ class ModeloInteligenciaComercial
         $detalleAtraso = "Promedio de " . round($atrasoPromedio, 1) . " días penalizables (cerrados pagados + pendientes vencidos hoy).";
 
         // Utilización: deuda vs línea recomendada (Motor 3) o línea operativa como respaldo
-        $lineaCredito = self::mdlLineaCreditoOperativa($codigoCliente);
+        $lineaCredito = $lineaCreditoOverride !== null
+            ? $lineaCreditoOverride
+            : self::mdlLineaCreditoOperativa($codigoCliente);
         $lineaOperativa = (float) $lineaCredito["linea_operativa"];
         $picoHistorico = (float) $lineaCredito["pico_historico"];
         $lineaRecomendada = $lineaRecomendadaMotor3 !== null ? (float) $lineaRecomendadaMotor3 : 0.0;
@@ -544,6 +555,130 @@ class ModeloInteligenciaComercial
     }
 
     /**
+     * Contexto reutilizable del grupo (codigos, referencia comercial, línea operativa).
+     */
+    private static function mdlContextoGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        if (isset(self::$icCacheGrupo[$codigoGrupo])) {
+            return self::$icCacheGrupo[$codigoGrupo];
+        }
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT codigo, vendedor, ubigeo
+            FROM clientesjf
+            WHERE grupo = :grupo
+              AND estado = 1
+            ORDER BY nombre ASC
+        ");
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+        $miembros = $stmt->fetchAll();
+
+        $codigos = array();
+        foreach ($miembros as $miembro) {
+            $codigos[] = $miembro["codigo"];
+        }
+
+        $referencia = !empty($miembros) ? $miembros[0] : array(
+            "vendedor" => "",
+            "ubigeo"   => "",
+        );
+
+        $contexto = array(
+            "codigo_grupo" => $codigoGrupo,
+            "codigos"      => $codigos,
+            "vendedor"     => trim((string) $referencia["vendedor"]),
+            "ubigeo"       => trim((string) $referencia["ubigeo"]),
+            "linea"        => self::mdlLineaCreditoOperativaGrupoCalc($codigos),
+        );
+
+        self::$icCacheGrupo[$codigoGrupo] = $contexto;
+
+        return $contexto;
+    }
+
+    /**
+     * Precalienta cache del grupo antes de ejecutar varios motores.
+     */
+    private static function mdlPrecalentarContextoGrupo($codigoGrupo)
+    {
+        self::mdlContextoGrupo($codigoGrupo);
+    }
+
+    /**
+     * Línea operativa consolidada a partir de una lista de códigos de cliente.
+     */
+    private static function mdlLineaCreditoOperativaGrupoCalc(array $codigos)
+    {
+        if (empty($codigos)) {
+            return array(
+                "pico_historico"  => 0,
+                "deuda_actual"    => 0,
+                "linea_operativa" => 0,
+                "movimientos"     => 0,
+            );
+        }
+
+        $inSql = self::mdlSqlIn($codigos);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT tip_mov, monto
+            FROM cuenta_ctejf
+            WHERE cliente IN ({$inSql})
+            ORDER BY COALESCE(fecha_creacion, STR_TO_DATE(fecha, '%Y-%m-%d'), fecha) ASC, id ASC
+        ");
+        $stmt->execute();
+        $movimientos = $stmt->fetchAll();
+
+        $deuda = 0.0;
+        $pico = 0.0;
+
+        foreach ($movimientos as $mov) {
+            $monto = abs((float) $mov["monto"]);
+
+            if (trim((string) $mov["tip_mov"]) === "-") {
+                $deuda -= $monto;
+            } else {
+                $deuda += $monto;
+            }
+
+            if ($deuda < 0) {
+                $deuda = 0;
+            }
+
+            if ($deuda > $pico) {
+                $pico = $deuda;
+            }
+        }
+
+        $stmtDeuda = Conexion::conectar()->prepare("
+            SELECT IFNULL(SUM(saldo), 0) AS total_deuda
+            FROM cuenta_ctejf
+            WHERE tip_mov = '+'
+              AND UPPER(estado) = 'PENDIENTE'
+              AND IFNULL(saldo, 0) > 0
+              AND cliente IN ({$inSql})
+        ");
+        $stmtDeuda->execute();
+        $deudaActual = (float) $stmtDeuda->fetchColumn();
+
+        $lineaOperativa = max($pico, $deudaActual);
+
+        return array(
+            "pico_historico"   => round($pico, 2),
+            "deuda_actual"     => round($deudaActual, 2),
+            "linea_operativa"  => round($lineaOperativa, 2),
+            "movimientos"      => count($movimientos),
+        );
+    }
+
+    /**
      * Línea de crédito operativa: pico de deuda simultánea reconstruido desde cuenta corriente.
      * No existe cupo maestro en clientesjf; este es el máximo crédito que el negocio toleró en la práctica.
      */
@@ -601,6 +736,25 @@ class ModeloInteligenciaComercial
             "linea_operativa"  => round($lineaOperativa, 2),
             "movimientos"      => count($movimientos),
         );
+    }
+
+    /**
+     * Línea operativa consolidada: reconstruye deuda simultánea sumando movimientos de todos los RUC del grupo.
+     */
+    public static function mdlLineaCreditoOperativaGrupo($codigoGrupo)
+    {
+        $contexto = self::mdlContextoGrupo($codigoGrupo);
+
+        if (!$contexto) {
+            return array(
+                "pico_historico"  => 0,
+                "deuda_actual"    => 0,
+                "linea_operativa" => 0,
+                "movimientos"     => 0,
+            );
+        }
+
+        return $contexto["linea"];
     }
 
     /**
@@ -681,7 +835,8 @@ class ModeloInteligenciaComercial
         $codigoCliente,
         $resultadoMotor1 = null,
         $resultadoMotor2 = null,
-        $resultadoMotor4 = null
+        $resultadoMotor4 = null,
+        $metricasOverride = null
     ) {
         $cfg = icConfigMotor3();
         $pesos = icPesosDecimalesMotor3();
@@ -702,7 +857,9 @@ class ModeloInteligenciaComercial
             $resultadoMotor4 = self::mdlCalcularMotorFidelidad($codigoCliente);
         }
 
-        $metricas = self::mdlMetricasMotorLineaCredito($codigoCliente);
+        $metricas = $metricasOverride !== null
+            ? $metricasOverride
+            : self::mdlMetricasMotorLineaCredito($codigoCliente);
 
         if (!$metricas || !$resultadoMotor1) {
             return null;
@@ -1259,17 +1416,48 @@ class ModeloInteligenciaComercial
      */
     public static function mdlCalcularMotorComercial($codigoCliente)
     {
-        $cfg = icConfigMotor2();
-        $pesos = icPesosDecimalesMotor2();
-        $pesosEfectivos = $cfg["pesos_efectivos"];
-        $meses = (int) $cfg["meses_periodo"];
-        $scoreNeutro = (int) $cfg["score_neutro"];
-
         $metricas = self::mdlMetricasMotorComercial($codigoCliente);
 
         if (!$metricas) {
             return null;
         }
+
+        return self::mdlProcesarMotorComercial($metricas, array("es_grupo" => false));
+    }
+
+    /**
+     * Score comercial consolidado de un grupo empresarial.
+     */
+    public static function mdlCalcularMotorComercialGrupo($codigoGrupo)
+    {
+        $metricas = self::mdlMetricasMotorComercialGrupo($codigoGrupo);
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $resultado = self::mdlProcesarMotorComercial($metricas, array("es_grupo" => true));
+
+        if ($resultado) {
+            $resultado["consolidado"] = true;
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Procesa métricas comerciales (cliente o grupo consolidado).
+     */
+    private static function mdlProcesarMotorComercial($metricas, $opciones = array())
+    {
+        $esGrupo = !empty($opciones["es_grupo"]);
+        $etiquetaEntidad = $esGrupo ? "grupo" : "cliente";
+
+        $cfg = icConfigMotor2();
+        $pesos = icPesosDecimalesMotor2();
+        $pesosEfectivos = $cfg["pesos_efectivos"];
+        $meses = (int) $cfg["meses_periodo"];
+        $scoreNeutro = (int) $cfg["score_neutro"];
 
         $montoReciente = (float) $metricas["monto_reciente"];
         $montoAnterior = (float) $metricas["monto_anterior"];
@@ -1330,7 +1518,7 @@ class ModeloInteligenciaComercial
             }
         } elseif ($codigoVendedor === "") {
             $scoreFrecuencia = $scoreNeutro;
-            $detalleFrecuencia = "Cliente sin vendedor asignado; score neutro ({$scoreNeutro}).";
+            $detalleFrecuencia = ucfirst($etiquetaEntidad) . " sin vendedor asignado; score neutro ({$scoreNeutro}).";
         } elseif ($docsReciente <= 0) {
             $scoreFrecuencia = icScorePorTramos(0, $cfg["frecuencia_tramos"]);
             $detalleFrecuencia = "Sin compras en el periodo reciente de {$meses} meses.";
@@ -1402,13 +1590,13 @@ class ModeloInteligenciaComercial
 
         if ($esClienteUsuarioFinal) {
             $scoreZona = $scoreNeutro;
-            $detalleZona = "Cliente de canal usuario final (vendedor {$codigoVendedor}); "
+            $detalleZona = ucfirst($etiquetaEntidad) . " de canal usuario final (vendedor {$codigoVendedor}); "
                 . "score neutro ({$scoreNeutro}) — no comparable con el benchmark mayorista.";
         } elseif ($zonaPromedio <= 0 || $montoReciente <= 0) {
             $scoreZona = $scoreNeutro;
             $detalleZona = $metricas["zona_texto"]
                 ? "Sin referencia de zona o sin compras recientes; score neutro ({$scoreNeutro})."
-                : "Cliente sin ubigeo registrado; score neutro ({$scoreNeutro}).";
+                : ucfirst($etiquetaEntidad) . " sin ubigeo registrado; score neutro ({$scoreNeutro}).";
         } else {
             $scoreZona = icScorePorTramos($ratioZona, $cfg["zona_tramos"]);
             $detalleZona = "Promedio mensual S/ " . number_format($clienteMensual, 2)
@@ -1479,11 +1667,12 @@ class ModeloInteligenciaComercial
                 "peso" => (int) $pesosEfectivos["potencial_productos"],
                 "score" => $scorePotencial,
                 "detalle" => $detallePotencial,
-                "formula" => "Penetración = modelos activos del cliente ÷ modelos activos del catálogo × 100",
+                "formula" => "Penetración = modelos activos del " . $etiquetaEntidad . " ÷ modelos activos del catálogo × 100",
                 "regla" => "Modelo desde articulojf → modelojf con estado activo. Solo compras válidas (tipos "
-                    . icVentasTiposValidosTexto() . ").",
+                    . icVentasTiposValidosTexto() . ")."
+                    . ($esGrupo ? " Consolidado: unión de modelos de todos los RUC del grupo." : ""),
                 "valores" => array(
-                    array("etiqueta" => "Modelos del cliente", "valor" => (string) $lineasCliente),
+                    array("etiqueta" => $esGrupo ? "Modelos del grupo" : "Modelos del cliente", "valor" => (string) $lineasCliente),
                     array("etiqueta" => "Modelos en catálogo", "valor" => (string) $lineasCatalogo),
                     array("etiqueta" => "Penetración", "valor" => round($penetracion, 1) . "%"),
                 ),
@@ -1599,7 +1788,8 @@ class ModeloInteligenciaComercial
                 "nombre" => $metricas["nombre"],
             ),
             "motor" => 2,
-            "nombre_motor" => "Score Comercial",
+            "nombre_motor" => $esGrupo ? "Score Comercial (consolidado)" : "Score Comercial",
+            "consolidado" => $esGrupo,
             "score" => $scoreFinal,
             "clasificacion" => icClasificarScore($scoreFinal),
             "factores" => $factores,
@@ -1682,7 +1872,7 @@ class ModeloInteligenciaComercial
     /**
      * Convierte métricas de fidelidad en sub-scores y score ponderado final.
      */
-    public static function mdlCalcularMotorFidelidad($codigoCliente)
+    public static function mdlCalcularMotorFidelidad($codigoCliente, $metricasOverride = null)
     {
         $cfg = icConfigMotor4();
         $pesos = icPesosDecimalesMotor4();
@@ -1691,7 +1881,9 @@ class ModeloInteligenciaComercial
         $mitad = icMotor4MesesMitadTendencia($meses);
         $scoreNeutro = (int) $cfg["score_neutro"];
 
-        $metricas = self::mdlMetricasMotorFidelidad($codigoCliente);
+        $metricas = $metricasOverride !== null
+            ? $metricasOverride
+            : self::mdlMetricasMotorFidelidad($codigoCliente);
 
         if (!$metricas) {
             return null;
@@ -1900,6 +2092,889 @@ class ModeloInteligenciaComercial
                 "dias_ultima_compra" => $ultimaCompra ? $diasUltimaCompra : null,
                 "meses_antiguedad" => $mesesAntiguedad,
             ),
+        );
+    }
+
+    /**
+     * Métricas de riesgo del grupo: deuda e historial de pago consolidados de todos los RUC.
+     * Se calcula además el peor RUC individual solo como alerta en la tabla de miembros.
+     */
+    public static function mdlMetricasMotorRiesgoGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        $stmtGrupo = Conexion::conectar()->prepare("
+            SELECT codigo, nombre
+            FROM grupos_empresarialesjf
+            WHERE codigo = :grupo AND estado = 1
+            LIMIT 1
+        ");
+        $stmtGrupo->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmtGrupo->execute();
+        $grupo = $stmtGrupo->fetch();
+
+        if (!$grupo) {
+            return null;
+        }
+
+        $contexto = self::mdlContextoGrupo($codigoGrupo);
+
+        if (!$contexto || empty($contexto["codigos"])) {
+            return null;
+        }
+
+        $stmtNombres = Conexion::conectar()->prepare("
+            SELECT codigo, nombre
+            FROM clientesjf
+            WHERE grupo = :grupo AND estado = 1
+        ");
+        $stmtNombres->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmtNombres->execute();
+        $nombresPorCodigo = array();
+        foreach ($stmtNombres->fetchAll() as $fila) {
+            $nombresPorCodigo[$fila["codigo"]] = $fila["nombre"];
+        }
+
+        $sumDeuda = 0.0;
+        $sumCredito = 0.0;
+        $sumIncidencias = 0;
+        $sumTotalDocs = 0;
+        $sumDocsATiempo = 0;
+        $sumDocsCerrados = 0;
+        $sumPendientesVencidos = 0;
+        $sumPendientesFueraTolerancia = 0;
+        $pesoAtrasoPromedio = 0.0;
+        $sumAtrasoPromedio = 0.0;
+        $pesoAtrasoReciente = 0.0;
+        $sumAtrasoReciente = 0.0;
+        $pesoAtrasoAnterior = 0.0;
+        $sumAtrasoAnterior = 0.0;
+        $peorRatioHistorial = 101.0;
+        $peorMetricasPago = null;
+        $fechaPrimeraVenta = null;
+        $fecregMin = null;
+
+        foreach ($contexto["codigos"] as $codigoCliente) {
+            $m = self::mdlMetricasMotorRiesgo($codigoCliente);
+
+            if (!$m) {
+                continue;
+            }
+
+            $sumDeuda += (float) $m["total_deuda"];
+            $sumCredito += (float) $m["total_credito"];
+            $sumIncidencias += (int) $m["incidencias"];
+            $totalDocs = (int) $m["total_docs"];
+            $sumTotalDocs += $totalDocs;
+            $sumDocsATiempo += (int) $m["docs_a_tiempo"];
+            $sumDocsCerrados += (int) $m["docs_cerrados"];
+            $sumPendientesVencidos += (int) $m["pendientes_vencidos"];
+            $sumPendientesFueraTolerancia += (int) $m["pendientes_fuera_tolerancia"];
+
+            if ($totalDocs > 0) {
+                $atrasoPromedio = (float) $m["atraso_promedio"];
+                $sumAtrasoPromedio += $atrasoPromedio * $totalDocs;
+                $pesoAtrasoPromedio += $totalDocs;
+
+                if ($m["atraso_reciente"] !== null) {
+                    $sumAtrasoReciente += (float) $m["atraso_reciente"] * $totalDocs;
+                    $pesoAtrasoReciente += $totalDocs;
+                }
+
+                if ($m["atraso_anterior"] !== null) {
+                    $sumAtrasoAnterior += (float) $m["atraso_anterior"] * $totalDocs;
+                    $pesoAtrasoAnterior += $totalDocs;
+                }
+
+                $ratioHistorial = ((int) $m["docs_a_tiempo"]) / $totalDocs;
+
+                if ($ratioHistorial < $peorRatioHistorial) {
+                    $peorRatioHistorial = $ratioHistorial;
+                    $peorMetricasPago = $m;
+                }
+            } elseif ($peorMetricasPago === null) {
+                $peorMetricasPago = $m;
+            }
+
+            if (!empty($m["fecha_primera_venta"])) {
+                $fechaPrimeraVenta = $fechaPrimeraVenta === null
+                    ? $m["fecha_primera_venta"]
+                    : min($fechaPrimeraVenta, $m["fecha_primera_venta"]);
+            }
+
+            if (!empty($m["fecreg"])) {
+                $fecregMin = $fecregMin === null ? $m["fecreg"] : min($fecregMin, $m["fecreg"]);
+            }
+        }
+
+        if ($peorMetricasPago === null) {
+            $peorMetricasPago = array(
+                "codigo" => $contexto["codigos"][0],
+            );
+        }
+
+        $fechaReferencia = $fechaPrimeraVenta ?: $fecregMin;
+        $mesesAntiguedad = 0;
+
+        if ($fechaReferencia) {
+            $mesesAntiguedad = (int) ((strtotime(date("Y-m-d")) - strtotime($fechaReferencia)) / (86400 * 30.44));
+            if ($mesesAntiguedad < 0) {
+                $mesesAntiguedad = 0;
+            }
+        }
+
+        $peorCodigo = $peorMetricasPago["codigo"];
+        $atrasoPromedioConsolidado = $pesoAtrasoPromedio > 0
+            ? $sumAtrasoPromedio / $pesoAtrasoPromedio
+            : 0.0;
+        $atrasoRecienteConsolidado = $pesoAtrasoReciente > 0
+            ? $sumAtrasoReciente / $pesoAtrasoReciente
+            : null;
+        $atrasoAnteriorConsolidado = $pesoAtrasoAnterior > 0
+            ? $sumAtrasoAnterior / $pesoAtrasoAnterior
+            : null;
+
+        return array(
+            "codigo"                      => $grupo["codigo"],
+            "nombre"                      => $grupo["nombre"],
+            "fecreg"                      => $fecregMin,
+            "fecha_primera_venta"         => $fechaPrimeraVenta,
+            "meses_antiguedad"            => $mesesAntiguedad,
+            "total_docs"                  => $sumTotalDocs,
+            "docs_a_tiempo"               => $sumDocsATiempo,
+            "docs_cerrados"               => $sumDocsCerrados,
+            "pendientes_vencidos"         => $sumPendientesVencidos,
+            "pendientes_fuera_tolerancia" => $sumPendientesFueraTolerancia,
+            "atraso_promedio"             => $atrasoPromedioConsolidado,
+            "atraso_reciente"             => $atrasoRecienteConsolidado,
+            "atraso_anterior"             => $atrasoAnteriorConsolidado,
+            "total_deuda"                 => $sumDeuda,
+            "total_credito"               => $sumCredito,
+            "incidencias"                 => $sumIncidencias,
+            "peor_ruc_codigo"             => $peorCodigo,
+            "peor_ruc_nombre"             => isset($nombresPorCodigo[$peorCodigo]) ? $nombresPorCodigo[$peorCodigo] : "",
+        );
+    }
+
+    /**
+     * Detalle por RUC del grupo para la tabla bajo el Motor 4.
+     */
+    public static function mdlListadoMiembrosGrupo($codigoGrupo, $peorRucCodigo = null)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return array();
+        }
+
+        $contexto = self::mdlContextoGrupo($codigoGrupo);
+
+        if (!$contexto || empty($contexto["codigos"])) {
+            return array();
+        }
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT codigo, nombre
+            FROM clientesjf
+            WHERE grupo = :grupo AND estado = 1
+            ORDER BY nombre ASC
+        ");
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+        $filas = $stmt->fetchAll();
+        $miembros = array();
+
+        foreach ($filas as $fila) {
+            $codigo = $fila["codigo"];
+            $linea = self::mdlLineaCreditoOperativa($codigo);
+
+            $motor1 = self::mdlCalcularMotorRiesgoCredito($codigo);
+            $motor2 = self::mdlCalcularMotorComercial($codigo);
+            $motor4 = self::mdlCalcularMotorFidelidad($codigo);
+            $motor3 = self::mdlCalcularMotorLineaCredito($codigo, $motor1, $motor2, $motor4);
+
+            if ($motor3) {
+                $lineaRecomendada = (float) $motor3["linea"]["linea_recomendada"];
+
+                if ($lineaRecomendada > 0) {
+                    $motor1 = self::mdlCalcularMotorRiesgoCredito($codigo, $lineaRecomendada);
+                    $motor3 = self::mdlCalcularMotorLineaCredito($codigo, $motor1, $motor2, $motor4);
+                }
+            }
+
+            $miembros[] = array(
+                "codigo"            => $codigo,
+                "nombre"            => $fila["nombre"],
+                "deuda"             => round((float) $linea["deuda_actual"], 2),
+                "score_riesgo"      => $motor1 ? round((float) $motor1["score"], 2) : null,
+                "score_comercial"   => $motor2 ? round((float) $motor2["score"], 2) : null,
+                "score_fidelidad"   => $motor4 ? round((float) $motor4["score"], 2) : null,
+                "score_linea"       => $motor3 ? round((float) $motor3["score"], 2) : null,
+                "es_peor_historial" => $peorRucCodigo !== null && $codigo === $peorRucCodigo,
+            );
+        }
+
+        return $miembros;
+    }
+
+    public static function mdlCalcularMotorRiesgoCreditoGrupo($codigoGrupo, $lineaRecomendadaMotor3 = null)
+    {
+        $metricas = self::mdlMetricasMotorRiesgoGrupo($codigoGrupo);
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $contexto = self::mdlContextoGrupo($codigoGrupo);
+        $linea = $contexto ? $contexto["linea"] : self::mdlLineaCreditoOperativaGrupo($codigoGrupo);
+        $resultado = self::mdlCalcularMotorRiesgoCredito(
+            $codigoGrupo,
+            $lineaRecomendadaMotor3,
+            $metricas,
+            $linea
+        );
+
+        if ($resultado) {
+            $resultado["consolidado"] = true;
+            $resultado["nombre_motor"] = "Score de Riesgo Crediticio (grupo)";
+            $resultado["peor_ruc"] = array(
+                "codigo" => isset($metricas["peor_ruc_codigo"]) ? $metricas["peor_ruc_codigo"] : "",
+                "nombre" => isset($metricas["peor_ruc_nombre"]) ? $metricas["peor_ruc_nombre"] : "",
+            );
+
+            if (!empty($metricas["peor_ruc_codigo"]) && isset($resultado["factores"]["historial_pagos"])) {
+                $resultado["factores"]["historial_pagos"]["detalle"] .= " Historial consolidado de todos los RUC del grupo.";
+            }
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Métricas de fidelidad consolidadas de un grupo empresarial.
+     */
+    public static function mdlMetricasMotorFidelidadGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        $cfg = icConfigMotor4();
+        $meses = (int) $cfg["meses_periodo"];
+        $mitad = icMotor4MesesMitadTendencia($meses);
+        $tiposSql = icVentasTiposValidosSql();
+        $vendExclSql = self::mdlSqlIn(icConfigMotor2()["ventas_excluir_vendedores"]);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                g.codigo,
+                g.nombre,
+                ref.fecreg,
+                IFNULL(
+                    TIMESTAMPDIFF(
+                        MONTH,
+                        COALESCE(vta.fecha_primera_venta, ref.fecreg),
+                        NOW()
+                    ),
+                    0
+                ) AS meses_antiguedad,
+                IFNULL(vta.docs_periodo, 0) AS docs_periodo,
+                IFNULL(vta.meses_con_compra, 0) AS meses_con_compra,
+                vta.ultima_compra,
+                IFNULL(vta.monto_tendencia_ini, 0) AS monto_tendencia_ini,
+                IFNULL(vta.monto_tendencia_fin, 0) AS monto_tendencia_fin,
+                vta.fecha_primera_venta
+            FROM grupos_empresarialesjf g
+            LEFT JOIN (
+                SELECT c.grupo, MIN(c.fecreg) AS fecreg
+                FROM clientesjf c
+                WHERE c.grupo = :grupo_ref AND c.estado = 1
+                GROUP BY c.grupo
+            ) ref ON ref.grupo = g.codigo
+            LEFT JOIN (
+                SELECT
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN 1 ELSE 0 END) AS docs_periodo,
+                    COUNT(DISTINCT CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN DATE_FORMAT(v.fecha, '%Y-%m') END) AS meses_con_compra,
+                    MAX(v.fecha) AS ultima_compra,
+                    MIN(v.fecha) AS fecha_primera_venta,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$mitad} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_tendencia_ini,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mitad} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_tendencia_fin
+                FROM ventajf v
+                INNER JOIN clientesjf cg ON cg.codigo = v.cliente
+                    AND cg.grupo = :grupo_vta
+                    AND cg.estado = 1
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+            ) vta ON 1 = 1
+            WHERE g.codigo = :grupo
+              AND g.estado = 1
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_ref", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_vta", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $fila = $stmt->fetch();
+
+        return $fila ?: null;
+    }
+
+    public static function mdlCalcularMotorFidelidadGrupo($codigoGrupo)
+    {
+        $metricas = self::mdlMetricasMotorFidelidadGrupo($codigoGrupo);
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $resultado = self::mdlCalcularMotorFidelidad($codigoGrupo, $metricas);
+
+        if ($resultado) {
+            $resultado["consolidado"] = true;
+            $resultado["nombre_motor"] = "Score de Fidelidad (consolidado)";
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Métricas de línea de crédito consolidadas de un grupo empresarial.
+     */
+    public static function mdlMetricasMotorLineaCreditoGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        $cfg = icConfigMotor3();
+        $meses = (int) $cfg["meses_periodo"];
+        $mesesLargo = isset($cfg["meses_memoria_larga"]) ? (int) $cfg["meses_memoria_larga"] : 12;
+        $tiposSql = icVentasTiposValidosSql();
+        $vendExclSql = self::mdlSqlIn(icConfigMotor2()["ventas_excluir_vendedores"]);
+        $contexto = self::mdlContextoGrupo($codigoGrupo);
+        $linea = $contexto ? $contexto["linea"] : self::mdlLineaCreditoOperativaGrupo($codigoGrupo);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                g.codigo,
+                g.nombre,
+                IFNULL(
+                    TIMESTAMPDIFF(
+                        MONTH,
+                        COALESCE(vta.fecha_primera_venta, ref.fecreg),
+                        NOW()
+                    ),
+                    0
+                ) AS meses_antiguedad,
+                IFNULL(vta.monto_reciente, 0) AS monto_reciente,
+                IFNULL(vta.monto_anterior, 0) AS monto_anterior,
+                IFNULL(vta.compra_maxima, 0) AS compra_maxima,
+                IFNULL(vta.compra_maxima_12m, 0) AS compra_maxima_12m,
+                IFNULL(vta.monto_12m, 0) AS monto_12m,
+                vta.fecha_primera_venta
+            FROM grupos_empresarialesjf g
+            LEFT JOIN (
+                SELECT c.grupo, MIN(c.fecreg) AS fecreg
+                FROM clientesjf c
+                WHERE c.grupo = :grupo_ref AND c.estado = 1
+                GROUP BY c.grupo
+            ) ref ON ref.grupo = g.codigo
+            LEFT JOIN (
+                SELECT
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS monto_reciente,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL " . ($meses * 2) . " MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_anterior,
+                    MAX(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS compra_maxima,
+                    MAX(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mesesLargo} MONTH) THEN v.total ELSE 0 END) AS compra_maxima_12m,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mesesLargo} MONTH) THEN v.total ELSE 0 END) AS monto_12m,
+                    MIN(v.fecha) AS fecha_primera_venta
+                FROM ventajf v
+                INNER JOIN clientesjf cg ON cg.codigo = v.cliente
+                    AND cg.grupo = :grupo_vta
+                    AND cg.estado = 1
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+            ) vta ON 1 = 1
+            WHERE g.codigo = :grupo
+              AND g.estado = 1
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_ref", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_vta", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+        $metricas = $stmt->fetch();
+
+        if (!$metricas) {
+            return null;
+        }
+
+        $metricas["deuda_actual"] = $linea["deuda_actual"];
+        $metricas["pico_historico"] = $linea["pico_historico"];
+        $metricas["linea_operativa"] = $linea["linea_operativa"];
+        $metricas["movimientos_cta"] = $linea["movimientos"];
+
+        return $metricas;
+    }
+
+    public static function mdlCalcularMotorLineaCreditoGrupo(
+        $codigoGrupo,
+        $resultadoMotor1 = null,
+        $resultadoMotor2 = null,
+        $resultadoMotor4 = null
+    ) {
+        $metricas = self::mdlMetricasMotorLineaCreditoGrupo($codigoGrupo);
+
+        if (!$metricas) {
+            return null;
+        }
+
+        if ($resultadoMotor1 === null) {
+            $resultadoMotor1 = self::mdlCalcularMotorRiesgoCreditoGrupo($codigoGrupo);
+        }
+
+        if ($resultadoMotor2 === null) {
+            $resultadoMotor2 = self::mdlCalcularMotorComercialGrupo($codigoGrupo);
+        }
+
+        if ($resultadoMotor4 === null) {
+            $resultadoMotor4 = self::mdlCalcularMotorFidelidadGrupo($codigoGrupo);
+        }
+
+        $resultado = self::mdlCalcularMotorLineaCredito(
+            $codigoGrupo,
+            $resultadoMotor1,
+            $resultadoMotor2,
+            $resultadoMotor4,
+            $metricas
+        );
+
+        if ($resultado) {
+            $resultado["consolidado"] = true;
+            $resultado["nombre_motor"] = "Recomendación de Línea de Crédito (consolidado)";
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Análisis completo consolidado del grupo (dos pasadas para línea de crédito).
+     */
+    public static function mdlCalcularAnalisisGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return array(
+                "cierre"   => null,
+                "miembros" => array(),
+                "peor_ruc" => null,
+                "motor1"   => null,
+                "motor2"   => null,
+                "motor3"   => null,
+                "motor4"   => null,
+            );
+        }
+
+        self::mdlPrecalentarContextoGrupo($codigoGrupo);
+        $cierre = self::mdlMetricasCierreMensualGrupo($codigoGrupo);
+
+        $motor1 = self::mdlCalcularMotorRiesgoCreditoGrupo($codigoGrupo);
+        $motor2 = self::mdlCalcularMotorComercialGrupo($codigoGrupo);
+        $motor4 = self::mdlCalcularMotorFidelidadGrupo($codigoGrupo);
+        $motor3 = self::mdlCalcularMotorLineaCreditoGrupo($codigoGrupo, $motor1, $motor2, $motor4);
+
+        if ($motor3) {
+            $lineaRecomendada = (float) $motor3["linea"]["linea_recomendada"];
+
+            if ($lineaRecomendada > 0) {
+                $motor1 = self::mdlCalcularMotorRiesgoCreditoGrupo($codigoGrupo, $lineaRecomendada);
+                $motor3 = self::mdlCalcularMotorLineaCreditoGrupo($codigoGrupo, $motor1, $motor2, $motor4);
+            }
+        }
+
+        $peorRuc = ($motor1 && isset($motor1["peor_ruc"])) ? $motor1["peor_ruc"] : null;
+        $peorCodigo = $peorRuc && !empty($peorRuc["codigo"]) ? $peorRuc["codigo"] : null;
+        $miembros = self::mdlListadoMiembrosGrupo($codigoGrupo, $peorCodigo);
+
+        return array(
+            "cierre"   => $cierre,
+            "miembros" => $miembros,
+            "peor_ruc" => $peorRuc,
+            "motor1"   => $motor1,
+            "motor2"   => $motor2,
+            "motor3"   => $motor3,
+            "motor4"   => $motor4,
+        );
+    }
+
+    /**
+     * Grupos empresariales con al menos un cliente activo en cuenta corriente.
+     */
+    public static function mdlGruposAnalisis()
+    {
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                g.codigo,
+                g.nombre,
+                COUNT(DISTINCT c.codigo) AS total_clientes
+            FROM grupos_empresarialesjf g
+            INNER JOIN clientesjf c ON c.grupo = g.codigo AND c.estado = 1
+            INNER JOIN cuenta_ctejf ct ON ct.cliente = c.codigo
+            WHERE g.estado = 1
+            GROUP BY g.codigo, g.nombre
+            HAVING total_clientes > 0
+            ORDER BY g.nombre ASC
+        ");
+
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Grupo empresarial de un cliente (si pertenece a uno).
+     */
+    public static function mdlGrupoDeCliente($codigoCliente)
+    {
+        $stmt = Conexion::conectar()->prepare("
+            SELECT g.codigo, g.nombre
+            FROM clientesjf c
+            INNER JOIN grupos_empresarialesjf g ON g.codigo = c.grupo AND g.estado = 1
+            WHERE c.codigo = :cliente
+              AND c.grupo IS NOT NULL
+              AND c.grupo <> ''
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch();
+    }
+
+    /**
+     * Métricas comerciales consolidadas de un grupo empresarial.
+     */
+    public static function mdlMetricasMotorComercialGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        $cfg = icConfigMotor2();
+        $meses = (int) $cfg["meses_periodo"];
+        $mitadTendencia = icMotor2MesesMitadTendencia($meses);
+        $tiposSql = icMotor2TiposVentasSql();
+        $vendExclSql = self::mdlSqlIn($cfg["ventas_excluir_vendedores"]);
+        $zonaVendExclSql = icMotor2SqlExcluirVendedorPrefijosZona("c2.vendedor");
+        $tablaMov = icMotor2TablaMovimientos($cfg["tabla_movimientos"]);
+        $contexto = self::mdlContextoGrupo($codigoGrupo);
+        $ubigeoZona = $contexto ? $contexto["ubigeo"] : "";
+        $filtroUbigeoZona = $ubigeoZona !== ""
+            ? "AND c2.ubigeo = '" . addslashes($ubigeoZona) . "'"
+            : "AND 1 = 0";
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                g.codigo,
+                g.nombre,
+                IFNULL(ref.vendedor, '') AS vendedor,
+                ref.ubigeo,
+                CONCAT(
+                    IFNULL(ub.departamento, ''),
+                    ' / ',
+                    IFNULL(ub.provincia, ''),
+                    ' / ',
+                    IFNULL(ub.distrito, '')
+                ) AS zona_texto,
+                IFNULL(vta.monto_reciente, 0) AS monto_reciente,
+                IFNULL(vta.monto_anterior, 0) AS monto_anterior,
+                IFNULL(vta.monto_yoy, 0) AS monto_yoy,
+                IFNULL(vta.monto_tendencia_ini, 0) AS monto_tendencia_ini,
+                IFNULL(vta.monto_tendencia_fin, 0) AS monto_tendencia_fin,
+                IFNULL(vta.docs_reciente, 0) AS docs_reciente,
+                IFNULL(vta.meses_con_compra, 0) AS meses_con_compra,
+                vta.ultima_compra,
+                IFNULL(zona.promedio_mensual, 0) AS zona_promedio_mensual,
+                IFNULL(lineas.lineas_cliente, 0) AS lineas_cliente,
+                IFNULL(lineas.lineas_catalogo, 0) AS lineas_catalogo
+            FROM grupos_empresarialesjf g
+            LEFT JOIN (
+                SELECT
+                    c.grupo,
+                    SUBSTRING_INDEX(GROUP_CONCAT(c.vendedor ORDER BY c.nombre ASC), ',', 1) AS vendedor,
+                    SUBSTRING_INDEX(GROUP_CONCAT(c.ubigeo ORDER BY c.nombre ASC), ',', 1) AS ubigeo
+                FROM clientesjf c
+                WHERE c.grupo = :grupo_ref
+                  AND c.estado = 1
+                GROUP BY c.grupo
+            ) ref ON ref.grupo = g.codigo
+            LEFT JOIN ubigeo ub ON ub.codigo = ref.ubigeo
+            LEFT JOIN (
+                SELECT
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN v.total ELSE 0 END) AS monto_reciente,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL " . ($meses * 2) . " MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_anterior,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH), INTERVAL 1 YEAR)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+                        THEN v.total ELSE 0 END) AS monto_yoy,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                         AND v.fecha < DATE_SUB(CURDATE(), INTERVAL {$mitadTendencia} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_tendencia_ini,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mitadTendencia} MONTH)
+                        THEN v.total ELSE 0 END) AS monto_tendencia_fin,
+                    SUM(CASE WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH) THEN 1 ELSE 0 END) AS docs_reciente,
+                    COUNT(DISTINCT CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                        THEN DATE_FORMAT(v.fecha, '%Y-%m') END) AS meses_con_compra,
+                    MAX(v.fecha) AS ultima_compra
+                FROM ventajf v
+                INNER JOIN clientesjf cg ON cg.codigo = v.cliente
+                    AND cg.grupo = :grupo_vta
+                    AND cg.estado = 1
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+            ) vta ON 1 = 1
+            LEFT JOIN (
+                SELECT AVG(mensual.total_mes) AS promedio_mensual
+                FROM (
+                    SELECT SUM(v.total) / {$meses} AS total_mes
+                    FROM ventajf v
+                    INNER JOIN clientesjf c2 ON c2.codigo = v.cliente
+                    WHERE v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                      AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                      AND UPPER(v.tipo) IN ({$tiposSql})
+                      AND v.vendedor NOT IN ({$vendExclSql})
+                      AND c2.ubigeo IS NOT NULL
+                      AND c2.ubigeo <> ''
+                      AND {$zonaVendExclSql}
+                      {$filtroUbigeoZona}
+                    GROUP BY v.cliente
+                ) mensual
+            ) zona ON 1 = 1
+            LEFT JOIN (
+                SELECT
+                    COUNT(DISTINCT a.modelo) AS lineas_cliente,
+                    (
+                        SELECT COUNT(*)
+                        FROM modelojf modc
+                        WHERE modc.estado = 'activo'
+                    ) AS lineas_catalogo
+                FROM {$tablaMov} m
+                INNER JOIN clientesjf cg ON cg.codigo = m.cliente
+                    AND cg.grupo = :grupo_lineas
+                    AND cg.estado = 1
+                INNER JOIN articulojf a ON a.articulo = m.articulo
+                INNER JOIN modelojf mjf ON a.modelo = mjf.modelo
+                    AND mjf.estado = 'activo'
+                INNER JOIN ventajf v ON v.tipo = m.tipo AND v.documento = m.documento
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+            ) lineas ON 1 = 1
+            WHERE g.codigo = :grupo
+              AND g.estado = 1
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_ref", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_vta", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_lineas", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $fila = $stmt->fetch();
+
+        return $fila ?: null;
+    }
+
+    /**
+     * Métricas de cierre mensual consolidadas por grupo empresarial.
+     */
+    public static function mdlMetricasCierreMensualGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        $cfg = icConfigMotor2();
+        $mesesPromedio = (int) $cfg["meses_periodo"];
+        $tiposSql = icMotor2TiposVentasSql();
+        $vendExclSql = self::mdlSqlIn($cfg["ventas_excluir_vendedores"]);
+
+        $stmt = Conexion::conectar()->prepare("
+            SELECT
+                g.codigo,
+                g.nombre,
+                IFNULL(vta.compra_mes_actual, 0) AS compra_mes_actual,
+                IFNULL(vta.compra_mes_anterior, 0) AS compra_mes_anterior,
+                IFNULL(vta.promedio_mensual, 0) AS promedio_mensual,
+                vta.ultima_compra,
+                IFNULL(vta.rucs_compraron_mes, 0) AS rucs_compraron_mes,
+                IFNULL(memb.total_rucs, 0) AS total_rucs,
+                ult.cliente_ultima_compra,
+                ult.nombre_ultima_compra
+            FROM grupos_empresarialesjf g
+            LEFT JOIN (
+                SELECT COUNT(*) AS total_rucs
+                FROM clientesjf c
+                WHERE c.grupo = :grupo_memb AND c.estado = 1
+            ) memb ON 1 = 1
+            LEFT JOIN (
+                SELECT
+                    SUM(CASE
+                        WHEN DATE_FORMAT(v.fecha, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+                        THEN v.total ELSE 0 END) AS compra_mes_actual,
+                    SUM(CASE
+                        WHEN DATE_FORMAT(v.fecha, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m')
+                        THEN v.total ELSE 0 END) AS compra_mes_anterior,
+                    SUM(CASE
+                        WHEN v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$mesesPromedio} MONTH)
+                        THEN v.total ELSE 0 END) / {$mesesPromedio} AS promedio_mensual,
+                    MAX(v.fecha) AS ultima_compra,
+                    COUNT(DISTINCT CASE
+                        WHEN DATE_FORMAT(v.fecha, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+                        THEN v.cliente END) AS rucs_compraron_mes
+                FROM ventajf v
+                INNER JOIN clientesjf cg ON cg.codigo = v.cliente
+                    AND cg.grupo = :grupo_vta
+                    AND cg.estado = 1
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+            ) vta ON 1 = 1
+            LEFT JOIN (
+                SELECT
+                    v.cliente AS cliente_ultima_compra,
+                    c.nombre AS nombre_ultima_compra
+                FROM ventajf v
+                INNER JOIN clientesjf c ON c.codigo = v.cliente
+                    AND c.grupo = :grupo_ult
+                    AND c.estado = 1
+                WHERE UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND UPPER(v.tipo) IN ({$tiposSql})
+                  AND v.vendedor NOT IN ({$vendExclSql})
+                ORDER BY v.fecha DESC
+                LIMIT 1
+            ) ult ON 1 = 1
+            WHERE g.codigo = :grupo
+              AND g.estado = 1
+            LIMIT 1
+        ");
+
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_memb", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_vta", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":grupo_ult", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $resumen = $stmt->fetch();
+
+        if (!$resumen) {
+            return null;
+        }
+
+        $stmtDet = Conexion::conectar()->prepare("
+            SELECT
+                c.codigo,
+                c.nombre,
+                IFNULL(SUM(CASE
+                    WHEN DATE_FORMAT(v.fecha, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+                    THEN v.total ELSE 0 END), 0) AS compra_mes_actual,
+                IFNULL(SUM(CASE
+                    WHEN DATE_FORMAT(v.fecha, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m')
+                    THEN v.total ELSE 0 END), 0) AS compra_mes_anterior
+            FROM clientesjf c
+            LEFT JOIN ventajf v ON v.cliente = c.codigo
+                AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                AND UPPER(v.tipo) IN ({$tiposSql})
+                AND v.vendedor NOT IN ({$vendExclSql})
+            WHERE c.grupo = :grupo
+              AND c.estado = 1
+            GROUP BY c.codigo, c.nombre
+            ORDER BY compra_mes_actual DESC, c.nombre ASC
+        ");
+
+        $stmtDet->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmtDet->execute();
+        $clientes = $stmtDet->fetchAll();
+
+        $compraActual = (float) $resumen["compra_mes_actual"];
+        $compraAnterior = (float) $resumen["compra_mes_anterior"];
+        $promedioMensual = (float) $resumen["promedio_mensual"];
+        $ultimaCompra = $resumen["ultima_compra"];
+        $diasUltima = $ultimaCompra ? (int) ((strtotime(date("Y-m-d")) - strtotime($ultimaCompra)) / 86400) : null;
+
+        $mesesNombres = array(
+            1 => "Enero", 2 => "Febrero", 3 => "Marzo", 4 => "Abril",
+            5 => "Mayo", 6 => "Junio", 7 => "Julio", 8 => "Agosto",
+            9 => "Septiembre", 10 => "Octubre", 11 => "Noviembre", 12 => "Diciembre",
+        );
+        $mesActualNum = (int) date("n");
+        $mesAnteriorNum = (int) date("n", strtotime("first day of last month"));
+
+        return array(
+            "grupo" => array(
+                "codigo" => $resumen["codigo"],
+                "nombre" => $resumen["nombre"],
+            ),
+            "mes_actual_label" => $mesesNombres[$mesActualNum] . " " . date("Y"),
+            "mes_anterior_label" => $mesesNombres[$mesAnteriorNum] . " " . date("Y", strtotime("first day of last month")),
+            "compra_mes_actual" => round($compraActual, 2),
+            "compra_mes_anterior" => round($compraAnterior, 2),
+            "pct_vs_anterior" => round(icPctCrecimiento($compraActual, $compraAnterior), 1),
+            "promedio_mensual" => round($promedioMensual, 2),
+            "meta_estimada" => round($promedioMensual, 2),
+            "faltante_meta" => round(max(0, $promedioMensual - $compraActual), 2),
+            "ultima_compra" => $ultimaCompra,
+            "dias_ultima_compra" => $diasUltima,
+            "ultima_compra_cliente" => array(
+                "codigo" => $resumen["cliente_ultima_compra"],
+                "nombre" => $resumen["nombre_ultima_compra"],
+            ),
+            "rucs_compraron_mes" => (int) $resumen["rucs_compraron_mes"],
+            "total_rucs" => (int) $resumen["total_rucs"],
+            "clientes" => array_map(function ($cli) {
+                return array(
+                    "codigo" => $cli["codigo"],
+                    "nombre" => $cli["nombre"],
+                    "compra_mes_actual" => round((float) $cli["compra_mes_actual"], 2),
+                    "compra_mes_anterior" => round((float) $cli["compra_mes_anterior"], 2),
+                );
+            }, $clientes),
         );
     }
 }

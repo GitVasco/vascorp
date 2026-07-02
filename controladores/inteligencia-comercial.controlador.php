@@ -7,6 +7,105 @@ class ControladorInteligenciaComercial
         return ModeloInteligenciaComercial::mdlClientesAnalisis();
     }
 
+    public static function ctrGruposAnalisis()
+    {
+        return ModeloInteligenciaComercial::mdlGruposAnalisis();
+    }
+
+    public static function ctrGrupoDeCliente($codigoCliente)
+    {
+        $codigoCliente = trim((string) $codigoCliente);
+
+        if ($codigoCliente === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlGrupoDeCliente($codigoCliente);
+    }
+
+    public static function ctrMetricasCierreGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlMetricasCierreMensualGrupo($codigoGrupo);
+    }
+
+    public static function ctrCalcularMotorComercialGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularMotorComercialGrupo($codigoGrupo);
+    }
+
+    public static function ctrCalcularAnalisisGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return array(
+                "cierre"   => null,
+                "miembros" => array(),
+                "peor_ruc" => null,
+                "motor1"   => null,
+                "motor2"   => null,
+                "motor3"   => null,
+                "motor4"   => null,
+            );
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularAnalisisGrupo($codigoGrupo);
+    }
+
+    public static function ctrCalcularMotorRiesgoCreditoGrupo($codigoGrupo, $lineaRecomendadaMotor3 = null)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularMotorRiesgoCreditoGrupo($codigoGrupo, $lineaRecomendadaMotor3);
+    }
+
+    public static function ctrCalcularMotorFidelidadGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularMotorFidelidadGrupo($codigoGrupo);
+    }
+
+    public static function ctrCalcularMotorLineaCreditoGrupo(
+        $codigoGrupo,
+        $resultadoMotor1 = null,
+        $resultadoMotor2 = null,
+        $resultadoMotor4 = null
+    ) {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        return ModeloInteligenciaComercial::mdlCalcularMotorLineaCreditoGrupo(
+            $codigoGrupo,
+            $resultadoMotor1,
+            $resultadoMotor2,
+            $resultadoMotor4
+        );
+    }
+
     public static function ctrCalcularMotorRiesgoCredito($codigoCliente, $lineaRecomendadaMotor3 = null)
     {
         $codigoCliente = trim((string) $codigoCliente);
@@ -142,6 +241,62 @@ class ControladorInteligenciaComercial
         return array(
             "ok"                    => true,
             "cliente"               => $contexto["cliente"],
+            "resumen"               => $resultado["resumen"],
+            "decision"              => $resultado["decision"],
+            "que_significa"         => $resultado["que_significa"],
+            "linea_credito"         => $resultado["linea_credito"],
+            "como_mejorar"          => $resultado["como_mejorar"],
+            "alertas"               => $resultado["alertas"],
+            "linea_credito_por_que" => $resultado["linea_credito_por_que"],
+            "recomendaciones"       => $resultado["recomendaciones"],
+            "modelo"                => isset($resultado["modelo"]) ? $resultado["modelo"] : "",
+            "modelo_respaldo"       => !empty($resultado["modelo_respaldo"]),
+            "generado_en"           => date("Y-m-d H:i:s"),
+        );
+    }
+
+    /**
+     * Resumen narrativo del grupo empresarial vía OpenAI (no modifica scores).
+     */
+    public static function ctrGenerarResumenIaGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return array("ok" => false, "msg" => "Seleccione un grupo empresarial.");
+        }
+
+        $cfg = icConfigOpenAi();
+
+        if (empty($cfg["activo"])) {
+            return array("ok" => false, "msg" => "El resumen con IA está desactivado.");
+        }
+
+        if ($cfg["api_key"] === "") {
+            return array(
+                "ok"  => false,
+                "msg" => "Configure su clave en OPENAI_API_KEY (controladores/config.php).",
+            );
+        }
+
+        $analisis = self::ctrCalcularAnalisisGrupo($codigoGrupo);
+
+        if (empty($analisis["motor1"])) {
+            return array("ok" => false, "msg" => "No hay análisis disponible para este grupo.");
+        }
+
+        $contexto = icConstruirContextoResumenIa($analisis, true);
+        $resultado = icOpenAiGenerarResumenCliente($contexto);
+
+        if (empty($resultado["ok"])) {
+            return $resultado;
+        }
+
+        return array(
+            "ok"                    => true,
+            "cliente"               => $contexto["cliente"],
+            "grupo"                 => $contexto["cliente"],
+            "consolidado"           => true,
             "resumen"               => $resultado["resumen"],
             "decision"              => $resultado["decision"],
             "que_significa"         => $resultado["que_significa"],
