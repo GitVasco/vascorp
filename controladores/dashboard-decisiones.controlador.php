@@ -188,7 +188,11 @@ class ControladorDashboardDecisiones
         }
 
         $deudaActual = isset($linea["deuda_actual"]) ? (float) $linea["deuda_actual"] : 0;
-        $lineaRecomendada = isset($linea["linea_recomendada"]) ? (float) $linea["linea_recomendada"] : 0;
+        $lineaRecomendada = isset($linea["linea_recomendada"])
+            ? (function_exists("icRedondearLineaCredito")
+                ? icRedondearLineaCredito((float) $linea["linea_recomendada"])
+                : (float) $linea["linea_recomendada"])
+            : 0;
         $refCupo = function_exists("icCalcularReferenciaCupoLinea")
             ? icCalcularReferenciaCupoLinea($deudaActual, $lineaRecomendada)
             : array(
@@ -236,7 +240,7 @@ class ControladorDashboardDecisiones
                 "incidencias" => isset($metricas1["incidencias"]) ? (int) $metricas1["incidencias"] : 0,
             ),
             "linea" => array(
-                "recomendada" => isset($linea["linea_recomendada"]) ? round((float) $linea["linea_recomendada"], 2) : 0,
+                "recomendada" => $lineaRecomendada,
                 "deuda_actual" => isset($linea["deuda_actual"]) ? round((float) $linea["deuda_actual"], 2) : 0,
                 "utilizacion" => isset($linea["utilizacion_pct"]) ? round((float) $linea["utilizacion_pct"], 1) : 0,
                 "accion" => isset($accion["etiqueta"]) ? $accion["etiqueta"] : "—",

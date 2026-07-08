@@ -69,6 +69,28 @@ class ModeloVendedores{
 	EDITAR TIPO DE PAGO
 	=============================================*/
 
+	static public function mdlToggleEstadoDecisiones($tabla, $datos){
+
+		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET estado_decisiones = :estado_decisiones WHERE id = :id AND tipo_dato = 'TVEND'");
+
+		$stmt->bindParam(":id", $datos["id"], PDO::PARAM_INT);
+		$stmt->bindParam(":estado_decisiones", $datos["estado_decisiones"], PDO::PARAM_INT);
+
+		if($stmt->execute()){
+
+			return $stmt->rowCount() > 0 ? "ok" : "error";
+
+		}else{
+
+			return "error";
+
+		}
+
+		$stmt->close();
+		$stmt = null;
+
+	}
+
 	static public function mdlEditarVendedor($tabla,$datos){
 
 		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET codigo = :codigo, descripcion = :descripcion, estado_decisiones = :estado_decisiones WHERE id = :id");

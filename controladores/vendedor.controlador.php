@@ -62,6 +62,18 @@ class ControladorVendedores{
 	EDITAR TIPO DE PAGO
 	=============================================*/
 
+	static public function ctrToggleEstadoDecisiones($id, $estado){
+
+		$tabla = "maestrajf";
+		$datos = array(
+			"id" => (int) $id,
+			"estado_decisiones" => (int) $estado ? 1 : 0
+		);
+
+		return ModeloVendedores::mdlToggleEstadoDecisiones($tabla, $datos);
+
+	}
+
 	static public function ctrEditarVendedor(){
 
 		if(isset($_POST["editarDescripcion"])){

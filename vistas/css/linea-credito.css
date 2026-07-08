@@ -1,0 +1,82 @@
+.lc-leyenda {
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+.lc-toolbar .label {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.lc-filtros {
+    margin-bottom: 12px;
+}
+
+.lc-cod {
+    font-size: 11px;
+    color: #7f8c8d;
+    display: block;
+}
+
+.lc-nombre {
+    font-size: 13px;
+}
+
+.lc-kpis .lc-kpi {
+    background: #f8f9fb;
+    border: 1px solid #e8ecf1;
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.lc-kpi span {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #95a5a6;
+}
+
+.lc-kpi strong {
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.lc-kpi--highlight {
+    border-color: #b8d4f0;
+    background: #f0f7ff;
+}
+
+.lc-timeline {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.lc-timeline li {
+    padding: 8px 0;
+    border-bottom: 1px solid #ecf0f1;
+    font-size: 12px;
+}
+
+.lc-sol-item {
+    background: #fafbfc;
+    border: 1px solid #e8ecf1;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.lc-nueva-sol {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #dfe6ee;
+}
+
+.lc-nueva-sol h5 {
+    font-size: 13px;
+    margin-bottom: 8px;
+}

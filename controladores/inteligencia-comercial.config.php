@@ -2147,12 +2147,29 @@ function icResumenIaMotorContexto($etiqueta, $resultado)
 }
 
 /**
+ * Redondeo conservador de líneas de crédito (recomendada / aprobada) al múltiplo inferior.
+ * Ej.: 12.750 → 12.000 · 13.001 → 13.000 · montos menores a 1.000 → 0.
+ */
+function icRedondearLineaCredito($monto, $incremento = 1000)
+{
+    $monto = (float) $monto;
+
+    if ($monto <= 0) {
+        return 0.0;
+    }
+
+    $incremento = max(1, (int) $incremento);
+
+    return floor($monto / $incremento) * $incremento;
+}
+
+/**
  * Referencia de cupo: disponible, excedido y pago mínimo para regularizar.
  */
 function icCalcularReferenciaCupoLinea($deudaActual, $lineaRecomendada)
 {
     $deudaActual = max(0, (float) $deudaActual);
-    $lineaRecomendada = max(0, (float) $lineaRecomendada);
+    $lineaRecomendada = icRedondearLineaCredito(max(0, (float) $lineaRecomendada));
     $disponible = max(0, $lineaRecomendada - $deudaActual);
     $excedido = max(0, $deudaActual - $lineaRecomendada);
     $tieneExcedido = $lineaRecomendada > 0 && $excedido > 0.01;

@@ -124,6 +124,8 @@ require_once "controladores/decisiones-credito.config.php";
 
 require_once "controladores/decisiones-credito.controlador.php";
 
+require_once "controladores/linea-credito.controlador.php";
+
 require_once "controladores/metas-vendedor.controlador.php";
 
 require_once "controladores/descuentos-compuestos.controlador.php";
@@ -232,6 +234,8 @@ require_once "modelos/dashboard-cobranzas.modelo.php";
 require_once "modelos/dashboard-decisiones.modelo.php";
 
 require_once "modelos/decisiones-credito.modelo.php";
+
+require_once "modelos/linea-credito.modelo.php";
 
 require_once "modelos/metas-vendedor.modelo.php";
 

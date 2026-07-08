@@ -1207,7 +1207,7 @@ class ModeloInteligenciaComercial
             $deudaActual,
             $lineaOperativa
         );
-        $lineaRecomendada = (float) $calculoLinea["monto"];
+        $lineaRecomendada = icRedondearLineaCredito((float) $calculoLinea["monto"]);
 
         $accion = icMotor3DeterminarAccion(
             $cfg,

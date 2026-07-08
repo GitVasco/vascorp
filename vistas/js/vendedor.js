@@ -62,6 +62,69 @@ $(".tablaVendedores").on("click", ".btnEditarVendedor", function () {
 
 })
 
+/*=============================================
+TOGGLE CENTRO DE DECISIONES (CLIC EN COLUMNA)
+=============================================*/
+$(".tablaVendedores").on("click", ".btnToggleEstadoDecisiones", function () {
+
+    var $badge = $(this);
+
+    if ($badge.data("loading")) {
+        return;
+    }
+
+    var idVendedor = $badge.attr("idVendedor");
+    var estadoActual = $badge.attr("estadoDecisiones");
+    var nuevoEstado = estadoActual === "1" ? "0" : "1";
+
+    var datos = new FormData();
+    datos.append("toggleEstadoDecisiones", "1");
+    datos.append("idVendedor", idVendedor);
+    datos.append("estadoDecisiones", nuevoEstado);
+
+    $badge.data("loading", true);
+
+    $.ajax({
+
+        url: "ajax/vendedor.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+
+            if (respuesta.status === "ok") {
+                $(".tablaVendedores").DataTable().ajax.reload(null, false);
+            } else {
+                swal({
+                    type: "error",
+                    title: "No se pudo actualizar el estado",
+                    showConfirmButton: true
+                });
+            }
+
+        },
+        error: function () {
+
+            swal({
+                type: "error",
+                title: "Error de conexión",
+                showConfirmButton: true
+            });
+
+        },
+        complete: function () {
+
+            $badge.data("loading", false);
+
+        }
+
+    });
+
+});
+
 
 /*=============================================
 ELIMINAR TIPO DE PAGO

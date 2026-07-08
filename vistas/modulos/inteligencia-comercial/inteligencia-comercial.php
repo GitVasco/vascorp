@@ -354,7 +354,9 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                 <div class="ic-linea-monto ic-linea-recomendada">
                     <?php
                     $deudaLinea = (float) $linea["deuda_actual"];
-                    $lineaRecomendada = (float) $linea["linea_recomendada"];
+                    $lineaRecomendada = function_exists("icRedondearLineaCredito")
+                        ? icRedondearLineaCredito((float) $linea["linea_recomendada"])
+                        : (float) $linea["linea_recomendada"];
                     $refCupoLinea = icCalcularReferenciaCupoLinea($deudaLinea, $lineaRecomendada);
                     ?>
                     <span class="ic-linea-etq">Línea recomendada</span>

@@ -95,6 +95,7 @@
                 <li class="treeview <?php if (
                                         $_GET["ruta"] == "dashboard-decisiones" ||
                                         $_GET["ruta"] == "metas-vendedor" ||
+                                        $_GET["ruta"] == "linea-credito" ||
                                         $_GET["ruta"] == "inteligencia-comercial"
                                     ) echo 'active'; ?>">
 
@@ -131,6 +132,17 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Metas vendedor</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "linea-credito") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=linea-credito">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Línea de crédito</span>
 
                             </a>
 
