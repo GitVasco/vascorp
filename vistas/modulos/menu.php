@@ -1142,6 +1142,7 @@
             ?>
                 <li class="treeview <?php if (
                                         $_GET["ruta"] == "pedidoscv" ||
+                                        $_GET["ruta"] == "pedidoscv-vendedores" ||
                                         $_GET["ruta"] == "crear-pedidocv" ||
                                         $_GET["ruta"] == "escaneo-barcode-pedidocv" ||
                                         $_GET["ruta"] == "clientes"  ||
@@ -1207,6 +1208,17 @@
 
                                 <i class="fa fa-paper-plane"></i>
                                 <span>Pedidos</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "pedidoscv-vendedores") echo 'active'; ?>">
+
+                            <a href="pedidoscv-vendedores">
+
+                                <i class="fa fa-paper-plane"></i>
+                                <span>Pedidos Vendedores</span>
 
                             </a>
 

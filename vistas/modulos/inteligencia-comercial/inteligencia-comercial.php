@@ -101,10 +101,58 @@ function icRenderCeldaScore($score)
     <?php
 }
 
+function icRenderCeldaHistorialPago($miembro)
+{
+    $pct = isset($miembro["pct_historial"]) ? $miembro["pct_historial"] : null;
+    $docs = isset($miembro["docs_a_tiempo"]) ? (int) $miembro["docs_a_tiempo"] : 0;
+    $total = isset($miembro["total_docs"]) ? (int) $miembro["total_docs"] : 0;
+    $esCritico = !empty($miembro["es_peor_historial"]);
+
+    if ($total <= 0) {
+        echo '<span class="text-muted">Sin docs</span>';
+        return;
+    }
+
+    $colorBarra = icColorScore($pct);
+    $anchoBarra = max(4, min(100, (float) $pct));
+    ?>
+    <div class="ic-historial-pago-cell">
+        <?php if ($esCritico) : ?>
+            <span class="ic-historial-flag" title="Menor cumplimiento de pagos del grupo">
+                <i class="fa fa-flag text-orange"></i>
+            </span>
+        <?php endif; ?>
+        <strong style="color:<?php echo $colorBarra; ?>;"><?php echo number_format($pct, 1, ".", ""); ?>%</strong>
+        <small class="text-muted ic-historial-docs"><?php echo $docs; ?>/<?php echo $total; ?> al día</small>
+        <div class="ic-historial-pago-bar" aria-hidden="true">
+            <div class="ic-historial-pago-fill" style="width:<?php echo $anchoBarra; ?>%;background:<?php echo $colorBarra; ?>;"></div>
+        </div>
+    </div>
+    <?php
+}
+
 function icRenderTablaMiembrosGrupo($miembros, $peorRuc, $nombreGrupo)
 {
     if (empty($miembros)) {
         return;
+    }
+
+    $miembroCritico = null;
+
+    foreach ($miembros as $m) {
+        if (!empty($m["es_peor_historial"])) {
+            $miembroCritico = $m;
+            break;
+        }
+    }
+
+    if ($miembroCritico === null && !empty($peorRuc["codigo"])) {
+        foreach ($miembros as $m) {
+            if ($m["codigo"] === $peorRuc["codigo"]) {
+                $miembroCritico = $m;
+                break;
+            }
+        }
     }
     ?>
     <div class="box box-default ic-miembros-grupo-box">
@@ -115,22 +163,37 @@ function icRenderTablaMiembrosGrupo($miembros, $peorRuc, $nombreGrupo)
             <div class="box-tools">
                 <span class="label label-default"><?php echo count($miembros); ?> RUC<?php echo count($miembros) === 1 ? "" : "s"; ?></span>
             </div>
+            <p class="ic-miembros-subtitulo text-muted">Comparativa individual por local · los motores de arriba usan datos consolidados del grupo</p>
         </div>
         <div class="box-body">
-            <?php if (!empty($peorRuc["codigo"])) : ?>
-            <p class="text-muted" style="margin:0 0 12px; font-size:12px;">
-                <i class="fa fa-exclamation-triangle text-yellow"></i>
-                El RUC resaltado tiene el <strong>peor historial individual</strong> del grupo
-                (<?php echo htmlspecialchars($peorRuc["codigo"] . " - " . $peorRuc["nombre"], ENT_QUOTES, "UTF-8"); ?>)
-                — referencia para detectar un local crítico. El Motor 1 usa el historial <strong>consolidado</strong> de todos los RUC.
-            </p>
+            <?php if ($miembroCritico && $miembroCritico["total_docs"] > 0) :
+                $urlCritico = "index.php?ruta=inteligencia-comercial&cliente=" . urlencode($miembroCritico["codigo"]);
+            ?>
+            <div class="ic-callout-vigilar ic-no-print">
+                <div class="ic-callout-vigilar-icon">
+                    <i class="fa fa-flag"></i>
+                </div>
+                <div class="ic-callout-vigilar-body">
+                    <strong>Local a vigilar</strong>
+                    <span class="text-muted">— menor cumplimiento de pagos del grupo:</span>
+                    <strong><?php echo htmlspecialchars($miembroCritico["codigo"] . " · " . $miembroCritico["nombre"], ENT_QUOTES, "UTF-8"); ?></strong>
+                    <span class="ic-callout-vigilar-metrica" style="color:<?php echo icColorScore($miembroCritico["pct_historial"]); ?>;">
+                        <?php echo number_format($miembroCritico["pct_historial"], 1, ".", ""); ?>%
+                    </span>
+                    <span class="text-muted">(<?php echo (int) $miembroCritico["docs_a_tiempo"]; ?> de <?php echo (int) $miembroCritico["total_docs"]; ?> documentos al día)</span>
+                    <a href="<?php echo htmlspecialchars($urlCritico, ENT_QUOTES, "UTF-8"); ?>" class="ic-callout-vigilar-link" target="_blank" rel="noopener noreferrer">
+                        Ver análisis <i class="fa fa-external-link"></i>
+                    </a>
+                </div>
+            </div>
             <?php endif; ?>
             <div class="table-responsive">
-                <table class="table table-bordered table-condensed table-striped ic-tabla-rucs-grupo">
+                <table class="table table-bordered table-condensed ic-tabla-rucs-grupo">
                     <thead>
                         <tr>
                             <th>RUC / Cliente</th>
                             <th class="text-right">Deuda</th>
+                            <th class="text-center" title="Documentos al día en cuenta corriente">Historial pago</th>
                             <th class="text-center" title="Motor 1 — Riesgo">Riesgo</th>
                             <th class="text-center" title="Motor 2 — Comercial">Comercial</th>
                             <th class="text-center" title="Motor 3 — Fidelidad">Fidelidad</th>
@@ -139,17 +202,14 @@ function icRenderTablaMiembrosGrupo($miembros, $peorRuc, $nombreGrupo)
                     </thead>
                     <tbody>
                         <?php foreach ($miembros as $m) :
-                            $esPeor = !empty($peorRuc["codigo"]) && $m["codigo"] === $peorRuc["codigo"];
+                            $esPeor = !empty($m["es_peor_historial"]);
                         ?>
-                        <tr<?php echo $esPeor ? ' class="warning"' : ""; ?>>
+                        <tr<?php echo $esPeor ? ' class="ic-miembro-critico"' : ""; ?>>
                             <td>
                                 <a href="index.php?ruta=inteligencia-comercial&cliente=<?php echo urlencode($m["codigo"]); ?>" class="ic-no-print" target="_blank" rel="noopener noreferrer">
                                     <?php echo htmlspecialchars($m["codigo"] . " - " . $m["nombre"], ENT_QUOTES, "UTF-8"); ?>
                                 </a>
                                 <span class="ic-print-only"><?php echo htmlspecialchars($m["codigo"] . " - " . $m["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
-                                <?php if ($esPeor) : ?>
-                                    <span class="label label-warning" style="margin-left:6px;">Local crítico</span>
-                                <?php endif; ?>
                             </td>
                             <td class="text-right">
                                 <?php if ($m["deuda"] > 0) : ?>
@@ -158,6 +218,7 @@ function icRenderTablaMiembrosGrupo($miembros, $peorRuc, $nombreGrupo)
                                     <span class="text-green">Al día</span>
                                 <?php endif; ?>
                             </td>
+                            <td class="text-center ic-col-historial"><?php icRenderCeldaHistorialPago($m); ?></td>
                             <td class="text-center"><?php icRenderCeldaScore($m["score_riesgo"]); ?></td>
                             <td class="text-center"><?php icRenderCeldaScore($m["score_comercial"]); ?></td>
                             <td class="text-center"><?php icRenderCeldaScore($m["score_fidelidad"]); ?></td>
@@ -167,6 +228,11 @@ function icRenderTablaMiembrosGrupo($miembros, $peorRuc, $nombreGrupo)
                     </tbody>
                 </table>
             </div>
+            <p class="ic-miembros-leyenda text-muted">
+                <i class="fa fa-info-circle"></i>
+                La columna <strong>Historial pago</strong> muestra el % de documentos al día en cuenta corriente de cada local.
+                El recuadro naranja señala quién tiene el menor cumplimiento dentro del grupo; no altera el score consolidado del Motor 1.
+            </p>
         </div>
     </div>
     <?php
@@ -286,10 +352,38 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
                     <small>Pico histórico S/ <?php echo number_format($linea["pico_historico"], 2); ?></small>
                 </div>
                 <div class="ic-linea-monto ic-linea-recomendada">
+                    <?php
+                    $deudaLinea = (float) $linea["deuda_actual"];
+                    $lineaRecomendada = (float) $linea["linea_recomendada"];
+                    $refCupoLinea = icCalcularReferenciaCupoLinea($deudaLinea, $lineaRecomendada);
+                    ?>
                     <span class="ic-linea-etq">Línea recomendada</span>
-                    <strong>S/ <?php echo number_format($linea["linea_recomendada"], 2); ?></strong>
+                    <strong>S/ <?php echo number_format($lineaRecomendada, 2); ?></strong>
+                    <?php if ($lineaRecomendada > 0) : ?>
+                        <?php if ($refCupoLinea["tiene_excedido"]) : ?>
+                            <small class="ic-linea-ref ic-linea-ref-excedido">Excedido S/ <?php echo number_format($refCupoLinea["excedido_sobre_recomendada"], 2); ?></small>
+                        <?php else : ?>
+                            <small class="ic-linea-ref">Disponible S/ <?php echo number_format($refCupoLinea["disponible_nuevo_credito"], 2); ?></small>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
+            <?php if (!empty($refCupoLinea["tiene_excedido"])) : ?>
+            <div class="ic-callout-pago-minimo">
+                <div class="ic-callout-pago-minimo-icon">
+                    <i class="fa fa-handshake-o"></i>
+                </div>
+                <div class="ic-callout-pago-minimo-body">
+                    <strong>Para salir adelante</strong>
+                    <span class="text-muted">— abono mínimo sugerido:</span>
+                    <strong class="ic-callout-pago-monto">S/ <?php echo number_format($refCupoLinea["pago_minimo_regularizar"], 2); ?></strong>
+                    <span class="text-muted">
+                        Con ese pago la deuda bajaría a S/ <?php echo number_format($refCupoLinea["deuda_tras_pago_minimo"], 2); ?>
+                        (cupo recomendado) y se habilitaría margen para un nuevo pedido a crédito.
+                    </span>
+                </div>
+            </div>
+            <?php endif; ?>
             <p class="ic-linea-explicacion text-muted">
                 <i class="fa fa-info-circle"></i>
                 <?php echo htmlspecialchars($accion["explicacion"], ENT_QUOTES, "UTF-8"); ?>
@@ -450,6 +544,39 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
     font-size: 10px;
     color: #999;
     margin-top: 2px;
+}
+.ic-linea-ref {
+    display: block;
+    font-size: 11px;
+    color: #777;
+    margin-top: 4px;
+    font-weight: normal;
+}
+.ic-linea-ref-excedido {
+    color: #c0392b;
+}
+.ic-callout-pago-minimo {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 11px 14px;
+    background: #f0f7ff;
+    border: 1px solid #c5d9f0;
+    border-left: 4px solid #3c8dbc;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.ic-callout-pago-minimo-icon {
+    color: #3c8dbc;
+    font-size: 18px;
+    line-height: 1;
+    padding-top: 2px;
+}
+.ic-callout-pago-monto {
+    color: #2c6a9a;
+    margin: 0 4px;
 }
 .ic-linea-explicacion {
     font-size: 12px;
@@ -1685,6 +1812,87 @@ function icRenderMotorLineaCreditoPanel($m, $opciones)
 }
 .ic-banner-grupo {
     margin-bottom: 12px;
+}
+.ic-miembros-grupo-box .box-header.with-border {
+    position: relative;
+}
+.ic-miembros-subtitulo {
+    margin: 6px 0 0;
+    font-size: 12px;
+    font-weight: normal;
+    clear: both;
+}
+.ic-callout-vigilar {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    background: #fffbf0;
+    border: 1px solid #f0e0b8;
+    border-left: 4px solid #f39c12;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.ic-callout-vigilar-icon {
+    color: #f39c12;
+    font-size: 18px;
+    line-height: 1;
+    padding-top: 2px;
+}
+.ic-callout-vigilar-body strong:first-child {
+    color: #8a6d3b;
+}
+.ic-callout-vigilar-metrica {
+    font-weight: 700;
+    margin: 0 4px;
+}
+.ic-callout-vigilar-link {
+    margin-left: 8px;
+    white-space: nowrap;
+}
+.ic-tabla-rucs-grupo tr.ic-miembro-critico {
+    background: #fffcf5 !important;
+    box-shadow: inset 4px 0 0 #f39c12;
+}
+.ic-tabla-rucs-grupo .ic-col-historial {
+    min-width: 110px;
+}
+.ic-historial-pago-cell {
+    position: relative;
+    display: inline-block;
+    min-width: 88px;
+    text-align: left;
+}
+.ic-historial-flag {
+    position: absolute;
+    left: -14px;
+    top: 2px;
+}
+.ic-historial-docs {
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+}
+.ic-historial-pago-bar {
+    height: 4px;
+    margin-top: 4px;
+    background: #ececec;
+    border-radius: 2px;
+    overflow: hidden;
+}
+.ic-historial-pago-fill {
+    height: 100%;
+    border-radius: 2px;
+}
+.ic-miembros-leyenda {
+    margin: 10px 0 0;
+    font-size: 11px;
+    line-height: 1.45;
+}
+.text-orange {
+    color: #f39c12;
 }
 .ic-print-only {
     display: none;

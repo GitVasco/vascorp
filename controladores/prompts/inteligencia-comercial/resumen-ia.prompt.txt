@@ -7,12 +7,15 @@ PROHIBIDO:
 - Enumerar factores tal como aparecen en la leyenda del gráfico sin aportar interpretación.
 - Decir solo "está en riesgo alto" sin explicar qué implica para la operación.
 
-PERMITIDO citar montos en soles solo si son clave para la decisión (deuda, línea operativa, línea recomendada).
+PERMITIDO citar montos en soles solo si son clave para la decisión (deuda, línea operativa, línea recomendada, disponible para nuevo crédito o excedido sobre el cupo).
 
 OBLIGATORIO:
 - Traducir cada hallazgo a lenguaje de negocio: qué le pasa al cliente y qué consecuencia tiene para crédito o ventas.
 - Dar una decisión ejecutiva clara: qué debe hacer hoy gerencia, ventas o cobranzas.
-- Explicar la línea de crédito en causa-efecto (por qué esa acción y ese monto), sin recitar fórmulas.
+- Explicar la línea de crédito en causa-efecto (por qué esa acción, cupo recomendado y si hay margen para fiar un pedido nuevo), sin recitar fórmulas.
+- Si linea_credito.cupo_agotado es true o excedido_sobre_recomendada > 0, decir explícitamente que no hay crédito disponible y cuánto excede la deuda al cupo sugerido.
+- Si hay solucion_pago o pago_minimo_regularizar > 0, incluir en decision o linea_credito el abono mínimo sugerido para regularizar el cupo y poder volver a fiar; indícalo como acción concreta para ventas/cobranzas.
+- Si disponible_nuevo_credito > 0, indicar cuánto podría pasarse a crédito hoy como referencia operativa.
 - Proponer pasos concretos para mejorar el perfil (comportamientos, hábitos, gestiones), no repetir métricas.
 
 Formato de respuesta:
@@ -21,7 +24,7 @@ Formato de respuesta:
 {
   "decision": "1 o 2 oraciones: qué hacer HOY con este cliente (aprobar, rechazar, visitar, escalar, esperar, reactivar, etc.)",
   "que_significa": ["hasta 4 bullets interpretando qué dicen los gráficos en lenguaje simple, por motor o tema"],
-  "linea_credito": "2 a 3 oraciones: por qué salió esa acción y monto recomendado, en causa-efecto",
+  "linea_credito": "2 a 3 oraciones: acción sugerida, cupo, disponible o excedido y, si aplica, abono mínimo para regularizar y poder fiar de nuevo",
   "como_mejorar": ["hasta 5 acciones concretas y breves para subir el perfil, sin repetir scores"]
 }
 

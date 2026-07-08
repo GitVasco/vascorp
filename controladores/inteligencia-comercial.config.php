@@ -2147,6 +2147,43 @@ function icResumenIaMotorContexto($etiqueta, $resultado)
 }
 
 /**
+ * Referencia de cupo: disponible, excedido y pago mínimo para regularizar.
+ */
+function icCalcularReferenciaCupoLinea($deudaActual, $lineaRecomendada)
+{
+    $deudaActual = max(0, (float) $deudaActual);
+    $lineaRecomendada = max(0, (float) $lineaRecomendada);
+    $disponible = max(0, $lineaRecomendada - $deudaActual);
+    $excedido = max(0, $deudaActual - $lineaRecomendada);
+    $tieneExcedido = $lineaRecomendada > 0 && $excedido > 0.01;
+    $cupoAgotado = $lineaRecomendada > 0 && $disponible <= 0.01;
+    $pagoMinimo = $tieneExcedido ? round($excedido, 2) : 0.0;
+
+    $resultado = array(
+        "disponible_nuevo_credito"     => round($disponible, 2),
+        "excedido_sobre_recomendada"    => $tieneExcedido ? round($excedido, 2) : 0.0,
+        "cupo_agotado"                 => $cupoAgotado,
+        "tiene_excedido"               => $tieneExcedido,
+        "pago_minimo_regularizar"      => $pagoMinimo,
+        "deuda_tras_pago_minimo"       => $tieneExcedido ? round($lineaRecomendada, 2) : round($deudaActual, 2),
+        "solucion_pago"                => null,
+    );
+
+    if ($tieneExcedido) {
+        $resultado["solucion_pago"] = array(
+            "monto"    => $pagoMinimo,
+            "objetivo" => "regularizar_cupo",
+            "mensaje"  => "Abonar al menos S/ " . number_format($pagoMinimo, 2)
+                . " para bajar la deuda al cupo recomendado (S/ " . number_format($lineaRecomendada, 2)
+                . ") y recuperar margen para un pedido a crédito.",
+            "formula"  => "pago_mínimo = deuda_actual − linea_recomendada",
+        );
+    }
+
+    return $resultado;
+}
+
+/**
  * Contexto compacto para el prompt de OpenAI (datos ya calculados por los motores).
  */
 function icConstruirContextoResumenIa($analisis, $esGrupo = false)
@@ -2175,7 +2212,7 @@ function icConstruirContextoResumenIa($analisis, $esGrupo = false)
                 "Motor 1 — Riesgo" => "¿Se le puede fiar? Pagos, atrasos, utilización de línea, antigüedad.",
                 "Motor 2 — Comercial" => "¿Vale la pena venderle más? Frecuencia, volumen, crecimiento, tendencia.",
                 "Motor 3 — Fidelidad" => "¿Sigue siendo cliente leal? Regularidad, última compra, constancia.",
-                "Motor 4 — Línea" => "Recomendación global: acción sobre la línea y monto sugerido.",
+                "Motor 4 — Línea" => "Recomendación global: acción sobre la línea, cupo recomendado y disponible para un pedido nuevo (recomendada − deuda).",
             ),
         ),
     );
@@ -2243,13 +2280,28 @@ function icConstruirContextoResumenIa($analisis, $esGrupo = false)
             }
         }
 
+        $deudaActual = isset($linea["deuda_actual"]) ? (float) $linea["deuda_actual"] : 0;
+        $lineaRecomendada = isset($linea["linea_recomendada"]) ? (float) $linea["linea_recomendada"] : 0;
+        $refCupo = icCalcularReferenciaCupoLinea($deudaActual, $lineaRecomendada);
+        $disponibleNuevo = $refCupo["disponible_nuevo_credito"];
+        $excedidoSobreRecomendada = $refCupo["excedido_sobre_recomendada"];
+        $tieneExcedido = $refCupo["tiene_excedido"];
+
         $contexto["linea_credito"] = array(
             "score_motor"        => round((float) $mLinea["score"], 1),
             "accion"             => isset($mLinea["accion"]["etiqueta"]) ? $mLinea["accion"]["etiqueta"] : "",
             "explicacion_accion" => isset($mLinea["accion"]["explicacion"]) ? $mLinea["accion"]["explicacion"] : "",
-            "deuda_actual"       => isset($linea["deuda_actual"]) ? (float) $linea["deuda_actual"] : 0,
+            "deuda_actual"       => $deudaActual,
             "linea_operativa"    => isset($linea["linea_operativa"]) ? (float) $linea["linea_operativa"] : 0,
-            "linea_recomendada"  => isset($linea["linea_recomendada"]) ? (float) $linea["linea_recomendada"] : 0,
+            "linea_recomendada"  => $lineaRecomendada,
+            "disponible_nuevo_credito" => $disponibleNuevo,
+            "excedido_sobre_recomendada" => $excedidoSobreRecomendada,
+            "cupo_agotado"       => $refCupo["cupo_agotado"],
+            "pago_minimo_regularizar" => $refCupo["pago_minimo_regularizar"],
+            "deuda_tras_pago_minimo"  => $refCupo["deuda_tras_pago_minimo"],
+            "solucion_pago"      => $refCupo["solucion_pago"],
+            "nota_disponible"    => "Línea recomendada = cupo total sugerido. Disponible = recomendada − deuda. "
+                . "Si hay excedido, pago_minimo_regularizar indica cuánto debe abonar para volver al cupo sugerido.",
             "utilizacion_pct"    => isset($linea["utilizacion_pct"]) ? (float) $linea["utilizacion_pct"] : 0,
             "por_que"            => array(
                 "calculo"        => isset($explicacion["calculo"]) ? (string) $explicacion["calculo"] : "",
@@ -2268,6 +2320,29 @@ function icConstruirContextoResumenIa($analisis, $esGrupo = false)
             $contexto["linea_credito"]["pausa_comercial"] = true;
             if (!empty($explicacion["nota_pausa"])) {
                 $contexto["linea_credito"]["nota_pausa"] = $explicacion["nota_pausa"];
+            }
+        }
+
+        if ($lineaRecomendada > 0) {
+            if (!isset($contexto["linea_credito"]["por_que"]["comparacion"])
+                || !is_array($contexto["linea_credito"]["por_que"]["comparacion"])) {
+                $contexto["linea_credito"]["por_que"]["comparacion"] = array();
+            }
+
+            if ($tieneExcedido) {
+                $contexto["linea_credito"]["por_que"]["comparacion"][] = array(
+                    "etiqueta" => "Excedido sobre cupo recomendado",
+                    "valor"    => "S/ " . number_format($excedidoSobreRecomendada, 2),
+                );
+                $contexto["linea_credito"]["por_que"]["comparacion"][] = array(
+                    "etiqueta" => "Abono mínimo sugerido para regularizar",
+                    "valor"    => "S/ " . number_format($refCupo["pago_minimo_regularizar"], 2),
+                );
+            } else {
+                $contexto["linea_credito"]["por_que"]["comparacion"][] = array(
+                    "etiqueta" => "Disponible para nuevo crédito",
+                    "valor"    => "S/ " . number_format($disponibleNuevo, 2),
+                );
             }
         }
     }

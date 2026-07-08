@@ -2306,6 +2306,13 @@ class ModeloInteligenciaComercial
                 }
             }
 
+            $m1Metricas = ($motor1 && isset($motor1["metricas"])) ? $motor1["metricas"] : array();
+            $totalDocsHist = isset($m1Metricas["total_docs"]) ? (int) $m1Metricas["total_docs"] : 0;
+            $docsATiempoHist = isset($m1Metricas["docs_a_tiempo"]) ? (int) $m1Metricas["docs_a_tiempo"] : 0;
+            $pctHistorial = $totalDocsHist > 0
+                ? round($docsATiempoHist / $totalDocsHist * 100, 1)
+                : null;
+
             $miembros[] = array(
                 "codigo"            => $codigo,
                 "nombre"            => $fila["nombre"],
@@ -2314,6 +2321,9 @@ class ModeloInteligenciaComercial
                 "score_comercial"   => $motor2 ? round((float) $motor2["score"], 2) : null,
                 "score_fidelidad"   => $motor4 ? round((float) $motor4["score"], 2) : null,
                 "score_linea"       => $motor3 ? round((float) $motor3["score"], 2) : null,
+                "docs_a_tiempo"     => $docsATiempoHist,
+                "total_docs"        => $totalDocsHist,
+                "pct_historial"     => $pctHistorial,
                 "es_peor_historial" => $peorRucCodigo !== null && $codigo === $peorRucCodigo,
             );
         }
