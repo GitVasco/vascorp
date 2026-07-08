@@ -105,16 +105,50 @@ class ControladorDashboardDecisiones
     {
         ModeloDashboardDecisiones::setVendedorFiltro(self::ctrVendedorSeleccionado());
 
+        $generados = self::ctrPedidosGenerados();
+
         return array(
             "pedidos" => self::ctrResumenPedidos(),
             "cartera" => self::ctrResumenCartera(),
             "alertas" => self::ctrAlertasDecision(),
             "top_generados" => self::ctrTopGeneradosPendientes(),
-            "generados" => self::ctrPedidosGenerados(),
+            "generados" => self::ctrEnriquecerGeneradosConDecision($generados),
             "estancados" => self::ctrPedidosEstancados(),
             "atraso" => self::ctrClientesConAtraso(),
             "avance_ventas" => self::ctrAvanceVentasMes(),
         );
+    }
+
+    private static function ctrEnriquecerGeneradosConDecision(array $generados)
+    {
+        if (empty($generados)) {
+            return $generados;
+        }
+
+        $codigos = array();
+
+        foreach ($generados as $row) {
+            $codigos[] = (int) $row["codigo"];
+        }
+
+        try {
+            $decisiones = ModeloDecisionesCredito::mdlDecisionesVigentesPorPedidos($codigos);
+        } catch (Exception $e) {
+            $decisiones = array();
+        }
+
+        foreach ($generados as $idx => $row) {
+            $codigoPedido = (int) $row["codigo"];
+            $decision = isset($decisiones[$codigoPedido]) ? $decisiones[$codigoPedido] : null;
+
+            if ($decision) {
+                $decision = ModeloDecisionesCredito::mdlEnriquecerDecision($decision);
+            }
+
+            $generados[$idx]["decision_credito"] = $decision;
+        }
+
+        return $generados;
     }
 
     /**

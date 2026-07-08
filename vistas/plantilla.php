@@ -677,7 +677,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=9"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=14"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>

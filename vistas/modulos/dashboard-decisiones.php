@@ -412,7 +412,7 @@ $estadosPipeline = array(
                                     <th>Total</th>
                                     <th>Fecha</th>
                                     <th>Días</th>
-                                    <th class="text-center" width="90px"></th>
+                                    <th class="text-center" width="120px"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -426,6 +426,12 @@ $estadosPipeline = array(
                                                     <i class="fa fa-warning text-danger" title="Cliente con deuda vencida"></i>
                                                 <?php endif; ?>
                                                 <strong><?php echo htmlspecialchars($row["codigo"]); ?></strong>
+                                                <?php if (!empty($row["decision_credito"])) : ?>
+                                                    <span class="label label-danger dd-motivo-badge"
+                                                          title="<?php echo htmlspecialchars($row["decision_credito"]["motivo_etiqueta"]); ?>">
+                                                        <i class="fa fa-ban"></i>
+                                                    </span>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="dd-col-cliente">
                                                 <div class="dd-cell-main dd-cell-cliente" title="<?php echo htmlspecialchars($row["cod_cli"] . " · " . $row["cliente"]); ?>">
@@ -456,6 +462,14 @@ $estadosPipeline = array(
                                                             data-pedido="<?php echo htmlspecialchars($row["codigo"]); ?>"
                                                             data-nombre="<?php echo htmlspecialchars($row["cliente"]); ?>">
                                                             <i class="fa fa-user-circle"></i>
+                                                        </button>
+                                                        <button type="button"
+                                                            class="btn btn-xs <?php echo !empty($row["decision_credito"]) ? "btn-danger" : "btn-warning"; ?> btnDdDecisionCredito"
+                                                            title="Decisión de crédito"
+                                                            data-cliente="<?php echo htmlspecialchars($row["cod_cli"]); ?>"
+                                                            data-pedido="<?php echo htmlspecialchars($row["codigo"]); ?>"
+                                                            data-nombre="<?php echo htmlspecialchars($row["cliente"]); ?>">
+                                                            <i class="fa fa-gavel"></i>
                                                         </button>
                                                         <a href="index.php?ruta=inteligencia-comercial&cliente=<?php echo urlencode($row["cod_cli"]); ?>"
                                                            class="btn btn-xs btn-default"
@@ -690,6 +704,32 @@ $estadosPipeline = array(
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
                 <a href="#" class="btn btn-primary" id="ddMiniIcLinkCompleto" target="_blank">
                     <i class="fa fa-external-link"></i> Ver análisis completo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDdDecisionCredito" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content dd-decision-modal">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title" id="ddDecisionCreditoTitulo">
+                    <i class="fa fa-gavel"></i> Decisión de crédito
+                </h4>
+                <p class="dd-mini-ic-subtitulo" id="ddDecisionCreditoSubtitulo"></p>
+            </div>
+            <div class="modal-body" id="ddDecisionCreditoBody">
+                <div class="dd-mini-ic-loading text-center">
+                    <i class="fa fa-spinner fa-spin fa-2x"></i>
+                    <p>Cargando decisión…</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                <a href="#" class="btn btn-primary" id="ddDecisionCreditoLinkIc" target="_blank">
+                    <i class="fa fa-line-chart"></i> Ver análisis completo
                 </a>
             </div>
         </div>

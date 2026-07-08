@@ -1,0 +1,154 @@
+{
+  "version": "1.0",
+  "descripcion": "Motivos de no aprobación registrados por Créditos y Cobranzas sobre un pedido en GENERADO.",
+  "quien_registra": "creditos_cobranzas",
+  "motivos": [
+    {
+      "codigo": "CUPO_INSUFICIENTE",
+      "etiqueta": "Cupo insuficiente",
+      "categoria": "linea_credito",
+      "severidad": "alta",
+      "descripcion": "El monto del pedido supera el cupo disponible del cliente.",
+      "solicitudes_permitidas": ["AUMENTO_LINEA", "EXCEPCION_PUNTUAL", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "LINEA_AGOTADA",
+      "etiqueta": "Línea de crédito agotada",
+      "categoria": "linea_credito",
+      "severidad": "alta",
+      "descripcion": "El cliente no tiene cupo disponible; la deuda consume toda la línea operativa.",
+      "solicitudes_permitidas": ["AUMENTO_LINEA", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "EXCEDE_LINEA_RECOMENDADA",
+      "etiqueta": "Excede línea recomendada",
+      "categoria": "linea_credito",
+      "severidad": "media",
+      "descripcion": "La exposición actual supera la línea recomendada por inteligencia comercial.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "AUMENTO_LINEA", "EXCEPCION_PUNTUAL", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "MORA_DOCUMENTOS_VENCIDOS",
+      "etiqueta": "Documentos vencidos",
+      "categoria": "cartera",
+      "severidad": "alta",
+      "descripcion": "El cliente tiene facturas o letras vencidas pendientes de pago.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "MORA_PROLONGADA",
+      "etiqueta": "Mora prolongada",
+      "categoria": "cartera",
+      "severidad": "critica",
+      "descripcion": "Atraso sostenido en el pago; riesgo elevado de incobrabilidad.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "SCORE_RIESGO_BAJO",
+      "etiqueta": "Score de riesgo insuficiente",
+      "categoria": "riesgo",
+      "severidad": "alta",
+      "descripcion": "El perfil crediticio del cliente no cumple el umbral mínimo para nuevos pedidos.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "INCIDENCIAS_COBRANZA",
+      "etiqueta": "Incidencias de cobranza",
+      "categoria": "cartera",
+      "severidad": "alta",
+      "descripcion": "Historial de incidencias, reclamos o incumplimientos registrados en cobranza.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "SIN_HISTORIAL_CREDITO",
+      "etiqueta": "Sin historial crediticio",
+      "categoria": "riesgo",
+      "severidad": "media",
+      "descripcion": "Cliente nuevo o sin exposición previa; requiere validación antes de aprobar.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "AUMENTO_LINEA", "EXCEPCION_PUNTUAL", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "CLIENTE_BLOQUEADO_ADMIN",
+      "etiqueta": "Cliente bloqueado administrativamente",
+      "categoria": "administrativo",
+      "severidad": "critica",
+      "descripcion": "Bloqueo activo en maestra o por decisión interna (no operativo temporal).",
+      "solicitudes_permitidas": ["REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "DOCUMENTACION_PENDIENTE",
+      "etiqueta": "Documentación pendiente",
+      "categoria": "administrativo",
+      "severidad": "media",
+      "descripcion": "Faltan documentos, garantías o actualización de datos para operar a crédito.",
+      "solicitudes_permitidas": ["REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "PAUSA_COMERCIAL",
+      "etiqueta": "Pausa comercial / acuerdo vigente",
+      "categoria": "operativo",
+      "severidad": "media",
+      "descripcion": "Cliente en pausa por letras, refinanciamiento o acuerdo de cobranza en curso.",
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "PEDIDO_ATIPICO",
+      "etiqueta": "Pedido atípico",
+      "categoria": "operativo",
+      "severidad": "media",
+      "descripcion": "Monto, mix o condiciones del pedido fuera del patrón habitual del cliente.",
+      "solicitudes_permitidas": ["EXCEPCION_PUNTUAL", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "LISTA_PRECIOS_NO_AUTORIZADA",
+      "etiqueta": "Lista de precios no autorizada",
+      "categoria": "comercial",
+      "severidad": "baja",
+      "descripcion": "El pedido no cumple condiciones de lista o precio autorizado para crédito.",
+      "solicitudes_permitidas": ["EXCEPCION_PUNTUAL", "REVERTIR_DECISION"]
+    },
+    {
+      "codigo": "OTRO",
+      "etiqueta": "Otro motivo",
+      "categoria": "otro",
+      "severidad": "media",
+      "descripcion": "Motivo no cubierto por el catálogo. Comentario obligatorio al registrar.",
+      "requiere_comentario": true,
+      "solicitudes_permitidas": ["REEVALUACION_CLIENTE", "AUMENTO_LINEA", "EXCEPCION_PUNTUAL", "REVERTIR_DECISION"]
+    }
+  ],
+  "tipos_solicitud": [
+    {
+      "codigo": "REEVALUACION_CLIENTE",
+      "etiqueta": "Solicitar reevaluación del cliente",
+      "quien_puede": ["jefatura_ventas", "vendedor"],
+      "descripcion": "Pedir a créditos revisar scores, cartera y perfil actual del cliente."
+    },
+    {
+      "codigo": "AUMENTO_LINEA",
+      "etiqueta": "Solicitar aumento de línea de crédito",
+      "quien_puede": ["jefatura_ventas"],
+      "descripcion": "Solicitar nuevo cupo o ampliación de línea operativa."
+    },
+    {
+      "codigo": "EXCEPCION_PUNTUAL",
+      "etiqueta": "Solicitar excepción para este pedido",
+      "quien_puede": ["jefatura_ventas"],
+      "descripcion": "Aprobar solo este pedido sin modificar la línea del cliente."
+    },
+    {
+      "codigo": "REVERTIR_DECISION",
+      "etiqueta": "Solicitar revertir la decisión",
+      "quien_puede": ["jefatura_ventas", "vendedor"],
+      "descripcion": "Impugnar el motivo de no aprobación; créditos debe revisar y responder.",
+      "requiere_justificacion": true
+    }
+  ],
+  "resoluciones_posibles": [
+    { "codigo": "MANTIENE_NO_APROBADO", "etiqueta": "Se mantiene no aprobado" },
+    { "codigo": "APROBADO_EXCEPCION", "etiqueta": "Aprobado por excepción" },
+    { "codigo": "APROBADO_REEVALUACION", "etiqueta": "Aprobado tras reevaluación" },
+    { "codigo": "LINEA_AJUSTADA", "etiqueta": "Línea ajustada; pedido liberado" },
+    { "codigo": "DECISION_REVERTIDA", "etiqueta": "Decisión revertida; pedido aprobado" }
+  ]
+}
