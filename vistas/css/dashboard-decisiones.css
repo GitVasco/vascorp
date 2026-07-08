@@ -886,6 +886,173 @@
     margin: 10px 0 0;
 }
 
+.dd-avance-ventas-box {
+    margin-bottom: 12px;
+}
+
+.dd-avance-empty {
+    margin: 8px 0;
+}
+
+.dd-table-wrap--avance {
+    margin: 0;
+}
+
+.dd-avance-table {
+    margin-bottom: 0;
+}
+
+.dd-avance-table > tbody > tr > td,
+.dd-avance-table > thead > tr > th {
+    vertical-align: middle !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.dd-avance-col-vend {
+    width: 18%;
+    min-width: 140px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.dd-avance-col-bar {
+    width: auto;
+}
+
+.dd-avance-col-monto {
+    width: 11%;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.dd-avance-col-faltante {
+    width: 10%;
+    white-space: nowrap;
+}
+
+.dd-avance-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 120px;
+}
+
+.dd-avance-bar {
+    flex: 1;
+    display: flex;
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    min-width: 120px;
+}
+
+.dd-avance-bar--overflow {
+    box-shadow: inset 0 0 0 1px #f39c12;
+}
+
+.dd-avance-seg {
+    height: 100%;
+    flex-shrink: 0;
+    min-width: 2px;
+}
+
+.dd-avance-seg--real {
+    background: #27ae60;
+}
+
+.dd-avance-seg--generado {
+    background: #95a5a6;
+}
+
+.dd-avance-seg--aprobado {
+    background: #f39c12;
+}
+
+.dd-avance-seg--apt {
+    background: #3c8dbc;
+}
+
+.dd-avance-seg--confirmado {
+    background: #00c0ef;
+}
+
+.dd-avance-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #eef2f7;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.dd-avance-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dd-avance-leyenda-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.dd-avance-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.dd-avance-bar-fill--ok {
+    background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+.dd-avance-bar-fill--warn {
+    background: linear-gradient(90deg, #f1c40f, #f39c12);
+}
+
+.dd-avance-bar-fill--bad {
+    background: linear-gradient(90deg, #e67e22, #e74c3c);
+}
+
+.dd-avance-pct {
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    min-width: 42px;
+    text-align: right;
+}
+
+.dd-avance-pct--ok {
+    color: #27ae60;
+}
+
+.dd-avance-pct--warn {
+    color: #f39c12;
+}
+
+.dd-avance-pct--bad {
+    color: #e74c3c;
+}
+
+.dd-avance-faltante {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.dd-avance-faltante--ok {
+    color: #27ae60;
+}
+
 @media (max-width: 991px) {
     .dd-decision-bar {
         grid-template-columns: repeat(2, 1fr);

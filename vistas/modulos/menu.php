@@ -92,36 +92,62 @@
 
                 </li>
 
-                <li class="<?php if ($_GET["ruta"] == "dashboard-decisiones") echo 'active'; ?>">
+                <li class="treeview <?php if (
+                                        $_GET["ruta"] == "dashboard-decisiones" ||
+                                        $_GET["ruta"] == "metas-vendedor" ||
+                                        $_GET["ruta"] == "inteligencia-comercial"
+                                    ) echo 'active'; ?>">
 
-                    <a href="index.php?ruta=dashboard-decisiones">
+                    <a href="#">
 
-                        <i class="fa fa-compass"></i>
-                        <span>Centro de Decisiones</span>
+                        <i class="fa fa-briefcase"></i>
 
-                    </a>
+                        <span>Gestión comercial</span>
 
-                </li>
+                        <span class="pull-right-container">
 
-                <li class="<?php if ($_GET["ruta"] == "descuentos-compuestos") echo 'active'; ?>">
+                            <i class="fa fa-angle-left pull-right"></i>
 
-                    <a href="index.php?ruta=descuentos-compuestos">
-
-                        <i class="fa fa-percent"></i>
-                        <span>Descuentos Compuestos</span>
-
-                    </a>
-
-                </li>
-
-                <li class="<?php if ($_GET["ruta"] == "inteligencia-comercial") echo 'active'; ?>">
-
-                    <a href="index.php?ruta=inteligencia-comercial">
-
-                        <i class="fa fa-line-chart"></i>
-                        <span>Inteligencia Comercial</span>
+                        </span>
 
                     </a>
+
+                    <ul class="treeview-menu">
+
+                        <li class="<?php if ($_GET["ruta"] == "dashboard-decisiones") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=dashboard-decisiones">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Centro de Decisiones</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "metas-vendedor") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=metas-vendedor">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Metas vendedor</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "inteligencia-comercial") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=inteligencia-comercial">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Inteligencia Comercial</span>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
 
                 </li>
 

@@ -25,6 +25,8 @@ if (!isset($_SESSION)) {
             $__tituloVentana = "Dashboard de Cobranzas | Vasco System";
         } elseif ($_GET["ruta"] === "dashboard-decisiones") {
             $__tituloVentana = "Centro de Decisiones | Vasco System";
+        } elseif ($_GET["ruta"] === "metas-vendedor") {
+            $__tituloVentana = "Metas vendedor | Vasco System";
         } elseif ($_GET["ruta"] === "descuentos-compuestos") {
             $__tituloVentana = "Descuentos Compuestos ESSO | Vasco System";
         } elseif ($_GET["ruta"] === "inteligencia-comercial") {
@@ -296,6 +298,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "inicio-gerencia" ||
                 $_GET["ruta"] == "dashboard-cobranzas" ||
                 $_GET["ruta"] == "dashboard-decisiones" ||
+                $_GET["ruta"] == "metas-vendedor" ||
                 $_GET["ruta"] == "refrescar"
             ) {
 
@@ -675,6 +678,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
     <script src="vistas/js/dashboard-decisiones.js?v=9"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
+    <script src="vistas/js/metas-vendedor.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>

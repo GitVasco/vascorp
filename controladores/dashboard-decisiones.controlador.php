@@ -54,6 +54,48 @@ class ControladorDashboardDecisiones
         return ModeloDashboardDecisiones::mdlClientesConAtraso($limite);
     }
 
+    public static function ctrAvanceVentasMes()
+    {
+        date_default_timezone_set("America/Lima");
+
+        $anio = (int) date("Y");
+        $mes = (int) date("n");
+        $vendedor = self::ctrVendedorSeleccionado();
+        $filas = ModeloMetasVendedor::mdlAvanceVentasDashboard($anio, $mes, $vendedor);
+
+        $totalMeta = 0.0;
+        $totalVenta = 0.0;
+        $totalPipeline = 0.0;
+        $totalProyectado = 0.0;
+
+        foreach ($filas as $fila) {
+            $pipeline = (float) $fila["soles_generados"]
+                + (float) $fila["soles_aprobados"]
+                + (float) $fila["soles_apt"]
+                + (float) $fila["soles_confirmados"];
+
+            $totalMeta += (float) $fila["meta_venta"];
+            $totalVenta += (float) $fila["venta_real"];
+            $totalPipeline += $pipeline;
+            $totalProyectado += (float) $fila["venta_real"] + $pipeline;
+        }
+
+        $pctGlobal = ($totalMeta > 0) ? round(($totalVenta / $totalMeta) * 100, 1) : 0.0;
+        $pctProyectado = ($totalMeta > 0) ? round(($totalProyectado / $totalMeta) * 100, 1) : 0.0;
+
+        return array(
+            "anio" => $anio,
+            "mes" => $mes,
+            "filas" => $filas,
+            "total_meta" => round($totalMeta, 2),
+            "total_venta" => round($totalVenta, 2),
+            "total_pipeline" => round($totalPipeline, 2),
+            "total_proyectado" => round($totalProyectado, 2),
+            "pct_global" => $pctGlobal,
+            "pct_proyectado" => $pctProyectado,
+        );
+    }
+
     public static function ctrPedidosRecientes($limite = 8)
     {
         return ModeloDashboardDecisiones::mdlPedidosRecientes($limite);
@@ -71,6 +113,7 @@ class ControladorDashboardDecisiones
             "generados" => self::ctrPedidosGenerados(),
             "estancados" => self::ctrPedidosEstancados(),
             "atraso" => self::ctrClientesConAtraso(),
+            "avance_ventas" => self::ctrAvanceVentasMes(),
         );
     }
 

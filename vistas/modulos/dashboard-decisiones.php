@@ -14,6 +14,38 @@ $topGenerados = $datos["top_generados"];
 $generados = $datos["generados"];
 $estancados = $datos["estancados"];
 $atraso = $datos["atraso"];
+$avanceVentas = $datos["avance_ventas"];
+
+function ddAvancePctClase($pct)
+{
+    $pct = (float) $pct;
+
+    if ($pct >= 100) {
+        return "ok";
+    }
+    if ($pct >= 80) {
+        return "warn";
+    }
+
+    return "bad";
+}
+
+function ddAvanceSegmentos($avance, $meta)
+{
+    $meta = (float) $meta;
+
+    if ($meta <= 0) {
+        return array();
+    }
+
+    return array(
+        array("clase" => "real", "monto" => (float) $avance["venta_real"], "titulo" => "Venta facturada"),
+        array("clase" => "generado", "monto" => (float) $avance["soles_generados"], "titulo" => "Generados"),
+        array("clase" => "aprobado", "monto" => (float) $avance["soles_aprobados"], "titulo" => "Aprobados"),
+        array("clase" => "apt", "monto" => (float) $avance["soles_apt"], "titulo" => "APT"),
+        array("clase" => "confirmado", "monto" => (float) $avance["soles_confirmados"], "titulo" => "Confirmados"),
+    );
+}
 
 function ddEstadoBadge($estado)
 {
@@ -199,6 +231,135 @@ $estadosPipeline = array(
                 <div class="dd-decision-card-label"><i class="fa fa-money"></i> Cartera vencida</div>
                 <div class="dd-decision-card-value">S/ <?php echo number_format((float) $cartera["deuda_vencida"], 0); ?></div>
                 <div class="dd-decision-card-meta"><?php echo (int) $cartera["clientes_vencidos"]; ?> clientes</div>
+            </div>
+        </div>
+
+        <?php
+        $mesesDd = ControladorTalleres::ctrMes();
+        $nombreMesAvance = (string) $avanceVentas["mes"];
+        foreach ($mesesDd as $mesItem) {
+            if ((int) $mesItem["codigo"] === (int) $avanceVentas["mes"]) {
+                $nombreMesAvance = $mesItem["descripcion"];
+                break;
+            }
+        }
+        ?>
+        <div class="box box-solid dd-box dd-avance-ventas-box">
+            <div class="box-header with-border dd-box-header-compact">
+                <h3 class="box-title">
+                    <i class="fa fa-bullseye"></i>
+                    Avance de ventas — <?php echo htmlspecialchars($nombreMesAvance . " " . $avanceVentas["anio"]); ?>
+                </h3>
+                <div class="dd-header-tools pull-right">
+                    <span class="dd-resumen-chip">
+                        Real S/ <?php echo number_format((float) $avanceVentas["total_venta"], 0); ?>
+                        (<?php echo number_format((float) $avanceVentas["pct_global"], 1); ?>%)
+                    </span>
+                    <span class="dd-resumen-chip dd-resumen-chip--total">
+                        Proy. S/ <?php echo number_format((float) $avanceVentas["total_proyectado"], 0); ?>
+                        / <?php echo number_format((float) $avanceVentas["total_meta"], 0); ?>
+                        (<?php echo number_format((float) $avanceVentas["pct_proyectado"], 1); ?>%)
+                    </span>
+                    <a href="index.php?ruta=metas-vendedor&anio=<?php echo (int) $avanceVentas["anio"]; ?>&mes=<?php echo (int) $avanceVentas["mes"]; ?>"
+                       class="btn btn-xs btn-default"
+                       title="Gestionar metas">
+                        <i class="fa fa-pencil"></i> Metas
+                    </a>
+                </div>
+            </div>
+            <div class="box-body dd-box-body-compact">
+                <?php if (empty($avanceVentas["filas"])) : ?>
+                    <p class="text-muted text-center dd-avance-empty">
+                        No hay metas de venta registradas para este mes.
+                        <a href="index.php?ruta=metas-vendedor">Registrar metas</a>
+                    </p>
+                <?php else : ?>
+                    <div class="table-responsive dd-table-wrap dd-table-wrap--avance">
+                        <table class="table table-hover table-condensed dd-table dd-table-compact dd-avance-table">
+                            <thead>
+                                <tr>
+                                    <th class="dd-avance-col-vend">Vendedor</th>
+                                    <th class="dd-avance-col-bar">Avance / proyección</th>
+                                    <th class="text-right dd-avance-col-monto">Facturado</th>
+                                    <th class="text-right dd-avance-col-monto">Pipeline</th>
+                                    <th class="text-right dd-avance-col-monto">Meta</th>
+                                    <th class="text-right dd-avance-col-faltante">Faltante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($avanceVentas["filas"] as $avance) :
+                                    $meta = (float) $avance["meta_venta"];
+                                    $real = (float) $avance["venta_real"];
+                                    $pipeline = (float) $avance["soles_generados"]
+                                        + (float) $avance["soles_aprobados"]
+                                        + (float) $avance["soles_apt"]
+                                        + (float) $avance["soles_confirmados"];
+                                    $proyectado = $real + $pipeline;
+                                    $pctProy = ($meta > 0) ? round(($proyectado / $meta) * 100, 1) : 0;
+                                    $clase = ddAvancePctClase($pctProy);
+                                    $faltante = max(0, $meta - $proyectado);
+                                    $segmentos = ddAvanceSegmentos($avance, $meta);
+                                    $totalPctBar = 0.0;
+                                    foreach ($segmentos as $seg) {
+                                        if ($seg["monto"] > 0) {
+                                            $totalPctBar += ($seg["monto"] / $meta) * 100;
+                                        }
+                                    }
+                                    $escalaBar = ($totalPctBar > 100) ? (100 / $totalPctBar) : 1;
+                                    ?>
+                                    <tr>
+                                        <td class="dd-avance-col-vend">
+                                            <span class="dd-cod-cli"><?php echo htmlspecialchars($avance["cod_vendedor"]); ?></span>
+                                            <?php echo htmlspecialchars($avance["nombre_vendedor"]); ?>
+                                        </td>
+                                        <td class="dd-avance-col-bar">
+                                            <div class="dd-avance-bar-row">
+                                                <div class="dd-avance-bar<?php echo ($totalPctBar > 100) ? " dd-avance-bar--overflow" : ""; ?>">
+                                                    <?php foreach ($segmentos as $seg) :
+                                                        if ($seg["monto"] <= 0) {
+                                                            continue;
+                                                        }
+                                                        $anchoSeg = round((($seg["monto"] / $meta) * 100) * $escalaBar, 2);
+                                                        ?>
+                                                        <div class="dd-avance-seg dd-avance-seg--<?php echo $seg["clase"]; ?>"
+                                                             style="width:<?php echo $anchoSeg; ?>%"
+                                                             title="<?php echo htmlspecialchars($seg["titulo"] . ": S/ " . number_format($seg["monto"], 0)); ?>"></div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                                <span class="dd-avance-pct dd-avance-pct--<?php echo $clase; ?>" title="Proyección sobre meta">
+                                                    <?php echo number_format($pctProy, 1); ?>%
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="text-right dd-avance-col-monto">
+                                            S/ <?php echo number_format($real, 0); ?>
+                                        </td>
+                                        <td class="text-right dd-avance-col-monto">
+                                            S/ <?php echo number_format($pipeline, 0); ?>
+                                        </td>
+                                        <td class="text-right dd-avance-col-monto text-muted">
+                                            S/ <?php echo number_format($meta, 0); ?>
+                                        </td>
+                                        <td class="text-right dd-avance-col-faltante">
+                                            <?php if ($faltante > 0) : ?>
+                                                <span class="dd-avance-faltante">S/ <?php echo number_format($faltante, 0); ?></span>
+                                            <?php else : ?>
+                                                <span class="dd-avance-faltante dd-avance-faltante--ok"><i class="fa fa-check"></i></span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="dd-avance-leyenda">
+                        <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--real"></i> Facturado</span>
+                        <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--generado"></i> Generado</span>
+                        <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--aprobado"></i> Aprobado</span>
+                        <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--apt"></i> APT</span>
+                        <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--confirmado"></i> Confirmado</span>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
