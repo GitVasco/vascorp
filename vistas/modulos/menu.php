@@ -92,6 +92,17 @@
 
                 </li>
 
+                <li class="<?php if ($_GET["ruta"] == "dashboard-decisiones") echo 'active'; ?>">
+
+                    <a href="index.php?ruta=dashboard-decisiones">
+
+                        <i class="fa fa-compass"></i>
+                        <span>Centro de Decisiones</span>
+
+                    </a>
+
+                </li>
+
                 <li class="<?php if ($_GET["ruta"] == "descuentos-compuestos") echo 'active'; ?>">
 
                     <a href="index.php?ruta=descuentos-compuestos">

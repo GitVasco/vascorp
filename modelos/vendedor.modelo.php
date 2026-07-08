@@ -10,11 +10,12 @@ class ModeloVendedores{
 
 	static public function mdlIngresarVendedor($tabla,$datos){
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla(codigo,descripcion,tipo_dato) VALUES (:codigo,:descripcion,:tipo_dato)");
+		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla(codigo, descripcion, tipo_dato, estado_decisiones) VALUES (:codigo, :descripcion, :tipo_dato, :estado_decisiones)");
 
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
 		$stmt->bindParam(":tipo_dato", $datos["tipo_dato"], PDO::PARAM_STR);
+		$stmt->bindParam(":estado_decisiones", $datos["estado_decisiones"], PDO::PARAM_INT);
 
 
 		if($stmt->execute()){
@@ -70,11 +71,12 @@ class ModeloVendedores{
 
 	static public function mdlEditarVendedor($tabla,$datos){
 
-		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET codigo = :codigo, descripcion = :descripcion WHERE id = :id");
+		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET codigo = :codigo, descripcion = :descripcion, estado_decisiones = :estado_decisiones WHERE id = :id");
 
 		$stmt->bindParam(":id", $datos["id"], PDO::PARAM_INT);
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
+		$stmt->bindParam(":estado_decisiones", $datos["estado_decisiones"], PDO::PARAM_INT);
 
 		if($stmt->execute()){
 

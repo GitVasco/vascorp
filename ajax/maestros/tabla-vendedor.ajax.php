@@ -26,11 +26,16 @@ class TablaVendedores{
         TRAEMOS LAS ACCIONES
         =============================================*/         
         
-        $botones =  "<div class='btn-group'><button class='btn btn-xs btn-warning btnEditarVendedor' idVendedor='".$vendedor[$i]["id"]."' data-toggle='modal' data-target='#modalEditarVendedor'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarVendedor' idVendedor='".$vendedor[$i]["id"]."'><i class='fa fa-times'></i></button></div>"; 
+        $botones =  "<div class='btn-group'><button class='btn btn-xs btn-warning btnEditarVendedor' idVendedor='".$vendedor[$i]["id"]."' data-toggle='modal' data-target='#modalEditarVendedor'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarVendedor' idVendedor='".$vendedor[$i]["id"]."'><i class='fa fa-times'></i></button></div>";
+
+            $estadoDecisiones = isset($vendedor[$i]["estado_decisiones"]) && (int) $vendedor[$i]["estado_decisiones"] === 1
+                ? "<span class='label label-success'>Incluido</span>"
+                : "<span class='label label-default'>No</span>";
 
             $datosJson .= '[
             "'.$vendedor[$i]["codigo"].'",
             "'.$vendedor[$i]["descripcion"].'",
+            "'.$estadoDecisiones.'",
             "'.$botones.'"
             ],';        
             }

@@ -1,0 +1,932 @@
+.dd-dashboard .content {
+    background: #f4f6f9;
+}
+
+.dd-content-compact {
+    padding-top: 10px;
+}
+
+.dd-decision-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.dd-decision-card {
+    display: block;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: inherit;
+    text-decoration: none !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dd-decision-card:hover {
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dd-decision-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dd-decision-card-value {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #1e3a5f;
+}
+
+.dd-decision-card-meta {
+    font-size: 10px;
+    color: #888;
+    margin-top: 3px;
+    line-height: 1.3;
+}
+
+.dd-decision-card--primary {
+    border-left: 4px solid #e67e22;
+    background: #fffaf5;
+}
+
+.dd-decision-card--danger {
+    border-left: 4px solid #dd4b39;
+    background: #fff5f5;
+}
+
+.dd-decision-card--danger .dd-decision-card-value {
+    color: #c0392b;
+}
+
+.dd-decision-card--warn {
+    border-left: 4px solid #f39c12;
+}
+
+.dd-decision-card--neutral {
+    border-left: 4px solid #95a5a6;
+}
+
+.dd-decision-card--cartera {
+    border-left: 4px solid #605ca8;
+}
+
+.dd-box-prioridad {
+    margin-bottom: 0;
+}
+
+.dd-main-split {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    margin-bottom: 12px;
+}
+
+.dd-main-left > .box {
+    margin-bottom: 12px;
+}
+
+.dd-main-left > .box:last-child {
+    margin-bottom: 0;
+}
+
+.dd-main-right {
+    display: flex;
+}
+
+.dd-box-prioridad--tall {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.dd-prioridad-list--tall {
+    flex: 1;
+    max-height: none;
+    min-height: 420px;
+    overflow: auto;
+}
+
+.dd-prioridad-orden {
+    color: #888;
+    font-size: 11px;
+    line-height: 28px;
+}
+
+.dd-prioridad-list {
+    max-height: 148px;
+    overflow: auto;
+    padding: 0 !important;
+}
+
+.dd-prioridad-table {
+    margin: 0;
+    font-size: 11px;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.dd-prioridad-table .dd-col-cliente {
+    overflow: hidden;
+    max-width: 0;
+}
+
+.dd-prioridad-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f9fafb;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #666;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 6px 8px !important;
+    white-space: nowrap;
+}
+
+.dd-prioridad-table tbody td {
+    vertical-align: top;
+    padding: 7px 8px !important;
+    border-top: 1px solid #f0f2f5 !important;
+}
+
+.dd-prioridad-table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.dd-prioridad-table tbody tr.dd-row-mora {
+    background: #fff8f8;
+}
+
+.dd-prioridad-table tbody tr.dd-row-mora:hover {
+    background: #fff3f3;
+}
+
+.dd-prio-col-dias {
+    width: 44px;
+    white-space: nowrap;
+}
+
+.dd-prio-col-total {
+    width: 62px;
+    white-space: nowrap;
+}
+
+.dd-prio-col-deuda {
+    width: 68px;
+    white-space: nowrap;
+}
+
+.dd-prio-col-acc {
+    width: 30px;
+    padding-left: 0 !important;
+    padding-right: 4px !important;
+}
+
+.dd-prio-pedido {
+    font-weight: 700;
+    font-size: 11px;
+    color: #1e3a5f;
+    line-height: 1.25;
+}
+
+.dd-prio-cliente {
+    margin-top: 2px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.dd-cli-linea {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.dd-prio-cliente .dd-cod-cli--inline,
+.dd-cell-cliente .dd-cod-cli--inline {
+    flex-shrink: 0;
+    min-width: 0;
+    margin-right: 0;
+    font-size: 10px;
+    font-weight: 700;
+    color: #666;
+}
+
+.dd-cli-nombre {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #555;
+}
+
+.dd-cell-cliente {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.dd-cell-cliente .dd-cli-linea {
+    font-size: 12px;
+}
+
+.dd-prio-monto {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 11px;
+}
+
+.dd-prio-deuda {
+    display: inline-block;
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.dd-prio-deuda--vencida {
+    padding: 2px 5px;
+    border-radius: 3px;
+    background: #fdecea;
+    color: #c0392b;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.dd-prio-deuda--vencida .fa-warning {
+    font-size: 9px;
+    margin-right: 2px;
+}
+
+.dd-prio-deuda--ok {
+    color: #ccc;
+    font-weight: 400;
+}
+
+.dd-prioridad-table .dd-dias {
+    display: inline-block;
+    min-width: 32px;
+    text-align: center;
+    font-size: 10px;
+    padding: 2px 4px;
+}
+
+.dd-row-mora {
+    background: #fff5f5 !important;
+}
+
+.dd-dashboard .content-header {
+    padding: 12px 15px 0;
+}
+
+.dd-dashboard .content-header h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+}
+
+.dd-dashboard .content-header .breadcrumb {
+    margin-bottom: 0;
+    padding: 4px 0 0;
+    font-size: 12px;
+}
+
+.dd-content-header {
+    padding-bottom: 10px !important;
+}
+
+.dd-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dd-header-title {
+    flex: 1;
+    min-width: 220px;
+}
+
+.dd-filtro-form {
+    margin: 0;
+}
+
+.dd-filtro-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.dd-filtro-label {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    white-space: nowrap;
+}
+
+.dd-filtro-select {
+    width: 240px;
+    max-width: 100%;
+    height: 30px;
+}
+
+.dd-filtro-group .bootstrap-select.dd-filtro-select {
+    width: 240px !important;
+    max-width: 100%;
+}
+
+.dd-filtro-group .bootstrap-select.dd-filtro-select > .dropdown-toggle {
+    height: 30px;
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.dd-filtro-btn {
+    height: 30px;
+    padding: 0 12px;
+    line-height: 28px;
+}
+
+.dd-filtro-btn--limpiar {
+    color: #666;
+}
+
+.dd-filtro-activo {
+    margin-top: 10px;
+    padding: 6px 10px;
+    background: #eef6ff;
+    border: 1px solid #cfe2ff;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #2c5282;
+}
+
+.dd-filtro-limpiar {
+    margin-left: 8px;
+    font-size: 11px;
+}
+
+.dd-box-header-compact {
+    padding: 8px 12px !important;
+    min-height: 0 !important;
+}
+
+.dd-box-header-compact .box-title {
+    font-size: 15px;
+    line-height: 28px;
+}
+
+.dd-box-body-compact {
+    padding: 10px 12px !important;
+}
+
+.dd-header-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 72%;
+}
+
+.dd-resumen-chip {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #f4f6f9;
+    color: #444;
+    border: 1px solid #e2e8f0;
+}
+
+.dd-resumen-chip--total {
+    background: #ebf4fb;
+    border-color: #c5dff0;
+    color: #2c5282;
+}
+
+.dd-resumen-chip--warn {
+    background: #fff8eb;
+    border-color: #f6d9a8;
+    color: #9a6700;
+}
+
+.dd-resumen-chip--danger {
+    background: #fdecea;
+    border-color: #f5c6cb;
+    color: #a71d2a;
+}
+
+.dd-estados-soles-box {
+    margin-bottom: 12px;
+}
+
+.dd-pipeline-row {
+    margin-left: -6px;
+    margin-right: -6px;
+}
+
+.dd-estados-chart-wrap {
+    max-width: 200px;
+    min-height: 160px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dd-estados-soles-grid {
+    margin: 0 -4px;
+}
+
+.dd-estado-soles-item {
+    background: #f8fafc;
+    border: 1px solid #e8edf2;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    min-height: 0;
+}
+
+.dd-estado-soles-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.dd-estado-soles-text strong {
+    display: block;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.dd-estado-soles-text small {
+    color: #888;
+    font-size: 10px;
+}
+
+.dd-estados-soles-monto {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1e3a5f;
+    line-height: 1.1;
+}
+
+.dd-estado-soles-hint {
+    display: none;
+}
+
+.dd-generados-box {
+    border: 2px solid #f39c12;
+    background: #fffdf8;
+    margin-bottom: 12px;
+}
+
+.dd-generados-box > .box-header {
+    background: #fff8eb;
+    border-bottom-color: #f6d9a8;
+}
+
+.dd-table-wrap--generados {
+    max-height: 340px;
+}
+
+.dd-table-wrap--short {
+    max-height: 260px;
+}
+
+.dd-table-wrap--estancados {
+    max-height: 260px;
+}
+
+.dd-link-pedido {
+    color: #1e3a5f;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(30, 58, 95, 0.35);
+}
+
+.dd-link-pedido:hover,
+.dd-link-pedido:focus {
+    color: #3c8dbc;
+    text-decoration: none;
+    border-bottom-color: #3c8dbc;
+}
+
+.dd-row-compact {
+    margin-bottom: 0;
+}
+
+.dd-table-compact > thead > tr > th,
+.dd-table-compact > tbody > tr > td {
+    padding: 6px 8px !important;
+    font-size: 12px;
+    vertical-align: middle !important;
+}
+
+.dd-table thead th {
+    background: #fafafa;
+    border-bottom-width: 1px !important;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #777;
+    padding: 6px 8px !important;
+}
+
+.dd-cod-cli {
+    display: inline-block;
+    min-width: 72px;
+    margin-right: 6px;
+    color: #666;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.dd-acciones-iconos {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.dd-acciones-iconos .btn {
+    float: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    margin: 0;
+}
+
+.dd-acciones-iconos .btn i {
+    font-size: 13px;
+}
+
+.dd-box {
+    border-radius: 6px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+    margin-bottom: 12px;
+}
+
+.dd-pipeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dd-cell-main {
+    font-weight: 600;
+    color: #333;
+    font-size: 12px;
+}
+
+.dd-estado-badge {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+}
+
+.dd-dias,
+.dd-atraso {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.dd-dias--medio,
+.dd-atraso--bajo {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.dd-dias--alto,
+.dd-atraso--medio {
+    background: #fde2d8;
+    color: #c0392b;
+}
+
+.dd-atraso--alto,
+.dd-atraso--critico {
+    background: #f8d7da;
+    color: #a71d2a;
+}
+
+.dd-mini-ic-modal .modal-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+    color: #fff;
+    border-bottom: 0;
+    padding: 16px 18px 12px;
+}
+
+.dd-mini-ic-modal .modal-header .modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.dd-mini-ic-subtitulo {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.82);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dd-mini-ic-modal .modal-header .close {
+    color: #fff;
+    opacity: 0.85;
+}
+
+.dd-mini-ic-modal .modal-body {
+    background: #f7f9fc;
+    padding: 16px 18px;
+}
+
+.dd-mini-ic-loading {
+    padding: 24px 0;
+    color: #888;
+}
+
+.dd-mini-pedido-hero {
+    background: #fff;
+    border: 1px solid #dbe4f0;
+    border-left: 4px solid #3c8dbc;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(30, 58, 95, 0.06);
+}
+
+.dd-mini-pedido-hero__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.dd-mini-pedido-hero__eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #5a6c7d;
+}
+
+.dd-mini-pedido-estado {
+    font-size: 10px;
+}
+
+.dd-mini-pedido-hero__main {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dd-mini-pedido-hero__codigo {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e3a5f;
+    letter-spacing: 0.02em;
+}
+
+.dd-mini-pedido-hero__monto {
+    font-size: 28px;
+    font-weight: 800;
+    color: #2c5282;
+    line-height: 1;
+}
+
+.dd-mini-pedido-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #6b7c93;
+}
+
+.dd-mini-pedido-hero__meta i {
+    margin-right: 4px;
+}
+
+.dd-mini-alerta {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.dd-mini-alerta--danger {
+    background: #fdecea;
+    color: #c0392b;
+    border: 1px solid #f5c6cb;
+}
+
+.dd-mini-alerta--ok {
+    background: #e8f8ef;
+    color: #1e7e34;
+    border: 1px solid #c3e6cb;
+}
+
+.dd-mini-ic-cliente {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #edf2f7;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+
+.dd-mini-ic-cliente__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #eaf2fb;
+    color: #2c5282;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.dd-mini-ic-cliente__info strong {
+    display: block;
+    font-size: 14px;
+    color: #1e3a5f;
+    line-height: 1.25;
+}
+
+.dd-mini-ic-cliente__cod {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.dd-mini-ic-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7c93;
+    margin: 4px 0 10px;
+}
+
+.dd-mini-ic-section-title i {
+    margin-right: 6px;
+    color: #3c8dbc;
+}
+
+.dd-mini-ic-scores {
+    margin-bottom: 12px;
+}
+
+.dd-mini-score {
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 10px 6px;
+    margin-bottom: 8px;
+    min-height: 76px;
+}
+
+.dd-mini-score-num {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.dd-mini-score-lbl {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #777;
+    margin-top: 4px;
+}
+
+.dd-mini-score-lbl--action {
+    margin-bottom: 4px;
+}
+
+.dd-mini-score--success { background: #e8f8ef; color: #1e7e34; }
+.dd-mini-score--warning { background: #fff8e6; color: #b7791f; }
+.dd-mini-score--danger { background: #fdecea; color: #c0392b; }
+.dd-mini-score--info { background: #e8f4fd; color: #2980b9; }
+.dd-mini-score--primary { background: #eaf2fb; color: #2c5282; }
+.dd-mini-score--default { background: #f4f6f8; color: #444; }
+
+.dd-mini-metric {
+    background: #fff;
+    border: 1px solid #edf2f7;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+
+.dd-mini-metric span {
+    display: block;
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dd-mini-metric strong {
+    font-size: 14px;
+    color: #222;
+}
+
+.dd-mini-metric--highlight {
+    border-color: #b8d4f0;
+    background: #f0f7ff;
+}
+
+.dd-mini-metric--highlight strong {
+    color: #2c5282;
+}
+
+.dd-mini-ic-callout {
+    margin: 10px 0 0;
+}
+
+@media (max-width: 991px) {
+    .dd-decision-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dd-filtro-group {
+        width: 100%;
+    }
+
+    .dd-filtro-group .bootstrap-select.dd-filtro-select {
+        flex: 1;
+        min-width: 0;
+        width: auto !important;
+    }
+
+    .dd-filtro-select {
+        flex: 1;
+        min-width: 0;
+        width: auto;
+    }
+
+    .dd-main-right {
+        margin-top: 12px;
+    }
+
+    .dd-prioridad-list--tall {
+        min-height: 280px;
+    }
+
+    .dd-header-tools {
+        max-width: 100%;
+        margin-top: 8px;
+        justify-content: flex-start;
+    }
+
+    .dd-box-header-compact .box-title {
+        float: none !important;
+        display: block;
+    }
+
+    .dd-header-tools.pull-right {
+        float: none !important;
+    }
+}

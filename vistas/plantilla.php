@@ -23,6 +23,8 @@ if (!isset($_SESSION)) {
             $__tituloVentana = "Crear pedido | Vasco System";
         } elseif ($_GET["ruta"] === "dashboard-cobranzas") {
             $__tituloVentana = "Dashboard de Cobranzas | Vasco System";
+        } elseif ($_GET["ruta"] === "dashboard-decisiones") {
+            $__tituloVentana = "Centro de Decisiones | Vasco System";
         } elseif ($_GET["ruta"] === "descuentos-compuestos") {
             $__tituloVentana = "Descuentos Compuestos ESSO | Vasco System";
         } elseif ($_GET["ruta"] === "inteligencia-comercial") {
@@ -67,6 +69,10 @@ if (!isset($_SESSION)) {
 
     <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["pedidoscv", "pedidoscv-vendedores", "pedidos-generados", "pedidos-aprobados", "pedidos-apt", "pedidos-confirmados", "pedidos-facturados"], true)) : ?>
     <link rel="stylesheet" href="vistas/css/pedidos-tablas-acciones.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") : ?>
+    <link rel="stylesheet" href="vistas/css/dashboard-decisiones.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") : ?>
@@ -289,6 +295,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "inicio" ||
                 $_GET["ruta"] == "inicio-gerencia" ||
                 $_GET["ruta"] == "dashboard-cobranzas" ||
+                $_GET["ruta"] == "dashboard-decisiones" ||
                 $_GET["ruta"] == "refrescar"
             ) {
 
@@ -665,6 +672,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cobranzas") { ?>
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
+    <script src="vistas/js/dashboard-decisiones.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>

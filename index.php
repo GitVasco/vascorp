@@ -118,6 +118,8 @@ require_once "controladores/vendedor.controlador.php";
 
 require_once "controladores/dashboard-cobranzas.controlador.php";
 
+require_once "controladores/dashboard-decisiones.controlador.php";
+
 require_once "controladores/descuentos-compuestos.controlador.php";
 
 require_once "controladores/inteligencia-comercial.config.php";
@@ -220,6 +222,8 @@ require_once "modelos/bancos.modelo.php";
 require_once "modelos/cuentas.modelo.php";
 
 require_once "modelos/dashboard-cobranzas.modelo.php";
+
+require_once "modelos/dashboard-decisiones.modelo.php";
 
 require_once "modelos/descuentos-compuestos.modelo.php";
 

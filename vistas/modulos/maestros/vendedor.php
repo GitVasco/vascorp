@@ -46,6 +46,7 @@
            
            <th>Codigo</th>
            <th>Nombres</th>
+           <th>Centro Decisiones</th>
            <th>Acciones</th>
 
          </tr> 
@@ -124,6 +125,16 @@ MODAL AGREGAR VENDEDOR
 
               </div>
 
+            </div>
+
+            <!-- CENTRO DE DECISIONES -->
+            <div class="form-group">
+              <label>Centro de Decisiones</label>
+              <select class="form-control input-lg" name="nuevoEstadoDecisiones">
+                <option value="0">No incluido</option>
+                <option value="1">Incluido</option>
+              </select>
+              <p class="help-block" style="margin-bottom:0;">Solo afecta el filtro del módulo Centro de Decisiones.</p>
             </div>
 
           </div>
@@ -219,6 +230,16 @@ MODAL EDITAR VENDEDOR
                 <input type="hidden" id="idVendedor" name="idVendedor">
               </div>
 
+            </div>
+
+            <!-- CENTRO DE DECISIONES -->
+            <div class="form-group">
+              <label>Centro de Decisiones</label>
+              <select class="form-control input-lg" name="editarEstadoDecisiones" id="editarEstadoDecisiones">
+                <option value="0">No incluido</option>
+                <option value="1">Incluido</option>
+              </select>
+              <p class="help-block" style="margin-bottom:0;">Solo afecta el filtro del módulo Centro de Decisiones.</p>
             </div>
   
           </div>

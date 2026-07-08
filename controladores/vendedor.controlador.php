@@ -13,7 +13,8 @@ class ControladorVendedores{
 				$tabla="maestrajf";
 			   	$datos = array("codigo"=>$_POST["nuevoCodigo"],
 							   "descripcion"=>$_POST["nuevaDescripcion"],
-								"tipo_dato"=>"TVEND");
+								"tipo_dato"=>"TVEND",
+								"estado_decisiones" => isset($_POST["nuevoEstadoDecisiones"]) ? (int) $_POST["nuevoEstadoDecisiones"] : 0);
 
 			   	$respuesta = ModeloVendedores::mdlIngresarVendedor($tabla,$datos);
 
@@ -68,7 +69,8 @@ class ControladorVendedores{
 				$tabla="maestrajf";
 				   $datos = array("id"=>$_POST["idVendedor"],
 				   				"codigo"=> $_POST["editarCodigo"],
-                               "descripcion"=>$_POST["editarDescripcion"]);
+                               "descripcion"=>$_POST["editarDescripcion"],
+                               "estado_decisiones" => isset($_POST["editarEstadoDecisiones"]) ? (int) $_POST["editarEstadoDecisiones"] : 0);
 
 			   	$respuesta = ModeloVendedores::mdlEditarVendedor($tabla,$datos);
 
