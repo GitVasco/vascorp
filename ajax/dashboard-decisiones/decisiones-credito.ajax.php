@@ -11,7 +11,10 @@ require_once "../../modelos/conexion.php";
 require_once "../../modelos/inteligencia-comercial.modelo.php";
 require_once "../../modelos/dashboard-decisiones.modelo.php";
 require_once "../../modelos/decisiones-credito.modelo.php";
+require_once "../../modelos/linea-credito.modelo.php";
+require_once "../../modelos/grupos-empresariales.modelo.php";
 require_once "../../controladores/inteligencia-comercial.controlador.php";
+require_once "../../controladores/linea-credito.controlador.php";
 require_once "../../controladores/dashboard-decisiones.controlador.php";
 require_once "../../controladores/decisiones-credito.controlador.php";
 

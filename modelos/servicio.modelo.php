@@ -1698,6 +1698,39 @@ class ModeloServicios
 		$stmt = null;
 	}
 
+	/*
+	* Obtener el servicio del día para un taller o crear uno nuevo si no existe
+	*/
+	static public function mdlObtenerOCrearServicioDelDia($taller, $usuario)
+	{
+		$primerServicio = self::mdlPrimerServicio($taller);
+		if ($primerServicio && isset($primerServicio["codigo"])) {
+			return $primerServicio["codigo"];
+		}
+
+		$ultimo = self::mdlUltimoServicio("serviciosjf");
+		$ultimoNumero = ($ultimo && isset($ultimo["ultimo_codigo"])) ? (int) $ultimo["ultimo_codigo"] : 1;
+		$codigo = $taller . str_pad($ultimoNumero, 4, "0", STR_PAD_LEFT);
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+
+		$datos = array(
+			"codigo" => $codigo,
+			"taller" => $taller,
+			"usuario" => $usuario,
+			"total" => 0,
+			"fecha" => $fecha->format("Y-m-d H:i:s"),
+			"estado" => "ACTIVO"
+		);
+
+		if (self::mdlGuardarServicios("serviciosjf", $datos) === "ok") {
+			return $codigo;
+		}
+
+		return null;
+	}
+
 
 	/* 
 	* MOSTRAR PRODUCCION

@@ -193,18 +193,47 @@ class ControladorDashboardDecisiones
                 ? icRedondearLineaCredito((float) $linea["linea_recomendada"])
                 : (float) $linea["linea_recomendada"])
             : 0;
-        $refCupo = function_exists("icCalcularReferenciaCupoLinea")
-            ? icCalcularReferenciaCupoLinea($deudaActual, $lineaRecomendada)
-            : array(
-                "disponible_nuevo_credito" => max(0, $lineaRecomendada - $deudaActual),
-                "excedido_sobre_recomendada" => max(0, $deudaActual - $lineaRecomendada),
-                "cupo_agotado" => false,
-                "tiene_excedido" => false,
-            );
 
-        $disponible = isset($refCupo["disponible_nuevo_credito"])
-            ? round((float) $refCupo["disponible_nuevo_credito"], 2)
-            : 0;
+        $refCupoPedido = class_exists("ControladorLineaCredito")
+            ? ControladorLineaCredito::ctrReferenciaCupoPedido($codigoCliente, $lineaRecomendada, $deudaActual)
+            : null;
+
+        if ($refCupoPedido) {
+            $deudaActual = (float) $refCupoPedido["deuda_actual"];
+            $lineaRecomendada = (float) $refCupoPedido["linea_recomendada"];
+            $disponible = (float) $refCupoPedido["cupo_disponible"];
+            $refCupo = array(
+                "disponible_nuevo_credito" => $disponible,
+                "excedido_sobre_recomendada" => (float) $refCupoPedido["excedido_sobre_recomendada"],
+                "cupo_agotado" => !empty($refCupoPedido["cupo_agotado"]),
+                "tiene_excedido" => (float) $refCupoPedido["excedido_sobre_recomendada"] > 0,
+            );
+        } else {
+            $refCupo = function_exists("icCalcularReferenciaCupoLinea")
+                ? icCalcularReferenciaCupoLinea($deudaActual, $lineaRecomendada)
+                : array(
+                    "disponible_nuevo_credito" => max(0, $lineaRecomendada - $deudaActual),
+                    "excedido_sobre_recomendada" => max(0, $deudaActual - $lineaRecomendada),
+                    "cupo_agotado" => false,
+                    "tiene_excedido" => false,
+                );
+
+            $disponible = isset($refCupo["disponible_nuevo_credito"])
+                ? round((float) $refCupo["disponible_nuevo_credito"], 2)
+                : 0;
+        }
+
+        $utilizacionLinea = $refCupoPedido
+            ? (float) $refCupoPedido["utilizacion_pct"]
+            : (isset($linea["utilizacion_pct"]) ? round((float) $linea["utilizacion_pct"], 1) : 0);
+
+        $urlCompleto = "index.php?ruta=inteligencia-comercial&cliente=" . urlencode($codigoCliente);
+
+        if ($refCupoPedido && $refCupoPedido["modo"] === "grupo" && !empty($refCupoPedido["grupo"]["codigo"])) {
+            $urlCompleto = "index.php?ruta=inteligencia-comercial&modo=grupo&grupo="
+                . urlencode($refCupoPedido["grupo"]["codigo"]);
+        }
+
         $pedidoTotal = ($pedidoDetalle && isset($pedidoDetalle["total"])) ? (float) $pedidoDetalle["total"] : 0;
         $cupoSuficiente = null;
 
@@ -224,6 +253,10 @@ class ControladorDashboardDecisiones
                     ? round((float) $refCupo["excedido_sobre_recomendada"], 2)
                     : 0,
                 "cupo_agotado" => !empty($refCupo["cupo_agotado"]),
+                "modo_cupo" => $refCupoPedido ? $refCupoPedido["modo"] : "cliente",
+                "grupo" => ($refCupoPedido && !empty($refCupoPedido["grupo"])) ? $refCupoPedido["grupo"] : null,
+                "linea_referencia" => $refCupoPedido ? (float) $refCupoPedido["linea_referencia"] : $lineaRecomendada,
+                "etiqueta_linea" => $refCupoPedido ? $refCupoPedido["etiqueta_linea"] : "Recomendada IC",
             ),
             "cliente" => array(
                 "codigo" => $m1["cliente"]["codigo"],
@@ -241,8 +274,15 @@ class ControladorDashboardDecisiones
             ),
             "linea" => array(
                 "recomendada" => $lineaRecomendada,
-                "deuda_actual" => isset($linea["deuda_actual"]) ? round((float) $linea["deuda_actual"], 2) : 0,
-                "utilizacion" => isset($linea["utilizacion_pct"]) ? round((float) $linea["utilizacion_pct"], 1) : 0,
+                "aprobada" => ($refCupoPedido && !empty($refCupoPedido["linea_aprobada"]))
+                    ? round((float) $refCupoPedido["linea_aprobada"], 2)
+                    : null,
+                "referencia" => $refCupoPedido ? round((float) $refCupoPedido["linea_referencia"], 2) : $lineaRecomendada,
+                "etiqueta_referencia" => $refCupoPedido ? $refCupoPedido["etiqueta_linea"] : "Recomendada IC",
+                "modo" => $refCupoPedido ? $refCupoPedido["modo"] : "cliente",
+                "grupo" => ($refCupoPedido && !empty($refCupoPedido["grupo"])) ? $refCupoPedido["grupo"] : null,
+                "deuda_actual" => round($deudaActual, 2),
+                "utilizacion" => $utilizacionLinea,
                 "accion" => isset($accion["etiqueta"]) ? $accion["etiqueta"] : "—",
                 "accion_color" => isset($accion["color"]) ? $accion["color"] : "default",
                 "explicacion" => isset($accion["explicacion"]) ? $accion["explicacion"] : "",
@@ -261,7 +301,7 @@ class ControladorDashboardDecisiones
                 "score" => $m4 ? round((float) $m4["score"], 1) : null,
                 "etiqueta" => $m4 ? $m4["clasificacion"]["etiqueta"] : "Sin datos",
             ),
-            "url_completo" => "index.php?ruta=inteligencia-comercial&cliente=" . urlencode($codigoCliente),
+            "url_completo" => $urlCompleto,
         );
     }
 }

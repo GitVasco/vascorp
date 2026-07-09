@@ -684,13 +684,13 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=14"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=15"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") { ?>
-    <script src="vistas/js/linea-credito.js?v=3"></script>
+    <script src="vistas/js/linea-credito.js?v=18"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>

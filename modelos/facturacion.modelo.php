@@ -986,6 +986,9 @@ class ModeloFacturacion
             CASE
                 WHEN a.marca = 'TELAS'
                 THEN 'KGM' 
+                WHEN a.marca = 'ELASTICOS'
+                    AND LEFT(a.modelo, 3) = 'HIL'
+                THEN 'KGM'
                 when a.marca = 'ELASTICOS'
                 then 'MTS'
                 ELSE 'C62' 
@@ -1025,6 +1028,9 @@ class ModeloFacturacion
             a.modelo,
             ROUND(SUM(cantidad), 2) AS cantidad,
             CASE
+                WHEN a.marca = 'ELASTICOS'
+                    AND LEFT(a.modelo, 3) = 'HIL'
+                THEN 'KGM'
                 WHEN a.marca = 'ELASTICOS'
                 THEN 'MTR' 
                 WHEN a.marca = 'TELAS'
@@ -8159,6 +8165,9 @@ class ModeloFacturacion
     $sql = "SELECT 
                   CASE
                   WHEN a.marca = 'ELASTICOS'
+                    AND LEFT(a.modelo, 3) = 'HIL'
+                    THEN 'KGS'
+                  WHEN a.marca = 'ELASTICOS'
                     THEN 'MTR' 
                     WHEN a.marca = 'TELAS'
                     THEN 'KGS'
@@ -8218,6 +8227,9 @@ class ModeloFacturacion
     $sql = "SELECT
                     a.linea,
                     case
+                        when a.marca = 'ELASTICOS'
+                            and LEFT(a.modelo, 3) = 'HIL'
+                        then 'KGM'
                         when a.marca = 'ELASTICOS'
                 then 'MTR'
                         else 'C62'
@@ -8284,6 +8296,9 @@ class ModeloFacturacion
 
     $sql = "SELECT 
                     CASE
+                    WHEN a.marca = 'ELASTICOS'
+                        AND LEFT(a.modelo, 3) = 'HIL'
+                    THEN 'KGS'
                     WHEN a.marca = 'ELASTICOS' 
                     THEN 'MTR' 
                     when a.marca = 'TELAS'
@@ -8291,6 +8306,9 @@ class ModeloFacturacion
                     ELSE 'C62' 
                     END AS b12,
                     CASE
+                    WHEN a.marca = 'ELASTICOS'
+                        AND LEFT(a.modelo, 3) = 'HIL'
+                    THEN 'KILOGRAMO'
                     WHEN a.marca = 'ELASTICOS' 
                     THEN 'METRO' 
                     ELSE 'PIEZAS' 
@@ -8461,6 +8479,9 @@ class ModeloFacturacion
 
     $sql = "SELECT 
                   CASE
+                  WHEN a.marca = 'ELASTICOS'
+                    AND LEFT(a.modelo, 3) = 'HIL'
+                    THEN 'KGS'
                   WHEN a.marca = 'ELASTICOS'
                     THEN 'MTR' 
                     WHEN a.marca = 'TELAS'

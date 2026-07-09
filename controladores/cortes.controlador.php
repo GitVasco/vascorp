@@ -201,18 +201,19 @@ class ControladorCortes
                         $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);
 
                         $sector = $_POST["seleccionarSectorServicio"];
-                        $primerServicio = ModeloServicios::mdlPrimerServicio($sector);
-                        $codigoServicio = $primerServicio["codigo"];
+                        $codigoServicio = ModeloServicios::mdlObtenerOCrearServicioDelDia($sector, $_POST["usuario"]);
 
-                        $datosDetalle = array(
-                            "articulo" => $articulo,
-                            "cantidad" => $cantidadUsada,
-                            "codigo" => $codigoServicio,
-                            "saldo" => $cantidadUsada,
-                            "cabecera_taller" => $ult_codigo["ult_codigo"]
-                        );
+                        if ($codigoServicio) {
+                            $datosDetalle = array(
+                                "articulo" => $articulo,
+                                "cantidad" => $cantidadUsada,
+                                "codigo" => $codigoServicio,
+                                "saldo" => $cantidadUsada,
+                                "cabecera_taller" => $ult_codigo["ult_codigo"]
+                            );
 
-                        $respuestaDetalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
+                            $respuestaDetalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
+                        }
                     }
 
 
@@ -254,112 +255,155 @@ class ControladorCortes
     */
     static public function ctrMandarTallerTotal()
     {
-        if (isset($_POST["listaTallas"])) {
-            //* registramos en la tabla taller cabecera para el código
-            if ($_POST["seleccionarSectorServicioTotal"] != "") {
+        if (!isset($_POST["listaTallas"])) {
+            return;
+        }
 
-                $tallerCab = $_POST["seleccionarSectorServicioTotal"];
-            } else {
+        $listaTallas = json_decode($_POST["listaTallas"], true);
+        if (!is_array($listaTallas) || count($listaTallas) === 0) {
+            echo '<script>
+                swal({
+                    type: "error",
+                    title: "No hay tallas para enviar",
+                    text: "Debe indicar al menos una cantidad válida.",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar"
+                });
+            </script>';
+            return;
+        }
 
-                $tallerCab = "VC";
+        if ($_POST["seleccionarSectorServicioTotal"] != "") {
+            $tallerCab = $_POST["seleccionarSectorServicioTotal"];
+        } else {
+            $tallerCab = "VC";
+        }
+
+        $ticket = isset($_POST["ticketTotal"]) ? $_POST["ticketTotal"] : "0";
+        $es_servicio_externo = ($ticket != "1");
+
+        if ($es_servicio_externo && $tallerCab === "VC") {
+            echo '<script>
+                swal({
+                    type: "error",
+                    title: "Taller requerido",
+                    text: "Debe seleccionar el taller de destino.",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar"
+                });
+            </script>';
+            return;
+        }
+
+        $procesados = 0;
+        $errores = [];
+
+        foreach ($listaTallas as $key => $value) {
+            $cantidadPedida = (int) $value["nuevaCantidad"];
+            if ($cantidadPedida <= 0) {
+                continue;
             }
-            $listaTallas = json_decode($_POST["listaTallas"], true);
 
-            // Determinar si es servicio externo:
-            // ticket == "1" (checkbox marcado) = taller interno → descontar alm_corte y pasar a taller
-            // ticket != "1" (checkbox NO marcado) = taller externo → descontar alm_corte y pasar a servicio
-            $ticket = isset($_POST["ticketTotal"]) ? $_POST["ticketTotal"] : "0";
-            $es_servicio_externo = ($ticket != "1");
+            $datosCab = array(
+                "articulo"  => $value["articulo"],
+                "usuario"   => $_POST["usuario"],
+                "cantidad"  => $cantidadPedida,
+                "saldo"     => $cantidadPedida,
+                "estado"    => "0",
+                "guia"      => $_POST["nuevaGuiaT"],
+                "taller"    => $tallerCab,
+                "es_servicio_externo" => $es_servicio_externo
+            );
 
-            foreach ($listaTallas as $key => $value) {
-                $datosCab = array(
-                    "articulo"  => $value["articulo"],
-                    "usuario"   => $_POST["usuario"],
-                    "cantidad"  => $value["nuevaCantidad"],
-                    "saldo"     => $value["nuevaCantidad"],
-                    "estado"    => "0",
-                    "guia"      => $_POST["nuevaGuiaT"],
-                    "taller"    => $tallerCab,
-                    "es_servicio_externo" => $es_servicio_externo
-                );
+            $respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
+            $okTotal = (is_array($respuestaCab) && isset($respuestaCab["status"]) && $respuestaCab["status"] === "ok");
+            $cantidadUsadaT = $okTotal ? (int) $respuestaCab["cantidad_usada"] : 0;
 
-                $respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
-                $okTotal = (is_array($respuestaCab) && isset($respuestaCab["status"]) && $respuestaCab["status"] === "ok");
-                $cantidadUsadaT = $okTotal ? (int) $respuestaCab["cantidad_usada"] : 0;
+            if (!$okTotal || $cantidadUsadaT <= 0) {
+                $errores[] = $value["articulo"] . ": " . (is_string($respuestaCab) ? $respuestaCab : "sin saldo disponible");
+                continue;
+            }
 
-                if ($okTotal && $cantidadUsadaT > 0) {
-                    $ult_codigo = ModeloCortes::mdlUltCodigo();
+            $ult_codigo = ModeloCortes::mdlUltCodigo();
 
-                    $datos = array(
-                        "usuario" => $_POST["usuario"],
-                        "articulo" => $value["articulo"],
+            $datos = array(
+                "usuario" => $_POST["usuario"],
+                "articulo" => $value["articulo"],
+                "cantidad" => $cantidadUsadaT,
+                "codigo" => $ult_codigo["ult_codigo"]
+            );
+
+            $respuesta = ModeloCortes::mdlMandarTaller($datos);
+            if ($respuesta != "ok") {
+                $errores[] = $value["articulo"] . ": error al registrar en taller";
+                continue;
+            }
+
+            $cod = $ult_codigo["ult_codigo"];
+
+            if ($ticket == "1" || $_POST["seleccionarSectorServicioTotal"] == 'T1') {
+                $nombre_impresora = "Star BSC10";
+
+                $connector = new WindowsPrintConnector($nombre_impresora);
+                $printer = new Printer($connector);
+
+                if ($_POST["seleccionarSectorServicioTotal"] != 'T1') {
+                    $respuesta = ControladorCortes::ctrMostrarEnTalleres($cod);
+                }
+            } else {
+                $articulo  = $value["articulo"];
+                ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsadaT, false);
+
+                $sector = $_POST["seleccionarSectorServicioTotal"];
+                $codigoServicio = ModeloServicios::mdlObtenerOCrearServicioDelDia($sector, $_POST["usuario"]);
+
+                if ($codigoServicio) {
+                    $datosDetalle = array(
+                        "articulo" => $articulo,
                         "cantidad" => $cantidadUsadaT,
-                        "codigo" => $ult_codigo["ult_codigo"]
+                        "codigo" => $codigoServicio,
+                        "saldo" => $cantidadUsadaT,
+                        "cabecera_taller" => $ult_codigo["ult_codigo"]
                     );
 
-                    $respuesta = ModeloCortes::mdlMandarTaller($datos);
-                    if ($respuesta == "ok") {
-
-                        $cod = $ult_codigo["ult_codigo"];
-
-                        $ticket = $_POST["ticketTotal"];
-
-                        if ($ticket == "1" || $_POST["seleccionarSectorServicioTotal"] == 'T1') {
-                            //* NOTA: La actualización de articulojf (alm_corte y taller) ya se hace dentro de la transacción
-                            //* en mdlMandarTallerCabV2 para mantener consistencia. Ya no es necesario actualizarlo aquí.
-
-                            //* Mandamos a imprimir con la orden de cut para cortar cada ticket 
-
-                            $nombre_impresora = "Star BSC10";
-
-                            $connector = new WindowsPrintConnector($nombre_impresora);
-                            $printer = new Printer($connector);
-
-                            $fecha = date("d-m-Y");
-
-                            if ($_POST["seleccionarSectorServicioTotal"] != 'T1') {
-                                $respuesta = ControladorCortes::ctrMostrarEnTalleres($cod);
-                                //Establecemos los datos de la empresa
-                                $empresa = "Corporacion Vasco S.A.C.";
-                                $documento = "20513613939";
-                            }
-                        } else {
-                            $articulo  = $value["articulo"];
-                            $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsadaT, false);
-
-                            $sector = $_POST["seleccionarSectorServicioTotal"];
-                            $primerServicio = ModeloServicios::mdlPrimerServicio($sector);
-                            $codigoServicio = $primerServicio["codigo"];
-
-                            $datosDetalle = array(
-                                "articulo" => $articulo,
-                                "cantidad" => $cantidadUsadaT,
-                                "codigo" => $codigoServicio,
-                                "saldo" => $cantidadUsadaT,
-                                "cabecera_taller" => $ult_codigo["ult_codigo"]
-                            );
-
-                            $respuestaDetalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
-                        }
-                    }
+                    ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
+                } else {
+                    $errores[] = $articulo . ": no se pudo crear el servicio del día";
                 }
             }
 
+            $procesados++;
+        }
+
+        if ($procesados > 0) {
+            $mensajeError = count($errores) > 0 ? implode("\\n", $errores) : "";
+            $titulo = count($errores) > 0
+                ? "Se enviaron $procesados talla(s), con advertencias"
+                : "Se mando a taller correctamente";
+
             echo '<script>
-
-            swal({
-                  type: "success",
-                  title: "Se mando a taller correctamente",
-                  showConfirmButton: true,
-                  confirmButtonText: "Cerrar"
-                  }).then(function(result){
-                            if (result.value) {
-
-                            window.location = "en-cortes";
-
-                            }
-                        })
-
+                swal({
+                    type: "' . (count($errores) > 0 ? "warning" : "success") . '",
+                    title: "' . $titulo . '",
+                    text: "' . $mensajeError . '",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar"
+                }).then(function(result){
+                    if (result.value) {
+                        window.location = "en-cortes";
+                    }
+                });
+            </script>';
+        } else {
+            $mensajeError = count($errores) > 0 ? implode("\\n", $errores) : "No se pudo procesar ninguna talla.";
+            echo '<script>
+                swal({
+                    type: "error",
+                    title: "No se pudo enviar a taller",
+                    text: "' . $mensajeError . '",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar"
+                });
             </script>';
         }
     }

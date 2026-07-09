@@ -1338,6 +1338,23 @@
     background: #e74c3c;
 }
 
+.dd-dc-grupo-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    background: #eef4fb;
+    border: 1px solid #c5d9f0;
+    color: #2c5282;
+    font-size: 12px;
+}
+
+.dd-dc-grupo-banner i {
+    font-size: 14px;
+}
+
 .dd-dc-kv {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

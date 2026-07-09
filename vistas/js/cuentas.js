@@ -3166,9 +3166,12 @@ table.on("draw", function () {
 
 // Acción de eliminar seleccionados
 document.addEventListener("DOMContentLoaded", function () {
-    document
-        .getElementById("eliminarSeleccionados")
-        .addEventListener("click", function () {
+    var btnEliminarSeleccionados = document.getElementById("eliminarSeleccionados");
+    if (!btnEliminarSeleccionados) {
+        return;
+    }
+
+    btnEliminarSeleccionados.addEventListener("click", function () {
             // Recogemos los IDs seleccionados
             const checks = document.querySelectorAll(".credipagoCheck:checked");
             const ids = Array.from(checks).map((chk) =>

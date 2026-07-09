@@ -39,6 +39,29 @@ function normalizarCodigoBarcodePedCv($scan)
     return $soloDigitos;
 }
 
+/**
+ * Hilos elásticos (marca ELASTICOS, modelo HIL*): precio en soles, no en lista USD (precio1).
+ */
+function esHiloElastico($modelo, $marca = null)
+{
+    $modelo = strtoupper(trim((string) $modelo));
+    if (strpos($modelo, 'HIL') !== 0) {
+        return false;
+    }
+    if ($marca !== null && strtoupper(trim((string) $marca)) !== 'ELASTICOS') {
+        return false;
+    }
+    return true;
+}
+
+function listaPrecioHiloElastico($modelo, $lista, $marca = null)
+{
+    if ($lista === 'precio1' && esHiloElastico($modelo, $marca)) {
+        return 'precio2';
+    }
+    return $lista;
+}
+
 class AjaxPedidos
 {
 
@@ -90,7 +113,7 @@ class AjaxPedidos
     {
 
         $modelo = $this->mod;
-        $lista = $this->modLista;
+        $lista = listaPrecioHiloElastico($modelo, $this->modLista);
 
         $respuestaLista = controladorArticulos::ctrVerPrecios($modelo, $lista);
 
@@ -367,6 +390,8 @@ class AjaxPedidos
         }
 
         $modelo = $filaArt["modelo"];
+        $marca = isset($filaArt["marca"]) ? $filaArt["marca"] : null;
+        $lista = listaPrecioHiloElastico($modelo, $lista, $marca);
         $precioLista = controladorArticulos::ctrVerPrecios($modelo, $lista);
         $precioBruto = isset($precioLista["precio"]) ? floatval($precioLista["precio"]) : 0;
 

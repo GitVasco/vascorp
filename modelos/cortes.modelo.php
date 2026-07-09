@@ -470,7 +470,8 @@ class ModeloCortes
 
     /*
 	* REGISTRAR LO QUE SE MANDA A TALLER CABECERA V2
-	* Liquida por FIFO sobre todos los detalles con saldo hasta cubrir la cantidad.
+	* Liquida por FIFO sobre detalles de almacén de corte.
+	* Si no hay detalle (stock cargado directo en alm_corte), usa articulojf.alm_corte.
 	* Devuelve ["status"=>"ok", "cantidad_usada"=>N] o string "error...".
 	*/
     static public function mdlMandarTallerCabV2($datos)
@@ -485,6 +486,11 @@ class ModeloCortes
             $cantidadTotalUsada = 0;
             $primerDetalleId = null;
 
+            if ($cantidadPedida <= 0) {
+                $pdo->rollBack();
+                return "error_saldo_insuficiente";
+            }
+
             // Traer todos los detalles con saldo del año, orden FIFO (más antiguo primero)
             $stmt = $pdo->prepare("SELECT acd.id, COALESCE(acd.saldo_taller, acd.cantidad) AS saldo_disponible
                 FROM almacencorte_detallejf acd
@@ -498,22 +504,26 @@ class ModeloCortes
             $detalles = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $stmt->closeCursor();
 
-            if (empty($detalles)) {
-                $pdo->rollBack();
-                return "error_saldo_insuficiente";
-            }
-
             // Liquidar de varios grupos (FIFO) hasta cubrir lo pedido
             foreach ($detalles as $detalle) {
-                if ($cantidadRestante <= 0) break;
+                if ($cantidadRestante <= 0) {
+                    break;
+                }
+
                 $detalleId = (int) $detalle['id'];
                 $saldoDisponible = (int) $detalle['saldo_disponible'];
-                if ($saldoDisponible <= 0) continue;
+                if ($saldoDisponible <= 0) {
+                    continue;
+                }
 
                 $cantidadAUsar = min($saldoDisponible, $cantidadRestante);
-                if ($cantidadAUsar <= 0) continue;
+                if ($cantidadAUsar <= 0) {
+                    continue;
+                }
 
-                if ($primerDetalleId === null) $primerDetalleId = $detalleId;
+                if ($primerDetalleId === null) {
+                    $primerDetalleId = $detalleId;
+                }
 
                 $nuevoSaldo = max(0, $saldoDisponible - $cantidadAUsar);
                 $stmt = $pdo->prepare("UPDATE almacencorte_detallejf SET saldo_taller = :nuevo_saldo WHERE id = :detalle_id");
@@ -526,12 +536,43 @@ class ModeloCortes
                 $cantidadRestante -= $cantidadAUsar;
             }
 
+            // Fallback: stock registrado directo en articulojf.alm_corte sin detalle de almacén
+            if ($cantidadRestante > 0) {
+                $stmt = $pdo->prepare("SELECT alm_corte FROM articulojf WHERE articulo = :articulo FOR UPDATE");
+                $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+                $stmt->execute();
+                $articuloStock = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt->closeCursor();
+
+                $almCorte = $articuloStock ? (int) $articuloStock["alm_corte"] : 0;
+
+                $stmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(acd.saldo_taller, acd.cantidad)), 0) AS saldo_detalle
+                    FROM almacencorte_detallejf acd
+                    INNER JOIN almacencortejf ac ON acd.almacencorte = ac.codigo
+                    WHERE acd.articulo = :articulo
+                      AND COALESCE(acd.saldo_taller, acd.cantidad) > 0
+                      AND YEAR(DATE(ac.fecha)) = YEAR(NOW())");
+                $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+                $stmt->execute();
+                $saldoDetalleRow = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt->closeCursor();
+
+                $saldoEnDetalle = $saldoDetalleRow ? (int) $saldoDetalleRow["saldo_detalle"] : 0;
+                $stockDirecto = max(0, $almCorte - $saldoEnDetalle);
+                $cantidadDirecta = min($stockDirecto, $cantidadRestante);
+
+                if ($cantidadDirecta > 0) {
+                    $cantidadTotalUsada += $cantidadDirecta;
+                    $cantidadRestante -= $cantidadDirecta;
+                }
+            }
+
             if ($cantidadTotalUsada <= 0) {
                 $pdo->rollBack();
                 return "error_saldo_insuficiente";
             }
 
-            // Una sola cabecera con la cantidad realmente liquidada (referencia al primer detalle usado)
+            // Una sola cabecera con la cantidad realmente liquidada
             $stmt = $pdo->prepare("INSERT INTO entaller_cabjf
                 (articulo, usuario, cantidad, saldo, estado, guia, taller, almacencorte_detalle_id)
                 VALUES
@@ -543,14 +584,18 @@ class ModeloCortes
             $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
             $stmt->bindParam(":guia", $datos["guia"], PDO::PARAM_STR);
             $stmt->bindParam(":taller", $datos["taller"], PDO::PARAM_STR);
-            $stmt->bindParam(":almacencorte_detalle_id", $primerDetalleId, PDO::PARAM_INT);
+            if ($primerDetalleId === null) {
+                $stmt->bindValue(":almacencorte_detalle_id", null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindParam(":almacencorte_detalle_id", $primerDetalleId, PDO::PARAM_INT);
+            }
             if (!$stmt->execute()) {
                 $pdo->rollBack();
                 return "error";
             }
             $stmt->closeCursor();
 
-            // Articulojf: descontar solo lo realmente liquidado (evita duplicar alm_corte/servicio)
+            // Articulojf: descontar solo lo realmente liquidado
             $es_servicio_externo = isset($datos["es_servicio_externo"]) ? $datos["es_servicio_externo"] : false;
             if (!$es_servicio_externo) {
                 $stmt = $pdo->prepare("UPDATE articulojf SET taller = taller + :cantidad, alm_corte = GREATEST(alm_corte - :cantidad, 0) WHERE articulo = :articulo");

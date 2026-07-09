@@ -9,7 +9,10 @@ require_once "../../controladores/inteligencia-comercial.config.php";
 require_once "../../modelos/conexion.php";
 require_once "../../modelos/inteligencia-comercial.modelo.php";
 require_once "../../modelos/dashboard-decisiones.modelo.php";
+require_once "../../modelos/linea-credito.modelo.php";
+require_once "../../modelos/grupos-empresariales.modelo.php";
 require_once "../../controladores/inteligencia-comercial.controlador.php";
+require_once "../../controladores/linea-credito.controlador.php";
 require_once "../../controladores/dashboard-decisiones.controlador.php";
 
 header("Content-Type: application/json; charset=utf-8");

@@ -620,6 +620,7 @@ class ModeloInteligenciaComercial
             return array(
                 "pico_historico"  => 0,
                 "deuda_actual"    => 0,
+                "deuda_vencida"   => 0,
                 "linea_operativa" => 0,
                 "movimientos"     => 0,
             );
@@ -668,11 +669,24 @@ class ModeloInteligenciaComercial
         $stmtDeuda->execute();
         $deudaActual = (float) $stmtDeuda->fetchColumn();
 
+        $stmtVencida = Conexion::conectar()->prepare("
+            SELECT IFNULL(SUM(saldo), 0) AS deuda_vencida
+            FROM cuenta_ctejf
+            WHERE tip_mov = '+'
+              AND UPPER(estado) = 'PENDIENTE'
+              AND IFNULL(saldo, 0) > 0
+              AND fecha_ven < CURDATE()
+              AND cliente IN ({$inSql})
+        ");
+        $stmtVencida->execute();
+        $deudaVencida = (float) $stmtVencida->fetchColumn();
+
         $lineaOperativa = max($pico, $deudaActual);
 
         return array(
             "pico_historico"   => round($pico, 2),
             "deuda_actual"     => round($deudaActual, 2),
+            "deuda_vencida"    => round($deudaVencida, 2),
             "linea_operativa"  => round($lineaOperativa, 2),
             "movimientos"      => count($movimientos),
         );
@@ -728,11 +742,25 @@ class ModeloInteligenciaComercial
         $stmtDeuda->execute();
         $deudaActual = (float) $stmtDeuda->fetchColumn();
 
+        $stmtVencida = Conexion::conectar()->prepare("
+            SELECT IFNULL(SUM(saldo), 0) AS deuda_vencida
+            FROM cuenta_ctejf
+            WHERE cliente = :cliente
+              AND tip_mov = '+'
+              AND UPPER(estado) = 'PENDIENTE'
+              AND IFNULL(saldo, 0) > 0
+              AND fecha_ven < CURDATE()
+        ");
+        $stmtVencida->bindParam(":cliente", $codigoCliente, PDO::PARAM_STR);
+        $stmtVencida->execute();
+        $deudaVencida = (float) $stmtVencida->fetchColumn();
+
         $lineaOperativa = max($pico, $deudaActual);
 
         return array(
             "pico_historico"   => round($pico, 2),
             "deuda_actual"     => round($deudaActual, 2),
+            "deuda_vencida"    => round($deudaVencida, 2),
             "linea_operativa"  => round($lineaOperativa, 2),
             "movimientos"      => count($movimientos),
         );
@@ -749,6 +777,7 @@ class ModeloInteligenciaComercial
             return array(
                 "pico_historico"  => 0,
                 "deuda_actual"    => 0,
+                "deuda_vencida"   => 0,
                 "linea_operativa" => 0,
                 "movimientos"     => 0,
             );

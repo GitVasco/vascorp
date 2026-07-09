@@ -194,6 +194,7 @@ $(".tablaCortes tbody").on("click", "button.btnMandarTallerTotal", function () {
             console.log("respuesta", respuesta);
 
             for (let i = 0; i < respuesta.length; i++) {
+                const saldo = respuesta[i]["alm_corte"];
                 $(".nuevasTallas").append(
                     `<div class="row borrameAC" style="padding:5px 15px" id="borrameAC">
                         <!-- TALLAS -->
@@ -202,15 +203,17 @@ $(".tablaCortes tbody").on("click", "button.btnMandarTallerTotal", function () {
                         </div>
                         <!-- Cantidad -->
                         <div class="col-xs-3">
-                            <input type="number" class="form-control nuevaCantidad input-sm" name="nuevaCantidad" id="nuevaCantidad" min="1" max="${respuesta[i]["alm_corte"]}" required>
+                            <input type="number" class="form-control nuevaCantidad input-sm" name="nuevaCantidad" id="nuevaCantidad" min="1" max="${saldo}" value="${saldo}" required>
                         </div>
                         <!-- Saldo -->
                         <div class="col-xs-3 ingresarSaldo">
-                            <input type="number" class="form-control nuevoSaldo input-sm" name="nuevoSaldo" id="nuevoSaldo" min="0" value="${respuesta[i]["alm_corte"]}" saldoReal="${respuesta[i]["alm_corte"]}" readonly required>
+                            <input type="number" class="form-control nuevoSaldo input-sm" name="nuevoSaldo" id="nuevoSaldo" min="0" value="0" saldoReal="${saldo}" readonly required>
                         </div>
                     </div>`
                 );
             }
+
+            listarTallas();
         },
     });
 });
@@ -257,16 +260,39 @@ function listarTallas() {
     var cantidad = $(".nuevaCantidad");
 
     for (var i = 0; i < articulo.length; i++) {
-        listaTallas.push({
-            articulo: $(articulo[i]).attr("articulo"),
-            nuevaCantidad: $(cantidad[i]).val(),
-        });
+        var qty = parseInt($(cantidad[i]).val(), 10);
+        if (!isNaN(qty) && qty > 0) {
+            listaTallas.push({
+                articulo: $(articulo[i]).attr("articulo"),
+                nuevaCantidad: qty,
+            });
+        }
     }
-
-    //console.log("listaTallas", JSON.stringify(listaTallas));
 
     $("#listaTallas").val(JSON.stringify(listaTallas));
 }
+
+$(".formularioAlmacenCorteTotal").on("submit", function (e) {
+    listarTallas();
+
+    if ($("#listaTallas").val() === "[]") {
+        e.preventDefault();
+        Command: toastr["error"](
+            "Debe indicar al menos una cantidad para enviar"
+        );
+        return false;
+    }
+
+    if (!$("#imprimirTicketTotal").is(":checked")) {
+        if (!$("#seleccionarSectorServicioTotal").val()) {
+            e.preventDefault();
+            Command: toastr["error"](
+                "Debe seleccionar el taller de destino"
+            );
+            return false;
+        }
+    }
+});
 
 /*
  * calcular totales

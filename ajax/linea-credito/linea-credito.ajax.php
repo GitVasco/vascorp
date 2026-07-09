@@ -9,6 +9,7 @@ require_once "../../controladores/inteligencia-comercial.config.php";
 require_once "../../modelos/conexion.php";
 require_once "../../modelos/inteligencia-comercial.modelo.php";
 require_once "../../modelos/linea-credito.modelo.php";
+require_once "../../modelos/grupos-empresariales.modelo.php";
 require_once "../../controladores/inteligencia-comercial.controlador.php";
 require_once "../../controladores/linea-credito.controlador.php";
 
@@ -54,12 +55,17 @@ switch ($accion) {
         $respuesta = ControladorLineaCredito::ctrCierreMensualLote($limite);
         break;
 
-    case "solicitar":
-        $respuesta = ControladorLineaCredito::ctrCrearSolicitud();
+    case "detalle_grupo":
+        $grupo = isset($_REQUEST["codigo_grupo"]) ? trim((string) $_REQUEST["codigo_grupo"]) : "";
+        $respuesta = ControladorLineaCredito::ctrDetalleGrupo($grupo);
         break;
 
-    case "resolver_solicitud":
-        $respuesta = ControladorLineaCredito::ctrResolverSolicitud();
+    case "registrar_linea_grupo":
+        $respuesta = ControladorLineaCredito::ctrRegistrarLineaGrupo();
+        break;
+
+    case "registrar_linea":
+        $respuesta = ControladorLineaCredito::ctrRegistrarLinea();
         break;
 
     default:

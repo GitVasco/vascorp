@@ -15,9 +15,19 @@ class ModeloLineaCredito
         return "'S02', 'S03', 'S70'";
     }
 
-    /**
-     * Cartera operativa: vendedor activo (Centro de Decisiones) + compra/pedido en 24 meses.
-     */
+    private static function sqlDeudaVencidaSubquery($aliasCliente = "c")
+    {
+        return "IFNULL((
+                    SELECT SUM(IFNULL(ct.saldo, 0))
+                    FROM cuenta_ctejf ct
+                    WHERE ct.cliente = {$aliasCliente}.codigo
+                      AND ct.tip_mov = '+'
+                      AND UPPER(ct.estado) = 'PENDIENTE'
+                      AND IFNULL(ct.saldo, 0) > 0
+                      AND ct.fecha_ven < CURDATE()
+                ), 0) AS deuda_vencida";
+    }
+
     private static function sqlFiltroCarteraActiva($aliasCliente = "c")
     {
         $tipos = self::sqlTiposVentaIc();
@@ -153,10 +163,12 @@ class ModeloLineaCredito
         $sql = "SELECT
                     c.codigo,
                     c.nombre,
+                    c.grupo,
                     lc.linea_operativa,
                     lc.linea_recomendada,
                     lc.linea_aprobada,
                     lc.deuda_actual,
+                    " . self::sqlDeudaVencidaSubquery("c") . ",
                     lc.cupo_disponible,
                     lc.utilizacion_pct,
                     lc.score_riesgo,
@@ -188,12 +200,49 @@ class ModeloLineaCredito
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    static public function mdlListarClientesConLineaPorGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return array();
+        }
+
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT
+                    c.codigo,
+                    c.nombre,
+                    c.grupo,
+                    lc.linea_operativa,
+                    lc.linea_recomendada,
+                    lc.linea_aprobada,
+                    lc.deuda_actual,
+                    " . self::sqlDeudaVencidaSubquery("c") . ",
+                    lc.cupo_disponible,
+                    lc.utilizacion_pct,
+                    lc.score_riesgo,
+                    lc.score_comercial,
+                    lc.score_fidelidad,
+                    lc.accion_linea,
+                    lc.fecha_actualizacion
+                FROM clientesjf c
+                LEFT JOIN linea_credito_clientejf lc ON lc.codigo_cliente = c.codigo
+                WHERE c.grupo = :grupo" . self::sqlFiltroCarteraActiva("c") . "
+                ORDER BY c.nombre ASC"
+        );
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     static public function mdlClienteLinea($codigoCliente)
     {
         $stmt = Conexion::conectar()->prepare(
             "SELECT
                 c.codigo,
                 c.nombre,
+                c.grupo,
                 lc.*
              FROM clientesjf c
              LEFT JOIN linea_credito_clientejf lc ON lc.codigo_cliente = c.codigo
@@ -439,5 +488,242 @@ class ModeloLineaCredito
         $fila = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return isset($fila["total"]) ? (int) $fila["total"] : 0;
+    }
+
+    static public function mdlGrupoLinea($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT
+                g.codigo,
+                g.nombre,
+                lg.*
+             FROM grupos_empresarialesjf g
+             LEFT JOIN linea_credito_grupojf lg ON lg.codigo_grupo = g.codigo
+             WHERE g.codigo = :grupo
+             LIMIT 1"
+        );
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlHistorialGrupo($codigoGrupo, $limite = 24)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT h.*, u.nombre AS usuario_nombre
+             FROM linea_credito_historial_grupojf h
+             LEFT JOIN usuariosjf u ON u.id = h.usuario_id
+             WHERE h.codigo_grupo = :grupo
+             ORDER BY h.fecha DESC, h.id DESC
+             LIMIT :limite"
+        );
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":limite", $limite, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlExisteCierreMensualGrupo($codigoGrupo, $anio, $mes)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT id
+             FROM linea_credito_historial_grupojf
+             WHERE codigo_grupo = :grupo
+               AND anio = :anio
+               AND mes = :mes
+               AND tipo_evento = 'CIERRE_MENSUAL'
+             LIMIT 1"
+        );
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlGruposCarteraActivaPendientesCierre($anio, $mes, $limite = 15)
+    {
+        $filtro = self::sqlFiltroCarteraActiva("c");
+        $limite = max(1, min(30, (int) $limite));
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT DISTINCT c.grupo AS codigo, g.nombre
+             FROM clientesjf c
+             INNER JOIN grupos_empresarialesjf g ON g.codigo = c.grupo AND g.estado = 1
+             WHERE c.grupo IS NOT NULL
+               AND TRIM(c.grupo) <> ''
+               {$filtro}
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM linea_credito_historial_grupojf h
+                   WHERE h.codigo_grupo = c.grupo
+                     AND h.anio = :anio
+                     AND h.mes = :mes
+                     AND h.tipo_evento = 'CIERRE_MENSUAL'
+               )
+             ORDER BY g.nombre ASC
+             LIMIT :limite"
+        );
+        $stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+        $stmt->bindParam(":limite", $limite, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlContarGruposPendientesCierre($anio, $mes)
+    {
+        $filtro = self::sqlFiltroCarteraActiva("c");
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT COUNT(DISTINCT c.grupo) AS total
+             FROM clientesjf c
+             INNER JOIN grupos_empresarialesjf g ON g.codigo = c.grupo AND g.estado = 1
+             WHERE c.grupo IS NOT NULL
+               AND TRIM(c.grupo) <> ''
+               {$filtro}
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM linea_credito_historial_grupojf h
+                   WHERE h.codigo_grupo = c.grupo
+                     AND h.anio = :anio
+                     AND h.mes = :mes
+                     AND h.tipo_evento = 'CIERRE_MENSUAL'
+               )"
+        );
+        $stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return isset($fila["total"]) ? (int) $fila["total"] : 0;
+    }
+
+    static public function mdlResumenCierreGrupo($anio, $mes)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT COUNT(*) AS total
+             FROM linea_credito_historial_grupojf
+             WHERE anio = :anio
+               AND mes = :mes
+               AND tipo_evento = 'CIERRE_MENSUAL'"
+        );
+        $stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+        $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return isset($fila["total"]) ? (int) $fila["total"] : 0;
+    }
+
+    static public function mdlGuardarEstadoGrupo($datos)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "INSERT INTO linea_credito_grupojf
+                (codigo_grupo, linea_operativa, linea_recomendada, linea_aprobada,
+                 deuda_actual, cupo_disponible, utilizacion_pct,
+                 score_riesgo, score_comercial, score_fidelidad, accion_linea,
+                 ultimo_cierre_anio, ultimo_cierre_mes, usuario_actualiza, fecha_actualizacion)
+             VALUES
+                (:codigo_grupo, :linea_operativa, :linea_recomendada, :linea_aprobada,
+                 :deuda_actual, :cupo_disponible, :utilizacion_pct,
+                 :score_riesgo, :score_comercial, :score_fidelidad, :accion_linea,
+                 :ultimo_cierre_anio, :ultimo_cierre_mes, :usuario_actualiza, NOW())
+             ON DUPLICATE KEY UPDATE
+                linea_operativa = VALUES(linea_operativa),
+                linea_recomendada = VALUES(linea_recomendada),
+                linea_aprobada = VALUES(linea_aprobada),
+                deuda_actual = VALUES(deuda_actual),
+                cupo_disponible = VALUES(cupo_disponible),
+                utilizacion_pct = VALUES(utilizacion_pct),
+                score_riesgo = VALUES(score_riesgo),
+                score_comercial = VALUES(score_comercial),
+                score_fidelidad = VALUES(score_fidelidad),
+                accion_linea = VALUES(accion_linea),
+                ultimo_cierre_anio = VALUES(ultimo_cierre_anio),
+                ultimo_cierre_mes = VALUES(ultimo_cierre_mes),
+                usuario_actualiza = VALUES(usuario_actualiza),
+                fecha_actualizacion = NOW()"
+        );
+
+        $stmt->bindParam(":codigo_grupo", $datos["codigo_grupo"], PDO::PARAM_STR);
+        $stmt->bindParam(":linea_operativa", $datos["linea_operativa"]);
+        $stmt->bindParam(":linea_recomendada", $datos["linea_recomendada"]);
+        $stmt->bindParam(":linea_aprobada", $datos["linea_aprobada"]);
+        $stmt->bindParam(":deuda_actual", $datos["deuda_actual"]);
+        $stmt->bindParam(":cupo_disponible", $datos["cupo_disponible"]);
+        $stmt->bindParam(":utilizacion_pct", $datos["utilizacion_pct"]);
+        $stmt->bindParam(":score_riesgo", $datos["score_riesgo"]);
+        $stmt->bindParam(":score_comercial", $datos["score_comercial"]);
+        $stmt->bindParam(":score_fidelidad", $datos["score_fidelidad"]);
+        $stmt->bindParam(":accion_linea", $datos["accion_linea"], PDO::PARAM_STR);
+        $stmt->bindParam(":ultimo_cierre_anio", $datos["ultimo_cierre_anio"], PDO::PARAM_INT);
+        $stmt->bindParam(":ultimo_cierre_mes", $datos["ultimo_cierre_mes"], PDO::PARAM_INT);
+        $stmt->bindParam(":usuario_actualiza", $datos["usuario_actualiza"], PDO::PARAM_INT);
+
+        return $stmt->execute() ? "ok" : "error";
+    }
+
+    static public function mdlRegistrarHistorialGrupo($datos)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "INSERT INTO linea_credito_historial_grupojf
+                (codigo_grupo, anio, mes, tipo_evento,
+                 linea_operativa, linea_recomendada, linea_aprobada,
+                 deuda_actual, cupo_disponible, utilizacion_pct,
+                 score_riesgo, score_comercial, score_fidelidad, accion_linea,
+                 detalle, usuario_id)
+             VALUES
+                (:codigo_grupo, :anio, :mes, :tipo_evento,
+                 :linea_operativa, :linea_recomendada, :linea_aprobada,
+                 :deuda_actual, :cupo_disponible, :utilizacion_pct,
+                 :score_riesgo, :score_comercial, :score_fidelidad, :accion_linea,
+                 :detalle, :usuario_id)"
+        );
+
+        $stmt->bindParam(":codigo_grupo", $datos["codigo_grupo"], PDO::PARAM_STR);
+        $stmt->bindParam(":anio", $datos["anio"], PDO::PARAM_INT);
+        $stmt->bindParam(":mes", $datos["mes"], PDO::PARAM_INT);
+        $stmt->bindParam(":tipo_evento", $datos["tipo_evento"], PDO::PARAM_STR);
+        $stmt->bindParam(":linea_operativa", $datos["linea_operativa"]);
+        $stmt->bindParam(":linea_recomendada", $datos["linea_recomendada"]);
+        $stmt->bindParam(":linea_aprobada", $datos["linea_aprobada"]);
+        $stmt->bindParam(":deuda_actual", $datos["deuda_actual"]);
+        $stmt->bindParam(":cupo_disponible", $datos["cupo_disponible"]);
+        $stmt->bindParam(":utilizacion_pct", $datos["utilizacion_pct"]);
+        $stmt->bindParam(":score_riesgo", $datos["score_riesgo"]);
+        $stmt->bindParam(":score_comercial", $datos["score_comercial"]);
+        $stmt->bindParam(":score_fidelidad", $datos["score_fidelidad"]);
+        $stmt->bindParam(":accion_linea", $datos["accion_linea"], PDO::PARAM_STR);
+        $stmt->bindParam(":detalle", $datos["detalle"], PDO::PARAM_STR);
+        $stmt->bindParam(":usuario_id", $datos["usuario_id"], PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            return (int) Conexion::conectar()->lastInsertId();
+        }
+
+        return 0;
+    }
+
+    static public function mdlLimpiarLineaAprobadaMiembrosGrupo($codigoGrupo)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "UPDATE linea_credito_clientejf lc
+             INNER JOIN clientesjf c ON c.codigo = lc.codigo_cliente
+             SET lc.linea_aprobada = NULL
+             WHERE c.grupo = :grupo
+               AND lc.linea_aprobada IS NOT NULL"
+        );
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+
+        return $stmt->execute() ? "ok" : "error";
     }
 }

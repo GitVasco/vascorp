@@ -53,6 +53,25 @@
         return map[String(severidad || "").toLowerCase()] || "default";
     }
 
+    function renderGrupoCupoBanner(linea, decision) {
+        var modo = (decision && decision.modo_cupo) || (linea && linea.modo);
+        var grupo = (decision && decision.grupo) || (linea && linea.grupo);
+
+        if (modo !== "grupo" || !grupo || !grupo.nombre) {
+            return "";
+        }
+
+        return (
+            '<div class="dd-dc-grupo-banner">' +
+            '<i class="fa fa-sitemap"></i> ' +
+            "Cupo validado por grupo empresarial: <strong>" + escapeHtml(grupo.nombre) + "</strong>" +
+            (linea && linea.etiqueta_referencia
+                ? " · " + escapeHtml(linea.etiqueta_referencia) + " " + formatMoney(linea.referencia || linea.aprobada || linea.recomendada)
+                : "") +
+            "</div>"
+        );
+    }
+
     function renderPedidoHero(pedido, decision) {
         if (!pedido || !pedido.codigo) {
             return "";
@@ -63,18 +82,21 @@
         var dias = parseInt(pedido.dias_pendiente, 10) || 0;
         var alertaCupo = "";
 
+        var esGrupo = decision && decision.modo_cupo === "grupo";
+        var prefijoGrupo = esGrupo ? " (cupo del grupo)" : "";
+
         if (decision && decision.cupo_suficiente === false) {
             alertaCupo =
                 '<div class="dd-mini-alerta dd-mini-alerta--danger">' +
                 '<i class="fa fa-exclamation-triangle"></i> El pedido (' +
                 formatMoney(decision.pedido_total, simbolo) +
-                ") supera el cupo disponible (" +
+                ") supera el cupo disponible" + prefijoGrupo + " (" +
                 formatMoney(decision.cupo_disponible) +
                 ")</div>";
         } else if (decision && decision.cupo_suficiente === true) {
             alertaCupo =
                 '<div class="dd-mini-alerta dd-mini-alerta--ok">' +
-                '<i class="fa fa-check-circle"></i> Cupo disponible cubre el pedido</div>';
+                '<i class="fa fa-check-circle"></i> Cupo disponible' + prefijoGrupo + " cubre el pedido</div>";
         }
 
         return (
@@ -112,6 +134,7 @@
 
         return (
             '<div class="dd-mini-ic">' +
+            renderGrupoCupoBanner(linea, decision) +
             renderPedidoHero(pedido, decision) +
             '<div class="dd-mini-ic-cliente">' +
             '<div class="dd-mini-ic-cliente__avatar"><i class="fa fa-user"></i></div>' +
@@ -136,8 +159,9 @@
             '<div class="dd-mini-ic-section-title"><i class="fa fa-bar-chart"></i> Situación financiera</div>' +
             '<div class="row dd-mini-ic-metrics">' +
             '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric"><span>Deuda actual</span><strong>' + formatMoney(linea.deuda_actual) + "</strong></div></div>" +
-            '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric dd-mini-metric--highlight"><span>Cupo disponible</span><strong>' + formatMoney(linea.disponible) + "</strong></div></div>" +
-            '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric"><span>Línea recomendada</span><strong>' + formatMoney(linea.recomendada) + "</strong></div></div>" +
+            '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric dd-mini-metric--highlight"><span>Cupo disponible</span><strong>' + formatMoney(linea.disponible) + "</strong>" +
+            (linea.modo === "grupo" ? "<small>Consolidado grupo</small>" : "") + "</div></div>" +
+            '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric"><span>' + escapeHtml(linea.etiqueta_referencia || "Línea recomendada") + "</span><strong>" + formatMoney(linea.referencia || linea.recomendada) + "</strong></div></div>" +
             '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric"><span>Utilización</span><strong>' + (linea.utilizacion || 0) + "%</strong></div></div>" +
             '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric"><span>Atraso promedio</span><strong>' + (riesgo.atraso_promedio || 0) + " días</strong></div></div>" +
             '<div class="col-sm-4 col-xs-6"><div class="dd-mini-metric"><span>Docs vencidos</span><strong>' + (riesgo.docs_vencidos || 0) + "</strong></div></div>" +
@@ -322,9 +346,9 @@
         var estadoClase = suficiente ? "ok" : insuficiente ? "bad" : "neutral";
         var delta = formatMoney(Math.max(0, pedidoTotal - cupo), simbolo);
         var mensaje = suficiente
-            ? "Cupo cubre el pedido"
+            ? "Cupo" + (decision.modo_cupo === "grupo" ? " del grupo" : "") + " cubre el pedido"
             : insuficiente
-            ? "Faltan " + delta
+            ? "Faltan " + delta + (decision.modo_cupo === "grupo" ? " (cupo grupo)" : "")
             : "Revise cupo vs pedido";
 
         return (
@@ -364,8 +388,8 @@
             "—";
 
         var items = [
-            ["Deuda", formatMoney(linea.deuda_actual)],
-            ["Línea rec.", formatMoney(linea.recomendada)],
+            ["Deuda" + (linea.modo === "grupo" ? " grupo" : ""), formatMoney(linea.deuda_actual)],
+            [linea.etiqueta_referencia || "Línea rec.", formatMoney(linea.referencia || linea.recomendada)],
             ["Utilización", (linea.utilizacion || 0) + "%"],
             ["Docs venc.", String(docsVenc), docsVenc > 0 ? "danger" : null],
             ["Atraso", (riesgo.atraso_promedio || 0) + " d"],
@@ -454,6 +478,7 @@
 
         return (
             '<div class="dd-dc-intel">' +
+            renderGrupoCupoBanner(linea, ic.decision) +
             '<div class="dd-dc-context">' +
             '<div class="dd-dc-context__cliente">' +
             '<div class="dd-dc-context__avatar"><i class="fa fa-building"></i></div>' +
