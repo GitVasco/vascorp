@@ -2620,7 +2620,7 @@ class ModeloArticulos
 	{
 
 		$stmt = Conexion::conectar()->prepare(
-			"SELECT articulo, modelo, marca FROM articulojf WHERE articulo = :articulo LIMIT 1"
+			"SELECT articulo, modelo FROM articulojf WHERE articulo = :articulo LIMIT 1"
 		);
 
 		$stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);

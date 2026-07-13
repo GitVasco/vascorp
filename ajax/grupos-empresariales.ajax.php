@@ -21,10 +21,12 @@ class AjaxGruposEmpresariales
 
 		$clientes = ModeloGruposEmpresariales::mdlMostrarClientesPorGrupo($this->codigoGrupo);
 		$disponibles = ModeloGruposEmpresariales::mdlMostrarClientesSinGrupo();
+		$total = ModeloGruposEmpresariales::mdlContarClientesPorGrupo($this->codigoGrupo, true);
 
 		echo json_encode(array(
 			"clientes" => $clientes,
-			"disponibles" => $disponibles
+			"disponibles" => $disponibles,
+			"total_miembros" => $total
 		));
 	}
 }

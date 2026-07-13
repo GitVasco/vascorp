@@ -153,16 +153,36 @@ $siguienteCodigoGrupo = ControladorGruposEmpresariales::ctrSiguienteCodigoGrupo(
             <div class="modal-body">
                 <input type="hidden" id="codigoGrupoActivo">
 
-                <div class="row" style="margin-bottom:15px;">
-                    <div class="col-md-8">
-                        <select class="form-control" id="selectClienteAsignar">
-                            <option value="">Seleccionar cliente sin grupo...</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="button" class="btn btn-success btn-block" id="btnAsignarClienteGrupo">
-                            <i class="fa fa-plus"></i> Agregar al grupo
-                        </button>
+                <div class="well well-sm" style="margin-bottom:20px; background:#f9f9f9;">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="selectClienteAsignar" style="margin-bottom:6px;">
+                                Añadir cliente sin grupo
+                            </label>
+                            <select class="form-control selectpicker"
+                                id="selectClienteAsignar"
+                                data-live-search="true"
+                                data-live-search-placeholder="Código, nombre o documento"
+                                data-size="8"
+                                data-container="body"
+                                data-dropup-auto="false"
+                                data-none-results-text="Sin coincidencias"
+                                title="Buscar por código, nombre o documento...">
+                                <option value="">Buscar por código, nombre o documento...</option>
+                            </select>
+                            <p class="help-block" id="ayudaSelectClienteAsignar" style="margin-bottom:0;margin-top:6px;">
+                                Busque por código, razón social o documento.
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="visible-md visible-lg" style="margin-bottom:6px;">&nbsp;</label>
+                            <button type="button" class="btn btn-success btn-block" id="btnAsignarClienteGrupo">
+                                <i class="fa fa-plus"></i> Agregar al grupo
+                            </button>
+                            <p class="text-muted text-right" style="margin:8px 0 0;">
+                                Miembros: <strong id="contadorMiembrosGrupo">0</strong>
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -194,3 +214,15 @@ $eliminarGrupo->ctrEliminarGrupo();
 <script>
 window.document.title = "Grupos empresariales";
 </script>
+<style>
+/* El dropdown del selectpicker (container=body) debe quedar sobre el modal */
+body .bootstrap-select .dropdown-menu {
+    z-index: 2060 !important;
+}
+#modalClientesGrupo .bootstrap-select {
+    width: 100% !important;
+}
+#modalClientesGrupo .bootstrap-select > .dropdown-toggle {
+    width: 100%;
+}
+</style>

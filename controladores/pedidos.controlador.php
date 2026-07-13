@@ -285,17 +285,6 @@ class ControladorPedidos
     }
 
     /*
-    * MOSTRAR CABECERA DE TEMPORAL - EXCLUYE VENDEDORES 08, 06, 23, 99
-    */
-    static public function ctrMostraPedidosGeneralVendedores()
-    {
-
-        $respuesta = ModeloPedidos::mdlMostraPedidosGeneralVendedores();
-
-        return $respuesta;
-    }
-
-    /*
     * MOSTRAR TABLAS
     */
     static public function ctrMostraPedidosTablas($valor)

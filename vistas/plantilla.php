@@ -3,6 +3,12 @@
 if (!isset($_SESSION)) {
     session_start();
 }
+
+/* Compatibilidad temporal: pedidoscv-vendedores → Centro de Decisiones */
+if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
+    header("Location: index.php?ruta=dashboard-decisiones");
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -71,7 +77,7 @@ if (!isset($_SESSION)) {
     <link rel="stylesheet" href="vistas/bower_components/datatables.net-bs/css/responsive.bootstrap.min.css">
     <link rel="stylesheet" href="vistas/bower_components/datatables.net-bs/css/fixedHeader.dataTables.min.css">
 
-    <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["pedidoscv", "pedidoscv-vendedores", "pedidos-generados", "pedidos-aprobados", "pedidos-apt", "pedidos-confirmados", "pedidos-facturados"], true)) : ?>
+    <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["pedidoscv", "pedidos-generados", "pedidos-aprobados", "pedidos-apt", "pedidos-confirmados", "pedidos-facturados"], true)) : ?>
     <link rel="stylesheet" href="vistas/css/pedidos-tablas-acciones.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
 
@@ -503,7 +509,6 @@ CUERPO DOCUMENTO
                 include "modulos/ticket/" . $_GET["ruta"] . ".php";
             } else if (
                 $_GET["ruta"] == "pedidoscv" ||
-                $_GET["ruta"] == "pedidoscv-vendedores" ||
                 $_GET["ruta"] == "pedidos-generados" ||
                 $_GET["ruta"] == "pedidos-aprobados" ||
                 $_GET["ruta"] == "pedidos-apt" ||

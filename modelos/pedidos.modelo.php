@@ -1334,68 +1334,6 @@ class ModeloPedidos
 	}
 
 	/*
-    * MOSTRAR PEDIDOS GENERAL FILTRADOS POR VENDEDOR
-    * Excluye vendedores cuyo código inicia con 08, 06, 23 o 99
-    */
-	static public function mdlMostraPedidosGeneralVendedores()
-	{
-		$prefijosExcluidos = ["08", "06", "23", "99"];
-		$placeholders = implode(", ", array_fill(0, count($prefijosExcluidos), "?"));
-
-		$sql = "SELECT
-					t.id,
-					t.codigo,
-					RIGHT(t.codigo, 7) AS codigoB,
-					c.codigo AS cod_cli,
-					c.nombre,
-					c.tipo_documento,
-					(SELECT 
-						tipo_doc 
-					FROM
-						tipo_documentojf td 
-					WHERE c.tipo_documento = td.cod_doc) AS tipo_doc,						
-					c.documento,
-					t.lista,
-					t.vendedor,
-					t.op_gravada,
-					t.descuento_total,
-					t.sub_total,
-					t.igv,
-					t.total,
-					ROUND(
-					t.descuento_total / t.op_gravada * 100,
-					2
-					) AS dscto,
-					t.condicion_venta,
-					cv.descripcion,
-					t.estado,
-					t.usuario,
-					t.agencia,
-					u.nombre AS nom_usu,
-					DATE(t.fecha) AS fecha,
-					cv.dias,
-					DATE_ADD(DATE(t.fecha), INTERVAL cv.dias DAY) AS fecha_ven
-				FROM
-					temporaljf t
-					LEFT JOIN clientesjf c
-					ON t.cliente = c.codigo
-					LEFT JOIN condiciones_ventajf cv
-					ON t.condicion_venta = cv.id
-					LEFT JOIN usuariosjf u
-					ON t.usuario = u.id
-				WHERE COALESCE(LEFT(TRIM(t.vendedor), 2), '') NOT IN ($placeholders)
-				ORDER BY fecha DESC,
-				 RIGHT(t.codigo, 7) DESC";
-
-		$stmt = Conexion::conectar()->prepare($sql);
-		$stmt->execute($prefijosExcluidos);
-
-		return $stmt->fetchAll();
-
-		$stmt = null;
-	}
-
-	/*
     * MOSTRAR DETALLE DE TEMPORAL
     */
 	static public function mdlMostraPedidosTablas($valor)

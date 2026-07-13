@@ -154,26 +154,172 @@ class ControladorGruposEmpresariales
 	{
 
 		if (!isset($_POST["codigoClienteGrupo"]) || !isset($_POST["codigoGrupoAsignar"])) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "Faltan datos para asignar el cliente."
+			));
 			return;
 		}
 
-		$respuesta = ModeloGruposEmpresariales::mdlAsignarClienteAGrupo(
-			trim($_POST["codigoClienteGrupo"]),
-			trim($_POST["codigoGrupoAsignar"])
-		);
+		$codigoCliente = trim($_POST["codigoClienteGrupo"]);
+		$codigoGrupo = trim($_POST["codigoGrupoAsignar"]);
 
-		echo json_encode(array("status" => $respuesta));
+		if ($codigoCliente === "" || $codigoGrupo === "") {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "Seleccione un cliente y un grupo válidos."
+			));
+			return;
+		}
+
+		$grupo = ModeloGruposEmpresariales::mdlMostrarGrupos("codigo", $codigoGrupo);
+
+		if (!$grupo) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El grupo no existe."
+			));
+			return;
+		}
+
+		if ((int) $grupo["estado"] !== 1) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El grupo está inactivo y no admite nuevos clientes."
+			));
+			return;
+		}
+
+		$cliente = ModeloGruposEmpresariales::mdlMostrarClientePorCodigo($codigoCliente);
+
+		if (!$cliente || (int) $cliente["estado"] !== 1) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El cliente no existe o está inactivo."
+			));
+			return;
+		}
+
+		$grupoActual = isset($cliente["grupo"]) ? trim($cliente["grupo"]) : "";
+		if ($grupoActual !== "") {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El cliente ya pertenece a otro grupo."
+			));
+			return;
+		}
+
+		$respuesta = ModeloGruposEmpresariales::mdlAsignarClienteAGrupo($codigoCliente, $codigoGrupo);
+
+		if ($respuesta === "ok") {
+			$clienteAsignado = ModeloGruposEmpresariales::mdlMostrarClientePorCodigo($codigoCliente);
+			$total = ModeloGruposEmpresariales::mdlContarClientesPorGrupo($codigoGrupo, true);
+
+			echo json_encode(array(
+				"status" => "ok",
+				"mensaje" => "Cliente asignado correctamente.",
+				"cliente" => array(
+					"codigo" => $clienteAsignado["codigo"],
+					"nombre" => $clienteAsignado["nombre"],
+					"documento" => isset($clienteAsignado["documento"]) ? $clienteAsignado["documento"] : "",
+					"telefono" => isset($clienteAsignado["telefono"]) ? $clienteAsignado["telefono"] : ""
+				),
+				"total_miembros" => $total
+			));
+			return;
+		}
+
+		if ($respuesta === "no_disponible") {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El cliente ya no está disponible para asignar."
+			));
+			return;
+		}
+
+		echo json_encode(array(
+			"status" => "error",
+			"mensaje" => "No se pudo asignar el cliente."
+		));
 	}
 
 	static public function ctrQuitarCliente()
 	{
 
 		if (!isset($_POST["codigoClienteQuitar"])) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "Faltan datos para quitar el cliente."
+			));
 			return;
 		}
 
-		$respuesta = ModeloGruposEmpresariales::mdlQuitarClienteDeGrupo(trim($_POST["codigoClienteQuitar"]));
+		$codigoCliente = trim($_POST["codigoClienteQuitar"]);
+		$codigoGrupo = isset($_POST["codigoGrupoQuitar"]) ? trim($_POST["codigoGrupoQuitar"]) : "";
 
-		echo json_encode(array("status" => $respuesta));
+		if ($codigoCliente === "") {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "Cliente no válido."
+			));
+			return;
+		}
+
+		$cliente = ModeloGruposEmpresariales::mdlMostrarClientePorCodigo($codigoCliente);
+
+		if (!$cliente) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El cliente no existe."
+			));
+			return;
+		}
+
+		$grupoCliente = isset($cliente["grupo"]) ? trim($cliente["grupo"]) : "";
+
+		if ($codigoGrupo !== "" && $grupoCliente !== $codigoGrupo) {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El cliente no pertenece a este grupo."
+			));
+			return;
+		}
+
+		$grupoReferencia = $codigoGrupo !== "" ? $codigoGrupo : $grupoCliente;
+		$respuesta = ModeloGruposEmpresariales::mdlQuitarClienteDeGrupo(
+			$codigoCliente,
+			$codigoGrupo !== "" ? $codigoGrupo : null
+		);
+
+		if ($respuesta === "ok") {
+			$total = $grupoReferencia !== ""
+				? ModeloGruposEmpresariales::mdlContarClientesPorGrupo($grupoReferencia, true)
+				: 0;
+
+			echo json_encode(array(
+				"status" => "ok",
+				"mensaje" => "Cliente quitado del grupo.",
+				"cliente" => array(
+					"codigo" => $cliente["codigo"],
+					"nombre" => $cliente["nombre"],
+					"documento" => isset($cliente["documento"]) ? $cliente["documento"] : ""
+				),
+				"total_miembros" => $total
+			));
+			return;
+		}
+
+		if ($respuesta === "no_encontrado") {
+			echo json_encode(array(
+				"status" => "error",
+				"mensaje" => "El cliente ya no pertenecía al grupo."
+			));
+			return;
+		}
+
+		echo json_encode(array(
+			"status" => "error",
+			"mensaje" => "No se pudo quitar el cliente del grupo."
+		));
 	}
 }

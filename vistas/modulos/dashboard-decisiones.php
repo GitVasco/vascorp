@@ -370,7 +370,6 @@ $estadosPipeline = array(
                         <h3 class="box-title"><i class="fa fa-tasks"></i> Pipeline pre-factura (S/)</h3>
                         <div class="dd-header-tools pull-right">
                             <span class="dd-resumen-chip dd-resumen-chip--total">Total S/ <?php echo number_format((float) $pedidos["soles_pipeline"], 0); ?></span>
-                            <a href="pedidoscv-vendedores" class="btn btn-xs btn-default" title="Ver pedidos"><i class="fa fa-list"></i></a>
                             <a href="index.php?ruta=inteligencia-comercial" class="btn btn-xs btn-primary" title="Inteligencia Comercial"><i class="fa fa-line-chart"></i></a>
                         </div>
                     </div>

@@ -122,12 +122,15 @@ class ModeloGruposEmpresariales
 		return "error";
 	}
 
-	static public function mdlContarClientesPorGrupo($codigo)
+	static public function mdlContarClientesPorGrupo($codigo, $soloActivos = false)
 	{
 
-		$stmt = Conexion::conectar()->prepare(
-			"SELECT COUNT(*) AS total FROM clientesjf WHERE grupo = :codigo"
-		);
+		$sql = "SELECT COUNT(*) AS total FROM clientesjf WHERE grupo = :codigo";
+		if ($soloActivos) {
+			$sql .= " AND estado = 1";
+		}
+
+		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
 		$stmt->execute();
 
@@ -151,27 +154,65 @@ class ModeloGruposEmpresariales
 		return $stmt->fetchAll();
 	}
 
+	static public function mdlMostrarClientePorCodigo($codigoCliente)
+	{
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT codigo, nombre, documento, telefono, grupo, estado
+			 FROM clientesjf
+			 WHERE codigo = :codigoCliente
+			 LIMIT 1"
+		);
+		$stmt->bindParam(":codigoCliente", $codigoCliente, PDO::PARAM_STR);
+		$stmt->execute();
+
+		return $stmt->fetch();
+	}
+
 	static public function mdlAsignarClienteAGrupo($codigoCliente, $codigoGrupo)
 	{
 
 		$stmt = Conexion::conectar()->prepare(
-			"UPDATE clientesjf SET grupo = :codigoGrupo WHERE codigo = :codigoCliente"
+			"UPDATE clientesjf
+			 SET grupo = :codigoGrupo
+			 WHERE codigo = :codigoCliente
+			   AND estado = 1
+			   AND (grupo IS NULL OR grupo = '')"
 		);
 		$stmt->bindParam(":codigoCliente", $codigoCliente, PDO::PARAM_STR);
 		$stmt->bindParam(":codigoGrupo", $codigoGrupo, PDO::PARAM_STR);
 
-		return $stmt->execute() ? "ok" : "error";
+		if (!$stmt->execute()) {
+			return "error";
+		}
+
+		return $stmt->rowCount() > 0 ? "ok" : "no_disponible";
 	}
 
-	static public function mdlQuitarClienteDeGrupo($codigoCliente)
+	static public function mdlQuitarClienteDeGrupo($codigoCliente, $codigoGrupo = null)
 	{
 
-		$stmt = Conexion::conectar()->prepare(
-			"UPDATE clientesjf SET grupo = '' WHERE codigo = :codigoCliente"
-		);
-		$stmt->bindParam(":codigoCliente", $codigoCliente, PDO::PARAM_STR);
+		if ($codigoGrupo !== null && $codigoGrupo !== "") {
+			$stmt = Conexion::conectar()->prepare(
+				"UPDATE clientesjf
+				 SET grupo = ''
+				 WHERE codigo = :codigoCliente
+				   AND grupo = :codigoGrupo"
+			);
+			$stmt->bindParam(":codigoCliente", $codigoCliente, PDO::PARAM_STR);
+			$stmt->bindParam(":codigoGrupo", $codigoGrupo, PDO::PARAM_STR);
+		} else {
+			$stmt = Conexion::conectar()->prepare(
+				"UPDATE clientesjf SET grupo = '' WHERE codigo = :codigoCliente"
+			);
+			$stmt->bindParam(":codigoCliente", $codigoCliente, PDO::PARAM_STR);
+		}
 
-		return $stmt->execute() ? "ok" : "error";
+		if (!$stmt->execute()) {
+			return "error";
+		}
+
+		return $stmt->rowCount() > 0 ? "ok" : "no_encontrado";
 	}
 
 	static public function mdlMostrarClientesSinGrupo()
