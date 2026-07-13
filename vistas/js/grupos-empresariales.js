@@ -45,6 +45,7 @@ function textoOpcionCliente(cliente) {
 
 function actualizarContadorMiembros(total) {
     $("#contadorMiembrosGrupo").text(total);
+    $("#contadorAfectadosCategoriaGrupo").text(total);
 }
 
 function actualizarContadorGrupoEnTabla(codigoGrupo, total) {
@@ -57,6 +58,81 @@ function actualizarContadorGrupoEnTabla(codigoGrupo, total) {
             this.data(data);
         }
     });
+}
+
+function actualizarCategoriaGrupoEnTabla(codigoGrupo, nombreCategoria, codigoCategoria, colorCategoria) {
+    var tabla = $(".tablaGruposEmpresariales").DataTable();
+    var html;
+    var hex;
+    var mapa = {
+        DIST: "#dd4b39",
+        MAYO: "#00a65a",
+        MINO: "#f39c12",
+        CATA: "#00c0ef",
+        UFIN: "#605ca8"
+    };
+
+    if (!nombreCategoria || nombreCategoria === "Sin categoría / pendiente") {
+        html = "<span class='label label-default'>Sin categoría</span>";
+    } else {
+        hex = String(colorCategoria || "").trim();
+        if (!/^#[0-9A-Fa-f]{3,8}$/.test(hex)) {
+            hex = mapa[String(codigoCategoria || "").toUpperCase()] || "#777777";
+        }
+        html = "<span class='label' style='background-color:" + hex + ";'>" +
+            escapeHtmlGrupo(nombreCategoria) + "</span>";
+    }
+
+    tabla.rows().every(function () {
+        var data = this.data();
+        if (data[0] === codigoGrupo) {
+            data[4] = html;
+            this.data(data);
+        }
+    });
+}
+
+function refrescarSelectCategoriaGrupo() {
+    var select = $("#categoriaComercialGrupo");
+    if (!select.length || typeof select.selectpicker !== "function") {
+        return;
+    }
+    try {
+        if (select.data("selectpicker")) {
+            select.selectpicker("refresh");
+        } else {
+            select.selectpicker({
+                liveSearch: true,
+                size: 8
+            });
+        }
+    } catch (e) {}
+}
+
+function setCategoriaGrupoUI(categoria) {
+    var select = $("#categoriaComercialGrupo");
+
+    if (categoria && categoria.tiene_categoria && categoria.categoria) {
+        select.val(String(categoria.categoria.id));
+    } else {
+        select.val("");
+    }
+
+    refrescarSelectCategoriaGrupo();
+}
+
+function listarNombresMiembrosGrupo() {
+    var nombres = [];
+    $("#tablaClientesGrupo tbody tr").each(function () {
+        if ($(this).hasClass("fila-vacia-grupo")) {
+            return;
+        }
+        var nombre = $(this).find("td").eq(1).text();
+        if (nombre) {
+            nombres.push(nombre);
+        }
+    });
+    return nombres;
 }
 
 function filaClienteGrupo(cliente) {
@@ -270,6 +346,8 @@ function cargarClientesGrupo(codigoGrupo) {
             renderTablaClientesGrupo(respuesta.clientes || []);
             cargarOpcionesClientesDisponibles(respuesta.disponibles || []);
             actualizarContadorMiembros(respuesta.total_miembros || 0);
+            setCategoriaGrupoUI(respuesta.categoria || null);
+            refrescarSelectCategoriaGrupo();
         },
         error: function (xhr) {
             setEstadoSelectClientes("vacio", "No se pudieron cargar los clientes.");
@@ -342,6 +420,7 @@ $(".tablaGruposEmpresariales").on("click", ".btnVerClientesGrupo", function () {
 
 $("#modalClientesGrupo").on("shown.bs.modal", function () {
     refrescarSelectClienteAsignar();
+    refrescarSelectCategoriaGrupo();
 
     // Asegurar que el menú del select quede por encima del modal
     $(".bootstrap-select .dropdown-menu").css("z-index", 2060);
@@ -392,6 +471,9 @@ $("#btnAsignarClienteGrupo").on("click", function () {
                 actualizarContadorMiembros(respuesta.total_miembros);
                 actualizarContadorGrupoEnTabla(codigoGrupo, respuesta.total_miembros);
                 enfocarSelectClienteAsignar();
+                if (respuesta.mensaje) {
+                    toastr["info"](respuesta.mensaje);
+                }
             } else {
                 swal({
                     type: "error",
@@ -415,6 +497,7 @@ $("#tablaClientesGrupo").on("click", ".btnQuitarClienteGrupo", function () {
 
     swal({
         title: "¿Quitar cliente del grupo?",
+        text: "Quedará sin categoría comercial hasta que se le asigne una individual.",
         type: "warning",
         showCancelButton: true,
         confirmButtonText: "Sí, quitar",
@@ -443,6 +526,9 @@ $("#tablaClientesGrupo").on("click", ".btnQuitarClienteGrupo", function () {
                     agregarOpcionClienteSelect(respuesta.cliente);
                     actualizarContadorMiembros(respuesta.total_miembros);
                     actualizarContadorGrupoEnTabla(codigoGrupo, respuesta.total_miembros);
+                    if (respuesta.mensaje) {
+                        toastr["info"](respuesta.mensaje);
+                    }
                 } else {
                     boton.prop("disabled", false).html("<i class='fa fa-times'></i>");
                     swal({
@@ -455,6 +541,92 @@ $("#tablaClientesGrupo").on("click", ".btnQuitarClienteGrupo", function () {
             error: function () {
                 boton.prop("disabled", false).html("<i class='fa fa-times'></i>");
                 swal({ type: "error", title: "Error de comunicación al quitar", showConfirmButton: true });
+            }
+        });
+    });
+});
+
+$("#btnAplicarCategoriaGrupo").on("click", function () {
+    var codigoGrupo = $("#codigoGrupoActivo").val();
+    var idCategoria = $("#categoriaComercialGrupo").val() || "";
+    var total = parseInt($("#contadorMiembrosGrupo").text(), 10) || 0;
+    var textoCat = idCategoria
+        ? $("#categoriaComercialGrupo option:selected").text()
+        : "Sin categoría / pendiente";
+    var nombres = listarNombresMiembrosGrupo();
+    var previewMiembros = "";
+
+    if (nombres.length > 0) {
+        var mostrados = nombres.slice(0, 8);
+        previewMiembros = "Miembros: " + mostrados.join(", ");
+        if (nombres.length > 8) {
+            previewMiembros += " y " + (nombres.length - 8) + " más";
+        }
+    } else {
+        previewMiembros = "El grupo no tiene miembros aún; la categoría quedará lista para futuros integrantes.";
+    }
+
+    swal({
+        title: "¿Aplicar categoría al grupo?",
+        text: textoCat + " — afecta a " + total + " miembro(s). " + previewMiembros,
+        type: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, aplicar",
+        cancelButtonText: "Cancelar"
+    }).then(function (result) {
+        if (!result.value) {
+            return;
+        }
+
+        var btn = $("#btnAplicarCategoriaGrupo");
+        btn.prop("disabled", true);
+
+        var datos = new FormData();
+        datos.append("accion", "asignarGrupo");
+        datos.append("codigoGrupo", codigoGrupo);
+        datos.append("idCategoria", idCategoria);
+
+        $.ajax({
+            url: "ajax/categorias-clientes.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                btn.prop("disabled", false);
+
+                if (respuesta && respuesta.ok) {
+                    var nombreFinal = (respuesta.categoria && respuesta.categoria.nombre)
+                        ? respuesta.categoria.nombre
+                        : "Sin categoría / pendiente";
+                    var codigoFinal = (respuesta.categoria && respuesta.categoria.codigo)
+                        ? respuesta.categoria.codigo
+                        : "";
+                    var colorFinal = (respuesta.categoria && respuesta.categoria.color)
+                        ? respuesta.categoria.color
+                        : "";
+                    actualizarCategoriaGrupoEnTabla(codigoGrupo, nombreFinal, codigoFinal, colorFinal);
+                    swal({
+                        type: "success",
+                        title: "Listo",
+                        text: respuesta.mensaje,
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    });
+                } else {
+                    swal({
+                        type: "error",
+                        title: "No se pudo aplicar",
+                        text: (respuesta && respuesta.mensaje) ? respuesta.mensaje : "Error desconocido",
+                        showConfirmButton: true
+                    });
+                }
+            },
+            error: function () {
+                btn.prop("disabled", false);
+                swal({ type: "error", title: "Error de comunicación", showConfirmButton: true });
             }
         });
     });

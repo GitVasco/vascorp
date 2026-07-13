@@ -1,5 +1,9 @@
 <?php
 $siguienteCodigoGrupo = ControladorGruposEmpresariales::ctrSiguienteCodigoGrupo();
+$categoriasComercialesActivas = ControladorCategoriasClientes::ctrListarCategoriasActivas();
+if (!is_array($categoriasComercialesActivas)) {
+    $categoriasComercialesActivas = array();
+}
 ?>
 <div class="content-wrapper">
 
@@ -35,6 +39,7 @@ $siguienteCodigoGrupo = ControladorGruposEmpresariales::ctrSiguienteCodigoGrupo(
                             <th>Nombre</th>
                             <th>Descripción</th>
                             <th>Clientes</th>
+                            <th>Categoría</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
@@ -153,6 +158,40 @@ $siguienteCodigoGrupo = ControladorGruposEmpresariales::ctrSiguienteCodigoGrupo(
             <div class="modal-body">
                 <input type="hidden" id="codigoGrupoActivo">
 
+                <div class="well well-sm" style="margin-bottom:15px; background:#f4f8fb;">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="categoriaComercialGrupo" style="margin-bottom:6px;">
+                                Categoría comercial del grupo
+                            </label>
+                            <select class="form-control selectpicker"
+                                id="categoriaComercialGrupo"
+                                data-live-search="true"
+                                data-size="8"
+                                title="Categoría comercial">
+                                <option value="">Sin categoría / pendiente</option>
+                                <?php foreach ($categoriasComercialesActivas as $catItem) : ?>
+                                    <option value="<?php echo (int) $catItem["id"]; ?>">
+                                        <?php echo htmlspecialchars($catItem["nombre"]); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="help-block" style="margin:6px 0 0;">
+                                Todos los miembros del grupo heredan esta categoría.
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="visible-md visible-lg" style="margin-bottom:6px;">&nbsp;</label>
+                            <button type="button" class="btn btn-primary btn-block" id="btnAplicarCategoriaGrupo">
+                                <i class="fa fa-check"></i> Aplicar categoría
+                            </button>
+                            <p class="text-muted text-right" style="margin:8px 0 0;">
+                                Afecta a: <strong id="contadorAfectadosCategoriaGrupo">0</strong> miembro(s)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="well well-sm" style="margin-bottom:20px; background:#f9f9f9;">
                     <div class="row">
                         <div class="col-md-8">
@@ -171,7 +210,7 @@ $siguienteCodigoGrupo = ControladorGruposEmpresariales::ctrSiguienteCodigoGrupo(
                                 <option value="">Buscar por código, nombre o documento...</option>
                             </select>
                             <p class="help-block" id="ayudaSelectClienteAsignar" style="margin-bottom:0;margin-top:6px;">
-                                Busque por código, razón social o documento.
+                                Al agregarlo heredará automáticamente la categoría del grupo.
                             </p>
                         </div>
                         <div class="col-md-4">

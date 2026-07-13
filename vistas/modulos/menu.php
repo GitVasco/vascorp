@@ -96,7 +96,9 @@
                                         $_GET["ruta"] == "dashboard-decisiones" ||
                                         $_GET["ruta"] == "metas-vendedor" ||
                                         $_GET["ruta"] == "linea-credito" ||
-                                        $_GET["ruta"] == "inteligencia-comercial"
+                                        $_GET["ruta"] == "inteligencia-comercial" ||
+                                        $_GET["ruta"] == "categorias-comerciales" ||
+                                        $_GET["ruta"] == "categorias-por-revisar"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -154,6 +156,28 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Inteligencia Comercial</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "categorias-comerciales") echo 'active'; ?>">
+
+                            <a href="categorias-comerciales">
+
+                                <i class="fa fa-tags"></i>
+                                <span>Categorías comerciales</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "categorias-por-revisar") echo 'active'; ?>">
+
+                            <a href="categorias-por-revisar">
+
+                                <i class="fa fa-flag"></i>
+                                <span>Categorías por revisar</span>
 
                             </a>
 

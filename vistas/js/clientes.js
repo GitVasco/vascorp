@@ -293,6 +293,10 @@ $(".tablaClientes").on("click", ".btnEditarCliente", function () {
 
             $("#editarLista_precios").val(respuesta["lista_precios"]);
             $("#editarLista_precios").selectpicker("refresh");
+
+            if (typeof cargarCategoriaComercialCliente === "function") {
+                cargarCategoriaComercialCliente(respuesta["codigo"], respuesta["grupo"]);
+            }
         },
     });
 });
@@ -445,3 +449,152 @@ function ObtenerDatosRuc2() {
         },
     });
 }
+
+/*=============================================
+CATEGORÍA COMERCIAL EN CLIENTES (selector simple)
+=============================================*/
+function refrescarSelectCategoria($select) {
+    if (!$select.length) {
+        return;
+    }
+    try {
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("refresh");
+        } else if (typeof $select.selectpicker === "function") {
+            $select.selectpicker();
+        }
+    } catch (e) {}
+}
+
+function setSelectCategoriaModoGrupo(contexto, dataCategoriaGrupo) {
+    var $select = contexto === "nuevo" ? $("#categoriaComercialNueva") : $("#categoriaComercialEditar");
+
+    $select.prop("disabled", true);
+
+    if (dataCategoriaGrupo && dataCategoriaGrupo.tiene_categoria && dataCategoriaGrupo.categoria) {
+        $select.val(String(dataCategoriaGrupo.categoria.id));
+    } else {
+        $select.val("");
+    }
+
+    refrescarSelectCategoria($select);
+}
+
+function setSelectCategoriaModoIndividual(contexto, dataEfectiva) {
+    var $select = contexto === "nuevo" ? $("#categoriaComercialNueva") : $("#categoriaComercialEditar");
+
+    $select.prop("disabled", false);
+
+    if (dataEfectiva && dataEfectiva.tiene_categoria && dataEfectiva.categoria) {
+        $select.val(String(dataEfectiva.categoria.id));
+    } else {
+        $select.val("");
+    }
+
+    refrescarSelectCategoria($select);
+}
+
+function cargarCategoriaComercialCliente(codigoCliente, codigoGrupo) {
+    var grupo = (codigoGrupo || "").toString().trim();
+
+    if (grupo !== "") {
+        var datosGrupo = new FormData();
+        datosGrupo.append("accion", "categoriaGrupo");
+        datosGrupo.append("codigoGrupo", grupo);
+
+        $.ajax({
+            url: "ajax/categorias-clientes.ajax.php",
+            method: "POST",
+            data: datosGrupo,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                setSelectCategoriaModoGrupo("editar", respuesta);
+            },
+            error: function () {
+                setSelectCategoriaModoGrupo("editar", null);
+            }
+        });
+        return;
+    }
+
+    var datos = new FormData();
+    datos.append("accion", "efectivaCliente");
+    datos.append("codigoCliente", codigoCliente);
+
+    $.ajax({
+        url: "ajax/categorias-clientes.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            setSelectCategoriaModoIndividual("editar", respuesta);
+        },
+        error: function () {
+            setSelectCategoriaModoIndividual("editar", null);
+        }
+    });
+}
+
+function sincronizarCategoriaPorGrupoSelect(contexto) {
+    var esNuevo = contexto === "nuevo";
+    var $grupo = esNuevo ? $("#grupo") : $("#editarGrupo");
+    var codigoGrupo = ($grupo.val() || "").toString().trim();
+
+    if (codigoGrupo === "") {
+        if (esNuevo) {
+            setSelectCategoriaModoIndividual("nuevo", null);
+        } else {
+            cargarCategoriaComercialCliente($("#editarCodigoCliente").val(), "");
+        }
+        return;
+    }
+
+    var datos = new FormData();
+    datos.append("accion", "categoriaGrupo");
+    datos.append("codigoGrupo", codigoGrupo);
+
+    $.ajax({
+        url: "ajax/categorias-clientes.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            setSelectCategoriaModoGrupo(contexto, respuesta);
+        },
+        error: function () {
+            setSelectCategoriaModoGrupo(contexto, null);
+        }
+    });
+}
+
+$("#grupo").on("change", function () {
+    sincronizarCategoriaPorGrupoSelect("nuevo");
+});
+
+$("#editarGrupo").on("change", function () {
+    sincronizarCategoriaPorGrupoSelect("editar");
+});
+
+$("#modalAgregarCliente").on("shown.bs.modal", function () {
+    sincronizarCategoriaPorGrupoSelect("nuevo");
+    refrescarSelectCategoria($("#categoriaComercialNueva"));
+});
+
+// Si el select está deshabilitado (cliente en grupo), habilitarlo al enviar para no perder el POST,
+// pero el backend ignora categoría individual cuando hay grupo.
+$("#modalEditarCliente form").on("submit", function () {
+    var $select = $("#categoriaComercialEditar");
+    if ($select.prop("disabled")) {
+        $select.prop("disabled", false);
+        refrescarSelectCategoria($select);
+    }
+});

@@ -212,19 +212,27 @@ class ControladorGruposEmpresariales
 		$respuesta = ModeloGruposEmpresariales::mdlAsignarClienteAGrupo($codigoCliente, $codigoGrupo);
 
 		if ($respuesta === "ok") {
+			// Al entrar al grupo deja de aplicar categoría individual.
+			ControladorCategoriasClientes::ctrCerrarAsignacionEntidad("cliente", $codigoCliente);
+
 			$clienteAsignado = ModeloGruposEmpresariales::mdlMostrarClientePorCodigo($codigoCliente);
 			$total = ModeloGruposEmpresariales::mdlContarClientesPorGrupo($codigoGrupo, true);
+			$categoriaGrupo = ControladorCategoriasClientes::ctrCategoriaVigenteGrupo($codigoGrupo);
+			$nombreCat = ($categoriaGrupo && !empty($categoriaGrupo["tiene_categoria"]))
+				? $categoriaGrupo["etiqueta"]
+				: "Sin categoría / pendiente";
 
 			echo json_encode(array(
 				"status" => "ok",
-				"mensaje" => "Cliente asignado correctamente.",
+				"mensaje" => "Cliente asignado. Hereda la categoría del grupo: " . $nombreCat,
 				"cliente" => array(
 					"codigo" => $clienteAsignado["codigo"],
 					"nombre" => $clienteAsignado["nombre"],
 					"documento" => isset($clienteAsignado["documento"]) ? $clienteAsignado["documento"] : "",
 					"telefono" => isset($clienteAsignado["telefono"]) ? $clienteAsignado["telefono"] : ""
 				),
-				"total_miembros" => $total
+				"total_miembros" => $total,
+				"categoria_grupo" => $nombreCat
 			));
 			return;
 		}
@@ -292,13 +300,16 @@ class ControladorGruposEmpresariales
 		);
 
 		if ($respuesta === "ok") {
+			// Al salir del grupo queda sin categoría hasta asignación individual.
+			ControladorCategoriasClientes::ctrCerrarAsignacionEntidad("cliente", $codigoCliente);
+
 			$total = $grupoReferencia !== ""
 				? ModeloGruposEmpresariales::mdlContarClientesPorGrupo($grupoReferencia, true)
 				: 0;
 
 			echo json_encode(array(
 				"status" => "ok",
-				"mensaje" => "Cliente quitado del grupo.",
+				"mensaje" => "Cliente quitado del grupo. Queda sin categoría comercial hasta asignarle una individual.",
 				"cliente" => array(
 					"codigo" => $cliente["codigo"],
 					"nombre" => $cliente["nombre"],

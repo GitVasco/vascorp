@@ -1,5 +1,9 @@
 <?php
 $gruposEmpresariales = ControladorGruposEmpresariales::ctrMostrarGruposActivos();
+$categoriasComercialesActivas = ControladorCategoriasClientes::ctrListarCategoriasActivas();
+if (!is_array($categoriasComercialesActivas)) {
+    $categoriasComercialesActivas = array();
+}
 ?>
 <div class="content-wrapper">
 
@@ -51,7 +55,7 @@ $gruposEmpresariales = ControladorGruposEmpresariales::ctrMostrarGruposActivos()
                             <th>Tip. Doc.</th>
                             <th>Documento</th>
                             <th>Teléfono</th>
-                            <th>Ubigeo</th>
+							<th>Categoría</th>
                             <th>Ingreso al sistema</th>
                             <th>Acciones</th>
 
@@ -547,6 +551,21 @@ MODAL AGREGAR CLIENTE
 
                                 </div>
 
+                            </div>
+
+                            <!-- CATEGORÍA COMERCIAL (ALTA) -->
+                            <div class="form-group col-lg-2" id="bloqueCategoriaComercialNuevo">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-tags"></i></span>
+                                    <select class="form-control input-sm selectpicker" id="categoriaComercialNueva" name="categoria_comercial" data-live-search="true" title="Categoría comercial">
+                                        <option value="">Categoría comercial</option>
+                                        <?php foreach ($categoriasComercialesActivas as $catItem) : ?>
+                                            <option value="<?php echo (int) $catItem["id"]; ?>">
+                                                <?php echo htmlspecialchars($catItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
 
 
@@ -1059,6 +1078,21 @@ MODAL EDITAR CLIENTE
 
                                 </div>
 
+                            </div>
+
+                            <!-- CATEGORÍA COMERCIAL (EDITAR) -->
+                            <div class="form-group col-lg-2" id="bloqueCategoriaComercialEditar">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-tags"></i></span>
+                                    <select class="form-control input-sm selectpicker" id="categoriaComercialEditar" name="editar_categoria_comercial" data-live-search="true" title="Categoría comercial">
+                                        <option value="">Categoría comercial</option>
+                                        <?php foreach ($categoriasComercialesActivas as $catItem) : ?>
+                                            <option value="<?php echo (int) $catItem["id"]; ?>">
+                                                <?php echo htmlspecialchars($catItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
 
 

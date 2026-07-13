@@ -2,6 +2,8 @@
 
 require_once "../../controladores/clientes.controlador.php";
 require_once "../../modelos/clientes.modelo.php";
+require_once "../../controladores/categorias-clientes.controlador.php";
+require_once "../../modelos/categorias-clientes.modelo.php";
 
 class TablaClientes
 {
@@ -82,14 +84,35 @@ class TablaClientes
                     $fechaIngreso = substr($fechaIngreso, 0, 10);
                 }
 
+                $categoriaHtml = ControladorCategoriasClientes::ctrHtmlBadgeCategoria(
+                    isset($clientes[$i]["categoria_comercial"]) ? $clientes[$i]["categoria_comercial"] : "",
+                    isset($clientes[$i]["categoria_codigo"]) ? $clientes[$i]["categoria_codigo"] : "",
+                    isset($clientes[$i]["categoria_color"]) ? $clientes[$i]["categoria_color"] : null
+                );
+                if (strpos($categoriaHtml, "background-color:") !== false) {
+                    $categoriaHtml = str_replace(
+                        "style='background-color:",
+                        "style='font-size:85%;background-color:",
+                        $categoriaHtml
+                    );
+                } else {
+                    $categoriaHtml = str_replace(
+                        "<span class='label",
+                        "<span style='font-size:85%' class='label",
+                        $categoriaHtml
+                    );
+                }
+
+                $nombreEsc = str_replace(array("\\", '"', "\r", "\n"), array("\\\\", '\"', " ", " "), $clientes[$i]["nombre"]);
+
                 $datosJson .= '[
                 "' . $clientes[$i]["codigo"] . '",
-                "' . $clientes[$i]["nombre"] . '",
+                "' . $nombreEsc . '",
                 "' . $tipo_persona . '",
                 "' . $tipo_documento . '",
                 "' . $clientes[$i]["documento"] . '",
                 "' . $clientes[$i]["telefono"] . '",
-                "' . $clientes[$i]["ubigeos"] . '",
+                "' . $categoriaHtml . '",
                 "' . $fechaIngreso . '",
                 "' . $botones . '"
                 ],';

@@ -153,20 +153,91 @@ class ModeloClientes
 			return $stmt->fetch();
 		} else {
 
-			$stmt = Conexion::conectar()->prepare("SELECT 
+			$stmt = Conexion::conectar()->prepare("SELECT
 			c.*,
-			CONCAT(ub.codigo,
-					' - ',
-					ub.departamento,
-					' /',
-					ub.provincia,
-					' /',
-					ub.distrito
-					) AS ubigeos 
+			IFNULL(
+				CASE
+					WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
+						SELECT cat.nombre
+						FROM categorias_clientes_asignacionesjf a
+						INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+						WHERE a.tipo_entidad = 'grupo'
+						  AND a.codigo_entidad = c.grupo
+						  AND a.estado = 1
+						  AND a.vigencia_desde <= NOW()
+						  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+						ORDER BY a.id DESC
+						LIMIT 1
+					)
+					ELSE (
+						SELECT cat.nombre
+						FROM categorias_clientes_asignacionesjf a
+						INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+						WHERE a.tipo_entidad = 'cliente'
+						  AND a.codigo_entidad = c.codigo
+						  AND a.estado = 1
+						  AND a.vigencia_desde <= NOW()
+						  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+						ORDER BY a.id DESC
+						LIMIT 1
+					)
+				END,
+				'Sin categoría / pendiente'
+			) AS categoria_comercial,
+			CASE
+				WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
+					SELECT cat.codigo
+					FROM categorias_clientes_asignacionesjf a
+					INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+					WHERE a.tipo_entidad = 'grupo'
+					  AND a.codigo_entidad = c.grupo
+					  AND a.estado = 1
+					  AND a.vigencia_desde <= NOW()
+					  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+					ORDER BY a.id DESC
+					LIMIT 1
+				)
+				ELSE (
+					SELECT cat.codigo
+					FROM categorias_clientes_asignacionesjf a
+					INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+					WHERE a.tipo_entidad = 'cliente'
+					  AND a.codigo_entidad = c.codigo
+					  AND a.estado = 1
+					  AND a.vigencia_desde <= NOW()
+					  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+					ORDER BY a.id DESC
+					LIMIT 1
+				)
+			END AS categoria_codigo,
+			CASE
+				WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
+					SELECT cat.color
+					FROM categorias_clientes_asignacionesjf a
+					INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+					WHERE a.tipo_entidad = 'grupo'
+					  AND a.codigo_entidad = c.grupo
+					  AND a.estado = 1
+					  AND a.vigencia_desde <= NOW()
+					  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+					ORDER BY a.id DESC
+					LIMIT 1
+				)
+				ELSE (
+					SELECT cat.color
+					FROM categorias_clientes_asignacionesjf a
+					INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+					WHERE a.tipo_entidad = 'cliente'
+					  AND a.codigo_entidad = c.codigo
+					  AND a.estado = 1
+					  AND a.vigencia_desde <= NOW()
+					  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+					ORDER BY a.id DESC
+					LIMIT 1
+				)
+			END AS categoria_color
 		  FROM
-			clientesjf c 
-		  LEFT JOIN ubigeo ub
-		  ON c.ubigeo = ub.codigo
+			clientesjf c
 		  WHERE c.fecha IS NOT NULL AND c.estado=1
 		  ORDER BY codigo");
 

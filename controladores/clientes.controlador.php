@@ -65,6 +65,21 @@ class ControladorClientes
 
 			if ($respuesta == "ok") {
 
+				$grupoAlta = isset($_POST["grupo"]) ? trim($_POST["grupo"]) : "";
+				$idCategoriaAlta = isset($_POST["categoria_comercial"]) ? (int) $_POST["categoria_comercial"] : 0;
+
+				if ($grupoAlta !== "") {
+					ControladorCategoriasClientes::ctrCerrarAsignacionEntidad("cliente", trim($codigo));
+				} elseif ($idCategoriaAlta > 0) {
+					ControladorCategoriasClientes::ctrAsignarCategoriaEntidad(array(
+						"tipo_entidad" => "cliente",
+						"codigo_entidad" => trim($codigo),
+						"id_categoria" => $idCategoriaAlta,
+						"motivo" => "Asignación al crear cliente",
+						"es_excepcion" => 0
+					));
+				}
+
 				echo '<script>
 
 				swal({
@@ -198,6 +213,24 @@ class ControladorClientes
 			#$respuesta = "false";
 
 			if ($respuesta == "ok") {
+
+				$grupoEdit = isset($_POST["editarGrupo"]) ? trim($_POST["editarGrupo"]) : "";
+				if ($grupoEdit !== "") {
+					// Si entra/permanece en grupo, la categoría individual no aplica.
+					ControladorCategoriasClientes::ctrCerrarAsignacionEntidad("cliente", trim($codigo));
+				} else {
+					$idCategoriaEdit = isset($_POST["editar_categoria_comercial"])
+						? (int) $_POST["editar_categoria_comercial"]
+						: 0;
+
+					ControladorCategoriasClientes::ctrAsignarCategoriaEntidad(array(
+						"tipo_entidad" => "cliente",
+						"codigo_entidad" => trim($codigo),
+						"id_categoria" => $idCategoriaEdit,
+						"motivo" => "Asignación al editar cliente",
+						"es_excepcion" => 0
+					));
+				}
 
 				echo '<script>
 					swal({
