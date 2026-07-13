@@ -37,9 +37,11 @@ if (!is_array($categoriasComercialesActivas)) {
                         <tr>
                             <th>Código</th>
                             <th>Nombre</th>
-                            <th>Descripción</th>
                             <th>Clientes</th>
                             <th>Categoría</th>
+                            <th class="text-right">Ventas mes</th>
+                            <th class="text-right">Ventas 12m</th>
+                            <th class="text-right">Monto requerido</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>

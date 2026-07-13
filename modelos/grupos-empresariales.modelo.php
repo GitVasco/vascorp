@@ -92,7 +92,19 @@ class ModeloGruposEmpresariales
 					  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
 					ORDER BY a.id DESC
 					LIMIT 1
-				) AS categoria_color
+				) AS categoria_color,
+				(
+					SELECT cat.id
+					FROM categorias_clientes_asignacionesjf a
+					INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+					WHERE a.tipo_entidad = 'grupo'
+					  AND a.codigo_entidad = g.codigo
+					  AND a.estado = 1
+					  AND a.vigencia_desde <= NOW()
+					  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+					ORDER BY a.id DESC
+					LIMIT 1
+				) AS categoria_id
 			 FROM grupos_empresarialesjf g
 			 ORDER BY g.nombre ASC"
 		);

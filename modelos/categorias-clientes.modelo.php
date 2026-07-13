@@ -876,6 +876,54 @@ class ModeloCategoriasClientes
 		return $mapa;
 	}
 
+	/*=============================================
+	Monto facturado del mes actual (S02/S03/S70, no anulados)
+	=============================================*/
+	static public function mdlMontoFacturadoMesGrupos($codigosGrupo)
+	{
+
+		if (!is_array($codigosGrupo) || count($codigosGrupo) === 0) {
+			return array();
+		}
+
+		$placeholders = array();
+		$params = array();
+		foreach ($codigosGrupo as $i => $codigo) {
+			$key = ":g" . $i;
+			$placeholders[] = $key;
+			$params[$key] = $codigo;
+		}
+
+		$sql = "SELECT c.grupo AS codigo,
+				IFNULL(SUM(v.total), 0) AS monto_mes
+			 FROM ventajf v
+			 INNER JOIN clientesjf c
+			   ON c.codigo = v.cliente
+			  AND c.estado = 1
+			  AND c.grupo IN (" . implode(",", $placeholders) . ")
+			 WHERE v.fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+			   AND v.fecha < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+			   AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+			   AND UPPER(v.tipo) IN ('S02', 'S03', 'S70')
+			 GROUP BY c.grupo";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($params as $key => $valor) {
+			$stmt->bindValue($key, $valor, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+
+		$mapa = array();
+		$filas = $stmt->fetchAll();
+		if (is_array($filas)) {
+			foreach ($filas as $fila) {
+				$mapa[$fila["codigo"]] = (float) $fila["monto_mes"];
+			}
+		}
+
+		return $mapa;
+	}
+
 	static public function mdlRequisitosMontoPorCategorias($idsCategoria)
 	{
 

@@ -8,6 +8,10 @@ $(".tablaGruposEmpresariales").DataTable({
     order: [[1, "asc"]],
     pageLength: 20,
     lengthMenu: [[20, 40, 60, -1], [20, 40, 60, "Todos"]],
+    columnDefs: [
+        { targets: [4, 5, 6], className: "text-right" },
+        { targets: -1, orderable: false, searchable: false }
+    ],
     language: {
         sProcessing: "Procesando...",
         sLengthMenu: "Mostrar _MENU_ registros",
@@ -54,7 +58,7 @@ function actualizarContadorGrupoEnTabla(codigoGrupo, total) {
     tabla.rows().every(function () {
         var data = this.data();
         if (data[0] === codigoGrupo) {
-            data[3] = String(total);
+            data[2] = String(total);
             this.data(data);
         }
     });
@@ -86,7 +90,7 @@ function actualizarCategoriaGrupoEnTabla(codigoGrupo, nombreCategoria, codigoCat
     tabla.rows().every(function () {
         var data = this.data();
         if (data[0] === codigoGrupo) {
-            data[4] = html;
+            data[3] = html;
             this.data(data);
         }
     });
@@ -608,6 +612,7 @@ $("#btnAplicarCategoriaGrupo").on("click", function () {
                         ? respuesta.categoria.color
                         : "";
                     actualizarCategoriaGrupoEnTabla(codigoGrupo, nombreFinal, codigoFinal, colorFinal);
+                    $(".tablaGruposEmpresariales").DataTable().ajax.reload(null, false);
                     swal({
                         type: "success",
                         title: "Listo",
