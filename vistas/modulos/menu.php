@@ -78,7 +78,44 @@
 
             <!--  Dashboard Cobranzas (lista de IDs en controladores/config.php) -->
             <?php
-            if (function_exists("usuarioPuedeDashboardCobranzas") && usuarioPuedeDashboardCobranzas()) {
+            $puedeVerDashboardCobranzas = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas");
+            $puedeVerCentroDecisiones = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "centro_decisiones");
+            $puedeVerMetasVendedor = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "metas_vendedor");
+            $puedeVerLineaCredito = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "linea_credito");
+            $puedeVerInteligenciaComercial = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "inteligencia_comercial");
+            $puedeVerCategoriasComerciales = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "categorias_comerciales");
+            $puedeVerCategoriasPorRevisar = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "categorias_por_revisar");
+
+            $rutasActivasGestionComercial = array();
+            if ($puedeVerCentroDecisiones) {
+                $rutasActivasGestionComercial[] = "dashboard-decisiones";
+            }
+            if ($puedeVerMetasVendedor) {
+                $rutasActivasGestionComercial[] = "metas-vendedor";
+            }
+            if ($puedeVerLineaCredito) {
+                $rutasActivasGestionComercial[] = "linea-credito";
+            }
+            if ($puedeVerInteligenciaComercial) {
+                $rutasActivasGestionComercial[] = "inteligencia-comercial";
+            }
+            if ($puedeVerCategoriasComerciales) {
+                $rutasActivasGestionComercial[] = "categorias-comerciales";
+            }
+            if ($puedeVerCategoriasPorRevisar) {
+                $rutasActivasGestionComercial[] = "categorias-por-revisar";
+            }
+
+            $mostrarGestionComercial = !empty($rutasActivasGestionComercial);
+
+            if ($puedeVerDashboardCobranzas) {
             ?>
 
                 <li class="<?php if ($_GET["ruta"] == "dashboard-cobranzas") echo 'active'; ?>">
@@ -92,14 +129,14 @@
 
                 </li>
 
-                <li class="treeview <?php if (
-                                        $_GET["ruta"] == "dashboard-decisiones" ||
-                                        $_GET["ruta"] == "metas-vendedor" ||
-                                        $_GET["ruta"] == "linea-credito" ||
-                                        $_GET["ruta"] == "inteligencia-comercial" ||
-                                        $_GET["ruta"] == "categorias-comerciales" ||
-                                        $_GET["ruta"] == "categorias-por-revisar"
-                                    ) echo 'active'; ?>">
+            <?php
+            }
+
+            if ($mostrarGestionComercial) {
+                $isActiveGestionComercial = in_array($_GET["ruta"], $rutasActivasGestionComercial, true) ? "active" : "";
+            ?>
+
+                <li class="treeview <?php echo $isActiveGestionComercial; ?>">
 
                     <a href="#">
 
@@ -117,6 +154,7 @@
 
                     <ul class="treeview-menu">
 
+                        <?php if ($puedeVerCentroDecisiones) { ?>
                         <li class="<?php if ($_GET["ruta"] == "dashboard-decisiones") echo 'active'; ?>">
 
                             <a href="index.php?ruta=dashboard-decisiones">
@@ -127,7 +165,9 @@
                             </a>
 
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerMetasVendedor) { ?>
                         <li class="<?php if ($_GET["ruta"] == "metas-vendedor") echo 'active'; ?>">
 
                             <a href="index.php?ruta=metas-vendedor">
@@ -138,7 +178,9 @@
                             </a>
 
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerLineaCredito) { ?>
                         <li class="<?php if ($_GET["ruta"] == "linea-credito") echo 'active'; ?>">
 
                             <a href="index.php?ruta=linea-credito">
@@ -149,7 +191,9 @@
                             </a>
 
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerInteligenciaComercial) { ?>
                         <li class="<?php if ($_GET["ruta"] == "inteligencia-comercial") echo 'active'; ?>">
 
                             <a href="index.php?ruta=inteligencia-comercial">
@@ -160,7 +204,9 @@
                             </a>
 
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerCategoriasComerciales) { ?>
                         <li class="<?php if ($_GET["ruta"] == "categorias-comerciales") echo 'active'; ?>">
 
                             <a href="categorias-comerciales">
@@ -171,7 +217,9 @@
                             </a>
 
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerCategoriasPorRevisar) { ?>
                         <li class="<?php if ($_GET["ruta"] == "categorias-por-revisar") echo 'active'; ?>">
 
                             <a href="categorias-por-revisar">
@@ -182,6 +230,7 @@
                             </a>
 
                         </li>
+                        <?php } ?>
 
                     </ul>
 
@@ -1630,14 +1679,33 @@
 
             <!-- Vasco Online (API) -->
             <?php
-            if ($_SESSION["cuenta"] == 1) {
-                $rutasActivasVascoOnline = [
-                    "sync-vasco",
-                    "rendicion-vasco-caja",
-                    "gestion-vasco-clientes",
-                    "solicitudes-atencion-vasco",
-                ];
-                $isActiveVascoOnline = in_array($_GET["ruta"], $rutasActivasVascoOnline) ? "active" : "";
+            $puedeVerSyncVasco = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("vasco_online", "sincronizacion");
+            $puedeVerRendicionVasco = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("vasco_online", "rendicion_cobranzas");
+            $puedeVerGestionClientesVasco = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("vasco_online", "gestion_clientes");
+            $puedeVerSolicitudesAtencionVasco = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("vasco_online", "solicitudes_atencion");
+
+            $mostrarVascoOnline = function_exists("usuarioPuedeAlgunaOpcionSector")
+                && usuarioPuedeAlgunaOpcionSector("vasco_online");
+
+            if ($mostrarVascoOnline) {
+                $rutasActivasVascoOnline = array();
+                if ($puedeVerSyncVasco) {
+                    $rutasActivasVascoOnline[] = "sync-vasco";
+                }
+                if ($puedeVerRendicionVasco) {
+                    $rutasActivasVascoOnline[] = "rendicion-vasco-caja";
+                }
+                if ($puedeVerGestionClientesVasco) {
+                    $rutasActivasVascoOnline[] = "gestion-vasco-clientes";
+                }
+                if ($puedeVerSolicitudesAtencionVasco) {
+                    $rutasActivasVascoOnline[] = "solicitudes-atencion-vasco";
+                }
+                $isActiveVascoOnline = in_array($_GET["ruta"], $rutasActivasVascoOnline, true) ? "active" : "";
             ?>
                 <li class="treeview <?= $isActiveVascoOnline; ?>">
 
@@ -1657,33 +1725,41 @@
 
                     <ul class="treeview-menu">
 
+                        <?php if ($puedeVerSyncVasco) { ?>
                         <li class="<?= $_GET["ruta"] == "sync-vasco" ? "active" : ""; ?>">
                             <a href="sync-vasco">
                                 <i class="fa fa-refresh"></i>
                                 <span>Sincronización</span>
                             </a>
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerRendicionVasco) { ?>
                         <li class="<?= $_GET["ruta"] == "rendicion-vasco-caja" ? "active" : ""; ?>">
                             <a href="rendicion-vasco-caja">
                                 <i class="fa fa-handshake-o"></i>
                                 <span>Rendición cobranzas</span>
                             </a>
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerGestionClientesVasco) { ?>
                         <li class="<?= $_GET["ruta"] == "gestion-vasco-clientes" ? "active" : ""; ?>">
                             <a href="gestion-vasco-clientes">
                                 <i class="fa fa-whatsapp"></i>
                                 <span>Gestión clientes</span>
                             </a>
                         </li>
+                        <?php } ?>
 
+                        <?php if ($puedeVerSolicitudesAtencionVasco) { ?>
                         <li class="<?= $_GET["ruta"] == "solicitudes-atencion-vasco" ? "active" : ""; ?>">
                             <a href="solicitudes-atencion-vasco">
                                 <i class="fa fa-bell"></i>
                                 <span>Solicitudes atención</span>
                             </a>
                         </li>
+                        <?php } ?>
 
                     </ul>
 

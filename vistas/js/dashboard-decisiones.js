@@ -1001,4 +1001,66 @@
             "_blank"
         );
     });
+
+    $(document).on("click", ".btnDdAnularPedido", function () {
+        var $btn = $(this);
+        var pedido = $btn.data("pedido");
+        var cliente = $btn.data("cliente") || "";
+
+        if (!pedido) {
+            return;
+        }
+
+        var detalle = "Pedido " + pedido + (cliente ? " · " + cliente : "");
+
+        swal({
+            title: "¿Anular pedido?",
+            text:
+                detalle +
+                "\n\nEsta acción es definitiva y no se puede revertir.",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dd4b39",
+            cancelButtonColor: "#95a5a6",
+            cancelButtonText: "Cancelar",
+            confirmButtonText: "Sí, anular definitivamente",
+        }).then(function (result) {
+            if (!result.value) {
+                return;
+            }
+
+            $btn.prop("disabled", true);
+
+            $.ajax({
+                url: "ajax/dashboard-decisiones/anular-pedido.ajax.php",
+                method: "POST",
+                dataType: "json",
+                data: { codigo_pedido: pedido },
+            })
+                .done(function (resp) {
+                    if (!resp || !resp.ok) {
+                        swal(
+                            "Atención",
+                            (resp && resp.msg) || "No se pudo anular el pedido.",
+                            "warning"
+                        );
+                        $btn.prop("disabled", false);
+                        return;
+                    }
+
+                    swal({
+                        title: "Pedido anulado",
+                        text: "El pedido " + pedido + " quedó anulado sin retorno.",
+                        type: "success",
+                        confirmButtonText: "Cerrar",
+                    }).then(function () {
+                        window.location.reload();
+                    });
+                })
+                .fail(function () {
+                    swal("Error", "No se pudo anular el pedido.", "error");
+                    $btn.prop("disabled", false);
+                });
+        });
+    });
 })();

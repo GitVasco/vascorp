@@ -235,28 +235,28 @@ class ModeloMetasVendedor
                         SUM(
                             CASE
                                 WHEN t.estado = 'GENERADO' AND COALESCE(t.lista, '') <> 'precio1'
-                                    THEN IFNULL(t.total, 0)
+                                    THEN IFNULL(t.op_gravada, 0)
                                 ELSE 0
                             END
                         ) AS soles_generados,
                         SUM(
                             CASE
                                 WHEN t.estado = 'APROBADO' AND COALESCE(t.lista, '') <> 'precio1'
-                                    THEN IFNULL(t.total, 0)
+                                    THEN IFNULL(t.op_gravada, 0)
                                 ELSE 0
                             END
                         ) AS soles_aprobados,
                         SUM(
                             CASE
                                 WHEN t.estado = 'APT' AND COALESCE(t.lista, '') <> 'precio1'
-                                    THEN IFNULL(t.total, 0)
+                                    THEN IFNULL(t.op_gravada, 0)
                                 ELSE 0
                             END
                         ) AS soles_apt,
                         SUM(
                             CASE
                                 WHEN t.estado = 'CONFIRMADO' AND COALESCE(t.lista, '') <> 'precio1'
-                                    THEN IFNULL(t.total, 0)
+                                    THEN IFNULL(t.op_gravada, 0)
                                 ELSE 0
                             END
                         ) AS soles_confirmados

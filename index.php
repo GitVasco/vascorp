@@ -154,6 +154,8 @@ require_once "controladores/vasco-sync.controlador.php";
 
 require_once "controladores/config.php";
 
+require_once "controladores/permisos-modulos.config.php";
+
 require_once "controladores/vasco-online.config.php";
 
 /* 

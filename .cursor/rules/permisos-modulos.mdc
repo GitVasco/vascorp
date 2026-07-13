@@ -1,0 +1,63 @@
+---
+description: Cómo agregar o ajustar permisos de usuario en permisos-modulos.json
+globs: controladores/permisos-modulos.json
+alwaysApply: true
+---
+
+# Permisos de módulos (JSON)
+
+Fuente única: `controladores/permisos-modulos.json`.  
+No inventar IDs en PHP/JS. No agregar IDs “por ejemplo” ni restaurar listas antiguas.
+
+## Flujo obligatorio al recibir un ID
+
+Cuando el usuario diga un ID (ej. “al 55…”) **sin** detallar permisos:
+
+1. **Preguntar primero** qué hará esa persona (rol / pantallas / acciones).
+2. Traducir la respuesta al catálogo (sector → módulo → acción).
+3. Confirmar el mapeo en lenguaje simple.
+4. Solo entonces editar el JSON (añadir `ver` si hace falta entrar a la pantalla).
+
+Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y resumir qué quedó.
+
+## Reglas
+
+- “Control total” → ese ID en **todas** las acciones de ambos sectores.
+- Rol acotado → solo lo pedido + `ver` de esos módulos.
+- No tocar tablas, pantallas de admin ni el permiso general `cuenta`.
+- No commitear salvo que lo pidan.
+
+## Catálogo (para preguntar / mapear)
+
+### gestion_comercial
+
+| Módulo | Acciones | Uso |
+|--------|----------|-----|
+| `dashboard_cobranzas` | `ver` | Dashboard Cobranzas |
+| `centro_decisiones` | `ver`, `registrar`, `solicitar`, `resolver`, `anular` | Decisiones de crédito / anular pedidos |
+| `metas_vendedor` | `ver`, `editar` | Metas vendedor |
+| `linea_credito` | `ver`, `editar`, `cerrar_mes` | Línea de crédito (`editar` = aprobar/cambiar) |
+| `inteligencia_comercial` | `ver` | Inteligencia Comercial |
+| `categorias_comerciales` | `ver`, `editar` | Categorías comerciales |
+| `categorias_por_revisar` | `ver`, `editar` | Categorías por revisar |
+
+### vasco_online
+
+| Módulo | Acciones | Uso |
+|--------|----------|-----|
+| `sincronizacion` | `ver`, `ejecutar` | Sync (ejecutar = lotes) |
+| `rendicion_cobranzas` | `ver`, `registrar`, `aprobar` | Rendición cobranzas |
+| `gestion_clientes` | `ver`, `gestionar` | Gestión clientes Vasco |
+| `solicitudes_atencion` | `ver`, `resolver` | Solicitudes atención |
+
+## Roles típicos en Centro de Decisiones
+
+- Créditos/cobranzas: `registrar` (motivo del no), `resolver`, `anular`
+- Jefatura comercial: `solicitar` (pedido del sí); sin `anular` ni `resolver`
+- Ambas: `ver` para entrar al módulo
+
+## Ejemplos de pregunta al usuario
+
+- ¿Solo ver o también editar/aprobar/resolver?
+- ¿Centro de Decisiones, línea de crédito, Vasco Online…?
+- ¿Puede cerrar mes / ejecutar sincronización / anular pedidos?

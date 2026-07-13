@@ -155,15 +155,24 @@ function dcSeveridadClase($severidad)
 
 function dcUsuarioPuedeRegistrarDecision()
 {
-    return function_exists("usuarioPuedeDashboardCobranzas") && usuarioPuedeDashboardCobranzas();
+    return function_exists("usuarioPuedeModulo")
+        && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "registrar");
 }
 
 function dcUsuarioPuedeSolicitar()
 {
-    return function_exists("usuarioPuedeDashboardCobranzas") && usuarioPuedeDashboardCobranzas();
+    return function_exists("usuarioPuedeModulo")
+        && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "solicitar");
 }
 
 function dcUsuarioPuedeResolver()
 {
-    return function_exists("usuarioPuedeDashboardCobranzas") && usuarioPuedeDashboardCobranzas();
+    return function_exists("usuarioPuedeModulo")
+        && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "resolver");
+}
+
+function dcUsuarioPuedeAnularPedido()
+{
+    return function_exists("usuarioPuedeModulo")
+        && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "anular");
 }

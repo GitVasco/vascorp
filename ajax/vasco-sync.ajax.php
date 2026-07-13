@@ -5,6 +5,7 @@ session_start();
 date_default_timezone_set("America/Lima");
 
 require_once "../controladores/config.php";
+require_once "../controladores/permisos-modulos.config.php";
 require_once "../controladores/vasco-online.config.php";
 require_once "../controladores/vasco-sync.controlador.php";
 require_once "../modelos/vasco-sync.modelo.php";
@@ -16,12 +17,23 @@ if (!isset($_SESSION["iniciarSesion"]) || $_SESSION["iniciarSesion"] !== "ok") {
     exit;
 }
 
-if (!isset($_SESSION["backend"]) || (int) $_SESSION["backend"] !== 1) {
-    echo json_encode(array("ok" => false, "msg" => "Sin permiso para Vasco Online"));
+if (!usuarioPuedeVerModulo("vasco_online", "sincronizacion")) {
+    echo json_encode(array("ok" => false, "msg" => "Sin permiso para realizar esta acción."));
     exit;
 }
 
 $accion = isset($_GET["accion"]) ? trim($_GET["accion"]) : "";
+
+$accionesEjecutar = array(
+    "sincronizar-lote",
+    "sincronizar-lote-cuentas",
+    "finalizar-cuentas",
+);
+
+if (in_array($accion, $accionesEjecutar, true) && !usuarioPuedeModulo("vasco_online", "sincronizacion", "ejecutar")) {
+    echo json_encode(array("ok" => false, "msg" => "Sin permiso para realizar esta acción."));
+    exit;
+}
 
 if ($accion === "auditar-clientes") {
     $respuesta = ControladorVascoSync::ctrAuditarClientes();

@@ -1,0 +1,53 @@
+{
+  "gestion_comercial": {
+    "dashboard_cobranzas": {
+      "ver": [6, 32, 105]
+    },
+    "centro_decisiones": {
+      "ver": [6, 32, 105],
+      "registrar": [6, 32],
+      "solicitar": [6, 105],
+      "resolver": [6, 32],
+      "anular": [6, 32]
+    },
+    "metas_vendedor": {
+      "ver": [6, 105],
+      "editar": [6, 105]
+    },
+    "linea_credito": {
+      "ver": [6, 32],
+      "editar": [6, 32],
+      "cerrar_mes": [6, 32]
+    },
+    "inteligencia_comercial": {
+      "ver": [6, 105]
+    },
+    "categorias_comerciales": {
+      "ver": [6],
+      "editar": [6]
+    },
+    "categorias_por_revisar": {
+      "ver": [6, 105],
+      "editar": [6]
+    }
+  },
+  "vasco_online": {
+    "sincronizacion": {
+      "ver": [6, 32],
+      "ejecutar": [6, 32]
+    },
+    "rendicion_cobranzas": {
+      "ver": [6, 28],
+      "registrar": [6],
+      "aprobar": [6, 28]
+    },
+    "gestion_clientes": {
+      "ver": [6, 105],
+      "gestionar": [6, 105]
+    },
+    "solicitudes_atencion": {
+      "ver": [6],
+      "resolver": [6]
+    }
+  }
+}

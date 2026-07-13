@@ -308,26 +308,58 @@ CUERPO DOCUMENTO
             if (
                 $_GET["ruta"] == "inicio" ||
                 $_GET["ruta"] == "inicio-gerencia" ||
-                $_GET["ruta"] == "dashboard-cobranzas" ||
-                $_GET["ruta"] == "dashboard-decisiones" ||
-                $_GET["ruta"] == "metas-vendedor" ||
-                $_GET["ruta"] == "linea-credito" ||
                 $_GET["ruta"] == "refrescar"
             ) {
 
                 include "modulos/" . $_GET["ruta"] . ".php";
+            } else if ($_GET["ruta"] == "dashboard-cobranzas") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/dashboard-cobranzas.php";
+                }
+            } else if ($_GET["ruta"] == "dashboard-decisiones") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "centro_decisiones")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/dashboard-decisiones.php";
+                }
+            } else if ($_GET["ruta"] == "metas-vendedor") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "metas_vendedor")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/metas-vendedor.php";
+                }
+            } else if ($_GET["ruta"] == "linea-credito") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "linea_credito")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/linea-credito.php";
+                }
             } else if ($_GET["ruta"] == "descuentos-compuestos") {
 
                 include "modulos/descuentos-compuestos/descuentos-compuestos.php";
             } else if ($_GET["ruta"] == "inteligencia-comercial") {
 
-                include "modulos/inteligencia-comercial/inteligencia-comercial.php";
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "inteligencia_comercial")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/inteligencia-comercial/inteligencia-comercial.php";
+                }
             } else if ($_GET["ruta"] == "usuarios") {
 
                 include "modulos/usuarios/" . $_GET["ruta"] . ".php";
             } else if ($_GET["ruta"] == "sync-vasco") {
 
-                include "modulos/vasco-online/" . $_GET["ruta"] . ".php";
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "sincronizacion")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/vasco-online/sync-vasco.php";
+                }
             } else if (
                 $_GET["ruta"] == "backupDB" ||
                 $_GET["ruta"] == "bkplista" ||
@@ -516,8 +548,6 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "pedidos-facturados" ||
                 $_GET["ruta"] == "clientes" ||
                 $_GET["ruta"] == "grupos-empresariales" ||
-                $_GET["ruta"] == "categorias-comerciales" ||
-                $_GET["ruta"] == "categorias-por-revisar" ||
                 $_GET["ruta"] == "crear-pedidocv" ||
                 $_GET["ruta"] == "escaneo-barcode-pedidocv" ||
                 $_GET["ruta"] == "crear-facturascv" ||
@@ -537,6 +567,41 @@ CUERPO DOCUMENTO
 
 
                 include "modulos/facturacion/" . $_GET["ruta"] . ".php";
+            } else if ($_GET["ruta"] == "categorias-comerciales") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_comerciales")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/facturacion/categorias-comerciales.php";
+                }
+            } else if ($_GET["ruta"] == "categorias-por-revisar") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_por_revisar")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/facturacion/categorias-por-revisar.php";
+                }
+            } else if ($_GET["ruta"] == "rendicion-vasco-caja") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "rendicion_cobranzas")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/cuentas-corrientes/rendicion-vasco-caja.php";
+                }
+            } else if ($_GET["ruta"] == "gestion-vasco-clientes") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "gestion_clientes")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/cuentas-corrientes/gestion-vasco-clientes.php";
+                }
+            } else if ($_GET["ruta"] == "solicitudes-atencion-vasco") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "solicitudes_atencion")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/cuentas-corrientes/solicitudes-atencion-vasco.php";
+                }
             } else if (
                 $_GET["ruta"] == "cuentas" ||
                 $_GET["ruta"] == "cuentas-test" ||
@@ -553,10 +618,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "reportes-generales" ||
                 $_GET["ruta"] == "notificaciones" ||
                 $_GET["ruta"] == "letras-plazo-protesto" ||
-                $_GET["ruta"] == "credipagos" ||
-                $_GET["ruta"] == "rendicion-vasco-caja" ||
-                $_GET["ruta"] == "gestion-vasco-clientes" ||
-                $_GET["ruta"] == "solicitudes-atencion-vasco"
+                $_GET["ruta"] == "credipagos"
             ) {
                 // Manejar rutas según la configuración
                 $tipoPaginacion = (defined('TIPO_PAGINACION_CUENTAS')) ? TIPO_PAGINACION_CUENTAS : "cliente";
@@ -693,7 +755,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=15"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=16"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>

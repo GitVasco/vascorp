@@ -1,5 +1,10 @@
 <?php
 
+if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "metas_vendedor")) {
+    denegarAccesoModulo();
+    return;
+}
+
 date_default_timezone_set("America/Lima");
 
 $periodoActual = ControladorMetasVendedor::ctrPeriodoActual();

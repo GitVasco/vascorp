@@ -1,6 +1,6 @@
 <?php
-if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboardCobranzas()) {
-    echo '<script>window.location = "inicio";</script>';
+if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "centro_decisiones")) {
+    denegarAccesoModulo();
     return;
 }
 
@@ -15,6 +15,8 @@ $generados = $datos["generados"];
 $estancados = $datos["estancados"];
 $atraso = $datos["atraso"];
 $avanceVentas = $datos["avance_ventas"];
+$facturadoResumen = $datos["facturado_resumen"];
+$facturado = $datos["facturado"];
 
 function ddAvancePctClase($pct)
 {
@@ -66,6 +68,21 @@ function ddFormatoMonto($lista, $monto)
 {
     $simbolo = ($lista === "precio1") ? "$ " : "S/ ";
     return $simbolo . number_format((float) $monto, 2);
+}
+
+function ddFormatoDocumento($documento)
+{
+    $documento = trim((string) $documento);
+
+    if ($documento === "") {
+        return "—";
+    }
+
+    if (strlen($documento) > 4) {
+        return substr($documento, 0, 4) . "-" . substr($documento, 4);
+    }
+
+    return $documento;
 }
 
 function ddNivelAtraso($dias)
@@ -452,8 +469,8 @@ $estadosPipeline = array(
                                                 </span>
                                             </td>
                                             <td class="text-center">
-                                                <?php if (!empty($row["cod_cli"])) : ?>
-                                                    <div class="dd-acciones-iconos">
+                                                <div class="dd-acciones-iconos">
+                                                    <?php if (!empty($row["cod_cli"])) : ?>
                                                         <button type="button"
                                                             class="btn btn-xs btn-default btnDdMiniIc"
                                                             title="Ver inteligencia del cliente"
@@ -476,10 +493,17 @@ $estadosPipeline = array(
                                                            target="_blank">
                                                             <i class="fa fa-line-chart"></i>
                                                         </a>
-                                                    </div>
-                                                <?php else : ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
+                                                    <?php endif; ?>
+                                                    <?php if (function_exists("dcUsuarioPuedeAnularPedido") && dcUsuarioPuedeAnularPedido()) : ?>
+                                                    <button type="button"
+                                                        class="btn btn-xs btn-danger btnDdAnularPedido"
+                                                        title="Anular pedido (sin retorno)"
+                                                        data-pedido="<?php echo htmlspecialchars($row["codigo"]); ?>"
+                                                        data-cliente="<?php echo htmlspecialchars($row["cliente"]); ?>">
+                                                        <i class="fa fa-times"></i>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -678,6 +702,78 @@ $estadosPipeline = array(
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="box box-solid dd-box dd-facturado-box" id="ddSeccionFacturado">
+            <div class="box-header with-border dd-box-header-compact">
+                <h3 class="box-title">
+                    <i class="fa fa-file-text-o"></i>
+                    Facturado — <?php echo htmlspecialchars($nombreMesAvance . " " . $facturadoResumen["anio"]); ?>
+                </h3>
+                <div class="dd-header-tools pull-right">
+                    <span class="dd-resumen-chip">
+                        <?php echo (int) $facturadoResumen["docs"]; ?> docs
+                    </span>
+                    <span class="dd-resumen-chip dd-resumen-chip--total">
+                        Neto S/ <?php echo number_format((float) $facturadoResumen["soles"], 0); ?>
+                    </span>
+                </div>
+            </div>
+            <div class="box-body table-responsive dd-table-wrap dd-table-wrap--facturado dd-box-body-compact">
+                <table class="table table-hover table-condensed dd-table dd-table-compact">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th class="dd-col-cliente">Cliente</th>
+                            <th>Vendedor</th>
+                            <th>Condición</th>
+                            <th class="text-right">Neto</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($facturado)) : ?>
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    No hay documentos facturados en este periodo.
+                                </td>
+                            </tr>
+                        <?php else : ?>
+                            <?php foreach ($facturado as $row) : ?>
+                                <tr>
+                                    <td>
+                                        <div class="dd-facturado-doc">
+                                            <strong><?php echo htmlspecialchars(ddFormatoDocumento($row["documento"])); ?></strong>
+                                            <?php if (!empty($row["tipo_documento"])) : ?>
+                                                <span class="text-muted"><?php echo htmlspecialchars($row["tipo_documento"]); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td class="dd-col-cliente">
+                                        <div class="dd-cell-main dd-cell-cliente" title="<?php echo htmlspecialchars($row["cod_cli"] . " · " . $row["cliente"]); ?>">
+                                            <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"]); ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="dd-cell-main">
+                                            <span class="dd-cod-cli"><?php echo htmlspecialchars($row["vendedor"]); ?></span>
+                                            <?php echo htmlspecialchars($row["nom_vendedor"]); ?>
+                                        </div>
+                                    </td>
+                                    <td><small><?php echo htmlspecialchars($row["condicion"] ? $row["condicion"] : "—"); ?></small></td>
+                                    <td class="text-right"><?php echo ddFormatoMonto($row["lista"], $row["neto"]); ?></td>
+                                    <td><?php echo htmlspecialchars($row["fecha"]); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+                <?php if ((int) $facturadoResumen["docs"] > count($facturado)) : ?>
+                    <p class="dd-facturado-nota text-muted">
+                        Mostrando los <?php echo count($facturado); ?> más recientes de <?php echo (int) $facturadoResumen["docs"]; ?> documentos del mes.
+                    </p>
+                <?php endif; ?>
             </div>
         </div>
     </section>

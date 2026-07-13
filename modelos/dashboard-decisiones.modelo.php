@@ -78,7 +78,7 @@ class ModeloDashboardDecisiones
         $sql = "SELECT
                     t.codigo,
                     t.estado,
-                    t.total,
+                    t.op_gravada AS total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente
@@ -125,35 +125,35 @@ class ModeloDashboardDecisiones
                     SUM(
                         CASE
                             WHEN t.estado = 'GENERADO' AND COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_generados,
                     SUM(
                         CASE
                             WHEN t.estado = 'APROBADO' AND COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_aprobados,
                     SUM(
                         CASE
                             WHEN t.estado = 'APT' AND COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_apt,
                     SUM(
                         CASE
                             WHEN t.estado = 'CONFIRMADO' AND COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_confirmados,
                     SUM(
                         CASE
                             WHEN COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_pipeline,
@@ -162,7 +162,7 @@ class ModeloDashboardDecisiones
                             WHEN t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
                                 AND DATEDIFF(CURDATE(), DATE(t.fecha)) >= 3
                                 AND COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_estancados,
@@ -209,7 +209,7 @@ class ModeloDashboardDecisiones
                     c.nombre AS cliente,
                     t.vendedor,
                     t.estado,
-                    t.total,
+                    t.op_gravada AS total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_sin_avance,
@@ -220,7 +220,7 @@ class ModeloDashboardDecisiones
                 WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
                   AND DATEDIFF(CURDATE(), DATE(t.fecha)) >= 3
                   AND $filtro
-                ORDER BY dias_sin_avance DESC, t.total DESC";
+                ORDER BY dias_sin_avance DESC, t.op_gravada DESC";
 
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->execute();
@@ -237,7 +237,7 @@ class ModeloDashboardDecisiones
                     SUM(
                         CASE
                             WHEN COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS generados_soles,
@@ -251,7 +251,7 @@ class ModeloDashboardDecisiones
                         CASE
                             WHEN DATEDIFF(CURDATE(), DATE(t.fecha)) >= 2
                                 AND COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS generados_antiguos_soles
@@ -268,7 +268,7 @@ class ModeloDashboardDecisiones
                         SUM(
                             CASE
                                 WHEN COALESCE(t.lista, '') <> 'precio1'
-                                    THEN IFNULL(t.total, 0)
+                                    THEN IFNULL(t.op_gravada, 0)
                                 ELSE 0
                             END
                         ) AS generados_mora_soles
@@ -308,7 +308,7 @@ class ModeloDashboardDecisiones
                     t.codigo,
                     c.codigo AS cod_cli,
                     c.nombre AS cliente,
-                    t.total,
+                    t.op_gravada AS total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente,
@@ -345,7 +345,7 @@ class ModeloDashboardDecisiones
                     t.vendedor,
                     IFNULL(ven.descripcion, t.vendedor) AS nom_vendedor,
                     t.estado,
-                    t.total,
+                    t.op_gravada AS total,
                     t.lista,
                     cv.descripcion AS condicion,
                     DATE(t.fecha) AS fecha,
@@ -401,7 +401,7 @@ class ModeloDashboardDecisiones
                     c.nombre AS cliente,
                     t.vendedor,
                     t.estado,
-                    t.total,
+                    t.op_gravada AS total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_en_estado
@@ -433,7 +433,7 @@ class ModeloDashboardDecisiones
                     SUM(
                         CASE
                             WHEN COALESCE(t.lista, '') <> 'precio1'
-                                THEN IFNULL(t.total, 0)
+                                THEN IFNULL(t.op_gravada, 0)
                             ELSE 0
                         END
                     ) AS soles_pipeline,
@@ -513,5 +513,157 @@ class ModeloDashboardDecisiones
     public static function mdlPedidosRecientes($limite = 8)
     {
         return self::mdlPedidosEnProceso($limite);
+    }
+
+    private static function rangoMesActual()
+    {
+        date_default_timezone_set("America/Lima");
+
+        $anio = (int) date("Y");
+        $mes = (int) date("n");
+        $inicio = sprintf("%04d-%02d-01", $anio, $mes);
+
+        if ($mes === 12) {
+            $fin = sprintf("%04d-01-01", $anio + 1);
+        } else {
+            $fin = sprintf("%04d-%02d-01", $anio, $mes + 1);
+        }
+
+        return array(
+            "anio" => $anio,
+            "mes" => $mes,
+            "inicio" => $inicio,
+            "fin" => $fin,
+        );
+    }
+
+    private static function sqlTiposVentaFacturada($alias = "v")
+    {
+        return "UPPER(TRIM({$alias}.tipo)) IN ('S02', 'S03', 'S70')";
+    }
+
+    public static function mdlResumenFacturadoMes()
+    {
+        $rango = self::rangoMesActual();
+        $filtro = self::filtroVendedorSql("v");
+
+        $sql = "SELECT
+                    COUNT(*) AS docs,
+                    SUM(IFNULL(v.neto, 0)) AS soles
+                FROM ventajf v
+                WHERE v.fecha >= :fecha_ini
+                  AND v.fecha < :fecha_fin
+                  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND " . self::sqlTiposVentaFacturada("v") . "
+                  AND $filtro";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
+        $stmt->bindValue(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return array(
+            "anio" => $rango["anio"],
+            "mes" => $rango["mes"],
+            "docs" => isset($row["docs"]) ? (int) $row["docs"] : 0,
+            "soles" => isset($row["soles"]) ? (float) $row["soles"] : 0,
+        );
+    }
+
+    public static function mdlFacturadoMes($limite = 40)
+    {
+        $rango = self::rangoMesActual();
+        $filtro = self::filtroVendedorSql("v");
+        $limite = max(1, min(100, (int) $limite));
+
+        $sql = "SELECT
+                    v.tipo,
+                    v.documento,
+                    v.tipo_documento,
+                    IFNULL(v.neto, 0) AS neto,
+                    v.lista_precios AS lista,
+                    DATE(v.fecha) AS fecha,
+                    v.cliente AS cod_cli,
+                    c.nombre AS cliente,
+                    TRIM(v.vendedor) AS vendedor,
+                    IFNULL(ven.descripcion, v.vendedor) AS nom_vendedor,
+                    cv.descripcion AS condicion
+                FROM ventajf v
+                LEFT JOIN clientesjf c ON v.cliente = c.codigo
+                LEFT JOIN condiciones_ventajf cv ON v.condicion_venta = cv.id
+                LEFT JOIN (
+                    SELECT codigo, descripcion
+                    FROM maestrajf
+                    WHERE tipo_dato = 'tvend'
+                ) ven ON TRIM(v.vendedor) = TRIM(ven.codigo)
+                WHERE v.fecha >= :fecha_ini
+                  AND v.fecha < :fecha_fin
+                  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND " . self::sqlTiposVentaFacturada("v") . "
+                  AND $filtro
+                ORDER BY v.fecha DESC, v.documento DESC
+                LIMIT $limite";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
+        $stmt->bindValue(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function mdlPedidoParaAnular($codigoPedido)
+    {
+        $codigoPedido = trim((string) $codigoPedido);
+
+        if ($codigoPedido === "") {
+            return null;
+        }
+
+        $sql = "SELECT
+                    t.codigo,
+                    t.estado,
+                    t.cliente AS cod_cli,
+                    c.nombre AS cliente
+                FROM temporaljf t
+                LEFT JOIN clientesjf c ON t.cliente = c.codigo
+                WHERE t.codigo = :codigo
+                LIMIT 1";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":codigo", $codigoPedido, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    public static function mdlAnularPedidoGenerado($codigoPedido, $usuarioId)
+    {
+        $codigoPedido = trim((string) $codigoPedido);
+        $usuarioId = (int) $usuarioId;
+
+        if ($codigoPedido === "" || $usuarioId <= 0) {
+            return false;
+        }
+
+        $sql = "UPDATE temporaljf
+                SET estado = 'ANULADO',
+                    usuario_estado = :usuario
+                WHERE codigo = :codigo
+                  AND estado = 'GENERADO'";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":usuario", $usuarioId, PDO::PARAM_INT);
+        $stmt->bindValue(":codigo", $codigoPedido, PDO::PARAM_STR);
+
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        return $stmt->rowCount() > 0;
     }
 }

@@ -519,6 +519,33 @@
     max-height: 260px;
 }
 
+.dd-table-wrap--facturado {
+    max-height: 320px;
+}
+
+.dd-facturado-box > .box-header {
+    background: #f7fbff;
+}
+
+.dd-facturado-doc {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    line-height: 1.25;
+}
+
+.dd-facturado-doc span {
+    font-size: 11px;
+}
+
+.dd-facturado-nota {
+    margin: 8px 0 0;
+    font-size: 11px;
+    text-align: center;
+}
+
 .dd-link-pedido {
     color: #1e3a5f;
     text-decoration: none;

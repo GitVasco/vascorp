@@ -1,6 +1,6 @@
 <?php
-if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboardCobranzas()) {
-    echo '<script>window.location = "inicio";</script>';
+if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas")) {
+    denegarAccesoModulo();
     return;
 }
 ?>

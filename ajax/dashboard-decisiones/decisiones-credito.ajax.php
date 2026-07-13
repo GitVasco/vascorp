@@ -5,6 +5,7 @@ session_start();
 date_default_timezone_set("America/Lima");
 
 require_once "../../controladores/config.php";
+require_once "../../controladores/permisos-modulos.config.php";
 require_once "../../controladores/decisiones-credito.config.php";
 require_once "../../controladores/inteligencia-comercial.config.php";
 require_once "../../modelos/conexion.php";
@@ -25,8 +26,8 @@ if (!isset($_SESSION["iniciarSesion"]) || $_SESSION["iniciarSesion"] !== "ok") {
     exit;
 }
 
-if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboardCobranzas()) {
-    echo json_encode(array("ok" => false, "msg" => "Sin permiso para el Centro de Decisiones"));
+if (!usuarioPuedeVerModulo("gestion_comercial", "centro_decisiones")) {
+    echo json_encode(array("ok" => false, "msg" => "Sin permiso para realizar esta acción."));
     exit;
 }
 

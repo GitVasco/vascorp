@@ -101,6 +101,58 @@ class ControladorDashboardDecisiones
         return ModeloDashboardDecisiones::mdlPedidosRecientes($limite);
     }
 
+    public static function ctrResumenFacturadoMes()
+    {
+        return ModeloDashboardDecisiones::mdlResumenFacturadoMes();
+    }
+
+    public static function ctrFacturadoMes($limite = 40)
+    {
+        return ModeloDashboardDecisiones::mdlFacturadoMes($limite);
+    }
+
+    public static function ctrAnularPedidoGenerado($codigoPedido)
+    {
+        $codigoPedido = trim((string) $codigoPedido);
+
+        if ($codigoPedido === "") {
+            return array("ok" => false, "msg" => "Pedido no indicado.");
+        }
+
+        if (!isset($_SESSION["id"]) || !(int) $_SESSION["id"]) {
+            return array("ok" => false, "msg" => "Sesión no válida.");
+        }
+
+        $pedido = ModeloDashboardDecisiones::mdlPedidoParaAnular($codigoPedido);
+
+        if (!$pedido) {
+            return array("ok" => false, "msg" => "Pedido no encontrado.");
+        }
+
+        if (strtoupper(trim((string) $pedido["estado"])) !== "GENERADO") {
+            return array(
+                "ok" => false,
+                "msg" => "Solo se pueden anular pedidos en estado GENERADO. Estado actual: "
+                    . $pedido["estado"],
+            );
+        }
+
+        $ok = ModeloDashboardDecisiones::mdlAnularPedidoGenerado(
+            $codigoPedido,
+            (int) $_SESSION["id"]
+        );
+
+        if (!$ok) {
+            return array("ok" => false, "msg" => "No se pudo anular el pedido.");
+        }
+
+        return array(
+            "ok" => true,
+            "msg" => "Pedido anulado correctamente.",
+            "codigo" => $pedido["codigo"],
+        );
+    }
+
     public static function ctrDatosDashboard()
     {
         ModeloDashboardDecisiones::setVendedorFiltro(self::ctrVendedorSeleccionado());
@@ -116,6 +168,8 @@ class ControladorDashboardDecisiones
             "estancados" => self::ctrPedidosEstancados(),
             "atraso" => self::ctrClientesConAtraso(),
             "avance_ventas" => self::ctrAvanceVentasMes(),
+            "facturado_resumen" => self::ctrResumenFacturadoMes(),
+            "facturado" => self::ctrFacturadoMes(),
         );
     }
 
