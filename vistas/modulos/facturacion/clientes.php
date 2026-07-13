@@ -4,6 +4,21 @@ $categoriasComercialesActivas = ControladorCategoriasClientes::ctrListarCategori
 if (!is_array($categoriasComercialesActivas)) {
     $categoriasComercialesActivas = array();
 }
+
+$resumenCategoriasClientes = ControladorCategoriasClientes::ctrListarCategorias();
+if (!is_array($resumenCategoriasClientes)) {
+    $resumenCategoriasClientes = array();
+}
+$resumenCabeceraClientes = array();
+foreach ($resumenCategoriasClientes as $catResumen) {
+    if ((int) $catResumen["estado"] !== 1) {
+        continue;
+    }
+    $resumenCabeceraClientes[] = $catResumen;
+}
+$totalSinCategoriaClientes = ControladorCategoriasClientes::ctrContarClientesSinCategoria();
+$nResumenCabecera = count($resumenCabeceraClientes) + 1;
+$colResumenCabecera = $nResumenCabecera <= 4 ? 3 : 2;
 ?>
 <div class="content-wrapper">
 
@@ -27,6 +42,36 @@ if (!is_array($categoriasComercialesActivas)) {
 
     <section class="content">
 
+        <div class="row">
+            <?php foreach ($resumenCabeceraClientes as $resCat) :
+                $hexResumen = ControladorCategoriasClientes::ctrResolverColorCategoria(
+                    isset($resCat["color"]) ? $resCat["color"] : "",
+                    isset($resCat["codigo"]) ? $resCat["codigo"] : ""
+                );
+                $totalClientesCat = isset($resCat["total_clientes"]) ? (int) $resCat["total_clientes"] : 0;
+            ?>
+            <div class="col-md-<?php echo (int) $colResumenCabecera; ?> col-sm-4 col-xs-6">
+                <div class="info-box filtro-categoria-clientes" data-categoria="<?php echo htmlspecialchars($resCat["codigo"], ENT_QUOTES, 'UTF-8'); ?>" style="background-color:<?php echo htmlspecialchars($hexResumen, ENT_QUOTES, 'UTF-8'); ?>; color:#fff; min-height:90px; cursor:pointer;">
+                    <span class="info-box-icon" style="background:rgba(0,0,0,0.12);"><i class="fa fa-tag"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text"><?php echo htmlspecialchars($resCat["nombre"], ENT_QUOTES, "UTF-8"); ?></span>
+                        <span class="info-box-number"><?php echo $totalClientesCat; ?> <small>clientes</small></span>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+
+            <div class="col-md-<?php echo (int) $colResumenCabecera; ?> col-sm-4 col-xs-6">
+                <div class="info-box bg-gray filtro-categoria-clientes" data-categoria="sin" style="min-height:90px; cursor:pointer;">
+                    <span class="info-box-icon"><i class="fa fa-question-circle"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Sin categoría</span>
+                        <span class="info-box-number"><?php echo (int) $totalSinCategoriaClientes; ?> <small>clientes</small></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="box">
 
             <div class="box-header with-border">
@@ -36,6 +81,23 @@ if (!is_array($categoriasComercialesActivas)) {
                     Agregar cliente
 
                 </button>
+
+                <div class="pull-right" style="min-width:240px;max-width:320px;">
+                    <label for="filtroCategoriaCliente" class="control-label" style="margin-bottom:4px;display:block;font-weight:normal;">
+                        Filtrar por categoría
+                    </label>
+                    <select class="form-control selectpicker" id="filtroCategoriaCliente" data-live-search="true" title="Todas las categorías">
+                        <option value="">Todas</option>
+                        <option value="sin">Sin categoría</option>
+                        <?php foreach ($categoriasComercialesActivas as $catFiltro) : ?>
+                        <option value="<?php echo htmlspecialchars($catFiltro["codigo"], ENT_QUOTES, "UTF-8"); ?>">
+                            <?php echo htmlspecialchars($catFiltro["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="clearfix"></div>
 
             </div>
 

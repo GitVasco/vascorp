@@ -17,6 +17,10 @@ class TablaClientes
 
         $item = null;
         $valor = null;
+        $filtroCategoria = isset($_GET["categoria"]) ? trim($_GET["categoria"]) : "";
+        if ($filtroCategoria === "" && isset($_POST["categoria"])) {
+            $filtroCategoria = trim($_POST["categoria"]);
+        }
 
         $clientes = ControladorClientes::ctrMostrarClientes($item, $valor);
 
@@ -25,7 +29,32 @@ class TablaClientes
             $datosJson = '{
         "data": [';
 
+            $hayFilas = false;
+
             for ($i = 0; $i < count($clientes); $i++) {
+
+                $codigoCategoria = isset($clientes[$i]["categoria_codigo"])
+                    ? trim((string) $clientes[$i]["categoria_codigo"])
+                    : "";
+                $nombreCategoria = isset($clientes[$i]["categoria_comercial"])
+                    ? trim((string) $clientes[$i]["categoria_comercial"])
+                    : "";
+                $esSinCategoria = ($codigoCategoria === "" ||
+                    $nombreCategoria === "" ||
+                    $nombreCategoria === "Sin categoría / pendiente" ||
+                    $nombreCategoria === "Sin categoría");
+
+                if ($filtroCategoria !== "") {
+                    if ($filtroCategoria === "sin") {
+                        if (!$esSinCategoria) {
+                            continue;
+                        }
+                    } elseif (strtoupper($codigoCategoria) !== strtoupper($filtroCategoria)) {
+                        continue;
+                    }
+                }
+
+                $hayFilas = true;
 
                 /* 
             todo: TIPO PERSONA
@@ -118,13 +147,17 @@ class TablaClientes
                 ],';
             }
 
-            $datosJson = substr($datosJson, 0, -1);
-
-            $datosJson .= '] 
+            if ($hayFilas) {
+                $datosJson = substr($datosJson, 0, -1);
+                $datosJson .= '] 
 
             }';
-
-            echo $datosJson;
+                echo $datosJson;
+            } else {
+                echo '{
+                "data":[]
+            }';
+            }
         } else {
 
             echo '{
@@ -134,7 +167,6 @@ class TablaClientes
         }
     }
 }
-
 /*=============================================
 ACTIVAR TABLA DE CLIENTES
 =============================================*/

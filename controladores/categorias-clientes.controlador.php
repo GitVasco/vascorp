@@ -426,6 +426,15 @@ class ControladorCategoriasClientes
 	}
 
 	/*=============================================
+	Clientes activos sin categoría efectiva
+	=============================================*/
+	static public function ctrContarClientesSinCategoria()
+	{
+
+		return ModeloCategoriasClientes::mdlContarClientesSinCategoria();
+	}
+
+	/*=============================================
 	Cerrar asignación vigente de una entidad
 	=============================================*/
 	static public function ctrCerrarAsignacionEntidad($tipoEntidad, $codigoEntidad)

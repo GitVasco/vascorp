@@ -1,10 +1,14 @@
 /*
  * CARGAR TABLA CLIENTES
  */
-$(".tablaClientes").DataTable({
-    ajax:
-        "ajax/facturacion/tabla-clientes.ajax.php?perfil=" +
-        $("#perfilOculto").val(),
+var tablaClientesDt = $(".tablaClientes").DataTable({
+    ajax: {
+        url: "ajax/facturacion/tabla-clientes.ajax.php",
+        data: function (d) {
+            d.perfil = $("#perfilOculto").val();
+            d.categoria = $("#filtroCategoriaCliente").val() || "";
+        },
+    },
     deferRender: true,
     retrieve: true,
     processing: true,
@@ -50,6 +54,55 @@ $(".tablaClientes").DataTable({
                 ": Activar para ordenar la columna de manera descendente",
         },
     },
+});
+
+function refrescarFiltroCategoriaCliente() {
+    var $select = $("#filtroCategoriaCliente");
+    if (!$select.length) {
+        return;
+    }
+    try {
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("refresh");
+        } else if (typeof $select.selectpicker === "function") {
+            $select.selectpicker({
+                liveSearch: true,
+                size: 8,
+            });
+        }
+    } catch (e) {}
+}
+
+function aplicarFiltroCategoriaCliente(codigoCategoria) {
+    var valor = typeof codigoCategoria === "undefined" || codigoCategoria === null
+        ? ""
+        : String(codigoCategoria);
+    $("#filtroCategoriaCliente").val(valor);
+    refrescarFiltroCategoriaCliente();
+    if (tablaClientesDt) {
+        tablaClientesDt.ajax.reload();
+    }
+}
+
+$(function () {
+    refrescarFiltroCategoriaCliente();
+
+    $("#filtroCategoriaCliente").on("changed.bs.select change", function () {
+        if (tablaClientesDt) {
+            tablaClientesDt.ajax.reload();
+        }
+    });
+
+    $(document).on("click", ".filtro-categoria-clientes", function () {
+        var codigo = $(this).attr("data-categoria") || "";
+        var actual = $("#filtroCategoriaCliente").val() || "";
+        // Segundo clic en la misma caja limpia el filtro
+        if (actual === codigo) {
+            aplicarFiltroCategoriaCliente("");
+        } else {
+            aplicarFiltroCategoriaCliente(codigo);
+        }
+    });
 });
 // VALIDACIÓN DE UN DOCUMENTO EXISTENTE EN LA BD AL REGISTRAR
 function validarDocumento(documento, tipo) {

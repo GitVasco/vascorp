@@ -455,6 +455,50 @@ class ModeloCategoriasClientes
 	}
 
 	/*=============================================
+	Clientes activos sin categoría efectiva
+	=============================================*/
+	static public function mdlContarClientesSinCategoria()
+	{
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT COUNT(*) AS total
+			 FROM clientesjf c
+			 WHERE c.estado = 1
+			   AND c.fecha IS NOT NULL
+			   AND NOT (
+					(
+						(c.grupo IS NULL OR c.grupo = '')
+						AND EXISTS (
+							SELECT 1
+							FROM categorias_clientes_asignacionesjf a
+							WHERE a.tipo_entidad = 'cliente'
+							  AND a.codigo_entidad = c.codigo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+						)
+					)
+					OR (
+						c.grupo IS NOT NULL AND c.grupo <> ''
+						AND EXISTS (
+							SELECT 1
+							FROM categorias_clientes_asignacionesjf a
+							WHERE a.tipo_entidad = 'grupo'
+							  AND a.codigo_entidad = c.grupo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+						)
+					)
+			   )"
+		);
+		$stmt->execute();
+		$fila = $stmt->fetch();
+
+		return $fila && isset($fila["total"]) ? (int) $fila["total"] : 0;
+	}
+
+	/*=============================================
 	Categorías activas para selectores
 	=============================================*/
 	static public function mdlListarCategoriasActivas()
@@ -596,30 +640,6 @@ class ModeloCategoriasClientes
 	/*=============================================
 	Conteos resumen bandeja
 	=============================================*/
-	static public function mdlContarClientesSinCategoria()
-	{
-
-		$stmt = Conexion::conectar()->prepare(
-			"SELECT COUNT(*) AS total
-			 FROM clientesjf cli
-			 WHERE cli.estado = 1
-			   AND cli.fecha IS NOT NULL
-			   AND (cli.grupo IS NULL OR cli.grupo = '')
-			   AND NOT EXISTS (
-				SELECT 1
-				FROM categorias_clientes_asignacionesjf a
-				WHERE a.tipo_entidad = 'cliente'
-				  AND a.codigo_entidad = cli.codigo
-				  AND a.estado = 1
-				  AND a.vigencia_desde <= NOW()
-				  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
-			   )"
-		);
-		$stmt->execute();
-		$fila = $stmt->fetch();
-		return $fila ? (int) $fila["total"] : 0;
-	}
-
 	static public function mdlContarGruposSinCategoria()
 	{
 
