@@ -61,6 +61,7 @@ class TablaCategoriasComerciales
 					: "0";
 
 				$montoVentas = isset($cat["monto_ventas_anual"]) ? $cat["monto_ventas_anual"] : null;
+				$lineaMinima = isset($cat["linea_minima"]) ? $cat["linea_minima"] : null;
 				$dtoVenta = isset($cat["descuento_venta_pct"]) ? $cat["descuento_venta_pct"] : null;
 				$dtoPronto = isset($cat["descuento_pronto_pago_pct"]) ? $cat["descuento_pronto_pago_pct"] : null;
 
@@ -76,6 +77,7 @@ class TablaCategoriasComerciales
 					$nombreBadge,
 					isset($cat["descripcion"]) ? $cat["descripcion"] : "",
 					$this->formatoMonto($montoVentas),
+					$this->formatoMonto($lineaMinima),
 					$this->formatoPct($dtoVenta),
 					$this->formatoPct($dtoPronto),
 					(string) $totalClientes,

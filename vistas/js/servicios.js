@@ -771,7 +771,11 @@ $(".tablaServicios").on("click", ".btnVisualizarServicio", function () {
 
             $(".detalleMP").remove();
 
+            var totalEnviado = 0;
+
             for (var id of respuestaDetalle) {
+                totalEnviado += Number(id.total) || 0;
+
                 if (id.t1 > 0) {
                     var t1 = id.t1;
                 } else var t1 = "";
@@ -853,6 +857,10 @@ $(".tablaServicios").on("click", ".btnVisualizarServicio", function () {
                         "</tr>"
                 );
             }
+
+            // Cabecera: total enviado según detalle (cantidad), no saldo ni total desactualizado
+            $("#cantidad").val(totalEnviado);
+            $("#cantidad").number(true, 0);
         },
     });
 });

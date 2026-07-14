@@ -381,6 +381,18 @@
 .dd-filtro-limpiar {
     margin-left: 8px;
     font-size: 11px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: #3c8dbc;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.dd-filtro-limpiar:hover,
+.dd-filtro-limpiar:focus {
+    color: #2e6da4;
+    outline: none;
 }
 
 .dd-box-header-compact {
@@ -1659,6 +1671,39 @@
 .dd-dc-btn-submit {
     margin-top: 2px;
 }
+
+#ddContenidoDashboard {
+    position: relative;
+    transition: opacity 0.2s ease;
+}
+
+#ddContenidoDashboard.dd-dashboard--loading {
+    opacity: 0.55;
+    cursor: wait;
+    pointer-events: none;
+}
+
+#ddContenidoDashboard.dd-dashboard--loading::after {
+    content: "";
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    width: 28px;
+    height: 28px;
+    margin-left: -14px;
+    border: 3px solid #cfd8e3;
+    border-top-color: #3c8dbc;
+    border-radius: 50%;
+    animation: dd-dashboard-spin 0.7s linear infinite;
+    z-index: 5;
+}
+
+@keyframes dd-dashboard-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 
 @media (max-width: 767px) {
     .dd-dc-context {

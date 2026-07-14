@@ -790,10 +790,155 @@
         });
     }
 
+    var ddRefreshXhr = null;
+    var ddRefreshSeq = 0;
+    var ddIgnorarCambioFiltro = false;
+
+    function ddUrlDashboard(vendedor) {
+        var url = "index.php?ruta=dashboard-decisiones";
+        if (vendedor) {
+            url += "&vendedor=" + encodeURIComponent(vendedor);
+        }
+        return url;
+    }
+
+    function ddSetFiltroControlesDisabled(disabled) {
+        var $select = $("#ddFiltroVendedor");
+        var $btns = $("#btnDdActualizar, #btnDdLimpiarFiltro, .btnDdLimpiarFiltro");
+
+        $select.prop("disabled", disabled);
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("refresh");
+        }
+        $btns.prop("disabled", disabled);
+    }
+
+    function ddAplicarValorSelectVendedor(vendedor) {
+        ddIgnorarCambioFiltro = true;
+        var $select = $("#ddFiltroVendedor");
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("val", vendedor);
+        } else {
+            $select.val(vendedor);
+        }
+        ddIgnorarCambioFiltro = false;
+    }
+
+    function refrescarDashboard(vendedor, opciones) {
+        opciones = opciones || {};
+        vendedor = vendedor == null ? "" : String(vendedor);
+
+        var seq = ++ddRefreshSeq;
+
+        if (ddRefreshXhr && ddRefreshXhr.readyState !== 4) {
+            ddRefreshXhr.abort();
+        }
+
+        $("#ddContenidoDashboard").addClass("dd-dashboard--loading");
+        ddSetFiltroControlesDisabled(true);
+
+        ddRefreshXhr = $.ajax({
+            url: "ajax/dashboard-decisiones/refrescar-dashboard.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: { vendedor: vendedor },
+        })
+            .done(function (resp) {
+                if (seq !== ddRefreshSeq) {
+                    return;
+                }
+
+                if (!resp || !resp.ok) {
+                    swal(
+                        "Atención",
+                        (resp && resp.msg) || "No se pudo actualizar el dashboard.",
+                        "warning"
+                    );
+                    return;
+                }
+
+                $("#ddContenidoDashboard").html(resp.html);
+
+                if (opciones.actualizarUrl) {
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState(
+                            { vendedor: resp.vendedor || "" },
+                            "",
+                            ddUrlDashboard(resp.vendedor || "")
+                        );
+                    }
+                }
+
+                if (opciones.mensajeExito) {
+                    swal("Listo", opciones.mensajeExito, "success");
+                }
+            })
+            .fail(function (xhr, status) {
+                if (status === "abort" || seq !== ddRefreshSeq) {
+                    return;
+                }
+                swal("Error", "No se pudo actualizar el dashboard.", "error");
+            })
+            .always(function () {
+                if (seq !== ddRefreshSeq) {
+                    return;
+                }
+                $("#ddContenidoDashboard").removeClass("dd-dashboard--loading");
+                ddSetFiltroControlesDisabled(false);
+                ddRefreshXhr = null;
+            });
+
+        return ddRefreshXhr;
+    }
+
+    function ddLimpiarFiltroVendedor() {
+        ddAplicarValorSelectVendedor("");
+        refrescarDashboard("", { actualizarUrl: true });
+    }
+
     $(document).ready(function () {
         if ($("#ddFiltroVendedor").length) {
             $("#ddFiltroVendedor").selectpicker("refresh");
         }
+
+        $("#ddFiltroVendedor").on("change", function () {
+            if (ddIgnorarCambioFiltro) {
+                return;
+            }
+            refrescarDashboard($(this).val(), { actualizarUrl: true });
+        });
+
+        $("#btnDdActualizar").on("click", function () {
+            refrescarDashboard($("#ddFiltroVendedor").val(), { actualizarUrl: false });
+        });
+
+        $(document).on("click", ".btnDdLimpiarFiltro", function (e) {
+            e.preventDefault();
+            ddLimpiarFiltroVendedor();
+        });
+
+        $(window).on("popstate", function (e) {
+            if (!$("#ddContenidoDashboard").length) {
+                return;
+            }
+
+            var state = e.originalEvent && e.originalEvent.state;
+            var vendedor = "";
+
+            if (state && state.vendedor != null) {
+                vendedor = String(state.vendedor);
+            } else {
+                try {
+                    var params = new URLSearchParams(window.location.search);
+                    vendedor = params.get("vendedor") || "";
+                } catch (err) {
+                    vendedor = "";
+                }
+            }
+
+            ddAplicarValorSelectVendedor(vendedor);
+            refrescarDashboard(vendedor, { actualizarUrl: false });
+        });
     });
 
     $(document).on("click", ".btnDdMiniIc", function () {
@@ -1048,13 +1193,14 @@
                         return;
                     }
 
-                    swal({
-                        title: "Pedido anulado",
-                        text: "El pedido " + pedido + " quedó anulado sin retorno.",
-                        type: "success",
-                        confirmButtonText: "Cerrar",
-                    }).then(function () {
-                        window.location.reload();
+                    refrescarDashboard($("#ddFiltroVendedor").val(), {
+                        actualizarUrl: false,
+                        mensajeExito:
+                            "El pedido fue anulado y el dashboard fue actualizado.",
+                    }).fail(function (xhr, status) {
+                        if (status !== "abort") {
+                            $btn.prop("disabled", false);
+                        }
                     });
                 })
                 .fail(function () {

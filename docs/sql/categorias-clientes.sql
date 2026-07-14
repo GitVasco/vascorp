@@ -205,6 +205,18 @@ WHERE c.codigo IN ('DIST', 'MAYO', 'MINO', 'CATA', 'UFIN')
         AND r.tipo_requisito = 'monto_compras_anual'
   );
 
+INSERT INTO categorias_clientes_requisitosjf
+    (id_categoria, tipo_requisito, valor_numerico, unidad, descripcion, estado, usureg, fecreg)
+SELECT c.id, 'linea_minima', NULL, 'PEN', 'Línea de crédito mínima coherente con la categoría', 1, 'sistema', NOW()
+FROM categorias_clientesjf c
+WHERE c.codigo IN ('DIST', 'MAYO', 'MINO', 'CATA', 'UFIN')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM categorias_clientes_requisitosjf r
+      WHERE r.id_categoria = c.id
+        AND r.tipo_requisito = 'linea_minima'
+  );
+
 INSERT INTO categorias_clientes_beneficiosjf
     (id_categoria, descuento_venta_pct, descuento_pronto_pago_pct, descripcion, estado, usureg, fecreg)
 SELECT c.id, NULL, NULL, 'Beneficios pendientes de definir', 1, 'sistema', NOW()

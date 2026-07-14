@@ -5,24 +5,8 @@ require_once __DIR__ . "/conexion.php";
 class ModeloDashboardDecisiones
 {
     private static $vendedorFiltro = "";
-
-    private static function filtroVendedorSql($alias = "t")
-    {
-        $sql = "EXISTS (
-                    SELECT 1
-                    FROM maestrajf m_dd
-                    WHERE UPPER(m_dd.tipo_dato) = 'TVEND'
-                      AND TRIM(m_dd.codigo) = TRIM($alias.vendedor)
-                      AND m_dd.estado_decisiones = 1
-                )";
-
-        if (self::$vendedorFiltro !== "") {
-            $codigo = str_replace("'", "''", self::$vendedorFiltro);
-            $sql .= " AND TRIM($alias.vendedor) = '" . $codigo . "'";
-        }
-
-        return $sql;
-    }
+    private static $vendedoresCache = null;
+    private static $bindSeq = 0;
 
     public static function setVendedorFiltro($codigo)
     {
@@ -32,6 +16,65 @@ class ModeloDashboardDecisiones
     public static function getVendedorFiltro()
     {
         return self::$vendedorFiltro;
+    }
+
+    /**
+     * JOIN a vendedores activos del Centro de Decisiones.
+     * Solo cuando no hay vendedor seleccionado (el filtro puntual va en WHERE).
+     */
+    private static function sqlJoinVendedoresActivos($aliasTabla, $aliasMaestra)
+    {
+        if (self::$vendedorFiltro !== "") {
+            return "";
+        }
+
+        return " INNER JOIN maestrajf {$aliasMaestra}
+                    ON {$aliasMaestra}.codigo = {$aliasTabla}.vendedor
+                   AND {$aliasMaestra}.tipo_dato = 'TVEND'
+                   AND {$aliasMaestra}.estado_decisiones = 1 ";
+    }
+
+    /**
+     * Condición indexable de vendedor seleccionado (parámetro preparado).
+     */
+    private static function sqlCondicionVendedor($aliasTabla, array &$params)
+    {
+        if (self::$vendedorFiltro === "") {
+            return "1 = 1";
+        }
+
+        self::$bindSeq++;
+        $key = ":dd_vendedor_" . self::$bindSeq;
+        $params[$key] = self::$vendedorFiltro;
+
+        return "{$aliasTabla}.vendedor = {$key}";
+    }
+
+    private static function bindParams($stmt, array $params)
+    {
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        }
+    }
+
+    /**
+     * Subconsulta de deuda vencida por cliente, con el mismo filtro de vendedor del dashboard.
+     */
+    private static function sqlSubqueryDeudaVencida($exprCliente, array &$params, $aliasMv)
+    {
+        $join = self::sqlJoinVendedoresActivos("ct", $aliasMv);
+        $whereVend = self::sqlCondicionVendedor("ct", $params);
+
+        return "IFNULL((
+                    SELECT SUM(ct.saldo)
+                    FROM cuenta_ctejf ct
+                    {$join}
+                    WHERE ct.cliente = {$exprCliente}
+                      AND ct.estado = 'PENDIENTE'
+                      AND ct.saldo > 0
+                      AND ct.fecha_ven < CURDATE()
+                      AND {$whereVend}
+                ), 0)";
     }
 
     public static function normalizarVendedorFiltro($codigo)
@@ -53,18 +96,24 @@ class ModeloDashboardDecisiones
 
     public static function mdlVendedoresPermitidos()
     {
+        if (self::$vendedoresCache !== null) {
+            return self::$vendedoresCache;
+        }
+
         $sql = "SELECT
                     codigo,
                     descripcion
                 FROM maestrajf
-                WHERE UPPER(tipo_dato) = 'TVEND'
+                WHERE tipo_dato = 'TVEND'
                   AND estado_decisiones = 1
                 ORDER BY codigo ASC";
 
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        self::$vendedoresCache = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return self::$vendedoresCache;
     }
 
     public static function mdlPedidoMini($codigoPedido, $codigoCliente = "")
@@ -114,7 +163,9 @@ class ModeloDashboardDecisiones
 
     public static function mdlResumenPedidos()
     {
-        $filtro = self::filtroVendedorSql("t");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_ped");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
 
         $sql = "SELECT
                     COUNT(*) AS total_activos,
@@ -175,10 +226,12 @@ class ModeloDashboardDecisiones
                         END
                     ) AS estancados_3d
                 FROM temporaljf t
+                {$join}
                 WHERE t.estado NOT IN ('ANULADO', 'FACTURADO')
-                  AND $filtro";
+                  AND {$whereVend}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -201,7 +254,9 @@ class ModeloDashboardDecisiones
 
     public static function mdlPedidosEstancados()
     {
-        $filtro = self::filtroVendedorSql("t");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_est");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
 
         $sql = "SELECT
                     t.codigo,
@@ -215,14 +270,16 @@ class ModeloDashboardDecisiones
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_sin_avance,
                     u.nombre AS usuario
                 FROM temporaljf t
+                {$join}
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo
                 LEFT JOIN usuariosjf u ON t.usuario = u.id
                 WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
                   AND DATEDIFF(CURDATE(), DATE(t.fecha)) >= 3
-                  AND $filtro
+                  AND {$whereVend}
                 ORDER BY dias_sin_avance DESC, t.op_gravada DESC";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -230,7 +287,9 @@ class ModeloDashboardDecisiones
 
     public static function mdlAlertasDecision()
     {
-        $filtro = self::filtroVendedorSql("t");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_al");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
 
         $sql = "SELECT
                     COUNT(*) AS generados_total,
@@ -256,12 +315,18 @@ class ModeloDashboardDecisiones
                         END
                     ) AS generados_antiguos_soles
                 FROM temporaljf t
+                {$join}
                 WHERE t.estado = 'GENERADO'
-                  AND $filtro";
+                  AND {$whereVend}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
         $base = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $paramsMora = array();
+        $joinMora = self::sqlJoinVendedoresActivos("t", "mv_am");
+        $whereVendMora = self::sqlCondicionVendedor("t", $paramsMora);
 
         $sqlMora = "SELECT
                         COUNT(*) AS generados_mora,
@@ -273,19 +338,21 @@ class ModeloDashboardDecisiones
                             END
                         ) AS generados_mora_soles
                     FROM temporaljf t
+                    {$joinMora}
                     INNER JOIN clientesjf c ON t.cliente = c.codigo
                     WHERE t.estado = 'GENERADO'
-                      AND $filtro
+                      AND {$whereVendMora}
                       AND EXISTS (
                           SELECT 1
                           FROM cuenta_ctejf ct
                           WHERE ct.cliente = c.codigo
-                            AND UPPER(ct.estado) = 'PENDIENTE'
-                            AND IFNULL(ct.saldo, 0) > 0
+                            AND ct.estado = 'PENDIENTE'
+                            AND ct.saldo > 0
                             AND ct.fecha_ven < CURDATE()
                       )";
 
         $stmtMora = Conexion::conectar()->prepare($sqlMora);
+        self::bindParams($stmtMora, $paramsMora);
         $stmtMora->execute();
         $mora = $stmtMora->fetch(PDO::FETCH_ASSOC);
 
@@ -301,7 +368,10 @@ class ModeloDashboardDecisiones
 
     public static function mdlTopGeneradosPendientes($limite = 20)
     {
-        $filtro = self::filtroVendedorSql("t");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_top");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
+        $deudaSql = self::sqlSubqueryDeudaVencida("c.codigo", $params, "mv_topd");
         $limite = max(1, min(30, (int) $limite));
 
         $sql = "SELECT
@@ -312,22 +382,17 @@ class ModeloDashboardDecisiones
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente,
-                    IFNULL((
-                        SELECT SUM(IFNULL(ct.saldo, 0))
-                        FROM cuenta_ctejf ct
-                        WHERE ct.cliente = c.codigo
-                          AND UPPER(ct.estado) = 'PENDIENTE'
-                          AND IFNULL(ct.saldo, 0) > 0
-                          AND ct.fecha_ven < CURDATE()
-                    ), 0) AS deuda_vencida_cliente
+                    {$deudaSql} AS deuda_vencida_cliente
                 FROM temporaljf t
+                {$join}
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo
                 WHERE t.estado = 'GENERADO'
-                  AND $filtro
+                  AND {$whereVend}
                 ORDER BY dias_pendiente DESC, t.fecha ASC, t.codigo ASC
-                LIMIT $limite";
+                LIMIT {$limite}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -335,7 +400,10 @@ class ModeloDashboardDecisiones
 
     public static function mdlPedidosGenerados($limite = 30)
     {
-        $filtro = self::filtroVendedorSql("t");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_gen");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
+        $deudaSql = self::sqlSubqueryDeudaVencida("c.codigo", $params, "mv_gend");
         $limite = max(1, min(50, (int) $limite));
 
         $sql = "SELECT
@@ -351,40 +419,33 @@ class ModeloDashboardDecisiones
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente,
                     u.nombre AS usuario,
-                    IFNULL((
-                        SELECT SUM(IFNULL(ct.saldo, 0))
-                        FROM cuenta_ctejf ct
-                        WHERE ct.cliente = c.codigo
-                          AND UPPER(ct.estado) = 'PENDIENTE'
-                          AND IFNULL(ct.saldo, 0) > 0
-                          AND ct.fecha_ven < CURDATE()
-                    ), 0) AS deuda_vencida_cliente,
+                    {$deudaSql} AS deuda_vencida_cliente,
                     CASE
                         WHEN EXISTS (
                             SELECT 1
                             FROM cuenta_ctejf ct
                             WHERE ct.cliente = c.codigo
-                              AND UPPER(ct.estado) = 'PENDIENTE'
-                              AND IFNULL(ct.saldo, 0) > 0
+                              AND ct.estado = 'PENDIENTE'
+                              AND ct.saldo > 0
                               AND ct.fecha_ven < CURDATE()
                         ) THEN 1
                         ELSE 0
                     END AS cliente_en_mora
                 FROM temporaljf t
+                {$join}
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo
                 LEFT JOIN condiciones_ventajf cv ON t.condicion_venta = cv.id
                 LEFT JOIN usuariosjf u ON t.usuario = u.id
-                LEFT JOIN (
-                    SELECT codigo, descripcion
-                    FROM maestrajf
-                    WHERE tipo_dato = 'tvend'
-                ) ven ON t.vendedor = ven.codigo
+                LEFT JOIN maestrajf ven
+                    ON ven.codigo = t.vendedor
+                   AND ven.tipo_dato = 'TVEND'
                 WHERE t.estado = 'GENERADO'
-                  AND $filtro
+                  AND {$whereVend}
                 ORDER BY t.fecha DESC, t.codigo DESC
-                LIMIT $limite";
+                LIMIT {$limite}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -392,7 +453,9 @@ class ModeloDashboardDecisiones
 
     public static function mdlPedidosEnProceso($limite = 12)
     {
-        $filtro = self::filtroVendedorSql("t");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_pro");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
         $limite = max(1, min(30, (int) $limite));
 
         $sql = "SELECT
@@ -406,13 +469,15 @@ class ModeloDashboardDecisiones
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_en_estado
                 FROM temporaljf t
+                {$join}
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo
                 WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
-                  AND $filtro
+                  AND {$whereVend}
                 ORDER BY t.fecha DESC
-                LIMIT $limite";
+                LIMIT {$limite}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -420,8 +485,10 @@ class ModeloDashboardDecisiones
 
     public static function mdlClientesConAtraso($limite = 12)
     {
-        $filtroPedido = self::filtroVendedorSql("t");
-        $filtroCartera = self::filtroVendedorSql("ct");
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_atr");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
+        $deudaSql = self::sqlSubqueryDeudaVencida("c.codigo", $params, "mv_atrd");
         $limite = max(1, min(30, (int) $limite));
 
         $sql = "SELECT
@@ -437,67 +504,61 @@ class ModeloDashboardDecisiones
                             ELSE 0
                         END
                     ) AS soles_pipeline,
-                    IFNULL((
-                        SELECT SUM(IFNULL(ct.saldo, 0))
-                        FROM cuenta_ctejf ct
-                        WHERE ct.cliente = c.codigo
-                          AND UPPER(ct.estado) = 'PENDIENTE'
-                          AND IFNULL(ct.saldo, 0) > 0
-                          AND ct.fecha_ven < CURDATE()
-                          AND $filtroCartera
-                    ), 0) AS deuda_vencida
+                    {$deudaSql} AS deuda_vencida
                 FROM temporaljf t
+                {$join}
                 INNER JOIN clientesjf c ON t.cliente = c.codigo
                 WHERE t.estado IN ('GENERADO', 'APROBADO', 'APT', 'CONFIRMADO')
                   AND c.estado = 1
-                  AND $filtroPedido
+                  AND {$whereVend}
                 GROUP BY c.codigo, c.nombre
                 ORDER BY pedidos_generados DESC, deuda_vencida DESC, dias_pedido DESC
-                LIMIT $limite";
+                LIMIT {$limite}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Resumen de cartera optimizado:
+     * - Parte desde cuenta_ctejf filtrando PENDIENTE + saldo > 0.
+     * - JOIN a vendedores activos (o igualdad por vendedor seleccionado).
+     * - Conserva deuda_total, deuda_vencida y clientes_vencidos.
+     */
     public static function mdlResumenCartera()
     {
-        $filtro = self::filtroVendedorSql("ct");
+        $params = array();
+        $joinVend = self::sqlJoinVendedoresActivos("ct", "mv_car");
+        $whereVend = self::sqlCondicionVendedor("ct", $params);
 
         $sql = "SELECT
-                    COUNT(DISTINCT c.codigo) AS clientes_con_deuda,
+                    COUNT(DISTINCT ct.cliente) AS clientes_con_deuda,
+                    SUM(ct.saldo) AS deuda_total,
                     SUM(
                         CASE
-                            WHEN UPPER(ct.estado) = 'PENDIENTE'
-                                AND IFNULL(ct.saldo, 0) > 0
-                                THEN IFNULL(ct.saldo, 0)
-                            ELSE 0
-                        END
-                    ) AS deuda_total,
-                    SUM(
-                        CASE
-                            WHEN UPPER(ct.estado) = 'PENDIENTE'
-                                AND IFNULL(ct.saldo, 0) > 0
-                                AND ct.fecha_ven < CURDATE()
-                                THEN IFNULL(ct.saldo, 0)
+                            WHEN ct.fecha_ven < CURDATE() THEN ct.saldo
                             ELSE 0
                         END
                     ) AS deuda_vencida,
                     COUNT(DISTINCT
                         CASE
-                            WHEN UPPER(ct.estado) = 'PENDIENTE'
-                                AND IFNULL(ct.saldo, 0) > 0
-                                AND ct.fecha_ven < CURDATE()
-                                THEN c.codigo
+                            WHEN ct.fecha_ven < CURDATE() THEN ct.cliente
                         END
                     ) AS clientes_vencidos
-                FROM clientesjf c
-                INNER JOIN cuenta_ctejf ct ON ct.cliente = c.codigo
-                WHERE c.estado = 1
-                  AND $filtro";
+                FROM cuenta_ctejf ct
+                {$joinVend}
+                INNER JOIN clientesjf c
+                    ON c.codigo = ct.cliente
+                   AND c.estado = 1
+                WHERE ct.estado = 'PENDIENTE'
+                  AND ct.saldo > 0
+                  AND {$whereVend}";
 
         $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -539,27 +600,32 @@ class ModeloDashboardDecisiones
 
     private static function sqlTiposVentaFacturada($alias = "v")
     {
-        return "UPPER(TRIM({$alias}.tipo)) IN ('S02', 'S03', 'S70')";
+        return "{$alias}.tipo IN ('S02', 'S03', 'S70')";
     }
 
     public static function mdlResumenFacturadoMes()
     {
         $rango = self::rangoMesActual();
-        $filtro = self::filtroVendedorSql("v");
+        $params = array(
+            ":fecha_ini" => $rango["inicio"],
+            ":fecha_fin" => $rango["fin"],
+        );
+        $join = self::sqlJoinVendedoresActivos("v", "mv_fac");
+        $whereVend = self::sqlCondicionVendedor("v", $params);
 
         $sql = "SELECT
                     COUNT(*) AS docs,
                     SUM(IFNULL(v.neto, 0)) AS soles
                 FROM ventajf v
+                {$join}
                 WHERE v.fecha >= :fecha_ini
                   AND v.fecha < :fecha_fin
-                  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND (v.estado IS NULL OR v.estado <> 'ANULADO')
                   AND " . self::sqlTiposVentaFacturada("v") . "
-                  AND $filtro";
+                  AND {$whereVend}";
 
         $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindValue(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
-        $stmt->bindValue(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -575,7 +641,12 @@ class ModeloDashboardDecisiones
     public static function mdlFacturadoMes($limite = 40)
     {
         $rango = self::rangoMesActual();
-        $filtro = self::filtroVendedorSql("v");
+        $params = array(
+            ":fecha_ini" => $rango["inicio"],
+            ":fecha_fin" => $rango["fin"],
+        );
+        $join = self::sqlJoinVendedoresActivos("v", "mv_fcl");
+        $whereVend = self::sqlCondicionVendedor("v", $params);
         $limite = max(1, min(100, (int) $limite));
 
         $sql = "SELECT
@@ -587,28 +658,26 @@ class ModeloDashboardDecisiones
                     DATE(v.fecha) AS fecha,
                     v.cliente AS cod_cli,
                     c.nombre AS cliente,
-                    TRIM(v.vendedor) AS vendedor,
+                    v.vendedor AS vendedor,
                     IFNULL(ven.descripcion, v.vendedor) AS nom_vendedor,
                     cv.descripcion AS condicion
                 FROM ventajf v
+                {$join}
                 LEFT JOIN clientesjf c ON v.cliente = c.codigo
                 LEFT JOIN condiciones_ventajf cv ON v.condicion_venta = cv.id
-                LEFT JOIN (
-                    SELECT codigo, descripcion
-                    FROM maestrajf
-                    WHERE tipo_dato = 'tvend'
-                ) ven ON TRIM(v.vendedor) = TRIM(ven.codigo)
+                LEFT JOIN maestrajf ven
+                    ON ven.codigo = v.vendedor
+                   AND ven.tipo_dato = 'TVEND'
                 WHERE v.fecha >= :fecha_ini
                   AND v.fecha < :fecha_fin
-                  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                  AND (v.estado IS NULL OR v.estado <> 'ANULADO')
                   AND " . self::sqlTiposVentaFacturada("v") . "
-                  AND $filtro
+                  AND {$whereVend}
                 ORDER BY v.fecha DESC, v.documento DESC
-                LIMIT $limite";
+                LIMIT {$limite}";
 
         $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindValue(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
-        $stmt->bindValue(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
+        self::bindParams($stmt, $params);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -252,10 +252,11 @@ class ControladorCategoriasClientes
 		}
 
 		$monto = self::ctrNormalizarDecimal(isset($payload["monto_compras_anual"]) ? $payload["monto_compras_anual"] : "");
+		$lineaMinima = self::ctrNormalizarDecimal(isset($payload["linea_minima"]) ? $payload["linea_minima"] : "");
 		$dtoVenta = self::ctrNormalizarDecimal(isset($payload["descuento_venta_pct"]) ? $payload["descuento_venta_pct"] : "");
 		$dtoPronto = self::ctrNormalizarDecimal(isset($payload["descuento_pronto_pago_pct"]) ? $payload["descuento_pronto_pago_pct"] : "");
 
-		if ($monto === false || $dtoVenta === false || $dtoPronto === false) {
+		if ($monto === false || $lineaMinima === false || $dtoVenta === false || $dtoPronto === false) {
 			return array("ok" => false, "mensaje" => "Hay valores numéricos inválidos");
 		}
 
@@ -282,6 +283,16 @@ class ControladorCategoriasClientes
 			"valor_numerico" => $monto,
 			"unidad" => "PEN",
 			"descripcion" => "Monto mínimo anual de compras",
+			"estado" => 1,
+			"usuario" => $usuario,
+			"fecha" => $fecha
+		));
+
+		ModeloCategoriasClientes::mdlUpsertRequisitoLineaMinima(array(
+			"id_categoria" => $id,
+			"valor_numerico" => $lineaMinima,
+			"unidad" => "PEN",
+			"descripcion" => "Línea de crédito mínima coherente con la categoría",
 			"estado" => 1,
 			"usuario" => $usuario,
 			"fecha" => $fecha
@@ -332,10 +343,11 @@ class ControladorCategoriasClientes
 		);
 
 		$monto = self::ctrNormalizarDecimal(isset($payload["monto_compras_anual"]) ? $payload["monto_compras_anual"] : "");
+		$lineaMinima = self::ctrNormalizarDecimal(isset($payload["linea_minima"]) ? $payload["linea_minima"] : "");
 		$dtoVenta = self::ctrNormalizarDecimal(isset($payload["descuento_venta_pct"]) ? $payload["descuento_venta_pct"] : "");
 		$dtoPronto = self::ctrNormalizarDecimal(isset($payload["descuento_pronto_pago_pct"]) ? $payload["descuento_pronto_pago_pct"] : "");
 
-		if ($monto === false || $dtoVenta === false || $dtoPronto === false) {
+		if ($monto === false || $lineaMinima === false || $dtoVenta === false || $dtoPronto === false) {
 			return array("ok" => false, "mensaje" => "Hay valores numéricos inválidos");
 		}
 
@@ -362,6 +374,16 @@ class ControladorCategoriasClientes
 			"valor_numerico" => $monto,
 			"unidad" => "PEN",
 			"descripcion" => "Monto mínimo anual de compras",
+			"estado" => 1,
+			"usuario" => $usuario,
+			"fecha" => $fecha
+		));
+
+		ModeloCategoriasClientes::mdlUpsertRequisitoLineaMinima(array(
+			"id_categoria" => $id,
+			"valor_numerico" => $lineaMinima,
+			"unidad" => "PEN",
+			"descripcion" => "Línea de crédito mínima coherente con la categoría",
 			"estado" => 1,
 			"usuario" => $usuario,
 			"fecha" => $fecha

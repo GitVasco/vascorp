@@ -957,6 +957,50 @@
     line-height: 1.35;
 }
 
+.lc-cat-chip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 0 0 8px;
+    padding: 7px 10px;
+    background: #f7f9fc;
+    border: 1px solid #e3e8ef;
+    border-radius: 4px;
+}
+
+.lc-cat-chip--empty {
+    color: #888;
+    font-size: 12px;
+}
+
+.lc-cat-chip__badge {
+    display: inline-block;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+}
+
+.lc-cat-chip__meta {
+    font-size: 12px;
+    color: #444;
+}
+
+.lc-cat-chip__hint {
+    display: block;
+    width: 100%;
+    margin: 0;
+    font-size: 11px;
+    color: #888;
+}
+
+.lc-detalle > .lc-cat-chip {
+    margin-top: 8px;
+}
+
 .lc-grupo-metrics {
     display: flex;
     flex-wrap: wrap;

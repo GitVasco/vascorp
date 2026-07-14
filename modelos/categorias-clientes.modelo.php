@@ -204,6 +204,12 @@ class ModeloCategoriasClientes
 				   AND r.tipo_requisito = 'monto_compras_anual'
 				   AND r.estado = 1
 				 LIMIT 1) AS monto_ventas_anual,
+				(SELECT r.valor_numerico
+				 FROM categorias_clientes_requisitosjf r
+				 WHERE r.id_categoria = c.id
+				   AND r.tipo_requisito = 'linea_minima'
+				   AND r.estado = 1
+				 LIMIT 1) AS linea_minima,
 				(SELECT b.descuento_venta_pct
 				 FROM categorias_clientes_beneficiosjf b
 				 WHERE b.id_categoria = c.id
@@ -223,7 +229,7 @@ class ModeloCategoriasClientes
 	}
 
 	/*=============================================
-	Detalle de categoría + requisito monto + beneficios
+	Detalle de categoría + requisitos + beneficios
 	=============================================*/
 	static public function mdlDetalleCategoria($idCategoria)
 	{
@@ -244,6 +250,17 @@ class ModeloCategoriasClientes
 		$stmtReq->execute();
 		$requisito = $stmtReq->fetch();
 
+		$stmtLinea = Conexion::conectar()->prepare(
+			"SELECT *
+			 FROM categorias_clientes_requisitosjf
+			 WHERE id_categoria = :id_categoria
+			   AND tipo_requisito = 'linea_minima'
+			 LIMIT 1"
+		);
+		$stmtLinea->bindParam(":id_categoria", $idCategoria, PDO::PARAM_INT);
+		$stmtLinea->execute();
+		$requisitoLinea = $stmtLinea->fetch();
+
 		$stmtBen = Conexion::conectar()->prepare(
 			"SELECT *
 			 FROM categorias_clientes_beneficiosjf
@@ -257,6 +274,7 @@ class ModeloCategoriasClientes
 		return array(
 			"categoria" => $categoria,
 			"requisito" => $requisito ? $requisito : null,
+			"requisito_linea" => $requisitoLinea ? $requisitoLinea : null,
 			"beneficio" => $beneficio ? $beneficio : null
 		);
 	}
@@ -349,14 +367,48 @@ class ModeloCategoriasClientes
 	static public function mdlUpsertRequisitoMonto($datos)
 	{
 
+		return self::mdlUpsertRequisitoTipo(array_merge($datos, array(
+			"tipo_requisito" => "monto_compras_anual",
+			"descripcion" => isset($datos["descripcion"])
+				? $datos["descripcion"]
+				: "Monto mínimo anual de compras"
+		)));
+	}
+
+	/*=============================================
+	Asegurar fila de requisito linea_minima
+	=============================================*/
+	static public function mdlUpsertRequisitoLineaMinima($datos)
+	{
+
+		return self::mdlUpsertRequisitoTipo(array_merge($datos, array(
+			"tipo_requisito" => "linea_minima",
+			"descripcion" => isset($datos["descripcion"])
+				? $datos["descripcion"]
+				: "Línea de crédito mínima coherente con la categoría"
+		)));
+	}
+
+	/*=============================================
+	Upsert genérico de requisito por tipo
+	=============================================*/
+	static public function mdlUpsertRequisitoTipo($datos)
+	{
+
+		$tipo = isset($datos["tipo_requisito"]) ? $datos["tipo_requisito"] : "";
+		if ($tipo === "") {
+			return false;
+		}
+
 		$stmtBuscar = Conexion::conectar()->prepare(
 			"SELECT id
 			 FROM categorias_clientes_requisitosjf
 			 WHERE id_categoria = :id_categoria
-			   AND tipo_requisito = 'monto_compras_anual'
+			   AND tipo_requisito = :tipo_requisito
 			 LIMIT 1"
 		);
 		$stmtBuscar->bindParam(":id_categoria", $datos["id_categoria"], PDO::PARAM_INT);
+		$stmtBuscar->bindParam(":tipo_requisito", $tipo, PDO::PARAM_STR);
 		$stmtBuscar->execute();
 		$existe = $stmtBuscar->fetch();
 
@@ -377,9 +429,10 @@ class ModeloCategoriasClientes
 				"INSERT INTO categorias_clientes_requisitosjf
 					(id_categoria, tipo_requisito, valor_numerico, unidad, descripcion, estado, usureg, fecreg)
 				 VALUES
-					(:id_categoria, 'monto_compras_anual', :valor_numerico, :unidad, :descripcion, :estado, :usuario, :fecha)"
+					(:id_categoria, :tipo_requisito, :valor_numerico, :unidad, :descripcion, :estado, :usuario, :fecha)"
 			);
 			$stmt->bindParam(":id_categoria", $datos["id_categoria"], PDO::PARAM_INT);
+			$stmt->bindParam(":tipo_requisito", $tipo, PDO::PARAM_STR);
 		}
 
 		if ($datos["valor_numerico"] === null) {
@@ -394,6 +447,110 @@ class ModeloCategoriasClientes
 		$stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
 
 		return $stmt->execute() ? true : false;
+	}
+
+	/*=============================================
+	Piso de línea desde categoría vigente de una entidad
+	=============================================*/
+	static public function mdlPisoLineaEntidad($tipoEntidad, $codigoEntidad)
+	{
+
+		$vacio = array(
+			"activo" => false,
+			"tiene_categoria" => false,
+			"monto" => 0.0,
+			"monto_compras_anual" => null,
+			"id_categoria" => null,
+			"categoria_codigo" => null,
+			"categoria_nombre" => null,
+			"categoria_color" => null,
+		);
+
+		$tipoEntidad = trim((string) $tipoEntidad);
+		$codigoEntidad = trim((string) $codigoEntidad);
+		if ($tipoEntidad === "" || $codigoEntidad === "") {
+			return $vacio;
+		}
+
+		$asignacion = self::mdlAsignacionVigente($tipoEntidad, $codigoEntidad);
+		if (!$asignacion) {
+			return $vacio;
+		}
+
+		$idCategoria = (int) $asignacion["id_categoria"];
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT tipo_requisito, valor_numerico
+			 FROM categorias_clientes_requisitosjf
+			 WHERE id_categoria = :id_categoria
+			   AND tipo_requisito IN ('linea_minima', 'monto_compras_anual')
+			   AND estado = 1"
+		);
+		$stmt->bindParam(":id_categoria", $idCategoria, PDO::PARAM_INT);
+		$stmt->execute();
+		$reqs = $stmt->fetchAll();
+
+		$monto = 0.0;
+		$montoAnual = null;
+		foreach ($reqs as $req) {
+			if ($req["tipo_requisito"] === "linea_minima"
+				&& $req["valor_numerico"] !== null
+				&& $req["valor_numerico"] !== ""
+			) {
+				$monto = (float) $req["valor_numerico"];
+			}
+			if ($req["tipo_requisito"] === "monto_compras_anual"
+				&& $req["valor_numerico"] !== null
+				&& $req["valor_numerico"] !== ""
+			) {
+				$montoAnual = (float) $req["valor_numerico"];
+			}
+		}
+
+		return array(
+			"activo" => $monto > 0,
+			"tiene_categoria" => true,
+			"monto" => round($monto, 2),
+			"monto_compras_anual" => $montoAnual !== null ? round($montoAnual, 2) : null,
+			"id_categoria" => $idCategoria,
+			"categoria_codigo" => $asignacion["categoria_codigo"],
+			"categoria_nombre" => $asignacion["categoria_nombre"],
+			"categoria_color" => isset($asignacion["categoria_color"]) ? $asignacion["categoria_color"] : null,
+		);
+	}
+
+	/*=============================================
+	Piso de línea efectiva para un cliente (grupo gana)
+	=============================================*/
+	static public function mdlPisoLineaCliente($codigoCliente)
+	{
+
+		$vacio = array(
+			"activo" => false,
+			"tiene_categoria" => false,
+			"monto" => 0.0,
+			"monto_compras_anual" => null,
+			"id_categoria" => null,
+			"categoria_codigo" => null,
+			"categoria_nombre" => null,
+			"categoria_color" => null,
+			"origen" => null,
+		);
+
+		$cliente = self::mdlDatosClienteCategoria($codigoCliente);
+		if (!$cliente) {
+			return $vacio;
+		}
+
+		$codigoGrupo = isset($cliente["grupo"]) ? trim((string) $cliente["grupo"]) : "";
+		if ($codigoGrupo !== "") {
+			$piso = self::mdlPisoLineaEntidad("grupo", $codigoGrupo);
+			$piso["origen"] = "grupo";
+			return $piso;
+		}
+
+		$piso = self::mdlPisoLineaEntidad("cliente", trim((string) $codigoCliente));
+		$piso["origen"] = "cliente";
+		return $piso;
 	}
 
 	/*=============================================

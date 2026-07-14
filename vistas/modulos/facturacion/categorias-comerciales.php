@@ -21,7 +21,7 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
                     Agregar categoría
                 </button>
                 <p class="help-block" style="margin-top:10px;margin-bottom:0;">
-                    Configure categorías, monto anual mínimo y descuentos. La asignación a clientes/grupos se hace aparte.
+                    Configure categorías, monto anual mínimo, línea mínima de crédito y descuentos. La asignación a clientes/grupos se hace aparte.
                 </p>
             </div>
             <div class="box-body">
@@ -33,6 +33,7 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
                             <th>Nombre</th>
                             <th>Descripción</th>
                             <th>Monto ventas</th>
+                            <th>Línea mín.</th>
                             <th>Dto. venta</th>
                             <th>Dto. pronto pago</th>
                             <th>Clientes</th>
@@ -97,10 +98,22 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
                             </div>
                         </div>
                         <hr>
-                        <h4 style="margin-top:0;">Requisito</h4>
+                        <h4 style="margin-top:0;">Requisitos</h4>
                         <div class="form-group">
                             <label>Monto mínimo anual de compras (PEN)</label>
-                            <input type="number" class="form-control" id="nuevoMontoAnualCategoria" name="monto_compras_anual" min="0" step="0.01" placeholder="Vacío = aún no definido">
+                            <input type="number" class="form-control input-monto-cat" id="nuevoMontoAnualCategoria" name="monto_compras_anual" min="0" step="0.01" placeholder="Vacío = aún no definido" data-preview="nuevoMontoAnualPreview" data-sugerencia="nuevo">
+                            <p class="help-block cat-monto-preview" id="nuevoMontoAnualPreview" style="margin-bottom:0;">—</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Línea de crédito mínima (PEN)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control input-linea-cat" id="nuevoLineaMinimaCategoria" name="linea_minima" min="0" step="1000" placeholder="Vacío = sin piso" data-preview="nuevoLineaMinimaPreview">
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default btnUsarSugerenciaLinea" data-monto="#nuevoMontoAnualCategoria" data-linea="#nuevoLineaMinimaCategoria" title="Usar ≈ 2,5 meses de compra anual">Usar sugerida</button>
+                                </span>
+                            </div>
+                            <p class="help-block cat-monto-preview" id="nuevoLineaMinimaPreview" style="margin-bottom:4px;">—</p>
+                            <p class="help-block cat-linea-sugerencia" id="nuevoLineaSugerencia" style="margin-bottom:0;"></p>
                         </div>
                         <hr>
                         <h4 style="margin-top:0;">Beneficios</h4>
@@ -177,10 +190,22 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
                             </div>
                         </div>
                         <hr>
-                        <h4 style="margin-top:0;">Requisito</h4>
+                        <h4 style="margin-top:0;">Requisitos</h4>
                         <div class="form-group">
                             <label>Monto mínimo anual de compras (PEN)</label>
-                            <input type="number" class="form-control" id="editarMontoAnualCategoria" name="monto_compras_anual" min="0" step="0.01" placeholder="Vacío = aún no definido">
+                            <input type="number" class="form-control input-monto-cat" id="editarMontoAnualCategoria" name="monto_compras_anual" min="0" step="0.01" placeholder="Vacío = aún no definido" data-preview="editarMontoAnualPreview" data-sugerencia="editar">
+                            <p class="help-block cat-monto-preview" id="editarMontoAnualPreview" style="margin-bottom:0;">—</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Línea de crédito mínima (PEN)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control input-linea-cat" id="editarLineaMinimaCategoria" name="linea_minima" min="0" step="1000" placeholder="Vacío = sin piso" data-preview="editarLineaMinimaPreview">
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default btnUsarSugerenciaLinea" data-monto="#editarMontoAnualCategoria" data-linea="#editarLineaMinimaCategoria" title="Usar ≈ 2,5 meses de compra anual">Usar sugerida</button>
+                                </span>
+                            </div>
+                            <p class="help-block cat-monto-preview" id="editarLineaMinimaPreview" style="margin-bottom:4px;">—</p>
+                            <p class="help-block cat-linea-sugerencia" id="editarLineaSugerencia" style="margin-bottom:0;"></p>
                         </div>
                         <hr>
                         <h4 style="margin-top:0;">Beneficios</h4>

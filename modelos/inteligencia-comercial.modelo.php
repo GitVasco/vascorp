@@ -865,7 +865,8 @@ class ModeloInteligenciaComercial
         $resultadoMotor1 = null,
         $resultadoMotor2 = null,
         $resultadoMotor4 = null,
-        $metricasOverride = null
+        $metricasOverride = null,
+        $esGrupo = false
     ) {
         $cfg = icConfigMotor3();
         $pesos = icPesosDecimalesMotor3();
@@ -1226,6 +1227,14 @@ class ModeloInteligenciaComercial
         }
         $scoreFinal = round($scoreFinal, 2);
 
+        if (!class_exists("ModeloCategoriasClientes")) {
+            require_once __DIR__ . "/categorias-clientes.modelo.php";
+        }
+
+        $pisoCategoria = $esGrupo
+            ? ModeloCategoriasClientes::mdlPisoLineaEntidad("grupo", $codigoCliente)
+            : ModeloCategoriasClientes::mdlPisoLineaCliente($codigoCliente);
+
         $calculoLinea = icMotor3CalcularLineaRecomendada(
             $cfg,
             $promedioMensual,
@@ -1234,7 +1243,8 @@ class ModeloInteligenciaComercial
             $scoreFinal,
             $scoreRiesgo,
             $deudaActual,
-            $lineaOperativa
+            $lineaOperativa,
+            $pisoCategoria
         );
         $lineaRecomendada = icRedondearLineaCredito((float) $calculoLinea["monto"]);
 
@@ -1303,6 +1313,7 @@ class ModeloInteligenciaComercial
                 "utilizacion_pct"   => round($utilizacion, 2),
                 "movimientos_cta"   => (int) $metricas["movimientos_cta"],
                 "calculo"           => $calculoLinea,
+                "piso_categoria"    => $pisoCategoria,
             ),
             "metricas" => array(
                 "promedio_mensual"  => round($promedioMensual, 2),
@@ -2607,7 +2618,8 @@ class ModeloInteligenciaComercial
             $resultadoMotor1,
             $resultadoMotor2,
             $resultadoMotor4,
-            $metricas
+            $metricas,
+            true
         );
 
         if ($resultado) {

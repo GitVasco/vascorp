@@ -16,7 +16,7 @@ class ModeloMetasVendedor
             $tipos[] = "'" . $tipo . "'";
         }
 
-        return "UPPER(TRIM({$alias}.tipo)) IN (" . implode(", ", $tipos) . ")";
+        return "{$alias}.tipo IN (" . implode(", ", $tipos) . ")";
     }
 
     private static function rangoMes($anio, $mes)
@@ -202,11 +202,11 @@ class ModeloMetasVendedor
         $filtroVendedor = "";
 
         if ($codVendedor !== "") {
-            $filtroVendedor = " AND TRIM(mv.codigo) = '" . str_replace("'", "''", $codVendedor) . "'";
+            $filtroVendedor = " AND mv.codigo = :cod_vendedor";
         }
 
         $sql = "SELECT
-                    TRIM(mv.codigo) AS cod_vendedor,
+                    mv.codigo AS cod_vendedor,
                     mv.descripcion AS nombre_vendedor,
                     meta.meta_venta,
                     COALESCE(v.venta_real, 0) AS venta_real,
@@ -216,22 +216,22 @@ class ModeloMetasVendedor
                     COALESCE(p.soles_confirmados, 0) AS soles_confirmados
                 FROM metas_vendedorjf meta
                 INNER JOIN maestrajf mv
-                    ON TRIM(mv.codigo) = TRIM(meta.cod_vendedor)
-                   AND UPPER(mv.tipo_dato) = 'TVEND'
+                    ON mv.codigo = meta.cod_vendedor
+                   AND mv.tipo_dato = 'TVEND'
                    AND mv.estado_decisiones = 1
                 LEFT JOIN (
                     SELECT
-                        TRIM(v.vendedor) AS vendedor,
+                        v.vendedor AS vendedor,
                         SUM(v.neto) AS venta_real
                     FROM ventajf v
                     WHERE v.fecha >= :fecha_ini
                       AND v.fecha < :fecha_fin
                       AND " . self::sqlTiposVentaReal("v") . "
-                    GROUP BY TRIM(v.vendedor)
-                ) v ON v.vendedor = TRIM(meta.cod_vendedor)
+                    GROUP BY v.vendedor
+                ) v ON v.vendedor = meta.cod_vendedor
                 LEFT JOIN (
                     SELECT
-                        TRIM(t.vendedor) AS vendedor,
+                        t.vendedor AS vendedor,
                         SUM(
                             CASE
                                 WHEN t.estado = 'GENERADO' AND COALESCE(t.lista, '') <> 'precio1'
@@ -261,16 +261,13 @@ class ModeloMetasVendedor
                             END
                         ) AS soles_confirmados
                     FROM temporaljf t
+                    INNER JOIN maestrajf m_dd
+                        ON m_dd.codigo = t.vendedor
+                       AND m_dd.tipo_dato = 'TVEND'
+                       AND m_dd.estado_decisiones = 1
                     WHERE t.estado NOT IN ('ANULADO', 'FACTURADO')
-                      AND EXISTS (
-                          SELECT 1
-                          FROM maestrajf m_dd
-                          WHERE UPPER(m_dd.tipo_dato) = 'TVEND'
-                            AND TRIM(m_dd.codigo) = TRIM(t.vendedor)
-                            AND m_dd.estado_decisiones = 1
-                      )
-                    GROUP BY TRIM(t.vendedor)
-                ) p ON p.vendedor = TRIM(meta.cod_vendedor)
+                    GROUP BY t.vendedor
+                ) p ON p.vendedor = meta.cod_vendedor
                 WHERE meta.anio = :anio
                   AND meta.mes = :mes
                   AND meta.meta_venta > 0
@@ -288,6 +285,9 @@ class ModeloMetasVendedor
         $stmt->bindParam(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
         $stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+        if ($codVendedor !== "") {
+            $stmt->bindValue(":cod_vendedor", $codVendedor, PDO::PARAM_STR);
+        }
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

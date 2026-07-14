@@ -198,10 +198,16 @@ class ControladorCortes
                         }
                     } else {
                         $articulo  = $_POST["nuevoArticulo"];
+                        $cantidadPedida = (int) $_POST["nuevoAlmCorte"];
                         $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);
 
                         $sector = $_POST["seleccionarSectorServicio"];
                         $codigoServicio = ModeloServicios::mdlObtenerOCrearServicioDelDia($sector, $_POST["usuario"]);
+
+                        $avisoParcial = "";
+                        if ($cantidadUsada < $cantidadPedida) {
+                            $avisoParcial = "Se enviaron $cantidadUsada de $cantidadPedida (saldo insuficiente en almacén de corte).";
+                        }
 
                         if ($codigoServicio) {
                             $datosDetalle = array(
@@ -213,7 +219,37 @@ class ControladorCortes
                             );
 
                             $respuestaDetalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
+                            if ($respuestaDetalle == "ok") {
+                                ModeloServicios::mdlSumarTotalServicio($codigoServicio, $cantidadUsada);
+                            }
+                        } else {
+                            $avisoParcial = trim($avisoParcial . " No se pudo crear/obtener el servicio del día.");
                         }
+
+                        $tipoSwal = $avisoParcial !== "" ? "warning" : "success";
+                        $tituloSwal = $avisoParcial !== ""
+                            ? "Se mando a taller con advertencias"
+                            : "Se mando a taller correctamente";
+                        $textoSwal = $avisoParcial !== "" ? $avisoParcial : "";
+
+                    echo '<script>
+
+                    swal({
+                          type: "' . $tipoSwal . '",
+                          title: "' . $tituloSwal . '",
+                          text: "' . $textoSwal . '",
+                          showConfirmButton: true,
+                          confirmButtonText: "Cerrar"
+                          }).then(function(result){
+                                    if (result.value) {
+
+                                    window.location = "en-cortes";
+
+                                    }
+                                })
+
+                    </script>';
+                        return;
                     }
 
 
@@ -341,6 +377,10 @@ class ControladorCortes
 
             $cod = $ult_codigo["ult_codigo"];
 
+            if ($cantidadUsadaT < $cantidadPedida) {
+                $errores[] = $value["articulo"] . ": se enviaron $cantidadUsadaT de $cantidadPedida (saldo insuficiente)";
+            }
+
             if ($ticket == "1" || $_POST["seleccionarSectorServicioTotal"] == 'T1') {
                 $nombre_impresora = "Star BSC10";
 
@@ -366,7 +406,12 @@ class ControladorCortes
                         "cabecera_taller" => $ult_codigo["ult_codigo"]
                     );
 
-                    ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
+                    $respuestaDetalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
+                    if ($respuestaDetalle == "ok") {
+                        ModeloServicios::mdlSumarTotalServicio($codigoServicio, $cantidadUsadaT);
+                    } else {
+                        $errores[] = $articulo . ": no se pudo guardar el detalle de servicio";
+                    }
                 } else {
                     $errores[] = $articulo . ": no se pudo crear el servicio del día";
                 }

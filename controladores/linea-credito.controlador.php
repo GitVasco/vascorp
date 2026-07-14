@@ -12,6 +12,80 @@ class ControladorLineaCredito
         );
     }
 
+    /**
+     * Evalúa si la línea aprobada queda bajo el piso de la categoría comercial.
+     */
+    private static function ctrAlertaPisoCategoria($tipoEntidad, $codigoEntidad, $lineaAprobada)
+    {
+        if (!class_exists("ModeloCategoriasClientes")) {
+            require_once __DIR__ . "/../modelos/categorias-clientes.modelo.php";
+        }
+
+        $piso = ($tipoEntidad === "grupo")
+            ? ModeloCategoriasClientes::mdlPisoLineaEntidad("grupo", $codigoEntidad)
+            : ModeloCategoriasClientes::mdlPisoLineaCliente($codigoEntidad);
+
+        if (empty($piso["activo"]) || (float) $piso["monto"] <= 0) {
+            return null;
+        }
+
+        $pisoMonto = (float) $piso["monto"];
+        $lineaAprobada = (float) $lineaAprobada;
+
+        if ($lineaAprobada + 0.01 >= $pisoMonto) {
+            return array(
+                "bajo_piso" => false,
+                "piso" => $pisoMonto,
+                "linea" => $lineaAprobada,
+                "categoria" => isset($piso["categoria_nombre"]) ? $piso["categoria_nombre"] : null,
+                "mensaje" => null,
+            );
+        }
+
+        $nombreCat = !empty($piso["categoria_nombre"]) ? $piso["categoria_nombre"] : "su categoría";
+
+        return array(
+            "bajo_piso" => true,
+            "piso" => $pisoMonto,
+            "linea" => $lineaAprobada,
+            "categoria" => isset($piso["categoria_nombre"]) ? $piso["categoria_nombre"] : null,
+            "mensaje" => "La línea aprobada (S/ " . number_format($lineaAprobada, 2)
+                . ") está por debajo del piso de {$nombreCat} (S/ " . number_format($pisoMonto, 2) . ").",
+        );
+    }
+
+    private static function ctrPisoCategoriaDetalle($tipoEntidad, $codigoEntidad)
+    {
+        if (!class_exists("ModeloCategoriasClientes")) {
+            require_once __DIR__ . "/../modelos/categorias-clientes.modelo.php";
+        }
+
+        $piso = ($tipoEntidad === "grupo")
+            ? ModeloCategoriasClientes::mdlPisoLineaEntidad("grupo", $codigoEntidad)
+            : ModeloCategoriasClientes::mdlPisoLineaCliente($codigoEntidad);
+
+        $color = null;
+        if (!empty($piso["categoria_codigo"]) && class_exists("ControladorCategoriasClientes")) {
+            $color = ControladorCategoriasClientes::ctrResolverColorCategoria(
+                isset($piso["categoria_color"]) ? $piso["categoria_color"] : "",
+                $piso["categoria_codigo"]
+            );
+        } elseif (!empty($piso["categoria_color"])) {
+            $color = $piso["categoria_color"];
+        }
+
+        return array(
+            "activo" => !empty($piso["activo"]),
+            "tiene_categoria" => !empty($piso["tiene_categoria"]),
+            "monto" => isset($piso["monto"]) ? (float) $piso["monto"] : 0.0,
+            "monto_compras_anual" => isset($piso["monto_compras_anual"]) ? $piso["monto_compras_anual"] : null,
+            "categoria_nombre" => isset($piso["categoria_nombre"]) ? $piso["categoria_nombre"] : null,
+            "categoria_codigo" => isset($piso["categoria_codigo"]) ? $piso["categoria_codigo"] : null,
+            "categoria_color" => $color,
+            "origen" => isset($piso["origen"]) ? $piso["origen"] : $tipoEntidad,
+        );
+    }
+
     private static function ctrLineaReferencia(array $snapshot)
     {
         if (!empty($snapshot["linea_aprobada"]) && (float) $snapshot["linea_aprobada"] > 0) {
@@ -357,6 +431,9 @@ class ControladorLineaCredito
             "pertenece_grupo" => $perteneceGrupo,
             "grupo" => $grupoCliente,
             "grupo_resumen" => $grupoResumen,
+            "piso_categoria" => $perteneceGrupo
+                ? self::ctrPisoCategoriaDetalle("grupo", $cliente["grupo"])
+                : self::ctrPisoCategoriaDetalle("cliente", $codigoCliente),
         );
     }
 
@@ -514,6 +591,7 @@ class ControladorLineaCredito
             "totales_cartera" => self::ctrTotalesCarteraGrupo($miembros),
             "miembros" => $miembros,
             "url_ic" => "index.php?ruta=inteligencia-comercial&modo=grupo&grupo=" . urlencode($codigoGrupo),
+            "piso_categoria" => self::ctrPisoCategoriaDetalle("grupo", $codigoGrupo),
         );
     }
 
@@ -609,7 +687,13 @@ class ControladorLineaCredito
 
         ModeloLineaCredito::mdlLimpiarLineaAprobadaMiembrosGrupo($codigoGrupo);
 
-        return self::ctrDetalleGrupo($codigoGrupo);
+        $detalle = self::ctrDetalleGrupo($codigoGrupo);
+        $alerta = self::ctrAlertaPisoCategoria("grupo", $codigoGrupo, $lineaNueva);
+        if ($alerta) {
+            $detalle["alerta_piso"] = $alerta;
+        }
+
+        return $detalle;
     }
 
     private static function ctrLineaAnteriorCliente($fila)
@@ -718,7 +802,13 @@ class ControladorLineaCredito
             (int) $_SESSION["id"]
         );
 
-        return self::ctrDetalleCliente($codigoCliente);
+        $detalle = self::ctrDetalleCliente($codigoCliente);
+        $alerta = self::ctrAlertaPisoCategoria("cliente", $codigoCliente, $lineaNueva);
+        if ($alerta) {
+            $detalle["alerta_piso"] = $alerta;
+        }
+
+        return $detalle;
     }
 
     public static function ctrActualizarCliente($codigoCliente)

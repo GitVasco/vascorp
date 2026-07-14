@@ -1171,6 +1171,7 @@ function icMotor3CalcularPisoLinea($cfg, $scoreRiesgo, $deudaActual, $lineaOpera
 /**
  * Monto de línea recomendada a partir de capacidad de compra y score compuesto.
  * Devuelve monto y desglose para el modal explicativo.
+ * $pisoCategoria: array opcional {activo, monto, categoria_nombre, categoria_codigo}
  */
 function icMotor3CalcularLineaRecomendada(
     $cfg,
@@ -1180,7 +1181,8 @@ function icMotor3CalcularLineaRecomendada(
     $scoreFinal,
     $scoreRiesgo,
     $deudaActual = 0,
-    $lineaOperativa = 0
+    $lineaOperativa = 0,
+    $pisoCategoria = null
 ) {
     $mesesCobertura = max(1, (int) $cfg["meses_cobertura_linea"]);
     $basePromedio = $promedioMensual * $mesesCobertura;
@@ -1189,16 +1191,30 @@ function icMotor3CalcularLineaRecomendada(
     $baseEconomica = max($basePromedio, $compraMaxima, $compraMaxima12m);
     $pausa = icMotor3DetectarPausaComercial($basePromedio, $compraMaxima, $compraMaxima12m);
 
+    $pisoCatActivo = is_array($pisoCategoria) && !empty($pisoCategoria["activo"])
+        && isset($pisoCategoria["monto"]) && (float) $pisoCategoria["monto"] > 0;
+    $pisoCatMonto = $pisoCatActivo ? round((float) $pisoCategoria["monto"], 2) : 0.0;
+    $catNombre = ($pisoCatActivo && !empty($pisoCategoria["categoria_nombre"]))
+        ? $pisoCategoria["categoria_nombre"]
+        : "";
+
     if ($baseEconomica <= 0) {
+        $montoSinBase = $pisoCatMonto;
         return array(
-            "monto"             => 0.0,
+            "monto"             => $montoSinBase,
             "meses_cobertura"   => $mesesCobertura,
             "base_promedio"     => round($basePromedio, 2),
             "compra_maxima_12m" => round($compraMaxima12m, 2),
             "base_economica"    => 0.0,
             "monto_bruto"       => 0.0,
-            "piso_aplicado"     => 0.0,
-            "piso_activo"       => false,
+            "piso_aplicado"     => $pisoCatMonto,
+            "piso_activo"       => $pisoCatMonto > 0,
+            "piso_detalle"      => $pisoCatMonto > 0
+                ? "Sin base económica; se usa piso de categoría" . ($catNombre !== "" ? " ({$catNombre})" : "") . "."
+                : "",
+            "piso_categoria"    => $pisoCatMonto,
+            "piso_categoria_activo" => $pisoCatActivo,
+            "piso_categoria_nombre" => $catNombre,
             "factor_score"      => 0.0,
             "factor_riesgo"     => 0.0,
             "origen_base"       => "sin_datos",
@@ -1211,7 +1227,25 @@ function icMotor3CalcularLineaRecomendada(
     $factorRiesgo = max(0.5, min(1.0, $scoreRiesgo / 100));
     $montoBruto = $baseEconomica * $factorScore * $factorRiesgo;
     $piso = icMotor3CalcularPisoLinea($cfg, $scoreRiesgo, $deudaActual, $lineaOperativa);
-    $montoFinal = max($montoBruto, $piso["activo"] ? (float) $piso["monto"] : 0);
+    $pisoBuenPagador = $piso["activo"] ? (float) $piso["monto"] : 0.0;
+    $pisoFinal = max($pisoBuenPagador, $pisoCatMonto);
+    $montoFinal = max($montoBruto, $pisoFinal);
+
+    $pisoDetalle = "";
+    if ($pisoFinal > 0) {
+        $partes = array();
+        if ($pisoBuenPagador > 0) {
+            $partes[] = "buen pagador S/ " . number_format($pisoBuenPagador, 2);
+        }
+        if ($pisoCatMonto > 0) {
+            $partes[] = "categoría" . ($catNombre !== "" ? " {$catNombre}" : "")
+                . " S/ " . number_format($pisoCatMonto, 2);
+        }
+        $pisoDetalle = "Piso = max(" . implode(", ", $partes) . ").";
+        if (!empty($piso["detalle"]) && $pisoBuenPagador > 0) {
+            $pisoDetalle .= " " . $piso["detalle"];
+        }
+    }
 
     return array(
         "monto"             => round(max(0, $montoFinal), 2),
@@ -1220,9 +1254,12 @@ function icMotor3CalcularLineaRecomendada(
         "compra_maxima_12m" => round($compraMaxima12m, 2),
         "base_economica"    => round($baseEconomica, 2),
         "monto_bruto"       => round($montoBruto, 2),
-        "piso_aplicado"     => $piso["activo"] ? (float) $piso["monto"] : 0.0,
+        "piso_aplicado"     => $pisoFinal,
         "piso_activo"       => $montoFinal > ($montoBruto + 0.01),
-        "piso_detalle"      => $piso["detalle"],
+        "piso_detalle"      => $pisoDetalle,
+        "piso_categoria"    => $pisoCatMonto,
+        "piso_categoria_activo" => $pisoCatActivo,
+        "piso_categoria_nombre" => $catNombre,
         "factor_score"      => round($factorScore, 4),
         "factor_riesgo"     => round($factorRiesgo, 4),
         "origen_base"       => icMotor3OrigenBaseEconomica($basePromedio, $compraMaxima, $compraMaxima12m, $baseEconomica),
@@ -1527,8 +1564,18 @@ function icMotor3ConstruirExplicacionLinea(
     );
 
     if (!empty($calculoLinea["piso_activo"])) {
+        $etiquetaPiso = "8. Piso aplicado";
+        if (!empty($calculoLinea["piso_categoria_activo"]) && (float) $calculoLinea["piso_categoria"] >= (float) $calculoLinea["piso_aplicado"] - 0.01) {
+            $nombreCat = !empty($calculoLinea["piso_categoria_nombre"])
+                ? $calculoLinea["piso_categoria_nombre"]
+                : "categoría";
+            $etiquetaPiso = "8. Piso por categoría ({$nombreCat})";
+        } elseif (!empty($calculoLinea["piso_detalle"]) && strpos($calculoLinea["piso_detalle"], "buen pagador") !== false) {
+            $etiquetaPiso = "8. Piso por buen pagador / categoría";
+        }
+
         $pasos[] = array(
-            "etiqueta" => "8. Piso por buen pagador",
+            "etiqueta" => $etiquetaPiso,
             "valor"    => "S/ " . number_format((float) $calculoLinea["piso_aplicado"], 2),
             "detalle"  => isset($calculoLinea["piso_detalle"]) ? $calculoLinea["piso_detalle"] : "",
         );
@@ -1546,7 +1593,7 @@ function icMotor3ConstruirExplicacionLinea(
         "definicion_base_economica" => "Base económica = el mayor entre (promedio mensual × {$mesesCobertura}), "
             . "la compra máxima de {$meses} meses y la compra máxima de {$mesesLargo} meses. "
             . "Así no se penaliza una pausa de pedidos si el cliente sigue pagando bien.",
-        "formula"  => "Línea = max(base × factor score × factor riesgo, piso opcional)",
+        "formula"  => "Línea = max(base × factor score × factor riesgo, piso buen pagador, piso categoría)",
         "calculo"  => $calculoTexto,
         "pasos"    => $pasos,
         "nota_pausa" => !empty($calculoLinea["nota_pausa"]) ? $calculoLinea["nota_pausa"] : "",

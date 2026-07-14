@@ -109,7 +109,10 @@ class ModeloDecisionesCredito
         }
 
         $placeholders = implode(", ", array_fill(0, count($codigosPedido), "?"));
-        $sql = "SELECT d.*
+        $sql = "SELECT
+                    d.*,
+                    ur.nombre AS usuario_registro_nombre,
+                    uu.nombre AS usuario_resolucion_nombre
                 FROM decision_credito_pedidojf d
                 INNER JOIN (
                     SELECT codigo_pedido, MAX(id) AS max_id
@@ -117,7 +120,9 @@ class ModeloDecisionesCredito
                     WHERE estado = 'VIGENTE'
                       AND codigo_pedido IN ($placeholders)
                     GROUP BY codigo_pedido
-                ) ult ON ult.max_id = d.id";
+                ) ult ON ult.max_id = d.id
+                LEFT JOIN usuariosjf ur ON ur.id = d.usuario_registro
+                LEFT JOIN usuariosjf uu ON uu.id = d.usuario_resolucion";
 
         $stmt = Conexion::conectar()->prepare($sql);
 
@@ -451,10 +456,19 @@ class ModeloDecisionesCredito
         $motivo = dcObtenerMotivo($decision["motivo_codigo"]);
         $decision["motivo_severidad"] = $motivo ? $motivo["severidad"] : "media";
         $decision["motivo_categoria"] = $motivo ? $motivo["categoria"] : "";
-        $decision["usuario_registro_nombre"] = self::nombreUsuario($decision["usuario_registro"]);
-        $decision["usuario_resolucion_nombre"] = !empty($decision["usuario_resolucion"])
-            ? self::nombreUsuario($decision["usuario_resolucion"])
-            : null;
+
+        if (!isset($decision["usuario_registro_nombre"]) || $decision["usuario_registro_nombre"] === "" || $decision["usuario_registro_nombre"] === null) {
+            $decision["usuario_registro_nombre"] = self::nombreUsuario($decision["usuario_registro"]);
+        }
+
+        if (!empty($decision["usuario_resolucion"])) {
+            if (!isset($decision["usuario_resolucion_nombre"]) || $decision["usuario_resolucion_nombre"] === "" || $decision["usuario_resolucion_nombre"] === null) {
+                $decision["usuario_resolucion_nombre"] = self::nombreUsuario($decision["usuario_resolucion"]);
+            }
+        } else {
+            $decision["usuario_resolucion_nombre"] = null;
+        }
+
         $decision["resolucion_etiqueta"] = !empty($decision["resolucion_codigo"])
             ? dcEtiquetaResolucion($decision["resolucion_codigo"])
             : null;

@@ -8,6 +8,7 @@ require_once "../../controladores/config.php";
 require_once "../../controladores/inteligencia-comercial.config.php";
 require_once "../../modelos/conexion.php";
 require_once "../../modelos/inteligencia-comercial.modelo.php";
+require_once "../../modelos/categorias-clientes.modelo.php";
 require_once "../../controladores/inteligencia-comercial.controlador.php";
 
 header("Content-Type: application/json; charset=utf-8");

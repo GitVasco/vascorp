@@ -42,6 +42,80 @@ function valorOVacio(valor) {
     return valor;
 }
 
+function formatearMilesPen(valor) {
+    var n = parseFloat(valor);
+    if (isNaN(n) || valor === "" || valor === null) {
+        return "—";
+    }
+    return "S/ " + n.toLocaleString("es-PE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+/** Piso sugerido ≈ 2.5 meses de la compra anual, redondeado a miles.
+ *  Con 500k anuales ≈ S/ 104,000 (alineado a líneas vigentes tipicas de Dist).
+ *  El piso NO baja una línea ya mayor.
+ */
+function sugerirLineaMinima(montoAnual) {
+    var n = parseFloat(montoAnual);
+    if (isNaN(n) || n <= 0) {
+        return null;
+    }
+    var estimada = (n / 12) * 2.5;
+    return Math.max(1000, Math.round(estimada / 1000) * 1000);
+}
+
+function actualizarPreviewMonto($input) {
+    var previewId = $input.attr("data-preview");
+    if (!previewId) {
+        return;
+    }
+    $("#" + previewId).text(formatearMilesPen($input.val()));
+}
+
+function actualizarSugerenciaLinea(prefijo) {
+    var monto = $("#" + prefijo + "MontoAnualCategoria").val();
+    var sugerida = sugerirLineaMinima(monto);
+    var $box = $("#" + prefijo + "LineaSugerencia");
+
+    if (!sugerida) {
+        $box.html("Piso orientativo para la recomendación/alerta de línea de crédito.");
+        return;
+    }
+
+    $box.html(
+        "Sugerencia: <strong>" + formatearMilesPen(sugerida) + "</strong> " +
+        "(≈ 2,5 meses de compra anual). El piso no reduce una línea ya mayor; solo alerta si apruebas menos."
+    );
+}
+
+function refrescarAyudasCategoria(prefijo) {
+    actualizarPreviewMonto($("#" + prefijo + "MontoAnualCategoria"));
+    actualizarPreviewMonto($("#" + prefijo + "LineaMinimaCategoria"));
+    actualizarSugerenciaLinea(prefijo);
+}
+
+$(document).on("input change", ".input-monto-cat, .input-linea-cat", function () {
+    actualizarPreviewMonto($(this));
+    if ($(this).hasClass("input-monto-cat")) {
+        var sugerencia = $(this).attr("data-sugerencia");
+        if (sugerencia) {
+            actualizarSugerenciaLinea(sugerencia);
+        }
+    }
+});
+
+$(document).on("click", ".btnUsarSugerenciaLinea", function () {
+    var $monto = $($(this).data("monto"));
+    var $linea = $($(this).data("linea"));
+    var sugerida = sugerirLineaMinima($monto.val());
+    if (!sugerida) {
+        return;
+    }
+    $linea.val(sugerida).trigger("input");
+});
+
 var coloresCategoriaPorCodigo = {
     DIST: "#dd4b39",
     MAYO: "#00a65a",
@@ -85,6 +159,7 @@ $("#formAgregarCategoriaComercial").on("submit", function (e) {
     datos.append("color", $("#nuevoColorCategoria").val());
     datos.append("estado", $("#nuevoEstadoCategoria").val());
     datos.append("monto_compras_anual", $("#nuevoMontoAnualCategoria").val());
+    datos.append("linea_minima", $("#nuevoLineaMinimaCategoria").val());
     datos.append("descuento_venta_pct", $("#nuevoDtoVentaCategoria").val());
     datos.append("descuento_pronto_pago_pct", $("#nuevoDtoProntoCategoria").val());
 
@@ -105,6 +180,7 @@ $("#formAgregarCategoriaComercial").on("submit", function (e) {
                 $("#modalAgregarCategoriaComercial").modal("hide");
                 $("#formAgregarCategoriaComercial")[0].reset();
                 $("#nuevoEstadoCategoria").val("1");
+                refrescarAyudasCategoria("nuevo");
                 recargarTablaCategoriasComerciales();
                 swal({
                     type: "success",
@@ -154,6 +230,7 @@ $(".tablaCategoriasComerciales").on("click", ".btnEditarCategoriaComercial", fun
 
             var cat = respuesta.data.categoria;
             var req = respuesta.data.requisito;
+            var reqLinea = respuesta.data.requisito_linea;
             var ben = respuesta.data.beneficio;
 
             $("#idCategoriaComercial").val(cat.id);
@@ -165,8 +242,10 @@ $(".tablaCategoriasComerciales").on("click", ".btnEditarCategoriaComercial", fun
             $("#editarColorCategoria").val(normalizarColorHex(cat.color, cat.codigo));
 
             $("#editarMontoAnualCategoria").val(req ? valorOVacio(req.valor_numerico) : "");
+            $("#editarLineaMinimaCategoria").val(reqLinea ? valorOVacio(reqLinea.valor_numerico) : "");
             $("#editarDtoVentaCategoria").val(ben ? valorOVacio(ben.descuento_venta_pct) : "");
             $("#editarDtoProntoCategoria").val(ben ? valorOVacio(ben.descuento_pronto_pago_pct) : "");
+            refrescarAyudasCategoria("editar");
         },
         error: function () {
             swal({ type: "error", title: "Error", text: "No se pudo comunicar con el servidor" });
@@ -186,6 +265,7 @@ $("#formEditarCategoriaComercial").on("submit", function (e) {
     datos.append("color", $("#editarColorCategoria").val());
     datos.append("estado", $("#editarEstadoCategoria").val());
     datos.append("monto_compras_anual", $("#editarMontoAnualCategoria").val());
+    datos.append("linea_minima", $("#editarLineaMinimaCategoria").val());
     datos.append("descuento_venta_pct", $("#editarDtoVentaCategoria").val());
     datos.append("descuento_pronto_pago_pct", $("#editarDtoProntoCategoria").val());
 

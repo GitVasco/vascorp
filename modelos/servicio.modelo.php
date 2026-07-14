@@ -110,9 +110,29 @@ class ModeloServicios
 		$stmt->bindParam(":saldo", $datos["saldo"], PDO::PARAM_INT);
 		$stmt->bindParam(":cabecera_taller", $cabeceraTaller, PDO::PARAM_INT);
 
-		$stmt->execute();
+		$ok = $stmt->execute();
 
 		$stmt = null;
+
+		return $ok ? "ok" : "error";
+	}
+
+	/*
+	* Sumar unidades al total de la cabecera del servicio del día
+	*/
+	static public function mdlSumarTotalServicio($codigo, $cantidad)
+	{
+		$sql = "UPDATE serviciosjf SET total = COALESCE(total, 0) + :cantidad WHERE codigo = :codigo";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		$stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_INT);
+
+		$ok = $stmt->execute();
+
+		$stmt = null;
+
+		return $ok ? "ok" : "error";
 	}
 
 	// Método para editar las ventas
@@ -402,6 +422,7 @@ class ModeloServicios
 	}
 
 	//VISUALIZAR DETALLE SERVICIO
+	// Muestra cantidad enviada (sd.cantidad), no el saldo pendiente.
 	static public function mdlVisualizarServicioDetalle($valor)
 	{
 
@@ -418,60 +439,60 @@ class ModeloServicios
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '1' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t1,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '2' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t2,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '3' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t3,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '4' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t4,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '5' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t5,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '6' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t6,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '7' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t7,
 			SUM(
 			  CASE
 				WHEN a.cod_talla = '8' 
-				THEN sd.saldo 
+				THEN sd.cantidad 
 				ELSE 0 
 			  END
 			) AS t8,
-			SUM(sd.saldo) AS total 
+			SUM(sd.cantidad) AS total 
 		  FROM
 			servicios_detallejf sd 
 			LEFT JOIN articulojf a 
@@ -487,7 +508,7 @@ class ModeloServicios
 			a.cod_color,
 			a.color,
 			a.estado
-		  HAVING SUM(sd.saldo) > 0");
+		  HAVING SUM(sd.cantidad) > 0");
 
 			$stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 

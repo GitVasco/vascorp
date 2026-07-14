@@ -717,7 +717,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/productos.js"></script>
     <script src="vistas/js/clientes.js"></script>
     <script src="vistas/js/grupos-empresariales.js"></script>
-    <script src="vistas/js/categorias-comerciales.js"></script>
+    <script src="vistas/js/categorias-comerciales.js?v=4"></script>
     <script src="vistas/js/categorias-por-revisar.js"></script>
     <script src="vistas/js/ventas.js"></script>
     <script src="vistas/js/reportes.js"></script>
@@ -755,13 +755,13 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=16"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=17"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") { ?>
-    <script src="vistas/js/linea-credito.js?v=18"></script>
+    <script src="vistas/js/linea-credito.js?v=20"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>

@@ -60,7 +60,10 @@ class ControladorDashboardDecisiones
 
         $anio = (int) date("Y");
         $mes = (int) date("n");
-        $vendedor = self::ctrVendedorSeleccionado();
+        $vendedor = ModeloDashboardDecisiones::getVendedorFiltro();
+        if ($vendedor === "") {
+            $vendedor = self::ctrVendedorSeleccionado();
+        }
         $filas = ModeloMetasVendedor::mdlAvanceVentasDashboard($anio, $mes, $vendedor);
 
         $totalMeta = 0.0;
@@ -155,21 +158,75 @@ class ControladorDashboardDecisiones
 
     public static function ctrDatosDashboard()
     {
+        $tTotal = microtime(true);
         ModeloDashboardDecisiones::setVendedorFiltro(self::ctrVendedorSeleccionado());
 
+        $timings = array();
+
+        $t = microtime(true);
         $generados = self::ctrPedidosGenerados();
+        $timings["generados"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $pedidos = self::ctrResumenPedidos();
+        $timings["pedidos"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $cartera = self::ctrResumenCartera();
+        $timings["cartera"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $alertas = self::ctrAlertasDecision();
+        $timings["alertas"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $topGenerados = self::ctrTopGeneradosPendientes();
+        $timings["top_generados"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $generadosEnriquecidos = self::ctrEnriquecerGeneradosConDecision($generados);
+        $timings["enriquecer"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $estancados = self::ctrPedidosEstancados();
+        $timings["estancados"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $atraso = self::ctrClientesConAtraso();
+        $timings["atraso"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $avanceVentas = self::ctrAvanceVentasMes();
+        $timings["avance_ventas"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $facturadoResumen = self::ctrResumenFacturadoMes();
+        $timings["facturado_resumen"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $facturado = self::ctrFacturadoMes();
+        $timings["facturado"] = round((microtime(true) - $t) * 1000);
+
+        $timings["total_datos"] = round((microtime(true) - $tTotal) * 1000);
+
+        if (defined("DD_PERF_LOG") && DD_PERF_LOG) {
+            error_log(
+                "[DD_PERF] vendedor=" . ModeloDashboardDecisiones::getVendedorFiltro()
+                . " " . json_encode($timings)
+            );
+        }
 
         return array(
-            "pedidos" => self::ctrResumenPedidos(),
-            "cartera" => self::ctrResumenCartera(),
-            "alertas" => self::ctrAlertasDecision(),
-            "top_generados" => self::ctrTopGeneradosPendientes(),
-            "generados" => self::ctrEnriquecerGeneradosConDecision($generados),
-            "estancados" => self::ctrPedidosEstancados(),
-            "atraso" => self::ctrClientesConAtraso(),
-            "avance_ventas" => self::ctrAvanceVentasMes(),
-            "facturado_resumen" => self::ctrResumenFacturadoMes(),
-            "facturado" => self::ctrFacturadoMes(),
+            "pedidos" => $pedidos,
+            "cartera" => $cartera,
+            "alertas" => $alertas,
+            "top_generados" => $topGenerados,
+            "generados" => $generadosEnriquecidos,
+            "estancados" => $estancados,
+            "atraso" => $atraso,
+            "avance_ventas" => $avanceVentas,
+            "facturado_resumen" => $facturadoResumen,
+            "facturado" => $facturado,
         );
     }
 

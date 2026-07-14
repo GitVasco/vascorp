@@ -1,5 +1,6 @@
 (function () {
-    var lcContext = { cliente: "", nombre: "" };
+    var lcContext = { cliente: "", nombre: "", pisoCategoria: null };
+    var lcGrupoPiso = null;
     var lcGrupoFiltro = "";
     var lcGrupoDeudaTotal = 0;
     var tablaLc = null;
@@ -278,11 +279,80 @@
         };
     }
 
+    function textoPisoCategoria(piso) {
+        if (!piso || !piso.activo || !(Number(piso.monto) > 0)) {
+            return "";
+        }
+        var cat = piso.categoria_nombre ? " (" + piso.categoria_nombre + ")" : "";
+        return "Piso categoría" + cat + ": " + fmtMoney(piso.monto);
+    }
+
+    function renderCategoriaBadge(piso) {
+        if (!piso || !piso.tiene_categoria || !piso.categoria_nombre) {
+            return (
+                '<div class="lc-cat-chip lc-cat-chip--empty">' +
+                '<i class="fa fa-tag"></i> Sin categoría comercial</div>'
+            );
+        }
+
+        var color = piso.categoria_color || "#777777";
+        var meta = [];
+        if (piso.monto_compras_anual != null && Number(piso.monto_compras_anual) > 0) {
+            meta.push("Compra anual mín. " + fmtMoney(piso.monto_compras_anual));
+        }
+        if (piso.activo && Number(piso.monto) > 0) {
+            meta.push("Piso línea " + fmtMoney(piso.monto));
+        } else {
+            meta.push("Sin piso de línea definido");
+        }
+
+        return (
+            '<div class="lc-cat-chip">' +
+            '<span class="lc-cat-chip__badge" style="background:' + esc(color) + '">' +
+            esc(piso.categoria_nombre) + "</span>" +
+            '<span class="lc-cat-chip__meta">' + esc(meta.join(" · ")) + "</span>" +
+            '<small class="lc-cat-chip__hint">El piso no reduce tu línea: solo alerta si apruebas por debajo.</small>' +
+            "</div>"
+        );
+    }
+
+    function confirmarSiBajoPiso(lineaNueva, piso, onOk) {
+        var montoPiso = piso && piso.activo ? Number(piso.monto) : 0;
+        if (!(montoPiso > 0) || !(Number(lineaNueva) + 0.01 < montoPiso)) {
+            onOk();
+            return;
+        }
+        var cat = piso.categoria_nombre ? piso.categoria_nombre : "la categoría";
+        swal({
+            title: "Línea bajo el piso de categoría",
+            text: "La línea (" + fmtMoney(lineaNueva) + ") es menor al piso de " + cat +
+                " (" + fmtMoney(montoPiso) + "). ¿Desea guardar igual?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, guardar",
+            cancelButtonText: "Cancelar",
+        }, function (ok) {
+            if (ok) {
+                onOk();
+            }
+        });
+    }
+
+    function swalRegistroOk(resp, fallbackMsg) {
+        if (resp && resp.alerta_piso && resp.alerta_piso.bajo_piso && resp.alerta_piso.mensaje) {
+            swal("Registrado con alerta", resp.alerta_piso.mensaje, "warning");
+            return;
+        }
+        swal("Registrado", fallbackMsg, "success");
+    }
+
     function renderRegistroLineaGrupo(data) {
         var g = data.grupo || {};
         var c = data.consolidado || {};
         var ref = lineaCreditoRefGrupo(c);
         var linea = lineaGrupoDisplay(c, ref);
+        var piso = data.piso_categoria || null;
+        var pisoTxt = textoPisoCategoria(piso);
 
         return (
             '<div class="lc-registro-linea lc-registro-linea--grupo lc-registro-linea--compact">' +
@@ -290,7 +360,9 @@
             '<input type="hidden" name="codigo_grupo" value="' + esc(g.codigo) + '">' +
             '<div class="lc-form-inline-grupo__meta">' +
             '<i class="fa fa-pencil-square-o"></i>' +
-            "<span>Vigente: <strong>" + linea.valor + "</strong> · " + esc(linea.nota) + "</span></div>" +
+            "<span>Vigente: <strong>" + linea.valor + "</strong> · " + esc(linea.nota) +
+            (pisoTxt ? " · " + esc(pisoTxt) : "") +
+            "</span></div>" +
             '<div class="lc-form-inline-grupo__fields">' +
             '<div class="lc-form-inline-grupo__field">' +
             '<label class="lc-field-lbl">Nueva línea</label>' +
@@ -387,6 +459,7 @@
             '<div class="lc-veredicto lc-veredicto--inline lc-veredicto--' + veredicto.cls + '">' +
             '<i class="fa ' + veredicto.icon + '"></i>' +
             "<span><strong>" + esc(veredicto.titulo) + "</strong> — " + esc(veredicto.detalle) + "</span></div>" +
+            renderCategoriaBadge(data.piso_categoria) +
             peorHtml +
             renderGrupoHeroFin(c, refGrupo) +
             renderUtilGrupo(c, refGrupo) +
@@ -600,6 +673,7 @@
                 lcGrupoDeudaTotal = (resp.totales_cartera && resp.totales_cartera.deuda)
                     ? parseFloat(resp.totales_cartera.deuda)
                     : 0;
+                lcGrupoPiso = resp.piso_categoria || null;
                 $("#lcPanelGrupo").html(renderPanelGrupo(resp));
                 actualizarLayoutGrupo();
                 actualizarPctDeudaLocales();
@@ -677,15 +751,17 @@
         return html + "</ul>";
     }
 
-    function renderRegistroLinea(c) {
+    function renderRegistroLinea(c, piso) {
         var ref = lineaCreditoRef(c);
         var lineaVigente = ref.esAprobada ? fmtMoney(c.linea_aprobada) : "Sin línea aprobada";
+        var pisoTxt = textoPisoCategoria(piso);
 
         return (
             '<div class="lc-registro-linea">' +
             "<h5><i class=\"fa fa-pencil-square-o\"></i> Registrar línea aprobada</h5>" +
             '<p class="lc-registro-ayuda">Línea vigente: <strong>' + lineaVigente + "</strong>" +
             (ref.esAprobada ? "" : " · Referencia IC: " + fmtMoney(c.linea_recomendada)) +
+            (pisoTxt ? "<br>" + esc(pisoTxt) : "") +
             "</p>" +
             '<form id="lcFormRegistroLinea">' +
             '<input type="hidden" name="codigo_cliente" value="' + esc(lcContext.cliente) + '">' +
@@ -735,6 +811,7 @@
         return (
             '<div class="lc-detalle lc-detalle--local-grupo">' +
             renderBannerGrupo(data) +
+            renderCategoriaBadge(data.piso_categoria) +
             '<div class="lc-section-title"><i class="fa fa-map-marker"></i> Situación de este local</div>' +
             '<div class="row lc-scores lc-scores--compact">' +
             '<div class="col-sm-4 col-xs-6"><div class="lc-score-card lc-score-card--' + riesgoClr + '">' +
@@ -780,6 +857,7 @@
             '<i class="fa ' + veredicto.icon + '"></i>' +
             "<div><strong>" + esc(veredicto.titulo) + "</strong><span>" + esc(veredicto.detalle) + "</span></div>" +
             "</div>" +
+            renderCategoriaBadge(data.piso_categoria) +
             '<div class="row lc-scores">' +
             '<div class="col-sm-3 col-xs-6"><div class="lc-score-card lc-score-card--' + riesgoClr + '">' +
             '<span class="lc-score-num">' + (c.score_riesgo != null ? Number(c.score_riesgo).toFixed(1) : "—") + "</span>" +
@@ -826,7 +904,7 @@
             '<button type="button" class="btn btn-default btn-sm" id="btnLcActualizarCliente"><i class="fa fa-refresh"></i> Actualizar desde IC</button>' +
             "</div>" +
             '<div class="lc-section-title"><i class="fa fa-history"></i> Historial</div>' + renderHistorial(data.historial) +
-            renderRegistroLinea(c) +
+            renderRegistroLinea(c, data.piso_categoria) +
             "</div>"
         );
     }
@@ -841,6 +919,7 @@
             $("#lcDetalleBody").html('<div class="alert alert-warning">' + esc((resp && resp.msg) || "Error") + "</div>");
             return;
         }
+        lcContext.pisoCategoria = resp.piso_categoria || null;
         $("#lcDetalleBody").html(renderDetalle(resp));
         $("#lcLinkIc").attr("href", resp.url_ic || "#");
     }
@@ -990,38 +1069,47 @@
 
     $(document).on("submit", "#lcFormRegistroLineaGrupo", function (e) {
         e.preventDefault();
-        postLc("registrar_linea_grupo", $(this).serialize())
-            .done(function (resp) {
-                if (!resp || !resp.ok) {
-                    swal("Atención", (resp && resp.msg) || "Error", "warning");
-                    return;
-                }
-                $("#lcPanelGrupo").html(renderPanelGrupo(resp));
-                lcGrupoDeudaTotal = (resp.totales_cartera && resp.totales_cartera.deuda)
-                    ? parseFloat(resp.totales_cartera.deuda)
-                    : 0;
-                actualizarLayoutGrupo();
-                actualizarPctDeudaLocales();
-                swal("Registrado", "Línea aprobada del grupo guardada en historial.", "success");
-            })
-            .fail(function (xhr) {
-                swal("Error", msgAjaxError(xhr, "No se pudo registrar la línea del grupo."), "error");
-            });
+        var $form = $(this);
+        var lineaNueva = $form.find('[name="linea_aprobada"]').val();
+        confirmarSiBajoPiso(lineaNueva, lcGrupoPiso, function () {
+            postLc("registrar_linea_grupo", $form.serialize())
+                .done(function (resp) {
+                    if (!resp || !resp.ok) {
+                        swal("Atención", (resp && resp.msg) || "Error", "warning");
+                        return;
+                    }
+                    lcGrupoPiso = resp.piso_categoria || lcGrupoPiso;
+                    $("#lcPanelGrupo").html(renderPanelGrupo(resp));
+                    lcGrupoDeudaTotal = (resp.totales_cartera && resp.totales_cartera.deuda)
+                        ? parseFloat(resp.totales_cartera.deuda)
+                        : 0;
+                    actualizarLayoutGrupo();
+                    actualizarPctDeudaLocales();
+                    swalRegistroOk(resp, "Línea aprobada del grupo guardada en historial.");
+                })
+                .fail(function (xhr) {
+                    swal("Error", msgAjaxError(xhr, "No se pudo registrar la línea del grupo."), "error");
+                });
+        });
     });
 
     $(document).on("submit", "#lcFormRegistroLinea", function (e) {
         e.preventDefault();
-        postLc("registrar_linea", $(this).serialize())
-            .done(function (resp) {
-                if (!resp || !resp.ok) {
-                    swal("Atención", (resp && resp.msg) || "Error", "warning");
-                    return;
-                }
-                mostrarDetalle(resp);
-                swal("Registrado", "Línea aprobada guardada en historial.", "success");
-            })
-            .fail(function (xhr) {
-                swal("Error", msgAjaxError(xhr, "No se pudo registrar la línea."), "error");
-            });
+        var $form = $(this);
+        var lineaNueva = $form.find('[name="linea_aprobada"]').val();
+        confirmarSiBajoPiso(lineaNueva, lcContext.pisoCategoria, function () {
+            postLc("registrar_linea", $form.serialize())
+                .done(function (resp) {
+                    if (!resp || !resp.ok) {
+                        swal("Atención", (resp && resp.msg) || "Error", "warning");
+                        return;
+                    }
+                    mostrarDetalle(resp);
+                    swalRegistroOk(resp, "Línea aprobada guardada en historial.");
+                })
+                .fail(function (xhr) {
+                    swal("Error", msgAjaxError(xhr, "No se pudo registrar la línea."), "error");
+                });
+        });
     });
 })();
