@@ -455,7 +455,34 @@
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
-    max-width: 72%;
+    max-width: 80%;
+}
+
+.dd-avance-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #555;
+    background: #fff;
+    border: 1px solid #dce3ec;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.dd-avance-check input {
+    margin: 0;
+    vertical-align: middle;
+}
+
+.dd-avance-leyenda-generado.is-off {
+    opacity: 0.35;
+    text-decoration: line-through;
 }
 
 .dd-resumen-chip {

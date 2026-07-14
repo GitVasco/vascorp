@@ -4,6 +4,149 @@
         pedido: "",
         nombre: "",
     };
+    var ddIncluirGeneradosAvance = false;
+
+    function fmtSolesEntero(value) {
+        return (
+            "S/ " +
+            Number(value || 0).toLocaleString("es-PE", {
+                maximumFractionDigits: 0,
+            })
+        );
+    }
+
+    function ddAvancePctClase(pct) {
+        pct = Number(pct) || 0;
+        if (pct >= 100) {
+            return "ok";
+        }
+        if (pct >= 80) {
+            return "warn";
+        }
+        return "bad";
+    }
+
+    function aplicarAvanceIncluirGenerados(incluir) {
+        ddIncluirGeneradosAvance = !!incluir;
+        var $check = $("#ddAvanceIncluirGenerados");
+        if ($check.length) {
+            $check.prop("checked", ddIncluirGeneradosAvance);
+        }
+
+        $(".dd-avance-leyenda-generado").toggleClass("is-off", !ddIncluirGeneradosAvance);
+
+        var $chip = $("#ddAvanceProyChip");
+        if ($chip.length) {
+            var proy = ddIncluirGeneradosAvance
+                ? Number($chip.data("proy-gen") || 0)
+                : Number($chip.data("proy") || 0);
+            var meta = Number($chip.data("meta") || 0);
+            var pct = ddIncluirGeneradosAvance
+                ? Number($chip.data("pct-gen") || 0)
+                : Number($chip.data("pct") || 0);
+            $chip.html(
+                "Proy. " +
+                    fmtSolesEntero(proy) +
+                    " / " +
+                    fmtSolesEntero(meta) +
+                    " (" +
+                    pct.toLocaleString("es-PE", {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                    }) +
+                    "%)"
+            );
+        }
+
+        $(".dd-avance-row").each(function () {
+            var $row = $(this);
+            var real = Number($row.data("real") || 0);
+            var gen = Number($row.data("generado") || 0);
+            var apr = Number($row.data("aprobado") || 0);
+            var apt = Number($row.data("apt") || 0);
+            var conf = Number($row.data("confirmado") || 0);
+            var meta = Number($row.data("meta") || 0);
+
+            var segmentos = [
+                { clase: "real", monto: real, titulo: "Venta facturada" },
+            ];
+            if (ddIncluirGeneradosAvance) {
+                segmentos.push({
+                    clase: "generado",
+                    monto: gen,
+                    titulo: "Generados",
+                });
+            }
+            segmentos.push(
+                { clase: "aprobado", monto: apr, titulo: "Aprobados" },
+                { clase: "apt", monto: apt, titulo: "APT" },
+                { clase: "confirmado", monto: conf, titulo: "Confirmados" }
+            );
+
+            var pipeline = apr + apt + conf + (ddIncluirGeneradosAvance ? gen : 0);
+            var proyectado = real + pipeline;
+            var pctProy = meta > 0 ? Math.round((proyectado / meta) * 1000) / 10 : 0;
+            var faltante = Math.max(0, meta - proyectado);
+            var clase = ddAvancePctClase(pctProy);
+
+            var totalPctBar = 0;
+            segmentos.forEach(function (seg) {
+                if (seg.monto > 0 && meta > 0) {
+                    totalPctBar += (seg.monto / meta) * 100;
+                }
+            });
+            var escala = totalPctBar > 100 ? 100 / totalPctBar : 1;
+
+            var $bar = $row.find(".dd-avance-bar-el");
+            $bar.toggleClass("dd-avance-bar--overflow", totalPctBar > 100);
+            $bar.empty();
+            if (meta > 0) {
+                segmentos.forEach(function (seg) {
+                    if (seg.monto <= 0) {
+                        return;
+                    }
+                    var ancho = Math.round((seg.monto / meta) * 100 * escala * 100) / 100;
+                    $bar.append(
+                        '<div class="dd-avance-seg dd-avance-seg--' +
+                            seg.clase +
+                            '" style="width:' +
+                            ancho +
+                            '%" title="' +
+                            escapeHtml(seg.titulo) +
+                            ": " +
+                            fmtSolesEntero(seg.monto) +
+                            '"></div>'
+                    );
+                });
+            }
+
+            var $pct = $row.find(".dd-avance-pct-el");
+            $pct
+                .removeClass("dd-avance-pct--ok dd-avance-pct--warn dd-avance-pct--bad")
+                .addClass("dd-avance-pct--" + clase)
+                .text(
+                    pctProy.toLocaleString("es-PE", {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                    }) + "%"
+                );
+
+            $row.find(".dd-avance-pipeline").text(fmtSolesEntero(pipeline));
+
+            var $falt = $row.find(".dd-avance-faltante-cell");
+            if (faltante > 0) {
+                $falt.html(
+                    '<span class="dd-avance-faltante">' +
+                        fmtSolesEntero(faltante) +
+                        "</span>"
+                );
+            } else {
+                $falt.html(
+                    '<span class="dd-avance-faltante dd-avance-faltante--ok"><i class="fa fa-check"></i></span>'
+                );
+            }
+        });
+    }
 
     function formatMoney(value, simbolo) {
         var prefix = simbolo || "S/ ";
@@ -858,6 +1001,7 @@
                 }
 
                 $("#ddContenidoDashboard").html(resp.html);
+                aplicarAvanceIncluirGenerados(ddIncluirGeneradosAvance);
 
                 if (opciones.actualizarUrl) {
                     if (window.history && window.history.replaceState) {
@@ -908,6 +1052,11 @@
             refrescarDashboard($(this).val(), { actualizarUrl: true });
         });
 
+        $(document).on("change", "#ddAvanceIncluirGenerados", function () {
+            aplicarAvanceIncluirGenerados($(this).is(":checked"));
+        });
+
+        aplicarAvanceIncluirGenerados(false);
         $("#btnDdActualizar").on("click", function () {
             refrescarDashboard($("#ddFiltroVendedor").val(), { actualizarUrl: false });
         });

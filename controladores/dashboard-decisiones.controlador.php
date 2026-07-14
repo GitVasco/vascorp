@@ -72,8 +72,7 @@ class ControladorDashboardDecisiones
         $totalProyectado = 0.0;
 
         foreach ($filas as $fila) {
-            $pipeline = (float) $fila["soles_generados"]
-                + (float) $fila["soles_aprobados"]
+            $pipeline = (float) $fila["soles_aprobados"]
                 + (float) $fila["soles_apt"]
                 + (float) $fila["soles_confirmados"];
 
@@ -86,6 +85,21 @@ class ControladorDashboardDecisiones
         $pctGlobal = ($totalMeta > 0) ? round(($totalVenta / $totalMeta) * 100, 1) : 0.0;
         $pctProyectado = ($totalMeta > 0) ? round(($totalProyectado / $totalMeta) * 100, 1) : 0.0;
 
+        // Totales alternos incluyendo GENERADO (para el check de UI)
+        $totalPipelineConGen = 0.0;
+        $totalProyectadoConGen = 0.0;
+        foreach ($filas as $fila) {
+            $pipeGen = (float) $fila["soles_generados"]
+                + (float) $fila["soles_aprobados"]
+                + (float) $fila["soles_apt"]
+                + (float) $fila["soles_confirmados"];
+            $totalPipelineConGen += $pipeGen;
+            $totalProyectadoConGen += (float) $fila["venta_real"] + $pipeGen;
+        }
+        $pctProyectadoConGen = ($totalMeta > 0)
+            ? round(($totalProyectadoConGen / $totalMeta) * 100, 1)
+            : 0.0;
+
         return array(
             "anio" => $anio,
             "mes" => $mes,
@@ -96,6 +110,10 @@ class ControladorDashboardDecisiones
             "total_proyectado" => round($totalProyectado, 2),
             "pct_global" => $pctGlobal,
             "pct_proyectado" => $pctProyectado,
+            "total_pipeline_con_generados" => round($totalPipelineConGen, 2),
+            "total_proyectado_con_generados" => round($totalProyectadoConGen, 2),
+            "pct_proyectado_con_generados" => $pctProyectadoConGen,
+            "incluir_generados" => false,
         );
     }
 
@@ -147,6 +165,33 @@ class ControladorDashboardDecisiones
 
         if (!$ok) {
             return array("ok" => false, "msg" => "No se pudo anular el pedido.");
+        }
+
+        if (function_exists("dcRegistrarAccionCredito") && !empty($pedido["cod_cli"])) {
+            $accionDatos = array(
+                "codigo_pedido" => (int) $pedido["codigo"],
+                "codigo_cliente" => $pedido["cod_cli"],
+                "tipo_accion" => "ANULADO",
+                "origen" => "centro_decisiones",
+                "pedido_total" => isset($pedido["total"]) ? $pedido["total"] : null,
+                "pedido_lista" => isset($pedido["lista"]) ? $pedido["lista"] : null,
+                "pedido_estado_resultado" => "ANULADO",
+                "usuario_id" => (int) $_SESSION["id"],
+                "detalle" => "Pedido anulado desde Centro de Decisiones",
+            );
+
+            if (function_exists("dcArmarSnapshotAccionCredito")) {
+                $snapshot = dcArmarSnapshotAccionCredito($pedido["cod_cli"]);
+                if (!empty($snapshot)) {
+                    // Conservar el detalle de anulación; el snapshot aporta línea/categoría
+                    $detalleAnula = $accionDatos["detalle"];
+                    $accionDatos = array_merge($accionDatos, $snapshot);
+                    $accionDatos["detalle"] = $detalleAnula
+                        . (!empty($snapshot["detalle"]) ? " · " . $snapshot["detalle"] : "");
+                }
+            }
+
+            dcRegistrarAccionCredito($accionDatos);
         }
 
         return array(
@@ -202,6 +247,8 @@ class ControladorDashboardDecisiones
         }
 
         $categoriaAsignada = null;
+        $categoriaEntidad = null;
+        $categoriaCodigoEntidad = null;
         $efectiva = class_exists("ControladorCategoriasClientes")
             ? ControladorCategoriasClientes::ctrObtenerCategoriaEfectivaCliente($codigoCliente)
             : array("ok" => false, "tiene_categoria" => false);
@@ -255,6 +302,8 @@ class ControladorDashboardDecisiones
             }
 
             $categoriaAsignada = isset($asignacion["categoria"]) ? $asignacion["categoria"] : null;
+            $categoriaEntidad = $tipoEntidad;
+            $categoriaCodigoEntidad = $codigoEntidad;
         }
 
         $ok = ModeloDashboardDecisiones::mdlAprobarPedidoGenerado(
@@ -268,6 +317,44 @@ class ControladorDashboardDecisiones
 
         if (class_exists("ModeloPedidos") && method_exists("ModeloPedidos", "mdlCantAprobados")) {
             ModeloPedidos::mdlCantAprobados();
+        }
+
+        $accionDatos = array(
+            "codigo_pedido" => (int) $pedido["codigo"],
+            "codigo_cliente" => $codigoCliente,
+            "tipo_accion" => "APROBADO",
+            "origen" => "centro_decisiones",
+            "pedido_total" => isset($pedido["total"]) ? $pedido["total"] : null,
+            "pedido_lista" => isset($pedido["lista"]) ? $pedido["lista"] : null,
+            "pedido_estado_resultado" => "APROBADO",
+            "usuario_id" => (int) $_SESSION["id"],
+        );
+
+        // Snapshot post-categoría: cat. efectiva, línea/cupo, scores
+        if (function_exists("dcArmarSnapshotAccionCredito")) {
+            $snapshot = dcArmarSnapshotAccionCredito($codigoCliente);
+            if (!empty($snapshot)) {
+                $accionDatos = array_merge($accionDatos, $snapshot);
+            }
+        }
+
+        // Si se asignó categoría en este mismo paso, asegurar esos campos
+        if ($categoriaAsignada) {
+            $accionDatos["id_categoria"] = isset($categoriaAsignada["id"])
+                ? (int) $categoriaAsignada["id"]
+                : $idCategoria;
+            $accionDatos["categoria_codigo"] = isset($categoriaAsignada["codigo"])
+                ? $categoriaAsignada["codigo"]
+                : (isset($accionDatos["categoria_codigo"]) ? $accionDatos["categoria_codigo"] : "");
+            $accionDatos["categoria_nombre"] = isset($categoriaAsignada["nombre"])
+                ? $categoriaAsignada["nombre"]
+                : (isset($accionDatos["categoria_nombre"]) ? $accionDatos["categoria_nombre"] : null);
+            $accionDatos["categoria_entidad"] = $categoriaEntidad;
+            $accionDatos["categoria_codigo_entidad"] = $categoriaCodigoEntidad;
+        }
+
+        if (function_exists("dcRegistrarAccionCredito")) {
+            dcRegistrarAccionCredito($accionDatos);
         }
 
         $respuesta = array(

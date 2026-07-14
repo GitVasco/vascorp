@@ -695,7 +695,9 @@ class ModeloDashboardDecisiones
                     t.codigo,
                     t.estado,
                     t.cliente AS cod_cli,
-                    c.nombre AS cliente
+                    c.nombre AS cliente,
+                    IFNULL(t.op_gravada, t.total) AS total,
+                    t.lista
                 FROM temporaljf t
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo
                 WHERE t.codigo = :codigo

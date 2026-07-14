@@ -81,11 +81,21 @@ $estadosPipeline = array(
                     Avance de ventas — <?php echo htmlspecialchars($nombreMesAvance . " " . $avanceVentas["anio"]); ?>
                 </h3>
                 <div class="dd-header-tools pull-right">
+                    <label class="dd-avance-check" title="Por defecto el avance no incluye pedidos GENERADO (pendientes de crédito)">
+                        <input type="checkbox" id="ddAvanceIncluirGenerados" value="1">
+                        Incluir generados
+                    </label>
                     <span class="dd-resumen-chip">
                         Real S/ <?php echo number_format((float) $avanceVentas["total_venta"], 0); ?>
                         (<?php echo number_format((float) $avanceVentas["pct_global"], 1); ?>%)
                     </span>
-                    <span class="dd-resumen-chip dd-resumen-chip--total">
+                    <span class="dd-resumen-chip dd-resumen-chip--total"
+                          id="ddAvanceProyChip"
+                          data-proy="<?php echo htmlspecialchars((string) $avanceVentas["total_proyectado"]); ?>"
+                          data-proy-gen="<?php echo htmlspecialchars((string) $avanceVentas["total_proyectado_con_generados"]); ?>"
+                          data-meta="<?php echo htmlspecialchars((string) $avanceVentas["total_meta"]); ?>"
+                          data-pct="<?php echo htmlspecialchars((string) $avanceVentas["pct_proyectado"]); ?>"
+                          data-pct-gen="<?php echo htmlspecialchars((string) $avanceVentas["pct_proyectado_con_generados"]); ?>">
                         Proy. S/ <?php echo number_format((float) $avanceVentas["total_proyectado"], 0); ?>
                         / <?php echo number_format((float) $avanceVentas["total_meta"], 0); ?>
                         (<?php echo number_format((float) $avanceVentas["pct_proyectado"], 1); ?>%)
@@ -120,15 +130,17 @@ $estadosPipeline = array(
                                 <?php foreach ($avanceVentas["filas"] as $avance) :
                                     $meta = (float) $avance["meta_venta"];
                                     $real = (float) $avance["venta_real"];
-                                    $pipeline = (float) $avance["soles_generados"]
-                                        + (float) $avance["soles_aprobados"]
-                                        + (float) $avance["soles_apt"]
-                                        + (float) $avance["soles_confirmados"];
+                                    $gen = (float) $avance["soles_generados"];
+                                    $apr = (float) $avance["soles_aprobados"];
+                                    $apt = (float) $avance["soles_apt"];
+                                    $conf = (float) $avance["soles_confirmados"];
+                                    $incluirGen = false;
+                                    $pipeline = ddAvancePipeline($avance, $incluirGen);
                                     $proyectado = $real + $pipeline;
                                     $pctProy = ($meta > 0) ? round(($proyectado / $meta) * 100, 1) : 0;
                                     $clase = ddAvancePctClase($pctProy);
                                     $faltante = max(0, $meta - $proyectado);
-                                    $segmentos = ddAvanceSegmentos($avance, $meta);
+                                    $segmentos = ddAvanceSegmentos($avance, $meta, $incluirGen);
                                     $totalPctBar = 0.0;
                                     foreach ($segmentos as $seg) {
                                         if ($seg["monto"] > 0) {
@@ -137,14 +149,20 @@ $estadosPipeline = array(
                                     }
                                     $escalaBar = ($totalPctBar > 100) ? (100 / $totalPctBar) : 1;
                                     ?>
-                                    <tr>
+                                    <tr class="dd-avance-row"
+                                        data-real="<?php echo htmlspecialchars((string) $real); ?>"
+                                        data-generado="<?php echo htmlspecialchars((string) $gen); ?>"
+                                        data-aprobado="<?php echo htmlspecialchars((string) $apr); ?>"
+                                        data-apt="<?php echo htmlspecialchars((string) $apt); ?>"
+                                        data-confirmado="<?php echo htmlspecialchars((string) $conf); ?>"
+                                        data-meta="<?php echo htmlspecialchars((string) $meta); ?>">
                                         <td class="dd-avance-col-vend">
                                             <span class="dd-cod-cli"><?php echo htmlspecialchars($avance["cod_vendedor"]); ?></span>
                                             <?php echo htmlspecialchars($avance["nombre_vendedor"]); ?>
                                         </td>
                                         <td class="dd-avance-col-bar">
                                             <div class="dd-avance-bar-row">
-                                                <div class="dd-avance-bar<?php echo ($totalPctBar > 100) ? " dd-avance-bar--overflow" : ""; ?>">
+                                                <div class="dd-avance-bar dd-avance-bar-el<?php echo ($totalPctBar > 100) ? " dd-avance-bar--overflow" : ""; ?>">
                                                     <?php foreach ($segmentos as $seg) :
                                                         if ($seg["monto"] <= 0) {
                                                             continue;
@@ -156,7 +174,7 @@ $estadosPipeline = array(
                                                              title="<?php echo htmlspecialchars($seg["titulo"] . ": S/ " . number_format($seg["monto"], 0)); ?>"></div>
                                                     <?php endforeach; ?>
                                                 </div>
-                                                <span class="dd-avance-pct dd-avance-pct--<?php echo $clase; ?>" title="Proyección sobre meta">
+                                                <span class="dd-avance-pct dd-avance-pct-el dd-avance-pct--<?php echo $clase; ?>" title="Proyección sobre meta">
                                                     <?php echo number_format($pctProy, 1); ?>%
                                                 </span>
                                             </div>
@@ -164,13 +182,13 @@ $estadosPipeline = array(
                                         <td class="text-right dd-avance-col-monto">
                                             S/ <?php echo number_format($real, 0); ?>
                                         </td>
-                                        <td class="text-right dd-avance-col-monto">
+                                        <td class="text-right dd-avance-col-monto dd-avance-pipeline">
                                             S/ <?php echo number_format($pipeline, 0); ?>
                                         </td>
                                         <td class="text-right dd-avance-col-monto text-muted">
                                             S/ <?php echo number_format($meta, 0); ?>
                                         </td>
-                                        <td class="text-right dd-avance-col-faltante">
+                                        <td class="text-right dd-avance-col-faltante dd-avance-faltante-cell">
                                             <?php if ($faltante > 0) : ?>
                                                 <span class="dd-avance-faltante">S/ <?php echo number_format($faltante, 0); ?></span>
                                             <?php else : ?>
@@ -184,7 +202,7 @@ $estadosPipeline = array(
                     </div>
                     <div class="dd-avance-leyenda">
                         <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--real"></i> Facturado</span>
-                        <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--generado"></i> Generado</span>
+                        <span class="dd-avance-leyenda-item dd-avance-leyenda-generado is-off"><i class="dd-avance-leyenda-dot dd-avance-seg--generado"></i> Generado</span>
                         <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--aprobado"></i> Aprobado</span>
                         <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--apt"></i> APT</span>
                         <span class="dd-avance-leyenda-item"><i class="dd-avance-leyenda-dot dd-avance-seg--confirmado"></i> Confirmado</span>

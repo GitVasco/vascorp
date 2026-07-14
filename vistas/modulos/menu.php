@@ -82,6 +82,8 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas");
             $puedeVerCentroDecisiones = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "centro_decisiones");
+            $puedeVerHistorialCredito = function_exists("usuarioPuedeModulo")
+                && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "historial");
             $puedeVerMetasVendedor = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "metas_vendedor");
             $puedeVerLineaCredito = function_exists("usuarioPuedeVerModulo")
@@ -96,6 +98,9 @@
             $rutasActivasGestionComercial = array();
             if ($puedeVerCentroDecisiones) {
                 $rutasActivasGestionComercial[] = "dashboard-decisiones";
+            }
+            if ($puedeVerHistorialCredito) {
+                $rutasActivasGestionComercial[] = "historial-credito";
             }
             if ($puedeVerMetasVendedor) {
                 $rutasActivasGestionComercial[] = "metas-vendedor";
@@ -161,6 +166,19 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Centro de Decisiones</span>
+
+                            </a>
+
+                        </li>
+                        <?php } ?>
+
+                        <?php if ($puedeVerHistorialCredito) { ?>
+                        <li class="<?php if ($_GET["ruta"] == "historial-credito") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=historial-credito">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Historial de crédito</span>
 
                             </a>
 

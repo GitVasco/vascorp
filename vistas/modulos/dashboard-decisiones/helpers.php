@@ -17,7 +17,7 @@ if (!function_exists("ddAvancePctClase")) {
 }
 
 if (!function_exists("ddAvanceSegmentos")) {
-    function ddAvanceSegmentos($avance, $meta)
+    function ddAvanceSegmentos($avance, $meta, $incluirGenerados = false)
     {
         $meta = (float) $meta;
 
@@ -25,13 +25,38 @@ if (!function_exists("ddAvanceSegmentos")) {
             return array();
         }
 
-        return array(
+        $segmentos = array(
             array("clase" => "real", "monto" => (float) $avance["venta_real"], "titulo" => "Venta facturada"),
-            array("clase" => "generado", "monto" => (float) $avance["soles_generados"], "titulo" => "Generados"),
-            array("clase" => "aprobado", "monto" => (float) $avance["soles_aprobados"], "titulo" => "Aprobados"),
-            array("clase" => "apt", "monto" => (float) $avance["soles_apt"], "titulo" => "APT"),
-            array("clase" => "confirmado", "monto" => (float) $avance["soles_confirmados"], "titulo" => "Confirmados"),
         );
+
+        if ($incluirGenerados) {
+            $segmentos[] = array(
+                "clase" => "generado",
+                "monto" => (float) $avance["soles_generados"],
+                "titulo" => "Generados",
+            );
+        }
+
+        $segmentos[] = array("clase" => "aprobado", "monto" => (float) $avance["soles_aprobados"], "titulo" => "Aprobados");
+        $segmentos[] = array("clase" => "apt", "monto" => (float) $avance["soles_apt"], "titulo" => "APT");
+        $segmentos[] = array("clase" => "confirmado", "monto" => (float) $avance["soles_confirmados"], "titulo" => "Confirmados");
+
+        return $segmentos;
+    }
+}
+
+if (!function_exists("ddAvancePipeline")) {
+    function ddAvancePipeline($avance, $incluirGenerados = false)
+    {
+        $pipeline = (float) $avance["soles_aprobados"]
+            + (float) $avance["soles_apt"]
+            + (float) $avance["soles_confirmados"];
+
+        if ($incluirGenerados) {
+            $pipeline += (float) $avance["soles_generados"];
+        }
+
+        return $pipeline;
     }
 }
 

@@ -159,6 +159,25 @@ class ControladorDecisionesCredito
             return array("ok" => false, "msg" => isset($resultado["msg"]) ? $resultado["msg"] : "Error al registrar.");
         }
 
+        if (function_exists("dcRegistrarAccionCredito")) {
+            dcRegistrarAccionCredito(array(
+                "codigo_pedido" => $codigoPedido,
+                "codigo_cliente" => $codigoCliente,
+                "tipo_accion" => "OBJECION",
+                "origen" => "centro_decisiones",
+                "pedido_total" => isset($pedido["total"]) ? $pedido["total"] : null,
+                "pedido_lista" => isset($pedido["lista"]) ? $pedido["lista"] : null,
+                "pedido_estado_resultado" => "GENERADO",
+                "id_decision" => isset($resultado["id"]) ? (int) $resultado["id"] : 0,
+                "motivo_codigo" => $motivoCodigo,
+                "comentario" => $comentario,
+                "usuario_id" => (int) $_SESSION["id"],
+                "detalle" => function_exists("dcEtiquetaMotivo")
+                    ? dcEtiquetaMotivo($motivoCodigo)
+                    : $motivoCodigo,
+            ));
+        }
+
         return self::ctrEstadoPedido($codigoPedido, $codigoCliente);
     }
 
@@ -262,6 +281,20 @@ class ControladorDecisionesCredito
                 "codigo_cliente" => $solicitud["codigo_cliente"],
                 "usuario_resolucion" => (int) $_SESSION["id"],
             ));
+
+            if (function_exists("dcRegistrarAccionCredito")) {
+                dcRegistrarAccionCredito(array(
+                    "codigo_pedido" => (int) $solicitud["codigo_pedido"],
+                    "codigo_cliente" => $solicitud["codigo_cliente"],
+                    "tipo_accion" => "OBJECION_CERRADA",
+                    "origen" => "centro_decisiones",
+                    "pedido_estado_resultado" => "GENERADO",
+                    "id_decision" => (int) $solicitud["id_decision"],
+                    "comentario" => $comentario,
+                    "usuario_id" => (int) $_SESSION["id"],
+                    "detalle" => "Solicitud resuelta: " . $resolucionCodigo,
+                ));
+            }
         }
 
         return self::ctrEstadoPedido((int) $solicitud["codigo_pedido"], $solicitud["codigo_cliente"]);
@@ -304,6 +337,50 @@ class ControladorDecisionesCredito
             return array("ok" => false, "msg" => isset($resultado["msg"]) ? $resultado["msg"] : "Error al cerrar.");
         }
 
+        if (function_exists("dcRegistrarAccionCredito")) {
+            dcRegistrarAccionCredito(array(
+                "codigo_pedido" => (int) $decision["codigo_pedido"],
+                "codigo_cliente" => $decision["codigo_cliente"],
+                "tipo_accion" => "OBJECION_CERRADA",
+                "origen" => "centro_decisiones",
+                "pedido_estado_resultado" => "GENERADO",
+                "id_decision" => $idDecision,
+                "motivo_codigo" => isset($decision["motivo_codigo"]) ? $decision["motivo_codigo"] : null,
+                "comentario" => $comentario,
+                "usuario_id" => (int) $_SESSION["id"],
+                "detalle" => "Resolución: " . $resolucionCodigo,
+            ));
+        }
+
         return self::ctrEstadoPedido((int) $decision["codigo_pedido"], $decision["codigo_cliente"]);
+    }
+
+    public static function ctrListarHistorialAcciones(array $filtros = array())
+    {
+        if (!dcUsuarioPuedeVerHistorialCredito()) {
+            return array("ok" => false, "msg" => "Sin permiso para ver el historial.");
+        }
+
+        if (empty($filtros["fecha_desde"])) {
+            $filtros["fecha_desde"] = date("Y-m-d", strtotime("-30 days"));
+        }
+
+        if (empty($filtros["fecha_hasta"])) {
+            $filtros["fecha_hasta"] = date("Y-m-d");
+        }
+
+        $filas = ModeloDecisionesCredito::mdlListarAcciones($filtros);
+        $resumen = ModeloDecisionesCredito::mdlResumenAcciones(array(
+            "fecha_desde" => $filtros["fecha_desde"],
+            "fecha_hasta" => $filtros["fecha_hasta"],
+            "usuario_id" => isset($filtros["usuario_id"]) ? $filtros["usuario_id"] : 0,
+        ));
+
+        return array(
+            "ok" => true,
+            "filtros" => $filtros,
+            "resumen" => $resumen,
+            "filas" => $filas,
+        );
     }
 }

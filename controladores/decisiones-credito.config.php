@@ -182,3 +182,186 @@ function dcUsuarioPuedeAprobarPedido()
     return function_exists("usuarioPuedeModulo")
         && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "aprobar");
 }
+
+function dcUsuarioPuedeVerHistorialCredito()
+{
+    return function_exists("usuarioPuedeModulo")
+        && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "historial");
+}
+
+/**
+ * Registra una acción en decision_credito_accionjf.
+ * No interrumpe el flujo principal si falla el insert.
+ */
+function dcRegistrarAccionCredito(array $datos)
+{
+    if (!class_exists("ModeloDecisionesCredito")) {
+        return false;
+    }
+
+    try {
+        return ModeloDecisionesCredito::mdlRegistrarAccion($datos);
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Snapshot de categoría + línea/cupo al momento de la acción.
+ * Usa cupo de línea de crédito (cliente o grupo) y scores del último estado guardado.
+ */
+function dcArmarSnapshotAccionCredito($codigoCliente)
+{
+    $codigoCliente = trim((string) $codigoCliente);
+    $vacio = array();
+
+    if ($codigoCliente === "") {
+        return $vacio;
+    }
+
+    $out = array();
+
+    // Categoría efectiva (cliente o grupo)
+    if (class_exists("ControladorCategoriasClientes")) {
+        try {
+            $efectiva = ControladorCategoriasClientes::ctrObtenerCategoriaEfectivaCliente($codigoCliente);
+            if (!empty($efectiva["tiene_categoria"]) && !empty($efectiva["categoria"])) {
+                $cat = $efectiva["categoria"];
+                $out["id_categoria"] = isset($cat["id"]) ? (int) $cat["id"] : null;
+                $out["categoria_codigo"] = isset($cat["codigo"]) ? $cat["codigo"] : null;
+                $out["categoria_nombre"] = isset($cat["nombre"]) ? $cat["nombre"] : null;
+                $out["categoria_entidad"] = isset($efectiva["origen_asignacion"])
+                    ? $efectiva["origen_asignacion"]
+                    : null;
+                if (!empty($efectiva["codigo_grupo"])) {
+                    $out["categoria_codigo_entidad"] = $efectiva["codigo_grupo"];
+                    $out["codigo_grupo"] = $efectiva["codigo_grupo"];
+                    $out["nombre_grupo"] = isset($efectiva["nombre_grupo"])
+                        ? $efectiva["nombre_grupo"]
+                        : null;
+                } else {
+                    $out["categoria_codigo_entidad"] = $codigoCliente;
+                }
+            } elseif (!empty($efectiva["codigo_grupo"])) {
+                $out["codigo_grupo"] = $efectiva["codigo_grupo"];
+                $out["nombre_grupo"] = isset($efectiva["nombre_grupo"])
+                    ? $efectiva["nombre_grupo"]
+                    : null;
+                $out["categoria_entidad"] = "grupo";
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+    }
+
+    // Línea / cupo (cliente o grupo)
+    if (class_exists("ControladorLineaCredito")) {
+        try {
+            $ref = ControladorLineaCredito::ctrReferenciaCupoPedido($codigoCliente);
+            if (is_array($ref)) {
+                $out["cupo_modo"] = isset($ref["modo"]) ? $ref["modo"] : null;
+                $out["linea_aprobada"] = isset($ref["linea_aprobada"]) ? $ref["linea_aprobada"] : null;
+                $out["linea_recomendada"] = isset($ref["linea_recomendada"]) ? $ref["linea_recomendada"] : null;
+                $out["linea_referencia"] = isset($ref["linea_referencia"]) ? $ref["linea_referencia"] : null;
+                $out["deuda_actual"] = isset($ref["deuda_actual"]) ? $ref["deuda_actual"] : null;
+                $out["cupo_disponible"] = isset($ref["cupo_disponible"]) ? $ref["cupo_disponible"] : null;
+                $out["utilizacion_pct"] = isset($ref["utilizacion_pct"]) ? $ref["utilizacion_pct"] : null;
+                $out["etiqueta_linea"] = isset($ref["etiqueta_linea"]) ? $ref["etiqueta_linea"] : null;
+
+                if (!empty($ref["grupo"]) && is_array($ref["grupo"])) {
+                    $out["codigo_grupo"] = isset($ref["grupo"]["codigo"])
+                        ? $ref["grupo"]["codigo"]
+                        : (isset($out["codigo_grupo"]) ? $out["codigo_grupo"] : null);
+                    $out["nombre_grupo"] = isset($ref["grupo"]["nombre"])
+                        ? $ref["grupo"]["nombre"]
+                        : (isset($out["nombre_grupo"]) ? $out["nombre_grupo"] : null);
+                }
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+    }
+
+    // Scores del último estado en línea de crédito (sin recalcular IC completo)
+    if (class_exists("ModeloLineaCredito")) {
+        try {
+            $modo = isset($out["cupo_modo"]) ? $out["cupo_modo"] : "cliente";
+            $filaScore = null;
+
+            if ($modo === "grupo" && !empty($out["codigo_grupo"])) {
+                $filaScore = ModeloLineaCredito::mdlGrupoLinea($out["codigo_grupo"]);
+            } else {
+                $filaScore = ModeloLineaCredito::mdlClienteLinea($codigoCliente);
+            }
+
+            if (is_array($filaScore)) {
+                if (isset($filaScore["score_riesgo"]) && $filaScore["score_riesgo"] !== null && $filaScore["score_riesgo"] !== "") {
+                    $out["score_riesgo"] = round((float) $filaScore["score_riesgo"], 2);
+                }
+                if (isset($filaScore["score_comercial"]) && $filaScore["score_comercial"] !== null && $filaScore["score_comercial"] !== "") {
+                    $out["score_comercial"] = round((float) $filaScore["score_comercial"], 2);
+                }
+                if (isset($filaScore["score_fidelidad"]) && $filaScore["score_fidelidad"] !== null && $filaScore["score_fidelidad"] !== "") {
+                    $out["score_fidelidad"] = round((float) $filaScore["score_fidelidad"], 2);
+                }
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+    }
+
+    // Resumen legible
+    $partes = array();
+    if (!empty($out["categoria_codigo"])) {
+        $partes[] = "Cat. " . $out["categoria_codigo"]
+            . (!empty($out["categoria_nombre"]) ? " (" . $out["categoria_nombre"] . ")" : "");
+    }
+    if (!empty($out["cupo_modo"]) && $out["cupo_modo"] === "grupo" && !empty($out["nombre_grupo"])) {
+        $partes[] = "Grupo " . $out["nombre_grupo"];
+    }
+    if (isset($out["linea_referencia"]) && $out["linea_referencia"] !== null) {
+        $etiq = !empty($out["etiqueta_linea"]) ? $out["etiqueta_linea"] : "Línea";
+        $partes[] = $etiq . " S/ " . number_format((float) $out["linea_referencia"], 0);
+    }
+    if (isset($out["cupo_disponible"]) && $out["cupo_disponible"] !== null) {
+        $partes[] = "Disp. S/ " . number_format((float) $out["cupo_disponible"], 0);
+    }
+    if (isset($out["deuda_actual"]) && $out["deuda_actual"] !== null) {
+        $partes[] = "Deuda S/ " . number_format((float) $out["deuda_actual"], 0);
+    }
+    if (!empty($partes)) {
+        $out["detalle"] = implode(" · ", $partes);
+    }
+
+    return $out;
+}
+
+function dcEtiquetaTipoAccion($tipo)
+{
+    $map = array(
+        "APROBADO" => "Aprobado",
+        "OBJECION" => "Objeción",
+        "OBJECION_CERRADA" => "Objeción cerrada",
+        "ANULADO" => "Anulado",
+        "CATEGORIA_ASIGNADA" => "Categoría asignada",
+    );
+
+    $tipo = strtoupper(trim((string) $tipo));
+
+    return isset($map[$tipo]) ? $map[$tipo] : $tipo;
+}
+
+function dcClaseTipoAccion($tipo)
+{
+    $map = array(
+        "APROBADO" => "success",
+        "OBJECION" => "danger",
+        "OBJECION_CERRADA" => "warning",
+        "ANULADO" => "default",
+        "CATEGORIA_ASIGNADA" => "info",
+    );
+
+    $tipo = strtoupper(trim((string) $tipo));
+
+    return isset($map[$tipo]) ? $map[$tipo] : "default";
+}

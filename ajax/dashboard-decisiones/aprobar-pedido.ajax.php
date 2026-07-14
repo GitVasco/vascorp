@@ -7,12 +7,17 @@ date_default_timezone_set("America/Lima");
 require_once "../../controladores/config.php";
 require_once "../../controladores/permisos-modulos.config.php";
 require_once "../../controladores/decisiones-credito.config.php";
+require_once "../../controladores/inteligencia-comercial.config.php";
 require_once "../../modelos/conexion.php";
 require_once "../../modelos/dashboard-decisiones.modelo.php";
 require_once "../../modelos/decisiones-credito.modelo.php";
 require_once "../../modelos/categorias-clientes.modelo.php";
+require_once "../../modelos/linea-credito.modelo.php";
+require_once "../../modelos/grupos-empresariales.modelo.php";
+require_once "../../modelos/inteligencia-comercial.modelo.php";
 require_once "../../modelos/pedidos.modelo.php";
 require_once "../../controladores/categorias-clientes.controlador.php";
+require_once "../../controladores/linea-credito.controlador.php";
 require_once "../../controladores/dashboard-decisiones.controlador.php";
 
 header("Content-Type: application/json; charset=utf-8");

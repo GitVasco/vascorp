@@ -56,6 +56,13 @@ $facturado = $datos["facturado"];
                     <button type="button" id="btnDdActualizar" class="btn btn-primary btn-sm dd-filtro-btn">
                         <i class="fa fa-refresh"></i> Actualizar
                     </button>
+                    <?php if (function_exists("dcUsuarioPuedeVerHistorialCredito") && dcUsuarioPuedeVerHistorialCredito()) : ?>
+                    <a href="index.php?ruta=historial-credito"
+                       class="btn btn-default btn-sm dd-filtro-btn"
+                       title="Ver aprobaciones y objeciones">
+                        <i class="fa fa-history"></i> Historial
+                    </a>
+                    <?php endif; ?>
                     <button type="button"
                        id="btnDdLimpiarFiltro"
                        class="btn btn-default btn-sm dd-filtro-btn dd-filtro-btn--limpiar btnDdLimpiarFiltro"

@@ -1,0 +1,218 @@
+.hc-page .content-header h1 {
+    margin-top: 0;
+}
+
+.hc-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hc-resumen-row {
+    margin-bottom: 12px;
+}
+
+.hc-kpi {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-left-width: 4px;
+    border-radius: 3px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+.hc-kpi-lbl {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.hc-kpi strong {
+    font-size: 22px;
+    line-height: 1.2;
+    color: #333;
+}
+
+.hc-kpi--aprobado { border-left-color: #00a65a; }
+.hc-kpi--objecion { border-left-color: #dd4b39; }
+.hc-kpi--cerrada { border-left-color: #f39c12; }
+.hc-kpi--anulado { border-left-color: #777; }
+
+.hc-filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px 12px;
+    margin-bottom: 14px;
+    align-items: end;
+}
+
+.hc-filtros-grid .form-group {
+    margin-bottom: 0;
+}
+
+.hc-filtro-buscar {
+    grid-column: span 1;
+}
+
+@media (max-width: 991px) {
+    .hc-filtros-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .hc-filtro-buscar,
+    .hc-filtro-acciones {
+        grid-column: span 2;
+    }
+}
+
+.hc-filtros-grid .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 4px;
+}
+
+.hc-tabla {
+    background: #fff;
+}
+
+.hc-page .hc-tabla > thead > tr > th,
+.hc-page #hcTabla > thead > tr > th {
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 700;
+    color: #333 !important;
+    background: #f4f6f8 !important;
+    border-bottom: 2px solid #d2d6de !important;
+    padding: 8px 10px !important;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.hc-page .hc-tabla > tbody > tr > td,
+.hc-page #hcTabla > tbody > tr > td {
+    vertical-align: top;
+    font-size: 12px;
+    color: #444;
+    padding: 8px 10px !important;
+}
+
+.hc-fecha {
+    white-space: nowrap;
+    color: #555;
+}
+
+.hc-cli-cod {
+    display: inline-block;
+    margin-right: 4px;
+    font-weight: 700;
+    color: #666;
+}
+
+.hc-detalle {
+    max-width: 420px;
+    color: #333 !important;
+}
+
+.hc-detalle-texto {
+    color: #333 !important;
+    font-size: 12px;
+    line-height: 1.35;
+    margin-bottom: 4px;
+}
+
+.hc-detalle .text-muted {
+    font-size: 11px;
+    margin-top: 2px;
+    color: #777 !important;
+}
+
+.hc-snap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-top: 4px;
+}
+
+.hc-snap-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    background: #f5f7fa;
+    border: 1px solid #e4e7eb;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #333 !important;
+    white-space: nowrap;
+}
+
+.hc-snap-nombre {
+    color: #333 !important;
+    font-weight: 600;
+}
+
+.hc-cat-sigla {
+    display: inline-block;
+    margin-left: 0;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff !important;
+    background: #777777;
+    flex-shrink: 0;
+}
+
+.hc-snap-item .hc-cat-sigla {
+    margin-left: 0;
+}
+
+.hc-riesgo {
+    font-weight: 700;
+}
+
+.hc-riesgo--success {
+    background: #e8f8ef !important;
+    border-color: #b7e4c7 !important;
+    color: #1e7e34 !important;
+}
+
+.hc-riesgo--success .hc-snap-nombre { color: #1e7e34 !important; }
+
+.hc-riesgo--primary {
+    background: #eaf2fb !important;
+    border-color: #b8d0ec !important;
+    color: #2c5282 !important;
+}
+
+.hc-riesgo--primary .hc-snap-nombre { color: #2c5282 !important; }
+
+.hc-riesgo--info {
+    background: #e8f4fd !important;
+    border-color: #b3d9f2 !important;
+    color: #2980b9 !important;
+}
+
+.hc-riesgo--info .hc-snap-nombre { color: #2980b9 !important; }
+
+.hc-riesgo--warning {
+    background: #fff8e6 !important;
+    border-color: #f0d78c !important;
+    color: #b7791f !important;
+}
+
+.hc-riesgo--warning .hc-snap-nombre { color: #b7791f !important; }
+
+.hc-riesgo--danger {
+    background: #fdecea !important;
+    border-color: #f1c0ba !important;
+    color: #c0392b !important;
+}
+
+.hc-riesgo--danger .hc-snap-nombre { color: #c0392b !important; }

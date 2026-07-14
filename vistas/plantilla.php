@@ -31,6 +31,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Dashboard de Cobranzas | Vasco System";
         } elseif ($_GET["ruta"] === "dashboard-decisiones") {
             $__tituloVentana = "Centro de Decisiones | Vasco System";
+        } elseif ($_GET["ruta"] === "historial-credito") {
+            $__tituloVentana = "Historial de crédito | Vasco System";
         } elseif ($_GET["ruta"] === "metas-vendedor") {
             $__tituloVentana = "Metas vendedor | Vasco System";
         } elseif ($_GET["ruta"] === "linea-credito") {
@@ -83,6 +85,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") : ?>
     <link rel="stylesheet" href="vistas/css/dashboard-decisiones.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") : ?>
+    <link rel="stylesheet" href="vistas/css/historial-credito.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") : ?>
@@ -325,6 +331,13 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/dashboard-decisiones.php";
+                }
+            } else if ($_GET["ruta"] == "historial-credito") {
+
+                if (!function_exists("dcUsuarioPuedeVerHistorialCredito") || !dcUsuarioPuedeVerHistorialCredito()) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/historial-credito.php";
                 }
             } else if ($_GET["ruta"] == "metas-vendedor") {
 
@@ -755,7 +768,10 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=19"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=20"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") { ?>
+    <script src="vistas/js/historial-credito.js?v=6"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>

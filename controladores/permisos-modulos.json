@@ -9,7 +9,8 @@
       "solicitar": [6, 105],
       "resolver": [6, 32],
       "anular": [6, 32],
-      "aprobar": [6, 32]
+      "aprobar": [6, 32],
+      "historial": [6, 32]
     },
     "metas_vendedor": {
       "ver": [6, 105],
