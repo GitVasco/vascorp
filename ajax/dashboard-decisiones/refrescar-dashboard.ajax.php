@@ -11,6 +11,8 @@ require_once "../../modelos/conexion.php";
 require_once "../../modelos/dashboard-decisiones.modelo.php";
 require_once "../../modelos/decisiones-credito.modelo.php";
 require_once "../../modelos/metas-vendedor.modelo.php";
+require_once "../../modelos/categorias-clientes.modelo.php";
+require_once "../../controladores/categorias-clientes.controlador.php";
 require_once "../../controladores/dashboard-decisiones.controlador.php";
 require_once "../../vistas/modulos/dashboard-decisiones/helpers.php";
 

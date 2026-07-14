@@ -13,6 +13,7 @@ class ControladorDecisionesCredito
                 "solicitar" => dcUsuarioPuedeSolicitar(),
                 "resolver" => dcUsuarioPuedeResolver(),
                 "anular" => dcUsuarioPuedeAnularPedido(),
+                "aprobar" => dcUsuarioPuedeAprobarPedido(),
             ),
         );
     }

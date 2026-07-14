@@ -735,4 +735,30 @@ class ModeloDashboardDecisiones
 
         return $stmt->rowCount() > 0;
     }
+
+    public static function mdlAprobarPedidoGenerado($codigoPedido, $usuarioId)
+    {
+        $codigoPedido = trim((string) $codigoPedido);
+        $usuarioId = (int) $usuarioId;
+
+        if ($codigoPedido === "" || $usuarioId <= 0) {
+            return false;
+        }
+
+        $sql = "UPDATE temporaljf
+                SET estado = 'APROBADO',
+                    usuario_estado = :usuario
+                WHERE codigo = :codigo
+                  AND estado = 'GENERADO'";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":usuario", $usuarioId, PDO::PARAM_INT);
+        $stmt->bindValue(":codigo", $codigoPedido, PDO::PARAM_STR);
+
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        return $stmt->rowCount() > 0;
+    }
 }

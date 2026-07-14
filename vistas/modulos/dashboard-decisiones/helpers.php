@@ -96,8 +96,63 @@ if (!function_exists("ddNivelAtraso")) {
     }
 }
 
+if (!function_exists("ddBadgeCategoriaCorta")) {
+    function ddBadgeCategoriaCorta($categoria = null)
+    {
+        if (!is_array($categoria)) {
+            return "";
+        }
+
+        $codigo = isset($categoria["categoria_codigo"])
+            ? trim((string) $categoria["categoria_codigo"])
+            : "";
+        $nombre = isset($categoria["categoria_nombre"])
+            ? trim((string) $categoria["categoria_nombre"])
+            : "";
+        $color = isset($categoria["categoria_color"])
+            ? trim((string) $categoria["categoria_color"])
+            : "";
+
+        // Mapa normalizado: {codigo, nombre, color} — no confundir con filas de pedido
+        if (
+            $codigo === ""
+            && !empty($categoria["codigo"])
+            && array_key_exists("color", $categoria)
+            && !array_key_exists("categoria_codigo", $categoria)
+            && !isset($categoria["cod_cli"])
+            && !isset($categoria["cliente"])
+        ) {
+            $codigo = trim((string) $categoria["codigo"]);
+            $nombre = isset($categoria["nombre"]) ? trim((string) $categoria["nombre"]) : "";
+            $color = isset($categoria["color"]) ? trim((string) $categoria["color"]) : "";
+        }
+
+        if ($codigo === "") {
+            return "";
+        }
+
+        if (class_exists("ControladorCategoriasClientes")) {
+            $hex = ControladorCategoriasClientes::ctrResolverColorCategoria($color, $codigo);
+        } else {
+            $hex = ($color !== "" && preg_match('/^#[0-9A-Fa-f]{3,8}$/', $color))
+                ? $color
+                : "#777777";
+        }
+
+        $titulo = $nombre !== "" ? $nombre : $codigo;
+
+        return '<span class="dd-cat-sigla" style="background-color:'
+            . htmlspecialchars($hex, ENT_QUOTES, "UTF-8")
+            . ';" title="'
+            . htmlspecialchars($titulo, ENT_QUOTES, "UTF-8")
+            . '">'
+            . htmlspecialchars(strtoupper($codigo), ENT_QUOTES, "UTF-8")
+            . "</span>";
+    }
+}
+
 if (!function_exists("ddClienteLinea")) {
-    function ddClienteLinea($codigo, $nombre)
+    function ddClienteLinea($codigo, $nombre, $categoria = null)
     {
         $codigo = htmlspecialchars(trim((string) $codigo));
         $nombre = htmlspecialchars(trim((string) $nombre));
@@ -114,6 +169,11 @@ if (!function_exists("ddClienteLinea")) {
 
         if ($nombre !== "") {
             $html .= '<span class="dd-cli-nombre">' . $nombre . "</span>";
+        }
+
+        $badge = ddBadgeCategoriaCorta($categoria);
+        if ($badge !== "") {
+            $html .= $badge;
         }
 
         return $html . "</span>";

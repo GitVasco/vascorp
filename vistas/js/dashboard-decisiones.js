@@ -1147,6 +1147,291 @@
         );
     });
 
+    $(document).on("click", ".btnDdAprobarPedido", function () {
+        var $btn = $(this);
+        var pedido = $btn.data("pedido");
+        var cliente = $btn.data("cliente") || "";
+        var codCli = $btn.data("cod-cli") || "";
+        var tieneCategoria = String($btn.data("tiene-categoria") || "0") === "1";
+
+        if (!pedido) {
+            return;
+        }
+
+        if (!tieneCategoria) {
+            abrirModalCategoriaParaAprobar({
+                $btn: $btn,
+                pedido: pedido,
+                cliente: cliente,
+                codCli: codCli,
+            });
+            return;
+        }
+
+        confirmarYAprobarPedido($btn, pedido, cliente, 0);
+    });
+
+    var ddAprobarCatCtx = null;
+    var ddCategoriasCache = null;
+
+    function colorCategoriaFallback(codigo, color) {
+        var mapa = {
+            DIST: "#dd4b39",
+            MAYO: "#00a65a",
+            MINO: "#f39c12",
+            CATA: "#00c0ef",
+            UFIN: "#605ca8",
+        };
+        var hex = String(color || "").trim();
+        if (/^#[0-9A-Fa-f]{3,8}$/.test(hex)) {
+            return hex;
+        }
+        return mapa[String(codigo || "").toUpperCase()] || "#777777";
+    }
+
+    function cargarCategoriasActivas() {
+        if (ddCategoriasCache) {
+            return $.Deferred().resolve(ddCategoriasCache).promise();
+        }
+
+        return $.ajax({
+            url: "ajax/categorias-clientes.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: { accion: "listarActivas" },
+        }).then(function (resp) {
+            ddCategoriasCache = (resp && resp.ok && resp.data) ? resp.data : [];
+            return ddCategoriasCache;
+        });
+    }
+
+    function llenarSelectCategorias($select, categorias) {
+        var html = '<option value="">Seleccione una categoría…</option>';
+        (categorias || []).forEach(function (cat) {
+            var id = cat.id;
+            var codigo = cat.codigo || "";
+            var nombre = cat.nombre || codigo;
+            var color = colorCategoriaFallback(codigo, cat.color);
+            html +=
+                '<option value="' +
+                escapeHtml(id) +
+                '" data-codigo="' +
+                escapeHtml(codigo) +
+                '" data-nombre="' +
+                escapeHtml(nombre) +
+                '" data-color="' +
+                escapeHtml(color) +
+                '">' +
+                escapeHtml(codigo + " — " + nombre) +
+                "</option>";
+        });
+        $select.html(html);
+    }
+
+    function actualizarPreviewCategoria() {
+        var $opt = $("#ddAprobarCatSelect option:selected");
+        var $preview = $("#ddAprobarCatPreview");
+        var id = $("#ddAprobarCatSelect").val();
+
+        if (!id) {
+            $preview.hide().empty();
+            return;
+        }
+
+        var codigo = $opt.data("codigo") || "";
+        var nombre = $opt.data("nombre") || "";
+        var color = $opt.data("color") || "#777777";
+
+        $preview
+            .html(
+                '<span class="dd-cat-sigla" style="background-color:' +
+                    escapeHtml(color) +
+                    ';">' +
+                    escapeHtml(String(codigo).toUpperCase()) +
+                    "</span> " +
+                    '<span class="dd-aprobar-cat-preview-nombre">' +
+                    escapeHtml(nombre) +
+                    "</span>"
+            )
+            .show();
+    }
+
+    function abrirModalCategoriaParaAprobar(ctx) {
+        ddAprobarCatCtx = ctx;
+
+        $("#ddAprobarCatCliente").text(
+            "Pedido " +
+                ctx.pedido +
+                (ctx.cliente ? " · " + ctx.cliente : "") +
+                (ctx.codCli ? " (" + ctx.codCli + ")" : "")
+        );
+        $("#ddAprobarCatHint").text(
+            "Este cliente aún no tiene categoría comercial. Elígela para asignarla y aprobar el pedido."
+        );
+        $("#ddAprobarCatSelect").html('<option value="">Cargando categorías…</option>');
+        $("#ddAprobarCatPreview").hide().empty();
+        $("#ddAprobarCatConfirm").prop("disabled", true);
+
+        $("#modalDdAprobarCategoria").modal("show");
+
+        cargarCategoriasActivas()
+            .done(function (categorias) {
+                llenarSelectCategorias($("#ddAprobarCatSelect"), categorias);
+                $("#ddAprobarCatConfirm").prop("disabled", false);
+
+                if (!ctx.codCli) {
+                    return;
+                }
+
+                $.ajax({
+                    url: "ajax/categorias-clientes.ajax.php",
+                    method: "POST",
+                    dataType: "json",
+                    data: {
+                        accion: "efectivaCliente",
+                        codigoCliente: ctx.codCli,
+                    },
+                }).done(function (efectiva) {
+                    if (efectiva && efectiva.ok && efectiva.codigo_grupo) {
+                        $("#ddAprobarCatHint").html(
+                            "El cliente pertenece al grupo <strong>" +
+                                escapeHtml(
+                                    efectiva.nombre_grupo || efectiva.codigo_grupo
+                                ) +
+                                "</strong>. " +
+                                "La categoría se asignará al <strong>grupo</strong> y servirá para todos sus clientes."
+                        );
+                    }
+                });
+            })
+            .fail(function () {
+                $("#ddAprobarCatSelect").html(
+                    '<option value="">No se pudieron cargar las categorías</option>'
+                );
+                swal(
+                    "Error",
+                    "No se pudieron cargar las categorías comerciales.",
+                    "error"
+                );
+            });
+    }
+
+    $(document).on("change", "#ddAprobarCatSelect", actualizarPreviewCategoria);
+
+    $(document).on("click", "#ddAprobarCatConfirm", function () {
+        if (!ddAprobarCatCtx || !ddAprobarCatCtx.pedido) {
+            return;
+        }
+
+        var idCategoria = parseInt($("#ddAprobarCatSelect").val(), 10) || 0;
+        if (idCategoria <= 0) {
+            swal("Atención", "Selecciona una categoría comercial.", "warning");
+            return;
+        }
+
+        var ctx = ddAprobarCatCtx;
+        $("#modalDdAprobarCategoria").modal("hide");
+
+        confirmarYAprobarPedido(
+            ctx.$btn,
+            ctx.pedido,
+            ctx.cliente,
+            idCategoria
+        );
+    });
+
+    function confirmarYAprobarPedido($btn, pedido, cliente, idCategoria) {
+        var detalle = "Pedido " + pedido + (cliente ? " · " + cliente : "");
+        var conCategoria = idCategoria > 0;
+        var texto = conCategoria
+            ? detalle +
+              "\n\nSe asignará la categoría seleccionada y el pedido pasará a APROBADO."
+            : detalle + "\n\nEl pedido pasará de GENERADO a APROBADO.";
+
+        swal({
+            title: conCategoria ? "¿Asignar categoría y aprobar?" : "¿Aprobar pedido?",
+            text: texto,
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#00a65a",
+            cancelButtonColor: "#95a5a6",
+            cancelButtonText: "Cancelar",
+            confirmButtonText: conCategoria ? "Sí, asignar y aprobar" : "Sí, aprobar",
+        }).then(function (result) {
+            if (!result.value) {
+                return;
+            }
+
+            ejecutarAprobarPedido($btn, pedido, idCategoria);
+        });
+    }
+
+    function ejecutarAprobarPedido($btn, pedido, idCategoria) {
+        if ($btn && $btn.length) {
+            $btn.prop("disabled", true);
+        }
+
+        var payload = { codigo_pedido: pedido };
+        if (idCategoria > 0) {
+            payload.id_categoria = idCategoria;
+        }
+
+        $.ajax({
+            url: "ajax/dashboard-decisiones/aprobar-pedido.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: payload,
+        })
+            .done(function (resp) {
+                if (resp && resp.requiere_categoria) {
+                    if ($btn && $btn.length) {
+                        $btn.prop("disabled", false);
+                    }
+                    abrirModalCategoriaParaAprobar({
+                        $btn: $btn,
+                        pedido: pedido,
+                        cliente: (resp.nombre_cliente || "") ,
+                        codCli: resp.codigo_cliente || "",
+                    });
+                    return;
+                }
+
+                if (!resp || !resp.ok) {
+                    swal(
+                        "Atención",
+                        (resp && resp.msg) || "No se pudo aprobar el pedido.",
+                        "warning"
+                    );
+                    if ($btn && $btn.length) {
+                        $btn.prop("disabled", false);
+                    }
+                    return;
+                }
+
+                ddAprobarCatCtx = null;
+
+                var mensaje =
+                    resp.categoria_asignada
+                        ? "Categoría asignada y pedido aprobado. El dashboard se actualizó."
+                        : "El pedido fue aprobado y el dashboard fue actualizado.";
+
+                refrescarDashboard($("#ddFiltroVendedor").val(), {
+                    actualizarUrl: false,
+                    mensajeExito: mensaje,
+                }).fail(function (xhr, status) {
+                    if (status !== "abort" && $btn && $btn.length) {
+                        $btn.prop("disabled", false);
+                    }
+                });
+            })
+            .fail(function () {
+                swal("Error", "No se pudo aprobar el pedido.", "error");
+                if ($btn && $btn.length) {
+                    $btn.prop("disabled", false);
+                }
+            });
+    }
+
     $(document).on("click", ".btnDdAnularPedido", function () {
         var $btn = $(this);
         var pedido = $btn.data("pedido");

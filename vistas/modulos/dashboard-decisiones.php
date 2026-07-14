@@ -126,4 +126,36 @@ $facturado = $datos["facturado"];
     </div>
 </div>
 
+<div class="modal fade" id="modalDdAprobarCategoria" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content dd-aprobar-cat-modal">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">
+                    <i class="fa fa-tags"></i> Categoría requerida para aprobar
+                </h4>
+            </div>
+            <div class="modal-body">
+                <p class="dd-aprobar-cat-cliente" id="ddAprobarCatCliente"></p>
+                <p class="text-muted dd-aprobar-cat-hint" id="ddAprobarCatHint">
+                    Antes de aprobar el pedido debes asignar una categoría comercial.
+                </p>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="ddAprobarCatSelect">Categoría comercial</label>
+                    <select id="ddAprobarCatSelect" class="form-control">
+                        <option value="">Cargando categorías…</option>
+                    </select>
+                </div>
+                <div id="ddAprobarCatPreview" class="dd-aprobar-cat-preview" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="ddAprobarCatConfirm">
+                    <i class="fa fa-check"></i> Asignar y aprobar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>window.document.title = "Centro de Decisiones | Vasco System";</script>

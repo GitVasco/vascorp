@@ -156,6 +156,134 @@ class ControladorDashboardDecisiones
         );
     }
 
+    public static function ctrAprobarPedidoGenerado($codigoPedido, $idCategoria = 0)
+    {
+        $codigoPedido = trim((string) $codigoPedido);
+        $idCategoria = (int) $idCategoria;
+
+        if ($codigoPedido === "") {
+            return array("ok" => false, "msg" => "Pedido no indicado.");
+        }
+
+        if (!isset($_SESSION["id"]) || !(int) $_SESSION["id"]) {
+            return array("ok" => false, "msg" => "Sesión no válida.");
+        }
+
+        $pedido = ModeloDashboardDecisiones::mdlPedidoParaAnular($codigoPedido);
+
+        if (!$pedido) {
+            return array("ok" => false, "msg" => "Pedido no encontrado.");
+        }
+
+        if (strtoupper(trim((string) $pedido["estado"])) !== "GENERADO") {
+            return array(
+                "ok" => false,
+                "msg" => "Solo se pueden aprobar pedidos en estado GENERADO. Estado actual: "
+                    . $pedido["estado"],
+            );
+        }
+
+        try {
+            $decisionVigente = ModeloDecisionesCredito::mdlDecisionVigentePorPedido((int) $codigoPedido);
+        } catch (Exception $e) {
+            $decisionVigente = null;
+        }
+
+        if ($decisionVigente) {
+            return array(
+                "ok" => false,
+                "msg" => "Hay una decisión de crédito vigente. Resuélvela antes de aprobar el pedido.",
+            );
+        }
+
+        $codigoCliente = isset($pedido["cod_cli"]) ? trim((string) $pedido["cod_cli"]) : "";
+        if ($codigoCliente === "") {
+            return array("ok" => false, "msg" => "El pedido no tiene cliente asociado.");
+        }
+
+        $categoriaAsignada = null;
+        $efectiva = class_exists("ControladorCategoriasClientes")
+            ? ControladorCategoriasClientes::ctrObtenerCategoriaEfectivaCliente($codigoCliente)
+            : array("ok" => false, "tiene_categoria" => false);
+
+        if (empty($efectiva["tiene_categoria"])) {
+            $codigoGrupo = isset($efectiva["codigo_grupo"])
+                ? trim((string) $efectiva["codigo_grupo"])
+                : "";
+            $tipoEntidad = ($codigoGrupo !== "") ? "grupo" : "cliente";
+            $codigoEntidad = ($tipoEntidad === "grupo") ? $codigoGrupo : $codigoCliente;
+
+            if ($idCategoria <= 0) {
+                return array(
+                    "ok" => false,
+                    "requiere_categoria" => true,
+                    "msg" => ($tipoEntidad === "grupo")
+                        ? "El grupo empresarial del cliente no tiene categoría. Asígnala para poder aprobar."
+                        : "El cliente no tiene categoría comercial. Asígnala para poder aprobar.",
+                    "codigo_pedido" => $pedido["codigo"],
+                    "codigo_cliente" => $codigoCliente,
+                    "nombre_cliente" => isset($pedido["cliente"]) ? $pedido["cliente"] : "",
+                    "tipo_entidad" => $tipoEntidad,
+                    "codigo_entidad" => $codigoEntidad,
+                    "nombre_grupo" => isset($efectiva["nombre_grupo"]) ? $efectiva["nombre_grupo"] : null,
+                );
+            }
+
+            $asignacion = ControladorCategoriasClientes::ctrAsignarCategoriaEntidad(array(
+                "tipo_entidad" => $tipoEntidad,
+                "codigo_entidad" => $codigoEntidad,
+                "id_categoria" => $idCategoria,
+                "motivo" => "Asignada al aprobar pedido " . $pedido["codigo"] . " (Centro de Decisiones)",
+                "cumplimiento" => "pendiente",
+                "es_excepcion" => 0,
+            ));
+
+            if (empty($asignacion["ok"])) {
+                return array(
+                    "ok" => false,
+                    "requiere_categoria" => true,
+                    "msg" => isset($asignacion["mensaje"])
+                        ? $asignacion["mensaje"]
+                        : "No se pudo asignar la categoría.",
+                    "codigo_pedido" => $pedido["codigo"],
+                    "codigo_cliente" => $codigoCliente,
+                    "nombre_cliente" => isset($pedido["cliente"]) ? $pedido["cliente"] : "",
+                    "tipo_entidad" => $tipoEntidad,
+                    "codigo_entidad" => $codigoEntidad,
+                    "nombre_grupo" => isset($efectiva["nombre_grupo"]) ? $efectiva["nombre_grupo"] : null,
+                );
+            }
+
+            $categoriaAsignada = isset($asignacion["categoria"]) ? $asignacion["categoria"] : null;
+        }
+
+        $ok = ModeloDashboardDecisiones::mdlAprobarPedidoGenerado(
+            $codigoPedido,
+            (int) $_SESSION["id"]
+        );
+
+        if (!$ok) {
+            return array("ok" => false, "msg" => "No se pudo aprobar el pedido.");
+        }
+
+        if (class_exists("ModeloPedidos") && method_exists("ModeloPedidos", "mdlCantAprobados")) {
+            ModeloPedidos::mdlCantAprobados();
+        }
+
+        $respuesta = array(
+            "ok" => true,
+            "msg" => "Pedido aprobado correctamente.",
+            "codigo" => $pedido["codigo"],
+        );
+
+        if ($categoriaAsignada) {
+            $respuesta["categoria_asignada"] = $categoriaAsignada;
+            $respuesta["msg"] = "Categoría asignada y pedido aprobado correctamente.";
+        }
+
+        return $respuesta;
+    }
+
     public static function ctrDatosDashboard()
     {
         $tTotal = microtime(true);
@@ -206,6 +334,21 @@ class ControladorDashboardDecisiones
         $t = microtime(true);
         $facturado = self::ctrFacturadoMes();
         $timings["facturado"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
+        $mapaCategorias = self::ctrMapaCategoriasClientes(array(
+            $generadosEnriquecidos,
+            $topGenerados,
+            $estancados,
+            $atraso,
+            $facturado,
+        ));
+        $generadosEnriquecidos = self::ctrAplicarCategoriasClientes($generadosEnriquecidos, $mapaCategorias, "cod_cli");
+        $topGenerados = self::ctrAplicarCategoriasClientes($topGenerados, $mapaCategorias, "cod_cli");
+        $estancados = self::ctrAplicarCategoriasClientes($estancados, $mapaCategorias, "cod_cli");
+        $atraso = self::ctrAplicarCategoriasClientes($atraso, $mapaCategorias, "codigo");
+        $facturado = self::ctrAplicarCategoriasClientes($facturado, $mapaCategorias, "cod_cli");
+        $timings["categorias"] = round((microtime(true) - $t) * 1000);
 
         $timings["total_datos"] = round((microtime(true) - $tTotal) * 1000);
 
@@ -260,6 +403,56 @@ class ControladorDashboardDecisiones
         }
 
         return $generados;
+    }
+
+    private static function ctrMapaCategoriasClientes(array $listas)
+    {
+        $codigos = array();
+
+        foreach ($listas as $lista) {
+            if (!is_array($lista)) {
+                continue;
+            }
+
+            foreach ($lista as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                if (!empty($row["cod_cli"])) {
+                    $codigos[] = $row["cod_cli"];
+                } elseif (!empty($row["codigo"]) && isset($row["nombre"]) && !isset($row["cliente"])) {
+                    // Clientes con atraso usan "codigo" del cliente
+                    $codigos[] = $row["codigo"];
+                }
+            }
+        }
+
+        if (empty($codigos) || !class_exists("ModeloCategoriasClientes")) {
+            return array();
+        }
+
+        try {
+            return ModeloCategoriasClientes::mdlCategoriasEfectivasPorClientes($codigos);
+        } catch (Exception $e) {
+            return array();
+        }
+    }
+
+    private static function ctrAplicarCategoriasClientes(array $filas, array $mapa, $campoCodigo = "cod_cli")
+    {
+        foreach ($filas as $idx => $row) {
+            $codigoCliente = isset($row[$campoCodigo]) ? trim((string) $row[$campoCodigo]) : "";
+            $cat = ($codigoCliente !== "" && isset($mapa[$codigoCliente]))
+                ? $mapa[$codigoCliente]
+                : null;
+
+            $filas[$idx]["categoria_codigo"] = $cat ? $cat["codigo"] : null;
+            $filas[$idx]["categoria_nombre"] = $cat ? $cat["nombre"] : null;
+            $filas[$idx]["categoria_color"] = $cat ? $cat["color"] : null;
+        }
+
+        return $filas;
     }
 
     /**

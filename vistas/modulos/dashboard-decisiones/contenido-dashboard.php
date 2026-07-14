@@ -241,7 +241,7 @@ $estadosPipeline = array(
                                     <th>Total</th>
                                     <th>Fecha</th>
                                     <th>Días</th>
-                                    <th class="text-center" width="120px"></th>
+                                    <th class="text-center" width="150px"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -264,7 +264,7 @@ $estadosPipeline = array(
                                             </td>
                                             <td class="dd-col-cliente">
                                                 <div class="dd-cell-main dd-cell-cliente" title="<?php echo htmlspecialchars($row["cod_cli"] . " · " . $row["cliente"]); ?>">
-                                                    <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"]); ?>
+                                                    <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"], $row); ?>
                                                 </div>
                                             </td>
                                             <td>
@@ -300,12 +300,21 @@ $estadosPipeline = array(
                                                             data-nombre="<?php echo htmlspecialchars($row["cliente"]); ?>">
                                                             <i class="fa fa-gavel"></i>
                                                         </button>
-                                                        <a href="index.php?ruta=inteligencia-comercial&cliente=<?php echo urlencode($row["cod_cli"]); ?>"
-                                                           class="btn btn-xs btn-default"
-                                                           title="Abrir análisis completo"
-                                                           target="_blank">
-                                                            <i class="fa fa-line-chart"></i>
-                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if (
+                                                        function_exists("dcUsuarioPuedeAprobarPedido")
+                                                        && dcUsuarioPuedeAprobarPedido()
+                                                        && empty($row["decision_credito"])
+                                                    ) : ?>
+                                                    <button type="button"
+                                                        class="btn btn-xs btn-success btnDdAprobarPedido"
+                                                        title="Aprobar pedido"
+                                                        data-pedido="<?php echo htmlspecialchars($row["codigo"]); ?>"
+                                                        data-cliente="<?php echo htmlspecialchars($row["cliente"]); ?>"
+                                                        data-cod-cli="<?php echo htmlspecialchars($row["cod_cli"]); ?>"
+                                                        data-tiene-categoria="<?php echo !empty($row["categoria_codigo"]) ? "1" : "0"; ?>">
+                                                        <i class="fa fa-check"></i>
+                                                    </button>
                                                     <?php endif; ?>
                                                     <?php if (function_exists("dcUsuarioPuedeAnularPedido") && dcUsuarioPuedeAnularPedido()) : ?>
                                                     <button type="button"
@@ -363,7 +372,7 @@ $estadosPipeline = array(
                                                     <?php echo htmlspecialchars($top["codigo"]); ?>
                                                 </div>
                                                 <div class="dd-prio-cliente" title="<?php echo htmlspecialchars($top["cod_cli"] . " · " . $top["cliente"]); ?>">
-                                                    <?php echo ddClienteLinea($top["cod_cli"], $top["cliente"]); ?>
+                                                    <?php echo ddClienteLinea($top["cod_cli"], $top["cliente"], $top); ?>
                                                 </div>
                                             </td>
                                             <td class="text-right dd-prio-col-total">
@@ -434,7 +443,7 @@ $estadosPipeline = array(
                                             </td>
                                             <td class="dd-col-cliente">
                                                 <div class="dd-cell-main dd-cell-cliente" title="<?php echo htmlspecialchars($row["cod_cli"] . " · " . $row["cliente"]); ?>">
-                                                    <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"]); ?>
+                                                    <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"], $row); ?>
                                                 </div>
                                             </td>
                                             <td><?php echo ddEstadoBadge($row["estado"]); ?></td>
@@ -478,7 +487,7 @@ $estadosPipeline = array(
                                         <tr class="<?php echo $enMora ? "dd-row-mora" : ""; ?>">
                                             <td class="dd-col-cliente">
                                                 <div class="dd-cell-main dd-cell-cliente" title="<?php echo htmlspecialchars($row["codigo"] . " · " . $row["nombre"]); ?>">
-                                                    <?php echo ddClienteLinea($row["codigo"], $row["nombre"]); ?>
+                                                    <?php echo ddClienteLinea($row["codigo"], $row["nombre"], $row); ?>
                                                 </div>
                                             </td>
                                             <td>
@@ -503,10 +512,13 @@ $estadosPipeline = array(
                                                 </span>
                                             </td>
                                             <td class="text-right">
-                                                <a href="index.php?ruta=inteligencia-comercial&cliente=<?php echo urlencode($row["codigo"]); ?>"
-                                                   class="btn btn-xs btn-default" title="Analizar cliente">
-                                                    <i class="fa fa-search"></i>
-                                                </a>
+                                                <button type="button"
+                                                    class="btn btn-xs btn-default btnDdMiniIc"
+                                                    title="Ver resumen del cliente"
+                                                    data-cliente="<?php echo htmlspecialchars($row["codigo"]); ?>"
+                                                    data-nombre="<?php echo htmlspecialchars($row["nombre"]); ?>">
+                                                    <i class="fa fa-user-circle"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -565,7 +577,7 @@ $estadosPipeline = array(
                                     </td>
                                     <td class="dd-col-cliente">
                                         <div class="dd-cell-main dd-cell-cliente" title="<?php echo htmlspecialchars($row["cod_cli"] . " · " . $row["cliente"]); ?>">
-                                            <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"]); ?>
+                                            <?php echo ddClienteLinea($row["cod_cli"], $row["cliente"], $row); ?>
                                         </div>
                                     </td>
                                     <td>

@@ -34,7 +34,7 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | Módulo | Acciones | Uso |
 |--------|----------|-----|
 | `dashboard_cobranzas` | `ver` | Dashboard Cobranzas |
-| `centro_decisiones` | `ver`, `registrar`, `solicitar`, `resolver`, `anular` | Decisiones de crédito / anular pedidos |
+| `centro_decisiones` | `ver`, `registrar`, `solicitar`, `resolver`, `anular`, `aprobar` | Decisiones de crédito / anular / aprobar pedidos |
 | `metas_vendedor` | `ver`, `editar` | Metas vendedor |
 | `linea_credito` | `ver`, `editar`, `cerrar_mes` | Línea de crédito (`editar` = aprobar/cambiar) |
 | `inteligencia_comercial` | `ver` | Inteligencia Comercial |
@@ -52,8 +52,8 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 
 ## Roles típicos en Centro de Decisiones
 
-- Créditos/cobranzas: `registrar` (motivo del no), `resolver`, `anular`
-- Jefatura comercial: `solicitar` (pedido del sí); sin `anular` ni `resolver`
+- Créditos/cobranzas: `registrar` (motivo del no), `resolver`, `anular`, `aprobar`
+- Jefatura comercial: `solicitar` (pedido del sí); sin `anular`, `resolver` ni `aprobar`
 - Ambas: `ver` para entrar al módulo
 
 ## Ejemplos de pregunta al usuario

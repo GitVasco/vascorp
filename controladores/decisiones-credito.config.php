@@ -176,3 +176,9 @@ function dcUsuarioPuedeAnularPedido()
     return function_exists("usuarioPuedeModulo")
         && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "anular");
 }
+
+function dcUsuarioPuedeAprobarPedido()
+{
+    return function_exists("usuarioPuedeModulo")
+        && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "aprobar");
+}

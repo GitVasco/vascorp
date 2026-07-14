@@ -238,6 +238,46 @@
     color: #555;
 }
 
+.dd-cat-sigla {
+    flex-shrink: 0;
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    line-height: 1.35;
+    color: #fff;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.dd-aprobar-cat-cliente {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.dd-aprobar-cat-hint {
+    margin-bottom: 14px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.dd-aprobar-cat-preview {
+    margin-top: 12px;
+    padding: 8px 10px;
+    background: #f7f7f7;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.dd-aprobar-cat-preview-nombre {
+    color: #555;
+    font-weight: 600;
+}
+
 .dd-cell-cliente {
     min-width: 0;
     max-width: 100%;

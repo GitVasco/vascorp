@@ -444,7 +444,19 @@ class ControladorCategoriasClientes
 	static public function ctrListarCategoriasActivas()
 	{
 
-		return ModeloCategoriasClientes::mdlListarCategoriasActivas();
+		$lista = ModeloCategoriasClientes::mdlListarCategoriasActivas();
+		if (!$lista) {
+			return array();
+		}
+
+		foreach ($lista as $i => $cat) {
+			$lista[$i]["color"] = self::ctrResolverColorCategoria(
+				isset($cat["color"]) ? $cat["color"] : "",
+				isset($cat["codigo"]) ? $cat["codigo"] : ""
+			);
+		}
+
+		return $lista;
 	}
 
 	/*=============================================

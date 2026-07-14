@@ -29,6 +29,137 @@ class ModeloCategoriasClientes
 	}
 
 	/*=============================================
+	Categoría efectiva por lote de clientes (grupo gana)
+	Devuelve mapa: codigo_cliente => [codigo, nombre, color]
+	=============================================*/
+	static public function mdlCategoriasEfectivasPorClientes(array $codigosClientes)
+	{
+
+		$unicos = array();
+		foreach ($codigosClientes as $codigo) {
+			$codigo = trim((string) $codigo);
+			if ($codigo !== "") {
+				$unicos[$codigo] = true;
+			}
+		}
+
+		$codigos = array_keys($unicos);
+		if (empty($codigos)) {
+			return array();
+		}
+
+		$placeholders = array();
+		foreach ($codigos as $i => $codigo) {
+			$placeholders[] = ":c" . $i;
+		}
+
+		$sql = "SELECT
+					c.codigo AS codigo_cliente,
+					CASE
+						WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
+							SELECT cat.codigo
+							FROM categorias_clientes_asignacionesjf a
+							INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+							WHERE a.tipo_entidad = 'grupo'
+							  AND a.codigo_entidad = c.grupo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+							ORDER BY a.id DESC
+							LIMIT 1
+						)
+						ELSE (
+							SELECT cat.codigo
+							FROM categorias_clientes_asignacionesjf a
+							INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+							WHERE a.tipo_entidad = 'cliente'
+							  AND a.codigo_entidad = c.codigo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+							ORDER BY a.id DESC
+							LIMIT 1
+						)
+					END AS categoria_codigo,
+					CASE
+						WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
+							SELECT cat.nombre
+							FROM categorias_clientes_asignacionesjf a
+							INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+							WHERE a.tipo_entidad = 'grupo'
+							  AND a.codigo_entidad = c.grupo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+							ORDER BY a.id DESC
+							LIMIT 1
+						)
+						ELSE (
+							SELECT cat.nombre
+							FROM categorias_clientes_asignacionesjf a
+							INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+							WHERE a.tipo_entidad = 'cliente'
+							  AND a.codigo_entidad = c.codigo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+							ORDER BY a.id DESC
+							LIMIT 1
+						)
+					END AS categoria_nombre,
+					CASE
+						WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
+							SELECT cat.color
+							FROM categorias_clientes_asignacionesjf a
+							INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+							WHERE a.tipo_entidad = 'grupo'
+							  AND a.codigo_entidad = c.grupo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+							ORDER BY a.id DESC
+							LIMIT 1
+						)
+						ELSE (
+							SELECT cat.color
+							FROM categorias_clientes_asignacionesjf a
+							INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+							WHERE a.tipo_entidad = 'cliente'
+							  AND a.codigo_entidad = c.codigo
+							  AND a.estado = 1
+							  AND a.vigencia_desde <= NOW()
+							  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+							ORDER BY a.id DESC
+							LIMIT 1
+						)
+					END AS categoria_color
+				FROM clientesjf c
+				WHERE c.codigo IN (" . implode(", ", $placeholders) . ")";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($codigos as $i => $codigo) {
+			$stmt->bindValue(":c" . $i, $codigo, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+			$codigoCat = isset($row["categoria_codigo"]) ? trim((string) $row["categoria_codigo"]) : "";
+			if ($codigoCat === "") {
+				continue;
+			}
+
+			$mapa[$row["codigo_cliente"]] = array(
+				"codigo" => $codigoCat,
+				"nombre" => isset($row["categoria_nombre"]) ? trim((string) $row["categoria_nombre"]) : $codigoCat,
+				"color" => isset($row["categoria_color"]) ? trim((string) $row["categoria_color"]) : "",
+			);
+		}
+
+		return $mapa;
+	}
+
+	/*=============================================
 	Asignación vigente de una entidad (cliente | grupo)
 	=============================================*/
 	static public function mdlAsignacionVigente($tipoEntidad, $codigoEntidad)
@@ -662,7 +793,7 @@ class ModeloCategoriasClientes
 	{
 
 		$stmt = Conexion::conectar()->prepare(
-			"SELECT id, codigo, nombre, orden
+			"SELECT id, codigo, nombre, color, orden
 			 FROM categorias_clientesjf
 			 WHERE estado = 1
 			 ORDER BY orden ASC, nombre ASC"
