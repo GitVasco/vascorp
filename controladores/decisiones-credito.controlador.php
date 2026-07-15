@@ -6,6 +6,7 @@ class ControladorDecisionesCredito
     {
         return array(
             "motivos" => dcListarMotivos(),
+            "motivos_aprobacion" => dcListarMotivosAprobacion(),
             "tipos_solicitud" => dcListarTiposSolicitud(),
             "resoluciones" => dcListarResoluciones(),
             "permisos" => array(
@@ -243,6 +244,9 @@ class ControladorDecisionesCredito
         $estado = isset($_POST["estado"]) ? strtoupper(trim((string) $_POST["estado"])) : "";
         $resolucionCodigo = isset($_POST["resolucion_codigo"]) ? strtoupper(trim((string) $_POST["resolucion_codigo"])) : "";
         $comentario = isset($_POST["comentario_resolucion"]) ? trim((string) $_POST["comentario_resolucion"]) : "";
+        $motivoObservacion = isset($_POST["motivo_observacion_codigo"])
+            ? strtoupper(trim((string) $_POST["motivo_observacion_codigo"]))
+            : "";
 
         if ($idSolicitud <= 0 || !in_array($estado, array("APROBADA", "RECHAZADA"), true) || $resolucionCodigo === "") {
             return array("ok" => false, "msg" => "Datos de resolución incompletos.");
@@ -250,6 +254,10 @@ class ControladorDecisionesCredito
 
         if (!dcObtenerResolucion($resolucionCodigo)) {
             return array("ok" => false, "msg" => "Resolución no válida.");
+        }
+
+        if ($motivoObservacion !== "" && !dcObtenerMotivoAprobacion($motivoObservacion)) {
+            return array("ok" => false, "msg" => "Motivo de observación no válido.");
         }
 
         $solicitud = ModeloDecisionesCredito::mdlSolicitudPorId($idSolicitud);
@@ -263,6 +271,7 @@ class ControladorDecisionesCredito
             "estado" => $estado,
             "resolucion_codigo" => $resolucionCodigo,
             "comentario_resolucion" => $comentario,
+            "motivo_observacion_codigo" => $motivoObservacion !== "" ? $motivoObservacion : null,
             "codigo_pedido" => (int) $solicitud["codigo_pedido"],
             "codigo_cliente" => $solicitud["codigo_cliente"],
             "usuario_resuelve" => (int) $_SESSION["id"],
@@ -283,6 +292,11 @@ class ControladorDecisionesCredito
             ));
 
             if (function_exists("dcRegistrarAccionCredito")) {
+                $detalleCierre = "Solicitud resuelta: " . $resolucionCodigo;
+                if ($motivoObservacion !== "") {
+                    $detalleCierre .= " · Motivo: " . dcEtiquetaMotivoAprobacion($motivoObservacion);
+                }
+
                 dcRegistrarAccionCredito(array(
                     "codigo_pedido" => (int) $solicitud["codigo_pedido"],
                     "codigo_cliente" => $solicitud["codigo_cliente"],
@@ -290,9 +304,10 @@ class ControladorDecisionesCredito
                     "origen" => "centro_decisiones",
                     "pedido_estado_resultado" => "GENERADO",
                     "id_decision" => (int) $solicitud["id_decision"],
+                    "motivo_codigo" => $motivoObservacion !== "" ? $motivoObservacion : null,
                     "comentario" => $comentario,
                     "usuario_id" => (int) $_SESSION["id"],
-                    "detalle" => "Solicitud resuelta: " . $resolucionCodigo,
+                    "detalle" => $detalleCierre,
                 ));
             }
         }

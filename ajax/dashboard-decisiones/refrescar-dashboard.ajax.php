@@ -71,6 +71,7 @@ $atraso = $datos["atraso"];
 $avanceVentas = $datos["avance_ventas"];
 $facturadoResumen = $datos["facturado_resumen"];
 $facturado = $datos["facturado"];
+$articulosRiesgo = $datos["articulos_riesgo"];
 
 $tRender = microtime(true);
 ob_start();

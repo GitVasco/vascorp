@@ -1,7 +1,28 @@
 if ($(".tablaCategoriasPorRevisar").length) {
 
+    function aplicarFiltroCategoriaBandeja(codigo) {
+        var $sel = $("#filtroCategoriaBandeja");
+        if (!$sel.length) {
+            return;
+        }
+        $sel.val(codigo || "");
+        if (typeof $sel.selectpicker === "function") {
+            try {
+                $sel.selectpicker("refresh");
+            } catch (e) {}
+        }
+        if (typeof tablaCategoriasPorRevisar !== "undefined") {
+            tablaCategoriasPorRevisar.ajax.reload();
+        }
+    }
+
     var tablaCategoriasPorRevisar = $(".tablaCategoriasPorRevisar").DataTable({
-        ajax: "ajax/facturacion/tabla-categorias-por-revisar.ajax.php",
+        ajax: {
+            url: "ajax/facturacion/tabla-categorias-por-revisar.ajax.php",
+            data: function (d) {
+                d.categoria = $("#filtroCategoriaBandeja").val() || "";
+            }
+        },
         deferRender: true,
         retrieve: true,
         processing: true,
@@ -34,6 +55,22 @@ if ($(".tablaCategoriasPorRevisar").length) {
                 sNext: "Siguiente",
                 sPrevious: "Anterior"
             }
+        }
+    });
+
+    $("#filtroCategoriaBandeja").on("changed.bs.select change", function () {
+        if (typeof tablaCategoriasPorRevisar !== "undefined") {
+            tablaCategoriasPorRevisar.ajax.reload();
+        }
+    });
+
+    $(document).on("click", ".filtro-categoria-bandeja", function () {
+        var codigo = $(this).attr("data-categoria") || "";
+        var actual = $("#filtroCategoriaBandeja").val() || "";
+        if (actual === codigo) {
+            aplicarFiltroCategoriaBandeja("");
+        } else {
+            aplicarFiltroCategoriaBandeja(codigo);
         }
     });
 }

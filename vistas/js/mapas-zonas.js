@@ -138,6 +138,69 @@
         };
     }
 
+    function mzLeerPeriodoUrl() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var anio = parseInt(params.get("anio"), 10);
+            var mes = parseInt(params.get("mes"), 10);
+            return {
+                anio: !isNaN(anio) && anio >= 2000 && anio <= 2100 ? anio : null,
+                mes: !isNaN(mes) && mes >= 1 && mes <= 12 ? mes : null
+            };
+        } catch (e) {
+            return { anio: null, mes: null };
+        }
+    }
+
+    function mzEscribirPeriodoUrl() {
+        var p = mzPeriodo();
+        try {
+            var url = new URL(window.location.href);
+            url.searchParams.set("anio", String(p.anio));
+            url.searchParams.set("mes", String(p.mes));
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+            }
+        } catch (e) {
+            /* navegadores antiguos: sin sync de URL */
+        }
+    }
+
+    function mzAsegurarOpcionAnio(anio) {
+        anio = parseInt(anio, 10);
+        if (isNaN(anio)) {
+            return;
+        }
+        var $sel = $("#mzAnio");
+        if ($sel.find("option[value='" + anio + "']").length) {
+            return;
+        }
+        var $opts = $sel.find("option");
+        var inserted = false;
+        $opts.each(function () {
+            if (parseInt($(this).val(), 10) > anio) {
+                $(this).before($("<option>").val(anio).text(String(anio)));
+                inserted = true;
+                return false;
+            }
+        });
+        if (!inserted) {
+            $sel.append($("<option>").val(anio).text(String(anio)));
+        }
+    }
+
+    function mzAplicarPeriodoUrl() {
+        var u = mzLeerPeriodoUrl();
+        if (u.anio != null) {
+            mzAsegurarOpcionAnio(u.anio);
+            $("#mzAnio").val(String(u.anio));
+        }
+        if (u.mes != null) {
+            $("#mzMes").val(String(u.mes));
+        }
+        mzEscribirPeriodoUrl();
+    }
+
     function mzCacheKey(vista) {
         var p = mzPeriodo();
         return vista + "|" + p.anio + "|" + p.mes;
@@ -668,10 +731,16 @@
                 rows.forEach(function (c) {
                     var cat = c.categoria ? String(c.categoria) : "";
                     var colorCat = c.categoria_color ? String(c.categoria_color) : "#777777";
-                    var labelNuevo =
+                    var grupo = c.nombre_grupo ? String(c.nombre_grupo) : "";
+                    var badgeNuevo =
                         soloNuevos || c.es_nuevo
-                            ? " <span class='label label-success' style='font-weight:600;margin-left:6px;'>Nuevo</span>"
+                            ? "<span class='label label-success' style='font-weight:600;flex:0 0 auto;'>Nuevo</span>"
                             : "";
+                    var badgeGrupo = grupo
+                        ? "<span class='label label-primary' style='font-weight:600;flex:0 0 auto;' title='Grupo empresarial'>" +
+                          mzEsc(grupo) +
+                          "</span>"
+                        : "";
                     var badgeCat = cat
                         ? "<span class='label' style='font-weight:600;flex:0 0 auto;background-color:" +
                           mzEsc(colorCat) +
@@ -679,6 +748,14 @@
                           mzEsc(cat) +
                           "</span>"
                         : "";
+                    var badgesRight =
+                        badgeNuevo || badgeGrupo || badgeCat
+                            ? "<span style='display:flex;align-items:center;gap:4px;flex:0 0 auto;'>" +
+                              badgeNuevo +
+                              badgeGrupo +
+                              badgeCat +
+                              "</span>"
+                            : "";
                     var vend = soloNuevos
                         ? c.cod_vendedor || "—"
                         : c.codigos_vendedor || c.cod_vendedor || "—";
@@ -691,9 +768,8 @@
                         "<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;'>" +
                         "<span style='min-width:0;'>" +
                         mzEsc(c.nombre) +
-                        labelNuevo +
                         "</span>" +
-                        badgeCat +
+                        badgesRight +
                         "</div></td>" +
                         "<td><code>" +
                         mzEsc(vend) +
@@ -891,10 +967,12 @@
 
     $("#mzFormPeriodo").on("submit", function (e) {
         e.preventDefault();
+        mzEscribirPeriodoUrl();
         mzCargarVista(mzVista, true);
     });
 
     $("#mzAnio, #mzMes").on("change", function () {
+        mzEscribirPeriodoUrl();
         mzCargarVista(mzVista, true);
     });
 
@@ -927,6 +1005,8 @@
         var codigo = $(this).attr("data-codigo") || $(this).data("codigo");
         mzAbrirClientesZona(idZona, codigo, "nuevos");
     });
+
+    mzAplicarPeriodoUrl();
 
     if ($("#mzMapLima").length) {
         if (typeof L === "undefined") {

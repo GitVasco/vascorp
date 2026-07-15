@@ -33,9 +33,10 @@ $resumenPorCategoria = isset($resumenBandeja["por_categoria"]) && is_array($resu
                 );
                 $totalClientes = isset($resCat["total_clientes"]) ? (int) $resCat["total_clientes"] : 0;
                 $totalGrupos = isset($resCat["total_grupos"]) ? (int) $resCat["total_grupos"] : 0;
+                $codigoCatResumen = isset($resCat["codigo"]) ? $resCat["codigo"] : "";
             ?>
             <div class="col-md-4">
-                <div class="info-box" style="background-color:<?php echo htmlspecialchars($hexResumen, ENT_QUOTES, 'UTF-8'); ?>; color:#fff;">
+                <div class="info-box filtro-categoria-bandeja" data-categoria="<?php echo htmlspecialchars($codigoCatResumen, ENT_QUOTES, 'UTF-8'); ?>" style="background-color:<?php echo htmlspecialchars($hexResumen, ENT_QUOTES, 'UTF-8'); ?>; color:#fff; cursor:pointer;">
                     <span class="info-box-icon" style="background:rgba(0,0,0,0.12);"><i class="fa fa-tags"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text"><?php echo htmlspecialchars($resCat["nombre"]); ?></span>
@@ -56,6 +57,20 @@ $resumenPorCategoria = isset($resumenBandeja["por_categoria"]) && is_array($resu
         <div class="box">
             <div class="box-header with-border">
                 <h3 class="box-title">Bandeja de revisión</h3>
+                <div class="pull-right" style="min-width:240px;max-width:320px;">
+                    <label for="filtroCategoriaBandeja" class="control-label" style="margin-bottom:4px;display:block;font-weight:normal;">
+                        Filtrar por categoría
+                    </label>
+                    <select class="form-control selectpicker" id="filtroCategoriaBandeja" data-live-search="true" title="Todas las categorías">
+                        <option value="">Todas</option>
+                        <?php foreach ($resumenPorCategoria as $catFiltro) : ?>
+                        <option value="<?php echo htmlspecialchars($catFiltro["codigo"], ENT_QUOTES, "UTF-8"); ?>">
+                            <?php echo htmlspecialchars($catFiltro["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="clearfix"></div>
                 <p class="help-block" style="margin:8px 0 0;">
                     Solo Distribuidor, Mayorista y Minorista. Facturado 12m (S02/S03/S70) es referencial; la evaluación sigue siendo manual.
                 </p>

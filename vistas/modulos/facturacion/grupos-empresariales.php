@@ -44,6 +44,7 @@ $puedeEditarZonaGrupo = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacio
                             <th>Nombre</th>
                             <th>Clientes</th>
                             <th>Categoría</th>
+                            <th>Zona</th>
                             <th class="text-right">Ventas mes</th>
                             <th class="text-right">Ventas 12m</th>
                             <th class="text-right">Monto requerido</th>

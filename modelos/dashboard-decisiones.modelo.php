@@ -268,11 +268,28 @@ class ModeloDashboardDecisiones
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_sin_avance,
-                    u.nombre AS usuario
+                    u.nombre AS usuario,
+                    IFNULL(cov.pct_completo, 0) AS pct_completo
                 FROM temporaljf t
                 {$join}
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo
                 LEFT JOIN usuariosjf u ON t.usuario = u.id
+                LEFT JOIN (
+                    SELECT
+                        dt.codigo,
+                        ROUND(
+                            SUM(
+                                LEAST(
+                                    IFNULL(dt.cantidad, 0),
+                                    GREATEST(IFNULL(a.stock, 0), 0)
+                                )
+                            ) / NULLIF(SUM(IFNULL(dt.cantidad, 0)), 0) * 100,
+                            0
+                        ) AS pct_completo
+                    FROM detalle_temporal dt
+                    INNER JOIN articulojf a ON a.articulo = dt.articulo
+                    GROUP BY dt.codigo
+                ) cov ON cov.codigo = t.codigo
                 WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
                   AND DATEDIFF(CURDATE(), DATE(t.fecha)) >= 3
                   AND {$whereVend}
@@ -762,5 +779,76 @@ class ModeloDashboardDecisiones
         }
 
         return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Artículos en pedidos post-aprobación sin stock suficiente o descontinuados.
+     * Excluye GENERADO y CONFIRMADO (pedido cerrado). Solo vendedores activos del Centro.
+     */
+    public static function mdlArticulosEnRiesgo($limite = 50)
+    {
+        $params = array();
+        $join = self::sqlJoinVendedoresActivos("t", "mv_art");
+        $whereVend = self::sqlCondicionVendedor("t", $params);
+        $limite = max(1, min(100, (int) $limite));
+
+        $sql = "SELECT
+                    a.articulo,
+                    IFNULL(a.nombre, '') AS nombre,
+                    IFNULL(a.modelo, '') AS modelo,
+                    IFNULL(a.color, '') AS color,
+                    IFNULL(a.talla, '') AS talla,
+                    GREATEST(IFNULL(a.stock, 0), 0) AS stock,
+                    SUM(IFNULL(dt.cantidad, 0)) AS cant_pedida,
+                    GREATEST(
+                        SUM(IFNULL(dt.cantidad, 0)) - GREATEST(IFNULL(a.stock, 0), 0),
+                        0
+                    ) AS faltante,
+                    IFNULL(a.estado, '') AS estado,
+                    CASE
+                        WHEN LOWER(IFNULL(a.estado, '')) = 'descontinuado'
+                             AND SUM(IFNULL(dt.cantidad, 0)) > GREATEST(IFNULL(a.stock, 0), 0)
+                            THEN 'ambos'
+                        WHEN LOWER(IFNULL(a.estado, '')) = 'descontinuado'
+                            THEN 'descontinuado'
+                        ELSE 'sin_stock'
+                    END AS alerta,
+                    COUNT(DISTINCT t.codigo) AS n_pedidos,
+                    GROUP_CONCAT(DISTINCT t.estado ORDER BY t.estado SEPARATOR ', ') AS estados,
+                    GROUP_CONCAT(DISTINCT t.codigo ORDER BY t.codigo SEPARATOR ', ') AS pedidos
+                FROM detalle_temporal dt
+                INNER JOIN temporaljf t ON t.codigo = dt.codigo
+                INNER JOIN articulojf a ON a.articulo = dt.articulo
+                {$join}
+                WHERE t.estado IN ('APROBADO', 'APT')
+                  AND {$whereVend}
+                GROUP BY
+                    a.articulo,
+                    a.nombre,
+                    a.modelo,
+                    a.color,
+                    a.talla,
+                    a.stock,
+                    a.estado
+                HAVING LOWER(IFNULL(a.estado, '')) = 'descontinuado'
+                    OR SUM(IFNULL(dt.cantidad, 0)) > GREATEST(IFNULL(a.stock, 0), 0)
+                ORDER BY
+                    CASE
+                        WHEN LOWER(IFNULL(a.estado, '')) = 'descontinuado'
+                             AND SUM(IFNULL(dt.cantidad, 0)) > GREATEST(IFNULL(a.stock, 0), 0)
+                            THEN 1
+                        WHEN LOWER(IFNULL(a.estado, '')) = 'descontinuado'
+                            THEN 2
+                        ELSE 3
+                    END,
+                    faltante DESC,
+                    cant_pedida DESC
+                LIMIT {$limite}";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindParams($stmt, $params);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

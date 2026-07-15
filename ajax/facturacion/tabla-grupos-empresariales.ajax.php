@@ -60,6 +60,18 @@ class TablaGruposEmpresariales
 					isset($grupo["categoria_color"]) ? $grupo["categoria_color"] : null
 				);
 
+				$zonaNombre = isset($grupo["zona_nombre"]) ? trim((string) $grupo["zona_nombre"]) : "";
+				if ($zonaNombre !== "") {
+					$zonaColor = !empty($grupo["zona_color"]) ? $grupo["zona_color"] : "#777777";
+					$zonaHtml = "<span class='label' style='background-color:" .
+						htmlspecialchars($zonaColor, ENT_QUOTES, "UTF-8") .
+						";'>" .
+						htmlspecialchars($zonaNombre, ENT_QUOTES, "UTF-8") .
+						"</span>";
+				} else {
+					$zonaHtml = "<span class='text-muted'>—</span>";
+				}
+
 				$ventasMes = isset($montosMes[$codigoGrupo]) ? $montosMes[$codigoGrupo] : 0;
 				$ventas12m = isset($montos12m[$codigoGrupo]) ? $montos12m[$codigoGrupo] : 0;
 
@@ -79,6 +91,7 @@ class TablaGruposEmpresariales
 					$grupo["nombre"],
 					(string) $totalClientes,
 					$categoriaHtml,
+					$zonaHtml,
 					$this->formatoMonto($ventasMes),
 					$this->formatoMonto($ventas12m),
 					$this->formatoMonto($requisito),

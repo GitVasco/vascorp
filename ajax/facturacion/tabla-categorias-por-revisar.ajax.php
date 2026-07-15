@@ -19,12 +19,25 @@ class TablaCategoriasPorRevisar
 	public function mostrarTabla()
 	{
 
+		$filtroCategoria = isset($_GET["categoria"]) ? trim($_GET["categoria"]) : "";
+		if ($filtroCategoria === "" && isset($_POST["categoria"])) {
+			$filtroCategoria = trim($_POST["categoria"]);
+		}
+		$filtroCategoria = strtoupper($filtroCategoria);
+
 		$filas = ControladorCategoriasClientes::ctrListarBandejaRevision();
 		$data = array();
 
 		if (is_array($filas) && count($filas) > 0) {
 
 			foreach ($filas as $fila) {
+
+				$codigoCategoria = isset($fila["categoria_codigo"])
+					? strtoupper(trim((string) $fila["categoria_codigo"]))
+					: "";
+				if ($filtroCategoria !== "" && $codigoCategoria !== $filtroCategoria) {
+					continue;
+				}
 
 				$tipoHtml = $fila["tipo_entidad"] === "grupo"
 					? "<span class='label label-primary'>Grupo</span>"

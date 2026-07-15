@@ -132,6 +132,11 @@ class ControladorDashboardDecisiones
         return ModeloDashboardDecisiones::mdlFacturadoMes($limite);
     }
 
+    public static function ctrArticulosEnRiesgo($limite = 50)
+    {
+        return ModeloDashboardDecisiones::mdlArticulosEnRiesgo($limite);
+    }
+
     public static function ctrAnularPedidoGenerado($codigoPedido)
     {
         $codigoPedido = trim((string) $codigoPedido);
@@ -201,10 +206,12 @@ class ControladorDashboardDecisiones
         );
     }
 
-    public static function ctrAprobarPedidoGenerado($codigoPedido, $idCategoria = 0)
+    public static function ctrAprobarPedidoGenerado($codigoPedido, $idCategoria = 0, $motivoCodigo = "", $comentario = "")
     {
         $codigoPedido = trim((string) $codigoPedido);
         $idCategoria = (int) $idCategoria;
+        $motivoCodigo = strtoupper(trim((string) $motivoCodigo));
+        $comentario = trim((string) $comentario);
 
         if ($codigoPedido === "") {
             return array("ok" => false, "msg" => "Pedido no indicado.");
@@ -212,6 +219,10 @@ class ControladorDashboardDecisiones
 
         if (!isset($_SESSION["id"]) || !(int) $_SESSION["id"]) {
             return array("ok" => false, "msg" => "Sesión no válida.");
+        }
+
+        if ($motivoCodigo !== "" && function_exists("dcObtenerMotivoAprobacion") && !dcObtenerMotivoAprobacion($motivoCodigo)) {
+            return array("ok" => false, "msg" => "Motivo de aprobación no válido.");
         }
 
         $pedido = ModeloDashboardDecisiones::mdlPedidoParaAnular($codigoPedido);
@@ -327,6 +338,8 @@ class ControladorDashboardDecisiones
             "pedido_total" => isset($pedido["total"]) ? $pedido["total"] : null,
             "pedido_lista" => isset($pedido["lista"]) ? $pedido["lista"] : null,
             "pedido_estado_resultado" => "APROBADO",
+            "motivo_codigo" => $motivoCodigo !== "" ? $motivoCodigo : null,
+            "comentario" => $comentario !== "" ? $comentario : null,
             "usuario_id" => (int) $_SESSION["id"],
         );
 
@@ -351,6 +364,13 @@ class ControladorDashboardDecisiones
                 : (isset($accionDatos["categoria_nombre"]) ? $accionDatos["categoria_nombre"] : null);
             $accionDatos["categoria_entidad"] = $categoriaEntidad;
             $accionDatos["categoria_codigo_entidad"] = $categoriaCodigoEntidad;
+        }
+
+        if ($motivoCodigo !== "" && function_exists("dcEtiquetaMotivoAprobacion")) {
+            $motivoDetalle = "Motivo: " . dcEtiquetaMotivoAprobacion($motivoCodigo);
+            $accionDatos["detalle"] = !empty($accionDatos["detalle"])
+                ? $motivoDetalle . " · " . $accionDatos["detalle"]
+                : $motivoDetalle;
         }
 
         if (function_exists("dcRegistrarAccionCredito")) {
@@ -423,6 +443,10 @@ class ControladorDashboardDecisiones
         $timings["facturado"] = round((microtime(true) - $t) * 1000);
 
         $t = microtime(true);
+        $articulosRiesgo = self::ctrArticulosEnRiesgo();
+        $timings["articulos_riesgo"] = round((microtime(true) - $t) * 1000);
+
+        $t = microtime(true);
         $mapaCategorias = self::ctrMapaCategoriasClientes(array(
             $generadosEnriquecidos,
             $topGenerados,
@@ -457,6 +481,7 @@ class ControladorDashboardDecisiones
             "avance_ventas" => $avanceVentas,
             "facturado_resumen" => $facturadoResumen,
             "facturado" => $facturado,
+            "articulos_riesgo" => $articulosRiesgo,
         );
     }
 

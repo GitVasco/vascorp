@@ -76,7 +76,7 @@
             }
             ?>
 
-            <!--  Dashboard Cobranzas (lista de IDs en controladores/config.php) -->
+            <!-- Gestión comercial -->
             <?php
             $puedeVerDashboardCobranzas = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas");
@@ -97,55 +97,62 @@
             $puedeVerZonasComerciales = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales");
 
-            $rutasActivasGestionComercial = array();
+            $mostrarCreditoCobranzas = $puedeVerDashboardCobranzas
+                || $puedeVerCentroDecisiones
+                || $puedeVerHistorialCredito
+                || $puedeVerLineaCredito;
+            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor;
+            $mostrarCatalogosComerciales = $puedeVerCategoriasComerciales
+                || $puedeVerCategoriasPorRevisar
+                || $puedeVerZonasComerciales;
+
+            $rutasActivasCreditoCobranzas = array();
+            if ($puedeVerDashboardCobranzas) {
+                $rutasActivasCreditoCobranzas[] = "dashboard-cobranzas";
+            }
             if ($puedeVerCentroDecisiones) {
-                $rutasActivasGestionComercial[] = "dashboard-decisiones";
+                $rutasActivasCreditoCobranzas[] = "dashboard-decisiones";
             }
             if ($puedeVerHistorialCredito) {
-                $rutasActivasGestionComercial[] = "historial-credito";
-            }
-            if ($puedeVerMetasVendedor) {
-                $rutasActivasGestionComercial[] = "metas-vendedor";
-                $rutasActivasGestionComercial[] = "metas-retos";
+                $rutasActivasCreditoCobranzas[] = "historial-credito";
             }
             if ($puedeVerLineaCredito) {
-                $rutasActivasGestionComercial[] = "linea-credito";
+                $rutasActivasCreditoCobranzas[] = "linea-credito";
             }
+
+            $rutasActivasMetasInteligencia = array();
             if ($puedeVerInteligenciaComercial) {
-                $rutasActivasGestionComercial[] = "inteligencia-comercial";
+                $rutasActivasMetasInteligencia[] = "inteligencia-comercial";
             }
+            if ($puedeVerMetasVendedor) {
+                $rutasActivasMetasInteligencia[] = "metas-vendedor";
+                $rutasActivasMetasInteligencia[] = "metas-retos";
+            }
+
+            $rutasActivasCatalogosComerciales = array();
             if ($puedeVerCategoriasComerciales) {
-                $rutasActivasGestionComercial[] = "categorias-comerciales";
+                $rutasActivasCatalogosComerciales[] = "categorias-comerciales";
             }
             if ($puedeVerCategoriasPorRevisar) {
-                $rutasActivasGestionComercial[] = "categorias-por-revisar";
+                $rutasActivasCatalogosComerciales[] = "categorias-por-revisar";
             }
             if ($puedeVerZonasComerciales) {
-                $rutasActivasGestionComercial[] = "zonas-comerciales";
-                $rutasActivasGestionComercial[] = "mapas-zonas";
+                $rutasActivasCatalogosComerciales[] = "zonas-comerciales";
+                $rutasActivasCatalogosComerciales[] = "mapas-zonas";
             }
 
+            $rutasActivasGestionComercial = array_merge(
+                $rutasActivasCreditoCobranzas,
+                $rutasActivasMetasInteligencia,
+                $rutasActivasCatalogosComerciales
+            );
             $mostrarGestionComercial = !empty($rutasActivasGestionComercial);
-
-            if ($puedeVerDashboardCobranzas) {
-            ?>
-
-                <li class="<?php if ($_GET["ruta"] == "dashboard-cobranzas") echo 'active'; ?>">
-
-                    <a href="index.php?ruta=dashboard-cobranzas">
-
-                        <i class="fa fa-money"></i>
-                        <span>Dashboard Cobranzas</span>
-
-                    </a>
-
-                </li>
-
-            <?php
-            }
 
             if ($mostrarGestionComercial) {
                 $isActiveGestionComercial = in_array($_GET["ruta"], $rutasActivasGestionComercial, true) ? "active" : "";
+                $isActiveCreditoCobranzas = in_array($_GET["ruta"], $rutasActivasCreditoCobranzas, true) ? "active" : "";
+                $isActiveMetasInteligencia = in_array($_GET["ruta"], $rutasActivasMetasInteligencia, true) ? "active" : "";
+                $isActiveCatalogosComerciales = in_array($_GET["ruta"], $rutasActivasCatalogosComerciales, true) ? "active" : "";
             ?>
 
                 <li class="treeview <?php echo $isActiveGestionComercial; ?>">
@@ -166,127 +173,129 @@
 
                     <ul class="treeview-menu">
 
-                        <?php if ($puedeVerCentroDecisiones) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "dashboard-decisiones") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=dashboard-decisiones">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Centro de Decisiones</span>
-
+                        <?php if ($mostrarCreditoCobranzas) { ?>
+                        <li class="treeview <?php echo $isActiveCreditoCobranzas; ?>">
+                            <a href="#">
+                                <i class="fa fa-money"></i>
+                                <span>Crédito y cobranzas</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-left pull-right"></i>
+                                </span>
                             </a>
-
+                            <ul class="treeview-menu">
+                                <?php if ($puedeVerDashboardCobranzas) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "dashboard-cobranzas") echo 'active'; ?>">
+                                    <a href="index.php?ruta=dashboard-cobranzas">
+                                        <i class="fa fa-dashboard"></i>
+                                        <span>Dashboard cobranzas</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerCentroDecisiones) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "dashboard-decisiones") echo 'active'; ?>">
+                                    <a href="index.php?ruta=dashboard-decisiones">
+                                        <i class="fa fa-gavel"></i>
+                                        <span>Centro de decisiones</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerHistorialCredito) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "historial-credito") echo 'active'; ?>">
+                                    <a href="index.php?ruta=historial-credito">
+                                        <i class="fa fa-history"></i>
+                                        <span>Historial de crédito</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerLineaCredito) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "linea-credito") echo 'active'; ?>">
+                                    <a href="index.php?ruta=linea-credito">
+                                        <i class="fa fa-credit-card"></i>
+                                        <span>Línea de crédito</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                            </ul>
                         </li>
                         <?php } ?>
 
-                        <?php if ($puedeVerHistorialCredito) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "historial-credito") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=historial-credito">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Historial de crédito</span>
-
+                        <?php if ($mostrarMetasInteligencia) { ?>
+                        <li class="treeview <?php echo $isActiveMetasInteligencia; ?>">
+                            <a href="#">
+                                <i class="fa fa-line-chart"></i>
+                                <span>Metas e inteligencia</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-left pull-right"></i>
+                                </span>
                             </a>
-
+                            <ul class="treeview-menu">
+                                <?php if ($puedeVerInteligenciaComercial) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "inteligencia-comercial") echo 'active'; ?>">
+                                    <a href="index.php?ruta=inteligencia-comercial">
+                                        <i class="fa fa-lightbulb-o"></i>
+                                        <span>Inteligencia comercial</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerMetasVendedor) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "metas-vendedor") echo 'active'; ?>">
+                                    <a href="index.php?ruta=metas-vendedor">
+                                        <i class="fa fa-bullseye"></i>
+                                        <span>Metas vendedor</span>
+                                    </a>
+                                </li>
+                                <li class="<?php if ($_GET["ruta"] == "metas-retos") echo 'active'; ?>">
+                                    <a href="index.php?ruta=metas-retos">
+                                        <i class="fa fa-trophy"></i>
+                                        <span>Metas / retos</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                            </ul>
                         </li>
                         <?php } ?>
 
-                        <?php if ($puedeVerMetasVendedor) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "metas-vendedor") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=metas-vendedor">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Metas vendedor</span>
-
+                        <?php if ($mostrarCatalogosComerciales) { ?>
+                        <li class="treeview <?php echo $isActiveCatalogosComerciales; ?>">
+                            <a href="#">
+                                <i class="fa fa-map-o"></i>
+                                <span>Catálogos comerciales</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-left pull-right"></i>
+                                </span>
                             </a>
-
-                        </li>
-                        <li class="<?php if ($_GET["ruta"] == "metas-retos") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=metas-retos">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Metas / retos</span>
-
-                            </a>
-
-                        </li>
-                        <?php } ?>
-
-                        <?php if ($puedeVerLineaCredito) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "linea-credito") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=linea-credito">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Línea de crédito</span>
-
-                            </a>
-
-                        </li>
-                        <?php } ?>
-
-                        <?php if ($puedeVerInteligenciaComercial) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "inteligencia-comercial") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=inteligencia-comercial">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Inteligencia Comercial</span>
-
-                            </a>
-
-                        </li>
-                        <?php } ?>
-
-                        <?php if ($puedeVerCategoriasComerciales) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "categorias-comerciales") echo 'active'; ?>">
-
-                            <a href="categorias-comerciales">
-
-                                <i class="fa fa-tags"></i>
-                                <span>Categorías comerciales</span>
-
-                            </a>
-
-                        </li>
-                        <?php } ?>
-
-                        <?php if ($puedeVerCategoriasPorRevisar) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "categorias-por-revisar") echo 'active'; ?>">
-
-                            <a href="categorias-por-revisar">
-
-                                <i class="fa fa-flag"></i>
-                                <span>Categorías por revisar</span>
-
-                            </a>
-
-                        </li>
-                        <?php } ?>
-
-                        <?php if ($puedeVerZonasComerciales) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "zonas-comerciales") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=zonas-comerciales">
-
-                                <i class="fa fa-map"></i>
-                                <span>Zonas comerciales</span>
-
-                            </a>
-
-                        </li>
-                        <li class="<?php if ($_GET["ruta"] == "mapas-zonas") echo 'active'; ?>">
-
-                            <a href="index.php?ruta=mapas-zonas">
-
-                                <i class="fa fa-globe"></i>
-                                <span>Mapas de zonas</span>
-
-                            </a>
-
+                            <ul class="treeview-menu">
+                                <?php if ($puedeVerCategoriasComerciales) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "categorias-comerciales") echo 'active'; ?>">
+                                    <a href="categorias-comerciales">
+                                        <i class="fa fa-tags"></i>
+                                        <span>Categorías comerciales</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerCategoriasPorRevisar) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "categorias-por-revisar") echo 'active'; ?>">
+                                    <a href="categorias-por-revisar">
+                                        <i class="fa fa-flag"></i>
+                                        <span>Categorías por revisar</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerZonasComerciales) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "zonas-comerciales") echo 'active'; ?>">
+                                    <a href="index.php?ruta=zonas-comerciales">
+                                        <i class="fa fa-map"></i>
+                                        <span>Zonas comerciales</span>
+                                    </a>
+                                </li>
+                                <li class="<?php if ($_GET["ruta"] == "mapas-zonas") echo 'active'; ?>">
+                                    <a href="index.php?ruta=mapas-zonas">
+                                        <i class="fa fa-globe"></i>
+                                        <span>Mapas de zonas</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                            </ul>
                         </li>
                         <?php } ?>
 

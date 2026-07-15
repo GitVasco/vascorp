@@ -150,5 +150,47 @@
     { "codigo": "APROBADO_REEVALUACION", "etiqueta": "Aprobado tras reevaluación" },
     { "codigo": "LINEA_AJUSTADA", "etiqueta": "Línea ajustada; pedido liberado" },
     { "codigo": "DECISION_REVERTIDA", "etiqueta": "Decisión revertida; pedido aprobado" }
+  ],
+  "motivos_aprobacion": [
+    {
+      "codigo": "CUMPLE_POLITICA",
+      "etiqueta": "Cumple política de crédito",
+      "descripcion": "El pedido y el cliente cumplen los criterios vigentes."
+    },
+    {
+      "codigo": "CUPO_SUFICIENTE",
+      "etiqueta": "Cupo / línea suficiente",
+      "descripcion": "Hay cupo disponible para cubrir el pedido."
+    },
+    {
+      "codigo": "REEVALUACION_FAVORABLE",
+      "etiqueta": "Reevaluación favorable",
+      "descripcion": "Tras revisar riesgo y cartera, se libera el pedido."
+    },
+    {
+      "codigo": "EXCEPCION_AUTORIZADA",
+      "etiqueta": "Excepción autorizada",
+      "descripcion": "Se aprueba como excepción puntual o comercial."
+    },
+    {
+      "codigo": "ACUERDO_COBRANZA",
+      "etiqueta": "Acuerdo de cobranza",
+      "descripcion": "Existe acuerdo o compromiso de pago que respalda la aprobación."
+    },
+    {
+      "codigo": "DOCUMENTACION_OK",
+      "etiqueta": "Documentación en orden",
+      "descripcion": "Garantías o papeles pendientes ya fueron regularizados."
+    },
+    {
+      "codigo": "RESPALDO_COMERCIAL",
+      "etiqueta": "Respaldo de jefatura comercial",
+      "descripcion": "Hay aval o solicitud respaldada por ventas/jefatura."
+    },
+    {
+      "codigo": "OTRO",
+      "etiqueta": "Otro motivo",
+      "descripcion": "Motivo no cubierto por el catálogo; conviene detallar en la observación."
+    }
   ]
 }

@@ -39,6 +39,13 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 
 $codigoPedido = isset($_POST["codigo_pedido"]) ? trim((string) $_POST["codigo_pedido"]) : "";
 $idCategoria = isset($_POST["id_categoria"]) ? (int) $_POST["id_categoria"] : 0;
-$respuesta = ControladorDashboardDecisiones::ctrAprobarPedidoGenerado($codigoPedido, $idCategoria);
+$motivoCodigo = isset($_POST["motivo_codigo"]) ? trim((string) $_POST["motivo_codigo"]) : "";
+$comentario = isset($_POST["comentario"]) ? trim((string) $_POST["comentario"]) : "";
+$respuesta = ControladorDashboardDecisiones::ctrAprobarPedidoGenerado(
+    $codigoPedido,
+    $idCategoria,
+    $motivoCodigo,
+    $comentario
+);
 
 echo json_encode($respuesta);

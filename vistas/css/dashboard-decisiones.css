@@ -515,6 +515,64 @@
     color: #a71d2a;
 }
 
+.dd-articulos-riesgo-box {
+    margin-top: 4px;
+}
+
+.dd-articulos-riesgo-table tbody tr.dd-row-art-riesgo {
+    background: #fff8f7;
+}
+
+.dd-articulos-riesgo-table tbody tr.dd-row-art-descont {
+    background: #fffaf3;
+}
+
+.dd-art-alerta {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 3px 7px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.dd-art-alerta--stock {
+    background: #fdecea;
+    border-color: #f5c6cb;
+    color: #a71d2a;
+}
+
+.dd-art-alerta--descont {
+    background: #fff8eb;
+    border-color: #f6d9a8;
+    color: #9a6700;
+}
+
+.dd-art-alerta--ambos {
+    background: #f8d7da;
+    border-color: #f1aeb5;
+    color: #842029;
+}
+
+.dd-art-pedidos {
+    display: inline-block;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+    color: #5a6c7d;
+}
+
+.dd-pct-completo {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 12px;
+    min-width: 2.5em;
+}
+
 .dd-estados-soles-box {
     margin-bottom: 12px;
 }

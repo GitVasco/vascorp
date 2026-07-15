@@ -16,6 +16,19 @@ if (!function_exists("ddAvancePctClase")) {
     }
 }
 
+/**
+ * Color continuo 0→rojo … 100→verde para % completo de pedidos.
+ */
+if (!function_exists("ddPctCompletoEstilo")) {
+    function ddPctCompletoEstilo($pct)
+    {
+        $pct = max(0, min(100, (float) $pct));
+        $hue = (int) round($pct * 1.2);
+
+        return "color: hsl(" . $hue . ", 72%, 32%);";
+    }
+}
+
 if (!function_exists("ddAvanceSegmentos")) {
     function ddAvanceSegmentos($avance, $meta, $incluirGenerados = false)
     {
@@ -202,5 +215,32 @@ if (!function_exists("ddClienteLinea")) {
         }
 
         return $html . "</span>";
+    }
+}
+
+if (!function_exists("ddAlertaArticuloBadge")) {
+    function ddAlertaArticuloBadge($alerta)
+    {
+        $alerta = strtolower(trim((string) $alerta));
+        $map = array(
+            "ambos" => array("dd-art-alerta dd-art-alerta--ambos", "Sin stock + Descont."),
+            "descontinuado" => array("dd-art-alerta dd-art-alerta--descont", "Descontinuado"),
+            "sin_stock" => array("dd-art-alerta dd-art-alerta--stock", "Sin stock"),
+        );
+
+        if (!isset($map[$alerta])) {
+            return '<span class="dd-art-alerta">' . htmlspecialchars($alerta) . "</span>";
+        }
+
+        return '<span class="' . $map[$alerta][0] . '">' . $map[$alerta][1] . "</span>";
+    }
+}
+
+if (!function_exists("ddDescripcionArticulo")) {
+    function ddDescripcionArticulo($row)
+    {
+        $nombre = trim((string) (isset($row["nombre"]) ? $row["nombre"] : ""));
+
+        return $nombre !== "" ? htmlspecialchars($nombre) : "—";
     }
 }

@@ -857,6 +857,7 @@ class ModeloZonasComerciales
 				IFNULL(c.nombre, c.codigo) AS nombre_cliente,
 				{$sqlCatNombre} AS categoria_cliente,
 				{$sqlCatColor} AS categoria_color,
+				NULLIF(TRIM(IFNULL(g.nombre, '')), '') AS nombre_grupo,
 				SUM(v.neto) AS venta_real,
 				COUNT(DISTINCT TRIM(v.vendedor)) AS vendedores,
 				GROUP_CONCAT(DISTINCT TRIM(v.vendedor) ORDER BY TRIM(v.vendedor) SEPARATOR ', ') AS codigos_vendedor
@@ -881,7 +882,7 @@ class ModeloZonasComerciales
 					ELSE r.id_zona
 				END
 			  ) = :id_zona
-			GROUP BY c.codigo, c.nombre, c.grupo
+			GROUP BY c.codigo, c.nombre, c.grupo, g.nombre
 			ORDER BY venta_real DESC
 			LIMIT {$limite}";
 
@@ -904,6 +905,7 @@ class ModeloZonasComerciales
 				"nombre" => $fila["nombre_cliente"],
 				"categoria" => isset($fila["categoria_cliente"]) ? $fila["categoria_cliente"] : "Sin categoría",
 				"categoria_color" => !empty($fila["categoria_color"]) ? $fila["categoria_color"] : "#777777",
+				"nombre_grupo" => !empty($fila["nombre_grupo"]) ? $fila["nombre_grupo"] : null,
 				"venta_real" => round((float) $fila["venta_real"], 2),
 				"vendedores" => (int) $fila["vendedores"],
 				"codigos_vendedor" => isset($fila["codigos_vendedor"]) ? $fila["codigos_vendedor"] : "",

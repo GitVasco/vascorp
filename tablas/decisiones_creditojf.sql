@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS decision_credito_solicitudjf (
     estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE, EN_REVISION, APROBADA, RECHAZADA',
     resolucion_codigo VARCHAR(50) NULL,
     comentario_resolucion TEXT NULL,
+    motivo_observacion_codigo VARCHAR(50) NULL COMMENT 'Catálogo motivos_aprobacion',
     usuario_solicita INT(11) NOT NULL,
     usuario_resuelve INT(11) NULL,
     fecha_solicitud TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

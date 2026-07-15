@@ -21,6 +21,7 @@ function dcCargarCatalogoMotivos()
             "motivos" => array(),
             "tipos_solicitud" => array(),
             "resoluciones_posibles" => array(),
+            "motivos_aprobacion" => array(),
         );
     }
 
@@ -33,6 +34,7 @@ function dcCargarCatalogoMotivos()
             "motivos" => array(),
             "tipos_solicitud" => array(),
             "resoluciones_posibles" => array(),
+            "motivos_aprobacion" => array(),
         );
     }
 
@@ -123,6 +125,61 @@ function dcEtiquetaMotivo($codigo)
     $motivo = dcObtenerMotivo($codigo);
 
     return $motivo ? $motivo["etiqueta"] : $codigo;
+}
+
+function dcListarMotivosAprobacion()
+{
+    $catalogo = dcCargarCatalogoMotivos();
+
+    return isset($catalogo["motivos_aprobacion"]) && is_array($catalogo["motivos_aprobacion"])
+        ? $catalogo["motivos_aprobacion"]
+        : array();
+}
+
+function dcObtenerMotivoAprobacion($codigo)
+{
+    $codigo = strtoupper(trim((string) $codigo));
+
+    if ($codigo === "") {
+        return null;
+    }
+
+    foreach (dcListarMotivosAprobacion() as $motivo) {
+        if (isset($motivo["codigo"]) && strtoupper($motivo["codigo"]) === $codigo) {
+            return $motivo;
+        }
+    }
+
+    return null;
+}
+
+function dcEtiquetaMotivoAprobacion($codigo)
+{
+    $motivo = dcObtenerMotivoAprobacion($codigo);
+
+    return $motivo ? $motivo["etiqueta"] : $codigo;
+}
+
+/**
+ * Etiqueta para bitácora: prueba motivos de no aprobación y de aprobación.
+ */
+function dcEtiquetaMotivoAccion($codigo)
+{
+    $codigo = trim((string) $codigo);
+
+    if ($codigo === "") {
+        return "";
+    }
+
+    if (dcObtenerMotivo($codigo)) {
+        return dcEtiquetaMotivo($codigo);
+    }
+
+    if (dcObtenerMotivoAprobacion($codigo)) {
+        return dcEtiquetaMotivoAprobacion($codigo);
+    }
+
+    return $codigo;
 }
 
 function dcEtiquetaSolicitud($codigo)

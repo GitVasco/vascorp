@@ -9,7 +9,7 @@ $(".tablaGruposEmpresariales").DataTable({
     pageLength: 20,
     lengthMenu: [[20, 40, 60, -1], [20, 40, 60, "Todos"]],
     columnDefs: [
-        { targets: [4, 5, 6], className: "text-right" },
+        { targets: [5, 6, 7], className: "text-right" },
         { targets: -1, orderable: false, searchable: false }
     ],
     language: {

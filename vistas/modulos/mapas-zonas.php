@@ -4,8 +4,23 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
     return;
 }
 date_default_timezone_set("America/Lima");
-$mzAnio = (int) date("Y");
-$mzMes = (int) date("n");
+$mzAnioActual = (int) date("Y");
+$mzAnio = isset($_GET["anio"]) ? (int) $_GET["anio"] : $mzAnioActual;
+$mzMes = isset($_GET["mes"]) ? (int) $_GET["mes"] : (int) date("n");
+if ($mzAnio < 2000 || $mzAnio > 2100) {
+    $mzAnio = $mzAnioActual;
+}
+if ($mzMes < 1 || $mzMes > 12) {
+    $mzMes = (int) date("n");
+}
+$mzAnioMin = $mzAnioActual - 2;
+$mzAnioMax = $mzAnioActual;
+if ($mzAnio < $mzAnioMin) {
+    $mzAnioMin = $mzAnio;
+}
+if ($mzAnio > $mzAnioMax) {
+    $mzAnioMax = $mzAnio;
+}
 $mesesNombres = array(
     1 => "Enero", 2 => "Febrero", 3 => "Marzo", 4 => "Abril",
     5 => "Mayo", 6 => "Junio", 7 => "Julio", 8 => "Agosto",
@@ -40,7 +55,7 @@ $mesesNombres = array(
                         </div>
                         <form class="form-inline" style="display:inline-block;margin-left:12px;" id="mzFormPeriodo">
                             <select class="form-control input-sm" id="mzAnio">
-                                <?php for ($a = $mzAnio - 2; $a <= $mzAnio; $a++) : ?>
+                                <?php for ($a = $mzAnioMin; $a <= $mzAnioMax; $a++) : ?>
                                 <option value="<?php echo $a; ?>" <?php echo $a === $mzAnio ? "selected" : ""; ?>><?php echo $a; ?></option>
                                 <?php endfor; ?>
                             </select>

@@ -3,8 +3,11 @@
         cliente: "",
         pedido: "",
         nombre: "",
+        motivos: [],
+        motivosAprobacion: [],
     };
     var ddIncluirGeneradosAvance = false;
+    var ddMotivosAprobacionCache = null;
 
     function fmtSolesEntero(value) {
         return (
@@ -353,18 +356,19 @@
         return d.toLocaleDateString("es-PE");
     }
 
-    function poblarMotivoSelectpicker(motivos) {
-        var $motivo = $("#modalDdDecisionCredito").find(".dd-motivo-select");
-        if (!$motivo.length) {
+    function initMotivoSelectpicker($motivo, motivos, placeholder) {
+        if (!$motivo || !$motivo.length) {
             return;
         }
 
-        if ($motivo.parent().hasClass("bootstrap-select")) {
+        placeholder = placeholder || "Seleccione motivo…";
+
+        if ($motivo.parent().hasClass("bootstrap-select") || $motivo.data("selectpicker")) {
             $motivo.selectpicker("destroy");
         }
 
         $motivo.empty();
-        $motivo.append('<option value="">Seleccione motivo…</option>');
+        $motivo.append('<option value="">' + placeholder + "</option>");
 
         (motivos || []).forEach(function (motivo) {
             if (!motivo || !motivo.codigo) {
@@ -381,11 +385,32 @@
         $motivo.selectpicker({
             liveSearch: true,
             size: 8,
-            noneSelectedText: "Seleccione motivo…",
+            noneSelectedText: placeholder,
             liveSearchPlaceholder: "Buscar motivo…",
             width: "100%",
             container: "body",
             dropupAuto: false,
+        });
+    }
+
+    function poblarMotivoSelectpicker(motivos) {
+        initMotivoSelectpicker(
+            $("#modalDdDecisionCredito").find(".dd-motivo-select"),
+            motivos,
+            "Seleccione motivo…"
+        );
+    }
+
+    function poblarMotivoAprobacionSelectpicker($scope, motivos) {
+        var $motivos = ($scope && $scope.length ? $scope : $(document)).find(
+            ".dd-motivo-aprobacion-select"
+        );
+        if (!$motivos.length) {
+            return;
+        }
+
+        $motivos.each(function () {
+            initMotivoSelectpicker($(this), motivos, "Sin motivo…");
         });
     }
 
@@ -442,6 +467,27 @@
                 sel +
                 ">" +
                 escapeHtml(item.etiqueta) +
+                "</option>";
+        });
+
+        return html;
+    }
+
+    function renderMotivoAprobacionOptions(motivos, selected) {
+        var html = '<option value="">Sin motivo…</option>';
+
+        (motivos || []).forEach(function (motivo) {
+            if (!motivo || !motivo.codigo) {
+                return;
+            }
+            var sel = selected === motivo.codigo ? " selected" : "";
+            html +=
+                '<option value="' +
+                escapeHtml(motivo.codigo) +
+                '"' +
+                sel +
+                ">" +
+                escapeHtml(motivo.etiqueta || motivo.codigo) +
                 "</option>";
         });
 
@@ -747,7 +793,13 @@
                         "</select>" +
                         "</div>" +
                         '<div class="form-group">' +
-                        '<textarea class="form-control input-sm" name="comentario_resolucion" rows="2" placeholder="Comentario para ventas (opcional)"></textarea>' +
+                        '<label>Motivo <small class="text-muted">(opcional)</small></label>' +
+                        '<select class="form-control selectpicker dd-motivo-aprobacion-select" name="motivo_observacion_codigo" title="Sin motivo…" data-live-search="true">' +
+                        renderMotivoAprobacionOptions(catalogo.motivos_aprobacion) +
+                        "</select>" +
+                        "</div>" +
+                        '<div class="form-group">' +
+                        '<textarea class="form-control input-sm" name="comentario_resolucion" rows="2" placeholder="Observación para ventas (opcional)"></textarea>' +
                         "</div>" +
                         '<div class="btn-group btn-group-sm btn-group-justified">' +
                         '<div class="btn-group"><button type="submit" class="btn btn-success" data-estado="APROBADA"><i class="fa fa-check"></i> Aprobar</button></div>' +
@@ -758,6 +810,9 @@
                     html +=
                         '<p class="dd-dc-resolve-done"><i class="fa fa-check-circle"></i> ' +
                         escapeHtml(sol.resolucion_etiqueta) +
+                        (sol.motivo_observacion_etiqueta
+                            ? " — " + escapeHtml(sol.motivo_observacion_etiqueta)
+                            : "") +
                         (sol.comentario_resolucion
                             ? " — " + escapeHtml(sol.comentario_resolucion)
                             : "") +
@@ -922,6 +977,17 @@
             [];
         ddDecisionContext.motivos = motivos;
         poblarMotivoSelectpicker(motivos);
+
+        var motivosAprob =
+            (resp.catalogo && resp.catalogo.motivos_aprobacion) || [];
+        ddDecisionContext.motivosAprobacion = motivosAprob;
+        if (motivosAprob.length) {
+            ddMotivosAprobacionCache = motivosAprob;
+        }
+        poblarMotivoAprobacionSelectpicker(
+            $("#modalDdDecisionCredito"),
+            motivosAprob
+        );
     }
 
     function postDecisionCredito(accion, data) {
@@ -1251,6 +1317,9 @@
             id_solicitud: $form.data("id"),
             estado: estado,
             resolucion_codigo: $form.find('[name="resolucion_codigo"]').val(),
+            motivo_observacion_codigo: $form
+                .find('[name="motivo_observacion_codigo"]')
+                .val(),
             comentario_resolucion: $form.find('[name="comentario_resolucion"]').val(),
         })
             .done(function (resp) {
@@ -1317,10 +1386,16 @@
             return;
         }
 
-        confirmarYAprobarPedido($btn, pedido, cliente, 0);
+        abrirModalAprobarPedido({
+            $btn: $btn,
+            pedido: pedido,
+            cliente: cliente,
+            idCategoria: 0,
+        });
     });
 
     var ddAprobarCatCtx = null;
+    var ddAprobarPedidoCtx = null;
     var ddCategoriasCache = null;
 
     function colorCategoriaFallback(codigo, color) {
@@ -1481,41 +1556,110 @@
         var ctx = ddAprobarCatCtx;
         $("#modalDdAprobarCategoria").modal("hide");
 
-        confirmarYAprobarPedido(
-            ctx.$btn,
-            ctx.pedido,
-            ctx.cliente,
-            idCategoria
-        );
+        abrirModalAprobarPedido({
+            $btn: ctx.$btn,
+            pedido: ctx.pedido,
+            cliente: ctx.cliente,
+            idCategoria: idCategoria,
+        });
     });
 
-    function confirmarYAprobarPedido($btn, pedido, cliente, idCategoria) {
-        var detalle = "Pedido " + pedido + (cliente ? " · " + cliente : "");
-        var conCategoria = idCategoria > 0;
-        var texto = conCategoria
-            ? detalle +
-              "\n\nSe asignará la categoría seleccionada y el pedido pasará a APROBADO."
-            : detalle + "\n\nEl pedido pasará de GENERADO a APROBADO.";
+    function cargarMotivosAprobacion() {
+        if (ddMotivosAprobacionCache && ddMotivosAprobacionCache.length) {
+            return $.Deferred().resolve(ddMotivosAprobacionCache).promise();
+        }
 
-        swal({
-            title: conCategoria ? "¿Asignar categoría y aprobar?" : "¿Aprobar pedido?",
-            text: texto,
-            type: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#00a65a",
-            cancelButtonColor: "#95a5a6",
-            cancelButtonText: "Cancelar",
-            confirmButtonText: conCategoria ? "Sí, asignar y aprobar" : "Sí, aprobar",
-        }).then(function (result) {
-            if (!result.value) {
-                return;
-            }
+        if (
+            ddDecisionContext.motivosAprobacion &&
+            ddDecisionContext.motivosAprobacion.length
+        ) {
+            ddMotivosAprobacionCache = ddDecisionContext.motivosAprobacion;
+            return $.Deferred().resolve(ddMotivosAprobacionCache).promise();
+        }
 
-            ejecutarAprobarPedido($btn, pedido, idCategoria);
+        return postDecisionCredito("catalogo", {}).then(function (resp) {
+            var lista =
+                (resp && resp.motivos_aprobacion) ||
+                (resp && resp.catalogo && resp.catalogo.motivos_aprobacion) ||
+                [];
+            ddMotivosAprobacionCache = lista;
+            ddDecisionContext.motivosAprobacion = lista;
+            return lista;
         });
     }
 
-    function ejecutarAprobarPedido($btn, pedido, idCategoria) {
+    function abrirModalAprobarPedido(ctx) {
+        ddAprobarPedidoCtx = ctx || null;
+
+        if (!ddAprobarPedidoCtx || !ddAprobarPedidoCtx.pedido) {
+            return;
+        }
+
+        var detalle =
+            "Pedido " +
+            ddAprobarPedidoCtx.pedido +
+            (ddAprobarPedidoCtx.cliente
+                ? " · " + ddAprobarPedidoCtx.cliente
+                : "");
+        $("#ddAprobarPedidoInfo").text(detalle);
+
+        var conCategoria = (ddAprobarPedidoCtx.idCategoria || 0) > 0;
+        $("#ddAprobarPedidoHint").text(
+            conCategoria
+                ? "Se asignará la categoría seleccionada. Motivo y observación son opcionales."
+                : "El pedido pasará a APROBADO. Motivo y observación son opcionales."
+        );
+        $("#ddAprobarPedidoConfirm").html(
+            conCategoria
+                ? '<i class="fa fa-check"></i> Asignar y aprobar'
+                : '<i class="fa fa-check"></i> Aprobar'
+        );
+
+        $("#ddAprobarPedidoObs").val("");
+        initMotivoSelectpicker(
+            $("#ddAprobarPedidoMotivo"),
+            [],
+            "Cargando motivos…"
+        );
+        $("#modalDdAprobarPedido").modal("show");
+
+        cargarMotivosAprobacion()
+            .done(function (motivos) {
+                initMotivoSelectpicker(
+                    $("#ddAprobarPedidoMotivo"),
+                    motivos,
+                    "Sin motivo…"
+                );
+            })
+            .fail(function () {
+                initMotivoSelectpicker(
+                    $("#ddAprobarPedidoMotivo"),
+                    [],
+                    "Sin catálogo de motivos"
+                );
+            });
+    }
+
+    $(document).on("click", "#ddAprobarPedidoConfirm", function () {
+        if (!ddAprobarPedidoCtx || !ddAprobarPedidoCtx.pedido) {
+            return;
+        }
+
+        var ctx = ddAprobarPedidoCtx;
+        var motivo = $("#ddAprobarPedidoMotivo").val() || "";
+        var comentario = $("#ddAprobarPedidoObs").val() || "";
+
+        $("#modalDdAprobarPedido").modal("hide");
+        ejecutarAprobarPedido(
+            ctx.$btn,
+            ctx.pedido,
+            ctx.idCategoria || 0,
+            motivo,
+            comentario
+        );
+    });
+
+    function ejecutarAprobarPedido($btn, pedido, idCategoria, motivoCodigo, comentario) {
         if ($btn && $btn.length) {
             $btn.prop("disabled", true);
         }
@@ -1523,6 +1667,12 @@
         var payload = { codigo_pedido: pedido };
         if (idCategoria > 0) {
             payload.id_categoria = idCategoria;
+        }
+        if (motivoCodigo) {
+            payload.motivo_codigo = motivoCodigo;
+        }
+        if (comentario) {
+            payload.comentario = comentario;
         }
 
         $.ajax({
@@ -1539,7 +1689,7 @@
                     abrirModalCategoriaParaAprobar({
                         $btn: $btn,
                         pedido: pedido,
-                        cliente: (resp.nombre_cliente || "") ,
+                        cliente: resp.nombre_cliente || "",
                         codCli: resp.codigo_cliente || "",
                     });
                     return;
@@ -1558,11 +1708,11 @@
                 }
 
                 ddAprobarCatCtx = null;
+                ddAprobarPedidoCtx = null;
 
-                var mensaje =
-                    resp.categoria_asignada
-                        ? "Categoría asignada y pedido aprobado. El dashboard se actualizó."
-                        : "El pedido fue aprobado y el dashboard fue actualizado.";
+                var mensaje = resp.categoria_asignada
+                    ? "Categoría asignada y pedido aprobado. El dashboard se actualizó."
+                    : "El pedido fue aprobado y el dashboard fue actualizado.";
 
                 refrescarDashboard($("#ddFiltroVendedor").val(), {
                     actualizarUrl: false,

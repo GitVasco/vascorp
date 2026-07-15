@@ -19,6 +19,7 @@ $atraso = $datos["atraso"];
 $avanceVentas = $datos["avance_ventas"];
 $facturadoResumen = $datos["facturado_resumen"];
 $facturado = $datos["facturado"];
+$articulosRiesgo = $datos["articulos_riesgo"];
 ?>
 
 <div class="content-wrapper dd-dashboard">
@@ -158,7 +159,52 @@ $facturado = $datos["facturado"];
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" id="ddAprobarCatConfirm">
-                    <i class="fa fa-check"></i> Asignar y aprobar
+                    <i class="fa fa-arrow-right"></i> Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDdAprobarPedido" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">
+                    <i class="fa fa-check-circle"></i> Aprobar pedido
+                </h4>
+            </div>
+            <div class="modal-body">
+                <p class="dd-aprobar-cat-cliente" id="ddAprobarPedidoInfo"></p>
+                <p class="text-muted" id="ddAprobarPedidoHint">
+                    Puedes indicar un motivo y una observación (opcionales).
+                </p>
+                <div class="form-group">
+                    <label for="ddAprobarPedidoMotivo">Motivo</label>
+                    <select
+                        id="ddAprobarPedidoMotivo"
+                        class="form-control selectpicker dd-motivo-aprobacion-select"
+                        data-live-search="true"
+                        title="Sin motivo…"
+                    >
+                        <option value="">Sin motivo…</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="ddAprobarPedidoObs">Observación</label>
+                    <textarea
+                        id="ddAprobarPedidoObs"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Observación para la bitácora (opcional)"
+                    ></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="ddAprobarPedidoConfirm">
+                    <i class="fa fa-check"></i> Aprobar
                 </button>
             </div>
         </div>

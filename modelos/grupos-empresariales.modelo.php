@@ -61,6 +61,9 @@ class ModeloGruposEmpresariales
 
 		$stmt = Conexion::conectar()->prepare(
 			"SELECT g.*,
+				z.codigo AS zona_codigo,
+				z.nombre AS zona_nombre,
+				z.color AS zona_color,
 				(SELECT COUNT(*) FROM clientesjf c WHERE c.grupo = g.codigo AND c.estado = 1) AS total_clientes,
 				IFNULL((
 					SELECT cat.nombre
@@ -111,6 +114,7 @@ class ModeloGruposEmpresariales
 					LIMIT 1
 				) AS categoria_id
 			 FROM grupos_empresarialesjf g
+			 LEFT JOIN zonas_comercialesjf z ON z.id = g.id_zona
 			 ORDER BY g.nombre ASC"
 		);
 		$stmt->execute();

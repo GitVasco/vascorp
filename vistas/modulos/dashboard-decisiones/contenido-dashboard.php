@@ -433,6 +433,23 @@ $estadosPipeline = array(
                 <div class="box box-warning dd-box">
                     <div class="box-header with-border dd-box-header-compact">
                         <h3 class="box-title"><i class="fa fa-hourglass-half"></i> Estancados +3 días</h3>
+                        <?php
+                        $pctPromedioEstancados = 0;
+                        if (!empty($estancados)) {
+                            $sumaPctEstancados = 0;
+                            foreach ($estancados as $estRow) {
+                                $sumaPctEstancados += (int) (isset($estRow["pct_completo"]) ? $estRow["pct_completo"] : 0);
+                            }
+                            $pctPromedioEstancados = (int) round($sumaPctEstancados / count($estancados));
+                        }
+                        ?>
+                        <div class="dd-header-tools pull-right">
+                            <span class="dd-resumen-chip dd-pct-completo"
+                                  style="<?php echo ddPctCompletoEstilo($pctPromedioEstancados); ?>"
+                                  title="Promedio del % completo de los pedidos estancados">
+                                Prom. <?php echo $pctPromedioEstancados; ?>%
+                            </span>
+                        </div>
                     </div>
                     <div class="box-body table-responsive dd-table-wrap dd-table-wrap--estancados">
                         <table class="table table-hover table-condensed dd-table dd-table-compact">
@@ -442,14 +459,17 @@ $estadosPipeline = array(
                                     <th class="dd-col-cliente">Cliente</th>
                                     <th>Estado</th>
                                     <th>Total</th>
+                                    <th class="text-right">% Compl.</th>
                                     <th>Días</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($estancados)) : ?>
-                                    <tr><td colspan="5" class="text-center text-muted">Sin pedidos estancados en estos estados.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted">Sin pedidos estancados en estos estados.</td></tr>
                                 <?php else : ?>
-                                    <?php foreach ($estancados as $row) : ?>
+                                    <?php foreach ($estancados as $row) :
+                                        $pctCompleto = (int) (isset($row["pct_completo"]) ? $row["pct_completo"] : 0);
+                                        ?>
                                         <tr>
                                             <td>
                                                 <a href="#"
@@ -466,6 +486,13 @@ $estadosPipeline = array(
                                             </td>
                                             <td><?php echo ddEstadoBadge($row["estado"]); ?></td>
                                             <td><?php echo ddFormatoMonto($row["lista"], $row["total"]); ?></td>
+                                            <td class="text-right">
+                                                <span class="dd-pct-completo"
+                                                      style="<?php echo ddPctCompletoEstilo($pctCompleto); ?>"
+                                                      title="Unidades cubiertas con stock actual / unidades pedidas">
+                                                    <?php echo $pctCompleto; ?>%
+                                                </span>
+                                            </td>
                                             <td><span class="dd-dias dd-dias--<?php echo ((int) $row["dias_sin_avance"] >= 7) ? "alto" : "medio"; ?>"><?php echo (int) $row["dias_sin_avance"]; ?>d</span></td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -617,5 +644,99 @@ $estadosPipeline = array(
                         Mostrando los <?php echo count($facturado); ?> más recientes de <?php echo (int) $facturadoResumen["docs"]; ?> documentos del mes.
                     </p>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="box box-solid dd-box dd-articulos-riesgo-box" id="ddSeccionArticulosRiesgo">
+            <div class="box-header with-border dd-box-header-compact">
+                <h3 class="box-title">
+                    <i class="fa fa-cubes"></i>
+                    Artículos en riesgo
+                </h3>
+                <div class="dd-header-tools pull-right">
+                    <?php
+                    $totalUnidadesRiesgo = 0;
+                    foreach ($articulosRiesgo as $artRiesgo) {
+                        $totalUnidadesRiesgo += (int) $artRiesgo["cant_pedida"];
+                    }
+                    ?>
+                    <span class="dd-resumen-chip <?php echo empty($articulosRiesgo) ? "" : "dd-resumen-chip--danger"; ?>">
+                        <?php echo count($articulosRiesgo); ?> ítems
+                        · <?php echo number_format($totalUnidadesRiesgo, 0); ?> und.
+                    </span>
+                    <span class="dd-resumen-chip">
+                        APROBADO · APT
+                    </span>
+                </div>
+            </div>
+            <div class="box-body table-responsive dd-table-wrap dd-box-body-compact">
+                <table class="table table-hover table-condensed dd-table dd-table-compact dd-articulos-riesgo-table">
+                    <thead>
+                        <tr>
+                            <th>Modelo</th>
+                            <th>Descripción</th>
+                            <th>Color</th>
+                            <th>Talla</th>
+                            <th class="text-right">Stock</th>
+                            <th class="text-right">Pedido</th>
+                            <th class="text-right">Faltante</th>
+                            <th>Estados</th>
+                            <th>Alerta</th>
+                            <th>Pedidos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($articulosRiesgo)) : ?>
+                            <tr>
+                                <td colspan="10" class="text-center text-muted">
+                                    Sin artículos sin stock ni descontinuados en pedidos activos.
+                                </td>
+                            </tr>
+                        <?php else : ?>
+                            <?php foreach ($articulosRiesgo as $row) :
+                                $alerta = isset($row["alerta"]) ? $row["alerta"] : "sin_stock";
+                                $faltante = (int) $row["faltante"];
+                                $rowClass = ($alerta === "ambos" || $alerta === "sin_stock")
+                                    ? "dd-row-art-riesgo"
+                                    : "dd-row-art-descont";
+                                $modelo = trim((string) (isset($row["modelo"]) ? $row["modelo"] : ""));
+                                $color = trim((string) (isset($row["color"]) ? $row["color"] : ""));
+                                $talla = trim((string) (isset($row["talla"]) ? $row["talla"] : ""));
+                                ?>
+                                <tr class="<?php echo $rowClass; ?>">
+                                    <td>
+                                        <strong><?php echo $modelo !== "" ? htmlspecialchars($modelo) : htmlspecialchars($row["articulo"]); ?></strong>
+                                    </td>
+                                    <td>
+                                        <div class="dd-cell-main" title="<?php echo htmlspecialchars(trim($modelo . " " . $color . " " . $talla)); ?>">
+                                            <?php echo ddDescripcionArticulo($row); ?>
+                                        </div>
+                                    </td>
+                                    <td><?php echo $color !== "" ? htmlspecialchars($color) : '<span class="text-muted">—</span>'; ?></td>
+                                    <td><?php echo $talla !== "" ? htmlspecialchars($talla) : '<span class="text-muted">—</span>'; ?></td>
+                                    <td class="text-right"><?php echo (int) $row["stock"]; ?></td>
+                                    <td class="text-right"><strong><?php echo (int) $row["cant_pedida"]; ?></strong></td>
+                                    <td class="text-right">
+                                        <?php if ($faltante > 0) : ?>
+                                            <span class="dd-prio-deuda dd-prio-deuda--vencida"><?php echo $faltante; ?></span>
+                                        <?php else : ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <small><?php echo htmlspecialchars($row["estados"] ? $row["estados"] : "—"); ?></small>
+                                    </td>
+                                    <td><?php echo ddAlertaArticuloBadge($alerta); ?></td>
+                                    <td>
+                                        <small class="dd-art-pedidos" title="<?php echo htmlspecialchars($row["pedidos"]); ?>">
+                                            <?php echo (int) $row["n_pedidos"]; ?>:
+                                            <?php echo htmlspecialchars($row["pedidos"]); ?>
+                                        </small>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>

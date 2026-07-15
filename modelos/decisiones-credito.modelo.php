@@ -312,11 +312,16 @@ class ModeloDecisionesCredito
         try {
             $db->beginTransaction();
 
+            $motivoObs = isset($datos["motivo_observacion_codigo"])
+                ? trim((string) $datos["motivo_observacion_codigo"])
+                : "";
+
             $stmt = $db->prepare(
                 "UPDATE decision_credito_solicitudjf
                  SET estado = :estado,
                      resolucion_codigo = :resolucion_codigo,
                      comentario_resolucion = :comentario_resolucion,
+                     motivo_observacion_codigo = :motivo_observacion_codigo,
                      usuario_resuelve = :usuario_resuelve,
                      fecha_resolucion = NOW()
                  WHERE id = :id
@@ -325,6 +330,11 @@ class ModeloDecisionesCredito
             $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
             $stmt->bindParam(":resolucion_codigo", $datos["resolucion_codigo"], PDO::PARAM_STR);
             $stmt->bindParam(":comentario_resolucion", $datos["comentario_resolucion"], PDO::PARAM_STR);
+            if ($motivoObs !== "") {
+                $stmt->bindValue(":motivo_observacion_codigo", $motivoObs, PDO::PARAM_STR);
+            } else {
+                $stmt->bindValue(":motivo_observacion_codigo", null, PDO::PARAM_NULL);
+            }
             $stmt->bindParam(":usuario_resuelve", $datos["usuario_resuelve"], PDO::PARAM_INT);
             $stmt->bindParam(":id", $datos["id"], PDO::PARAM_INT);
             $stmt->execute();
@@ -336,6 +346,9 @@ class ModeloDecisionesCredito
             }
 
             $detalle = $datos["estado"] . " — " . $datos["resolucion_codigo"];
+            if ($motivoObs !== "" && function_exists("dcEtiquetaMotivoAprobacion")) {
+                $detalle .= " — Motivo: " . dcEtiquetaMotivoAprobacion($motivoObs);
+            }
             if (!empty($datos["comentario_resolucion"])) {
                 $detalle .= " — " . $datos["comentario_resolucion"];
             }
@@ -490,6 +503,10 @@ class ModeloDecisionesCredito
             : null;
         $solicitud["resolucion_etiqueta"] = !empty($solicitud["resolucion_codigo"])
             ? dcEtiquetaResolucion($solicitud["resolucion_codigo"])
+            : null;
+        $solicitud["motivo_observacion_etiqueta"] = !empty($solicitud["motivo_observacion_codigo"])
+            && function_exists("dcEtiquetaMotivoAprobacion")
+            ? dcEtiquetaMotivoAprobacion($solicitud["motivo_observacion_codigo"])
             : null;
 
         return $solicitud;
@@ -684,9 +701,15 @@ class ModeloDecisionesCredito
             $fila["tipo_clase"] = function_exists("dcClaseTipoAccion")
                 ? dcClaseTipoAccion($fila["tipo_accion"])
                 : "default";
-            $fila["motivo_etiqueta"] = !empty($fila["motivo_codigo"]) && function_exists("dcEtiquetaMotivo")
-                ? dcEtiquetaMotivo($fila["motivo_codigo"])
-                : null;
+            if (!empty($fila["motivo_codigo"])) {
+                $fila["motivo_etiqueta"] = function_exists("dcEtiquetaMotivoAccion")
+                    ? dcEtiquetaMotivoAccion($fila["motivo_codigo"])
+                    : (function_exists("dcEtiquetaMotivo")
+                        ? dcEtiquetaMotivo($fila["motivo_codigo"])
+                        : $fila["motivo_codigo"]);
+            } else {
+                $fila["motivo_etiqueta"] = null;
+            }
 
             $codCat = !empty($fila["categoria_codigo"]) ? trim((string) $fila["categoria_codigo"]) : "";
             if ($codCat !== "") {
