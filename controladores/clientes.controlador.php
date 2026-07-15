@@ -51,6 +51,7 @@ class ControladorClientes
 				"contacto"			=> trim($contacto),
 				"vendedor"			=> $_POST["vendedor"],
 				"grupo"				=> $_POST["grupo"],
+				"id_zona"			=> ControladorZonasComerciales::ctrIdZonaDesdePost("id_zona"),
 				"lista_precios"		=> $_POST["lista_precios"],
 				"agencia"			=> $_POST["agencia"],
 				"usureg"            => $usureg,
@@ -184,6 +185,11 @@ class ControladorClientes
 			}
 
 
+			$clienteActualZona = ModeloClientes::mdlMostrarClientes("clientesjf", "codigo", trim($codigo));
+			$idZonaActual = (is_array($clienteActualZona) && isset($clienteActualZona["id_zona"]))
+				? $clienteActualZona["id_zona"]
+				: null;
+
 			$datos = array(
 				"codigoCliente"		=> trim($codigo),
 				"nombre"			=> trim($nombre),
@@ -203,6 +209,7 @@ class ControladorClientes
 				"contacto"			=> trim($contacto),
 				"vendedor"			=> trim($_POST["editarVendedor"]),
 				"grupo"				=> trim($_POST["editarGrupo"]),
+				"id_zona"			=> ControladorZonasComerciales::ctrIdZonaDesdePost("editar_id_zona", $idZonaActual),
 				"lista_precios"		=> trim($_POST["editarLista_precios"]),
 				"agencia"			=> trim($_POST["editarAgencia"])
 			);
@@ -313,6 +320,9 @@ class ControladorClientes
 
 				$tabla = "clientesjf";
 
+				date_default_timezone_set('America/Lima');
+				$fecregP = new DateTime();
+
 				$datos = array(
 					"codigoCliente" => $_POST["codigoCliente"],
 					"nombre" => $_POST["nombre"],
@@ -330,7 +340,14 @@ class ControladorClientes
 					"contacto" => $_POST["contacto"],
 					"vendedor" => $_POST["vendedor"],
 					"grupo" => $_POST["grupo"],
-					"lista_precios" => $_POST["lista_precios"]
+					"id_zona" => null,
+					"lista_precios" => $_POST["lista_precios"],
+					"usureg" => isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "",
+					"pcreg" => gethostbyaddr($_SERVER["REMOTE_ADDR"]),
+					"fecreg" => $fecregP->format("Y-m-d H:i:s"),
+					"direccion_despacho" => "",
+					"ubigeo_despacho" => "",
+					"agencia" => ""
 				);
 				#var_dump("datos", $datos);
 

@@ -64,6 +64,7 @@ class ModeloClientes
 											contacto,
 											vendedor,
 											grupo,
+											id_zona,
 											lista_precios,
 											usureg,
 											pcreg,
@@ -90,6 +91,7 @@ class ModeloClientes
 											:contacto,
 											:vendedor,
 											:grupo,
+											:id_zona,
 											:lista_precios,
 											:usureg,
 											:pcreg,
@@ -115,6 +117,11 @@ class ModeloClientes
 		$stmt->bindParam(":contacto", $datos["contacto"], PDO::PARAM_STR);
 		$stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
 		$stmt->bindParam(":grupo", $datos["grupo"], PDO::PARAM_STR);
+		if ($datos["id_zona"] === null) {
+			$stmt->bindValue(":id_zona", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":id_zona", (int) $datos["id_zona"], PDO::PARAM_INT);
+		}
 		$stmt->bindParam(":lista_precios", $datos["lista_precios"], PDO::PARAM_STR);
 		$stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
 		$stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
@@ -358,6 +365,7 @@ class ModeloClientes
 											contacto = :contacto,
 											vendedor = :vendedor,
 											grupo = :grupo,
+											id_zona = :id_zona,
 											lista_precios = :lista_precios ,
 											direccion_despacho = :direccion_despacho,
 											ubigeo_despacho = :ubigeo_despacho,
@@ -380,6 +388,11 @@ class ModeloClientes
 		$stmt->bindParam(":contacto", $datos["contacto"], PDO::PARAM_STR);
 		$stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_INT);
 		$stmt->bindParam(":grupo", $datos["grupo"], PDO::PARAM_STR);
+		if ($datos["id_zona"] === null) {
+			$stmt->bindValue(":id_zona", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":id_zona", (int) $datos["id_zona"], PDO::PARAM_INT);
+		}
 		$stmt->bindParam(":lista_precios", $datos["lista_precios"], PDO::PARAM_STR);
 		$stmt->bindParam(":direccion_despacho", $datos["direccion_despacho"], PDO::PARAM_STR);
 		$stmt->bindParam(":ubigeo_despacho", $datos["ubigeo_despacho"], PDO::PARAM_STR);

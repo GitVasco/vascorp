@@ -344,15 +344,45 @@ $(".tablaClientes").on("click", ".btnEditarCliente", function () {
             $("#editarVendedor").selectpicker("refresh");
             $("#editarGrupo").val(respuesta["grupo"]);
 
+            if ($("#editar_id_zona").length) {
+                var idZonaCli = respuesta["id_zona"] ? String(respuesta["id_zona"]) : "";
+                $("#editar_id_zona").val(idZonaCli);
+            }
+
             $("#editarLista_precios").val(respuesta["lista_precios"]);
             $("#editarLista_precios").selectpicker("refresh");
 
             if (typeof cargarCategoriaComercialCliente === "function") {
                 cargarCategoriaComercialCliente(respuesta["codigo"], respuesta["grupo"]);
             }
+
+            if (typeof mostrarZonaEfectivaCliente === "function") {
+                mostrarZonaEfectivaCliente(respuesta["codigo"]);
+            }
         },
     });
 });
+
+function mostrarZonaEfectivaCliente(codigoCliente) {
+    var $hint = $("#hintZonaEfectivaCliente");
+    if (!$hint.length || !codigoCliente) {
+        return;
+    }
+    $.post("ajax/zonas-comerciales.ajax.php", {
+        accion: "resolverCliente",
+        codigoCliente: codigoCliente
+    }, function (resp) {
+        if (!resp || !resp.ok) {
+            $hint.text("");
+            return;
+        }
+        if (resp.zona && resp.zona.nombre) {
+            $hint.text("Efectiva: " + resp.zona.nombre + " (" + (resp.origen_etiqueta || resp.origen || "") + ")");
+        } else {
+            $hint.text("Efectiva: sin zona — conviene asignar o revisar ubigeo");
+        }
+    }, "json");
+}
 
 /*=============================================
 ELIMINAR CLIENTE

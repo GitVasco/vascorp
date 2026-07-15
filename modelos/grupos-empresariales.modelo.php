@@ -22,13 +22,18 @@ class ModeloGruposEmpresariales
 	{
 
 		$stmt = Conexion::conectar()->prepare(
-			"INSERT INTO grupos_empresarialesjf (codigo, nombre, descripcion, estado, usureg, fecreg)
-			 VALUES (:codigo, :nombre, :descripcion, :estado, :usureg, :fecreg)"
+			"INSERT INTO grupos_empresarialesjf (codigo, nombre, descripcion, id_zona, estado, usureg, fecreg)
+			 VALUES (:codigo, :nombre, :descripcion, :id_zona, :estado, :usureg, :fecreg)"
 		);
 
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":nombre", $datos["nombre"], PDO::PARAM_STR);
 		$stmt->bindParam(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
+		if ($datos["id_zona"] === null) {
+			$stmt->bindValue(":id_zona", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":id_zona", (int) $datos["id_zona"], PDO::PARAM_INT);
+		}
 		$stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_INT);
 		$stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
 		$stmt->bindParam(":fecreg", $datos["fecreg"], PDO::PARAM_STR);
@@ -129,13 +134,18 @@ class ModeloGruposEmpresariales
 
 		$stmt = Conexion::conectar()->prepare(
 			"UPDATE grupos_empresarialesjf
-			 SET nombre = :nombre, descripcion = :descripcion, estado = :estado
+			 SET nombre = :nombre, descripcion = :descripcion, id_zona = :id_zona, estado = :estado
 			 WHERE id = :id"
 		);
 
 		$stmt->bindParam(":id", $datos["id"], PDO::PARAM_INT);
 		$stmt->bindParam(":nombre", $datos["nombre"], PDO::PARAM_STR);
 		$stmt->bindParam(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
+		if ($datos["id_zona"] === null) {
+			$stmt->bindValue(":id_zona", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":id_zona", (int) $datos["id_zona"], PDO::PARAM_INT);
+		}
 		$stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_INT);
 
 		if ($stmt->execute()) {

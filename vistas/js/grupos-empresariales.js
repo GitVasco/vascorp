@@ -387,6 +387,7 @@ $(".tablaGruposEmpresariales").on("click", ".btnEditarGrupo", function () {
             $("#editarCodigoGrupo").val(respuesta.codigo);
             $("#editarNombreGrupo").val(respuesta.nombre);
             $("#editarDescripcionGrupo").val(respuesta.descripcion || "");
+            $("#editarIdZonaGrupo").val(respuesta.id_zona ? String(respuesta.id_zona) : "");
             $("#editarEstadoGrupo").val(respuesta.estado);
         }
     });

@@ -22,6 +22,10 @@ require_once "controladores/clientes.controlador.php";
 
 require_once "controladores/grupos-empresariales.controlador.php";
 
+require_once "controladores/zonas-comerciales.controlador.php";
+
+require_once "controladores/metas-retos.controlador.php";
+
 require_once "controladores/categorias-clientes.controlador.php";
 
 require_once "controladores/ventas.controlador.php";
@@ -170,6 +174,10 @@ require_once "modelos/productos.modelo.php";
 require_once "modelos/clientes.modelo.php";
 
 require_once "modelos/grupos-empresariales.modelo.php";
+
+require_once "modelos/zonas-comerciales.modelo.php";
+
+require_once "modelos/metas-retos.modelo.php";
 
 require_once "modelos/categorias-clientes.modelo.php";
 

@@ -25,6 +25,7 @@ class ControladorGruposEmpresariales
 			"codigo" => $codigo,
 			"nombre" => $nombre,
 			"descripcion" => trim(isset($_POST["nuevaDescripcionGrupo"]) ? $_POST["nuevaDescripcionGrupo"] : ""),
+			"id_zona" => ControladorZonasComerciales::ctrIdZonaDesdePost("nuevaIdZonaGrupo"),
 			"estado" => 1,
 			"usureg" => isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "",
 			"fecreg" => $fecha->format("Y-m-d H:i:s")
@@ -83,10 +84,13 @@ class ControladorGruposEmpresariales
 			return;
 		}
 
+		$idZonaActual = isset($grupoActual["id_zona"]) ? $grupoActual["id_zona"] : null;
+
 		$datos = array(
 			"id" => $id,
 			"nombre" => $nombre,
 			"descripcion" => trim(isset($_POST["editarDescripcionGrupo"]) ? $_POST["editarDescripcionGrupo"] : ""),
+			"id_zona" => ControladorZonasComerciales::ctrIdZonaDesdePost("editarIdZonaGrupo", $idZonaActual),
 			"estado" => (int) (isset($_POST["editarEstadoGrupo"]) ? $_POST["editarEstadoGrupo"] : 1)
 		);
 

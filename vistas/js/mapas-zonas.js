@@ -1,0 +1,646 @@
+/* global $, L */
+(function () {
+    "use strict";
+
+    /**
+     * Polígonos aproximados de cobertura comercial (no GIS oficial).
+     * Pensados para verse como sectores pintados sobre el mapa de Lima.
+     * Leaflet: [lat, lng]
+     */
+    var MZ_GEO = {
+        lima: {
+            // Fuera del encuadre inicial metro; se ve al alejar o panear al norte
+            NORTE_CHICO: {
+                short: "Norte Chico",
+                center: [-11.20, -77.55],
+                ring: [
+                    [-10.90, -77.85], [-10.95, -77.20], [-11.50, -77.15],
+                    [-11.55, -77.80], [-10.90, -77.85]
+                ],
+                metro: false
+            },
+            CALLAO: {
+                short: "Callao",
+                center: [-12.04, -77.13],
+                ring: [
+                    [-11.92, -77.19], [-11.93, -77.09], [-12.00, -77.07],
+                    [-12.08, -77.08], [-12.12, -77.12], [-12.10, -77.18],
+                    [-12.02, -77.20], [-11.92, -77.19]
+                ],
+                metro: true
+            },
+            LIM_NORTE: {
+                short: "Norte",
+                center: [-11.93, -77.05],
+                ring: [
+                    [-11.78, -77.12], [-11.75, -76.92], [-11.90, -76.88],
+                    [-12.00, -76.95], [-12.02, -77.08], [-11.95, -77.14],
+                    [-11.85, -77.15], [-11.78, -77.12]
+                ],
+                metro: true
+            },
+            LIM_ESTE: {
+                short: "Este",
+                center: [-12.02, -76.88],
+                ring: [
+                    [-11.90, -76.95], [-11.88, -76.72], [-12.05, -76.70],
+                    [-12.18, -76.78], [-12.15, -76.98], [-12.05, -76.98],
+                    [-11.95, -76.98], [-11.90, -76.95]
+                ],
+                metro: true
+            },
+            LIM_CENTRO: {
+                short: "Centro",
+                center: [-12.06, -77.03],
+                ring: [
+                    [-12.02, -77.07], [-12.01, -76.99], [-12.05, -76.97],
+                    [-12.09, -76.98], [-12.10, -77.05], [-12.07, -77.08],
+                    [-12.03, -77.08], [-12.02, -77.07]
+                ],
+                metro: true
+            },
+            LIM_MODERNA: {
+                short: "Moderna",
+                center: [-12.12, -76.98],
+                ring: [
+                    [-12.08, -77.06], [-12.07, -76.90], [-12.10, -76.85],
+                    [-12.18, -76.86], [-12.20, -76.95], [-12.18, -77.04],
+                    [-12.12, -77.06], [-12.08, -77.06]
+                ],
+                metro: true
+            },
+            LIM_SUR: {
+                short: "Sur",
+                center: [-12.25, -76.94],
+                ring: [
+                    [-12.17, -77.03], [-12.16, -76.85], [-12.22, -76.80],
+                    [-12.35, -76.82], [-12.38, -76.95], [-12.32, -77.05],
+                    [-12.22, -77.05], [-12.17, -77.03]
+                ],
+                metro: true
+            },
+            // Encima del Centro (Gamarra / La Victoria comercial)
+            LIM_ECONOMICA: {
+                short: "Gamarra",
+                center: [-12.066, -77.014],
+                ring: [
+                    [-12.060, -77.022], [-12.059, -77.008], [-12.068, -77.006],
+                    [-12.074, -77.012], [-12.072, -77.022], [-12.060, -77.022]
+                ],
+                metro: true
+            }
+        },
+        peru: {
+            PERU_NORTE: {
+                short: "Norte",
+                center: [-6.5, -76.5],
+                ring: [
+                    [-0.1, -81.5], [-0.1, -70.0], [-10.0, -70.0],
+                    [-12.0, -76.0], [-10.5, -79.5], [-3.5, -81.5], [-0.1, -81.5]
+                ],
+                metro: true
+            },
+            PERU_SUR: {
+                short: "Sur",
+                center: [-14.5, -72.5],
+                ring: [
+                    [-12.0, -76.0], [-10.0, -70.0], [-13.5, -68.5],
+                    [-18.4, -70.3], [-18.4, -76.5], [-14.5, -77.5], [-12.0, -76.0]
+                ],
+                metro: true
+            }
+        }
+    };
+
+    // Orden de dibujo: debajo primero; Económica al final para que se vea sobre Centro
+    var MZ_ORDEN_LIMA = [
+        "NORTE_CHICO", "LIM_NORTE", "LIM_ESTE", "CALLAO",
+        "LIM_SUR", "LIM_MODERNA", "LIM_CENTRO", "LIM_ECONOMICA"
+    ];
+    var MZ_ORDEN_PERU = ["PERU_NORTE", "PERU_SUR"];
+
+    var mzCache = {};
+    var mzPorCodigo = {};
+    var mzVista = "lima";
+    var mzSeleccion = null;
+    var mzMapLima = null;
+    var mzMapPeru = null;
+    var mzLayerLima = null;
+    var mzLayerPeru = null;
+    var mzMapReady = { lima: false, peru: false };
+    var mzYaAjustado = { lima: false, peru: false };
+
+    function mzPeriodo() {
+        return {
+            anio: parseInt($("#mzAnio").val(), 10) || new Date().getFullYear(),
+            mes: parseInt($("#mzMes").val(), 10) || (new Date().getMonth() + 1)
+        };
+    }
+
+    function mzCacheKey(vista) {
+        var p = mzPeriodo();
+        return vista + "|" + p.anio + "|" + p.mes;
+    }
+
+    function mzFmt(n) {
+        return (Number(n) || 0).toLocaleString("es-PE");
+    }
+
+    function mzMoney(n) {
+        return "S/ " + (Number(n) || 0).toLocaleString("es-PE", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
+
+    function mzEsc(s) {
+        return $("<div>").text(s == null ? "" : String(s)).html();
+    }
+
+    function mzSetCarga(txt) {
+        $("#mzEstadoCarga").text(txt || "");
+    }
+
+    function mzMaxVenta(zonas) {
+        var max = 0;
+        (zonas || []).forEach(function (z) {
+            max = Math.max(max, Number(z.venta_real) || 0);
+        });
+        return max > 0 ? max : 1;
+    }
+
+    function mzInitMap(id, center, zoom) {
+        if (typeof L === "undefined") {
+            return null;
+        }
+        var map = L.map(id, {
+            zoomControl: true,
+            scrollWheelZoom: true
+        }).setView(center, zoom);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 18,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        return map;
+    }
+
+    function mzEnsureMaps() {
+        if (!mzMapLima && $("#mzMapLima").length) {
+            mzMapLima = mzInitMap("mzMapLima", [-12.05, -77.02], 10);
+            mzLayerLima = L.layerGroup().addTo(mzMapLima);
+            mzMapReady.lima = true;
+        }
+        if (!mzMapPeru && $("#mzMapPeru").length) {
+            mzMapPeru = mzInitMap("mzMapPeru", [-9.5, -75.0], 5);
+            mzLayerPeru = L.layerGroup().addTo(mzMapPeru);
+            mzMapReady.peru = true;
+        }
+    }
+
+    function mzOrdenZonas(vista, zonas) {
+        var orden = vista === "peru" ? MZ_ORDEN_PERU : MZ_ORDEN_LIMA;
+        var mapa = {};
+        (zonas || []).forEach(function (z) {
+            mapa[z.codigo] = z;
+        });
+        var lista = [];
+        orden.forEach(function (cod) {
+            if (mapa[cod]) {
+                lista.push(mapa[cod]);
+            }
+        });
+        (zonas || []).forEach(function (z) {
+            if (orden.indexOf(z.codigo) === -1) {
+                lista.push(z);
+            }
+        });
+        return lista;
+    }
+
+    function mzPintarMapa(vista, zonas, ajustarVista) {
+        mzEnsureMaps();
+        var map = vista === "peru" ? mzMapPeru : mzMapLima;
+        var layer = vista === "peru" ? mzLayerPeru : mzLayerLima;
+        var geoSet = vista === "peru" ? MZ_GEO.peru : MZ_GEO.lima;
+
+        if (!map || !layer) {
+            return;
+        }
+
+        layer.clearLayers();
+        var boundsMetro = [];
+        var boundsTodos = [];
+
+        mzOrdenZonas(vista, zonas).forEach(function (z) {
+            var geo = geoSet[z.codigo];
+            if (!geo) {
+                return;
+            }
+            var venta = Number(z.venta_real) || 0;
+            var seleccionada = mzSeleccion === z.codigo;
+            var fillOpacity = seleccionada ? 0.78 : 0.62;
+
+            var poly = L.polygon(geo.ring, {
+                color: "#ffffff",
+                weight: seleccionada ? 3 : 2,
+                opacity: 0.95,
+                fillColor: z.color || "#777777",
+                fillOpacity: fillOpacity,
+                className: "mz-zona-poly"
+            }).addTo(layer);
+
+            poly.bindTooltip(
+                "<strong>" + mzEsc(geo.short || z.nombre) + "</strong><br>" +
+                    "<span style='font-size:15px;font-weight:800;'>" + mzMoney(venta) + "</span><br>" +
+                    "<span style='font-size:11px;'>" + mzEsc(z.nombre) + "</span>",
+                {
+                    sticky: true,
+                    opacity: 0.97,
+                    className: "mz-tooltip-zona"
+                }
+            );
+
+            poly.on("mouseover", function () {
+                this.setStyle({ fillOpacity: 0.85, weight: 3 });
+                this.bringToFront();
+            });
+            poly.on("mouseout", function () {
+                this.setStyle({
+                    fillOpacity: mzSeleccion === z.codigo ? 0.78 : 0.62,
+                    weight: mzSeleccion === z.codigo ? 3 : 2
+                });
+            });
+            poly.on("click", function () {
+                mzMostrarFicha(z.codigo);
+            });
+
+            geo.ring.forEach(function (p) {
+                boundsTodos.push(p);
+                if (geo.metro !== false) {
+                    boundsMetro.push(p);
+                }
+            });
+        });
+
+        if (ajustarVista) {
+            var usar = boundsMetro.length ? boundsMetro : boundsTodos;
+            if (usar.length) {
+                try {
+                    map.fitBounds(usar, { padding: [28, 28], maxZoom: vista === "peru" ? 6 : 12 });
+                } catch (e) { /* ignore */ }
+            }
+            mzYaAjustado[vista] = true;
+        }
+
+        setTimeout(function () {
+            map.invalidateSize();
+        }, 80);
+    }
+
+    function mzPintarTreemap(zonas) {
+        var $box = $("#mzTreemap").empty();
+        if (!zonas || !zonas.length) {
+            $box.html("<p class='text-muted'>Sin zonas.</p>");
+            return;
+        }
+
+        var max = mzMaxVenta(zonas);
+        var orden = zonas.slice().sort(function (a, b) {
+            return (Number(b.venta_real) || 0) - (Number(a.venta_real) || 0);
+        });
+
+        orden.forEach(function (z) {
+            var venta = Number(z.venta_real) || 0;
+            var grow = Math.max(venta, max * 0.04);
+            var $cell = $("<div class='mz-treemap-cell'/>")
+                .attr("data-codigo", z.codigo)
+                .css({
+                    background: z.color || "#777",
+                    flexGrow: grow,
+                    flexBasis: Math.max(70, (venta / max) * 220) + "px"
+                })
+                .toggleClass("mz-active", mzSeleccion === z.codigo)
+                .append($("<div class='mz-treemap-title'/>").text(z.nombre || z.codigo))
+                .append($("<div class='mz-treemap-venta'/>").text(mzMoney(venta)))
+                .append(
+                    $("<div class='mz-treemap-meta'/>").text(mzFmt(z.total_clientes) + " clientes")
+                );
+
+            $box.append($cell);
+        });
+    }
+
+    function mzPintarLeyenda(zonas) {
+        var $box = $("#mzLeyenda").empty();
+        if (!zonas || !zonas.length) {
+            $box.html("<p class='text-muted'>Sin zonas para esta vista.</p>");
+            return;
+        }
+        var orden = zonas.slice().sort(function (a, b) {
+            return (Number(b.venta_real) || 0) - (Number(a.venta_real) || 0);
+        });
+        orden.forEach(function (z) {
+            var $item = $("<div class='mz-leyenda-item'/>");
+            var $main = $("<div class='mz-leyenda-main'/>")
+                .attr("data-codigo", z.codigo)
+                .css({ display: "flex", alignItems: "center", gap: "8px" })
+                .append($("<span class='mz-leyenda-swatch'/>").css("background", z.color || "#777"))
+                .append(
+                    $("<span style='flex:1;min-width:0;'/>").html(
+                        mzEsc(z.nombre) +
+                            "<br><span class='mz-leyenda-venta'>" +
+                            mzMoney(z.venta_real) +
+                            "</span>"
+                    )
+                );
+
+            var $btn = $(
+                "<button type='button' class='btn btn-xs btn-default mz-leyenda-btn btnMzVerClientes' title='Ver clientes con venta'/>"
+            )
+                .attr("data-id-zona", z.id)
+                .attr("data-codigo", z.codigo)
+                .html("<i class='fa fa-list'></i>");
+
+            $item.append($main).append($btn);
+            $box.append($item);
+        });
+    }
+
+    function mzAbrirClientesZona(idZona, codigo) {
+        var z = codigo ? mzPorCodigo[codigo] : null;
+        if (!idZona && z) {
+            idZona = z.id;
+        }
+        if (!idZona) {
+            return;
+        }
+        if (codigo) {
+            mzMostrarFicha(codigo);
+        }
+
+        var p = mzPeriodo();
+        var nombre = z ? z.nombre : "Zona";
+        var color = z ? z.color || "#3c8dbc" : "#3c8dbc";
+        $("#mzModalZonaNombre").text(nombre);
+        $("#mzModalHeader").css("background", color);
+        $("#mzModalPeriodo").text(p.mes + "/" + p.anio);
+        $("#mzModalTotalVenta").text("…");
+        $("#mzModalTotalCli").text("…");
+        $("#mzTablaClientes tbody").html(
+            "<tr><td colspan='3' class='text-muted'><i class='fa fa-spinner fa-spin'></i> Cargando…</td></tr>"
+        );
+        $("#modalMzClientesZona").modal("show");
+
+        $.post(
+            "ajax/zonas-comerciales.ajax.php",
+            {
+                accion: "clientesVentaZona",
+                idZona: idZona,
+                anio: p.anio,
+                mes: p.mes
+            },
+            function (resp) {
+                if (!resp || !resp.ok) {
+                    $("#mzTablaClientes tbody").html(
+                        "<tr><td colspan='3' class='text-danger'>" +
+                            mzEsc((resp && resp.mensaje) || "No se pudo cargar") +
+                            "</td></tr>"
+                    );
+                    return;
+                }
+                $("#mzModalTotalVenta").text(mzMoney(resp.total_venta));
+                $("#mzModalTotalCli").text(mzFmt(resp.total_clientes));
+                if (resp.zona && resp.zona.nombre) {
+                    $("#mzModalZonaNombre").text(resp.zona.nombre);
+                }
+                var rows = resp.clientes || [];
+                if (!rows.length) {
+                    $("#mzTablaClientes tbody").html(
+                        "<tr><td colspan='3' class='text-muted'>Ningún cliente con venta en este período</td></tr>"
+                    );
+                    return;
+                }
+                var html = "";
+                rows.forEach(function (c) {
+                    var cat = c.categoria ? String(c.categoria) : "Sin categoría";
+                    var color = c.categoria_color ? String(c.categoria_color) : "#777777";
+                    html +=
+                        "<tr>" +
+                        "<td>" + mzEsc(c.codigo) + "</td>" +
+                        "<td>" +
+                        "<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;'>" +
+                        "<span style='min-width:0;'>" + mzEsc(c.nombre) + "</span>" +
+                        "<span class='label' style='font-weight:600;flex:0 0 auto;background-color:" +
+                        mzEsc(color) +
+                        ";color:#fff;'>" +
+                        mzEsc(cat) +
+                        "</span></div></td>" +
+                        "<td class='text-right'><strong>" + mzMoney(c.venta_real) + "</strong></td>" +
+                        "</tr>";
+                });
+                $("#mzTablaClientes tbody").html(html);
+            },
+            "json"
+        ).fail(function () {
+            $("#mzTablaClientes tbody").html(
+                "<tr><td colspan='3' class='text-danger'>Error de comunicación</td></tr>"
+            );
+        });
+    }
+
+    function mzAplicarDatos(zonas, forzarAjuste) {
+        mzPorCodigo = {};
+        (zonas || []).forEach(function (z) {
+            mzPorCodigo[z.codigo] = z;
+        });
+        var ajustar = !!forzarAjuste || !mzYaAjustado[mzVista];
+        mzPintarMapa(mzVista, zonas, ajustar);
+        mzPintarTreemap(zonas);
+        mzPintarLeyenda(zonas);
+    }
+
+    function mzLimpiarSeleccion() {
+        mzSeleccion = null;
+        $(".mz-treemap-cell").removeClass("mz-active");
+    }
+
+    function mzMostrarFicha(codigo) {
+        var z = mzPorCodigo[codigo];
+        if (!z) {
+            return;
+        }
+        mzSeleccion = codigo;
+        $(".mz-treemap-cell").removeClass("mz-active");
+        $(".mz-treemap-cell[data-codigo='" + codigo + "']").addClass("mz-active");
+
+        var zonas = mzCache[mzCacheKey(mzVista)] || [];
+        mzPintarMapa(mzVista, zonas, false);
+        mzPintarTreemap(zonas);
+
+        $("#mzFichaVacio").hide();
+        $("#mzFichaDetalle").show();
+        $("#mzFichaTitulo").text(z.nombre || codigo);
+        $("#mzFichaHeader").css("background", z.color || "#3c8dbc");
+        $("#mzFichaDesc").text(z.descripcion || "");
+        $("#mzFichaVenta").text(mzMoney(z.venta_real));
+        $("#mzFichaClientes").text(mzFmt(z.total_clientes));
+        $("#mzFichaVendCount").text(mzFmt(z.total_vendedores));
+        $("#mzFichaUbigeos").text(mzFmt(z.total_ubigeos));
+        $("#mzFichaCodigo").text(z.codigo || "");
+        $("#mzBtnFichaClientes").attr("data-id-zona", z.id).attr("data-codigo", z.codigo);
+
+        var $ulVenta = $("#mzFichaVentaVendedores").empty();
+        var ventasVend = z.venta_por_vendedor || [];
+        if (!ventasVend.length) {
+            $ulVenta.append("<li class='text-muted'>Sin ventas de vendedores activos en el período</li>");
+        } else {
+            ventasVend.forEach(function (v) {
+                $ulVenta.append(
+                    "<li style='margin-bottom:4px;'><i class='fa fa-line-chart text-muted'></i> " +
+                        mzEsc(v.codigo) +
+                        " — " +
+                        mzEsc(v.nombre) +
+                        " <span class='pull-right'><strong>" +
+                        mzMoney(v.venta) +
+                        "</strong></span></li>"
+                );
+            });
+        }
+
+        var $ul = $("#mzFichaVendedores").empty();
+        if (!z.vendedores || !z.vendedores.length) {
+            $ul.append("<li class='text-muted'>Sin vendedores activos asignados</li>");
+        } else {
+            z.vendedores.forEach(function (v) {
+                $ul.append(
+                    "<li><i class='fa fa-user text-muted'></i> " +
+                        mzEsc(v.codigo) +
+                        " — " +
+                        mzEsc(v.nombre) +
+                        "</li>"
+                );
+            });
+        }
+    }
+
+    function mzCargarVista(vista, forzar) {
+        mzVista = vista || "lima";
+        var key = mzCacheKey(mzVista);
+        if (!forzar && mzCache[key]) {
+            mzAplicarDatos(mzCache[key], false);
+            mzSetCarga("");
+            if (mzSeleccion && mzPorCodigo[mzSeleccion]) {
+                mzMostrarFicha(mzSeleccion);
+            }
+            return;
+        }
+
+        var p = mzPeriodo();
+        mzSetCarga("Cargando…");
+        $.post(
+            "ajax/zonas-comerciales.ajax.php",
+            { accion: "resumenMapa", vista: mzVista, anio: p.anio, mes: p.mes },
+            function (resp) {
+                if (!resp || !resp.ok) {
+                    mzSetCarga("Error al cargar");
+                    return;
+                }
+                mzCache[key] = resp.zonas || [];
+                mzYaAjustado[mzVista] = false;
+                mzAplicarDatos(mzCache[key], true);
+                mzSetCarga(mzCache[key].length + " zonas");
+                if (mzSeleccion && mzPorCodigo[mzSeleccion]) {
+                    mzMostrarFicha(mzSeleccion);
+                } else {
+                    mzLimpiarSeleccion();
+                    $("#mzFichaDetalle").hide();
+                    $("#mzFichaVacio").show();
+                    $("#mzFichaTitulo").text("Seleccione una zona");
+                    $("#mzFichaHeader").css("background", "#3c8dbc");
+                }
+            },
+            "json"
+        ).fail(function () {
+            mzSetCarga("Error de comunicación");
+        });
+    }
+
+    function mzCambiarVista(vista) {
+        mzVista = vista;
+        mzLimpiarSeleccion();
+        $("#mzFichaDetalle").hide();
+        $("#mzFichaVacio").show();
+        $("#mzFichaTitulo").text("Seleccione una zona");
+        $("#mzFichaHeader").css("background", "#3c8dbc");
+
+        if (vista === "peru") {
+            $("#mzVistaLima").hide();
+            $("#mzVistaPeru").show();
+            $("#mzToggleVista label").removeClass("active btn-primary").addClass("btn-default");
+            $("#mzToggleVista label").has("input[value='peru']").removeClass("btn-default").addClass("active btn-primary");
+        } else {
+            $("#mzVistaPeru").hide();
+            $("#mzVistaLima").show();
+            $("#mzToggleVista label").removeClass("active btn-primary").addClass("btn-default");
+            $("#mzToggleVista label").has("input[value='lima']").removeClass("btn-default").addClass("active btn-primary");
+        }
+
+        mzYaAjustado[vista] = false;
+        mzCargarVista(vista, false);
+        setTimeout(function () {
+            var map = vista === "peru" ? mzMapPeru : mzMapLima;
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 120);
+    }
+
+    $(document).on("change", "input[name='mzVista']", function () {
+        mzCambiarVista($(this).val());
+    });
+
+    $(document).on("click", "#mzToggleVista label", function () {
+        var v = $(this).find("input").val();
+        if (v) {
+            setTimeout(function () {
+                mzCambiarVista(v);
+            }, 0);
+        }
+    });
+
+    $("#mzFormPeriodo").on("submit", function (e) {
+        e.preventDefault();
+        mzCargarVista(mzVista, true);
+    });
+
+    $("#mzAnio, #mzMes").on("change", function () {
+        mzCargarVista(mzVista, true);
+    });
+
+    $(document).on("click", ".mz-treemap-cell, .mz-leyenda-main", function () {
+        var codigo = $(this).data("codigo");
+        if (codigo) {
+            mzMostrarFicha(codigo);
+        }
+    });
+
+    $(document).on("click", ".btnMzVerClientes", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var idZona = $(this).attr("data-id-zona") || $(this).data("idZona");
+        var codigo = $(this).attr("data-codigo") || $(this).data("codigo");
+        mzAbrirClientesZona(idZona, codigo);
+    });
+
+    if ($("#mzMapLima").length) {
+        if (typeof L === "undefined") {
+            mzSetCarga("No se pudo cargar Leaflet");
+            $("#mzMapLima").html(
+                "<div class='alert alert-warning' style='margin:12px;'>No se cargó el mapa (Leaflet). Revisa conexión a internet/CDN.</div>"
+            );
+        }
+        mzCargarVista("lima", true);
+    }
+})();

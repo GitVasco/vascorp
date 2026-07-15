@@ -35,6 +35,12 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Historial de crédito | Vasco System";
         } elseif ($_GET["ruta"] === "metas-vendedor") {
             $__tituloVentana = "Metas vendedor | Vasco System";
+        } elseif ($_GET["ruta"] === "metas-retos") {
+            $__tituloVentana = "Metas / retos | Vasco System";
+        } elseif ($_GET["ruta"] === "zonas-comerciales") {
+            $__tituloVentana = "Zonas comerciales | Vasco System";
+        } elseif ($_GET["ruta"] === "mapas-zonas") {
+            $__tituloVentana = "Mapas de zonas | Vasco System";
         } elseif ($_GET["ruta"] === "linea-credito") {
             $__tituloVentana = "Línea de crédito | Vasco System";
         } elseif ($_GET["ruta"] === "descuentos-compuestos") {
@@ -346,6 +352,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/metas-vendedor.php";
                 }
+            } else if ($_GET["ruta"] == "metas-retos") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "metas_vendedor")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/metas-retos.php";
+                }
             } else if ($_GET["ruta"] == "linea-credito") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "linea_credito")) {
@@ -594,6 +607,20 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/facturacion/categorias-por-revisar.php";
                 }
+            } else if ($_GET["ruta"] == "zonas-comerciales") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/zonas-comerciales.php";
+                }
+            } else if ($_GET["ruta"] == "mapas-zonas") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/mapas-zonas.php";
+                }
             } else if ($_GET["ruta"] == "rendicion-vasco-caja") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "rendicion_cobranzas")) {
@@ -775,6 +802,17 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-retos") { ?>
+    <script src="vistas/js/metas-retos.js?v=1"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
+    <script src="vistas/js/zonas-comerciales.js?v=5"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mapas-zonas") { ?>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="vistas/js/mapas-zonas.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") { ?>
     <script src="vistas/js/linea-credito.js?v=20"></script>

@@ -4,6 +4,11 @@ $categoriasComercialesActivas = ControladorCategoriasClientes::ctrListarCategori
 if (!is_array($categoriasComercialesActivas)) {
     $categoriasComercialesActivas = array();
 }
+$zonasComercialesActivas = ControladorZonasComerciales::ctrListarZonas(true);
+if (!is_array($zonasComercialesActivas)) {
+    $zonasComercialesActivas = array();
+}
+$puedeEditarZonaCliente = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacion();
 
 $resumenCategoriasClientes = ControladorCategoriasClientes::ctrListarCategorias();
 if (!is_array($resumenCategoriasClientes)) {
@@ -532,32 +537,9 @@ MODAL AGREGAR CLIENTE
 
                             </div>
 
-                            <!-- ENTRADA PARA LOS GRUPOS -->
-
-                            <div class="form-group col-lg-2">
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-caret-square-o-right"></i></span>
-
-                                    <select class="form-control input-sm" id="grupo" name="grupo">
-
-                                        <option value="">Grupo</option>
-                                        <?php foreach ($gruposEmpresariales as $grupoItem) : ?>
-                                            <option value="<?php echo htmlspecialchars($grupoItem["codigo"]); ?>">
-                                                <?php echo htmlspecialchars($grupoItem["nombre"]); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
                             <!-- ENTRADA PARA LA LISTA DE PRECIOS -->
 
-                            <div class="form-group col-lg-2">
+                            <div class="form-group col-lg-4">
 
                                 <div class="input-group">
 
@@ -615,12 +597,51 @@ MODAL AGREGAR CLIENTE
 
                             </div>
 
-                            <!-- CATEGORÍA COMERCIAL (ALTA) -->
-                            <div class="form-group col-lg-2" id="bloqueCategoriaComercialNuevo">
+                        </div>
+
+                        <!-- CLASIFICACIÓN COMERCIAL (ALTA) -->
+                        <div class="box box-primary col-lg-12">
+                            <div class="box-header">
+                                <b>CLASIFICACIÓN COMERCIAL</b>
+                                <p class="help-block" style="margin:4px 0 0;font-weight:normal;">
+                                    Grupo, zona y categoría. La zona vacía hereda del grupo o del ubigeo (Gamarra = Zona Económica).
+                                </p>
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>Grupo empresarial</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-building"></i></span>
+                                    <select class="form-control input-sm" id="grupo" name="grupo">
+                                        <option value="">Sin grupo</option>
+                                        <?php foreach ($gruposEmpresariales as $grupoItem) : ?>
+                                            <option value="<?php echo htmlspecialchars($grupoItem["codigo"]); ?>">
+                                                <?php echo htmlspecialchars($grupoItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>Zona comercial</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-map-marker"></i></span>
+                                    <select class="form-control input-sm" id="id_zona" name="id_zona"
+                                        <?php echo $puedeEditarZonaCliente ? "" : "disabled"; ?>>
+                                        <option value="">Automática (grupo / ubigeo)</option>
+                                        <?php foreach ($zonasComercialesActivas as $zonaItem) : ?>
+                                            <option value="<?php echo (int) $zonaItem["id"]; ?>">
+                                                <?php echo htmlspecialchars($zonaItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group col-lg-4" id="bloqueCategoriaComercialNuevo">
+                                <label>Categoría comercial</label>
                                 <div class="input-group">
                                     <span class="input-group-addon"><i class="fa fa-tags"></i></span>
                                     <select class="form-control input-sm selectpicker" id="categoriaComercialNueva" name="categoria_comercial" data-live-search="true" title="Categoría comercial">
-                                        <option value="">Categoría comercial</option>
+                                        <option value="">Sin categoría</option>
                                         <?php foreach ($categoriasComercialesActivas as $catItem) : ?>
                                             <option value="<?php echo (int) $catItem["id"]; ?>">
                                                 <?php echo htmlspecialchars($catItem["nombre"]); ?>
@@ -629,12 +650,7 @@ MODAL AGREGAR CLIENTE
                                     </select>
                                 </div>
                             </div>
-
-
-
                         </div>
-
-                        <!-- FIN DATOS DIRECCION -->
 
 
 
@@ -1059,32 +1075,9 @@ MODAL EDITAR CLIENTE
 
                             </div>
 
-                            <!-- ENTRADA PARA LOS GRUPOS -->
-
-                            <div class="form-group col-lg-2">
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-caret-square-o-right"></i></span>
-
-                                    <select class="form-control input-sm" id="editarGrupo" name="editarGrupo">
-
-                                        <option value="">Grupo</option>
-                                        <?php foreach ($gruposEmpresariales as $grupoItem) : ?>
-                                            <option value="<?php echo htmlspecialchars($grupoItem["codigo"]); ?>">
-                                                <?php echo htmlspecialchars($grupoItem["nombre"]); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
                             <!-- ENTRADA PARA LA LISTA DE PRECIOS -->
 
-                            <div class="form-group col-lg-2">
+                            <div class="form-group col-lg-4">
 
                                 <div class="input-group">
 
@@ -1142,12 +1135,52 @@ MODAL EDITAR CLIENTE
 
                             </div>
 
-                            <!-- CATEGORÍA COMERCIAL (EDITAR) -->
-                            <div class="form-group col-lg-2" id="bloqueCategoriaComercialEditar">
+                        </div>
+
+                        <!-- CLASIFICACIÓN COMERCIAL (EDITAR) -->
+                        <div class="box box-primary col-lg-12">
+                            <div class="box-header">
+                                <b>CLASIFICACIÓN COMERCIAL</b>
+                                <p class="help-block" style="margin:4px 0 0;font-weight:normal;">
+                                    Grupo, zona y categoría. La zona vacía hereda del grupo o del ubigeo.
+                                </p>
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>Grupo empresarial</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-building"></i></span>
+                                    <select class="form-control input-sm" id="editarGrupo" name="editarGrupo">
+                                        <option value="">Sin grupo</option>
+                                        <?php foreach ($gruposEmpresariales as $grupoItem) : ?>
+                                            <option value="<?php echo htmlspecialchars($grupoItem["codigo"]); ?>">
+                                                <?php echo htmlspecialchars($grupoItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>Zona comercial</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-map-marker"></i></span>
+                                    <select class="form-control input-sm" id="editar_id_zona" name="editar_id_zona"
+                                        <?php echo $puedeEditarZonaCliente ? "" : "disabled"; ?>>
+                                        <option value="">Automática (grupo / ubigeo)</option>
+                                        <?php foreach ($zonasComercialesActivas as $zonaItem) : ?>
+                                            <option value="<?php echo (int) $zonaItem["id"]; ?>">
+                                                <?php echo htmlspecialchars($zonaItem["nombre"]); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <p class="help-block" style="margin:4px 0 0;" id="hintZonaEfectivaCliente"></p>
+                            </div>
+                            <div class="form-group col-lg-4" id="bloqueCategoriaComercialEditar">
+                                <label>Categoría comercial</label>
                                 <div class="input-group">
                                     <span class="input-group-addon"><i class="fa fa-tags"></i></span>
                                     <select class="form-control input-sm selectpicker" id="categoriaComercialEditar" name="editar_categoria_comercial" data-live-search="true" title="Categoría comercial">
-                                        <option value="">Categoría comercial</option>
+                                        <option value="">Sin categoría</option>
                                         <?php foreach ($categoriasComercialesActivas as $catItem) : ?>
                                             <option value="<?php echo (int) $catItem["id"]; ?>">
                                                 <?php echo htmlspecialchars($catItem["nombre"]); ?>
@@ -1156,9 +1189,6 @@ MODAL EDITAR CLIENTE
                                     </select>
                                 </div>
                             </div>
-
-
-
                         </div>
 
                         <!-- FIN DATOS DIRECCION -->

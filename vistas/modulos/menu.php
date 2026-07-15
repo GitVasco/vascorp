@@ -94,6 +94,8 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "categorias_comerciales");
             $puedeVerCategoriasPorRevisar = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "categorias_por_revisar");
+            $puedeVerZonasComerciales = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales");
 
             $rutasActivasGestionComercial = array();
             if ($puedeVerCentroDecisiones) {
@@ -104,6 +106,7 @@
             }
             if ($puedeVerMetasVendedor) {
                 $rutasActivasGestionComercial[] = "metas-vendedor";
+                $rutasActivasGestionComercial[] = "metas-retos";
             }
             if ($puedeVerLineaCredito) {
                 $rutasActivasGestionComercial[] = "linea-credito";
@@ -116,6 +119,10 @@
             }
             if ($puedeVerCategoriasPorRevisar) {
                 $rutasActivasGestionComercial[] = "categorias-por-revisar";
+            }
+            if ($puedeVerZonasComerciales) {
+                $rutasActivasGestionComercial[] = "zonas-comerciales";
+                $rutasActivasGestionComercial[] = "mapas-zonas";
             }
 
             $mostrarGestionComercial = !empty($rutasActivasGestionComercial);
@@ -196,6 +203,16 @@
                             </a>
 
                         </li>
+                        <li class="<?php if ($_GET["ruta"] == "metas-retos") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=metas-retos">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Metas / retos</span>
+
+                            </a>
+
+                        </li>
                         <?php } ?>
 
                         <?php if ($puedeVerLineaCredito) { ?>
@@ -244,6 +261,29 @@
 
                                 <i class="fa fa-flag"></i>
                                 <span>Categorías por revisar</span>
+
+                            </a>
+
+                        </li>
+                        <?php } ?>
+
+                        <?php if ($puedeVerZonasComerciales) { ?>
+                        <li class="<?php if ($_GET["ruta"] == "zonas-comerciales") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=zonas-comerciales">
+
+                                <i class="fa fa-map"></i>
+                                <span>Zonas comerciales</span>
+
+                            </a>
+
+                        </li>
+                        <li class="<?php if ($_GET["ruta"] == "mapas-zonas") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=mapas-zonas">
+
+                                <i class="fa fa-globe"></i>
+                                <span>Mapas de zonas</span>
 
                             </a>
 

@@ -4,6 +4,11 @@ $categoriasComercialesActivas = ControladorCategoriasClientes::ctrListarCategori
 if (!is_array($categoriasComercialesActivas)) {
     $categoriasComercialesActivas = array();
 }
+$zonasComercialesActivas = ControladorZonasComerciales::ctrListarZonas(true);
+if (!is_array($zonasComercialesActivas)) {
+    $zonasComercialesActivas = array();
+}
+$puedeEditarZonaGrupo = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacion();
 ?>
 <div class="content-wrapper">
 
@@ -84,6 +89,18 @@ if (!is_array($categoriasComercialesActivas)) {
                             <label>Descripción (opcional)</label>
                             <textarea class="form-control" name="nuevaDescripcionGrupo" rows="3" placeholder="Notas sobre el grupo"></textarea>
                         </div>
+                        <div class="form-group">
+                            <label>Zona comercial</label>
+                            <select class="form-control" name="nuevaIdZonaGrupo" <?php echo $puedeEditarZonaGrupo ? "" : "disabled"; ?>>
+                                <option value="">Sin zona (cada cliente usa su ubigeo)</option>
+                                <?php foreach ($zonasComercialesActivas as $zonaItem) : ?>
+                                    <option value="<?php echo (int) $zonaItem["id"]; ?>">
+                                        <?php echo htmlspecialchars($zonaItem["nombre"]); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="help-block">Los clientes del grupo heredan esta zona salvo override individual.</p>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -126,6 +143,18 @@ if (!is_array($categoriasComercialesActivas)) {
                         <div class="form-group">
                             <label>Descripción</label>
                             <textarea class="form-control" name="editarDescripcionGrupo" id="editarDescripcionGrupo" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Zona comercial</label>
+                            <select class="form-control" name="editarIdZonaGrupo" id="editarIdZonaGrupo"
+                                <?php echo $puedeEditarZonaGrupo ? "" : "disabled"; ?>>
+                                <option value="">Sin zona (cada cliente usa su ubigeo)</option>
+                                <?php foreach ($zonasComercialesActivas as $zonaItem) : ?>
+                                    <option value="<?php echo (int) $zonaItem["id"]; ?>">
+                                        <?php echo htmlspecialchars($zonaItem["nombre"]); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Estado</label>
