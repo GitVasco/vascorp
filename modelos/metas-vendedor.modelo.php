@@ -192,7 +192,7 @@ class ModeloMetasVendedor
         $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return self::aplicarVentaPermitida($stmt->fetchAll(PDO::FETCH_ASSOC), $anio, $mes);
     }
 
     static public function mdlAvanceVentasDashboard($anio, $mes, $codVendedor = "")
@@ -290,7 +290,46 @@ class ModeloMetasVendedor
         }
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $filas = self::aplicarVentaPermitida($stmt->fetchAll(PDO::FETCH_ASSOC), $anio, $mes);
+        usort($filas, function ($a, $b) {
+            $metaA = (float) $a["meta_venta"];
+            $metaB = (float) $b["meta_venta"];
+            $projA = (float) $a["venta_real"]
+                + (float) $a["soles_generados"]
+                + (float) $a["soles_aprobados"]
+                + (float) $a["soles_apt"]
+                + (float) $a["soles_confirmados"];
+            $projB = (float) $b["venta_real"]
+                + (float) $b["soles_generados"]
+                + (float) $b["soles_aprobados"]
+                + (float) $b["soles_apt"]
+                + (float) $b["soles_confirmados"];
+            $pctA = $metaA > 0 ? $projA / $metaA : 0;
+            $pctB = $metaB > 0 ? $projB / $metaB : 0;
+            if ($pctA == $pctB) {
+                return strcmp($a["cod_vendedor"], $b["cod_vendedor"]);
+            }
+            return ($pctA < $pctB) ? -1 : 1;
+        });
+        return $filas;
+    }
+    static private function aplicarVentaPermitida($filas, $anio, $mes)
+    {
+        if (!is_array($filas) || !count($filas)) {
+            return $filas;
+        }
+        require_once "metricas-comerciales.modelo.php";
+        $mapa = ModeloMetricasComerciales::mdlVentaPermitidaPorVendedor($anio, $mes, false);
+        foreach ($filas as &$fila) {
+            $cod = isset($fila["cod_vendedor"]) ? trim((string) $fila["cod_vendedor"]) : "";
+            if ($cod === "" && isset($fila["vendedor"])) {
+                $cod = trim((string) $fila["vendedor"]);
+            }
+            $fila["venta_real"] = isset($mapa[$cod]) ? (float) $mapa[$cod] : 0.0;
+            $fila["venta_fuera_cobertura"] = null;
+        }
+        unset($fila);
+        return $filas;
     }
 
     static public function mdlEditarMeta($datos)

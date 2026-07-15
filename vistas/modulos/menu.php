@@ -96,6 +96,10 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "categorias_por_revisar");
             $puedeVerZonasComerciales = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales");
+            $puedeVerGruposMarcas = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "grupos_marcas");
+            $puedeVerAsignacionGruposMarcas = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "asignacion_grupos_marcas");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardCobranzas
                 || $puedeVerCentroDecisiones
@@ -104,7 +108,9 @@
             $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor;
             $mostrarCatalogosComerciales = $puedeVerCategoriasComerciales
                 || $puedeVerCategoriasPorRevisar
-                || $puedeVerZonasComerciales;
+                || $puedeVerZonasComerciales
+                || $puedeVerGruposMarcas
+                || $puedeVerAsignacionGruposMarcas;
 
             $rutasActivasCreditoCobranzas = array();
             if ($puedeVerDashboardCobranzas) {
@@ -139,6 +145,12 @@
             if ($puedeVerZonasComerciales) {
                 $rutasActivasCatalogosComerciales[] = "zonas-comerciales";
                 $rutasActivasCatalogosComerciales[] = "mapas-zonas";
+            }
+            if ($puedeVerGruposMarcas) {
+                $rutasActivasCatalogosComerciales[] = "grupos-marcas";
+            }
+            if ($puedeVerAsignacionGruposMarcas) {
+                $rutasActivasCatalogosComerciales[] = "asignacion-grupos-marcas";
             }
 
             $rutasActivasGestionComercial = array_merge(
@@ -292,6 +304,22 @@
                                     <a href="index.php?ruta=mapas-zonas">
                                         <i class="fa fa-globe"></i>
                                         <span>Mapas de zonas</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerGruposMarcas) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "grupos-marcas") echo 'active'; ?>">
+                                    <a href="index.php?ruta=grupos-marcas">
+                                        <i class="fa fa-object-group"></i>
+                                        <span>Grupos de marcas</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerAsignacionGruposMarcas) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "asignacion-grupos-marcas") echo 'active'; ?>">
+                                    <a href="index.php?ruta=asignacion-grupos-marcas">
+                                        <i class="fa fa-handshake-o"></i>
+                                        <span>Asignación de grupos</span>
                                     </a>
                                 </li>
                                 <?php } ?>

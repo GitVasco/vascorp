@@ -42,12 +42,31 @@ class ControladorMetasRetos
 		$p = self::ctrNormalizarPeriodo($anio, $mes);
 		$codVendedor = trim((string) $codVendedor);
 		$reto = ModeloMetasRetos::mdlObtenerReto($codVendedor, $p["anio"], $p["mes"]);
+		$fechaRef = sprintf("%04d-%02d-01", $p["anio"], $p["mes"]);
+		require_once dirname(__FILE__) . "/../modelos/grupos-marcas-comercial.modelo.php";
+		$universo = ModeloGruposMarcasComercial::mdlUniversoModelosActivosPorVendedor($codVendedor, $fechaRef);
 		return array(
 			"ok" => true,
 			"cod_vendedor" => $codVendedor,
 			"anio" => $p["anio"],
 			"mes" => $p["mes"],
-			"reto" => $reto
+			"reto" => $reto,
+			"universo_modelos" => $universo
+		);
+	}
+
+	static public function ctrUniversoModelosAjax($codVendedor, $anio, $mes)
+	{
+		$p = self::ctrNormalizarPeriodo($anio, $mes);
+		$codVendedor = trim((string) $codVendedor);
+		$fechaRef = sprintf("%04d-%02d-01", $p["anio"], $p["mes"]);
+		require_once dirname(__FILE__) . "/../modelos/grupos-marcas-comercial.modelo.php";
+		$universo = ModeloGruposMarcasComercial::mdlUniversoModelosActivosPorVendedor($codVendedor, $fechaRef);
+		return array(
+			"ok" => true,
+			"cod_vendedor" => $codVendedor,
+			"universo_modelos" => $universo,
+			"fecha_ref" => $fechaRef
 		);
 	}
 
@@ -96,6 +115,37 @@ class ControladorMetasRetos
 			return array("ok" => false, "mensaje" => "Solo se permiten vendedores activos");
 		}
 
+		$modoModelos = isset($post["meta_modelos_modo"]) && trim((string) $post["meta_modelos_modo"]) === "porcentaje"
+			? "porcentaje"
+			: "cantidad";
+		$pctModelos = self::ctrNumONull(isset($post["meta_modelos_pct"]) ? $post["meta_modelos_pct"] : null);
+		$metaModelos = self::ctrNumONull(isset($post["meta_modelos"]) ? $post["meta_modelos"] : null);
+
+		$fechaRef = sprintf("%04d-%02d-01", $p["anio"], $p["mes"]);
+		require_once dirname(__FILE__) . "/../modelos/grupos-marcas-comercial.modelo.php";
+		$universo = ModeloGruposMarcasComercial::mdlUniversoModelosActivosPorVendedor($cod, $fechaRef);
+
+		if ($modoModelos === "porcentaje") {
+			if ($pctModelos === null) {
+				return array("ok" => false, "mensaje" => "Indicá el porcentaje de modelos");
+			}
+			$pctNum = (float) $pctModelos;
+			if ($pctNum < 0 || $pctNum > 100) {
+				return array("ok" => false, "mensaje" => "El porcentaje debe estar entre 0 y 100");
+			}
+			if ($universo < 1) {
+				return array("ok" => false, "mensaje" => "El vendedor no tiene modelos activos en grupos vigentes");
+			}
+			$metaModelos = ($pctNum > 0)
+				? (int) ceil($universo * ($pctNum / 100.0))
+				: 0;
+			if ($pctNum > 0 && $metaModelos < 1) {
+				$metaModelos = 1;
+			}
+		} else {
+			$pctModelos = null;
+		}
+
 		$datos = array(
 			"cod_vendedor" => $cod,
 			"anio" => $p["anio"],
@@ -107,7 +157,9 @@ class ControladorMetasRetos
 			"meta_clientes" => self::ctrNumONull(isset($post["meta_clientes"]) ? $post["meta_clientes"] : null),
 			"comision_clientes_fijo" => self::ctrNumONull(isset($post["comision_clientes_fijo"]) ? $post["comision_clientes_fijo"] : null),
 			"cumplimiento_clientes" => self::ctrCumplimiento(isset($post["cumplimiento_clientes"]) ? $post["cumplimiento_clientes"] : "todo_nada"),
-			"meta_modelos" => self::ctrNumONull(isset($post["meta_modelos"]) ? $post["meta_modelos"] : null),
+			"meta_modelos" => $metaModelos,
+			"meta_modelos_modo" => $modoModelos,
+			"meta_modelos_pct" => $pctModelos,
 			"comision_modelos_fijo" => self::ctrNumONull(isset($post["comision_modelos_fijo"]) ? $post["comision_modelos_fijo"] : null),
 			"cumplimiento_modelos" => self::ctrCumplimiento(isset($post["cumplimiento_modelos"]) ? $post["cumplimiento_modelos"] : "todo_nada"),
 			"modelo_especial" => isset($post["modelo_especial"]) ? trim((string) $post["modelo_especial"]) : "",
@@ -130,7 +182,12 @@ class ControladorMetasRetos
 			$datos["usuario"]
 		);
 
-		return array("ok" => true, "mensaje" => "Metas / retos guardados");
+		return array(
+			"ok" => true,
+			"mensaje" => "Metas / retos guardados",
+			"meta_modelos" => $metaModelos,
+			"universo_modelos" => $universo
+		);
 	}
 
 	static public function ctrPctAvance($real, $meta)

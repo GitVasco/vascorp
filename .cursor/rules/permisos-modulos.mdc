@@ -41,6 +41,8 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `categorias_comerciales` | `ver`, `editar` | Categorías comerciales |
 | `categorias_por_revisar` | `ver`, `editar` | Categorías por revisar |
 | `zonas_comerciales` | `ver`, `editar` | Zonas comerciales + Mapas de zonas (Fase 4) |
+| `grupos_marcas` | `ver`, `editar` | Grupos comerciales de marcas |
+| `asignacion_grupos_marcas` | `ver`, `editar` | Asignación vendedor–grupo con vigencia |
 
 ### vasco_online
 

@@ -38,4 +38,13 @@ if ($accion === "listarModelos") {
 	return;
 }
 
+if ($accion === "universoModelos") {
+	echo json_encode(ControladorMetasRetos::ctrUniversoModelosAjax(
+		isset($_POST["cod_vendedor"]) ? $_POST["cod_vendedor"] : "",
+		isset($_POST["anio"]) ? $_POST["anio"] : 0,
+		isset($_POST["mes"]) ? $_POST["mes"] : 0
+	));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no válida"));

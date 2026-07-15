@@ -24,7 +24,11 @@ require_once "controladores/grupos-empresariales.controlador.php";
 
 require_once "controladores/zonas-comerciales.controlador.php";
 
+require_once "controladores/grupos-marcas-comercial.controlador.php";
+
 require_once "controladores/metas-retos.controlador.php";
+
+require_once "controladores/metricas-comerciales.controlador.php";
 
 require_once "controladores/categorias-clientes.controlador.php";
 
@@ -177,7 +181,11 @@ require_once "modelos/grupos-empresariales.modelo.php";
 
 require_once "modelos/zonas-comerciales.modelo.php";
 
+require_once "modelos/grupos-marcas-comercial.modelo.php";
+
 require_once "modelos/metas-retos.modelo.php";
+
+require_once "modelos/metricas-comerciales.modelo.php";
 
 require_once "modelos/categorias-clientes.modelo.php";
 

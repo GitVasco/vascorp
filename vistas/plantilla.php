@@ -39,6 +39,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Metas / retos | Vasco System";
         } elseif ($_GET["ruta"] === "zonas-comerciales") {
             $__tituloVentana = "Zonas comerciales | Vasco System";
+        } elseif ($_GET["ruta"] === "grupos-marcas") {
+            $__tituloVentana = "Grupos de marcas | Vasco System";
+        } elseif ($_GET["ruta"] === "asignacion-grupos-marcas") {
+            $__tituloVentana = "Asignación de grupos de marcas | Vasco System";
         } elseif ($_GET["ruta"] === "mapas-zonas") {
             $__tituloVentana = "Mapas de zonas | Vasco System";
         } elseif ($_GET["ruta"] === "linea-credito") {
@@ -615,6 +619,20 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/zonas-comerciales.php";
                 }
+            } else if ($_GET["ruta"] == "grupos-marcas") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "grupos_marcas")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/grupos-marcas.php";
+                }
+            } else if ($_GET["ruta"] == "asignacion-grupos-marcas") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "asignacion_grupos_marcas")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/asignacion-grupos-marcas.php";
+                }
             } else if ($_GET["ruta"] == "mapas-zonas") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales")) {
@@ -806,10 +824,16 @@ CUERPO DOCUMENTO
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-retos") { ?>
-    <script src="vistas/js/metas-retos.js?v=8"></script>
+    <script src="vistas/js/metas-retos.js?v=11"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
     <script src="vistas/js/zonas-comerciales.js?v=5"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "grupos-marcas") { ?>
+    <script src="vistas/js/grupos-marcas.js?v=1"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "asignacion-grupos-marcas") { ?>
+    <script src="vistas/js/asignacion-grupos-marcas.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mapas-zonas") { ?>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>

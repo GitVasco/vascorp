@@ -39,7 +39,7 @@ if (!function_exists("ddAvanceSegmentos")) {
         }
 
         $segmentos = array(
-            array("clase" => "real", "monto" => (float) $avance["venta_real"], "titulo" => "Venta facturada"),
+            array("clase" => "real", "monto" => (float) $avance["venta_real"], "titulo" => "Venta permitida"),
         );
 
         if ($incluirGenerados) {

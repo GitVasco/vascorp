@@ -48,7 +48,7 @@ function mrAporteHtml($aporte)
 }
 
 /** Celda compacta: meta / real + barra + aporte al estimado. */
-function mrCelda($meta, $real, $pct, $aporte = 0, $decMeta = 0, $decReal = 0, $forzarMostrar = false)
+function mrCelda($meta, $real, $pct, $aporte = 0, $decMeta = 0, $decReal = 0, $forzarMostrar = false, $metaExtraHtml = "")
 {
 	$tieneMeta = mrTieneValor($meta);
 	$tieneReal = is_numeric($real) && (float) $real > 0;
@@ -63,7 +63,8 @@ function mrCelda($meta, $real, $pct, $aporte = 0, $decMeta = 0, $decReal = 0, $f
 
 	$html = "<div class='mr-cell'>"
 		. "<div class='mr-line'><span class='mr-meta'>" . htmlspecialchars($metaTxt, ENT_QUOTES, "UTF-8")
-		. "</span><span class='mr-sep'>/</span><span class='mr-real'>"
+		. "</span>" . $metaExtraHtml
+		. "<span class='mr-sep'>/</span><span class='mr-real'>"
 		. htmlspecialchars($realTxt, ENT_QUOTES, "UTF-8") . "</span></div>";
 
 	if ($tieneMeta && $pct !== null) {
@@ -91,6 +92,13 @@ if (is_array($filas)) {
 		$metaDoc = isset($reto["meta_docenas_especial"]) ? $reto["meta_docenas_especial"] : null;
 		$modeloEsp = isset($f["modelo_especial"]) ? trim((string) $f["modelo_especial"]) : "";
 		$docenasEsp = isset($f["docenas_especial"]) ? $f["docenas_especial"] : 0;
+		$extraMetaMod = "";
+		if (isset($reto["meta_modelos_modo"]) && $reto["meta_modelos_modo"] === "porcentaje"
+			&& isset($reto["meta_modelos_pct"]) && $reto["meta_modelos_pct"] !== null && $reto["meta_modelos_pct"] !== "") {
+			$extraMetaMod = " <small class='text-muted'>("
+				. htmlspecialchars(number_format((float) $reto["meta_modelos_pct"], 0, ".", ","), ENT_QUOTES, "UTF-8")
+				. "%)</small>";
+		}
 
 		$pctMonto = ControladorMetasRetos::ctrPctAvance($f["venta_real"], $metaMonto);
 		$pctCli = ControladorMetasRetos::ctrPctAvance($f["clientes_nuevos"], $metaCli);
@@ -154,7 +162,7 @@ if (is_array($filas)) {
 			$colVendedor,
 			mrCelda($metaMonto, $f["venta_real"], $pctMonto, $aporteMonto, 0, 2),
 			mrCelda($metaCli, $f["clientes_nuevos"], $pctCli, $aporteCli, 0, 0),
-			mrCelda($metaMod, $f["modelos_activos"], $pctMod, $aporteMod, 0, 0),
+			mrCelda($metaMod, $f["modelos_activos"], $pctMod, $aporteMod, 0, 0, false, $extraMetaMod),
 			$colEsp,
 			$colPagar,
 			$acciones

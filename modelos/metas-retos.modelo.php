@@ -90,6 +90,8 @@ class ModeloMetasRetos
 					comision_clientes_fijo = :comision_clientes_fijo,
 					cumplimiento_clientes = :cumplimiento_clientes,
 					meta_modelos = :meta_modelos,
+					meta_modelos_modo = :meta_modelos_modo,
+					meta_modelos_pct = :meta_modelos_pct,
 					comision_modelos_fijo = :comision_modelos_fijo,
 					cumplimiento_modelos = :cumplimiento_modelos,
 					modelo_especial = :modelo_especial,
@@ -107,14 +109,14 @@ class ModeloMetasRetos
 					cod_vendedor, anio, mes,
 					meta_monto, comision_monto_pct, comision_monto_fijo, cumplimiento_monto,
 					meta_clientes, comision_clientes_fijo, cumplimiento_clientes,
-					meta_modelos, comision_modelos_fijo, cumplimiento_modelos,
+					meta_modelos, meta_modelos_modo, meta_modelos_pct, comision_modelos_fijo, cumplimiento_modelos,
 					modelo_especial, meta_docenas_especial, comision_modelo_esp_pct, cumplimiento_modelo_esp,
 					usuario, fecreg
 				) VALUES (
 					:cod_vendedor, :anio, :mes,
 					:meta_monto, :comision_monto_pct, :comision_monto_fijo, :cumplimiento_monto,
 					:meta_clientes, :comision_clientes_fijo, :cumplimiento_clientes,
-					:meta_modelos, :comision_modelos_fijo, :cumplimiento_modelos,
+					:meta_modelos, :meta_modelos_modo, :meta_modelos_pct, :comision_modelos_fijo, :cumplimiento_modelos,
 					:modelo_especial, :meta_docenas_especial, :comision_modelo_esp_pct, :cumplimiento_modelo_esp,
 					:usuario, NOW()
 				)"
@@ -134,6 +136,10 @@ class ModeloMetasRetos
 		$stmt->bindValue(":cumplimiento_clientes", $datos["cumplimiento_clientes"], PDO::PARAM_STR);
 
 		self::bindNullableInt($stmt, ":meta_modelos", $datos["meta_modelos"]);
+		$modoMod = isset($datos["meta_modelos_modo"]) && $datos["meta_modelos_modo"] === "porcentaje"
+			? "porcentaje" : "cantidad";
+		$stmt->bindValue(":meta_modelos_modo", $modoMod, PDO::PARAM_STR);
+		self::bindNullableDecimal($stmt, ":meta_modelos_pct", isset($datos["meta_modelos_pct"]) ? $datos["meta_modelos_pct"] : null);
 		self::bindNullableDecimal($stmt, ":comision_modelos_fijo", $datos["comision_modelos_fijo"]);
 		$stmt->bindValue(":cumplimiento_modelos", $datos["cumplimiento_modelos"], PDO::PARAM_STR);
 
@@ -234,163 +240,34 @@ class ModeloMetasRetos
 
 	static public function mdlVentaRealPorVendedor($anio, $mes)
 	{
-		$rango = self::rangoMes($anio, $mes);
-		$joinActivo = self::sqlJoinVendedorActivo("v", "ma");
-		$sql = "SELECT TRIM(v.vendedor) AS cod_vendedor, SUM(v.neto) AS venta_real
-			FROM ventajf v
-			{$joinActivo}
-			WHERE v.fecha >= :ini AND v.fecha < :fin
-			  AND " . self::sqlTiposVentaReal("v") . "
-			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
-			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
-			GROUP BY TRIM(v.vendedor)";
-		$stmt = Conexion::conectar()->prepare($sql);
-		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
-		$stmt->execute();
-		$mapa = array();
-		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
-			$mapa[trim($fila["cod_vendedor"])] = (float) $fila["venta_real"];
-		}
-		return $mapa;
+		require_once "metricas-comerciales.modelo.php";
+		return ModeloMetricasComerciales::mdlVentaPermitidaPorVendedor($anio, $mes, false);
 	}
 
 	/**
-	 * Clientes con primera venta de vendedor activo en el período, sin grupo empresarial.
-	 * Imputa al vendedor activo de esa 1ª venta.
+	 * Clientes nuevos: 1ª compra del periodo con documento 100% permitido.
 	 */
 	static public function mdlClientesNuevosPorVendedor($anio, $mes)
 	{
-		$rango = self::rangoMes($anio, $mes);
-		$tipos = self::sqlTiposVentaReal("v");
-		$tipos0 = self::sqlTiposVentaReal("v0");
-		$joinPrimera = self::sqlJoinVendedorActivo("v", "ma");
-		$joinV0 = self::sqlJoinVendedorActivo("v0", "m0");
-
-		$sql = "SELECT TRIM(v0.vendedor) AS cod_vendedor, COUNT(DISTINCT p.cliente) AS clientes_nuevos
-			FROM (
-				SELECT v.cliente, MIN(v.fecha) AS primera
-				FROM ventajf v
-				{$joinPrimera}
-				WHERE v.fecha IS NOT NULL
-				  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
-				  AND TRIM(IFNULL(v.vendedor, '')) <> ''
-				  AND {$tipos}
-				GROUP BY v.cliente
-			) p
-			INNER JOIN ventajf v0
-				ON v0.cliente = p.cliente
-			   AND v0.fecha = p.primera
-			   AND UPPER(IFNULL(v0.estado, '')) <> 'ANULADO'
-			   AND {$tipos0}
-			   AND TRIM(IFNULL(v0.vendedor, '')) <> ''
-			{$joinV0}
-			INNER JOIN clientesjf c ON c.codigo = p.cliente
-			WHERE p.primera >= :ini AND p.primera < :fin
-			  AND (c.grupo IS NULL OR TRIM(c.grupo) = '')
-			GROUP BY TRIM(v0.vendedor)";
-
-		$stmt = Conexion::conectar()->prepare($sql);
-		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
-		$stmt->execute();
-		$mapa = array();
-		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
-			$mapa[trim($fila["cod_vendedor"])] = (int) $fila["clientes_nuevos"];
-		}
-		return $mapa;
+		require_once "metricas-comerciales.modelo.php";
+		return ModeloMetricasComerciales::mdlClientesNuevosPermitidosPorVendedor($anio, $mes);
 	}
 
-	/** Modelos distintos vendidos en el mes (movimientosjf_AAAA + articulojf.modelo). */
+	/** Modelos distintos con líneas de marca permitida. */
 	static public function mdlModelosActivosPorVendedor($anio, $mes)
 	{
-		$rango = self::rangoMes($anio, $mes);
-		$tabla = self::tablaMovimientos($anio);
-
-		try {
-			$pdo = Conexion::conectar();
-			$check = $pdo->query("SHOW TABLES LIKE " . $pdo->quote($tabla));
-			if (!$check || !$check->fetch()) {
-				return array();
-			}
-		} catch (Exception $e) {
-			return array();
-		}
-
-		$joinActivo = self::sqlJoinVendedorActivo("m", "ma");
-		$sql = "SELECT TRIM(m.vendedor) AS cod_vendedor, COUNT(DISTINCT a.modelo) AS modelos_activos
-			FROM {$tabla} m
-			INNER JOIN articulojf a ON a.articulo = m.articulo
-			{$joinActivo}
-			WHERE m.fecha >= :ini AND m.fecha < :fin
-			  AND " . self::sqlTiposVentaReal("m") . "
-			  AND TRIM(IFNULL(a.modelo, '')) <> ''
-			  AND TRIM(IFNULL(m.vendedor, '')) <> ''
-			GROUP BY TRIM(m.vendedor)";
-
-		$stmt = Conexion::conectar()->prepare($sql);
-		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
-		$stmt->execute();
-		$mapa = array();
-		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
-			$mapa[trim($fila["cod_vendedor"])] = (int) $fila["modelos_activos"];
-		}
-		return $mapa;
+		require_once "metricas-comerciales.modelo.php";
+		return ModeloMetricasComerciales::mdlModelosPermitidosPorVendedor($anio, $mes);
 	}
 
 	/**
-	 * Docenas y venta por vendedor+modelo en el mes.
-	 * Docena = SUM(cantidad)/12. Venta = SUM(total) de movimientos.
+	 * Docenas y venta por vendedor+modelo (solo marcas permitidas).
 	 * Retorna [cod_vendedor => [modelo => ['docenas'=>, 'venta'=>]]]
 	 */
 	static public function mdlVentaModeloPorVendedor($anio, $mes)
 	{
-		$rango = self::rangoMes($anio, $mes);
-		$tabla = self::tablaMovimientos($anio);
-
-		try {
-			$pdo = Conexion::conectar();
-			$check = $pdo->query("SHOW TABLES LIKE " . $pdo->quote($tabla));
-			if (!$check || !$check->fetch()) {
-				return array();
-			}
-		} catch (Exception $e) {
-			return array();
-		}
-
-		$joinActivo = self::sqlJoinVendedorActivo("m", "ma");
-		$sql = "SELECT TRIM(m.vendedor) AS cod_vendedor,
-				TRIM(a.modelo) AS modelo,
-				SUM(m.cantidad) / 12 AS docenas,
-				SUM(IFNULL(m.total, 0)) AS venta_modelo
-			FROM {$tabla} m
-			INNER JOIN articulojf a ON a.articulo = m.articulo
-			{$joinActivo}
-			WHERE m.fecha >= :ini AND m.fecha < :fin
-			  AND " . self::sqlTiposVentaReal("m") . "
-			  AND TRIM(IFNULL(a.modelo, '')) <> ''
-			  AND TRIM(IFNULL(m.vendedor, '')) <> ''
-			GROUP BY TRIM(m.vendedor), TRIM(a.modelo)";
-
-		$stmt = Conexion::conectar()->prepare($sql);
-		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
-		$stmt->execute();
-
-		$mapa = array();
-		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
-			$cod = trim($fila["cod_vendedor"]);
-			$mod = trim($fila["modelo"]);
-			if (!isset($mapa[$cod])) {
-				$mapa[$cod] = array();
-			}
-			$mapa[$cod][$mod] = array(
-				"docenas" => round((float) $fila["docenas"], 2),
-				"venta" => round((float) $fila["venta_modelo"], 2)
-			);
-		}
-		return $mapa;
+		require_once "metricas-comerciales.modelo.php";
+		return ModeloMetricasComerciales::mdlVentaModeloPermitidaPorVendedor($anio, $mes);
 	}
 
 	static public function mdlListarAvancePeriodo($anio, $mes)
@@ -412,6 +289,9 @@ class ModeloMetasRetos
 		$modelos = self::mdlModelosActivosPorVendedor($anio, $mes);
 		$porModelo = self::mdlVentaModeloPorVendedor($anio, $mes);
 
+		require_once "grupos-marcas-comercial.modelo.php";
+		$fechaRef = sprintf("%04d-%02d-01", (int) $anio, (int) $mes);
+
 		$lista = array();
 		foreach ($vendedores as $vend) {
 			$cod = trim($vend["codigo"]);
@@ -430,6 +310,7 @@ class ModeloMetasRetos
 				"venta_real" => isset($ventas[$cod]) ? $ventas[$cod] : 0,
 				"clientes_nuevos" => isset($clientes[$cod]) ? $clientes[$cod] : 0,
 				"modelos_activos" => isset($modelos[$cod]) ? $modelos[$cod] : 0,
+				"universo_modelos" => ModeloGruposMarcasComercial::mdlUniversoModelosActivosPorVendedor($cod, $fechaRef),
 				"modelo_especial" => $modeloEsp,
 				"docenas_especial" => $docenasEsp,
 				"venta_modelo_especial" => $ventaEsp

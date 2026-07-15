@@ -67,11 +67,13 @@ foreach ($meses as $mesItem) {
                             <span class="label label-primary" style="font-size:13px;">
                                 <?php echo htmlspecialchars($nombreMes . " " . $anioFiltro); ?>
                             </span>
-                            <span class="text-muted" style="margin-left:8px;">Solo vendedores activos</span>
+                            <span class="text-muted" style="margin-left:8px;">Solo vendedores activos · avance por marcas permitidas</span>
                         </p>
                         <p class="text-muted" style="margin:0;font-size:12px;line-height:1.45;">
                             Cada columna resume <strong>meta → real → %</strong>.
-                            Modelo especial: docenas = cantidad÷12.
+                            El real de ventas, modelos y clientes nuevos considera solo marcas autorizadas al vendedor;
+                            las NC descuento (E05 sin unidades) restan al monto sin marcar marca.
+                            Modelo especial: docenas = cantidad÷12 (solo si el modelo es permitida).
                             El estimado suma comisiones según avance (no es liquidación).
                         </p>
                     </div>
@@ -102,6 +104,50 @@ foreach ($meses as $mesItem) {
                     </thead>
                     <tbody></tbody>
                 </table>
+            </div>
+        </div>
+
+        <div class="box box-default collapsed-box" id="mrBoxCoberturaMarcas">
+            <div class="box-header with-border">
+                <h3 class="box-title">
+                    <i class="fa fa-balance-scale"></i> Conciliación por marcas
+                    <small class="text-muted">(cabecera vs KPI Fase 3)</small>
+                </h3>
+                <div class="box-tools pull-right">
+                    <button type="button" class="btn btn-box-tool" data-widget="collapse">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="box-body">
+                <p class="text-muted" style="margin-top:0;font-size:12px;line-height:1.45;">
+                    <strong>Fase 3 activa:</strong> el avance oficial de metas/retos usa
+                    <strong>venta permitida</strong> (líneas con marca autorizada)
+                    + <strong>NC descuento E05</strong> (sin unidades, resta al vendedor sin marca).
+                    Las devoluciones E05 con unidades se imputan por marca.
+                    Esta tabla sigue mostrando la cabecera anterior para conciliar.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-condensed table-striped" id="tablaConciliacionMarcas" width="100%">
+                        <thead>
+                            <tr>
+                                <th>Vendedor</th>
+                                <th class="text-right">Cabecera S/</th>
+                                <th class="text-right">KPI permitido S/</th>
+                                <th class="text-right">Líneas perm. S/</th>
+                                <th class="text-right">NC desc. S/</th>
+                                <th class="text-right">Fuera cobertura S/</th>
+                                <th class="text-right">Dif. cab−KPI</th>
+                                <th class="text-center">Cli. cab.</th>
+                                <th class="text-center">Cli. perm.</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="10" class="text-muted text-center">Expande el panel para cargar datos del periodo.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </section>
@@ -182,6 +228,11 @@ foreach ($meses as $mesItem) {
 @media (max-width: 767px) {
     .mr-total-box { text-align: left; margin-top: 8px; }
 }
+#tablaConciliacionMarcas .mr-cob-dif-pos { color: #dd4b39; font-weight: 700; }
+#tablaConciliacionMarcas .mr-cob-dif-zero { color: #888; }
+#tablaConciliacionMarcas .mr-cob-permitida { color: #00a65a; font-weight: 700; }
+#tablaConciliacionMarcas .mr-cob-fuera { color: #f39c12; }
+.mr-detalle-marca-table { font-size: 11px; margin: 6px 0 0; }
 </style>
 
 <?php if ($puedeEditar) { ?>
@@ -256,17 +307,33 @@ foreach ($meses as $mesItem) {
                     <div class="box box-solid box-warning">
                         <div class="box-header with-border"><h3 class="box-title">3) Modelos activos</h3></div>
                         <div class="box-body">
-                            <p class="help-block" style="margin-top:0;">Modelos distintos vendidos en el mes.</p>
+                            <p class="help-block" style="margin-top:0;">
+                                Universo del vendedor (grupos vigentes):
+                                <strong id="mrUniversoModelosTxt">—</strong> modelos activos.
+                                El avance cuenta modelos distintos vendidos de marcas permitidas.
+                            </p>
                             <div class="row">
-                                <div class="col-sm-4">
+                                <div class="col-sm-3">
+                                    <label>Definir meta como</label>
+                                    <select class="form-control" name="meta_modelos_modo" id="mrMetaModelosModo">
+                                        <option value="cantidad">Cantidad</option>
+                                        <option value="porcentaje">Porcentaje del universo</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3" id="mrWrapMetaModelosCantidad">
                                     <label>Meta (#)</label>
                                     <input type="number" step="1" min="0" class="form-control" name="meta_modelos" id="mrMetaModelos">
                                 </div>
-                                <div class="col-sm-4">
+                                <div class="col-sm-3" id="mrWrapMetaModelosPct" style="display:none;">
+                                    <label>Meta (%)</label>
+                                    <input type="number" step="0.01" min="0" max="100" class="form-control" name="meta_modelos_pct" id="mrMetaModelosPct" placeholder="ej. 80">
+                                    <p class="help-block" style="margin-bottom:0;" id="mrMetaModelosPctPreview">Equivale a — modelos</p>
+                                </div>
+                                <div class="col-sm-3">
                                     <label>Comisión fija S/</label>
                                     <input type="number" step="0.01" min="0" class="form-control" name="comision_modelos_fijo" id="mrComisionModelos">
                                 </div>
-                                <div class="col-sm-4">
+                                <div class="col-sm-3">
                                     <label>Cumplimiento</label>
                                     <select class="form-control" name="cumplimiento_modelos" id="mrCumplimientoModelos">
                                         <option value="todo_nada">Todo o nada</option>

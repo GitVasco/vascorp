@@ -13,6 +13,33 @@ require_once '../modelos/pedidos.modelo.php';
 require_once '../controladores/movimientos.controlador.php';
 require_once '../modelos/movimientos.modelo.php';
 
+require_once '../controladores/grupos-marcas-comercial.controlador.php';
+require_once '../modelos/grupos-marcas-comercial.modelo.php';
+
+/**
+ * Alerta Fase 4: marca no autorizada para el vendedor (no bloquea).
+ */
+function alertaCoberturaPedidoCv($codVendedor, $modelo = "", $articulo = "")
+{
+	$codVendedor = trim((string) $codVendedor);
+	if ($codVendedor === "") {
+		return null;
+	}
+	if (trim((string) $modelo) !== "") {
+		$res = ControladorGruposMarcasComercial::ctrVerificarCoberturaModelo($codVendedor, $modelo);
+	} elseif (trim((string) $articulo) !== "") {
+		$res = ControladorGruposMarcasComercial::ctrVerificarCoberturaArticulo($codVendedor, $articulo);
+	} else {
+		return null;
+	}
+	if (!empty($res["ok"])) {
+		return null;
+	}
+	return isset($res["mensaje"]) && $res["mensaje"] !== ""
+		? $res["mensaje"]
+		: "Marca fuera de cobertura del vendedor (no suma a metas).";
+}
+
 /**
  * Normaliza lectura del escáner para match con articulojf.articulo.
  * - Letra inicial (RL271013): código completo.
@@ -379,11 +406,20 @@ class AjaxPedidos
 
         $rpt = ModeloPedidos::mdlIncrementarArticuloTemporalPedidoCv($pedido, $articuloSku, $precio);
 
+        $alertaCobertura = null;
         if ($rpt === "ok") {
+            $vendCab = isset($cabecera["vendedor"]) ? $cabecera["vendedor"] : "";
+            $alertaCobertura = alertaCoberturaPedidoCv($vendCab, $modelo, $articuloSku);
+            if ($alertaCobertura && $advertencia !== "") {
+                $advertencia = $advertencia . " " . $alertaCobertura;
+            } elseif ($alertaCobertura) {
+                $advertencia = $alertaCobertura;
+            }
             echo json_encode(array(
                 "ok" => true,
                 "codigo" => $articuloSku,
                 "advertencia" => $advertencia,
+                "alerta_cobertura" => $alertaCobertura,
             ));
         } else {
             echo json_encode(array("ok" => false, "mensaje" => "No se pudo registrar la línea en el detalle."));
@@ -541,7 +577,12 @@ class AjaxPedidos
                 }
 
                 if ($cab == "ok") {
-                    echo json_encode($talonarioN);
+                    $alerta = alertaCoberturaPedidoCv($vendedorN, $modeloN);
+                    echo json_encode(array(
+                        "ok" => true,
+                        "pedido" => $talonarioN,
+                        "alerta_cobertura" => $alerta
+                    ));
                 }
             } else {
                 $limpiar = ModeloPedidos::mdlEliminarDetalleTemporalB("detalle_temporal", $pedidoN, $modeloN);
@@ -558,7 +599,12 @@ class AjaxPedidos
                     }
                 }
 
-                echo json_encode("toast");
+                $alerta = alertaCoberturaPedidoCv($vendedorN, $modeloN);
+                echo json_encode(array(
+                    "ok" => true,
+                    "pedido" => "toast",
+                    "alerta_cobertura" => $alerta
+                ));
             }
         }
     }
