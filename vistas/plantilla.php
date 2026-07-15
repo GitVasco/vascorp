@@ -804,7 +804,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-retos") { ?>
-    <script src="vistas/js/metas-retos.js?v=1"></script>
+    <script src="vistas/js/metas-retos.js?v=8"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
     <script src="vistas/js/zonas-comerciales.js?v=5"></script>
@@ -812,7 +812,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mapas-zonas") { ?>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="vistas/js/mapas-zonas.js?v=9"></script>
+    <script src="vistas/js/mapas-zonas.js?v=18"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") { ?>
     <script src="vistas/js/linea-credito.js?v=20"></script>

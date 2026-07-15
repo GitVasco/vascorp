@@ -31,4 +31,11 @@ if ($accion === "guardar") {
 	return;
 }
 
+if ($accion === "listarModelos") {
+	echo json_encode(ControladorMetasRetos::ctrListarModelosAjax(
+		isset($_POST["q"]) ? $_POST["q"] : ""
+	));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no válida"));

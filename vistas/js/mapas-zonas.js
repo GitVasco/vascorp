@@ -1,4 +1,4 @@
-/* global $, L */
+/* global $, L, Chart */
 (function () {
     "use strict";
 
@@ -129,6 +129,7 @@
     var mzLayerPeru = null;
     var mzMapReady = { lima: false, peru: false };
     var mzYaAjustado = { lima: false, peru: false };
+    var mzHistCharts = [];
 
     function mzPeriodo() {
         return {
@@ -167,6 +168,225 @@
             max = Math.max(max, Number(z.venta_real) || 0);
         });
         return max > 0 ? max : 1;
+    }
+
+    function mzDestroyHistCharts() {
+        mzHistCharts.forEach(function (ch) {
+            if (ch && typeof ch.destroy === "function") {
+                try {
+                    ch.destroy();
+                } catch (e) { /* ignore */ }
+            }
+        });
+        mzHistCharts = [];
+        $("#mzHistGrid").empty();
+    }
+
+    function mzHexToRgba(hex, alpha) {
+        var h = String(hex || "#777777").replace("#", "");
+        if (h.length === 3) {
+            h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+        }
+        if (h.length !== 6) {
+            h = "777777";
+        }
+        var r = parseInt(h.slice(0, 2), 16);
+        var g = parseInt(h.slice(2, 4), 16);
+        var b = parseInt(h.slice(4, 6), 16);
+        return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+    }
+
+    function mzPintarMiniLinea(canvas, labels, valores, color) {
+        if (!canvas || !canvas.parentNode || typeof Chart === "undefined") {
+            return null;
+        }
+        var stroke = mzHexToRgba(color, 1);
+        var fill = mzHexToRgba(color, 0.18);
+        var data = (valores || []).map(function (v) {
+            return Math.round(Number(v) || 0);
+        });
+        var ctx = canvas.getContext("2d");
+        var chartData = {
+            labels: labels,
+            datasets: [
+                {
+                    label: "Venta",
+                    fillColor: fill,
+                    strokeColor: stroke,
+                    pointColor: stroke,
+                    pointStrokeColor: stroke,
+                    pointHighlightFill: "#fff",
+                    pointHighlightStroke: stroke,
+                    data: data
+                }
+            ]
+        };
+        var optionsV1 = {
+            scaleShowGridLines: false,
+            scaleShowHorizontalLines: false,
+            scaleShowVerticalLines: false,
+            scaleShowLabels: false,
+            scaleLineColor: "rgba(0,0,0,0)",
+            scaleFontSize: 0,
+            scaleBeginAtZero: true,
+            pointDot: false,
+            datasetStrokeWidth: 2,
+            bezierCurve: true,
+            bezierCurveTension: 0.3,
+            datasetFill: true,
+            responsive: true,
+            maintainAspectRatio: false,
+            showTooltips: true,
+            tooltipTemplate: "<%if (label){%><%=label%>: <%}%>S/ <%= value %>"
+        };
+
+        var chartV1 = new Chart(ctx);
+        if (typeof chartV1.Line === "function") {
+            return chartV1.Line(chartData, optionsV1);
+        }
+
+        return new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        data: data,
+                        borderColor: stroke,
+                        backgroundColor: fill,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 3,
+                        fill: true,
+                        lineTension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                legend: { display: false },
+                tooltips: {
+                    callbacks: {
+                        label: function (item) {
+                            return "S/ " + mzFmt(item.yLabel != null ? item.yLabel : item.value);
+                        }
+                    }
+                },
+                scales: {
+                    xAxes: [{ display: false }],
+                    yAxes: [
+                        {
+                            display: false,
+                            ticks: { beginAtZero: true }
+                        }
+                    ]
+                }
+            }
+        });
+    }
+
+    function mzPintarHistorico(hist, vista) {
+        var tituloVista = vista === "peru" ? "Perú sin Lima" : "Lima y alrededores";
+        $("#mzHistTitulo").text(
+            "(últimos 12 meses · escala propia por zona · " + tituloVista + ")"
+        );
+
+        var labels = hist && hist.labels ? hist.labels : [];
+        var series = hist && hist.series ? hist.series : [];
+        mzDestroyHistCharts();
+
+        if (!labels.length || !series.length) {
+            $("#mzHistEstado").text("Sin datos de ventas para el histórico").show();
+            return;
+        }
+        $("#mzHistEstado").hide();
+
+        if (typeof Chart === "undefined") {
+            $("#mzHistEstado").text("Chart.js no disponible").show();
+            return;
+        }
+
+        var $grid = $("#mzHistGrid");
+        var ultimoLabel = labels.length ? labels[labels.length - 1] : "";
+
+        series.forEach(function (s, idx) {
+            var color = s.color || "#777777";
+            var vals = s.valores || [];
+            var ultimo = vals.length ? Number(vals[vals.length - 1]) || 0 : 0;
+            var prev = vals.length > 1 ? Number(vals[vals.length - 2]) || 0 : 0;
+            var deltaPct = null;
+            if (prev !== 0) {
+                deltaPct = ((ultimo - prev) / Math.abs(prev)) * 100;
+            } else if (ultimo !== 0) {
+                deltaPct = 100;
+            } else {
+                deltaPct = 0;
+            }
+            var deltaCls = "flat";
+            var deltaTxt = "0%";
+            if (deltaPct > 0.5) {
+                deltaCls = "up";
+                deltaTxt = "+" + deltaPct.toFixed(0) + "%";
+            } else if (deltaPct < -0.5) {
+                deltaCls = "down";
+                deltaTxt = deltaPct.toFixed(0) + "%";
+            }
+
+            var canvasId = "mzHistMini_" + idx;
+            var $card = $(
+                "<div class='mz-hist-card' role='button' tabindex='0'/>"
+            )
+                .attr("data-codigo", s.codigo || "")
+                .attr("title", "Ver ficha de " + (s.nombre || s.codigo || "zona"));
+
+            $card.append(
+                "<div class='mz-hist-card-head'>" +
+                    "<div style='min-width:0;flex:1;'>" +
+                    "<div class='mz-hist-card-name'>" +
+                    mzEsc(s.nombre || s.codigo || "Zona") +
+                    "</div>" +
+                    "<div class='mz-hist-card-monto' style='color:" +
+                    mzEsc(color) +
+                    ";'>" +
+                    mzEsc(mzMoney(ultimo)) +
+                    "<span class='mz-hist-card-delta " +
+                    deltaCls +
+                    "'>" +
+                    mzEsc(deltaTxt) +
+                    "</span></div>" +
+                    "<div class='mz-hist-card-meta'>vs mes anterior · " +
+                    mzEsc(ultimoLabel) +
+                    "</div>" +
+                    "</div>" +
+                    "<i class='mz-hist-card-swatch' style='background:" +
+                    mzEsc(color) +
+                    ";'></i>" +
+                    "</div>" +
+                    "<div class='mz-hist-card-canvas-wrap'>" +
+                    "<canvas id='" +
+                    canvasId +
+                    "' height='72'></canvas>" +
+                    "</div>"
+            );
+            $grid.append($card);
+
+            var canvas = document.getElementById(canvasId);
+            var chart = mzPintarMiniLinea(canvas, labels, vals, color);
+            if (chart) {
+                mzHistCharts.push(chart);
+            }
+        });
+    }
+
+    function mzZonasDesdeCache(entry) {
+        if (!entry) {
+            return [];
+        }
+        if (Array.isArray(entry)) {
+            return entry;
+        }
+        return entry.zonas || [];
     }
 
     function mzInitMap(id, center, zoom) {
@@ -323,9 +543,11 @@
                 })
                 .toggleClass("mz-active", mzSeleccion === z.codigo)
                 .append($("<div class='mz-treemap-title'/>").text(z.nombre || z.codigo))
-                .append($("<div class='mz-treemap-venta'/>").text(mzMoney(venta)))
+                .append($("<div class='mz-treemap-venta'/>").text(mzFmt(venta)))
                 .append(
-                    $("<div class='mz-treemap-meta'/>").text(mzFmt(z.total_clientes) + " clientes")
+                    $("<div class='mz-treemap-meta'/>").text(
+                        mzFmt(z.clientes_con_venta != null ? z.clientes_con_venta : 0) + " clientes"
+                    )
                 );
 
             $box.append($cell);
@@ -368,7 +590,7 @@
         });
     }
 
-    function mzAbrirClientesZona(idZona, codigo) {
+    function mzAbrirClientesZona(idZona, codigo, modo) {
         var z = codigo ? mzPorCodigo[codigo] : null;
         if (!idZona && z) {
             idZona = z.id;
@@ -380,23 +602,25 @@
             mzMostrarFicha(codigo);
         }
 
+        var soloNuevos = modo === "nuevos";
         var p = mzPeriodo();
         var nombre = z ? z.nombre : "Zona";
-        var color = z ? z.color || "#3c8dbc" : "#3c8dbc";
+        var colorZona = z ? z.color || "#3c8dbc" : "#3c8dbc";
+        $("#mzModalTituloTipo").text(soloNuevos ? "Clientes nuevos" : "Clientes con venta");
         $("#mzModalZonaNombre").text(nombre);
-        $("#mzModalHeader").css("background", color);
+        $("#mzModalHeader").css("background", soloNuevos ? "#00a65a" : colorZona);
         $("#mzModalPeriodo").text(p.mes + "/" + p.anio);
         $("#mzModalTotalVenta").text("…");
         $("#mzModalTotalCli").text("…");
         $("#mzTablaClientes tbody").html(
-            "<tr><td colspan='3' class='text-muted'><i class='fa fa-spinner fa-spin'></i> Cargando…</td></tr>"
+            "<tr><td colspan='4' class='text-muted'><i class='fa fa-spinner fa-spin'></i> Cargando…</td></tr>"
         );
         $("#modalMzClientesZona").modal("show");
 
         $.post(
             "ajax/zonas-comerciales.ajax.php",
             {
-                accion: "clientesVentaZona",
+                accion: soloNuevos ? "clientesNuevosZona" : "clientesVentaZona",
                 idZona: idZona,
                 anio: p.anio,
                 mes: p.mes
@@ -404,7 +628,7 @@
             function (resp) {
                 if (!resp || !resp.ok) {
                     $("#mzTablaClientes tbody").html(
-                        "<tr><td colspan='3' class='text-danger'>" +
+                        "<tr><td colspan='4' class='text-danger'>" +
                             mzEsc((resp && resp.mensaje) || "No se pudo cargar") +
                             "</td></tr>"
                     );
@@ -415,29 +639,68 @@
                 if (resp.zona && resp.zona.nombre) {
                     $("#mzModalZonaNombre").text(resp.zona.nombre);
                 }
+                var tip = soloNuevos
+                    ? "primera venta del período · vendedor de esa venta"
+                    : "máx. 500, nuevos primero · vendedores con venta";
+                $("#mzModalResumen").html(
+                    "Período: <strong>" +
+                        mzEsc(String(p.mes + "/" + p.anio)) +
+                        "</strong>. Total: <strong id='mzModalTotalVenta'>" +
+                        mzEsc(mzMoney(resp.total_venta)) +
+                        "</strong> · <span id='mzModalTotalCli'>" +
+                        mzEsc(mzFmt(resp.total_clientes)) +
+                        "</span> clientes (" +
+                        tip +
+                        ")."
+                );
                 var rows = resp.clientes || [];
                 if (!rows.length) {
                     $("#mzTablaClientes tbody").html(
-                        "<tr><td colspan='3' class='text-muted'>Ningún cliente con venta en este período</td></tr>"
+                        "<tr><td colspan='4' class='text-muted'>" +
+                            (soloNuevos
+                                ? "Ningún cliente nuevo en este período"
+                                : "Ningún cliente con venta en este período") +
+                            "</td></tr>"
                     );
                     return;
                 }
                 var html = "";
                 rows.forEach(function (c) {
-                    var cat = c.categoria ? String(c.categoria) : "Sin categoría";
-                    var color = c.categoria_color ? String(c.categoria_color) : "#777777";
+                    var cat = c.categoria ? String(c.categoria) : "";
+                    var colorCat = c.categoria_color ? String(c.categoria_color) : "#777777";
+                    var labelNuevo =
+                        soloNuevos || c.es_nuevo
+                            ? " <span class='label label-success' style='font-weight:600;margin-left:6px;'>Nuevo</span>"
+                            : "";
+                    var badgeCat = cat
+                        ? "<span class='label' style='font-weight:600;flex:0 0 auto;background-color:" +
+                          mzEsc(colorCat) +
+                          ";color:#fff;'>" +
+                          mzEsc(cat) +
+                          "</span>"
+                        : "";
+                    var vend = soloNuevos
+                        ? c.cod_vendedor || "—"
+                        : c.codigos_vendedor || c.cod_vendedor || "—";
                     html +=
                         "<tr>" +
-                        "<td>" + mzEsc(c.codigo) + "</td>" +
+                        "<td>" +
+                        mzEsc(c.codigo) +
+                        "</td>" +
                         "<td>" +
                         "<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;'>" +
-                        "<span style='min-width:0;'>" + mzEsc(c.nombre) + "</span>" +
-                        "<span class='label' style='font-weight:600;flex:0 0 auto;background-color:" +
-                        mzEsc(color) +
-                        ";color:#fff;'>" +
-                        mzEsc(cat) +
-                        "</span></div></td>" +
-                        "<td class='text-right'><strong>" + mzMoney(c.venta_real) + "</strong></td>" +
+                        "<span style='min-width:0;'>" +
+                        mzEsc(c.nombre) +
+                        labelNuevo +
+                        "</span>" +
+                        badgeCat +
+                        "</div></td>" +
+                        "<td><code>" +
+                        mzEsc(vend) +
+                        "</code></td>" +
+                        "<td class='text-right'><strong>" +
+                        mzMoney(c.venta_real) +
+                        "</strong></td>" +
                         "</tr>";
                 });
                 $("#mzTablaClientes tbody").html(html);
@@ -445,7 +708,7 @@
             "json"
         ).fail(function () {
             $("#mzTablaClientes tbody").html(
-                "<tr><td colspan='3' class='text-danger'>Error de comunicación</td></tr>"
+                "<tr><td colspan='4' class='text-danger'>Error de comunicación</td></tr>"
             );
         });
     }
@@ -475,7 +738,7 @@
         $(".mz-treemap-cell").removeClass("mz-active");
         $(".mz-treemap-cell[data-codigo='" + codigo + "']").addClass("mz-active");
 
-        var zonas = mzCache[mzCacheKey(mzVista)] || [];
+        var zonas = mzZonasDesdeCache(mzCache[mzCacheKey(mzVista)]);
         mzPintarMapa(mzVista, zonas, false);
         mzPintarTreemap(zonas);
 
@@ -485,11 +748,20 @@
         $("#mzFichaHeader").css("background", z.color || "#3c8dbc");
         $("#mzFichaDesc").text(z.descripcion || "");
         $("#mzFichaVenta").text(mzMoney(z.venta_real));
-        $("#mzFichaClientes").text(mzFmt(z.total_clientes));
+        $("#mzFichaClientesVenta").text(
+            mzFmt(z.clientes_con_venta != null ? z.clientes_con_venta : 0)
+        );
+        $("#mzFichaClientesNuevos").text(
+            mzFmt(z.clientes_nuevos != null ? z.clientes_nuevos : 0)
+        );
+        $("#mzFichaClientesSinAtender").text(
+            mzFmt(z.clientes_sin_atender != null ? z.clientes_sin_atender : 0)
+        );
         $("#mzFichaVendCount").text(mzFmt(z.total_vendedores));
         $("#mzFichaUbigeos").text(mzFmt(z.total_ubigeos));
         $("#mzFichaCodigo").text(z.codigo || "");
         $("#mzBtnFichaClientes").attr("data-id-zona", z.id).attr("data-codigo", z.codigo);
+        $("#mzBtnFichaNuevos").attr("data-id-zona", z.id).attr("data-codigo", z.codigo);
 
         var $ulVenta = $("#mzFichaVentaVendedores").empty();
         var ventasVend = z.venta_por_vendedor || [];
@@ -529,7 +801,9 @@
         mzVista = vista || "lima";
         var key = mzCacheKey(mzVista);
         if (!forzar && mzCache[key]) {
-            mzAplicarDatos(mzCache[key], false);
+            var cached = mzCache[key];
+            mzAplicarDatos(mzZonasDesdeCache(cached), false);
+            mzPintarHistorico(cached.historico || null, mzVista);
             mzSetCarga("");
             if (mzSeleccion && mzPorCodigo[mzSeleccion]) {
                 mzMostrarFicha(mzSeleccion);
@@ -547,10 +821,15 @@
                     mzSetCarga("Error al cargar");
                     return;
                 }
-                mzCache[key] = resp.zonas || [];
+                var zonas = resp.zonas || [];
+                mzCache[key] = {
+                    zonas: zonas,
+                    historico: resp.historico_12m || null
+                };
                 mzYaAjustado[mzVista] = false;
-                mzAplicarDatos(mzCache[key], true);
-                mzSetCarga(mzCache[key].length + " zonas");
+                mzAplicarDatos(zonas, true);
+                mzPintarHistorico(resp.historico_12m || null, mzVista);
+                mzSetCarga(zonas.length + " zonas");
                 if (mzSeleccion && mzPorCodigo[mzSeleccion]) {
                     mzMostrarFicha(mzSeleccion);
                 } else {
@@ -626,12 +905,27 @@
         }
     });
 
+    $(document).on("click", ".mz-hist-card", function () {
+        var codigo = $(this).attr("data-codigo") || $(this).data("codigo");
+        if (codigo) {
+            mzMostrarFicha(codigo);
+        }
+    });
+
     $(document).on("click", ".btnMzVerClientes", function (e) {
         e.preventDefault();
         e.stopPropagation();
         var idZona = $(this).attr("data-id-zona") || $(this).data("idZona");
         var codigo = $(this).attr("data-codigo") || $(this).data("codigo");
-        mzAbrirClientesZona(idZona, codigo);
+        mzAbrirClientesZona(idZona, codigo, "venta");
+    });
+
+    $(document).on("click", ".btnMzVerNuevos", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var idZona = $(this).attr("data-id-zona") || $(this).data("idZona");
+        var codigo = $(this).attr("data-codigo") || $(this).data("codigo");
+        mzAbrirClientesZona(idZona, codigo, "nuevos");
     });
 
     if ($("#mzMapLima").length) {

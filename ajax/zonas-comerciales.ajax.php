@@ -108,6 +108,14 @@ if ($accion === "clientesVentaZona") {
 	return;
 }
 
+if ($accion === "clientesNuevosZona") {
+	$id = isset($_POST["idZona"]) ? (int) $_POST["idZona"] : 0;
+	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
+	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
+	echo json_encode(ControladorZonasComerciales::ctrClientesNuevosZona($id, $anio, $mes));
+	return;
+}
+
 if ($accion === "listarVendedores") {
 	$id = isset($_POST["idZona"]) ? (int) $_POST["idZona"] : 0;
 	$lista = ControladorZonasComerciales::ctrListarVendedoresZona($id);

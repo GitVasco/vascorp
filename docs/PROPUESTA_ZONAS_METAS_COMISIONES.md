@@ -128,7 +128,7 @@ Cuando se implemente, Fase 0 = catálogo + ubigeo→zona; Fase 1 = campos en cli
 | Metas | **Por vendedor activo**, mensuales |
 | Quién se lleva la venta / meta / comisión | El **vendedor del maestro del cliente** (ej. Juan). La zona organiza cobertura; **no cambia** a quién se imputa la venta |
 | Cobranza | No entra en este esquema |
-| MVP retos | 1) Monto ventas (umbral + % posible) 2) Clientes nuevos 3) Modelos activos |
+| MVP retos | 1) Monto ventas 2) Clientes nuevos 3) Modelos activos 4) Modelo especial (1/vend-mes, docenas=cant/12, comisión %) |
 | Cliente nuevo | Primera compra en la vida, **salvo** que el cliente se agregue a un **grupo ya existente** (no cuenta) |
 | Modelos activos | Conteo de **modelos distintos vendidos en el mes** por el vendedor |
 | Cumplimiento | Configurable (parcial vs todo-o-nada) |

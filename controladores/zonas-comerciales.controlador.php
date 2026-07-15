@@ -338,12 +338,19 @@ class ControladorZonasComerciales
 			$mes = (int) date("n");
 		}
 
+		$vistaHist = $vista === "" ? "lima" : $vista;
+
 		return array(
 			"ok" => true,
 			"anio" => $anio,
 			"mes" => $mes,
 			"zonas" => ModeloZonasComerciales::mdlResumenMapaZonas(
 				$vista === "" ? null : $vista,
+				$anio,
+				$mes
+			),
+			"historico_12m" => ModeloZonasComerciales::mdlVentasTotalesVistaUltimos12Meses(
+				$vistaHist,
 				$anio,
 				$mes
 			)
@@ -373,6 +380,55 @@ class ControladorZonasComerciales
 
 		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
 		$clientes = ModeloZonasComerciales::mdlClientesVentaZonaPeriodo($idZona, $anio, $mes);
+		$total = 0.0;
+		$totalNuevos = 0;
+		foreach ($clientes as $c) {
+			$total += (float) $c["venta_real"];
+			if (!empty($c["es_nuevo"])) {
+				$totalNuevos++;
+			}
+		}
+
+		return array(
+			"ok" => true,
+			"anio" => $anio,
+			"mes" => $mes,
+			"zona" => $zona ? array(
+				"id" => (int) $zona["id"],
+				"codigo" => $zona["codigo"],
+				"nombre" => $zona["nombre"],
+				"color" => isset($zona["color"]) ? $zona["color"] : "#777"
+			) : null,
+			"total_venta" => round($total, 2),
+			"total_clientes" => count($clientes),
+			"total_nuevos" => $totalNuevos,
+			"clientes" => $clientes
+		);
+	}
+
+	static public function ctrClientesNuevosZona($idZona, $anio = null, $mes = null)
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "clientes" => array());
+		}
+
+		$idZona = (int) $idZona;
+		if ($idZona < 1) {
+			return array("ok" => false, "mensaje" => "Zona inválida", "clientes" => array());
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = $anio === null || $anio === "" ? (int) date("Y") : (int) $anio;
+		$mes = $mes === null || $mes === "" ? (int) date("n") : (int) $mes;
+		if ($anio < 2000 || $anio > 2100) {
+			$anio = (int) date("Y");
+		}
+		if ($mes < 1 || $mes > 12) {
+			$mes = (int) date("n");
+		}
+
+		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
+		$clientes = ModeloZonasComerciales::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes);
 		$total = 0.0;
 		foreach ($clientes as $c) {
 			$total += (float) $c["venta_real"];

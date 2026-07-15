@@ -72,8 +72,15 @@ $mesesNombres = array(
                             </p>
                         </div>
 
-                        <h4 style="font-size:14px;margin:16px 0 8px;">Comparativo por ventas <small class="text-muted">(tamaño = venta del período)</small></h4>
+                        <h4 style="font-size:14px;margin:16px 0 8px;">Comparativo por ventas <small class="text-muted">(tamaño = venta del período · montos en soles)</small></h4>
                         <div id="mzTreemap" class="mz-treemap" aria-label="Treemap ventas por zona"></div>
+
+                        <h4 style="font-size:14px;margin:16px 0 8px;">
+                            Evolución de ventas
+                            <small class="text-muted" id="mzHistTitulo">(últimos 12 meses · escala propia por zona)</small>
+                        </h4>
+                        <div id="mzHistGrid" class="mz-hist-grid" aria-label="Evolución por zona"></div>
+                        <p class="text-muted text-center" id="mzHistEstado" style="margin:6px 0 0;display:none;"></p>
                     </div>
                 </div>
             </div>
@@ -95,8 +102,16 @@ $mesesNombres = array(
                             </p>
                             <table class="table table-condensed">
                                 <tr>
-                                    <th style="width:45%;">Clientes</th>
-                                    <td id="mzFichaClientes">—</td>
+                                    <th style="width:45%;">Clientes con venta</th>
+                                    <td id="mzFichaClientesVenta">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Clientes nuevos</th>
+                                    <td id="mzFichaClientesNuevos">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Clientes sin atender</th>
+                                    <td id="mzFichaClientesSinAtender">—</td>
                                 </tr>
                                 <tr>
                                     <th>Cobertura (asignados)</th>
@@ -115,7 +130,10 @@ $mesesNombres = array(
                             <ul class="list-unstyled" id="mzFichaVentaVendedores" style="max-height:180px;overflow:auto;"></ul>
                             <h4 style="font-size:14px;margin-top:12px;">Cobertura asignada</h4>
                             <ul class="list-unstyled" id="mzFichaVendedores" style="max-height:120px;overflow:auto;"></ul>
-                            <button type="button" class="btn btn-primary btn-sm btn-block btnMzVerClientes" id="mzBtnFichaClientes" style="margin-top:10px;">
+                            <button type="button" class="btn btn-success btn-sm btn-block btnMzVerNuevos" id="mzBtnFichaNuevos" style="margin-top:10px;">
+                                <i class="fa fa-user-plus"></i> Ver clientes nuevos
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm btn-block btnMzVerClientes" id="mzBtnFichaClientes" style="margin-top:6px;">
                                 <i class="fa fa-list"></i> Ver clientes con venta
                             </button>
                             <a href="index.php?ruta=zonas-comerciales" class="btn btn-default btn-sm btn-block" style="margin-top:6px;">
@@ -147,14 +165,14 @@ $mesesNombres = array(
             <div class="modal-header" id="mzModalHeader" style="background:#3c8dbc;color:#fff;">
                 <button type="button" class="close" data-dismiss="modal" style="color:#fff;opacity:.9;">&times;</button>
                 <h4 class="modal-title">
-                    Clientes con venta — <span id="mzModalZonaNombre">zona</span>
+                    <span id="mzModalTituloTipo">Clientes con venta</span> — <span id="mzModalZonaNombre">zona</span>
                 </h4>
             </div>
             <div class="modal-body">
-                <p class="text-muted" style="margin-top:0;">
+                <p class="text-muted" style="margin-top:0;" id="mzModalResumen">
                     Período: <strong id="mzModalPeriodo">—</strong>.
                     Total: <strong id="mzModalTotalVenta">S/ 0</strong>
-                    · <span id="mzModalTotalCli">0</span> clientes (máx. 500, orden por venta).
+                    · <span id="mzModalTotalCli">0</span> clientes.
                 </p>
                 <div class="table-responsive" style="max-height:420px;overflow:auto;">
                     <table class="table table-bordered table-striped table-condensed" id="mzTablaClientes">
@@ -162,11 +180,12 @@ $mesesNombres = array(
                             <tr>
                                 <th style="width:90px;">Código</th>
                                 <th>Cliente</th>
-                                <th class="text-right" style="width:120px;">Venta S/</th>
+                                <th style="width:90px;">Vendedor</th>
+                                <th class="text-right" style="width:110px;">Venta S/</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="3" class="text-muted">Cargando…</td></tr>
+                            <tr><td colspan="4" class="text-muted">Cargando…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -185,6 +204,79 @@ $mesesNombres = array(
     border: 1px solid #ddd;
     border-radius: 4px;
     z-index: 1;
+}
+.mz-hist-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+@media (min-width: 1200px) {
+    .mz-hist-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+.mz-hist-card {
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    background: #fff;
+    padding: 10px 10px 6px;
+    cursor: pointer;
+    transition: box-shadow .12s ease, border-color .12s ease;
+    min-width: 0;
+}
+.mz-hist-card:hover {
+    border-color: #bbb;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.mz-hist-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.mz-hist-card-name {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #333;
+    min-width: 0;
+}
+.mz-hist-card-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(0,0,0,.12);
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+.mz-hist-card-monto {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.2px;
+}
+.mz-hist-card-delta {
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 4px;
+}
+.mz-hist-card-delta.up { color: #00a65a; }
+.mz-hist-card-delta.down { color: #dd4b39; }
+.mz-hist-card-delta.flat { color: #999; }
+.mz-hist-card-meta {
+    font-size: 10px;
+    color: #888;
+    margin-top: 2px;
+}
+.mz-hist-card-canvas-wrap {
+    position: relative;
+    height: 72px;
+    margin-top: 6px;
+}
+.mz-hist-card-canvas-wrap canvas {
+    width: 100% !important;
+    height: 72px !important;
 }
 .mz-treemap {
     display: flex;
@@ -225,6 +317,7 @@ $mesesNombres = array(
     letter-spacing: -0.3px;
     line-height: 1.1;
     margin-top: 6px;
+    white-space: nowrap;
 }
 .mz-treemap-meta {
     font-size: 11px;
