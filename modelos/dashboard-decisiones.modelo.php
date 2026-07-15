@@ -417,11 +417,39 @@ class ModeloDashboardDecisiones
 
     public static function mdlPedidosGenerados($limite = 30)
     {
+        return self::mdlPedidosPorEstados(array("GENERADO"), $limite);
+    }
+
+    /**
+     * Pedidos del pipeline de crédito por uno o más estados (GENERADO, APROBADO, …).
+     */
+    public static function mdlPedidosPorEstados(array $estados, $limite = 50)
+    {
+        $estadosLimpios = array();
+        foreach ($estados as $estado) {
+            $estado = strtoupper(trim((string) $estado));
+            if ($estado !== "" && preg_match('/^[A-Z_]+$/', $estado)) {
+                $estadosLimpios[$estado] = true;
+            }
+        }
+        $estadosLimpios = array_keys($estadosLimpios);
+
+        if (empty($estadosLimpios)) {
+            return array();
+        }
+
         $params = array();
         $join = self::sqlJoinVendedoresActivos("t", "mv_gen");
         $whereVend = self::sqlCondicionVendedor("t", $params);
         $deudaSql = self::sqlSubqueryDeudaVencida("c.codigo", $params, "mv_gend");
-        $limite = max(1, min(50, (int) $limite));
+        $limite = max(1, min(100, (int) $limite));
+
+        $placeholders = array();
+        foreach ($estadosLimpios as $i => $estado) {
+            $key = ":estado_cola_" . $i;
+            $placeholders[] = $key;
+            $params[$key] = $estado;
+        }
 
         $sql = "SELECT
                     t.codigo,
@@ -456,9 +484,16 @@ class ModeloDashboardDecisiones
                 LEFT JOIN maestrajf ven
                     ON ven.codigo = t.vendedor
                    AND ven.tipo_dato = 'TVEND'
-                WHERE t.estado = 'GENERADO'
+                WHERE t.estado IN (" . implode(", ", $placeholders) . ")
                   AND {$whereVend}
-                ORDER BY t.fecha DESC, t.codigo DESC
+                ORDER BY
+                    CASE t.estado
+                        WHEN 'GENERADO' THEN 0
+                        WHEN 'APROBADO' THEN 1
+                        ELSE 2
+                    END,
+                    t.fecha DESC,
+                    t.codigo DESC
                 LIMIT {$limite}";
 
         $stmt = Conexion::conectar()->prepare($sql);

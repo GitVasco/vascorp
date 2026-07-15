@@ -94,6 +94,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") : ?>
+    <link rel="stylesheet" href="vistas/css/dashboard-decisiones.css?v=<?php echo rand(); ?>">
     <link rel="stylesheet" href="vistas/css/historial-credito.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
 
@@ -798,7 +799,8 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-decisiones.js?v=20"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") { ?>
-    <script src="vistas/js/historial-credito.js?v=6"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=20"></script>
+    <script src="vistas/js/historial-credito.js?v=10"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>

@@ -44,6 +44,66 @@ class ControladorDashboardDecisiones
         return ModeloDashboardDecisiones::mdlPedidosGenerados($limite);
     }
 
+    /**
+     * Cola de crédito para Historial: GENERADOS + APROBADOS enriquecidos
+     * (decisión vigente y categoría), sin el resto del dashboard.
+     */
+    public static function ctrColaPedidosCredito($limite = 80, $vendedor = null)
+    {
+        if ($vendedor === null) {
+            $vendedor = self::ctrVendedorSeleccionado();
+        } else {
+            $vendedor = ModeloDashboardDecisiones::normalizarVendedorFiltro($vendedor);
+        }
+
+        ModeloDashboardDecisiones::setVendedorFiltro($vendedor);
+
+        $filas = ModeloDashboardDecisiones::mdlPedidosPorEstados(
+            array("GENERADO", "APROBADO"),
+            $limite
+        );
+        $filas = self::ctrEnriquecerGeneradosConDecision($filas);
+        $mapa = self::ctrMapaCategoriasClientes(array($filas));
+        $filas = self::ctrAplicarCategoriasClientes($filas, $mapa, "cod_cli");
+
+        $generados = array();
+        $aprobados = array();
+        $solesGenerados = 0.0;
+        $solesAprobados = 0.0;
+
+        foreach ($filas as $row) {
+            $estado = strtoupper(trim((string) (isset($row["estado"]) ? $row["estado"] : "")));
+            $total = (float) (isset($row["total"]) ? $row["total"] : 0);
+            $lista = isset($row["lista"]) ? $row["lista"] : "";
+            $enSoles = ($lista !== "precio1");
+
+            if ($estado === "GENERADO") {
+                $generados[] = $row;
+                if ($enSoles) {
+                    $solesGenerados += $total;
+                }
+            } elseif ($estado === "APROBADO") {
+                $aprobados[] = $row;
+                if ($enSoles) {
+                    $solesAprobados += $total;
+                }
+            }
+        }
+
+        return array(
+            "ok" => true,
+            "vendedor" => $vendedor,
+            "generados" => $generados,
+            "aprobados" => $aprobados,
+            "resumen" => array(
+                "generados" => count($generados),
+                "aprobados" => count($aprobados),
+                "soles_generados" => round($solesGenerados, 2),
+                "soles_aprobados" => round($solesAprobados, 2),
+            ),
+        );
+    }
+
     public static function ctrPedidosEnProceso($limite = 12)
     {
         return ModeloDashboardDecisiones::mdlPedidosEnProceso($limite);

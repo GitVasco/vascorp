@@ -216,3 +216,91 @@
 }
 
 .hc-riesgo--danger .hc-snap-nombre { color: #c0392b !important; }
+
+.hc-tabs {
+    margin-bottom: 0;
+    border-bottom: 1px solid #d2d6de;
+}
+
+.hc-tabs > li > a {
+    font-weight: 600;
+}
+
+.hc-tabs .badge {
+    background: #f39c12;
+    margin-left: 4px;
+}
+
+.hc-tab-content {
+    padding-top: 14px;
+}
+
+.hc-kpi-sub {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.hc-filtro-cola {
+    margin-bottom: 12px;
+}
+
+.hc-filtro-cola-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+}
+
+.hc-filtro-cola-label {
+    margin: 0;
+    font-weight: 600;
+    color: #555;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.hc-filtro-cola .hc-filtro-select,
+.hc-filtro-cola .bootstrap-select {
+    min-width: 260px;
+    max-width: 360px;
+}
+
+@media (max-width: 767px) {
+    .hc-filtro-cola .hc-filtro-select,
+    .hc-filtro-cola .bootstrap-select {
+        min-width: 100%;
+        max-width: 100%;
+        width: 100% !important;
+    }
+}
+
+.hc-cola-box {
+    margin-bottom: 14px;
+}
+
+.hc-cola--loading {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.hc-page .dd-acciones-iconos {
+    white-space: nowrap;
+}
+
+.hc-page .dd-acciones-iconos .btn {
+    margin: 0 1px;
+}
+
+/* Stub del filtro vendedor: no debe pintarse en pantalla */
+#hcDdStub {
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}

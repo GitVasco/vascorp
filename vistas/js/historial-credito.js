@@ -191,6 +191,88 @@
         $("#hcKpiAnulado").text(resumen.ANULADO || 0);
     }
 
+    var hcColaXhr = null;
+    var hcIgnorarCambioVendedor = false;
+
+    function hcVendedorActual() {
+        var $sel = $("#hcFiltroVendedor");
+        if (!$sel.length) {
+            return "";
+        }
+        return String($sel.val() || "");
+    }
+
+    function hcSincronizarStubVendedor(vendedor) {
+        var $stub = $("#hcDdStub #ddFiltroVendedor");
+        if ($stub.length) {
+            $stub.val(vendedor || "");
+        }
+    }
+
+    function hcActualizarUrlVendedor(vendedor) {
+        if (!(window.history && window.history.replaceState)) {
+            return;
+        }
+        var params = ["ruta=historial-credito"];
+        if (vendedor) {
+            params.push("vendedor=" + encodeURIComponent(vendedor));
+        }
+        if ($("#hcTabMovimientos").hasClass("active")) {
+            params.push("tab=movimientos");
+        }
+        window.history.replaceState(
+            { vendedor: vendedor || "" },
+            "",
+            "index.php?" + params.join("&")
+        );
+    }
+
+    function recargarCola() {
+        if (!$("#hcColaWrap").length) {
+            return;
+        }
+
+        if (hcColaXhr && hcColaXhr.readyState !== 4) {
+            hcColaXhr.abort();
+        }
+
+        var vendedor = hcVendedorActual();
+        hcSincronizarStubVendedor(vendedor);
+
+        $("#hcColaWrap").addClass("hc-cola--loading");
+        $("#btnHcActualizarCola, #btnHcLimpiarVendedor").prop("disabled", true);
+        var $sel = $("#hcFiltroVendedor");
+        $sel.prop("disabled", true);
+        if ($sel.data("selectpicker")) {
+            $sel.selectpicker("refresh");
+        }
+
+        hcColaXhr = $.ajax({
+            url: "ajax/dashboard-decisiones/cola-credito.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: { limite: 80, vendedor: vendedor },
+        })
+            .done(function (resp) {
+                if (!resp || !resp.ok) {
+                    return;
+                }
+                $("#hcColaWrap").html(resp.html);
+                var r = resp.resumen || {};
+                $("#hcTabBadgeCola").text(r.generados || 0);
+                hcActualizarUrlVendedor(resp.vendedor || vendedor);
+            })
+            .always(function () {
+                $("#hcColaWrap").removeClass("hc-cola--loading");
+                $("#btnHcActualizarCola, #btnHcLimpiarVendedor").prop("disabled", false);
+                $sel.prop("disabled", false);
+                if ($sel.data("selectpicker")) {
+                    $sel.selectpicker("refresh");
+                }
+                hcColaXhr = null;
+            });
+    }
+
     function cargarHistorial() {
         var $body = $("#hcTablaBody");
         $body.html(
@@ -244,6 +326,19 @@
             });
     }
 
+    function urlAccion(settings) {
+        return String((settings && settings.url) || "");
+    }
+
+    function dataAccion(settings) {
+        var data = (settings && settings.data) || "";
+        if (typeof data === "object" && data !== null) {
+            return data.accion || "";
+        }
+        var m = String(data).match(/(?:^|&)accion=([^&]*)/);
+        return m ? decodeURIComponent(m[1]) : "";
+    }
+
     $("#btnHcBuscar").on("click", cargarHistorial);
 
     $("#btnHcLimpiar").on("click", function () {
@@ -268,5 +363,118 @@
             e.preventDefault();
             cargarHistorial();
         }
+    });
+
+    $(document).on("click", "#btnHcActualizarCola", function () {
+        recargarCola();
+    });
+
+    $(document).on("click", "#btnHcLimpiarVendedor", function () {
+        hcIgnorarCambioVendedor = true;
+        var $sel = $("#hcFiltroVendedor");
+        if ($sel.data("selectpicker")) {
+            $sel.selectpicker("val", "");
+        } else {
+            $sel.val("");
+        }
+        hcIgnorarCambioVendedor = false;
+        recargarCola();
+    });
+
+    $(function () {
+        var $sel = $("#hcFiltroVendedor");
+        if ($sel.length) {
+            $sel.selectpicker("refresh");
+            hcSincronizarStubVendedor(hcVendedorActual());
+            $sel.on("changed.bs.select change", function () {
+                if (hcIgnorarCambioVendedor) {
+                    return;
+                }
+                recargarCola();
+            });
+        }
+    });
+
+    $(document).ajaxComplete(function (_e, xhr, settings) {
+        var url = urlAccion(settings);
+
+        if (
+            url.indexOf("aprobar-pedido.ajax.php") !== -1 ||
+            url.indexOf("anular-pedido.ajax.php") !== -1
+        ) {
+            var respAccion = null;
+            try {
+                respAccion = xhr.responseJSON || JSON.parse(xhr.responseText || "{}");
+            } catch (err) {
+                respAccion = null;
+            }
+            if (respAccion && respAccion.ok) {
+                recargarCola();
+                if ($("#hcTabMovimientos").hasClass("active")) {
+                    cargarHistorial();
+                }
+            }
+            return;
+        }
+
+        if (url.indexOf("refrescar-dashboard.ajax.php") !== -1) {
+            recargarCola();
+            if ($("#hcTabMovimientos").hasClass("active")) {
+                cargarHistorial();
+            }
+            return;
+        }
+
+        if (url.indexOf("decisiones-credito.ajax.php") === -1) {
+            return;
+        }
+
+        var accion = String(dataAccion(settings) || "").toLowerCase();
+        if (
+            accion === "registrar" ||
+            accion === "solicitar" ||
+            accion === "cerrar_decision" ||
+            accion === "resolver_solicitud"
+        ) {
+            recargarCola();
+            if ($("#hcTabMovimientos").hasClass("active")) {
+                cargarHistorial();
+            }
+        }
+    });
+
+    var hcSwalOrig = window.swal;
+    if (typeof hcSwalOrig === "function") {
+        window.swal = function () {
+            var args = Array.prototype.slice.call(arguments);
+            if (args.length >= 2 && typeof args[1] === "string") {
+                args[1] = args[1]
+                    .replace(/El dashboard se actualizó\./gi, "La cola se actualizó.")
+                    .replace(/el dashboard fue actualizado\./gi, "la cola se actualizó.")
+                    .replace(/y el dashboard fue actualizado\./gi, "y la cola se actualizó.");
+            }
+            return hcSwalOrig.apply(this, args);
+        };
+    }
+
+    // Evitar dropdown fantasma de selectpicker sobre el stub de vendedor
+    $(function () {
+        function limpiarStubFiltro() {
+            var $sel = $("#hcDdStub #ddFiltroVendedor");
+            if (!$sel.length) {
+                return;
+            }
+            try {
+                if ($sel.data("selectpicker")) {
+                    $sel.selectpicker("destroy");
+                }
+            } catch (err) {}
+            $("#hcDdStub .bootstrap-select").remove();
+            $sel.next(".bootstrap-select").remove();
+        }
+
+        limpiarStubFiltro();
+        setTimeout(limpiarStubFiltro, 0);
+        setTimeout(limpiarStubFiltro, 200);
     });
 })();
