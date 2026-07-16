@@ -73,7 +73,8 @@ foreach ($meses as $mesItem) {
                             Cada columna resume <strong>meta → real → %</strong>.
                             El real de ventas, modelos y clientes nuevos considera solo marcas autorizadas al vendedor;
                             las NC descuento (E05 sin unidades) restan al monto sin marcar marca.
-                            Modelo especial: docenas = cantidad÷12 (solo si el modelo es permitida).
+                            Incentivos de producto: modelo, modelo+color (todas las tallas) o artículo;
+                            unidades o docenas; solo marcas permitidas.
                             El estimado suma comisiones según avance (no es liquidación).
                         </p>
                     </div>
@@ -97,7 +98,7 @@ foreach ($meses as $mesItem) {
                             <th class="mr-th-ventas">Ventas S/ <small>(meta/real)</small></th>
                             <th class="mr-th-cli">Clientes <small>(meta/real)</small></th>
                             <th class="mr-th-mod">Modelos <small>(meta/real)</small></th>
-                            <th class="mr-th-esp">Especial <small>(modelo · meta/docenas)</small></th>
+                            <th class="mr-th-esp">Incentivos <small>(producto)</small></th>
                             <th class="mr-th-pay">Estimado S/</th>
                             <th></th>
                         </tr>
@@ -196,6 +197,10 @@ foreach ($meses as $mesItem) {
 .mr-sep { color: #bbb; margin: 0 3px; }
 .mr-real { font-weight: 700; color: #333; }
 .mr-mod { font-size: 11px; font-weight: 700; color: #a94442; margin-bottom: 1px; }
+.mr-inc-summary { font-size: 12px; font-weight: 700; color: #a94442; }
+.mr-inc-detalle { font-size: 11px; color: #666; margin-top: 2px; line-height: 1.3; }
+.mr-inc-form label { font-size: 12px; margin-bottom: 2px; font-weight: 600; }
+.mr-inc-form .row + .row { clear: both; }
 .mr-empty { color: #ccc; }
 .mr-bar {
     height: 12px;
@@ -345,34 +350,97 @@ foreach ($meses as $mesItem) {
                     </div>
 
                     <div class="box box-solid box-danger">
-                        <div class="box-header with-border"><h3 class="box-title">4) Modelo especial (beneficio)</h3></div>
+                        <div class="box-header with-border">
+                            <h3 class="box-title">4) Incentivos por producto</h3>
+                            <div class="box-tools pull-right">
+                                <button type="button" class="btn btn-xs btn-danger" id="mrBtnAgregarIncentivo">
+                                    <i class="fa fa-plus"></i> Agregar incentivo
+                                </button>
+                            </div>
+                        </div>
                         <div class="box-body">
                             <p class="help-block" style="margin-top:0;">
-                                Un modelo por vendedor y mes. Avance en <strong>docenas</strong> (pares÷12).
-                                La comisión % se aplica sobre la venta de ese modelo (para el reporte de comisiones).
+                                Varios incentivos por mes. Cada uno se mide aparte y la comisión % es sobre la venta del objetivo.
+                                <strong>Modelo + color</strong> suma todas las tallas de ese color; para una talla exacta usá <strong>Artículo</strong>.
                             </p>
-                            <div class="row">
-                                <div class="col-sm-4">
-                                    <label>Modelo</label>
-                                    <select class="form-control selectpicker" name="modelo_especial" id="mrModeloEspecial"
-                                            data-live-search="true" title="Sin modelo especial" data-width="100%">
-                                        <option value="">— Sin modelo —</option>
-                                    </select>
+                            <input type="hidden" name="incentivos_json" id="mrIncentivosJson" value="[]">
+                            <input type="hidden" name="forzar_superpuestos" id="mrForzarSuperpuestos" value="0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-condensed" id="mrTablaIncentivos">
+                                    <thead>
+                                        <tr>
+                                            <th>Tipo</th>
+                                            <th>Objetivo</th>
+                                            <th>Unidad</th>
+                                            <th>Meta</th>
+                                            <th>Comisión %</th>
+                                            <th>Cumplimiento</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mrIncentivosBody">
+                                        <tr class="mr-inc-empty"><td colspan="7" class="text-muted text-center">Sin incentivos</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="mrIncForm" class="well well-sm mr-inc-form" style="display:none;margin-bottom:0;">
+                                <div class="row">
+                                    <div class="col-sm-3">
+                                        <label>Tipo</label>
+                                        <select class="form-control input-sm" id="mrIncTipo">
+                                            <option value="modelo">Modelo</option>
+                                            <option value="modelo_color">Modelo + color</option>
+                                            <option value="articulo">Artículo</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-5" id="mrIncWrapModelo">
+                                        <label>Modelo</label>
+                                        <select class="form-control input-sm selectpicker" id="mrIncModelo"
+                                                data-live-search="true" title="Elegir modelo" data-width="100%">
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-4" id="mrIncWrapColor" style="display:none;">
+                                        <label>Color <small class="text-muted">(todas las tallas)</small></label>
+                                        <select class="form-control input-sm" id="mrIncColor">
+                                            <option value="">— Color —</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-4" id="mrIncWrapArticulo" style="display:none;">
+                                        <label>Artículo / SKU</label>
+                                        <input type="text" class="form-control input-sm" id="mrIncArticulo" list="mrIncArticuloList" placeholder="Buscar código…" autocomplete="off">
+                                        <datalist id="mrIncArticuloList"></datalist>
+                                        <p class="help-block" style="margin:2px 0 0;font-size:11px;" id="mrIncArticuloInfo"></p>
+                                    </div>
                                 </div>
-                                <div class="col-sm-3">
-                                    <label>Meta docenas</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="meta_docenas_especial" id="mrMetaDocenasEsp" placeholder="ej. 10">
+                                <div class="row" style="margin-top:8px;">
+                                    <div class="col-sm-3">
+                                        <label>Unidad</label>
+                                        <select class="form-control input-sm" id="mrIncUnidad">
+                                            <option value="docenas">Docenas</option>
+                                            <option value="unidades">Unidades</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label>Meta</label>
+                                        <input type="number" step="0.01" min="0.01" class="form-control input-sm" id="mrIncMeta" placeholder="ej. 100">
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label>Comisión %</label>
+                                        <input type="number" step="0.01" min="0" max="100" class="form-control input-sm" id="mrIncPct" placeholder="ej. 5">
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label>Cumplimiento</label>
+                                        <select class="form-control input-sm" id="mrIncCumplimiento">
+                                            <option value="todo_nada">Todo o nada</option>
+                                            <option value="prorrata">Prorrata</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="col-sm-2">
-                                    <label>Comisión %</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_modelo_esp_pct" id="mrComisionModeloEspPct" placeholder="ej. 2">
-                                </div>
-                                <div class="col-sm-3">
-                                    <label>Cumplimiento</label>
-                                    <select class="form-control" name="cumplimiento_modelo_esp" id="mrCumplimientoModeloEsp">
-                                        <option value="todo_nada">Todo o nada</option>
-                                        <option value="prorrata">Prorrata</option>
-                                    </select>
+                                <div style="margin-top:10px;">
+                                    <button type="button" class="btn btn-sm btn-primary" id="mrIncConfirmar">
+                                        <i class="fa fa-check"></i> Agregar a la lista
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-default" id="mrIncCancelar">Cancelar</button>
                                 </div>
                             </div>
                         </div>

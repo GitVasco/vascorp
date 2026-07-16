@@ -45,13 +45,20 @@ class ControladorMetasRetos
 		$fechaRef = sprintf("%04d-%02d-01", $p["anio"], $p["mes"]);
 		require_once dirname(__FILE__) . "/../modelos/grupos-marcas-comercial.modelo.php";
 		$universo = ModeloGruposMarcasComercial::mdlUniversoModelosActivosPorVendedor($codVendedor, $fechaRef);
+
+		$incentivos = array();
+		if ($reto && isset($reto["id"])) {
+			$incentivos = ModeloMetasRetos::mdlListarIncentivosPorReto((int) $reto["id"]);
+		}
+
 		return array(
 			"ok" => true,
 			"cod_vendedor" => $codVendedor,
 			"anio" => $p["anio"],
 			"mes" => $p["mes"],
 			"reto" => $reto,
-			"universo_modelos" => $universo
+			"universo_modelos" => $universo,
+			"incentivos" => $incentivos
 		);
 	}
 
@@ -85,6 +92,223 @@ class ControladorMetasRetos
 	{
 		$v = trim((string) $v);
 		return ($v === "prorrata") ? "prorrata" : "todo_nada";
+	}
+
+	static private function ctrClaveIncentivo($inc)
+	{
+		$tipo = isset($inc["tipo_objetivo"]) ? $inc["tipo_objetivo"] : "";
+		$modelo = isset($inc["modelo"]) ? trim((string) $inc["modelo"]) : "";
+		$color = isset($inc["cod_color"]) ? trim((string) $inc["cod_color"]) : "";
+		$art = isset($inc["articulo"]) ? trim((string) $inc["articulo"]) : "";
+		$unidad = isset($inc["unidad_meta"]) ? $inc["unidad_meta"] : "docenas";
+		return strtolower($tipo . "|" . $modelo . "|" . $color . "|" . $art . "|" . $unidad);
+	}
+
+	static private function ctrEtiquetaIncentivo($inc)
+	{
+		$tipo = isset($inc["tipo_objetivo"]) ? $inc["tipo_objetivo"] : "";
+		if ($tipo === "modelo") {
+			return "Modelo " . (isset($inc["modelo"]) ? $inc["modelo"] : "");
+		}
+		if ($tipo === "modelo_color") {
+			$nom = !empty($inc["nombre_color"]) ? $inc["nombre_color"] : (isset($inc["cod_color"]) ? $inc["cod_color"] : "");
+			return "Modelo " . (isset($inc["modelo"]) ? $inc["modelo"] : "") . " · " . $nom;
+		}
+		if ($tipo === "articulo") {
+			return "Artículo " . (isset($inc["articulo"]) ? $inc["articulo"] : "");
+		}
+		return "Incentivo";
+	}
+
+	/**
+	 * Detecta pares que pueden sumar la misma línea (aviso, no bloqueo).
+	 */
+	static public function ctrDetectarSuperposiciones($incentivos)
+	{
+		$avisos = array();
+		$n = count($incentivos);
+		for ($i = 0; $i < $n; $i++) {
+			for ($j = $i + 1; $j < $n; $j++) {
+				$a = $incentivos[$i];
+				$b = $incentivos[$j];
+				$ta = $a["tipo_objetivo"];
+				$tb = $b["tipo_objetivo"];
+
+				$solapa = false;
+				if ($ta === "modelo" && $tb === "modelo_color"
+					&& $a["modelo"] === $b["modelo"]) {
+					$solapa = true;
+				} elseif ($tb === "modelo" && $ta === "modelo_color"
+					&& $a["modelo"] === $b["modelo"]) {
+					$solapa = true;
+				} elseif ($ta === "modelo" && $tb === "articulo"
+					&& $a["modelo"] === (isset($b["_modelo_art"]) ? $b["_modelo_art"] : "")) {
+					$solapa = true;
+				} elseif ($tb === "modelo" && $ta === "articulo"
+					&& $b["modelo"] === (isset($a["_modelo_art"]) ? $a["_modelo_art"] : "")) {
+					$solapa = true;
+				} elseif ($ta === "modelo_color" && $tb === "articulo"
+					&& $a["modelo"] === (isset($b["_modelo_art"]) ? $b["_modelo_art"] : "")
+					&& $a["cod_color"] === (isset($b["_color_art"]) ? $b["_color_art"] : "")) {
+					$solapa = true;
+				} elseif ($tb === "modelo_color" && $ta === "articulo"
+					&& $b["modelo"] === (isset($a["_modelo_art"]) ? $a["_modelo_art"] : "")
+					&& $b["cod_color"] === (isset($a["_color_art"]) ? $a["_color_art"] : "")) {
+					$solapa = true;
+				}
+
+				if ($solapa) {
+					$avisos[] = self::ctrEtiquetaIncentivo($a) . " se solapa con " . self::ctrEtiquetaIncentivo($b);
+				}
+			}
+		}
+		return $avisos;
+	}
+
+	static private function ctrNormalizarIncentivosPost($post, $codVendedor, $anio, $mes)
+	{
+		$raw = array();
+		if (isset($post["incentivos_json"]) && is_string($post["incentivos_json"])) {
+			$decoded = json_decode($post["incentivos_json"], true);
+			if (is_array($decoded)) {
+				$raw = $decoded;
+			}
+		} elseif (isset($post["incentivos"]) && is_array($post["incentivos"])) {
+			$raw = $post["incentivos"];
+		}
+
+		$fechaRef = sprintf("%04d-%02d-01", (int) $anio, (int) $mes);
+		require_once dirname(__FILE__) . "/../modelos/grupos-marcas-comercial.modelo.php";
+
+		$normalizados = array();
+		$claves = array();
+
+		foreach ($raw as $idx => $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo_objetivo"]) ? trim((string) $item["tipo_objetivo"]) : "";
+			if (!in_array($tipo, array("modelo", "modelo_color", "articulo"), true)) {
+				return array("ok" => false, "mensaje" => "Tipo de objetivo inválido en incentivo #" . ($idx + 1));
+			}
+
+			$unidad = (isset($item["unidad_meta"]) && trim((string) $item["unidad_meta"]) === "unidades")
+				? "unidades" : "docenas";
+			$meta = self::ctrNumONull(isset($item["meta_cantidad"]) ? $item["meta_cantidad"] : null);
+			$pct = self::ctrNumONull(isset($item["comision_pct"]) ? $item["comision_pct"] : null);
+			$cumpl = self::ctrCumplimiento(isset($item["cumplimiento"]) ? $item["cumplimiento"] : "todo_nada");
+
+			if ($meta === null || (float) $meta <= 0) {
+				return array("ok" => false, "mensaje" => "La meta del incentivo #" . ($idx + 1) . " debe ser mayor a 0");
+			}
+			if ($pct === null) {
+				$pct = 0;
+			}
+			$pctNum = (float) $pct;
+			if ($pctNum < 0 || $pctNum > 100) {
+				return array("ok" => false, "mensaje" => "Comisión del incentivo #" . ($idx + 1) . " debe estar entre 0 y 100");
+			}
+
+			$modelo = "";
+			$codColor = "";
+			$articulo = "";
+			$nombreColor = "";
+			$metaArt = null;
+
+			if ($tipo === "modelo") {
+				$modelo = isset($item["modelo"]) ? trim((string) $item["modelo"]) : "";
+				if ($modelo === "" || !ModeloMetasRetos::mdlExisteModelo($modelo)) {
+					return array("ok" => false, "mensaje" => "Modelo inválido en incentivo #" . ($idx + 1));
+				}
+				$cob = ModeloGruposMarcasComercial::mdlVerificarCoberturaModelo($codVendedor, $modelo, $fechaRef);
+				if (empty($cob["ok"])) {
+					return array(
+						"ok" => false,
+						"mensaje" => "El modelo {$modelo} no está en cobertura del vendedor (incentivo #" . ($idx + 1) . ")"
+					);
+				}
+			} elseif ($tipo === "modelo_color") {
+				$modelo = isset($item["modelo"]) ? trim((string) $item["modelo"]) : "";
+				$codColor = isset($item["cod_color"]) ? trim((string) $item["cod_color"]) : "";
+				if ($modelo === "" || $codColor === ""
+					|| !ModeloMetasRetos::mdlExisteModeloColor($modelo, $codColor)) {
+					return array("ok" => false, "mensaje" => "Modelo/color inválido en incentivo #" . ($idx + 1));
+				}
+				$cob = ModeloGruposMarcasComercial::mdlVerificarCoberturaModelo($codVendedor, $modelo, $fechaRef);
+				if (empty($cob["ok"])) {
+					return array(
+						"ok" => false,
+						"mensaje" => "El modelo {$modelo} no está en cobertura del vendedor (incentivo #" . ($idx + 1) . ")"
+					);
+				}
+				$nombreColor = isset($item["nombre_color"]) ? trim((string) $item["nombre_color"]) : $codColor;
+			} else {
+				$articulo = isset($item["articulo"]) ? trim((string) $item["articulo"]) : "";
+				$metaArt = ModeloMetasRetos::mdlExisteArticulo($articulo);
+				if (!$metaArt) {
+					return array("ok" => false, "mensaje" => "Artículo inválido en incentivo #" . ($idx + 1));
+				}
+				$cob = ModeloGruposMarcasComercial::mdlVerificarCoberturaArticulo($codVendedor, $articulo, $fechaRef);
+				if (empty($cob["ok"])) {
+					return array(
+						"ok" => false,
+						"mensaje" => "El artículo {$articulo} no está en cobertura del vendedor (incentivo #" . ($idx + 1) . ")"
+					);
+				}
+				$modelo = isset($metaArt["modelo"]) ? trim((string) $metaArt["modelo"]) : "";
+				$codColor = isset($metaArt["cod_color"]) ? trim((string) $metaArt["cod_color"]) : "";
+			}
+
+			$row = array(
+				"tipo_objetivo" => $tipo,
+				"modelo" => ($tipo === "articulo") ? null : $modelo,
+				"cod_color" => ($tipo === "modelo_color") ? $codColor : null,
+				"articulo" => ($tipo === "articulo") ? $articulo : null,
+				"unidad_meta" => $unidad,
+				"meta_cantidad" => round((float) $meta, 2),
+				"comision_pct" => round($pctNum, 2),
+				"cumplimiento" => $cumpl,
+				"observacion" => isset($item["observacion"]) ? trim((string) $item["observacion"]) : null,
+				"nombre_color" => $nombreColor,
+				"_modelo_art" => ($tipo === "articulo") ? $modelo : "",
+				"_color_art" => ($tipo === "articulo") ? $codColor : ""
+			);
+
+			$clave = self::ctrClaveIncentivo($row);
+			if (isset($claves[$clave])) {
+				return array(
+					"ok" => false,
+					"mensaje" => "Hay incentivos duplicados (mismo objetivo y unidad). Revisá la fila #" . ($idx + 1)
+				);
+			}
+			$claves[$clave] = true;
+			$normalizados[] = $row;
+		}
+
+		$superpuestos = self::ctrDetectarSuperposiciones($normalizados);
+		$forzar = !empty($post["forzar_superpuestos"]) && (
+			$post["forzar_superpuestos"] === "1"
+			|| $post["forzar_superpuestos"] === 1
+			|| $post["forzar_superpuestos"] === true
+			|| $post["forzar_superpuestos"] === "true"
+		);
+
+		if (!empty($superpuestos) && !$forzar) {
+			return array(
+				"ok" => false,
+				"requiere_confirmacion" => true,
+				"mensaje" => "Hay objetivos superpuestos que pueden pagar dos veces la misma venta. Confirmá para guardar.",
+				"superpuestos" => $superpuestos
+			);
+		}
+
+		// Limpiar claves internas antes de persistir
+		foreach ($normalizados as &$n) {
+			unset($n["_modelo_art"], $n["_color_art"], $n["nombre_color"]);
+		}
+		unset($n);
+
+		return array("ok" => true, "incentivos" => $normalizados, "superpuestos" => $superpuestos);
 	}
 
 	static public function ctrGuardarAjax($post)
@@ -146,6 +370,12 @@ class ControladorMetasRetos
 			$pctModelos = null;
 		}
 
+		$normInc = self::ctrNormalizarIncentivosPost($post, $cod, $p["anio"], $p["mes"]);
+		if (empty($normInc["ok"])) {
+			return $normInc;
+		}
+		$incentivos = $normInc["incentivos"];
+
 		$datos = array(
 			"cod_vendedor" => $cod,
 			"anio" => $p["anio"],
@@ -162,16 +392,15 @@ class ControladorMetasRetos
 			"meta_modelos_pct" => $pctModelos,
 			"comision_modelos_fijo" => self::ctrNumONull(isset($post["comision_modelos_fijo"]) ? $post["comision_modelos_fijo"] : null),
 			"cumplimiento_modelos" => self::ctrCumplimiento(isset($post["cumplimiento_modelos"]) ? $post["cumplimiento_modelos"] : "todo_nada"),
-			"modelo_especial" => isset($post["modelo_especial"]) ? trim((string) $post["modelo_especial"]) : "",
-			"meta_docenas_especial" => self::ctrNumONull(isset($post["meta_docenas_especial"]) ? $post["meta_docenas_especial"] : null),
-			"comision_modelo_esp_pct" => self::ctrNumONull(isset($post["comision_modelo_esp_pct"]) ? $post["comision_modelo_esp_pct"] : null),
-			"cumplimiento_modelo_esp" => self::ctrCumplimiento(isset($post["cumplimiento_modelo_esp"]) ? $post["cumplimiento_modelo_esp"] : "todo_nada"),
 			"usuario" => isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0
 		);
 
-		$ok = ModeloMetasRetos::mdlGuardarReto($datos);
+		$ok = ModeloMetasRetos::mdlGuardarReto($datos, $incentivos);
 		if ($ok !== "ok") {
-			return array("ok" => false, "mensaje" => "No se pudo guardar");
+			return array(
+				"ok" => false,
+				"mensaje" => "No se pudo guardar. Verificá que exista la tabla metas_retos_incentivos_productojf (docs/sql/metas-retos-incentivos-producto.sql)."
+			);
 		}
 
 		ModeloMetasRetos::mdlSyncMetaVentaLegacy(
@@ -186,7 +415,8 @@ class ControladorMetasRetos
 			"ok" => true,
 			"mensaje" => "Metas / retos guardados",
 			"meta_modelos" => $metaModelos,
-			"universo_modelos" => $universo
+			"universo_modelos" => $universo,
+			"incentivos_count" => count($incentivos)
 		);
 	}
 
@@ -229,7 +459,8 @@ class ControladorMetasRetos
 			"monto" => 0.0,
 			"clientes" => 0.0,
 			"modelos" => 0.0,
-			"modelo_especial" => 0.0
+			"incentivos_producto" => 0.0,
+			"incentivos" => array()
 		);
 
 		// 1) Monto ventas:
@@ -276,27 +507,31 @@ class ControladorMetasRetos
 			$detalle["modelos"] = round($fijoMod * $fMod, 2);
 		}
 
-		// 4) Modelo especial: % sobre venta del modelo
-		$modeloEsp = isset($fila["modelo_especial"]) ? trim((string) $fila["modelo_especial"]) : "";
-		if ($modeloEsp === "" && !empty($reto["modelo_especial"])) {
-			$modeloEsp = trim((string) $reto["modelo_especial"]);
-		}
-		if ($modeloEsp !== "") {
-			$metaDoc = isset($reto["meta_docenas_especial"]) ? $reto["meta_docenas_especial"] : null;
-			$fEsp = self::ctrFactorCumplimiento(
-				isset($fila["docenas_especial"]) ? $fila["docenas_especial"] : 0,
-				$metaDoc,
-				isset($reto["cumplimiento_modelo_esp"]) ? $reto["cumplimiento_modelo_esp"] : "todo_nada"
-			);
-			$pctEsp = isset($reto["comision_modelo_esp_pct"]) ? (float) $reto["comision_modelo_esp_pct"] : 0.0;
-			$ventaEsp = isset($fila["venta_modelo_especial"]) ? (float) $fila["venta_modelo_especial"] : 0.0;
-			if ($fEsp > 0 && $pctEsp > 0 && $ventaEsp > 0) {
-				$detalle["modelo_especial"] = round($ventaEsp * ($pctEsp / 100.0) * $fEsp, 2);
+		// 4) Incentivos de producto: % sobre venta del objetivo, acumulables
+		$incs = (isset($fila["incentivos"]) && is_array($fila["incentivos"])) ? $fila["incentivos"] : array();
+		foreach ($incs as $inc) {
+			$metaCant = isset($inc["meta_cantidad"]) ? $inc["meta_cantidad"] : null;
+			$avance = isset($inc["avance_meta"]) ? (float) $inc["avance_meta"] : 0.0;
+			$modo = isset($inc["cumplimiento"]) ? $inc["cumplimiento"] : "todo_nada";
+			$factor = self::ctrFactorCumplimiento($avance, $metaCant, $modo);
+			$pct = isset($inc["comision_pct"]) ? (float) $inc["comision_pct"] : 0.0;
+			$ventaObj = isset($inc["venta_objetivo"]) ? (float) $inc["venta_objetivo"] : 0.0;
+			$aporte = 0.0;
+			if ($factor > 0 && $pct > 0 && $ventaObj > 0) {
+				$aporte = round($ventaObj * ($pct / 100.0) * $factor, 2);
 			}
+			$detalle["incentivos"][] = array(
+				"id" => isset($inc["id"]) ? (int) $inc["id"] : null,
+				"etiqueta" => self::ctrEtiquetaIncentivo($inc),
+				"avance_meta" => $avance,
+				"meta_cantidad" => $metaCant,
+				"aporte" => $aporte
+			);
+			$detalle["incentivos_producto"] = round($detalle["incentivos_producto"] + $aporte, 2);
 		}
 
 		$total = round(
-			$detalle["monto"] + $detalle["clientes"] + $detalle["modelos"] + $detalle["modelo_especial"],
+			$detalle["monto"] + $detalle["clientes"] + $detalle["modelos"] + $detalle["incentivos_producto"],
 			2
 		);
 
@@ -311,6 +546,22 @@ class ControladorMetasRetos
 		return array(
 			"ok" => true,
 			"data" => ModeloMetasRetos::mdlListarModelosCatalogo($q)
+		);
+	}
+
+	static public function ctrListarColoresModeloAjax($modelo)
+	{
+		return array(
+			"ok" => true,
+			"data" => ModeloMetasRetos::mdlListarColoresPorModelo($modelo)
+		);
+	}
+
+	static public function ctrBuscarArticulosAjax($q = "")
+	{
+		return array(
+			"ok" => true,
+			"data" => ModeloMetasRetos::mdlBuscarArticulos($q)
 		);
 	}
 }

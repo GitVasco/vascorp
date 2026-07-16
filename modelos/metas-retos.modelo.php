@@ -75,87 +75,208 @@ class ModeloMetasRetos
 		return $fila ? $fila : null;
 	}
 
-	static public function mdlGuardarReto($datos)
+	private static function existeTablaIncentivos()
 	{
-		$existente = self::mdlObtenerReto($datos["cod_vendedor"], $datos["anio"], $datos["mes"]);
-
-		if ($existente) {
-			$stmt = Conexion::conectar()->prepare(
-				"UPDATE metas_retos_vendedorjf SET
-					meta_monto = :meta_monto,
-					comision_monto_pct = :comision_monto_pct,
-					comision_monto_fijo = :comision_monto_fijo,
-					cumplimiento_monto = :cumplimiento_monto,
-					meta_clientes = :meta_clientes,
-					comision_clientes_fijo = :comision_clientes_fijo,
-					cumplimiento_clientes = :cumplimiento_clientes,
-					meta_modelos = :meta_modelos,
-					meta_modelos_modo = :meta_modelos_modo,
-					meta_modelos_pct = :meta_modelos_pct,
-					comision_modelos_fijo = :comision_modelos_fijo,
-					cumplimiento_modelos = :cumplimiento_modelos,
-					modelo_especial = :modelo_especial,
-					meta_docenas_especial = :meta_docenas_especial,
-					comision_modelo_esp_pct = :comision_modelo_esp_pct,
-					cumplimiento_modelo_esp = :cumplimiento_modelo_esp,
-					usuario = :usuario,
-					fecmod = NOW()
-				 WHERE id = :id"
-			);
-			$stmt->bindValue(":id", (int) $existente["id"], PDO::PARAM_INT);
-		} else {
-			$stmt = Conexion::conectar()->prepare(
-				"INSERT INTO metas_retos_vendedorjf (
-					cod_vendedor, anio, mes,
-					meta_monto, comision_monto_pct, comision_monto_fijo, cumplimiento_monto,
-					meta_clientes, comision_clientes_fijo, cumplimiento_clientes,
-					meta_modelos, meta_modelos_modo, meta_modelos_pct, comision_modelos_fijo, cumplimiento_modelos,
-					modelo_especial, meta_docenas_especial, comision_modelo_esp_pct, cumplimiento_modelo_esp,
-					usuario, fecreg
-				) VALUES (
-					:cod_vendedor, :anio, :mes,
-					:meta_monto, :comision_monto_pct, :comision_monto_fijo, :cumplimiento_monto,
-					:meta_clientes, :comision_clientes_fijo, :cumplimiento_clientes,
-					:meta_modelos, :meta_modelos_modo, :meta_modelos_pct, :comision_modelos_fijo, :cumplimiento_modelos,
-					:modelo_especial, :meta_docenas_especial, :comision_modelo_esp_pct, :cumplimiento_modelo_esp,
-					:usuario, NOW()
-				)"
-			);
-			$stmt->bindValue(":cod_vendedor", $datos["cod_vendedor"], PDO::PARAM_STR);
-			$stmt->bindValue(":anio", (int) $datos["anio"], PDO::PARAM_INT);
-			$stmt->bindValue(":mes", (int) $datos["mes"], PDO::PARAM_INT);
+		static $cache = null;
+		if ($cache !== null) {
+			return $cache;
 		}
-
-		self::bindNullableDecimal($stmt, ":meta_monto", $datos["meta_monto"]);
-		self::bindNullableDecimal($stmt, ":comision_monto_pct", $datos["comision_monto_pct"]);
-		self::bindNullableDecimal($stmt, ":comision_monto_fijo", $datos["comision_monto_fijo"]);
-		$stmt->bindValue(":cumplimiento_monto", $datos["cumplimiento_monto"], PDO::PARAM_STR);
-
-		self::bindNullableInt($stmt, ":meta_clientes", $datos["meta_clientes"]);
-		self::bindNullableDecimal($stmt, ":comision_clientes_fijo", $datos["comision_clientes_fijo"]);
-		$stmt->bindValue(":cumplimiento_clientes", $datos["cumplimiento_clientes"], PDO::PARAM_STR);
-
-		self::bindNullableInt($stmt, ":meta_modelos", $datos["meta_modelos"]);
-		$modoMod = isset($datos["meta_modelos_modo"]) && $datos["meta_modelos_modo"] === "porcentaje"
-			? "porcentaje" : "cantidad";
-		$stmt->bindValue(":meta_modelos_modo", $modoMod, PDO::PARAM_STR);
-		self::bindNullableDecimal($stmt, ":meta_modelos_pct", isset($datos["meta_modelos_pct"]) ? $datos["meta_modelos_pct"] : null);
-		self::bindNullableDecimal($stmt, ":comision_modelos_fijo", $datos["comision_modelos_fijo"]);
-		$stmt->bindValue(":cumplimiento_modelos", $datos["cumplimiento_modelos"], PDO::PARAM_STR);
-
-		$modeloEsp = isset($datos["modelo_especial"]) ? trim((string) $datos["modelo_especial"]) : "";
-		if ($modeloEsp === "") {
-			$stmt->bindValue(":modelo_especial", null, PDO::PARAM_NULL);
-		} else {
-			$stmt->bindValue(":modelo_especial", $modeloEsp, PDO::PARAM_STR);
+		try {
+			$pdo = Conexion::conectar();
+			$check = $pdo->query("SHOW TABLES LIKE 'metas_retos_incentivos_productojf'");
+			$cache = $check && (bool) $check->fetch();
+		} catch (Exception $e) {
+			$cache = false;
 		}
-		self::bindNullableDecimal($stmt, ":meta_docenas_especial", $datos["meta_docenas_especial"]);
-		self::bindNullableDecimal($stmt, ":comision_modelo_esp_pct", $datos["comision_modelo_esp_pct"]);
-		$stmt->bindValue(":cumplimiento_modelo_esp", $datos["cumplimiento_modelo_esp"], PDO::PARAM_STR);
+		return $cache;
+	}
 
-		$stmt->bindValue(":usuario", (int) $datos["usuario"], PDO::PARAM_INT);
+	static public function mdlListarIncentivosPorReto($idMetaReto)
+	{
+		$idMetaReto = (int) $idMetaReto;
+		if ($idMetaReto < 1 || !self::existeTablaIncentivos()) {
+			return array();
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT i.*,
+				IFNULL(c.nom_color, i.cod_color) AS nombre_color
+			 FROM metas_retos_incentivos_productojf i
+			 LEFT JOIN colorjf c ON TRIM(c.cod_color) = TRIM(IFNULL(i.cod_color, ''))
+			 WHERE i.id_meta_reto = :id
+			 ORDER BY i.orden ASC, i.id ASC"
+		);
+		$stmt->bindValue(":id", $idMetaReto, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
 
-		return $stmt->execute() ? "ok" : "error";
+	/** Incentivos del período agrupados por cod_vendedor. */
+	static public function mdlListarIncentivosPeriodo($anio, $mes)
+	{
+		if (!self::existeTablaIncentivos()) {
+			return array();
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT i.*,
+				TRIM(r.cod_vendedor) AS cod_vendedor,
+				IFNULL(c.nom_color, i.cod_color) AS nombre_color
+			 FROM metas_retos_incentivos_productojf i
+			 INNER JOIN metas_retos_vendedorjf r ON r.id = i.id_meta_reto
+			 LEFT JOIN colorjf c ON TRIM(c.cod_color) = TRIM(IFNULL(i.cod_color, ''))
+			 WHERE r.anio = :anio AND r.mes = :mes
+			 ORDER BY r.cod_vendedor ASC, i.orden ASC, i.id ASC"
+		);
+		$stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+		$stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+		$stmt->execute();
+
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$cod = trim($fila["cod_vendedor"]);
+			if (!isset($mapa[$cod])) {
+				$mapa[$cod] = array();
+			}
+			$mapa[$cod][] = $fila;
+		}
+		return $mapa;
+	}
+
+	/**
+	 * Guarda cabecera + reemplaza incentivos hijos en una transacción.
+	 * No escribe columnas legacy modelo_especial_* (respaldo de lectura).
+	 */
+	static public function mdlGuardarReto($datos, $incentivos = array())
+	{
+		if (!self::existeTablaIncentivos()) {
+			return "error";
+		}
+		$pdo = Conexion::conectar();
+		$pdo->beginTransaction();
+
+		try {
+			$existente = self::mdlObtenerReto($datos["cod_vendedor"], $datos["anio"], $datos["mes"]);
+
+			if ($existente) {
+				$stmt = $pdo->prepare(
+					"UPDATE metas_retos_vendedorjf SET
+						meta_monto = :meta_monto,
+						comision_monto_pct = :comision_monto_pct,
+						comision_monto_fijo = :comision_monto_fijo,
+						cumplimiento_monto = :cumplimiento_monto,
+						meta_clientes = :meta_clientes,
+						comision_clientes_fijo = :comision_clientes_fijo,
+						cumplimiento_clientes = :cumplimiento_clientes,
+						meta_modelos = :meta_modelos,
+						meta_modelos_modo = :meta_modelos_modo,
+						meta_modelos_pct = :meta_modelos_pct,
+						comision_modelos_fijo = :comision_modelos_fijo,
+						cumplimiento_modelos = :cumplimiento_modelos,
+						usuario = :usuario,
+						fecmod = NOW()
+					 WHERE id = :id"
+				);
+				$stmt->bindValue(":id", (int) $existente["id"], PDO::PARAM_INT);
+				$idReto = (int) $existente["id"];
+			} else {
+				$stmt = $pdo->prepare(
+					"INSERT INTO metas_retos_vendedorjf (
+						cod_vendedor, anio, mes,
+						meta_monto, comision_monto_pct, comision_monto_fijo, cumplimiento_monto,
+						meta_clientes, comision_clientes_fijo, cumplimiento_clientes,
+						meta_modelos, meta_modelos_modo, meta_modelos_pct, comision_modelos_fijo, cumplimiento_modelos,
+						usuario, fecreg
+					) VALUES (
+						:cod_vendedor, :anio, :mes,
+						:meta_monto, :comision_monto_pct, :comision_monto_fijo, :cumplimiento_monto,
+						:meta_clientes, :comision_clientes_fijo, :cumplimiento_clientes,
+						:meta_modelos, :meta_modelos_modo, :meta_modelos_pct, :comision_modelos_fijo, :cumplimiento_modelos,
+						:usuario, NOW()
+					)"
+				);
+				$stmt->bindValue(":cod_vendedor", $datos["cod_vendedor"], PDO::PARAM_STR);
+				$stmt->bindValue(":anio", (int) $datos["anio"], PDO::PARAM_INT);
+				$stmt->bindValue(":mes", (int) $datos["mes"], PDO::PARAM_INT);
+				$idReto = 0;
+			}
+
+			self::bindNullableDecimal($stmt, ":meta_monto", $datos["meta_monto"]);
+			self::bindNullableDecimal($stmt, ":comision_monto_pct", $datos["comision_monto_pct"]);
+			self::bindNullableDecimal($stmt, ":comision_monto_fijo", $datos["comision_monto_fijo"]);
+			$stmt->bindValue(":cumplimiento_monto", $datos["cumplimiento_monto"], PDO::PARAM_STR);
+
+			self::bindNullableInt($stmt, ":meta_clientes", $datos["meta_clientes"]);
+			self::bindNullableDecimal($stmt, ":comision_clientes_fijo", $datos["comision_clientes_fijo"]);
+			$stmt->bindValue(":cumplimiento_clientes", $datos["cumplimiento_clientes"], PDO::PARAM_STR);
+
+			self::bindNullableInt($stmt, ":meta_modelos", $datos["meta_modelos"]);
+			$modoMod = isset($datos["meta_modelos_modo"]) && $datos["meta_modelos_modo"] === "porcentaje"
+				? "porcentaje" : "cantidad";
+			$stmt->bindValue(":meta_modelos_modo", $modoMod, PDO::PARAM_STR);
+			self::bindNullableDecimal($stmt, ":meta_modelos_pct", isset($datos["meta_modelos_pct"]) ? $datos["meta_modelos_pct"] : null);
+			self::bindNullableDecimal($stmt, ":comision_modelos_fijo", $datos["comision_modelos_fijo"]);
+			$stmt->bindValue(":cumplimiento_modelos", $datos["cumplimiento_modelos"], PDO::PARAM_STR);
+			$stmt->bindValue(":usuario", (int) $datos["usuario"], PDO::PARAM_INT);
+
+			if (!$stmt->execute()) {
+				throw new Exception("Error al guardar cabecera");
+			}
+
+			if ($idReto < 1) {
+				$idReto = (int) $pdo->lastInsertId();
+			}
+			if ($idReto < 1) {
+				throw new Exception("Sin id de meta/reto");
+			}
+
+			$del = $pdo->prepare("DELETE FROM metas_retos_incentivos_productojf WHERE id_meta_reto = :id");
+			$del->bindValue(":id", $idReto, PDO::PARAM_INT);
+			$del->execute();
+
+			if (!empty($incentivos) && is_array($incentivos)) {
+				$ins = $pdo->prepare(
+					"INSERT INTO metas_retos_incentivos_productojf (
+						id_meta_reto, tipo_objetivo, modelo, cod_color, articulo,
+						unidad_meta, meta_cantidad, comision_pct, cumplimiento,
+						orden, observacion, usuario, fecreg
+					) VALUES (
+						:id_meta_reto, :tipo_objetivo, :modelo, :cod_color, :articulo,
+						:unidad_meta, :meta_cantidad, :comision_pct, :cumplimiento,
+						:orden, :observacion, :usuario, NOW()
+					)"
+				);
+
+				$orden = 0;
+				foreach ($incentivos as $inc) {
+					$ins->bindValue(":id_meta_reto", $idReto, PDO::PARAM_INT);
+					$ins->bindValue(":tipo_objetivo", $inc["tipo_objetivo"], PDO::PARAM_STR);
+
+					self::bindNullableStr($ins, ":modelo", isset($inc["modelo"]) ? $inc["modelo"] : null);
+					self::bindNullableStr($ins, ":cod_color", isset($inc["cod_color"]) ? $inc["cod_color"] : null);
+					self::bindNullableStr($ins, ":articulo", isset($inc["articulo"]) ? $inc["articulo"] : null);
+
+					$ins->bindValue(":unidad_meta", $inc["unidad_meta"], PDO::PARAM_STR);
+					$ins->bindValue(":meta_cantidad", $inc["meta_cantidad"]);
+					$ins->bindValue(":comision_pct", $inc["comision_pct"]);
+					$ins->bindValue(":cumplimiento", $inc["cumplimiento"], PDO::PARAM_STR);
+					$ins->bindValue(":orden", $orden, PDO::PARAM_INT);
+					self::bindNullableStr($ins, ":observacion", isset($inc["observacion"]) ? $inc["observacion"] : null);
+					$ins->bindValue(":usuario", (int) $datos["usuario"], PDO::PARAM_INT);
+
+					if (!$ins->execute()) {
+						throw new Exception("Error al guardar incentivo");
+					}
+					$orden++;
+				}
+			}
+
+			$pdo->commit();
+			return "ok";
+		} catch (Exception $e) {
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+			return "error";
+		}
 	}
 
 	/** Solo modelos activos del catálogo (modelojf). Sin tope artificial. */
@@ -165,8 +286,11 @@ class ModeloMetasRetos
 
 		$sql = "SELECT m.modelo,
 				IFNULL(m.nombre, m.modelo) AS nombre,
-				IFNULL(m.articulos, 0) AS articulos
+				IFNULL(m.articulos, 0) AS articulos,
+				IFNULL(m.id_marca, 0) AS id_marca,
+				IFNULL(mk.marca, '') AS marca
 			FROM modelojf m
+			LEFT JOIN marcasjf mk ON mk.id = m.id_marca
 			WHERE LOWER(TRIM(IFNULL(m.estado, ''))) = 'activo'
 			  AND TRIM(IFNULL(m.modelo, '')) <> ''";
 		if ($q !== "") {
@@ -184,6 +308,124 @@ class ModeloMetasRetos
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
+	/** Colores existentes para un modelo (todas las tallas implícitas). */
+	static public function mdlListarColoresPorModelo($modelo)
+	{
+		$modelo = trim((string) $modelo);
+		if ($modelo === "") {
+			return array();
+		}
+
+		// Subconsulta primero para evitar duplicar por colorjf con códigos repetidos
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT x.cod_color,
+				MAX(IFNULL(NULLIF(TRIM(x.color_art), ''), IFNULL(c.nom_color, x.cod_color))) AS nombre_color,
+				SUM(x.articulos) AS articulos
+			 FROM (
+				SELECT TRIM(a.cod_color) AS cod_color,
+					MAX(TRIM(IFNULL(a.color, ''))) AS color_art,
+					COUNT(*) AS articulos
+				FROM articulojf a
+				WHERE TRIM(a.modelo) = :modelo
+				  AND TRIM(IFNULL(a.cod_color, '')) <> ''
+				GROUP BY TRIM(a.cod_color)
+			 ) x
+			 LEFT JOIN colorjf c ON TRIM(c.cod_color) = x.cod_color
+			 GROUP BY x.cod_color
+			 ORDER BY x.cod_color ASC"
+		);
+		$stmt->bindParam(":modelo", $modelo, PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/** Búsqueda de SKU para incentivos tipo artículo. */
+	static public function mdlBuscarArticulos($q = "", $limite = 40)
+	{
+		$q = trim((string) $q);
+		$limite = max(1, min(100, (int) $limite));
+		if ($q === "") {
+			return array();
+		}
+
+		$like = "%" . $q . "%";
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT a.articulo,
+				TRIM(IFNULL(a.modelo, '')) AS modelo,
+				TRIM(IFNULL(a.cod_color, '')) AS cod_color,
+				IFNULL(NULLIF(TRIM(a.color), ''), IFNULL(c.nom_color, a.cod_color)) AS nombre_color,
+				IFNULL(a.id_marca, 0) AS id_marca,
+				IFNULL(mk.marca, '') AS marca
+			 FROM articulojf a
+			 LEFT JOIN colorjf c ON TRIM(c.cod_color) = TRIM(a.cod_color)
+			 LEFT JOIN marcasjf mk ON mk.id = a.id_marca
+			 WHERE a.articulo LIKE :q
+			    OR a.modelo LIKE :q2
+			 ORDER BY a.articulo ASC
+			 LIMIT {$limite}"
+		);
+		$stmt->bindParam(":q", $like, PDO::PARAM_STR);
+		$stmt->bindParam(":q2", $like, PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	static public function mdlExisteModelo($modelo)
+	{
+		$modelo = trim((string) $modelo);
+		if ($modelo === "") {
+			return false;
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT 1 FROM modelojf WHERE TRIM(modelo) = :m LIMIT 1"
+		);
+		$stmt->bindParam(":m", $modelo, PDO::PARAM_STR);
+		$stmt->execute();
+		if ($stmt->fetch()) {
+			return true;
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT 1 FROM articulojf WHERE TRIM(modelo) = :m LIMIT 1"
+		);
+		$stmt->bindParam(":m", $modelo, PDO::PARAM_STR);
+		$stmt->execute();
+		return (bool) $stmt->fetch();
+	}
+
+	static public function mdlExisteModeloColor($modelo, $codColor)
+	{
+		$modelo = trim((string) $modelo);
+		$codColor = trim((string) $codColor);
+		if ($modelo === "" || $codColor === "") {
+			return false;
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT 1 FROM articulojf
+			 WHERE TRIM(modelo) = :m AND TRIM(cod_color) = :c
+			 LIMIT 1"
+		);
+		$stmt->bindParam(":m", $modelo, PDO::PARAM_STR);
+		$stmt->bindParam(":c", $codColor, PDO::PARAM_STR);
+		$stmt->execute();
+		return (bool) $stmt->fetch();
+	}
+
+	static public function mdlExisteArticulo($articulo)
+	{
+		$articulo = trim((string) $articulo);
+		if ($articulo === "") {
+			return false;
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT articulo, modelo, cod_color, color, id_marca
+			 FROM articulojf WHERE articulo = :a LIMIT 1"
+		);
+		$stmt->bindParam(":a", $articulo, PDO::PARAM_STR);
+		$stmt->execute();
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		return $row ? $row : null;
+	}
+
 	private static function bindNullableDecimal($stmt, $param, $valor)
 	{
 		if ($valor === null || $valor === "") {
@@ -199,6 +441,15 @@ class ModeloMetasRetos
 			$stmt->bindValue($param, null, PDO::PARAM_NULL);
 		} else {
 			$stmt->bindValue($param, (int) $valor, PDO::PARAM_INT);
+		}
+	}
+
+	private static function bindNullableStr($stmt, $param, $valor)
+	{
+		if ($valor === null || $valor === "") {
+			$stmt->bindValue($param, null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue($param, trim((string) $valor), PDO::PARAM_STR);
 		}
 	}
 
@@ -287,7 +538,14 @@ class ModeloMetasRetos
 		$ventas = self::mdlVentaRealPorVendedor($anio, $mes);
 		$clientes = self::mdlClientesNuevosPorVendedor($anio, $mes);
 		$modelos = self::mdlModelosActivosPorVendedor($anio, $mes);
-		$porModelo = self::mdlVentaModeloPorVendedor($anio, $mes);
+
+		$incentivosBase = self::mdlListarIncentivosPeriodo($anio, $mes);
+		require_once "metricas-comerciales.modelo.php";
+		$incentivosAvance = ModeloMetricasComerciales::mdlAvanceIncentivosProductoPorVendedorPeriodo(
+			$anio,
+			$mes,
+			$incentivosBase
+		);
 
 		require_once "grupos-marcas-comercial.modelo.php";
 		$fechaRef = sprintf("%04d-%02d-01", (int) $anio, (int) $mes);
@@ -296,13 +554,10 @@ class ModeloMetasRetos
 		foreach ($vendedores as $vend) {
 			$cod = trim($vend["codigo"]);
 			$reto = isset($retos[$cod]) ? $retos[$cod] : null;
-			$docenasEsp = 0.0;
-			$ventaEsp = 0.0;
-			$modeloEsp = ($reto && !empty($reto["modelo_especial"])) ? trim($reto["modelo_especial"]) : "";
-			if ($modeloEsp !== "" && isset($porModelo[$cod][$modeloEsp])) {
-				$docenasEsp = $porModelo[$cod][$modeloEsp]["docenas"];
-				$ventaEsp = $porModelo[$cod][$modeloEsp]["venta"];
-			}
+			$incs = isset($incentivosAvance[$cod])
+				? $incentivosAvance[$cod]
+				: (isset($incentivosBase[$cod]) ? $incentivosBase[$cod] : array());
+
 			$lista[] = array(
 				"cod_vendedor" => $cod,
 				"nombre_vendedor" => $vend["descripcion"],
@@ -311,9 +566,7 @@ class ModeloMetasRetos
 				"clientes_nuevos" => isset($clientes[$cod]) ? $clientes[$cod] : 0,
 				"modelos_activos" => isset($modelos[$cod]) ? $modelos[$cod] : 0,
 				"universo_modelos" => ModeloGruposMarcasComercial::mdlUniversoModelosActivosPorVendedor($cod, $fechaRef),
-				"modelo_especial" => $modeloEsp,
-				"docenas_especial" => $docenasEsp,
-				"venta_modelo_especial" => $ventaEsp
+				"incentivos" => $incs
 			);
 		}
 		return $lista;

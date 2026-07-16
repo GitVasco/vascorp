@@ -27,12 +27,30 @@ if ($accion === "detalle") {
 }
 
 if ($accion === "guardar") {
+	if (!ControladorMetasRetos::ctrPuedeEditar()) {
+		echo json_encode(array("ok" => false, "mensaje" => "Sin permiso para editar"));
+		return;
+	}
 	echo json_encode(ControladorMetasRetos::ctrGuardarAjax($_POST));
 	return;
 }
 
 if ($accion === "listarModelos") {
 	echo json_encode(ControladorMetasRetos::ctrListarModelosAjax(
+		isset($_POST["q"]) ? $_POST["q"] : ""
+	));
+	return;
+}
+
+if ($accion === "listarColoresModelo") {
+	echo json_encode(ControladorMetasRetos::ctrListarColoresModeloAjax(
+		isset($_POST["modelo"]) ? $_POST["modelo"] : ""
+	));
+	return;
+}
+
+if ($accion === "buscarArticulos") {
+	echo json_encode(ControladorMetasRetos::ctrBuscarArticulosAjax(
 		isset($_POST["q"]) ? $_POST["q"] : ""
 	));
 	return;

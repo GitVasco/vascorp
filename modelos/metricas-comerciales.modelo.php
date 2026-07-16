@@ -544,6 +544,127 @@ class ModeloMetricasComerciales
 		return $mapa;
 	}
 
+	/**
+	 * Agregados permitidos por vendedor+modelo+color+artículo (una consulta).
+	 * [cod => [ {modelo, cod_color, articulo, unidades, docenas, venta}, ... ]]
+	 */
+	static public function mdlAgregadoProductoPermitidoPorVendedor($anio, $mes)
+	{
+		if (!self::existeTablaMovimientos($anio)) {
+			return array();
+		}
+
+		$rango = self::rangoMes($anio, $mes);
+		$tabla = self::tablaMovimientos($anio);
+		$joinActivo = self::sqlJoinVendedorActivo("m", "ma");
+		$permitida = self::sqlLineaMarcaPermitida("m", "a");
+
+		$sql = "SELECT TRIM(m.vendedor) AS cod_vendedor,
+				TRIM(IFNULL(a.modelo, '')) AS modelo,
+				TRIM(IFNULL(a.cod_color, '')) AS cod_color,
+				TRIM(IFNULL(a.articulo, '')) AS articulo,
+				SUM(IFNULL(m.cantidad, 0)) AS unidades,
+				SUM(IFNULL(m.cantidad, 0)) / 12 AS docenas,
+				SUM(IFNULL(m.total, 0)) AS venta
+			FROM {$tabla} m
+			INNER JOIN articulojf a ON a.articulo = m.articulo
+			{$joinActivo}
+			WHERE m.fecha >= :ini AND m.fecha < :fin
+			  AND " . self::sqlTiposVentaReal("m") . "
+			  AND TRIM(IFNULL(m.vendedor, '')) <> ''
+			  AND {$permitida}
+			GROUP BY TRIM(m.vendedor),
+				TRIM(IFNULL(a.modelo, '')),
+				TRIM(IFNULL(a.cod_color, '')),
+				TRIM(IFNULL(a.articulo, ''))";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$cod = trim($fila["cod_vendedor"]);
+			if (!isset($mapa[$cod])) {
+				$mapa[$cod] = array();
+			}
+			$mapa[$cod][] = array(
+				"modelo" => trim($fila["modelo"]),
+				"cod_color" => trim($fila["cod_color"]),
+				"articulo" => trim($fila["articulo"]),
+				"unidades" => (float) $fila["unidades"],
+				"docenas" => (float) $fila["docenas"],
+				"venta" => (float) $fila["venta"]
+			);
+		}
+		return $mapa;
+	}
+
+	/**
+	 * Cruza incentivos con agregados del periodo (sin 1 consulta por incentivo).
+	 * Cada incentivo recibe avance_meta, venta_objetivo, unidades, docenas.
+	 *
+	 * @param array $incentivosPorVendedor [cod => [incentivo, ...]]
+	 * @return array misma estructura con métricas enriquecidas
+	 */
+	static public function mdlAvanceIncentivosProductoPorVendedorPeriodo($anio, $mes, $incentivosPorVendedor)
+	{
+		if (!is_array($incentivosPorVendedor) || empty($incentivosPorVendedor)) {
+			return array();
+		}
+
+		$agregados = self::mdlAgregadoProductoPermitidoPorVendedor($anio, $mes);
+		$salida = array();
+
+		foreach ($incentivosPorVendedor as $cod => $lista) {
+			$cod = trim((string) $cod);
+			$buckets = isset($agregados[$cod]) ? $agregados[$cod] : array();
+			$salida[$cod] = array();
+
+			foreach ((array) $lista as $inc) {
+				$tipo = isset($inc["tipo_objetivo"]) ? trim((string) $inc["tipo_objetivo"]) : "";
+				$modelo = isset($inc["modelo"]) ? trim((string) $inc["modelo"]) : "";
+				$color = isset($inc["cod_color"]) ? trim((string) $inc["cod_color"]) : "";
+				$articulo = isset($inc["articulo"]) ? trim((string) $inc["articulo"]) : "";
+				$unidad = (isset($inc["unidad_meta"]) && $inc["unidad_meta"] === "unidades")
+					? "unidades" : "docenas";
+
+				$unidades = 0.0;
+				$docenas = 0.0;
+				$venta = 0.0;
+
+				foreach ($buckets as $b) {
+					$match = false;
+					if ($tipo === "modelo" && $modelo !== "" && $b["modelo"] === $modelo) {
+						$match = true;
+					} elseif ($tipo === "modelo_color"
+						&& $modelo !== "" && $color !== ""
+						&& $b["modelo"] === $modelo && $b["cod_color"] === $color) {
+						$match = true;
+					} elseif ($tipo === "articulo" && $articulo !== "" && $b["articulo"] === $articulo) {
+						$match = true;
+					}
+					if ($match) {
+						$unidades += $b["unidades"];
+						$docenas += $b["docenas"];
+						$venta += $b["venta"];
+					}
+				}
+
+				$avanceMeta = ($unidad === "unidades") ? $unidades : $docenas;
+				$row = $inc;
+				$row["unidades"] = round($unidades, 2);
+				$row["docenas"] = round($docenas, 2);
+				$row["avance_meta"] = round($avanceMeta, 2);
+				$row["venta_objetivo"] = round($venta, 2);
+				$salida[$cod][] = $row;
+			}
+		}
+
+		return $salida;
+	}
+
 	static public function mdlConciliacionCoberturaPeriodo($anio, $mes)
 	{
 		$vendedores = self::mdlVendedoresActivos();

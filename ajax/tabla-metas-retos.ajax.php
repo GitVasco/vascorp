@@ -83,15 +83,28 @@ function mrCelda($meta, $real, $pct, $aporte = 0, $decMeta = 0, $decReal = 0, $f
 	return $html;
 }
 
+function mrEtiquetaIncentivoLista($inc)
+{
+	$tipo = isset($inc["tipo_objetivo"]) ? $inc["tipo_objetivo"] : "";
+	if ($tipo === "modelo") {
+		return "Mod " . (isset($inc["modelo"]) ? $inc["modelo"] : "");
+	}
+	if ($tipo === "modelo_color") {
+		$nom = !empty($inc["nombre_color"]) ? $inc["nombre_color"] : (isset($inc["cod_color"]) ? $inc["cod_color"] : "");
+		return "Mod " . (isset($inc["modelo"]) ? $inc["modelo"] : "") . "·" . $nom;
+	}
+	if ($tipo === "articulo") {
+		return "Art " . (isset($inc["articulo"]) ? $inc["articulo"] : "");
+	}
+	return "Incentivo";
+}
+
 if (is_array($filas)) {
 	foreach ($filas as $f) {
 		$reto = isset($f["reto"]) && is_array($f["reto"]) ? $f["reto"] : array();
 		$metaMonto = isset($reto["meta_monto"]) ? $reto["meta_monto"] : null;
 		$metaCli = isset($reto["meta_clientes"]) ? $reto["meta_clientes"] : null;
 		$metaMod = isset($reto["meta_modelos"]) ? $reto["meta_modelos"] : null;
-		$metaDoc = isset($reto["meta_docenas_especial"]) ? $reto["meta_docenas_especial"] : null;
-		$modeloEsp = isset($f["modelo_especial"]) ? trim((string) $f["modelo_especial"]) : "";
-		$docenasEsp = isset($f["docenas_especial"]) ? $f["docenas_especial"] : 0;
 		$extraMetaMod = "";
 		if (isset($reto["meta_modelos_modo"]) && $reto["meta_modelos_modo"] === "porcentaje"
 			&& isset($reto["meta_modelos_pct"]) && $reto["meta_modelos_pct"] !== null && $reto["meta_modelos_pct"] !== "") {
@@ -103,9 +116,6 @@ if (is_array($filas)) {
 		$pctMonto = ControladorMetasRetos::ctrPctAvance($f["venta_real"], $metaMonto);
 		$pctCli = ControladorMetasRetos::ctrPctAvance($f["clientes_nuevos"], $metaCli);
 		$pctMod = ControladorMetasRetos::ctrPctAvance($f["modelos_activos"], $metaMod);
-		$pctEsp = ($modeloEsp !== "")
-			? ControladorMetasRetos::ctrPctAvance($docenasEsp, $metaDoc)
-			: null;
 
 		$comision = ControladorMetasRetos::ctrCalcularComisionEstimada($f);
 		$totalPagarPeriodo += (float) $comision["total"];
@@ -113,37 +123,53 @@ if (is_array($filas)) {
 		$aporteMonto = isset($det["monto"]) ? (float) $det["monto"] : 0.0;
 		$aporteCli = isset($det["clientes"]) ? (float) $det["clientes"] : 0.0;
 		$aporteMod = isset($det["modelos"]) ? (float) $det["modelos"] : 0.0;
-		$aporteEsp = isset($det["modelo_especial"]) ? (float) $det["modelo_especial"] : 0.0;
+		$aporteInc = isset($det["incentivos_producto"]) ? (float) $det["incentivos_producto"] : 0.0;
+		$detIncs = isset($det["incentivos"]) && is_array($det["incentivos"]) ? $det["incentivos"] : array();
 
 		$titlePagar = "Monto: " . number_format($aporteMonto, 2, ".", ",")
 			. " · Cli: " . number_format($aporteCli, 2, ".", ",")
 			. " · Mod: " . number_format($aporteMod, 2, ".", ",")
-			. " · Esp: " . number_format($aporteEsp, 2, ".", ",");
+			. " · Inc: " . number_format($aporteInc, 2, ".", ",");
 
 		$cod = htmlspecialchars($f["cod_vendedor"], ENT_QUOTES, "UTF-8");
 		$nom = htmlspecialchars($f["nombre_vendedor"], ENT_QUOTES, "UTF-8");
 		$colVendedor = "<strong>{$cod}</strong> <span class='text-muted'>{$nom}</span>";
 
-		$colEsp = "<div class='mr-cell'>";
-		if ($modeloEsp !== "") {
-			$colEsp .= "<div class='mr-mod'>" . htmlspecialchars($modeloEsp, ENT_QUOTES, "UTF-8") . "</div>";
-			$colEsp .= "<div class='mr-line'><span class='mr-meta'>"
-				. htmlspecialchars(mrTieneValor($metaDoc) ? mrFmt($metaDoc, 2) : "—", ENT_QUOTES, "UTF-8")
-				. "</span><span class='mr-sep'>/</span><span class='mr-real'>"
-				. htmlspecialchars(mrFmt($docenasEsp, 2), ENT_QUOTES, "UTF-8")
-				. "</span></div>";
-			if (mrTieneValor($metaDoc) && $pctEsp !== null) {
-				$cls = $pctEsp >= 100 ? "success" : ($pctEsp >= 70 ? "warning" : "danger");
-				$ancho = min(100, max(0, (float) $pctEsp));
-				$pctTxt = number_format((float) $pctEsp, 0, ".", ",") . "%";
-				$colEsp .= "<div class='progress mr-bar'><div class='progress-bar progress-bar-{$cls}' style='width:{$ancho}%;'>"
-					. htmlspecialchars($pctTxt, ENT_QUOTES, "UTF-8") . "</div></div>";
+		$incs = (isset($f["incentivos"]) && is_array($f["incentivos"])) ? $f["incentivos"] : array();
+		$colInc = "<div class='mr-cell'>";
+		if (!empty($incs)) {
+			$n = count($incs);
+			$colInc .= "<div class='mr-inc-summary'>"
+				. htmlspecialchars($n . ($n === 1 ? " incentivo" : " incentivos"), ENT_QUOTES, "UTF-8")
+				. " · S/ " . htmlspecialchars(mrFmt($aporteInc, 2), ENT_QUOTES, "UTF-8")
+				. "</div>";
+			$lineas = array();
+			foreach ($incs as $i => $inc) {
+				$etiq = mrEtiquetaIncentivoLista($inc);
+				$avance = isset($inc["avance_meta"]) ? $inc["avance_meta"] : 0;
+				$metaCant = isset($inc["meta_cantidad"]) ? $inc["meta_cantidad"] : null;
+				$aporteLinea = isset($detIncs[$i]["aporte"]) ? (float) $detIncs[$i]["aporte"] : 0.0;
+				$uni = (isset($inc["unidad_meta"]) && $inc["unidad_meta"] === "unidades") ? "u" : "doc";
+				$lineas[] = htmlspecialchars($etiq, ENT_QUOTES, "UTF-8")
+					. " "
+					. htmlspecialchars(mrFmt($avance, 1), ENT_QUOTES, "UTF-8")
+					. "/"
+					. htmlspecialchars(mrTieneValor($metaCant) ? mrFmt($metaCant, 1) : "—", ENT_QUOTES, "UTF-8")
+					. " " . $uni
+					. " (+" . htmlspecialchars(mrFmt($aporteLinea, 2), ENT_QUOTES, "UTF-8") . ")";
 			}
-			$colEsp .= mrAporteHtml($aporteEsp);
+			$colInc .= "<div class='mr-inc-detalle' title='"
+				. htmlspecialchars(strip_tags(implode(" | ", $lineas)), ENT_QUOTES, "UTF-8")
+				. "'>" . implode("<br>", array_slice($lineas, 0, 3));
+			if (count($lineas) > 3) {
+				$colInc .= "<br><span class='text-muted'>+" . (count($lineas) - 3) . " más</span>";
+			}
+			$colInc .= "</div>";
+			$colInc .= mrAporteHtml($aporteInc);
 		} else {
-			$colEsp .= "<span class='mr-empty'>—</span>";
+			$colInc .= "<span class='mr-empty'>—</span>";
 		}
-		$colEsp .= "</div>";
+		$colInc .= "</div>";
 
 		$colPagar = ((float) $comision["total"] > 0)
 			? "<span class='mr-pay' title='" . htmlspecialchars($titlePagar, ENT_QUOTES, "UTF-8") . "'>"
@@ -163,7 +189,7 @@ if (is_array($filas)) {
 			mrCelda($metaMonto, $f["venta_real"], $pctMonto, $aporteMonto, 0, 2),
 			mrCelda($metaCli, $f["clientes_nuevos"], $pctCli, $aporteCli, 0, 0),
 			mrCelda($metaMod, $f["modelos_activos"], $pctMod, $aporteMod, 0, 0, false, $extraMetaMod),
-			$colEsp,
+			$colInc,
 			$colPagar,
 			$acciones
 		);
