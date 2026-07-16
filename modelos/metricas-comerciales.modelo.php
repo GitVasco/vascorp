@@ -2,6 +2,7 @@
 
 require_once "conexion.php";
 require_once "grupos-marcas-comercial.modelo.php";
+require_once dirname(__FILE__) . "/../controladores/metas-retos.config.php";
 
 /**
  * Métricas comerciales por cobertura de marcas.
@@ -11,6 +12,9 @@ require_once "grupos-marcas-comercial.modelo.php";
  * - E05 con líneas/unidades = devolución → resta/suma por marca (permitida o fuera).
  * - E05 sin líneas/unidades = descuento → resta al vendedor sin atribuir marca (nc_descuento).
  * - venta_kpi = permitida_lineas + nc_descuento.
+ *
+ * Cobranza efectiva (metas/retos e inicio-gerencia):
+ * - cuenta_ctejf tip_mov='-', códigos mrCodigosCobranzaEfectiva(), neto = SUM(monto)/IGV_FACTOR.
  */
 class ModeloMetricasComerciales
 {
@@ -703,5 +707,42 @@ class ModeloMetricasComerciales
 			);
 		}
 		return $lista;
+	}
+
+	/**
+	 * Cobranza neta sin IGV por vendedor (misma clasificación que Resumen de gestión).
+	 * Redondea al final de la suma: ROUND(SUM(monto / IGV_FACTOR), 2).
+	 * Retorna [cod_vendedor => float].
+	 */
+	static public function mdlCobranzaNetaGerenciaPorVendedor($anio, $mes)
+	{
+		$rango = self::rangoMes($anio, $mes);
+		$igv = mrIgvFactor();
+		$sqlIn = mrSqlInCodigosCobranzaEfectiva("cc");
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT TRIM(cc.vendedor) AS vendedor,
+				ROUND(SUM(IFNULL(cc.monto, 0) / :igv), 2) AS cobranza_neta
+			 FROM cuenta_ctejf cc
+			 WHERE cc.tip_mov = '-'
+			   AND cc.fecha >= :fecha_ini
+			   AND cc.fecha < :fecha_fin
+			   AND {$sqlIn}
+			 GROUP BY TRIM(cc.vendedor)"
+		);
+		$stmt->bindValue(":igv", $igv);
+		$stmt->bindValue(":fecha_ini", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fecha_fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$cod = trim($fila["vendedor"]);
+			if ($cod === "") {
+				continue;
+			}
+			$mapa[$cod] = (float) $fila["cobranza_neta"];
+		}
+		return $mapa;
 	}
 }

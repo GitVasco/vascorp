@@ -84,8 +84,37 @@ function mrSetValor($el, valor) {
     $el.val(valor);
 }
 
+/** Cobranza: prorrata usa %; todo_nada usa fijo. */
+function mrSyncCamposCobranza() {
+    var modo = $("#mrCumplimientoCobranza").val() || "prorrata";
+    if (modo === "prorrata") {
+        $("#mrWrapComisionCobranzaPct").show();
+        $("#mrWrapComisionCobranzaFijo").hide();
+        $("#mrAyudaCobranza").html(
+            "Misma fuente que Resumen de gestión, <strong>sin IGV</strong>. "
+            + "<strong>Prorrata:</strong> comisión = % × cobranza neta del período (sin tope por meta)."
+        );
+    } else {
+        $("#mrWrapComisionCobranzaPct").hide();
+        $("#mrWrapComisionCobranzaFijo").show();
+        $("#mrAyudaCobranza").html(
+            "Misma fuente que Resumen de gestión, <strong>sin IGV</strong>. "
+            + "<strong>Todo o nada:</strong> comisión fija solo si la cobranza neta alcanza la meta."
+        );
+    }
+}
+
+$(document).on("change", "#mrCumplimientoCobranza", mrSyncCamposCobranza);
+
 /** Monto: prorrata usa %; todo_nada usa fijo. */
 function mrSyncCamposMonto() {
+    var ventasOn = $(".tablaMetasRetos").data("comision-ventas") == 1
+        || $(".tablaMetasRetos").attr("data-comision-ventas") === "1";
+    if (!ventasOn) {
+        $("#mrWrapComisionMontoPct").show();
+        $("#mrWrapComisionMontoFijo").show();
+        return;
+    }
     var modo = $("#mrCumplimientoMonto").val() || "prorrata";
     if (modo === "prorrata") {
         $("#mrWrapComisionMontoPct").show();
@@ -555,6 +584,13 @@ $(document).on("click", ".btnEditarMetasRetos", function () {
     }, function (resp) {
         var r = (resp && resp.reto) ? resp.reto : {};
         mrUniversoModelos = (resp && resp.universo_modelos != null) ? Number(resp.universo_modelos) : 0;
+
+        mrSetValor($("#mrMetaCobranza"), r.meta_cobranza);
+        mrSetValor($("#mrComisionCobranzaPct"), r.comision_cobranza_pct);
+        mrSetValor($("#mrComisionCobranzaFijo"), r.comision_cobranza_fijo);
+        $("#mrCumplimientoCobranza").val(r.cumplimiento_cobranza || "prorrata");
+        mrSyncCamposCobranza();
+
         mrSetValor($("#mrMetaMonto"), r.meta_monto);
         mrSetValor($("#mrComisionMontoPct"), r.comision_monto_pct);
         mrSetValor($("#mrComisionMontoFijo"), r.comision_monto_fijo);

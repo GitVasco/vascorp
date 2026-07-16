@@ -26,6 +26,8 @@ require_once "controladores/zonas-comerciales.controlador.php";
 
 require_once "controladores/grupos-marcas-comercial.controlador.php";
 
+require_once "controladores/metas-retos.config.php";
+
 require_once "controladores/metas-retos.controlador.php";
 
 require_once "controladores/metricas-comerciales.controlador.php";

@@ -67,6 +67,7 @@ SELECT
     NOW()
 FROM metas_retos_vendedorjf r
 WHERE TRIM(IFNULL(r.modelo_especial, '')) <> ''
+  AND IFNULL(r.meta_docenas_especial, 0) > 0
   AND NOT EXISTS (
         SELECT 1
         FROM metas_retos_incentivos_productojf i

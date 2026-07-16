@@ -5,6 +5,7 @@ if (!isset($_SESSION)) {
 }
 
 require_once "../controladores/permisos-modulos.config.php";
+require_once "../controladores/metas-retos.config.php";
 require_once "../controladores/metas-retos.controlador.php";
 require_once "../modelos/metas-retos.modelo.php";
 

@@ -13,6 +13,10 @@ $anioFiltro = $periodoFiltro["anio"];
 $mesFiltro = $periodoFiltro["mes"];
 $meses = ControladorTalleres::ctrMes();
 $puedeEditar = ControladorMetasRetos::ctrPuedeEditar();
+$comisionVentasOn = function_exists("mrComisionVentasHabilitada") && mrComisionVentasHabilitada();
+$codigosCobranzaTxt = function_exists("mrTextoCodigosCobranzaEfectiva")
+	? mrTextoCodigosCobranzaEfectiva()
+	: "00, TR, 05, 06, 14, 15, 16, 17, 18, 80, 82";
 $nombreMes = (string) $mesFiltro;
 foreach ($meses as $mesItem) {
     if ((int) $mesItem["codigo"] === $mesFiltro) {
@@ -71,16 +75,20 @@ foreach ($meses as $mesItem) {
                         </p>
                         <p class="text-muted" style="margin:0;font-size:12px;line-height:1.45;">
                             Cada columna resume <strong>meta → real → %</strong>.
-                            El real de ventas, modelos y clientes nuevos considera solo marcas autorizadas al vendedor;
-                            las NC descuento (E05 sin unidades) restan al monto sin marcar marca.
-                            Incentivos de producto: modelo, modelo+color (todas las tallas) o artículo;
-                            unidades o docenas; solo marcas permitidas.
-                            El estimado suma comisiones según avance (no es liquidación).
+                            La <strong>cobranza</strong> usa la misma fuente que Resumen de gestión (sin IGV; códigos:
+                            <?php echo htmlspecialchars($codigosCobranzaTxt); ?>).
+                            Ventas, modelos y clientes nuevos consideran marcas autorizadas;
+                            las NC descuento (E05 sin unidades) restan al monto.
+                            Incentivos de producto siguen pagando por venta del objetivo.
+                            El estimado es orientativo (sujeto a validación/liquidación).
+                            <?php if (!$comisionVentasOn) : ?>
+                                <span class="label label-default" style="margin-left:4px;">Comisión por ventas: desactivada</span>
+                            <?php endif; ?>
                         </p>
                     </div>
                     <div class="col-sm-4">
                         <div class="mr-total-box">
-                            <div class="mr-total-label">Total estimado a pagar</div>
+                            <div class="mr-total-label">Total estimado a pagar <small style="opacity:.85;">(sujeto a liquidación)</small></div>
                             <div class="mr-total-value" id="mrTotalPagarPeriodo">S/ 0.00</div>
                         </div>
                     </div>
@@ -91,11 +99,13 @@ foreach ($meses as $mesItem) {
                     Colores de columna = tipo de reto.
                 </p>
                 <table class="table table-bordered table-striped table-condensed tablaMetasRetos mr-table" width="100%"
-                       data-anio="<?php echo $anioFiltro; ?>" data-mes="<?php echo $mesFiltro; ?>">
+                       data-anio="<?php echo $anioFiltro; ?>" data-mes="<?php echo $mesFiltro; ?>"
+                       data-comision-ventas="<?php echo $comisionVentasOn ? "1" : "0"; ?>">
                     <thead>
                         <tr>
                             <th class="mr-th-vend">Vendedor</th>
-                            <th class="mr-th-ventas">Ventas S/ <small>(meta/real)</small></th>
+                            <th class="mr-th-cob">Cobranza S/ <small>(meta/real)</small></th>
+                            <th class="mr-th-ventas">Ventas S/ <small>(referencia)</small></th>
                             <th class="mr-th-cli">Clientes <small>(meta/real)</small></th>
                             <th class="mr-th-mod">Modelos <small>(meta/real)</small></th>
                             <th class="mr-th-esp">Incentivos <small>(producto)</small></th>
@@ -174,6 +184,7 @@ foreach ($meses as $mesItem) {
     border-bottom-width: 3px !important;
 }
 .mr-th-vend { background: #f4f4f4; border-bottom-color: #bbb !important; }
+.mr-th-cob { background: #e8eaf6; color: #3949ab; border-bottom-color: #3f51b5 !important; }
 .mr-th-ventas { background: #d9edf7; color: #31708f; border-bottom-color: #3c8dbc !important; }
 .mr-th-cli { background: #dff0d8; color: #3c763d; border-bottom-color: #00a65a !important; }
 .mr-th-mod { background: #fcf8e3; color: #8a6d3b; border-bottom-color: #f39c12 !important; }
@@ -181,11 +192,15 @@ foreach ($meses as $mesItem) {
 .mr-th-pay { background: #e8f5e9; color: #2e7d32; border-bottom-color: #00a65a !important; }
 
 /* Línea lateral de color por columna de reto */
-.mr-table > tbody > tr > td:nth-child(2) { border-left: 3px solid #3c8dbc; }
-.mr-table > tbody > tr > td:nth-child(3) { border-left: 3px solid #00a65a; }
-.mr-table > tbody > tr > td:nth-child(4) { border-left: 3px solid #f39c12; }
-.mr-table > tbody > tr > td:nth-child(5) { border-left: 3px solid #dd4b39; }
-.mr-table > tbody > tr > td:nth-child(6) { border-left: 3px solid #00a65a; background: #f7fbf7; }
+.mr-table > tbody > tr > td:nth-child(2) { border-left: 3px solid #3f51b5; }
+.mr-table > tbody > tr > td:nth-child(3) { border-left: 3px solid #3c8dbc; }
+.mr-table > tbody > tr > td:nth-child(4) { border-left: 3px solid #00a65a; }
+.mr-table > tbody > tr > td:nth-child(5) { border-left: 3px solid #f39c12; }
+.mr-table > tbody > tr > td:nth-child(6) { border-left: 3px solid #dd4b39; }
+.mr-table > tbody > tr > td:nth-child(7) { border-left: 3px solid #00a65a; background: #f7fbf7; }
+
+.mr-ventas-ref { opacity: .92; }
+.mr-ventas-ref .box-header { background: #ecf0f5 !important; color: #555 !important; }
 
 .mr-table > tbody > tr > td {
     vertical-align: middle !important;
@@ -254,32 +269,81 @@ foreach ($meses as $mesItem) {
                     <input type="hidden" name="anio" id="mrAnio" value="<?php echo $anioFiltro; ?>">
                     <input type="hidden" name="mes" id="mrMes" value="<?php echo $mesFiltro; ?>">
 
-                    <div class="box box-solid box-info">
-                        <div class="box-header with-border"><h3 class="box-title">1) Monto de ventas</h3></div>
+                    <div class="box box-solid" style="border-top-color:#3f51b5;">
+                        <div class="box-header with-border" style="background:#e8eaf6;">
+                            <h3 class="box-title" style="color:#3949ab;">1) Cobranza efectiva</h3>
+                        </div>
                         <div class="box-body">
-                            <p class="help-block" style="margin-top:0;" id="mrAyudaMonto">
-                                <strong>Prorrata:</strong> paga % sobre el monto vendido.
-                                <strong>Todo o nada:</strong> paga comisión fija solo si se llega a la meta.
+                            <p class="help-block" style="margin-top:0;" id="mrAyudaCobranza">
+                                Misma fuente que Resumen de gestión, <strong>sin IGV</strong>
+                                (monto ÷ <?php echo htmlspecialchars((string) (function_exists("mrIgvFactor") ? mrIgvFactor() : 1.18)); ?>).
+                                Códigos: <?php echo htmlspecialchars($codigosCobranzaTxt); ?>.
                             </p>
                             <div class="row">
                                 <div class="col-sm-3">
                                     <label>Meta S/</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="meta_monto" id="mrMetaMonto">
+                                    <input type="number" step="0.01" min="0" class="form-control" name="meta_cobranza" id="mrMetaCobranza">
                                 </div>
                                 <div class="col-sm-3">
                                     <label>Cumplimiento</label>
-                                    <select class="form-control" name="cumplimiento_monto" id="mrCumplimientoMonto">
+                                    <select class="form-control" name="cumplimiento_cobranza" id="mrCumplimientoCobranza">
+                                        <option value="prorrata">Prorrata (% sobre cobranza)</option>
+                                        <option value="todo_nada">Todo o nada (fijo al lograr)</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3" id="mrWrapComisionCobranzaPct">
+                                    <label>Comisión %</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_cobranza_pct" id="mrComisionCobranzaPct" placeholder="ej. 1.5">
+                                </div>
+                                <div class="col-sm-3" id="mrWrapComisionCobranzaFijo">
+                                    <label>Comisión fija S/</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_cobranza_fijo" id="mrComisionCobranzaFijo" placeholder="ej. 500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="box box-solid box-info mr-ventas-ref" id="mrBoxVentasRef">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">
+                                Ventas (referencia / futura comisión)
+                                <?php if (!$comisionVentasOn) : ?>
+                                    <small class="label label-default">Comisión por ventas: desactivada</small>
+                                <?php endif; ?>
+                            </h3>
+                        </div>
+                        <div class="box-body">
+                            <p class="help-block" style="margin-top:0;" id="mrAyudaMonto">
+                                <?php if ($comisionVentasOn) : ?>
+                                    <strong>Prorrata:</strong> paga % sobre el monto vendido.
+                                    <strong>Todo o nada:</strong> paga comisión fija solo si se llega a la meta.
+                                <?php else : ?>
+                                    Conservado como indicador operativo. No genera comisión mientras la política de cobranza esté activa.
+                                <?php endif; ?>
+                            </p>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <label>Meta S/</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="meta_monto" id="mrMetaMonto"
+                                        <?php echo $comisionVentasOn ? "" : "readonly"; ?>>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label>Cumplimiento</label>
+                                    <select class="form-control" name="cumplimiento_monto" id="mrCumplimientoMonto"
+                                        <?php echo $comisionVentasOn ? "" : "disabled"; ?>>
                                         <option value="prorrata">Prorrata (% sobre venta)</option>
                                         <option value="todo_nada">Todo o nada (fijo al lograr)</option>
                                     </select>
                                 </div>
                                 <div class="col-sm-3" id="mrWrapComisionMontoPct">
                                     <label>Comisión %</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_pct" id="mrComisionMontoPct" placeholder="ej. 1.5">
+                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_pct" id="mrComisionMontoPct" placeholder="ej. 1.5"
+                                        <?php echo $comisionVentasOn ? "" : "readonly"; ?>>
                                 </div>
                                 <div class="col-sm-3" id="mrWrapComisionMontoFijo">
                                     <label>Comisión fija S/</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_fijo" id="mrComisionMontoFijo" placeholder="ej. 500">
+                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_fijo" id="mrComisionMontoFijo" placeholder="ej. 500"
+                                        <?php echo $comisionVentasOn ? "" : "readonly"; ?>>
                                 </div>
                             </div>
                         </div>

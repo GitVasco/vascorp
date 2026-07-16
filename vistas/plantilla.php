@@ -824,7 +824,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-retos") { ?>
-    <script src="vistas/js/metas-retos.js?v=11"></script>
+    <script src="vistas/js/metas-retos.js?v=12"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
     <script src="vistas/js/zonas-comerciales.js?v=5"></script>

@@ -1,6 +1,7 @@
 <?php
 
 require_once "conexion.php";
+require_once dirname(__FILE__) . "/../controladores/metas-retos.config.php";
 
 class ModeloMetasRetos
 {
@@ -91,17 +92,43 @@ class ModeloMetasRetos
 		return $cache;
 	}
 
+	/** Columnas de comisión por cobranza (migración metas-retos-comision-cobranza.sql). */
+	private static function existeColumnasCobranza()
+	{
+		static $cache = null;
+		if ($cache !== null) {
+			return $cache;
+		}
+		try {
+			$pdo = Conexion::conectar();
+			$check = $pdo->query(
+				"SHOW COLUMNS FROM metas_retos_vendedorjf LIKE 'meta_cobranza'"
+			);
+			$cache = $check && (bool) $check->fetch();
+		} catch (Exception $e) {
+			$cache = false;
+		}
+		return $cache;
+	}
+
 	static public function mdlListarIncentivosPorReto($idMetaReto)
 	{
 		$idMetaReto = (int) $idMetaReto;
 		if ($idMetaReto < 1 || !self::existeTablaIncentivos()) {
 			return array();
 		}
+		// Subconsulta de color: colorjf puede tener códigos duplicados.
 		$stmt = Conexion::conectar()->prepare(
 			"SELECT i.*,
-				IFNULL(c.nom_color, i.cod_color) AS nombre_color
+				IFNULL(c.nombre_color, i.cod_color) AS nombre_color
 			 FROM metas_retos_incentivos_productojf i
-			 LEFT JOIN colorjf c ON TRIM(c.cod_color) = TRIM(IFNULL(i.cod_color, ''))
+			 LEFT JOIN (
+				SELECT TRIM(cod_color) AS cod_color,
+					MAX(IFNULL(NULLIF(TRIM(nom_color), ''), TRIM(cod_color))) AS nombre_color
+				FROM colorjf
+				WHERE TRIM(IFNULL(cod_color, '')) <> ''
+				GROUP BY TRIM(cod_color)
+			 ) c ON c.cod_color = TRIM(IFNULL(i.cod_color, ''))
 			 WHERE i.id_meta_reto = :id
 			 ORDER BY i.orden ASC, i.id ASC"
 		);
@@ -119,10 +146,16 @@ class ModeloMetasRetos
 		$stmt = Conexion::conectar()->prepare(
 			"SELECT i.*,
 				TRIM(r.cod_vendedor) AS cod_vendedor,
-				IFNULL(c.nom_color, i.cod_color) AS nombre_color
+				IFNULL(c.nombre_color, i.cod_color) AS nombre_color
 			 FROM metas_retos_incentivos_productojf i
 			 INNER JOIN metas_retos_vendedorjf r ON r.id = i.id_meta_reto
-			 LEFT JOIN colorjf c ON TRIM(c.cod_color) = TRIM(IFNULL(i.cod_color, ''))
+			 LEFT JOIN (
+				SELECT TRIM(cod_color) AS cod_color,
+					MAX(IFNULL(NULLIF(TRIM(nom_color), ''), TRIM(cod_color))) AS nombre_color
+				FROM colorjf
+				WHERE TRIM(IFNULL(cod_color, '')) <> ''
+				GROUP BY TRIM(cod_color)
+			 ) c ON c.cod_color = TRIM(IFNULL(i.cod_color, ''))
 			 WHERE r.anio = :anio AND r.mes = :mes
 			 ORDER BY r.cod_vendedor ASC, i.orden ASC, i.id ASC"
 		);
@@ -150,6 +183,9 @@ class ModeloMetasRetos
 		if (!self::existeTablaIncentivos()) {
 			return "error";
 		}
+		if (!self::existeColumnasCobranza()) {
+			return "error_cobranza";
+		}
 		$pdo = Conexion::conectar();
 		$pdo->beginTransaction();
 
@@ -159,6 +195,10 @@ class ModeloMetasRetos
 			if ($existente) {
 				$stmt = $pdo->prepare(
 					"UPDATE metas_retos_vendedorjf SET
+						meta_cobranza = :meta_cobranza,
+						comision_cobranza_pct = :comision_cobranza_pct,
+						comision_cobranza_fijo = :comision_cobranza_fijo,
+						cumplimiento_cobranza = :cumplimiento_cobranza,
 						meta_monto = :meta_monto,
 						comision_monto_pct = :comision_monto_pct,
 						comision_monto_fijo = :comision_monto_fijo,
@@ -181,12 +221,14 @@ class ModeloMetasRetos
 				$stmt = $pdo->prepare(
 					"INSERT INTO metas_retos_vendedorjf (
 						cod_vendedor, anio, mes,
+						meta_cobranza, comision_cobranza_pct, comision_cobranza_fijo, cumplimiento_cobranza,
 						meta_monto, comision_monto_pct, comision_monto_fijo, cumplimiento_monto,
 						meta_clientes, comision_clientes_fijo, cumplimiento_clientes,
 						meta_modelos, meta_modelos_modo, meta_modelos_pct, comision_modelos_fijo, cumplimiento_modelos,
 						usuario, fecreg
 					) VALUES (
 						:cod_vendedor, :anio, :mes,
+						:meta_cobranza, :comision_cobranza_pct, :comision_cobranza_fijo, :cumplimiento_cobranza,
 						:meta_monto, :comision_monto_pct, :comision_monto_fijo, :cumplimiento_monto,
 						:meta_clientes, :comision_clientes_fijo, :cumplimiento_clientes,
 						:meta_modelos, :meta_modelos_modo, :meta_modelos_pct, :comision_modelos_fijo, :cumplimiento_modelos,
@@ -198,6 +240,13 @@ class ModeloMetasRetos
 				$stmt->bindValue(":mes", (int) $datos["mes"], PDO::PARAM_INT);
 				$idReto = 0;
 			}
+
+			self::bindNullableDecimal($stmt, ":meta_cobranza", isset($datos["meta_cobranza"]) ? $datos["meta_cobranza"] : null);
+			self::bindNullableDecimal($stmt, ":comision_cobranza_pct", isset($datos["comision_cobranza_pct"]) ? $datos["comision_cobranza_pct"] : null);
+			self::bindNullableDecimal($stmt, ":comision_cobranza_fijo", isset($datos["comision_cobranza_fijo"]) ? $datos["comision_cobranza_fijo"] : null);
+			$cumplCob = isset($datos["cumplimiento_cobranza"]) && $datos["cumplimiento_cobranza"] === "prorrata"
+				? "prorrata" : "todo_nada";
+			$stmt->bindValue(":cumplimiento_cobranza", $cumplCob, PDO::PARAM_STR);
 
 			self::bindNullableDecimal($stmt, ":meta_monto", $datos["meta_monto"]);
 			self::bindNullableDecimal($stmt, ":comision_monto_pct", $datos["comision_monto_pct"]);
@@ -489,10 +538,62 @@ class ModeloMetasRetos
 		return $i->execute() ? "ok" : "error";
 	}
 
+	/** Sincroniza solo meta_cobranza hacia metas_vendedorjf (sin reglas de comisión). */
+	static public function mdlSyncMetaCobranzaLegacy($codVendedor, $anio, $mes, $metaCobranza, $usuario)
+	{
+		$metaCob = ($metaCobranza === null || $metaCobranza === "")
+			? null
+			: (float) $metaCobranza;
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT id FROM metas_vendedorjf
+			 WHERE cod_vendedor = :cod AND anio = :anio AND mes = :mes LIMIT 1"
+		);
+		$stmt->bindParam(":cod", $codVendedor, PDO::PARAM_STR);
+		$stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+		$stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
+		$stmt->execute();
+		$ex = $stmt->fetch(PDO::FETCH_ASSOC);
+
+		if ($ex) {
+			$u = Conexion::conectar()->prepare(
+				"UPDATE metas_vendedorjf SET meta_cobranza = :meta WHERE id = :id"
+			);
+			if ($metaCob === null) {
+				$u->bindValue(":meta", null, PDO::PARAM_NULL);
+			} else {
+				$u->bindValue(":meta", $metaCob);
+			}
+			$u->bindValue(":id", (int) $ex["id"], PDO::PARAM_INT);
+			return $u->execute() ? "ok" : "error";
+		}
+
+		$i = Conexion::conectar()->prepare(
+			"INSERT INTO metas_vendedorjf (cod_vendedor, anio, mes, meta_venta, meta_cobranza, usuario)
+			 VALUES (:cod, :anio, :mes, 0, :meta, :usuario)"
+		);
+		$i->bindValue(":cod", $codVendedor, PDO::PARAM_STR);
+		$i->bindValue(":anio", (int) $anio, PDO::PARAM_INT);
+		$i->bindValue(":mes", (int) $mes, PDO::PARAM_INT);
+		if ($metaCob === null) {
+			$i->bindValue(":meta", null, PDO::PARAM_NULL);
+		} else {
+			$i->bindValue(":meta", $metaCob);
+		}
+		$i->bindValue(":usuario", (int) $usuario, PDO::PARAM_INT);
+		return $i->execute() ? "ok" : "error";
+	}
+
 	static public function mdlVentaRealPorVendedor($anio, $mes)
 	{
 		require_once "metricas-comerciales.modelo.php";
 		return ModeloMetricasComerciales::mdlVentaPermitidaPorVendedor($anio, $mes, false);
+	}
+
+	static public function mdlCobranzaNetaPorVendedor($anio, $mes)
+	{
+		require_once "metricas-comerciales.modelo.php";
+		return ModeloMetricasComerciales::mdlCobranzaNetaGerenciaPorVendedor($anio, $mes);
 	}
 
 	/**
@@ -536,6 +637,7 @@ class ModeloMetasRetos
 		}
 
 		$ventas = self::mdlVentaRealPorVendedor($anio, $mes);
+		$cobranzas = self::mdlCobranzaNetaPorVendedor($anio, $mes);
 		$clientes = self::mdlClientesNuevosPorVendedor($anio, $mes);
 		$modelos = self::mdlModelosActivosPorVendedor($anio, $mes);
 
@@ -562,6 +664,7 @@ class ModeloMetasRetos
 				"cod_vendedor" => $cod,
 				"nombre_vendedor" => $vend["descripcion"],
 				"reto" => $reto,
+				"cobranza_neta_real" => isset($cobranzas[$cod]) ? $cobranzas[$cod] : 0,
 				"venta_real" => isset($ventas[$cod]) ? $ventas[$cod] : 0,
 				"clientes_nuevos" => isset($clientes[$cod]) ? $clientes[$cod] : 0,
 				"modelos_activos" => isset($modelos[$cod]) ? $modelos[$cod] : 0,

@@ -1,6 +1,7 @@
 <?php
 
 require_once "conexion.php";
+require_once dirname(__FILE__) . "/../controladores/metas-retos.config.php";
 
 class ModeloMovimientos
 {
@@ -3116,6 +3117,7 @@ class ModeloMovimientos
 
    static public function mdlMostrarRangos($mes)
    {
+      $sqlInCob = mrSqlInCodigosCobranzaEfectiva("cc");
 
       if ($mes == "null" || $mes == "TODO") {
 
@@ -3159,7 +3161,7 @@ class ModeloMovimientos
                                        cuenta_ctejf cc 
                                     WHERE YEAR(cc.fecha) = YEAR(NOW())
                                        AND cc.tip_mov = '-' 
-                                       AND cc.cod_pago IN ('00', '05', '06', '14', '80', '82', 'TR') 
+                                       AND {$sqlInCob} 
                                     GROUP BY cc.vendedor) AS c 
                                     ON m.codigo = c.vendedor 
                                     LEFT JOIN 
@@ -3318,7 +3320,7 @@ class ModeloMovimientos
                                           WHERE YEAR(cc.fecha) = YEAR(NOW())
                                              AND MONTH(cc.fecha) = $mes 
                                              AND cc.tip_mov = '-' 
-                                             AND cc.cod_pago IN ('00', '05', '06', '14', '80', '82', 'TR') 
+                                             AND {$sqlInCob} 
                                           GROUP BY cc.vendedor) AS c 
                                           ON m.codigo = c.vendedor 
                                           LEFT JOIN 
@@ -4095,6 +4097,7 @@ class ModeloMovimientos
    {
 
       $año = intval($año);
+      $sqlInCob = mrSqlInCodigosCobranzaEfectiva("cc");
 
       if ($mes == "null" || $mes == "TODO" || $mes == "") {
 
@@ -4139,7 +4142,7 @@ class ModeloMovimientos
                                        cuenta_ctejf cc 
                                     WHERE YEAR(cc.fecha) = :anio
                                        AND cc.tip_mov = '-' 
-                                       AND cc.cod_pago IN ('00', '05', '06', '14', '80', '82', 'TR') 
+                                       AND {$sqlInCob} 
                                     GROUP BY cc.vendedor) AS c 
                                     ON m.codigo = c.vendedor 
                                     LEFT JOIN 
@@ -4267,7 +4270,7 @@ class ModeloMovimientos
                                           WHERE YEAR(cc.fecha) = :anio
                                              AND MONTH(cc.fecha) = :mes
                                              AND cc.tip_mov = '-' 
-                                             AND cc.cod_pago IN ('00', '05', '06', '14', '80', '82', 'TR') 
+                                             AND {$sqlInCob} 
                                           GROUP BY cc.vendedor) AS c 
                                           ON m.codigo = c.vendedor 
                                           LEFT JOIN 

@@ -1,6 +1,7 @@
 <?php
 
 require_once "conexion.php";
+require_once dirname(__FILE__) . "/../controladores/metas-retos.config.php";
 
 class ModeloDashboardCobranzas
 {
@@ -20,7 +21,7 @@ class ModeloDashboardCobranzas
     private static function sqlIngreso($alias = "cc")
     {
         return "CASE
-            WHEN {$alias}.cod_pago IN ('00', 'TR', '05', '06', '14', '16', '17', '18', '15', '80', '82') THEN 'EFECTIVO'
+            WHEN " . mrSqlInCodigosCobranzaEfectiva($alias) . " THEN 'EFECTIVO'
             WHEN {$alias}.cod_pago IN ('13', '96') THEN 'DEVOLUCION'
             WHEN {$alias}.cod_pago IN ('97', '10') THEN 'DESCUENTOS'
             ELSE 'OTROS'

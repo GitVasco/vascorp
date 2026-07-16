@@ -5,6 +5,7 @@ if (!isset($_SESSION)) {
 }
 
 require_once "../controladores/permisos-modulos.config.php";
+require_once "../controladores/metas-retos.config.php";
 require_once "../controladores/metas-retos.controlador.php";
 require_once "../modelos/metas-retos.modelo.php";
 
@@ -102,6 +103,7 @@ function mrEtiquetaIncentivoLista($inc)
 if (is_array($filas)) {
 	foreach ($filas as $f) {
 		$reto = isset($f["reto"]) && is_array($f["reto"]) ? $f["reto"] : array();
+		$metaCob = isset($reto["meta_cobranza"]) ? $reto["meta_cobranza"] : null;
 		$metaMonto = isset($reto["meta_monto"]) ? $reto["meta_monto"] : null;
 		$metaCli = isset($reto["meta_clientes"]) ? $reto["meta_clientes"] : null;
 		$metaMod = isset($reto["meta_modelos"]) ? $reto["meta_modelos"] : null;
@@ -113,6 +115,8 @@ if (is_array($filas)) {
 				. "%)</small>";
 		}
 
+		$cobranzaReal = isset($f["cobranza_neta_real"]) ? $f["cobranza_neta_real"] : 0;
+		$pctCob = ControladorMetasRetos::ctrPctAvance($cobranzaReal, $metaCob);
 		$pctMonto = ControladorMetasRetos::ctrPctAvance($f["venta_real"], $metaMonto);
 		$pctCli = ControladorMetasRetos::ctrPctAvance($f["clientes_nuevos"], $metaCli);
 		$pctMod = ControladorMetasRetos::ctrPctAvance($f["modelos_activos"], $metaMod);
@@ -120,16 +124,19 @@ if (is_array($filas)) {
 		$comision = ControladorMetasRetos::ctrCalcularComisionEstimada($f);
 		$totalPagarPeriodo += (float) $comision["total"];
 		$det = $comision["detalle"];
+		$aporteCob = isset($det["cobranza"]) ? (float) $det["cobranza"] : 0.0;
 		$aporteMonto = isset($det["monto"]) ? (float) $det["monto"] : 0.0;
 		$aporteCli = isset($det["clientes"]) ? (float) $det["clientes"] : 0.0;
 		$aporteMod = isset($det["modelos"]) ? (float) $det["modelos"] : 0.0;
 		$aporteInc = isset($det["incentivos_producto"]) ? (float) $det["incentivos_producto"] : 0.0;
 		$detIncs = isset($det["incentivos"]) && is_array($det["incentivos"]) ? $det["incentivos"] : array();
 
-		$titlePagar = "Monto: " . number_format($aporteMonto, 2, ".", ",")
+		$titlePagar = "Cobranza: " . number_format($aporteCob, 2, ".", ",")
 			. " · Cli: " . number_format($aporteCli, 2, ".", ",")
 			. " · Mod: " . number_format($aporteMod, 2, ".", ",")
-			. " · Inc: " . number_format($aporteInc, 2, ".", ",");
+			. " · Inc: " . number_format($aporteInc, 2, ".", ",")
+			. " · Ventas: " . number_format($aporteMonto, 2, ".", ",")
+			. (mrComisionVentasHabilitada() ? "" : " (desactivada)");
 
 		$cod = htmlspecialchars($f["cod_vendedor"], ENT_QUOTES, "UTF-8");
 		$nom = htmlspecialchars($f["nombre_vendedor"], ENT_QUOTES, "UTF-8");
@@ -186,6 +193,7 @@ if (is_array($filas)) {
 
 		$data[] = array(
 			$colVendedor,
+			mrCelda($metaCob, $cobranzaReal, $pctCob, $aporteCob, 0, 2),
 			mrCelda($metaMonto, $f["venta_real"], $pctMonto, $aporteMonto, 0, 2),
 			mrCelda($metaCli, $f["clientes_nuevos"], $pctCli, $aporteCli, 0, 0),
 			mrCelda($metaMod, $f["modelos_activos"], $pctMod, $aporteMod, 0, 0, false, $extraMetaMod),
@@ -198,5 +206,6 @@ if (is_array($filas)) {
 
 echo json_encode(array(
 	"data" => $data,
-	"total_pagar" => round($totalPagarPeriodo, 2)
+	"total_pagar" => round($totalPagarPeriodo, 2),
+	"comision_ventas_habilitada" => mrComisionVentasHabilitada()
 ));
