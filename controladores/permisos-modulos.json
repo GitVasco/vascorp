@@ -43,6 +43,11 @@
     "asignacion_grupos_marcas": {
       "ver": [6, 105],
       "editar": [6]
+    },
+    "costos_modelo": {
+      "ver": [6],
+      "editar": [6],
+      "aprobar": [6]
     }
   },
   "vasco_online": {

@@ -100,12 +100,15 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "grupos_marcas");
             $puedeVerAsignacionGruposMarcas = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "asignacion_grupos_marcas");
+            $puedeVerCostosModelo = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "costos_modelo");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardCobranzas
                 || $puedeVerCentroDecisiones
                 || $puedeVerHistorialCredito
                 || $puedeVerLineaCredito;
             $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor;
+            $mostrarCostosRentabilidad = $puedeVerCostosModelo;
             $mostrarCatalogosComerciales = $puedeVerCategoriasComerciales
                 || $puedeVerCategoriasPorRevisar
                 || $puedeVerZonasComerciales
@@ -135,6 +138,11 @@
                 $rutasActivasMetasInteligencia[] = "metas-retos";
             }
 
+            $rutasActivasCostosRentabilidad = array();
+            if ($puedeVerCostosModelo) {
+                $rutasActivasCostosRentabilidad[] = "costos-mensuales-modelo";
+            }
+
             $rutasActivasCatalogosComerciales = array();
             if ($puedeVerCategoriasComerciales) {
                 $rutasActivasCatalogosComerciales[] = "categorias-comerciales";
@@ -156,6 +164,7 @@
             $rutasActivasGestionComercial = array_merge(
                 $rutasActivasCreditoCobranzas,
                 $rutasActivasMetasInteligencia,
+                $rutasActivasCostosRentabilidad,
                 $rutasActivasCatalogosComerciales
             );
             $mostrarGestionComercial = !empty($rutasActivasGestionComercial);
@@ -164,6 +173,7 @@
                 $isActiveGestionComercial = in_array($_GET["ruta"], $rutasActivasGestionComercial, true) ? "active" : "";
                 $isActiveCreditoCobranzas = in_array($_GET["ruta"], $rutasActivasCreditoCobranzas, true) ? "active" : "";
                 $isActiveMetasInteligencia = in_array($_GET["ruta"], $rutasActivasMetasInteligencia, true) ? "active" : "";
+                $isActiveCostosRentabilidad = in_array($_GET["ruta"], $rutasActivasCostosRentabilidad, true) ? "active" : "";
                 $isActiveCatalogosComerciales = in_array($_GET["ruta"], $rutasActivasCatalogosComerciales, true) ? "active" : "";
             ?>
 
@@ -260,6 +270,28 @@
                                     <a href="index.php?ruta=metas-retos">
                                         <i class="fa fa-trophy"></i>
                                         <span>Metas / retos</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                            </ul>
+                        </li>
+                        <?php } ?>
+
+                        <?php if ($mostrarCostosRentabilidad) { ?>
+                        <li class="treeview <?php echo $isActiveCostosRentabilidad; ?>">
+                            <a href="#">
+                                <i class="fa fa-calculator"></i>
+                                <span>Costos y rentabilidad</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-left pull-right"></i>
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                <?php if ($puedeVerCostosModelo) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "costos-mensuales-modelo") echo 'active'; ?>">
+                                    <a href="index.php?ruta=costos-mensuales-modelo">
+                                        <i class="fa fa-money"></i>
+                                        <span>Costos mensuales</span>
                                     </a>
                                 </li>
                                 <?php } ?>

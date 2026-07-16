@@ -37,6 +37,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Metas vendedor | Vasco System";
         } elseif ($_GET["ruta"] === "metas-retos") {
             $__tituloVentana = "Metas / retos | Vasco System";
+        } elseif ($_GET["ruta"] === "costos-mensuales-modelo") {
+            $__tituloVentana = "Costos mensuales por modelo | Vasco System";
         } elseif ($_GET["ruta"] === "zonas-comerciales") {
             $__tituloVentana = "Zonas comerciales | Vasco System";
         } elseif ($_GET["ruta"] === "grupos-marcas") {
@@ -363,6 +365,13 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/metas-retos.php";
+                }
+            } else if ($_GET["ruta"] == "costos-mensuales-modelo") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "costos_modelo")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/costos-mensuales-modelo.php";
                 }
             } else if ($_GET["ruta"] == "linea-credito") {
 
@@ -825,6 +834,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-retos") { ?>
     <script src="vistas/js/metas-retos.js?v=13"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "costos-mensuales-modelo") { ?>
+    <script src="vistas/js/costos-modelo-mensual.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
     <script src="vistas/js/zonas-comerciales.js?v=5"></script>

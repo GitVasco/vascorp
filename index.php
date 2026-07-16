@@ -30,6 +30,8 @@ require_once "controladores/metas-retos.config.php";
 
 require_once "controladores/metas-retos.controlador.php";
 
+require_once "controladores/costos-modelo-mensual.controlador.php";
+
 require_once "controladores/metricas-comerciales.controlador.php";
 
 require_once "controladores/categorias-clientes.controlador.php";
@@ -186,6 +188,8 @@ require_once "modelos/zonas-comerciales.modelo.php";
 require_once "modelos/grupos-marcas-comercial.modelo.php";
 
 require_once "modelos/metas-retos.modelo.php";
+
+require_once "modelos/costos-modelo-mensual.modelo.php";
 
 require_once "modelos/metricas-comerciales.modelo.php";
 
