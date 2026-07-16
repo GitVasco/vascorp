@@ -597,7 +597,8 @@ class ModeloMetasRetos
 	}
 
 	/**
-	 * Clientes nuevos: 1ª compra del periodo con documento 100% permitido.
+	 * Clientes nuevos: 1ª compra en marcas de cobertura del vendedor
+	 * (documento 100% permitido; sin historial previo en esas marcas).
 	 */
 	static public function mdlClientesNuevosPorVendedor($anio, $mes)
 	{

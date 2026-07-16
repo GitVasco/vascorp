@@ -552,15 +552,87 @@ class ModeloZonasComerciales
 	}
 
 	/**
+	 * Vendedores con asignación vigente al grupo de marcas.
+	 * null = sin filtro (ambos grupos); [] = grupo sin vendedores.
+	 *
+	 * @param int|null $idGrupoMarca
+	 * @param string $fechaRef Y-m-d
+	 * @return string[]|null
+	 */
+	static public function mdlCodigosVendedorGrupoMarca($idGrupoMarca, $fechaRef)
+	{
+		$idGrupoMarca = (int) $idGrupoMarca;
+		if ($idGrupoMarca < 1) {
+			return null;
+		}
+
+		require_once dirname(__FILE__) . "/grupos-marcas-comercial.modelo.php";
+		$vigencia = ModeloGruposMarcasComercial::sqlAsignacionVigenteEnFecha("vgm", ":fecha_ref");
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT DISTINCT TRIM(vgm.cod_vendedor) AS cod_vendedor
+			 FROM vendedor_grupos_marcasjf vgm
+			 INNER JOIN grupos_marcas_comercialjf g
+				ON g.id = vgm.id_grupo_marca AND g.estado = 1
+			 WHERE vgm.id_grupo_marca = :id_grupo
+			   AND {$vigencia}
+			   AND TRIM(IFNULL(vgm.cod_vendedor, '')) <> ''
+			 ORDER BY cod_vendedor ASC"
+		);
+		$stmt->bindValue(":id_grupo", $idGrupoMarca, PDO::PARAM_INT);
+		$stmt->bindValue(":fecha_ref", $fechaRef, PDO::PARAM_STR);
+		$stmt->execute();
+
+		$lista = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$cod = trim($fila["cod_vendedor"]);
+			if ($cod !== "") {
+				$lista[] = $cod;
+			}
+		}
+		return $lista;
+	}
+
+	/**
+	 * Fragmento SQL para filtrar por lista de vendedores.
+	 * $codigos null → sin filtro; [] → ninguna fila.
+	 */
+	private static function sqlFiltroCodigosVendedor($exprVendedor, $codigos)
+	{
+		if ($codigos === null) {
+			return "1=1";
+		}
+		if (!is_array($codigos) || count($codigos) === 0) {
+			return "1=0";
+		}
+		$pdo = Conexion::conectar();
+		$quoted = array();
+		foreach ($codigos as $cod) {
+			$cod = trim((string) $cod);
+			if ($cod === "") {
+				continue;
+			}
+			$quoted[] = $pdo->quote($cod);
+		}
+		if (empty($quoted)) {
+			return "1=0";
+		}
+		return "{$exprVendedor} IN (" . implode(", ", $quoted) . ")";
+	}
+
+	/**
 	 * Venta real (neto) del mes por zona efectiva del cliente,
 	 * solo documentos de vendedores activos.
-	 * Retorna [id_zona => ['venta_real'=>float, 'por_vendedor'=>[cod=>['nombre'=>, 'venta'=>]]]]
+	 * $idGrupoMarca: null/0 = ambos; >0 = solo vendedores del grupo.
+	 * Retorna [id_zona => ['venta_real'=>float, 'por_vendedor'=>[...]]]
 	 */
-	static public function mdlVentasZonaEfectivaPeriodo($anio, $mes)
+	static public function mdlVentasZonaEfectivaPeriodo($anio, $mes, $idGrupoMarca = null)
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
 
 		$sql = "SELECT
 				CASE
@@ -585,6 +657,7 @@ class ModeloZonasComerciales
 			  AND {$tipos}
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+			  AND {$filtroVend}
 			GROUP BY
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -633,14 +706,123 @@ class ModeloZonasComerciales
 	}
 
 	/**
-	 * Cantidad de clientes distintos con venta en el período por zona efectiva.
-	 * Retorna [id_zona => int]
+	 * Ventas del período agrupadas por geografía del ubigeo del cliente
+	 * (para tooltips del mapa: departamento / distrito / provincia).
+	 * Claves normalizadas sin tildes, en mayúsculas.
+	 *
+	 * @return array{departamentos:array<string,float>,distritos:array<string,float>,provincias:array<string,float>}
 	 */
-	static public function mdlContarClientesConVentaPorZona($anio, $mes)
+	static public function mdlVentasGeoPeriodo($anio, $mes, $idGrupoMarca = null)
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+
+		$sql = "SELECT
+				UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
+				UPPER(TRIM(IFNULL(u.Provincia, ''))) AS provincia,
+				UPPER(TRIM(IFNULL(u.Distrito, ''))) AS distrito,
+				SUM(v.neto) AS venta_real
+			FROM ventajf v
+			INNER JOIN clientesjf c ON c.codigo = v.cliente
+			INNER JOIN maestrajf m
+				ON m.codigo = TRIM(v.vendedor)
+			   AND UPPER(m.tipo_dato) = 'TVEND'
+			   AND m.estado_decisiones = 1
+			INNER JOIN ubigeo u ON u.Codigo = c.ubigeo
+			WHERE v.fecha >= :ini AND v.fecha < :fin
+			  AND {$tipos}
+			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+			  AND TRIM(IFNULL(c.ubigeo, '')) <> ''
+			  AND {$filtroVend}
+			GROUP BY
+				UPPER(TRIM(IFNULL(u.Departamento, ''))),
+				UPPER(TRIM(IFNULL(u.Provincia, ''))),
+				UPPER(TRIM(IFNULL(u.Distrito, '')))";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+
+		$norm = function ($s) {
+			$s = strtoupper(trim((string) $s));
+			$s = strtr($s, array(
+				"Á" => "A", "É" => "E", "Í" => "I", "Ó" => "O", "Ú" => "U",
+				"Ü" => "U", "Ñ" => "N"
+			));
+			return preg_replace('/\s+/', " ", $s);
+		};
+
+		$departamentos = array();
+		$distritos = array();
+		$provincias = array();
+
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$venta = round((float) $fila["venta_real"], 2);
+			if ($venta == 0.0) {
+				continue;
+			}
+			$dep = $norm($fila["departamento"]);
+			$prov = $norm($fila["provincia"]);
+			$dist = $norm($fila["distrito"]);
+
+			if ($dep !== "" && $dep !== "LIMA" && $dep !== "CALLAO") {
+				if (!isset($departamentos[$dep])) {
+					$departamentos[$dep] = 0.0;
+				}
+				$departamentos[$dep] += $venta;
+			}
+
+			if ($dist !== "" && (
+				($dep === "LIMA" && $prov === "LIMA")
+				|| $dep === "CALLAO"
+			)) {
+				if (!isset($distritos[$dist])) {
+					$distritos[$dist] = 0.0;
+				}
+				$distritos[$dist] += $venta;
+			}
+
+			if ($dep === "LIMA" && $prov !== "" && $prov !== "LIMA") {
+				if (!isset($provincias[$prov])) {
+					$provincias[$prov] = 0.0;
+				}
+				$provincias[$prov] += $venta;
+			}
+		}
+
+		foreach ($departamentos as $k => $v) {
+			$departamentos[$k] = round($v, 2);
+		}
+		foreach ($distritos as $k => $v) {
+			$distritos[$k] = round($v, 2);
+		}
+		foreach ($provincias as $k => $v) {
+			$provincias[$k] = round($v, 2);
+		}
+
+		return array(
+			"departamentos" => $departamentos,
+			"distritos" => $distritos,
+			"provincias" => $provincias
+		);
+	}
+
+	/**
+	 * Cantidad de clientes distintos con venta en el período por zona efectiva.
+	 * Retorna [id_zona => int]
+	 */
+	static public function mdlContarClientesConVentaPorZona($anio, $mes, $idGrupoMarca = null)
+	{
+
+		$rango = self::rangoMes($anio, $mes);
+		$tipos = self::sqlTiposVentaReal("v");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
 
 		$sql = "SELECT
 				CASE
@@ -663,6 +845,7 @@ class ModeloZonasComerciales
 			  AND {$tipos}
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+			  AND {$filtroVend}
 			GROUP BY
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -689,12 +872,16 @@ class ModeloZonasComerciales
 	 * primera venta válida de un vendedor activo cae en el mes, sin grupo.
 	 * Retorna [id_zona => int]
 	 */
-	static public function mdlContarClientesNuevosPorZona($anio, $mes)
+	static public function mdlContarClientesNuevosPorZona($anio, $mes, $idGrupoMarca = null)
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
+		$tipos0 = self::sqlTiposVentaReal("v0");
 		$joinActivo = self::sqlJoinVendedorActivo("v", "ma");
+		$joinV0 = self::sqlJoinVendedorActivo("v0", "m0");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v0.vendedor)", $codigos);
 
 		$sql = "SELECT
 				CASE
@@ -713,6 +900,13 @@ class ModeloZonasComerciales
 				  AND {$tipos}
 				GROUP BY v.cliente
 			) p
+			INNER JOIN ventajf v0
+				ON v0.cliente = p.cliente
+			   AND v0.fecha = p.primera
+			   AND UPPER(IFNULL(v0.estado, '')) <> 'ANULADO'
+			   AND {$tipos0}
+			   AND TRIM(IFNULL(v0.vendedor, '')) <> ''
+			{$joinV0}
 			INNER JOIN clientesjf c ON c.codigo = p.cliente
 			LEFT JOIN grupos_empresarialesjf g
 				ON g.codigo = c.grupo AND g.estado = 1
@@ -720,6 +914,7 @@ class ModeloZonasComerciales
 				ON r.cod_ubi = c.ubigeo
 			WHERE p.primera >= :ini AND p.primera < :fin
 			  AND (c.grupo IS NULL OR TRIM(c.grupo) = '')
+			  AND {$filtroVend}
 			GROUP BY
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -745,12 +940,15 @@ class ModeloZonasComerciales
 	 * Cartera de vendedores activos en la zona, sin venta de vendedor activo en el mes.
 	 * Retorna [id_zona => int]
 	 */
-	static public function mdlContarClientesSinAtenderPorZona($anio, $mes)
+	static public function mdlContarClientesSinAtenderPorZona($anio, $mes, $idGrupoMarca = null)
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
 		$joinActivoVenta = self::sqlJoinVendedorActivo("v", "ma");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroCartera = self::sqlFiltroCodigosVendedor("TRIM(c.vendedor)", $codigos);
+		$filtroVendVenta = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
 
 		$sql = "SELECT
 				CASE
@@ -770,6 +968,7 @@ class ModeloZonasComerciales
 				ON r.cod_ubi = c.ubigeo
 			WHERE c.estado = 1
 			  AND TRIM(IFNULL(c.vendedor, '')) <> ''
+			  AND {$filtroCartera}
 			  AND NOT EXISTS (
 				SELECT 1
 				FROM ventajf v
@@ -779,6 +978,7 @@ class ModeloZonasComerciales
 				  AND {$tipos}
 				  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 				  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+				  AND {$filtroVendVenta}
 			  )
 			GROUP BY
 				CASE
@@ -805,7 +1005,7 @@ class ModeloZonasComerciales
 	 * Clientes con venta en el período cuya zona efectiva = $idZona
 	 * (mismos criterios de venta real / vendedores activos).
 	 */
-	static public function mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, $limite = 500)
+	static public function mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null)
 	{
 
 		$idZona = (int) $idZona;
@@ -821,6 +1021,8 @@ class ModeloZonasComerciales
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
 
 		$sqlCatBase = "CASE
 					WHEN c.grupo IS NOT NULL AND TRIM(c.grupo) <> '' THEN (
@@ -875,6 +1077,7 @@ class ModeloZonasComerciales
 			  AND {$tipos}
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+			  AND {$filtroVend}
 			  AND (
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -893,7 +1096,7 @@ class ModeloZonasComerciales
 		$stmt->execute();
 
 		$nuevosSet = array();
-		foreach (self::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 5000) as $n) {
+		foreach (self::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 5000, $idGrupoMarca) as $n) {
 			$nuevosSet[$n["codigo"]] = true;
 		}
 
@@ -930,7 +1133,7 @@ class ModeloZonasComerciales
 	 * Detalle de clientes nuevos de la zona en el período
 	 * (1ª venta de vendedor activo en el mes, sin grupo; vendedor = esa 1ª venta).
 	 */
-	static public function mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, $limite = 500)
+	static public function mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null)
 	{
 
 		$idZona = (int) $idZona;
@@ -950,6 +1153,9 @@ class ModeloZonasComerciales
 		$joinPrimera = self::sqlJoinVendedorActivo("v", "ma");
 		$joinV0 = self::sqlJoinVendedorActivo("v0", "m0");
 		$joinV2 = self::sqlJoinVendedorActivo("v2", "m2");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$filtroVend0 = self::sqlFiltroCodigosVendedor("TRIM(v0.vendedor)", $codigos);
+		$filtroVend2 = self::sqlFiltroCodigosVendedor("TRIM(v2.vendedor)", $codigos);
 
 		$sql = "SELECT
 				c.codigo AS codigo_cliente,
@@ -988,10 +1194,12 @@ class ModeloZonasComerciales
 				  AND " . self::sqlTiposVentaReal("v2") . "
 				  AND UPPER(IFNULL(v2.estado, '')) <> 'ANULADO'
 				  AND TRIM(IFNULL(v2.vendedor, '')) <> ''
+				  AND {$filtroVend2}
 				GROUP BY v2.cliente
 			) ven ON ven.cliente = c.codigo
 			WHERE p.primera >= :ini AND p.primera < :fin
 			  AND (c.grupo IS NULL OR TRIM(c.grupo) = '')
+			  AND {$filtroVend0}
 			  AND (
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -1032,7 +1240,7 @@ class ModeloZonasComerciales
 	 * cerrando en $anio/$mes, filtrados por vista de mapa (lima | peru).
 	 * Retorna labels + series[] con 12 valores por zona.
 	 */
-	static public function mdlVentasTotalesVistaUltimos12Meses($vista, $anioFin, $mesFin)
+	static public function mdlVentasTotalesVistaUltimos12Meses($vista, $anioFin, $mesFin, $idGrupoMarca = null)
 	{
 
 		$vista = trim((string) $vista);
@@ -1108,6 +1316,10 @@ class ModeloZonasComerciales
 
 		$tipos = self::sqlTiposVentaReal("v");
 		$joinActivo = self::sqlJoinVendedorActivo("v", "ma");
+		// Misma vigencia que el resumen del mes seleccionado (no la del inicio de la ventana).
+		$fechaRefGrupo = date("Y-m-01", $tsFin);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $fechaRefGrupo);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
 
 		$sql = "SELECT
 				z.id AS id_zona,
@@ -1133,6 +1345,7 @@ class ModeloZonasComerciales
 			  AND {$tipos}
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+			  AND {$filtroVend}
 			GROUP BY z.id, YEAR(v.fecha), MONTH(v.fecha)
 			ORDER BY z.id ASC, anio ASC, mes ASC";
 
@@ -1185,7 +1398,7 @@ class ModeloZonasComerciales
 		);
 	}
 
-	static public function mdlResumenMapaZonas($vista = null, $anio = null, $mes = null)
+	static public function mdlResumenMapaZonas($vista = null, $anio = null, $mes = null, $idGrupoMarca = null)
 	{
 
 		date_default_timezone_set("America/Lima");
@@ -1198,11 +1411,26 @@ class ModeloZonasComerciales
 			$mes = (int) date("n");
 		}
 
+		$idGrupoMarca = $idGrupoMarca === null || $idGrupoMarca === "" ? null : (int) $idGrupoMarca;
+		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
+			$idGrupoMarca = null;
+		}
+
+		$rango = self::rangoMes($anio, $mes);
+		$codigosGrupo = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$setGrupo = null;
+		if (is_array($codigosGrupo)) {
+			$setGrupo = array();
+			foreach ($codigosGrupo as $cod) {
+				$setGrupo[$cod] = true;
+			}
+		}
+
 		$zonas = self::mdlListarZonas(true);
-		$ventas = self::mdlVentasZonaEfectivaPeriodo($anio, $mes);
-		$clientesVenta = self::mdlContarClientesConVentaPorZona($anio, $mes);
-		$clientesNuevos = self::mdlContarClientesNuevosPorZona($anio, $mes);
-		$clientesSinAtender = self::mdlContarClientesSinAtenderPorZona($anio, $mes);
+		$ventas = self::mdlVentasZonaEfectivaPeriodo($anio, $mes, $idGrupoMarca);
+		$clientesVenta = self::mdlContarClientesConVentaPorZona($anio, $mes, $idGrupoMarca);
+		$clientesNuevos = self::mdlContarClientesNuevosPorZona($anio, $mes, $idGrupoMarca);
+		$clientesSinAtender = self::mdlContarClientesSinAtenderPorZona($anio, $mes, $idGrupoMarca);
 		$lista = array();
 		$vista = $vista === null ? "" : trim((string) $vista);
 
@@ -1220,8 +1448,12 @@ class ModeloZonasComerciales
 			$vendedores = self::mdlListarVendedoresZonaActivos($id);
 			$vendActivos = array();
 			foreach ($vendedores as $v) {
+				$cod = $v["cod_vendedor"];
+				if ($setGrupo !== null && !isset($setGrupo[$cod])) {
+					continue;
+				}
 				$vendActivos[] = array(
-					"codigo" => $v["cod_vendedor"],
+					"codigo" => $cod,
 					"nombre" => $v["nombre_vendedor"]
 				);
 			}
@@ -1254,5 +1486,103 @@ class ModeloZonasComerciales
 		}
 
 		return $lista;
+	}
+
+	/**
+	 * Mapa geo → código de zona según reglas actuales en BD
+	 * (zonas_comerciales_ubigeojf). Sirve para pintar el mapa
+	 * alineado al módulo de zonas, no a un seed fijo en JS.
+	 *
+	 * @return array{departamentos:array,distritos:array,provincias:array}
+	 */
+	static public function mdlMapaGeoAsignaciones()
+	{
+		$norm = function ($s) {
+			$s = strtoupper(trim((string) $s));
+			$s = strtr($s, array(
+				"Á" => "A", "É" => "E", "Í" => "I", "Ó" => "O", "Ú" => "U",
+				"Ü" => "U", "Ñ" => "N",
+				"á" => "A", "é" => "E", "í" => "I", "ó" => "O", "ú" => "U",
+				"ü" => "U", "ñ" => "N"
+			));
+			return preg_replace('/\s+/', " ", $s);
+		};
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT z.codigo AS zona_codigo,
+				u.Departamento AS departamento,
+				u.Provincia AS provincia,
+				u.Distrito AS distrito
+			 FROM zonas_comerciales_ubigeojf r
+			 INNER JOIN zonas_comercialesjf z
+				ON z.id = r.id_zona AND z.estado = 1
+			 INNER JOIN ubigeo u ON u.Codigo = r.cod_ubi
+			 WHERE TRIM(IFNULL(u.Distrito, '')) <> ''
+			   AND CHAR_LENGTH(TRIM(u.Codigo)) = 6"
+		);
+		$stmt->execute();
+
+		$contDep = array();
+		$contDist = array();
+		$contProv = array();
+
+		$inc = function (&$mapa, $key, $zona) {
+			if ($key === "" || $zona === "") {
+				return;
+			}
+			if (!isset($mapa[$key])) {
+				$mapa[$key] = array();
+			}
+			if (!isset($mapa[$key][$zona])) {
+				$mapa[$key][$zona] = 0;
+			}
+			$mapa[$key][$zona]++;
+		};
+
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$zona = trim((string) $fila["zona_codigo"]);
+			if ($zona === "") {
+				continue;
+			}
+			$dep = $norm($fila["departamento"]);
+			$prov = $norm($fila["provincia"]);
+			$dist = $norm($fila["distrito"]);
+
+			// Perú sin Lima: departamentos → PERU_NORTE / PERU_SUR
+			if (in_array($zona, array("PERU_NORTE", "PERU_SUR"), true)
+				&& $dep !== ""
+				&& $dep !== "LIMA"
+				&& $dep !== "CALLAO"
+			) {
+				$inc($contDep, $dep, $zona);
+			}
+
+			// Lima metro / Callao: distrito → zona comercial
+			if ($dist !== "" && in_array($zona, array(
+				"LIM_NORTE", "LIM_ESTE", "LIM_SUR", "LIM_CENTRO", "LIM_MODERNA", "CALLAO"
+			), true)) {
+				$inc($contDist, $dist, $zona);
+			}
+
+			// Provincias de Lima (Norte Chico, Cañete, etc.)
+			if ($dep === "LIMA" && $prov !== "" && $prov !== "LIMA") {
+				$inc($contProv, $prov, $zona);
+			}
+		}
+
+		$pick = function ($mapaCont) {
+			$out = array();
+			foreach ($mapaCont as $key => $porZona) {
+				arsort($porZona);
+				$out[$key] = (string) key($porZona);
+			}
+			return $out;
+		};
+
+		return array(
+			"departamentos" => $pick($contDep),
+			"distritos" => $pick($contDist),
+			"provincias" => $pick($contProv)
+		);
 	}
 }

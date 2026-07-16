@@ -3,83 +3,13 @@
     "use strict";
 
     /**
-     * Polígonos aproximados de cobertura comercial (no GIS oficial).
-     * Pensados para verse como sectores pintados sobre el mapa de Lima.
+     * Polígonos aproximados solo donde no hay GeoJSON de distrito
+     * (Norte Chico fuera de Lima Metropolitana; Gamarra no es distrito; Perú).
      * Leaflet: [lat, lng]
      */
     var MZ_GEO = {
         lima: {
-            // Fuera del encuadre inicial metro; se ve al alejar o panear al norte
-            NORTE_CHICO: {
-                short: "Norte Chico",
-                center: [-11.20, -77.55],
-                ring: [
-                    [-10.90, -77.85], [-10.95, -77.20], [-11.50, -77.15],
-                    [-11.55, -77.80], [-10.90, -77.85]
-                ],
-                metro: false
-            },
-            CALLAO: {
-                short: "Callao",
-                center: [-12.04, -77.13],
-                ring: [
-                    [-11.92, -77.19], [-11.93, -77.09], [-12.00, -77.07],
-                    [-12.08, -77.08], [-12.12, -77.12], [-12.10, -77.18],
-                    [-12.02, -77.20], [-11.92, -77.19]
-                ],
-                metro: true
-            },
-            LIM_NORTE: {
-                short: "Norte",
-                center: [-11.93, -77.05],
-                ring: [
-                    [-11.78, -77.12], [-11.75, -76.92], [-11.90, -76.88],
-                    [-12.00, -76.95], [-12.02, -77.08], [-11.95, -77.14],
-                    [-11.85, -77.15], [-11.78, -77.12]
-                ],
-                metro: true
-            },
-            LIM_ESTE: {
-                short: "Este",
-                center: [-12.02, -76.88],
-                ring: [
-                    [-11.90, -76.95], [-11.88, -76.72], [-12.05, -76.70],
-                    [-12.18, -76.78], [-12.15, -76.98], [-12.05, -76.98],
-                    [-11.95, -76.98], [-11.90, -76.95]
-                ],
-                metro: true
-            },
-            LIM_CENTRO: {
-                short: "Centro",
-                center: [-12.06, -77.03],
-                ring: [
-                    [-12.02, -77.07], [-12.01, -76.99], [-12.05, -76.97],
-                    [-12.09, -76.98], [-12.10, -77.05], [-12.07, -77.08],
-                    [-12.03, -77.08], [-12.02, -77.07]
-                ],
-                metro: true
-            },
-            LIM_MODERNA: {
-                short: "Moderna",
-                center: [-12.12, -76.98],
-                ring: [
-                    [-12.08, -77.06], [-12.07, -76.90], [-12.10, -76.85],
-                    [-12.18, -76.86], [-12.20, -76.95], [-12.18, -77.04],
-                    [-12.12, -77.06], [-12.08, -77.06]
-                ],
-                metro: true
-            },
-            LIM_SUR: {
-                short: "Sur",
-                center: [-12.25, -76.94],
-                ring: [
-                    [-12.17, -77.03], [-12.16, -76.85], [-12.22, -76.80],
-                    [-12.35, -76.82], [-12.38, -76.95], [-12.32, -77.05],
-                    [-12.22, -77.05], [-12.17, -77.03]
-                ],
-                metro: true
-            },
-            // Encima del Centro (Gamarra / La Victoria comercial)
+            // Overlay comercial sobre La Victoria (no es ubigeo propio)
             LIM_ECONOMICA: {
                 short: "Gamarra",
                 center: [-12.066, -77.014],
@@ -87,7 +17,8 @@
                     [-12.060, -77.022], [-12.059, -77.008], [-12.068, -77.006],
                     [-12.074, -77.012], [-12.072, -77.022], [-12.060, -77.022]
                 ],
-                metro: true
+                metro: true,
+                overlay: true
             }
         },
         peru: {
@@ -112,7 +43,95 @@
         }
     };
 
-    // Orden de dibujo: debajo primero; Económica al final para que se vea sobre Centro
+    /** Distrito (sin tildes) → código de zona comercial (misma lógica que seed ubigeo). */
+    var MZ_DISTRITO_A_ZONA = {
+        ANCON: "LIM_NORTE",
+        "SANTA ROSA": "LIM_NORTE",
+        CARABAYLLO: "LIM_NORTE",
+        "PUENTE PIEDRA": "LIM_NORTE",
+        COMAS: "LIM_NORTE",
+        "LOS OLIVOS": "LIM_NORTE",
+        "SAN MARTIN DE PORRES": "LIM_NORTE",
+        INDEPENDENCIA: "LIM_NORTE",
+
+        ATE: "LIM_ESTE",
+        "SANTA ANITA": "LIM_ESTE",
+        "EL AGUSTINO": "LIM_ESTE",
+        "SAN JUAN DE LURIGANCHO": "LIM_ESTE",
+        LURIGANCHO: "LIM_ESTE",
+        CHOSICA: "LIM_ESTE",
+        CHACLACAYO: "LIM_ESTE",
+        CIENEGUILLA: "LIM_ESTE",
+
+        CHORRILLOS: "LIM_SUR",
+        "SAN JUAN DE MIRAFLORES": "LIM_SUR",
+        "VILLA EL SALVADOR": "LIM_SUR",
+        "VILLA MARIA DEL TRIUNFO": "LIM_SUR",
+        LURIN: "LIM_SUR",
+        PACHACAMAC: "LIM_SUR",
+        "PUNTA HERMOSA": "LIM_SUR",
+        "PUNTA NEGRA": "LIM_SUR",
+        "SAN BARTOLO": "LIM_SUR",
+        "SANTA MARIA DEL MAR": "LIM_SUR",
+        PUCUSANA: "LIM_SUR",
+
+        LIMA: "LIM_CENTRO",
+        "LA VICTORIA": "LIM_CENTRO",
+        BRENA: "LIM_CENTRO",
+        RIMAC: "LIM_CENTRO",
+
+        "SAN ISIDRO": "LIM_MODERNA",
+        "SANTIAGO DE SURCO": "LIM_MODERNA",
+        "LA MOLINA": "LIM_MODERNA",
+        "JESUS MARIA": "LIM_MODERNA",
+        LINCE: "LIM_MODERNA",
+        "MAGDALENA DEL MAR": "LIM_MODERNA",
+        SURQUILLO: "LIM_MODERNA",
+        MIRAFLORES: "LIM_MODERNA",
+        BARRANCO: "LIM_MODERNA",
+        "SAN BORJA": "LIM_MODERNA",
+        "SAN MIGUEL": "LIM_MODERNA",
+        "PUEBLO LIBRE": "LIM_MODERNA",
+        "SAN LUIS": "LIM_MODERNA",
+
+        CALLAO: "CALLAO",
+        BELLAVISTA: "CALLAO",
+        "LA PERLA": "CALLAO",
+        "LA PUNTA": "CALLAO",
+        "CARMEN DE LA LEGUA REYNOSO": "CALLAO",
+        VENTANILLA: "CALLAO",
+        "MI PERU": "CALLAO"
+    };
+
+    /** Departamento (sin tildes) → zona comercial Perú (excluye Lima/Callao del mapa). */
+    var MZ_DEPTO_A_ZONA = {
+        TUMBES: "PERU_NORTE",
+        PIURA: "PERU_NORTE",
+        LAMBAYEQUE: "PERU_NORTE",
+        "LA LIBERTAD": "PERU_NORTE",
+        CAJAMARCA: "PERU_NORTE",
+        AMAZONAS: "PERU_NORTE",
+        "SAN MARTIN": "PERU_NORTE",
+        LORETO: "PERU_NORTE",
+        UCAYALI: "PERU_NORTE",
+        ANCASH: "PERU_NORTE",
+
+        ICA: "PERU_SUR",
+        AREQUIPA: "PERU_SUR",
+        MOQUEGUA: "PERU_SUR",
+        TACNA: "PERU_SUR",
+        PUNO: "PERU_SUR",
+        CUSCO: "PERU_SUR",
+        APURIMAC: "PERU_SUR",
+        "MADRE DE DIOS": "PERU_SUR",
+        AYACUCHO: "PERU_SUR",
+        HUANCAVELICA: "PERU_SUR",
+        JUNIN: "PERU_SUR",
+        HUANUCO: "PERU_SUR",
+        PASCO: "PERU_SUR"
+    };
+
+    // Orden de dibujo overlays; Económica al final
     var MZ_ORDEN_LIMA = [
         "NORTE_CHICO", "LIM_NORTE", "LIM_ESTE", "CALLAO",
         "LIM_SUR", "LIM_MODERNA", "LIM_CENTRO", "LIM_ECONOMICA"
@@ -130,12 +149,208 @@
     var mzMapReady = { lima: false, peru: false };
     var mzYaAjustado = { lima: false, peru: false };
     var mzHistCharts = [];
+    var mzCargaSeq = 0;
+    var mzLimaDistritos = null;
+    var mzLimaDistritosPromise = null;
+    var mzNorteChicoGeo = null;
+    var mzNorteChicoPromise = null;
+    var mzPeruDepartamentos = null;
+    var mzPeruDepartamentosPromise = null;
+    var mzLayerByZona = {};
+    var mzBoundsVista = { lima: null, peru: null };
+    var mzGeoAsignacion = {
+        departamentos: {},
+        distritos: {},
+        provincias: {}
+    };
+    var mzVentasGeo = {
+        departamentos: {},
+        distritos: {},
+        provincias: {}
+    };
+
+    function mzNormNombre(s) {
+        return String(s || "")
+            .toUpperCase()
+            .replace(/Á/g, "A")
+            .replace(/É/g, "E")
+            .replace(/Í/g, "I")
+            .replace(/Ó/g, "O")
+            .replace(/Ú/g, "U")
+            .replace(/Ü/g, "U")
+            .replace(/Ñ/g, "N")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function mzAplicarGeoAsignacion(geo) {
+        mzGeoAsignacion = {
+            departamentos: (geo && geo.departamentos) || {},
+            distritos: (geo && geo.distritos) || {},
+            provincias: (geo && geo.provincias) || {}
+        };
+    }
+
+    function mzAplicarVentasGeo(ventas) {
+        mzVentasGeo = {
+            departamentos: (ventas && ventas.departamentos) || {},
+            distritos: (ventas && ventas.distritos) || {},
+            provincias: (ventas && ventas.provincias) || {}
+        };
+    }
+
+    function mzVentaGeo(tipo, nombre) {
+        var key = mzNormNombre(nombre);
+        var mapa = mzVentasGeo[tipo] || {};
+        if (mapa[key] == null) {
+            return 0;
+        }
+        return Number(mapa[key]) || 0;
+    }
+
+    function mzTooltipGeoHtml(titulo, nombreZona, ventaLocal, ventaZona) {
+        var html =
+            "<strong>" +
+            mzEsc(titulo) +
+            "</strong><br>" +
+            "<span style='font-size:12px;'>" +
+            mzEsc(nombreZona || "") +
+            "</span><br>" +
+            "<span style='font-size:15px;font-weight:800;'>" +
+            mzMoney(ventaLocal) +
+            "</span>";
+        if (ventaZona != null && Number(ventaZona) > 0 && Math.round(Number(ventaZona)) !== Math.round(Number(ventaLocal))) {
+            html +=
+                "<br><span style='font-size:11px;opacity:.85;'>Zona: " +
+                mzMoney(ventaZona) +
+                "</span>";
+        }
+        return html;
+    }
+
+    function mzZonaDeDistrito(nombreDistrito, provincia) {
+        var key = mzNormNombre(nombreDistrito);
+        if (mzGeoAsignacion.distritos[key]) {
+            return mzGeoAsignacion.distritos[key];
+        }
+        if (MZ_DISTRITO_A_ZONA[key]) {
+            return MZ_DISTRITO_A_ZONA[key];
+        }
+        if (mzNormNombre(provincia) === "CALLAO") {
+            return "CALLAO";
+        }
+        return null;
+    }
+
+    function mzZonaDeDepartamento(nombreDep) {
+        var key = mzNormNombre(nombreDep);
+        if (key === "LIMA" || key === "CALLAO") {
+            return null;
+        }
+        if (mzGeoAsignacion.departamentos[key]) {
+            return mzGeoAsignacion.departamentos[key];
+        }
+        return MZ_DEPTO_A_ZONA[key] || null;
+    }
+
+    function mzZonaDeProvincia(nombreProv) {
+        var key = mzNormNombre(nombreProv);
+        if (mzGeoAsignacion.provincias[key]) {
+            return mzGeoAsignacion.provincias[key];
+        }
+        if (key === "BARRANCA" || key === "HUARAL" || key === "HUAURA") {
+            return "NORTE_CHICO";
+        }
+        return null;
+    }
+
+    function mzCargarDistritosLima() {
+        if (mzLimaDistritos) {
+            return $.Deferred().resolve(mzLimaDistritos).promise();
+        }
+        if (mzLimaDistritosPromise) {
+            return mzLimaDistritosPromise;
+        }
+        mzLimaDistritosPromise = $.getJSON("vistas/js/data/lima-callao-distritos.geojson").then(
+            function (data) {
+                mzLimaDistritos = data;
+                return data;
+            },
+            function () {
+                mzLimaDistritosPromise = null;
+                return $.Deferred().reject().promise();
+            }
+        );
+        return mzLimaDistritosPromise;
+    }
+
+    function mzCargarNorteChico() {
+        if (mzNorteChicoGeo) {
+            return $.Deferred().resolve(mzNorteChicoGeo).promise();
+        }
+        if (mzNorteChicoPromise) {
+            return mzNorteChicoPromise;
+        }
+        mzNorteChicoPromise = $.getJSON("vistas/js/data/norte-chico-provincias.geojson").then(
+            function (data) {
+                mzNorteChicoGeo = data;
+                return data;
+            },
+            function () {
+                mzNorteChicoPromise = null;
+                return $.Deferred().resolve(null).promise();
+            }
+        );
+        return mzNorteChicoPromise;
+    }
+
+    function mzCargarGeoLimaCompleto() {
+        var dfd = $.Deferred();
+        mzCargarDistritosLima()
+            .done(function (lima) {
+                mzCargarNorteChico().always(function (norte) {
+                    dfd.resolve({
+                        lima: lima,
+                        norte: norte && norte.type ? norte : mzNorteChicoGeo
+                    });
+                });
+            })
+            .fail(function () {
+                dfd.reject();
+            });
+        return dfd.promise();
+    }
+
+    function mzCargarDepartamentosPeru() {
+        if (mzPeruDepartamentos) {
+            return $.Deferred().resolve(mzPeruDepartamentos).promise();
+        }
+        if (mzPeruDepartamentosPromise) {
+            return mzPeruDepartamentosPromise;
+        }
+        mzPeruDepartamentosPromise = $.getJSON("vistas/js/data/peru-departamentos.geojson").then(
+            function (data) {
+                mzPeruDepartamentos = data;
+                return data;
+            },
+            function () {
+                mzPeruDepartamentosPromise = null;
+                return $.Deferred().reject().promise();
+            }
+        );
+        return mzPeruDepartamentosPromise;
+    }
 
     function mzPeriodo() {
         return {
             anio: parseInt($("#mzAnio").val(), 10) || new Date().getFullYear(),
             mes: parseInt($("#mzMes").val(), 10) || (new Date().getMonth() + 1)
         };
+    }
+
+    function mzGrupoMarca() {
+        var v = parseInt($("input[name='mzGrupoMarca']:checked").val(), 10);
+        return !isNaN(v) && v > 0 ? v : 0;
     }
 
     function mzLeerPeriodoUrl() {
@@ -203,18 +418,15 @@
 
     function mzCacheKey(vista) {
         var p = mzPeriodo();
-        return vista + "|" + p.anio + "|" + p.mes;
+        return vista + "|" + p.anio + "|" + p.mes + "|g" + mzGrupoMarca();
     }
 
     function mzFmt(n) {
-        return (Number(n) || 0).toLocaleString("es-PE");
+        return Math.round(Number(n) || 0).toLocaleString("es-PE");
     }
 
     function mzMoney(n) {
-        return "S/ " + (Number(n) || 0).toLocaleString("es-PE", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        });
+        return "S/ " + Math.round(Number(n) || 0).toLocaleString("es-PE");
     }
 
     function mzEsc(s) {
@@ -474,11 +686,27 @@
             mzMapLima = mzInitMap("mzMapLima", [-12.05, -77.02], 10);
             mzLayerLima = L.layerGroup().addTo(mzMapLima);
             mzMapReady.lima = true;
+            mzMapLima.on("mouseout", function (e) {
+                if (!e.relatedTarget || !mzMapLima.getContainer().contains(e.relatedTarget)) {
+                    mzCerrarTodosTooltips();
+                }
+            });
+            $("#mzMapLima").on("mouseleave", function () {
+                mzCerrarTodosTooltips();
+            });
         }
         if (!mzMapPeru && $("#mzMapPeru").length) {
             mzMapPeru = mzInitMap("mzMapPeru", [-9.5, -75.0], 5);
             mzLayerPeru = L.layerGroup().addTo(mzMapPeru);
             mzMapReady.peru = true;
+            mzMapPeru.on("mouseout", function (e) {
+                if (!e.relatedTarget || !mzMapPeru.getContainer().contains(e.relatedTarget)) {
+                    mzCerrarTodosTooltips();
+                }
+            });
+            $("#mzMapPeru").on("mouseleave", function () {
+                mzCerrarTodosTooltips();
+            });
         }
     }
 
@@ -502,69 +730,520 @@
         return lista;
     }
 
+    function mzEstiloPoligonoZona(codigoZona, ventaLocal) {
+        var z = mzPorCodigo[codigoZona] || {};
+        var haySel = !!mzSeleccion;
+        var seleccionada = haySel && mzSeleccion === codigoZona;
+        var atenuada = haySel && !seleccionada;
+        var sinVenta =
+            seleccionada &&
+            ventaLocal != null &&
+            !isNaN(Number(ventaLocal)) &&
+            Number(ventaLocal) <= 0;
+
+        if (atenuada) {
+            return {
+                color: "#f2f2f2",
+                weight: 1,
+                opacity: 0.9,
+                fillColor: "#c8c8c8",
+                fillOpacity: 0.28,
+                className: "mz-zona-poly mz-zona-dim"
+            };
+        }
+
+        // Zona enfocada: piezas sin venta en gris
+        if (sinVenta) {
+            return {
+                color: "#ffffff",
+                weight: 2,
+                opacity: 1,
+                fillColor: "#9e9e9e",
+                fillOpacity: 0.42,
+                className: "mz-zona-poly mz-zona-sin-venta"
+            };
+        }
+
+        return {
+            color: "#ffffff",
+            weight: seleccionada ? 3 : 1.4,
+            opacity: 1,
+            fillColor: z.color || "#bbbbbb",
+            fillOpacity: seleccionada ? 0.82 : 0.68,
+            className: "mz-zona-poly"
+        };
+    }
+
+    function mzMetaCapa(codigoZona, geoTipo, geoNombre) {
+        return {
+            codigoZona: codigoZona || "",
+            geoTipo: geoTipo || "",
+            geoNombre: geoNombre || ""
+        };
+    }
+
+    function mzEstiloDesdeCapa(ly) {
+        var meta = (ly && ly._mzMeta) || {};
+        var venta = null;
+        if (meta.geoTipo && meta.geoNombre) {
+            venta = mzVentaGeo(meta.geoTipo, meta.geoNombre);
+        }
+        return mzEstiloPoligonoZona(meta.codigoZona, venta);
+    }
+
+    function mzRegistrarCapaZona(ly, codigoZona, geoTipo, geoNombre) {
+        if (!ly || !codigoZona) {
+            return;
+        }
+        ly._mzMeta = mzMetaCapa(codigoZona, geoTipo, geoNombre);
+        if (!mzLayerByZona[codigoZona]) {
+            mzLayerByZona[codigoZona] = [];
+        }
+        mzLayerByZona[codigoZona].push(ly);
+    }
+
+    function mzMapaActivo() {
+        return mzVista === "peru" ? mzMapPeru : mzMapLima;
+    }
+
+    function mzBoundsDeZona(codigoZona) {
+        var layers = mzLayerByZona[codigoZona] || [];
+        var bounds = null;
+        layers.forEach(function (ly) {
+            if (!ly || typeof ly.getBounds !== "function") {
+                return;
+            }
+            try {
+                var b = ly.getBounds();
+                if (b && b.isValid()) {
+                    bounds = bounds ? bounds.extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast());
+                }
+            } catch (e) { /* ignore */ }
+        });
+        return bounds;
+    }
+
+    function mzEnfocarZonaEnMapa(codigoZona) {
+        var map = mzMapaActivo();
+        if (!map || !codigoZona) {
+            return;
+        }
+        var bounds = mzBoundsDeZona(codigoZona);
+        if (!bounds || !bounds.isValid()) {
+            return;
+        }
+        try {
+            map.fitBounds(bounds, {
+                padding: [40, 40],
+                maxZoom: mzVista === "peru" ? 7 : 13,
+                animate: true
+            });
+        } catch (e) { /* ignore */ }
+
+        (mzLayerByZona[codigoZona] || []).forEach(function (ly) {
+            if (ly && typeof ly.bringToFront === "function") {
+                ly.bringToFront();
+            }
+        });
+    }
+
+    function mzRestaurarVistaMapa() {
+        var map = mzMapaActivo();
+        var bounds = mzBoundsVista[mzVista];
+        if (!map || !bounds || !bounds.isValid) {
+            return;
+        }
+        try {
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, {
+                    padding: mzVista === "peru" ? [28, 28] : [24, 24],
+                    maxZoom: mzVista === "peru" ? 6 : 12,
+                    animate: true
+                });
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function mzGuardarBoundsVista(vista, puntos) {
+        if (!puntos || !puntos.length || typeof L === "undefined") {
+            return;
+        }
+        try {
+            mzBoundsVista[vista] = L.latLngBounds(puntos);
+        } catch (e) {
+            mzBoundsVista[vista] = null;
+        }
+    }
+
+    function mzCerrarTooltipsZona(codigoZona) {
+        (mzLayerByZona[codigoZona] || []).forEach(function (ly) {
+            if (ly && typeof ly.closeTooltip === "function") {
+                try {
+                    ly.closeTooltip();
+                } catch (e) { /* ignore */ }
+            }
+        });
+    }
+
+    function mzCerrarTodosTooltips() {
+        Object.keys(mzLayerByZona).forEach(function (cod) {
+            mzCerrarTooltipsZona(cod);
+        });
+        // Por si quedó algún tooltip suelto en el DOM
+        $(".leaflet-tooltip.mz-tooltip-zona").remove();
+    }
+
+    function mzBindZonaEvents(layer, codigoZona) {
+        layer.on("mouseover", function () {
+            if (mzSeleccion && mzSeleccion !== codigoZona) {
+                return;
+            }
+            var lista = mzLayerByZona[codigoZona] || [];
+            lista.forEach(function (ly) {
+                if (ly.setStyle) {
+                    ly.setStyle({ fillOpacity: 0.88, weight: 2.5 });
+                }
+                if (ly.bringToFront) {
+                    ly.bringToFront();
+                }
+            });
+        });
+        layer.on("mouseout", function () {
+            mzCerrarTooltipsZona(codigoZona);
+            var lista = mzLayerByZona[codigoZona] || [];
+            lista.forEach(function (ly) {
+                if (ly.setStyle) {
+                    ly.setStyle(mzEstiloDesdeCapa(ly));
+                }
+            });
+        });
+        layer.on("click", function () {
+            mzCerrarTodosTooltips();
+            mzMostrarFicha(codigoZona);
+        });
+    }
+
+    function mzOpcionesTooltipZona() {
+        return {
+            sticky: true,
+            opacity: 0.97,
+            className: "mz-tooltip-zona",
+            direction: "top",
+            offset: [0, -8]
+        };
+    }
+
+    function mzPintarOverlayRing(layer, z, geo, boundsMetro, boundsTodos) {
+        var estilo = mzEstiloPoligonoZona(z.codigo, Number(z.venta_real) || 0);
+        var poly = L.polygon(geo.ring, estilo).addTo(layer);
+
+        poly.bindTooltip(
+            "<strong>" + mzEsc(geo.short || z.nombre) + "</strong><br>" +
+                "<span style='font-size:15px;font-weight:800;'>" + mzMoney(z.venta_real) + "</span><br>" +
+                "<span style='font-size:11px;'>" + mzEsc(z.nombre) + "</span>",
+            mzOpcionesTooltipZona()
+        );
+        mzRegistrarCapaZona(poly, z.codigo, "", "");
+        mzBindZonaEvents(poly, z.codigo);
+
+        geo.ring.forEach(function (p) {
+            boundsTodos.push(p);
+            if (geo.metro !== false) {
+                boundsMetro.push(p);
+            }
+        });
+    }
+
+    function mzPintarMapaLimaDistritos(map, layer, zonas, ajustarVista, geojson, geoNorteChico) {
+        mzLayerByZona = {};
+        var porCodigo = {};
+        (zonas || []).forEach(function (z) {
+            porCodigo[z.codigo] = z;
+        });
+
+        var boundsMetro = [];
+        var boundsTodos = [];
+        var boundsNorteChico = [];
+
+        var gj = L.geoJSON(geojson, {
+            style: function (feature) {
+                var props = feature.properties || {};
+                var codigo = mzZonaDeDistrito(props.distrito, props.provincia);
+                var nombreDist = props.distrito2 || props.distrito || "";
+                if (!codigo || !porCodigo[codigo]) {
+                    return {
+                        color: "#dddddd",
+                        weight: 1,
+                        opacity: 0.8,
+                        fillColor: "#eeeeee",
+                        fillOpacity: 0.25
+                    };
+                }
+                return mzEstiloPoligonoZona(codigo, mzVentaGeo("distritos", nombreDist));
+            },
+            onEachFeature: function (feature, lyr) {
+                var props = feature.properties || {};
+                var codigo = mzZonaDeDistrito(props.distrito, props.provincia);
+                var z = codigo ? porCodigo[codigo] : null;
+                var nombreDist = props.distrito2 || props.distrito || "";
+
+                if (z) {
+                    mzRegistrarCapaZona(lyr, codigo, "distritos", nombreDist);
+                    lyr.bindTooltip(
+                        mzTooltipGeoHtml(
+                            nombreDist,
+                            z.nombre,
+                            mzVentaGeo("distritos", nombreDist),
+                            z.venta_real
+                        ),
+                        mzOpcionesTooltipZona()
+                    );
+                    mzBindZonaEvents(lyr, codigo);
+                }
+
+                try {
+                    var b = lyr.getBounds();
+                    if (b && b.isValid()) {
+                        boundsMetro.push(b.getSouthWest());
+                        boundsMetro.push(b.getNorthEast());
+                        boundsTodos.push(b.getSouthWest());
+                        boundsTodos.push(b.getNorthEast());
+                    }
+                } catch (e) { /* ignore */ }
+            }
+        });
+        gj.addTo(layer);
+
+        // Norte Chico / provincias Lima fuera de metro (Barranca, Huaral, Huaura…)
+        if (geoNorteChico) {
+            var gjNc = L.geoJSON(geoNorteChico, {
+                filter: function (feature) {
+                    var props = feature.properties || {};
+                    var codigo = mzZonaDeProvincia(props.provincia || props.NOMBPROV);
+                    return !!(codigo && porCodigo[codigo]);
+                },
+                style: function (feature) {
+                    var props = feature.properties || {};
+                    var nombreProv = props.provincia || props.NOMBPROV || "";
+                    var codigo = mzZonaDeProvincia(nombreProv);
+                    return mzEstiloPoligonoZona(codigo, mzVentaGeo("provincias", nombreProv));
+                },
+                onEachFeature: function (feature, lyr) {
+                    var props = feature.properties || {};
+                    var nombreProv = props.provincia || props.NOMBPROV || "Provincia";
+                    var codigo = mzZonaDeProvincia(nombreProv);
+                    var z = codigo ? porCodigo[codigo] : null;
+                    if (!z) {
+                        return;
+                    }
+                    mzRegistrarCapaZona(lyr, codigo, "provincias", nombreProv);
+                    lyr.bindTooltip(
+                        mzTooltipGeoHtml(
+                            nombreProv,
+                            z.nombre,
+                            mzVentaGeo("provincias", nombreProv),
+                            z.venta_real
+                        ),
+                        mzOpcionesTooltipZona()
+                    );
+                    mzBindZonaEvents(lyr, codigo);
+                    try {
+                        var bn = lyr.getBounds();
+                        if (bn && bn.isValid()) {
+                            boundsNorteChico.push(bn.getSouthWest());
+                            boundsNorteChico.push(bn.getNorthEast());
+                            boundsTodos.push(bn.getSouthWest());
+                            boundsTodos.push(bn.getNorthEast());
+                        }
+                    } catch (e2) { /* ignore */ }
+                }
+            });
+            gjNc.addTo(layer);
+        }
+
+        // Gamarra (overlay aproximado sobre La Victoria)
+        ["LIM_ECONOMICA"].forEach(function (cod) {
+            var z = porCodigo[cod];
+            var geo = MZ_GEO.lima[cod];
+            if (z && geo && geo.ring) {
+                mzPintarOverlayRing(layer, z, geo, boundsMetro, boundsTodos);
+            }
+        });
+
+        // Vista inicial: metro + Norte Chico para que se vea pintado
+        var boundsInicial = boundsMetro.concat(boundsNorteChico);
+        if (!boundsInicial.length) {
+            boundsInicial = boundsTodos;
+        }
+
+        if (ajustarVista) {
+            mzGuardarBoundsVista("lima", boundsInicial);
+            if (boundsInicial.length) {
+                try {
+                    map.fitBounds(boundsInicial, { padding: [24, 24], maxZoom: 11 });
+                } catch (e3) { /* ignore */ }
+            }
+            mzYaAjustado.lima = true;
+        } else {
+            mzGuardarBoundsVista("lima", boundsInicial);
+        }
+
+        if (mzSeleccion) {
+            mzResaltarSeleccionMapa();
+            mzEnfocarZonaEnMapa(mzSeleccion);
+        }
+
+        setTimeout(function () {
+            map.invalidateSize();
+        }, 80);
+    }
+
+    function mzPintarMapaPeruDepartamentos(map, layer, zonas, ajustarVista, geojson) {
+        mzLayerByZona = {};
+        var porCodigo = {};
+        (zonas || []).forEach(function (z) {
+            porCodigo[z.codigo] = z;
+        });
+
+        var boundsTodos = [];
+
+        var gj = L.geoJSON(geojson, {
+            filter: function (feature) {
+                var props = feature.properties || {};
+                var dep = mzNormNombre(props.NOMBDEP || props.nombdep || "");
+                return dep !== "LIMA" && dep !== "CALLAO";
+            },
+            style: function (feature) {
+                var props = feature.properties || {};
+                var nombreDep = props.NOMBDEP || props.nombdep || "";
+                var codigo = mzZonaDeDepartamento(nombreDep);
+                if (!codigo || !porCodigo[codigo]) {
+                    return {
+                        color: "#dddddd",
+                        weight: 1,
+                        opacity: 0.8,
+                        fillColor: "#eeeeee",
+                        fillOpacity: 0.2
+                    };
+                }
+                return mzEstiloPoligonoZona(codigo, mzVentaGeo("departamentos", nombreDep));
+            },
+            onEachFeature: function (feature, lyr) {
+                var props = feature.properties || {};
+                var nombreDep = props.NOMBDEP || props.nombdep || "";
+                var codigo = mzZonaDeDepartamento(nombreDep);
+                var z = codigo ? porCodigo[codigo] : null;
+
+                if (z) {
+                    mzRegistrarCapaZona(lyr, codigo, "departamentos", nombreDep);
+                    lyr.bindTooltip(
+                        mzTooltipGeoHtml(
+                            nombreDep,
+                            z.nombre,
+                            mzVentaGeo("departamentos", nombreDep),
+                            z.venta_real
+                        ),
+                        mzOpcionesTooltipZona()
+                    );
+                    mzBindZonaEvents(lyr, codigo);
+                }
+
+                try {
+                    var b = lyr.getBounds();
+                    if (b && b.isValid()) {
+                        boundsTodos.push(b.getSouthWest());
+                        boundsTodos.push(b.getNorthEast());
+                    }
+                } catch (e) { /* ignore */ }
+            }
+        });
+        gj.addTo(layer);
+
+        if (ajustarVista) {
+            mzGuardarBoundsVista("peru", boundsTodos);
+            if (boundsTodos.length) {
+                try {
+                    map.fitBounds(boundsTodos, { padding: [28, 28], maxZoom: 6 });
+                } catch (e2) { /* ignore */ }
+            }
+            mzYaAjustado.peru = true;
+        } else {
+            mzGuardarBoundsVista("peru", boundsTodos);
+        }
+
+        if (mzSeleccion) {
+            mzResaltarSeleccionMapa();
+            mzEnfocarZonaEnMapa(mzSeleccion);
+        }
+
+        setTimeout(function () {
+            map.invalidateSize();
+        }, 80);
+    }
+
     function mzPintarMapa(vista, zonas, ajustarVista) {
         mzEnsureMaps();
         var map = vista === "peru" ? mzMapPeru : mzMapLima;
         var layer = vista === "peru" ? mzLayerPeru : mzLayerLima;
-        var geoSet = vista === "peru" ? MZ_GEO.peru : MZ_GEO.lima;
 
         if (!map || !layer) {
             return;
         }
 
         layer.clearLayers();
+        mzLayerByZona = {};
+
+        if (vista === "lima") {
+            mzCargarGeoLimaCompleto()
+                .done(function (pack) {
+                    if (mzVista !== "lima") {
+                        return;
+                    }
+                    layer.clearLayers();
+                    mzPintarMapaLimaDistritos(
+                        map,
+                        layer,
+                        zonas,
+                        ajustarVista,
+                        pack.lima,
+                        pack.norte
+                    );
+                })
+                .fail(function () {
+                    mzPintarMapaRings(vista, zonas, ajustarVista, map, layer);
+                });
+            return;
+        }
+
+        if (vista === "peru") {
+            mzCargarDepartamentosPeru()
+                .done(function (geojson) {
+                    if (mzVista !== "peru") {
+                        return;
+                    }
+                    layer.clearLayers();
+                    mzPintarMapaPeruDepartamentos(map, layer, zonas, ajustarVista, geojson);
+                })
+                .fail(function () {
+                    mzPintarMapaRings(vista, zonas, ajustarVista, map, layer);
+                });
+            return;
+        }
+
+        mzPintarMapaRings(vista, zonas, ajustarVista, map, layer);
+    }
+
+    function mzPintarMapaRings(vista, zonas, ajustarVista, map, layer) {
+        var geoSet = vista === "peru" ? MZ_GEO.peru : MZ_GEO.lima;
         var boundsMetro = [];
         var boundsTodos = [];
 
         mzOrdenZonas(vista, zonas).forEach(function (z) {
             var geo = geoSet[z.codigo];
-            if (!geo) {
+            if (!geo || !geo.ring) {
                 return;
             }
-            var venta = Number(z.venta_real) || 0;
-            var seleccionada = mzSeleccion === z.codigo;
-            var fillOpacity = seleccionada ? 0.78 : 0.62;
-
-            var poly = L.polygon(geo.ring, {
-                color: "#ffffff",
-                weight: seleccionada ? 3 : 2,
-                opacity: 0.95,
-                fillColor: z.color || "#777777",
-                fillOpacity: fillOpacity,
-                className: "mz-zona-poly"
-            }).addTo(layer);
-
-            poly.bindTooltip(
-                "<strong>" + mzEsc(geo.short || z.nombre) + "</strong><br>" +
-                    "<span style='font-size:15px;font-weight:800;'>" + mzMoney(venta) + "</span><br>" +
-                    "<span style='font-size:11px;'>" + mzEsc(z.nombre) + "</span>",
-                {
-                    sticky: true,
-                    opacity: 0.97,
-                    className: "mz-tooltip-zona"
-                }
-            );
-
-            poly.on("mouseover", function () {
-                this.setStyle({ fillOpacity: 0.85, weight: 3 });
-                this.bringToFront();
-            });
-            poly.on("mouseout", function () {
-                this.setStyle({
-                    fillOpacity: mzSeleccion === z.codigo ? 0.78 : 0.62,
-                    weight: mzSeleccion === z.codigo ? 3 : 2
-                });
-            });
-            poly.on("click", function () {
-                mzMostrarFicha(z.codigo);
-            });
-
-            geo.ring.forEach(function (p) {
-                boundsTodos.push(p);
-                if (geo.metro !== false) {
-                    boundsMetro.push(p);
-                }
-            });
+            mzPintarOverlayRing(layer, z, geo, boundsMetro, boundsTodos);
         });
 
         if (ajustarVista) {
@@ -686,7 +1365,8 @@
                 accion: soloNuevos ? "clientesNuevosZona" : "clientesVentaZona",
                 idZona: idZona,
                 anio: p.anio,
-                mes: p.mes
+                mes: p.mes,
+                id_grupo_marca: mzGrupoMarca()
             },
             function (resp) {
                 if (!resp || !resp.ok) {
@@ -800,9 +1480,28 @@
         mzPintarLeyenda(zonas);
     }
 
+    function mzResaltarSeleccionMapa() {
+        Object.keys(mzLayerByZona).forEach(function (cod) {
+            (mzLayerByZona[cod] || []).forEach(function (ly) {
+                if (ly && typeof ly.setStyle === "function") {
+                    ly.setStyle(mzEstiloDesdeCapa(ly));
+                }
+            });
+        });
+        if (mzSeleccion && mzLayerByZona[mzSeleccion]) {
+            (mzLayerByZona[mzSeleccion] || []).forEach(function (ly) {
+                if (ly && typeof ly.bringToFront === "function") {
+                    ly.bringToFront();
+                }
+            });
+        }
+    }
+
     function mzLimpiarSeleccion() {
         mzSeleccion = null;
         $(".mz-treemap-cell").removeClass("mz-active");
+        mzResaltarSeleccionMapa();
+        mzRestaurarVistaMapa();
     }
 
     function mzMostrarFicha(codigo) {
@@ -810,13 +1509,22 @@
         if (!z) {
             return;
         }
+        var misma = mzSeleccion === codigo;
         mzSeleccion = codigo;
         $(".mz-treemap-cell").removeClass("mz-active");
         $(".mz-treemap-cell[data-codigo='" + codigo + "']").addClass("mz-active");
 
         var zonas = mzZonasDesdeCache(mzCache[mzCacheKey(mzVista)]);
-        mzPintarMapa(mzVista, zonas, false);
-        mzPintarTreemap(zonas);
+        if (mzLayerByZona[codigo] && mzLayerByZona[codigo].length) {
+            mzResaltarSeleccionMapa();
+            if (!misma) {
+                mzEnfocarZonaEnMapa(codigo);
+            }
+            mzPintarTreemap(zonas);
+        } else {
+            mzPintarMapa(mzVista, zonas, false);
+            mzPintarTreemap(zonas);
+        }
 
         $("#mzFichaVacio").hide();
         $("#mzFichaDetalle").show();
@@ -878,6 +1586,8 @@
         var key = mzCacheKey(mzVista);
         if (!forzar && mzCache[key]) {
             var cached = mzCache[key];
+            mzAplicarGeoAsignacion(cached.geo_asignacion || null);
+            mzAplicarVentasGeo(cached.ventas_geo || null);
             mzAplicarDatos(mzZonasDesdeCache(cached), false);
             mzPintarHistorico(cached.historico || null, mzVista);
             mzSetCarga("");
@@ -888,19 +1598,34 @@
         }
 
         var p = mzPeriodo();
+        var seq = ++mzCargaSeq;
+        var grupo = mzGrupoMarca();
         mzSetCarga("Cargando…");
         $.post(
             "ajax/zonas-comerciales.ajax.php",
-            { accion: "resumenMapa", vista: mzVista, anio: p.anio, mes: p.mes },
+            {
+                accion: "resumenMapa",
+                vista: mzVista,
+                anio: p.anio,
+                mes: p.mes,
+                id_grupo_marca: grupo
+            },
             function (resp) {
+                if (seq !== mzCargaSeq) {
+                    return;
+                }
                 if (!resp || !resp.ok) {
                     mzSetCarga("Error al cargar");
                     return;
                 }
                 var zonas = resp.zonas || [];
+                mzAplicarGeoAsignacion(resp.geo_asignacion || null);
+                mzAplicarVentasGeo(resp.ventas_geo || null);
                 mzCache[key] = {
                     zonas: zonas,
-                    historico: resp.historico_12m || null
+                    historico: resp.historico_12m || null,
+                    geo_asignacion: resp.geo_asignacion || null,
+                    ventas_geo: resp.ventas_geo || null
                 };
                 mzYaAjustado[mzVista] = false;
                 mzAplicarDatos(zonas, true);
@@ -918,6 +1643,9 @@
             },
             "json"
         ).fail(function () {
+            if (seq !== mzCargaSeq) {
+                return;
+            }
             mzSetCarga("Error de comunicación");
         });
     }
@@ -954,6 +1682,24 @@
 
     $(document).on("change", "input[name='mzVista']", function () {
         mzCambiarVista($(this).val());
+    });
+
+    function mzAplicarEstiloToggleGrupo() {
+        $("#mzToggleGrupo label").each(function () {
+            var $lab = $(this);
+            var checked = $lab.find("input").is(":checked");
+            $lab.toggleClass("active btn-primary", checked);
+            $lab.toggleClass("btn-default", !checked);
+        });
+    }
+
+    function mzCambiarGrupo() {
+        mzAplicarEstiloToggleGrupo();
+        mzCargarVista(mzVista, true);
+    }
+
+    $(document).on("change", "input[name='mzGrupoMarca']", function () {
+        mzCambiarGrupo();
     });
 
     $(document).on("click", "#mzToggleVista label", function () {

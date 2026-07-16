@@ -61,7 +61,9 @@ class ControladorMetasRetos
 			"reto" => $reto,
 			"universo_modelos" => $universo,
 			"incentivos" => $incentivos,
+			"base_comision" => mrBaseComision(),
 			"comision_ventas_habilitada" => mrComisionVentasHabilitada(),
+			"comision_cobranza_habilitada" => mrComisionCobranzaHabilitada(),
 			"codigos_cobranza" => mrCodigosCobranzaEfectiva(),
 			"igv_factor" => mrIgvFactor()
 		);
@@ -386,31 +388,41 @@ class ControladorMetasRetos
 		$pctCob = self::ctrNumONull(isset($post["comision_cobranza_pct"]) ? $post["comision_cobranza_pct"] : null);
 		$fijoCob = self::ctrNumONull(isset($post["comision_cobranza_fijo"]) ? $post["comision_cobranza_fijo"] : null);
 
-		if ($metaCob !== null && (float) $metaCob < 0) {
-			return array("ok" => false, "mensaje" => "La meta de cobranza no puede ser negativa");
-		}
-		if ($cumplCob === "prorrata") {
-			$fijoCob = null;
-			if ($pctCob !== null) {
-				$pctNum = (float) $pctCob;
-				if ($pctNum < 0 || $pctNum > 100) {
-					return array("ok" => false, "mensaje" => "Comisión % de cobranza debe estar entre 0 y 100");
-				}
-			}
+		$existente = ModeloMetasRetos::mdlObtenerReto($cod, $p["anio"], $p["mes"]);
+
+		// Conservar la base inactiva (no se edita en el modal según modo).
+		if (!mrComisionCobranzaHabilitada() && $existente) {
+			$metaCob = isset($existente["meta_cobranza"]) ? $existente["meta_cobranza"] : $metaCob;
+			$pctCob = isset($existente["comision_cobranza_pct"]) ? $existente["comision_cobranza_pct"] : $pctCob;
+			$fijoCob = isset($existente["comision_cobranza_fijo"]) ? $existente["comision_cobranza_fijo"] : $fijoCob;
+			$cumplCob = isset($existente["cumplimiento_cobranza"])
+				? self::ctrCumplimiento($existente["cumplimiento_cobranza"])
+				: $cumplCob;
 		} else {
-			$pctCob = null;
-			if ($fijoCob !== null && (float) $fijoCob < 0) {
-				return array("ok" => false, "mensaje" => "Comisión fija de cobranza no puede ser negativa");
+			if ($metaCob !== null && (float) $metaCob < 0) {
+				return array("ok" => false, "mensaje" => "La meta de cobranza no puede ser negativa");
+			}
+			if ($cumplCob === "prorrata") {
+				$fijoCob = null;
+				if ($pctCob !== null) {
+					$pctNum = (float) $pctCob;
+					if ($pctNum < 0 || $pctNum > 100) {
+						return array("ok" => false, "mensaje" => "Comisión % de cobranza debe estar entre 0 y 100");
+					}
+				}
+			} else {
+				$pctCob = null;
+				if ($fijoCob !== null && (float) $fijoCob < 0) {
+					return array("ok" => false, "mensaje" => "Comisión fija de cobranza no puede ser negativa");
+				}
 			}
 		}
 
-		$existente = ModeloMetasRetos::mdlObtenerReto($cod, $p["anio"], $p["mes"]);
 		$metaMonto = self::ctrNumONull(isset($post["meta_monto"]) ? $post["meta_monto"] : null);
 		$pctMonto = self::ctrNumONull(isset($post["comision_monto_pct"]) ? $post["comision_monto_pct"] : null);
 		$fijoMonto = self::ctrNumONull(isset($post["comision_monto_fijo"]) ? $post["comision_monto_fijo"] : null);
 		$cumplMonto = self::ctrCumplimiento(isset($post["cumplimiento_monto"]) ? $post["cumplimiento_monto"] : "todo_nada");
 
-		// Con comisión de ventas desactivada, conservar valores existentes (campos no editables).
 		if (!mrComisionVentasHabilitada() && $existente) {
 			$metaMonto = isset($existente["meta_monto"]) ? $existente["meta_monto"] : $metaMonto;
 			$pctMonto = isset($existente["comision_monto_pct"]) ? $existente["comision_monto_pct"] : $pctMonto;
@@ -517,12 +529,13 @@ class ControladorMetasRetos
 	 * Estimado a pagar según avance y reglas configuradas (no liquidación).
 	 * Retorna ['total'=>float, 'detalle'=>[clave=>monto]]
 	 *
-	 * Política vigente: comisión general por cobranza; ventas = 0 si
-	 * MR_COMISION_VENTAS_HABILITADA es false (incentivos de producto sí pagan).
+	 * Base de comisión general (mrBaseComision): cobranza XOR ventas.
+	 * Incentivos de producto siempre pagan por venta del objetivo.
 	 */
 	static public function ctrCalcularComisionEstimada($fila)
 	{
 		$reto = (isset($fila["reto"]) && is_array($fila["reto"])) ? $fila["reto"] : array();
+		$base = mrBaseComision();
 		$detalle = array(
 			"cobranza" => 0.0,
 			"monto" => 0.0,
@@ -530,12 +543,12 @@ class ControladorMetasRetos
 			"modelos" => 0.0,
 			"incentivos_producto" => 0.0,
 			"incentivos" => array(),
-			"comision_ventas_habilitada" => mrComisionVentasHabilitada()
+			"base_comision" => $base,
+			"comision_ventas_habilitada" => ($base === "ventas"),
+			"comision_cobranza_habilitada" => ($base === "cobranza")
 		);
 
-		// 0) Cobranza efectiva (neta sin IGV):
-		// - prorrata: % sobre toda la cobranza neta lograda (sin tope por meta)
-		// - todo_nada: fijo solo si cobranza_neta >= meta
+		// Cobranza efectiva (neta sin IGV) — solo aporta si base = cobranza
 		$metaCob = isset($reto["meta_cobranza"]) ? $reto["meta_cobranza"] : null;
 		$metaCobNum = ($metaCob === null || $metaCob === "") ? 0.0 : (float) $metaCob;
 		$modoCob = (isset($reto["cumplimiento_cobranza"]) && $reto["cumplimiento_cobranza"] === "prorrata")
@@ -545,15 +558,17 @@ class ControladorMetasRetos
 		$fijoCob = isset($reto["comision_cobranza_fijo"]) ? (float) $reto["comision_cobranza_fijo"] : 0.0;
 		$cobranzaReal = isset($fila["cobranza_neta_real"]) ? (float) $fila["cobranza_neta_real"] : 0.0;
 
+		$aporteCobCalc = 0.0;
 		if ($modoCob === "prorrata") {
 			if ($pctCob > 0 && $cobranzaReal > 0) {
-				$detalle["cobranza"] = round($cobranzaReal * ($pctCob / 100.0), 2);
+				$aporteCobCalc = round($cobranzaReal * ($pctCob / 100.0), 2);
 			}
 		} elseif ($metaCobNum > 0 && $cobranzaReal + 1e-9 >= $metaCobNum && $fijoCob > 0) {
-			$detalle["cobranza"] = round($fijoCob, 2);
+			$aporteCobCalc = round($fijoCob, 2);
 		}
+		$detalle["cobranza"] = ($base === "cobranza") ? $aporteCobCalc : 0.0;
 
-		// 1) Monto ventas (referencia; aporte 0 si comisión de ventas desactivada)
+		// Monto ventas — solo aporta si base = ventas
 		$metaMonto = isset($reto["meta_monto"]) ? $reto["meta_monto"] : null;
 		$metaMontoNum = ($metaMonto === null || $metaMonto === "") ? 0.0 : (float) $metaMonto;
 		$modoMonto = (isset($reto["cumplimiento_monto"]) && $reto["cumplimiento_monto"] === "prorrata")
@@ -571,7 +586,7 @@ class ControladorMetasRetos
 		} elseif ($metaMontoNum > 0 && $ventaReal + 1e-9 >= $metaMontoNum && $fijoMonto > 0) {
 			$aporteMontoCalc = round($fijoMonto, 2);
 		}
-		$detalle["monto"] = mrComisionVentasHabilitada() ? $aporteMontoCalc : 0.0;
+		$detalle["monto"] = ($base === "ventas") ? $aporteMontoCalc : 0.0;
 
 		// 2) Clientes nuevos: fijo
 		$metaCli = isset($reto["meta_clientes"]) ? $reto["meta_clientes"] : null;
@@ -633,6 +648,24 @@ class ControladorMetasRetos
 		return array(
 			"total" => $total,
 			"detalle" => $detalle
+		);
+	}
+
+	static public function ctrGuardarBaseComisionAjax($base)
+	{
+		if (!self::ctrPuedeEditar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para cambiar la base de comisión");
+		}
+		$res = mrSetBaseComision($base);
+		if (empty($res["ok"])) {
+			return $res;
+		}
+		return array(
+			"ok" => true,
+			"mensaje" => $res["base_comision"] === "ventas"
+				? "Comisión general por ventas activada"
+				: "Comisión general por cobranza activada",
+			"base_comision" => $res["base_comision"]
 		);
 	}
 

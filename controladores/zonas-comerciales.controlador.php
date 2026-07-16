@@ -317,7 +317,7 @@ class ControladorZonasComerciales
 		return ModeloZonasComerciales::mdlZonasPorVendedor($codVendedor);
 	}
 
-	static public function ctrResumenMapa($vista = null, $anio = null, $mes = null)
+	static public function ctrResumenMapa($vista = null, $anio = null, $mes = null, $idGrupoMarca = null)
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso", "zonas" => array());
@@ -338,26 +338,36 @@ class ControladorZonasComerciales
 			$mes = (int) date("n");
 		}
 
+		$idGrupoMarca = $idGrupoMarca === null || $idGrupoMarca === "" ? null : (int) $idGrupoMarca;
+		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
+			$idGrupoMarca = null;
+		}
+
 		$vistaHist = $vista === "" ? "lima" : $vista;
 
 		return array(
 			"ok" => true,
 			"anio" => $anio,
 			"mes" => $mes,
+			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
+			"geo_asignacion" => ModeloZonasComerciales::mdlMapaGeoAsignaciones(),
+			"ventas_geo" => ModeloZonasComerciales::mdlVentasGeoPeriodo($anio, $mes, $idGrupoMarca),
 			"zonas" => ModeloZonasComerciales::mdlResumenMapaZonas(
 				$vista === "" ? null : $vista,
 				$anio,
-				$mes
+				$mes,
+				$idGrupoMarca
 			),
 			"historico_12m" => ModeloZonasComerciales::mdlVentasTotalesVistaUltimos12Meses(
 				$vistaHist,
 				$anio,
-				$mes
+				$mes,
+				$idGrupoMarca
 			)
 		);
 	}
 
-	static public function ctrClientesVentaZona($idZona, $anio = null, $mes = null)
+	static public function ctrClientesVentaZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null)
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso", "clientes" => array());
@@ -378,8 +388,13 @@ class ControladorZonasComerciales
 			$mes = (int) date("n");
 		}
 
+		$idGrupoMarca = $idGrupoMarca === null || $idGrupoMarca === "" ? null : (int) $idGrupoMarca;
+		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
+			$idGrupoMarca = null;
+		}
+
 		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
-		$clientes = ModeloZonasComerciales::mdlClientesVentaZonaPeriodo($idZona, $anio, $mes);
+		$clientes = ModeloZonasComerciales::mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca);
 		$total = 0.0;
 		$totalNuevos = 0;
 		foreach ($clientes as $c) {
@@ -393,6 +408,7 @@ class ControladorZonasComerciales
 			"ok" => true,
 			"anio" => $anio,
 			"mes" => $mes,
+			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
 			"zona" => $zona ? array(
 				"id" => (int) $zona["id"],
 				"codigo" => $zona["codigo"],
@@ -406,7 +422,7 @@ class ControladorZonasComerciales
 		);
 	}
 
-	static public function ctrClientesNuevosZona($idZona, $anio = null, $mes = null)
+	static public function ctrClientesNuevosZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null)
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso", "clientes" => array());
@@ -427,8 +443,13 @@ class ControladorZonasComerciales
 			$mes = (int) date("n");
 		}
 
+		$idGrupoMarca = $idGrupoMarca === null || $idGrupoMarca === "" ? null : (int) $idGrupoMarca;
+		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
+			$idGrupoMarca = null;
+		}
+
 		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
-		$clientes = ModeloZonasComerciales::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes);
+		$clientes = ModeloZonasComerciales::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca);
 		$total = 0.0;
 		foreach ($clientes as $c) {
 			$total += (float) $c["venta_real"];
@@ -438,6 +459,7 @@ class ControladorZonasComerciales
 			"ok" => true,
 			"anio" => $anio,
 			"mes" => $mes,
+			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
 			"zona" => $zona ? array(
 				"id" => (int) $zona["id"],
 				"codigo" => $zona["codigo"],

@@ -106,13 +106,13 @@ function mrSyncCamposCobranza() {
 
 $(document).on("change", "#mrCumplimientoCobranza", mrSyncCamposCobranza);
 
+function mrBaseComisionActual() {
+    return $(".tablaMetasRetos").attr("data-base-comision") || "cobranza";
+}
+
 /** Monto: prorrata usa %; todo_nada usa fijo. */
 function mrSyncCamposMonto() {
-    var ventasOn = $(".tablaMetasRetos").data("comision-ventas") == 1
-        || $(".tablaMetasRetos").attr("data-comision-ventas") === "1";
-    if (!ventasOn) {
-        $("#mrWrapComisionMontoPct").show();
-        $("#mrWrapComisionMontoFijo").show();
+    if (mrBaseComisionActual() !== "ventas") {
         return;
     }
     var modo = $("#mrCumplimientoMonto").val() || "prorrata";
@@ -132,6 +132,33 @@ function mrSyncCamposMonto() {
 }
 
 $(document).on("change", "#mrCumplimientoMonto", mrSyncCamposMonto);
+
+$(document).on("change", "input[name='mrBaseComision']", function () {
+    var base = $(this).val();
+    if (base !== "cobranza" && base !== "ventas") {
+        return;
+    }
+    var $radios = $("input[name='mrBaseComision']");
+    $radios.prop("disabled", true);
+    $.post("ajax/metas-retos.ajax.php", {
+        accion: "guardarBaseComision",
+        base_comision: base
+    }, function (resp) {
+        if (resp && resp.ok) {
+            window.location.reload();
+            return;
+        }
+        $radios.prop("disabled", false);
+        mrAlerta("error", (resp && resp.mensaje) ? resp.mensaje : "No se pudo cambiar la base");
+        // revertir radio
+        $radios.filter("[value='" + mrBaseComisionActual() + "']").prop("checked", true);
+    }, "json").fail(function () {
+        $radios.prop("disabled", false);
+        mrAlerta("error", "Error de comunicación");
+        $radios.filter("[value='" + mrBaseComisionActual() + "']").prop("checked", true);
+    });
+});
+
 
 var mrUniversoModelos = 0;
 

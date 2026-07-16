@@ -393,8 +393,16 @@ class ModeloMetricasComerciales
 	}
 
 	/**
-	 * Clientes nuevos cuya 1ª compra del periodo es documento 100% permitido.
-	 * E05 descuento (sin líneas) no califica como primera compra de cliente nuevo comercial.
+	 * Clientes nuevos en marcas del vendedor.
+	 *
+	 * Cuenta si:
+	 * - el cliente no tiene grupo empresarial;
+	 * - en el periodo compra al vendedor un documento 100% de marcas permitidas;
+	 * - antes del periodo nunca compró (a ningún vendedor) una marca que el vendedor
+	 *   tenía en cobertura al inicio del mes.
+	 *
+	 * Así un cliente que ya compró otras marcas puede ser “nuevo” la primera vez
+	 * que entra a las marcas de ese vendedor. E05 descuento sin líneas no califica.
 	 */
 	static public function mdlClientesNuevosPermitidosPorVendedor($anio, $mes)
 	{
@@ -403,64 +411,218 @@ class ModeloMetricasComerciales
 		}
 
 		$rango = self::rangoMes($anio, $mes);
+		$candidatos = self::mdlClientesDocumentoPermitidoPeriodo($anio, $mes);
+		if (empty($candidatos)) {
+			return array();
+		}
+
+		$marcasPorVend = self::mdlMarcasCoberturaPorVendedorEnFecha($rango["inicio"]);
+		$clientesCand = array();
+		foreach ($candidatos as $clientes) {
+			foreach ($clientes as $cli => $_) {
+				$clientesCand[$cli] = true;
+			}
+		}
+		$yaConocian = self::mdlClientesConMarcasAntes(
+			$marcasPorVend,
+			$rango["inicio"],
+			(int) $anio,
+			array_keys($clientesCand)
+		);
+
+		$mapa = array();
+		foreach ($candidatos as $cod => $clientes) {
+			$prev = isset($yaConocian[$cod]) ? $yaConocian[$cod] : array();
+			$n = 0;
+			foreach ($clientes as $cli => $_) {
+				if (!isset($prev[$cli])) {
+					$n++;
+				}
+			}
+			if ($n > 0) {
+				$mapa[$cod] = $n;
+			}
+		}
+		return $mapa;
+	}
+
+	/**
+	 * Clientes con al menos un documento 100% permitido en el periodo, por vendedor.
+	 * Retorna [cod_vendedor => [cliente => true]]
+	 */
+	private static function mdlClientesDocumentoPermitidoPeriodo($anio, $mes)
+	{
+		$rango = self::rangoMes($anio, $mes);
 		$tabla = self::tablaMovimientos($anio);
 		$clasif = self::sqlClasificacionCoberturaLinea("m", "a");
-		$tipos = self::sqlTiposVentaReal("v");
-		$tipos0 = self::sqlTiposVentaReal("v0");
-		$joinPrimera = self::sqlJoinVendedorActivo("v", "ma");
-		$joinV0 = self::sqlJoinVendedorActivo("v0", "m0");
+		$joinActivo = self::sqlJoinVendedorActivo("m", "ma");
 
-		$sql = "SELECT TRIM(prim.vendedor) AS cod_vendedor,
-				COUNT(DISTINCT prim.cliente) AS clientes_nuevos_permitidos
+		$sql = "SELECT TRIM(doc.vendedor) AS cod_vendedor, doc.cliente
 			FROM (
-				SELECT p.cliente, TRIM(v0.vendedor) AS vendedor, v0.tipo, v0.documento, v0.fecha
-				FROM (
-					SELECT v.cliente, MIN(v.fecha) AS primera
-					FROM ventajf v
-					{$joinPrimera}
-					WHERE v.fecha IS NOT NULL
-					  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
-					  AND TRIM(IFNULL(v.vendedor, '')) <> ''
-					  AND {$tipos}
-					GROUP BY v.cliente
-				) p
-				INNER JOIN ventajf v0
-					ON v0.cliente = p.cliente
-				   AND v0.fecha = p.primera
-				   AND UPPER(IFNULL(v0.estado, '')) <> 'ANULADO'
-				   AND {$tipos0}
-				   AND TRIM(IFNULL(v0.vendedor, '')) <> ''
-				{$joinV0}
-				INNER JOIN clientesjf c ON c.codigo = p.cliente
-				WHERE p.primera >= :ini AND p.primera < :fin
-				  AND (c.grupo IS NULL OR TRIM(c.grupo) = '')
-			) prim
-			INNER JOIN (
-				SELECT m.tipo, m.documento, m.fecha, TRIM(m.vendedor) AS vendedor,
+				SELECT m.tipo, m.documento, m.fecha,
+					TRIM(m.vendedor) AS vendedor,
+					TRIM(m.cliente) AS cliente,
 					SUM(CASE WHEN ({$clasif}) = 'permitida' THEN IFNULL(m.total, 0) ELSE 0 END) AS imp_permitida,
 					SUM(CASE WHEN ({$clasif}) <> 'permitida' THEN IFNULL(m.total, 0) ELSE 0 END) AS imp_no_permitida
 				FROM {$tabla} m
 				INNER JOIN articulojf a ON a.articulo = m.articulo
-				WHERE m.fecha >= :ini2 AND m.fecha < :fin2
+				{$joinActivo}
+				WHERE m.fecha >= :ini AND m.fecha < :fin
 				  AND " . self::sqlTiposVentaReal("m") . "
-				GROUP BY m.tipo, m.documento, m.fecha, TRIM(m.vendedor)
-			) doc ON doc.tipo = prim.tipo
-			   AND doc.documento = prim.documento
-			   AND doc.fecha = prim.fecha
-			   AND doc.vendedor = prim.vendedor
-			WHERE doc.imp_permitida > 0 AND doc.imp_no_permitida = 0
-			GROUP BY TRIM(prim.vendedor)";
+				  AND TRIM(IFNULL(m.vendedor, '')) <> ''
+				  AND TRIM(IFNULL(m.cliente, '')) <> ''
+				GROUP BY m.tipo, m.documento, m.fecha, TRIM(m.vendedor), TRIM(m.cliente)
+				HAVING imp_permitida > 0 AND imp_no_permitida = 0
+			) doc
+			INNER JOIN clientesjf c ON c.codigo = doc.cliente
+			WHERE (c.grupo IS NULL OR TRIM(c.grupo) = '')";
 
 		$stmt = Conexion::conectar()->prepare($sql);
-		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
-		$stmt->bindParam(":ini2", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindParam(":fin2", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":ini", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
 		$stmt->execute();
 
 		$mapa = array();
 		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
-			$mapa[trim($fila["cod_vendedor"])] = (int) $fila["clientes_nuevos_permitidos"];
+			$cod = trim($fila["cod_vendedor"]);
+			$cli = trim($fila["cliente"]);
+			if ($cod === "" || $cli === "") {
+				continue;
+			}
+			if (!isset($mapa[$cod])) {
+				$mapa[$cod] = array();
+			}
+			$mapa[$cod][$cli] = true;
+		}
+		return $mapa;
+	}
+
+	/**
+	 * Marcas en cobertura de cada vendedor en una fecha.
+	 * Retorna [cod_vendedor => [id_marca => true]]
+	 */
+	private static function mdlMarcasCoberturaPorVendedorEnFecha($fechaRef)
+	{
+		$vigencia = ModeloGruposMarcasComercial::sqlAsignacionVigenteEnFecha("vgm", ":fecha_ref");
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT DISTINCT TRIM(vgm.cod_vendedor) AS cod_vendedor, gd.id_marca
+			 FROM vendedor_grupos_marcasjf vgm
+			 INNER JOIN grupos_marcas_comercialjf g
+				ON g.id = vgm.id_grupo_marca AND g.estado = 1
+			 INNER JOIN grupos_marcas_detallejf gd
+				ON gd.id_grupo_marca = g.id
+			 WHERE {$vigencia}
+			   AND gd.id_marca IS NOT NULL
+			   AND CAST(gd.id_marca AS UNSIGNED) > 0"
+		);
+		$stmt->bindValue(":fecha_ref", $fechaRef, PDO::PARAM_STR);
+		$stmt->execute();
+
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$cod = trim($fila["cod_vendedor"]);
+			$id = (int) $fila["id_marca"];
+			if ($cod === "" || $id < 1) {
+				continue;
+			}
+			if (!isset($mapa[$cod])) {
+				$mapa[$cod] = array();
+			}
+			$mapa[$cod][$id] = true;
+		}
+		return $mapa;
+	}
+
+	/**
+	 * Clientes que ya compraron alguna marca del portafolio del vendedor antes de $fechaIni.
+	 * Si $clientesFiltro no es vacío, solo revisa esos códigos (candidatos del periodo).
+	 * Retorna [cod_vendedor => [cliente => true]]
+	 */
+	private static function mdlClientesConMarcasAntes($marcasPorVend, $fechaIni, $anioPeriodo, $clientesFiltro = null)
+	{
+		if (empty($marcasPorVend)) {
+			return array();
+		}
+		if (is_array($clientesFiltro) && count($clientesFiltro) === 0) {
+			return array();
+		}
+
+		$todasMarcas = array();
+		foreach ($marcasPorVend as $marcas) {
+			foreach ($marcas as $id => $_) {
+				$todasMarcas[(int) $id] = true;
+			}
+		}
+		if (empty($todasMarcas)) {
+			return array();
+		}
+
+		$ids = array_keys($todasMarcas);
+		$inMarcas = implode(",", array_map("intval", $ids));
+
+		$filtroCliSql = "";
+		if (is_array($clientesFiltro) && count($clientesFiltro) > 0) {
+			$pdo = Conexion::conectar();
+			$quoted = array();
+			foreach ($clientesFiltro as $cli) {
+				$cli = trim((string) $cli);
+				if ($cli === "") {
+					continue;
+				}
+				$quoted[] = $pdo->quote($cli);
+			}
+			if (empty($quoted)) {
+				return array();
+			}
+			$filtroCliSql = " AND TRIM(m.cliente) IN (" . implode(",", $quoted) . ")";
+		}
+
+		$aniosHist = array();
+		for ($y = max(2021, $anioPeriodo - 10); $y <= $anioPeriodo; $y++) {
+			if (self::existeTablaMovimientos($y)) {
+				$aniosHist[] = $y;
+			}
+		}
+
+		$vendPorMarca = array();
+		foreach ($marcasPorVend as $cod => $marcas) {
+			foreach ($marcas as $id => $_) {
+				$id = (int) $id;
+				if (!isset($vendPorMarca[$id])) {
+					$vendPorMarca[$id] = array();
+				}
+				$vendPorMarca[$id][$cod] = true;
+			}
+		}
+
+		$mapa = array();
+		foreach ($aniosHist as $y) {
+			$tabla = self::tablaMovimientos($y);
+			$sql = "SELECT DISTINCT TRIM(m.cliente) AS cliente, a.id_marca
+				FROM {$tabla} m
+				INNER JOIN articulojf a ON a.articulo = m.articulo
+				WHERE m.fecha < :fecha_ini
+				  AND TRIM(IFNULL(m.cliente, '')) <> ''
+				  AND " . self::sqlTiposVentaReal("m") . "
+				  AND a.id_marca IN ({$inMarcas})
+				  {$filtroCliSql}";
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindValue(":fecha_ini", $fechaIni, PDO::PARAM_STR);
+			$stmt->execute();
+
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+				$cli = trim($fila["cliente"]);
+				$id = (int) $fila["id_marca"];
+				if ($cli === "" || !isset($vendPorMarca[$id])) {
+					continue;
+				}
+				foreach ($vendPorMarca[$id] as $cod => $_) {
+					if (!isset($mapa[$cod])) {
+						$mapa[$cod] = array();
+					}
+					$mapa[$cod][$cli] = true;
+				}
+			}
 		}
 		return $mapa;
 	}

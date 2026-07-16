@@ -101,6 +101,7 @@ function mrEtiquetaIncentivoLista($inc)
 }
 
 if (is_array($filas)) {
+	$baseComision = mrBaseComision();
 	foreach ($filas as $f) {
 		$reto = isset($f["reto"]) && is_array($f["reto"]) ? $f["reto"] : array();
 		$metaCob = isset($reto["meta_cobranza"]) ? $reto["meta_cobranza"] : null;
@@ -131,12 +132,14 @@ if (is_array($filas)) {
 		$aporteInc = isset($det["incentivos_producto"]) ? (float) $det["incentivos_producto"] : 0.0;
 		$detIncs = isset($det["incentivos"]) && is_array($det["incentivos"]) ? $det["incentivos"] : array();
 
-		$titlePagar = "Cobranza: " . number_format($aporteCob, 2, ".", ",")
-			. " · Cli: " . number_format($aporteCli, 2, ".", ",")
+		if ($baseComision === "ventas") {
+			$titlePagar = "Ventas: " . number_format($aporteMonto, 2, ".", ",");
+		} else {
+			$titlePagar = "Cobranza: " . number_format($aporteCob, 2, ".", ",");
+		}
+		$titlePagar .= " · Cli: " . number_format($aporteCli, 2, ".", ",")
 			. " · Mod: " . number_format($aporteMod, 2, ".", ",")
-			. " · Inc: " . number_format($aporteInc, 2, ".", ",")
-			. " · Ventas: " . number_format($aporteMonto, 2, ".", ",")
-			. (mrComisionVentasHabilitada() ? "" : " (desactivada)");
+			. " · Inc: " . number_format($aporteInc, 2, ".", ",");
 
 		$cod = htmlspecialchars($f["cod_vendedor"], ENT_QUOTES, "UTF-8");
 		$nom = htmlspecialchars($f["nombre_vendedor"], ENT_QUOTES, "UTF-8");
@@ -191,10 +194,13 @@ if (is_array($filas)) {
 				. "title='Configurar'><i class='fa fa-pencil'></i></button>";
 		}
 
+		$colBase = ($baseComision === "ventas")
+			? mrCelda($metaMonto, $f["venta_real"], $pctMonto, $aporteMonto, 0, 2)
+			: mrCelda($metaCob, $cobranzaReal, $pctCob, $aporteCob, 0, 2);
+
 		$data[] = array(
 			$colVendedor,
-			mrCelda($metaCob, $cobranzaReal, $pctCob, $aporteCob, 0, 2),
-			mrCelda($metaMonto, $f["venta_real"], $pctMonto, $aporteMonto, 0, 2),
+			$colBase,
 			mrCelda($metaCli, $f["clientes_nuevos"], $pctCli, $aporteCli, 0, 0),
 			mrCelda($metaMod, $f["modelos_activos"], $pctMod, $aporteMod, 0, 0, false, $extraMetaMod),
 			$colInc,
@@ -207,5 +213,7 @@ if (is_array($filas)) {
 echo json_encode(array(
 	"data" => $data,
 	"total_pagar" => round($totalPagarPeriodo, 2),
-	"comision_ventas_habilitada" => mrComisionVentasHabilitada()
+	"base_comision" => mrBaseComision(),
+	"comision_ventas_habilitada" => mrComisionVentasHabilitada(),
+	"comision_cobranza_habilitada" => mrComisionCobranzaHabilitada()
 ));

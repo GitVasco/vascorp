@@ -13,7 +13,9 @@ $anioFiltro = $periodoFiltro["anio"];
 $mesFiltro = $periodoFiltro["mes"];
 $meses = ControladorTalleres::ctrMes();
 $puedeEditar = ControladorMetasRetos::ctrPuedeEditar();
-$comisionVentasOn = function_exists("mrComisionVentasHabilitada") && mrComisionVentasHabilitada();
+$baseComision = function_exists("mrBaseComision") ? mrBaseComision() : "cobranza";
+$baseEsCobranza = ($baseComision === "cobranza");
+$baseEsVentas = ($baseComision === "ventas");
 $codigosCobranzaTxt = function_exists("mrTextoCodigosCobranzaEfectiva")
 	? mrTextoCodigosCobranzaEfectiva()
 	: "00, TR, 05, 06, 14, 15, 16, 17, 18, 80, 82";
@@ -36,19 +38,19 @@ foreach ($meses as $mesItem) {
 
     <section class="content">
         <div class="box box-primary">
-            <div class="box-header with-border">
-                <form method="get" class="form-inline">
+            <div class="box-header with-border mr-toolbar">
+                <form method="get" class="mr-toolbar-left">
                     <input type="hidden" name="ruta" value="metas-retos">
-                    <div class="form-group">
-                        <label>Año</label>
+                    <div class="mr-toolbar-group">
+                        <label for="mrFiltroAnio">Año</label>
                         <select class="form-control input-sm" name="anio" id="mrFiltroAnio">
                             <?php for ($a = $periodoActual["anio"] - 1; $a <= $periodoActual["anio"] + 1; $a++) : ?>
                                 <option value="<?php echo $a; ?>" <?php echo $a === $anioFiltro ? "selected" : ""; ?>><?php echo $a; ?></option>
                             <?php endfor; ?>
                         </select>
                     </div>
-                    <div class="form-group" style="margin-left:10px;">
-                        <label>Mes</label>
+                    <div class="mr-toolbar-group">
+                        <label for="mrFiltroMes">Mes</label>
                         <select class="form-control input-sm" name="mes" id="mrFiltroMes">
                             <?php foreach ($meses as $mesItem) :
                                 $codMes = (int) $mesItem["codigo"];
@@ -59,53 +61,54 @@ foreach ($meses as $mesItem) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-default btn-sm" style="margin-left:10px;">
+                    <button type="submit" class="btn btn-default btn-sm">
                         <i class="fa fa-refresh"></i> Actualizar
                     </button>
-                </form>
-            </div>
-            <div class="box-body">
-                <div class="row mr-summary">
-                    <div class="col-sm-8">
-                        <p class="mr-period" style="margin:0 0 6px;">
-                            <span class="label label-primary" style="font-size:13px;">
-                                <?php echo htmlspecialchars($nombreMes . " " . $anioFiltro); ?>
-                            </span>
-                            <span class="text-muted" style="margin-left:8px;">Solo vendedores activos · avance por marcas permitidas</span>
-                        </p>
-                        <p class="text-muted" style="margin:0;font-size:12px;line-height:1.45;">
-                            Cada columna resume <strong>meta → real → %</strong>.
-                            La <strong>cobranza</strong> usa la misma fuente que Resumen de gestión (sin IGV; códigos:
-                            <?php echo htmlspecialchars($codigosCobranzaTxt); ?>).
-                            Ventas, modelos y clientes nuevos consideran marcas autorizadas;
-                            las NC descuento (E05 sin unidades) restan al monto.
-                            Incentivos de producto siguen pagando por venta del objetivo.
-                            El estimado es orientativo (sujeto a validación/liquidación).
-                            <?php if (!$comisionVentasOn) : ?>
-                                <span class="label label-default" style="margin-left:4px;">Comisión por ventas: desactivada</span>
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="mr-total-box">
-                            <div class="mr-total-label">Total estimado a pagar <small style="opacity:.85;">(sujeto a liquidación)</small></div>
-                            <div class="mr-total-value" id="mrTotalPagarPeriodo">S/ 0.00</div>
+                    <span class="mr-toolbar-sep" aria-hidden="true"></span>
+                    <div class="mr-toolbar-group mr-base-wrap">
+                        <label>Comisión por</label>
+                        <div class="btn-group btn-group-sm mr-base-toggle" data-toggle="buttons">
+                            <label class="btn btn-default <?php echo $baseEsCobranza ? "active" : ""; ?>">
+                                <input type="radio" name="mrBaseComision" value="cobranza" autocomplete="off"
+                                    <?php echo $baseEsCobranza ? "checked" : ""; ?>
+                                    <?php echo $puedeEditar ? "" : "disabled"; ?>> Cobranza
+                            </label>
+                            <label class="btn btn-default <?php echo $baseEsVentas ? "active" : ""; ?>">
+                                <input type="radio" name="mrBaseComision" value="ventas" autocomplete="off"
+                                    <?php echo $baseEsVentas ? "checked" : ""; ?>
+                                    <?php echo $puedeEditar ? "" : "disabled"; ?>> Ventas
+                            </label>
                         </div>
                     </div>
+                </form>
+                <div class="mr-total-box">
+                    <div class="mr-total-label">Estimado del periodo</div>
+                    <div class="mr-total-value" id="mrTotalPagarPeriodo">S/ 0.00</div>
                 </div>
-
-                <p class="text-muted" style="margin:0 0 8px;font-size:12px;">
-                    En cada reto: <strong>meta / real</strong> y abajo el <strong>+ aporte</strong> al estimado.
-                    Colores de columna = tipo de reto.
+            </div>
+            <div class="box-body">
+                <p class="mr-hint text-muted">
+                    <?php echo htmlspecialchars($nombreMes . " " . $anioFiltro); ?>
+                    · vendedores activos
+                    · meta / real / % · + aporte
+                    <?php if ($baseEsCobranza) : ?>
+                        · cobranza neta sin IGV
+                    <?php else : ?>
+                        · ventas con marcas permitidas
+                    <?php endif; ?>
+                    · estimado orientativo
                 </p>
-                <table class="table table-bordered table-striped table-condensed tablaMetasRetos mr-table" width="100%"
+                <table class="table table-bordered table-striped table-condensed tablaMetasRetos mr-table<?php echo $baseEsVentas ? " mr-base-ventas" : ""; ?>" width="100%"
                        data-anio="<?php echo $anioFiltro; ?>" data-mes="<?php echo $mesFiltro; ?>"
-                       data-comision-ventas="<?php echo $comisionVentasOn ? "1" : "0"; ?>">
+                       data-base-comision="<?php echo htmlspecialchars($baseComision); ?>">
                     <thead>
                         <tr>
                             <th class="mr-th-vend">Vendedor</th>
-                            <th class="mr-th-cob">Cobranza S/ <small>(meta/real)</small></th>
-                            <th class="mr-th-ventas">Ventas S/ <small>(referencia)</small></th>
+                            <?php if ($baseEsCobranza) : ?>
+                                <th class="mr-th-cob">Cobranza S/ <small>(meta/real)</small></th>
+                            <?php else : ?>
+                                <th class="mr-th-ventas">Ventas S/ <small>(meta/real)</small></th>
+                            <?php endif; ?>
                             <th class="mr-th-cli">Clientes <small>(meta/real)</small></th>
                             <th class="mr-th-mod">Modelos <small>(meta/real)</small></th>
                             <th class="mr-th-esp">Incentivos <small>(producto)</small></th>
@@ -165,16 +168,69 @@ foreach ($meses as $mesItem) {
 </div>
 
 <style>
-.mr-summary { margin-bottom: 12px; }
+.mr-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 16px;
+}
+.mr-toolbar-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 12px;
+    margin: 0;
+    flex: 1 1 auto;
+}
+.mr-toolbar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+}
+.mr-toolbar-group > label {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #777;
+    line-height: 1.2;
+}
+.mr-toolbar-group .form-control {
+    min-width: 90px;
+}
+.mr-toolbar-sep {
+    width: 1px;
+    height: 28px;
+    background: #ddd;
+    margin: 0 4px 2px;
+    align-self: flex-end;
+}
+.mr-base-toggle .btn {
+    min-width: 78px;
+}
+.mr-base-toggle .btn.active {
+    background: #3c8dbc;
+    border-color: #367fa9;
+    color: #fff;
+    box-shadow: none;
+}
 .mr-total-box {
     background: #3c8dbc;
     color: #fff;
     border-radius: 4px;
-    padding: 10px 14px;
+    padding: 8px 14px;
     text-align: right;
+    min-width: 170px;
+    flex: 0 0 auto;
 }
-.mr-total-label { font-size: 11px; opacity: .9; }
-.mr-total-value { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.mr-total-label { font-size: 11px; opacity: .9; white-space: nowrap; }
+.mr-total-value { font-size: 20px; font-weight: 700; line-height: 1.15; }
+.mr-hint {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.35;
+}
 
 /* Encabezados por color de reto */
 .mr-table > thead > tr > th {
@@ -191,16 +247,13 @@ foreach ($meses as $mesItem) {
 .mr-th-esp { background: #f2dede; color: #a94442; border-bottom-color: #dd4b39 !important; }
 .mr-th-pay { background: #e8f5e9; color: #2e7d32; border-bottom-color: #00a65a !important; }
 
-/* Línea lateral de color por columna de reto */
+/* Línea lateral de color por columna de reto (1 base: cob o ventas) */
 .mr-table > tbody > tr > td:nth-child(2) { border-left: 3px solid #3f51b5; }
-.mr-table > tbody > tr > td:nth-child(3) { border-left: 3px solid #3c8dbc; }
-.mr-table > tbody > tr > td:nth-child(4) { border-left: 3px solid #00a65a; }
-.mr-table > tbody > tr > td:nth-child(5) { border-left: 3px solid #f39c12; }
-.mr-table > tbody > tr > td:nth-child(6) { border-left: 3px solid #dd4b39; }
-.mr-table > tbody > tr > td:nth-child(7) { border-left: 3px solid #00a65a; background: #f7fbf7; }
-
-.mr-ventas-ref { opacity: .92; }
-.mr-ventas-ref .box-header { background: #ecf0f5 !important; color: #555 !important; }
+.mr-table.mr-base-ventas > tbody > tr > td:nth-child(2) { border-left-color: #3c8dbc; }
+.mr-table > tbody > tr > td:nth-child(3) { border-left: 3px solid #00a65a; }
+.mr-table > tbody > tr > td:nth-child(4) { border-left: 3px solid #f39c12; }
+.mr-table > tbody > tr > td:nth-child(5) { border-left: 3px solid #dd4b39; }
+.mr-table > tbody > tr > td:nth-child(6) { border-left: 3px solid #00a65a; background: #f7fbf7; }
 
 .mr-table > tbody > tr > td {
     vertical-align: middle !important;
@@ -211,7 +264,6 @@ foreach ($meses as $mesItem) {
 .mr-meta { color: #888; }
 .mr-sep { color: #bbb; margin: 0 3px; }
 .mr-real { font-weight: 700; color: #333; }
-.mr-mod { font-size: 11px; font-weight: 700; color: #a94442; margin-bottom: 1px; }
 .mr-inc-summary { font-size: 12px; font-weight: 700; color: #a94442; }
 .mr-inc-detalle { font-size: 11px; color: #666; margin-top: 2px; line-height: 1.3; }
 .mr-inc-form label { font-size: 12px; margin-bottom: 2px; font-weight: 600; }
@@ -245,14 +297,17 @@ foreach ($meses as $mesItem) {
     font-size: 13px;
     white-space: nowrap;
 }
-@media (max-width: 767px) {
-    .mr-total-box { text-align: left; margin-top: 8px; }
-}
 #tablaConciliacionMarcas .mr-cob-dif-pos { color: #dd4b39; font-weight: 700; }
 #tablaConciliacionMarcas .mr-cob-dif-zero { color: #888; }
 #tablaConciliacionMarcas .mr-cob-permitida { color: #00a65a; font-weight: 700; }
 #tablaConciliacionMarcas .mr-cob-fuera { color: #f39c12; }
 .mr-detalle-marca-table { font-size: 11px; margin: 6px 0 0; }
+
+@media (max-width: 767px) {
+    .mr-toolbar { align-items: stretch; }
+    .mr-total-box { text-align: left; width: 100%; }
+    .mr-toolbar-sep { display: none; }
+}
 </style>
 
 <?php if ($puedeEditar) { ?>
@@ -269,7 +324,7 @@ foreach ($meses as $mesItem) {
                     <input type="hidden" name="anio" id="mrAnio" value="<?php echo $anioFiltro; ?>">
                     <input type="hidden" name="mes" id="mrMes" value="<?php echo $mesFiltro; ?>">
 
-                    <div class="box box-solid" style="border-top-color:#3f51b5;">
+                    <div class="box box-solid" id="mrBoxCobranza" style="border-top-color:#3f51b5;<?php echo $baseEsCobranza ? "" : "display:none;"; ?>">
                         <div class="box-header with-border" style="background:#e8eaf6;">
                             <h3 class="box-title" style="color:#3949ab;">1) Cobranza efectiva</h3>
                         </div>
@@ -303,47 +358,34 @@ foreach ($meses as $mesItem) {
                         </div>
                     </div>
 
-                    <div class="box box-solid box-info mr-ventas-ref" id="mrBoxVentasRef">
+                    <div class="box box-solid box-info" id="mrBoxVentas" style="<?php echo $baseEsVentas ? "" : "display:none;"; ?>">
                         <div class="box-header with-border">
-                            <h3 class="box-title">
-                                Ventas (referencia / futura comisión)
-                                <?php if (!$comisionVentasOn) : ?>
-                                    <small class="label label-default">Comisión por ventas: desactivada</small>
-                                <?php endif; ?>
-                            </h3>
+                            <h3 class="box-title">1) Monto de ventas</h3>
                         </div>
                         <div class="box-body">
                             <p class="help-block" style="margin-top:0;" id="mrAyudaMonto">
-                                <?php if ($comisionVentasOn) : ?>
-                                    <strong>Prorrata:</strong> paga % sobre el monto vendido.
-                                    <strong>Todo o nada:</strong> paga comisión fija solo si se llega a la meta.
-                                <?php else : ?>
-                                    Conservado como indicador operativo. No genera comisión mientras la política de cobranza esté activa.
-                                <?php endif; ?>
+                                <strong>Prorrata:</strong> paga % sobre el monto vendido.
+                                <strong>Todo o nada:</strong> paga comisión fija solo si se llega a la meta.
                             </p>
                             <div class="row">
                                 <div class="col-sm-3">
                                     <label>Meta S/</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="meta_monto" id="mrMetaMonto"
-                                        <?php echo $comisionVentasOn ? "" : "readonly"; ?>>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="meta_monto" id="mrMetaMonto">
                                 </div>
                                 <div class="col-sm-3">
                                     <label>Cumplimiento</label>
-                                    <select class="form-control" name="cumplimiento_monto" id="mrCumplimientoMonto"
-                                        <?php echo $comisionVentasOn ? "" : "disabled"; ?>>
+                                    <select class="form-control" name="cumplimiento_monto" id="mrCumplimientoMonto">
                                         <option value="prorrata">Prorrata (% sobre venta)</option>
                                         <option value="todo_nada">Todo o nada (fijo al lograr)</option>
                                     </select>
                                 </div>
                                 <div class="col-sm-3" id="mrWrapComisionMontoPct">
                                     <label>Comisión %</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_pct" id="mrComisionMontoPct" placeholder="ej. 1.5"
-                                        <?php echo $comisionVentasOn ? "" : "readonly"; ?>>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_pct" id="mrComisionMontoPct" placeholder="ej. 1.5">
                                 </div>
                                 <div class="col-sm-3" id="mrWrapComisionMontoFijo">
                                     <label>Comisión fija S/</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_fijo" id="mrComisionMontoFijo" placeholder="ej. 500"
-                                        <?php echo $comisionVentasOn ? "" : "readonly"; ?>>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="comision_monto_fijo" id="mrComisionMontoFijo" placeholder="ej. 500">
                                 </div>
                             </div>
                         </div>
@@ -352,7 +394,10 @@ foreach ($meses as $mesItem) {
                     <div class="box box-solid box-success">
                         <div class="box-header with-border"><h3 class="box-title">2) Clientes nuevos</h3></div>
                         <div class="box-body">
-                            <p class="help-block" style="margin-top:0;">1ª compra en la vida, sin grupo empresarial.</p>
+                            <p class="help-block" style="margin-top:0;">
+                                1ª compra del cliente en <strong>marcas del vendedor</strong>
+                                (aunque ya haya comprado otras marcas). Documento 100% permitido; sin grupo empresarial.
+                            </p>
                             <div class="row">
                                 <div class="col-sm-4">
                                     <label>Meta (#)</label>

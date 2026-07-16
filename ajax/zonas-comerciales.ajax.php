@@ -96,7 +96,8 @@ if ($accion === "resumenMapa") {
 	$vista = isset($_POST["vista"]) ? $_POST["vista"] : "";
 	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
 	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
-	echo json_encode(ControladorZonasComerciales::ctrResumenMapa($vista, $anio, $mes));
+	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
+	echo json_encode(ControladorZonasComerciales::ctrResumenMapa($vista, $anio, $mes, $idGrupo));
 	return;
 }
 
@@ -104,7 +105,8 @@ if ($accion === "clientesVentaZona") {
 	$id = isset($_POST["idZona"]) ? (int) $_POST["idZona"] : 0;
 	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
 	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
-	echo json_encode(ControladorZonasComerciales::ctrClientesVentaZona($id, $anio, $mes));
+	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
+	echo json_encode(ControladorZonasComerciales::ctrClientesVentaZona($id, $anio, $mes, $idGrupo));
 	return;
 }
 
@@ -112,7 +114,8 @@ if ($accion === "clientesNuevosZona") {
 	$id = isset($_POST["idZona"]) ? (int) $_POST["idZona"] : 0;
 	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
 	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
-	echo json_encode(ControladorZonasComerciales::ctrClientesNuevosZona($id, $anio, $mes));
+	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
+	echo json_encode(ControladorZonasComerciales::ctrClientesNuevosZona($id, $anio, $mes, $idGrupo));
 	return;
 }
 

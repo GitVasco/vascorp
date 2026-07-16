@@ -26,6 +26,10 @@ $mesesNombres = array(
     5 => "Mayo", 6 => "Junio", 7 => "Julio", 8 => "Agosto",
     9 => "Septiembre", 10 => "Octubre", 11 => "Noviembre", 12 => "Diciembre"
 );
+$mzGruposMarca = ControladorGruposMarcasComercial::ctrListarGrupos(true);
+if (!is_array($mzGruposMarca)) {
+    $mzGruposMarca = array();
+}
 ?>
 <div class="content-wrapper">
 
@@ -53,6 +57,23 @@ $mesesNombres = array(
                                 <input type="radio" name="mzVista" value="peru" autocomplete="off"> Perú sin Lima
                             </label>
                         </div>
+                        <div class="btn-group" id="mzToggleGrupo" data-toggle="buttons" style="margin-left:12px;" title="Filtrar por vendedores del grupo de marcas">
+                            <label class="btn btn-primary active">
+                                <input type="radio" name="mzGrupoMarca" value="0" autocomplete="off" checked> Ambos
+                            </label>
+                            <?php foreach ($mzGruposMarca as $g) :
+                                $gId = (int) $g["id"];
+                                $gLabel = trim((string) $g["nombre"]);
+                                if ($gLabel === "") {
+                                    $gLabel = trim((string) $g["codigo"]);
+                                }
+                                ?>
+                            <label class="btn btn-default">
+                                <input type="radio" name="mzGrupoMarca" value="<?php echo $gId; ?>" autocomplete="off">
+                                <?php echo htmlspecialchars($gLabel, ENT_QUOTES, "UTF-8"); ?>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
                         <form class="form-inline" style="display:inline-block;margin-left:12px;" id="mzFormPeriodo">
                             <select class="form-control input-sm" id="mzAnio">
                                 <?php for ($a = $mzAnioMin; $a <= $mzAnioMax; $a++) : ?>
@@ -72,8 +93,12 @@ $mesesNombres = array(
                     </div>
                     <div class="box-body">
                         <p class="help-block" style="margin-top:0;">
-                            Solo color de zona (sin títulos en el mapa). Pasá el mouse o usá la leyenda para el nombre y la venta.
-                            El <strong>comparativo inferior</strong> usa tamaño proporcional a la venta del mes.
+                            Lima se pinta por <strong>distrito</strong> (y Norte Chico por provincias Barranca/Huaral/Huaura)
+                            y Perú sin Lima por <strong>departamento</strong> (sin Lima/Callao), con el color de tu zona comercial.
+                            Los colores siguen las reglas ubigeo→zona del módulo (si movés Huánuco al norte, el mapa lo refleja).
+                            Al hacer clic en una zona, el mapa se acerca y el resto se atenúa en gris.
+                            Pasá el mouse para ver el nombre, zona y venta.
+                            El filtro de grupo muestra ventas de vendedores asignados a ese grupo (Ambos = sin filtro).
                         </p>
 
                         <div id="mzVistaLima" class="mz-panel">
@@ -364,9 +389,34 @@ $mesesNombres = array(
     text-transform: uppercase;
     letter-spacing: 0.2px;
 }
+.mz-dist-label {
+    background: transparent !important;
+    border: none !important;
+}
+.mz-dist-label span {
+    display: inline-block;
+    color: #111;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.15px;
+    white-space: nowrap;
+    pointer-events: none;
+    text-shadow:
+        0 0 2px #fff,
+        0 0 3px #fff,
+        1px 0 0 #fff,
+        -1px 0 0 #fff,
+        0 1px 0 #fff,
+        0 -1px 0 #fff;
+    transform: translate(-50%, -50%);
+}
 .mz-tooltip-zona {
     font-size: 12px;
     line-height: 1.25;
+    pointer-events: none;
 }
 .leaflet-interactive {
     cursor: pointer;

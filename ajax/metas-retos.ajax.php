@@ -66,4 +66,11 @@ if ($accion === "universoModelos") {
 	return;
 }
 
+if ($accion === "guardarBaseComision") {
+	echo json_encode(ControladorMetasRetos::ctrGuardarBaseComisionAjax(
+		isset($_POST["base_comision"]) ? $_POST["base_comision"] : ""
+	));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no válida"));
