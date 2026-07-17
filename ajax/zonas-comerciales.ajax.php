@@ -97,7 +97,8 @@ if ($accion === "resumenMapa") {
 	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
 	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
 	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
-	echo json_encode(ControladorZonasComerciales::ctrResumenMapa($vista, $anio, $mes, $idGrupo));
+	$filtroDistribuidor = isset($_POST["filtro_distribuidor"]) ? $_POST["filtro_distribuidor"] : "con";
+	echo json_encode(ControladorZonasComerciales::ctrResumenMapa($vista, $anio, $mes, $idGrupo, $filtroDistribuidor));
 	return;
 }
 
@@ -106,7 +107,8 @@ if ($accion === "clientesVentaZona") {
 	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
 	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
 	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
-	echo json_encode(ControladorZonasComerciales::ctrClientesVentaZona($id, $anio, $mes, $idGrupo));
+	$filtroDistribuidor = isset($_POST["filtro_distribuidor"]) ? $_POST["filtro_distribuidor"] : "con";
+	echo json_encode(ControladorZonasComerciales::ctrClientesVentaZona($id, $anio, $mes, $idGrupo, $filtroDistribuidor));
 	return;
 }
 
@@ -115,7 +117,18 @@ if ($accion === "clientesNuevosZona") {
 	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
 	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
 	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
-	echo json_encode(ControladorZonasComerciales::ctrClientesNuevosZona($id, $anio, $mes, $idGrupo));
+	$filtroDistribuidor = isset($_POST["filtro_distribuidor"]) ? $_POST["filtro_distribuidor"] : "con";
+	echo json_encode(ControladorZonasComerciales::ctrClientesNuevosZona($id, $anio, $mes, $idGrupo, $filtroDistribuidor));
+	return;
+}
+
+if ($accion === "clientesSinAtenderZona") {
+	$id = isset($_POST["idZona"]) ? (int) $_POST["idZona"] : 0;
+	$anio = isset($_POST["anio"]) ? $_POST["anio"] : null;
+	$mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
+	$idGrupo = isset($_POST["id_grupo_marca"]) ? $_POST["id_grupo_marca"] : null;
+	$filtroDistribuidor = isset($_POST["filtro_distribuidor"]) ? $_POST["filtro_distribuidor"] : "con";
+	echo json_encode(ControladorZonasComerciales::ctrClientesSinAtenderZona($id, $anio, $mes, $idGrupo, $filtroDistribuidor));
 	return;
 }
 

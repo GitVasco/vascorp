@@ -75,6 +75,11 @@ if (!is_array($mzGruposMarca)) {
                             <?php endforeach; ?>
                         </div>
                         <form class="form-inline" style="display:inline-block;margin-left:12px;" id="mzFormPeriodo">
+                            <select class="form-control input-sm" id="mzFiltroDistribuidor" title="Filtrar la cartera por categoría comercial">
+                                <option value="con">Con distribuidores</option>
+                                <option value="solo">Solo distribuidores</option>
+                                <option value="sin">Sin distribuidores</option>
+                            </select>
                             <select class="form-control input-sm" id="mzAnio">
                                 <?php for ($a = $mzAnioMin; $a <= $mzAnioMax; $a++) : ?>
                                 <option value="<?php echo $a; ?>" <?php echo $a === $mzAnio ? "selected" : ""; ?>><?php echo $a; ?></option>
@@ -99,6 +104,8 @@ if (!is_array($mzGruposMarca)) {
                             Al hacer clic en una zona, el mapa se acerca y el resto se atenúa en gris.
                             Pasá el mouse para ver el nombre, zona y venta.
                             El filtro de grupo muestra ventas de vendedores asignados a ese grupo (Ambos = sin filtro).
+                            Los filtros de grupo y distribuidores usan la segmentación comercial vigente actualmente,
+                            incluso al consultar ventas de meses anteriores.
                         </p>
 
                         <div id="mzVistaLima" class="mz-panel">
@@ -136,46 +143,62 @@ if (!is_array($mzGruposMarca)) {
                         </p>
                         <div id="mzFichaDetalle" style="display:none;">
                             <p id="mzFichaDesc" class="help-block" style="margin-top:0;"></p>
-                            <p style="margin:0 0 10px;">
-                                <span class="text-muted">Venta del período</span><br>
-                                <strong id="mzFichaVenta" style="font-size:28px;line-height:1.1;">S/ 0</strong>
-                            </p>
-                            <table class="table table-condensed">
-                                <tr>
-                                    <th style="width:45%;">Clientes con venta</th>
-                                    <td id="mzFichaClientesVenta">—</td>
-                                </tr>
-                                <tr>
-                                    <th>Clientes nuevos</th>
-                                    <td id="mzFichaClientesNuevos">—</td>
-                                </tr>
-                                <tr>
-                                    <th>Clientes sin atender</th>
-                                    <td id="mzFichaClientesSinAtender">—</td>
-                                </tr>
-                                <tr>
-                                    <th>Cobertura (asignados)</th>
-                                    <td id="mzFichaVendCount">—</td>
-                                </tr>
-                                <tr>
-                                    <th>Ubigeos mapeados</th>
-                                    <td id="mzFichaUbigeos">—</td>
-                                </tr>
-                                <tr>
-                                    <th>Código</th>
-                                    <td id="mzFichaCodigo">—</td>
-                                </tr>
-                            </table>
-                            <h4 style="font-size:14px;margin-top:12px;">Venta por vendedor activo</h4>
+                            <div class="mz-ficha-venta-actual">
+                                <span>Venta del período</span>
+                                <strong id="mzFichaVenta">S/ 0</strong>
+                            </div>
+
+                            <div class="mz-ficha-ventas-12m">
+                                <div class="mz-ficha-resumen-card mz-ficha-resumen-total">
+                                    <span>Venta total</span>
+                                    <div class="mz-ficha-resumen-valor" id="mzFichaVentaTotal12m">—</div>
+                                    <small>Últimos 12 meses completos</small>
+                                </div>
+                                <div class="mz-ficha-resumen-card">
+                                    <span>Promedio mensual</span>
+                                    <div class="mz-ficha-resumen-valor" id="mzFichaPromedioVenta">—</div>
+                                </div>
+                            </div>
+
+                            <h4 class="mz-ficha-seccion"><i class="fa fa-line-chart"></i> Desempeño comercial</h4>
+                            <div class="mz-ficha-kpis">
+                                <div class="mz-ficha-kpi">
+                                    <span><i class="fa fa-users"></i> Clientes con venta</span>
+                                    <strong id="mzFichaClientesVenta">—</strong>
+                                    <button type="button" class="mz-ficha-kpi-action btnMzVerClientes" id="mzBtnFichaClientes">
+                                        <i class="fa fa-list"></i> Ver clientes
+                                    </button>
+                                </div>
+                                <div class="mz-ficha-kpi">
+                                    <span><i class="fa fa-cubes"></i> Modelos con venta</span>
+                                    <strong id="mzFichaModelosVenta">—</strong>
+                                </div>
+                                <div class="mz-ficha-kpi mz-ficha-kpi-success">
+                                    <span><i class="fa fa-user-plus"></i> Clientes nuevos</span>
+                                    <strong id="mzFichaClientesNuevos">—</strong>
+                                    <button type="button" class="mz-ficha-kpi-action btnMzVerNuevos" id="mzBtnFichaNuevos">
+                                        <i class="fa fa-user-plus"></i> Ver nuevos
+                                    </button>
+                                </div>
+                                <div class="mz-ficha-kpi mz-ficha-kpi-warning">
+                                    <span><i class="fa fa-user-times"></i> Sin atender (2 años)</span>
+                                    <strong id="mzFichaClientesSinAtender">—</strong>
+                                    <button type="button" class="mz-ficha-kpi-action btnMzVerSinAtender" id="mzBtnFichaSinAtender">
+                                        <i class="fa fa-user-times"></i> Ver clientes
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mz-ficha-meta">
+                                <span title="Vendedores asignados"><i class="fa fa-user"></i> <strong id="mzFichaVendCount">—</strong> vendedores</span>
+                                <span title="Ubigeos mapeados"><i class="fa fa-map-marker"></i> <strong id="mzFichaUbigeos">—</strong> ubigeos</span>
+                                <span title="Código de zona"><i class="fa fa-tag"></i> <strong id="mzFichaCodigo">—</strong></span>
+                            </div>
+
+                            <h4 class="mz-ficha-seccion"><i class="fa fa-bar-chart"></i> Venta por vendedor activo</h4>
                             <ul class="list-unstyled" id="mzFichaVentaVendedores" style="max-height:180px;overflow:auto;"></ul>
-                            <h4 style="font-size:14px;margin-top:12px;">Cobertura asignada</h4>
+                            <h4 class="mz-ficha-seccion"><i class="fa fa-street-view"></i> Cobertura asignada</h4>
                             <ul class="list-unstyled" id="mzFichaVendedores" style="max-height:120px;overflow:auto;"></ul>
-                            <button type="button" class="btn btn-success btn-sm btn-block btnMzVerNuevos" id="mzBtnFichaNuevos" style="margin-top:10px;">
-                                <i class="fa fa-user-plus"></i> Ver clientes nuevos
-                            </button>
-                            <button type="button" class="btn btn-primary btn-sm btn-block btnMzVerClientes" id="mzBtnFichaClientes" style="margin-top:6px;">
-                                <i class="fa fa-list"></i> Ver clientes con venta
-                            </button>
                             <a href="index.php?ruta=zonas-comerciales" class="btn btn-default btn-sm btn-block" style="margin-top:6px;">
                                 <i class="fa fa-map"></i> Ir a zonas comerciales
                             </a>
@@ -220,8 +243,8 @@ if (!is_array($mzGruposMarca)) {
                             <tr>
                                 <th style="width:90px;">Código</th>
                                 <th>Cliente</th>
-                                <th style="width:90px;">Vendedor</th>
-                                <th class="text-right" style="width:110px;">Venta S/</th>
+                                <th style="width:180px;" id="mzModalColVendedor">Vendedor</th>
+                                <th class="text-right" style="width:110px;" id="mzModalColValor">Venta S/</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -244,6 +267,180 @@ if (!is_array($mzGruposMarca)) {
     border: 1px solid #ddd;
     border-radius: 4px;
     z-index: 1;
+}
+#mzTablaClientes .mz-vendedor-asignado,
+#mzTablaClientes .mz-vendedor-asignado code {
+    font-size: 11px;
+    white-space: nowrap;
+}
+.mz-ficha-venta-actual {
+    padding: 10px 12px;
+    margin: 4px 0 10px;
+    border-left: 4px solid #3c8dbc;
+    border-radius: 5px;
+    background: linear-gradient(135deg, #f7fafc, #fff);
+}
+.mz-ficha-venta-actual span,
+.mz-ficha-resumen-card > span {
+    display: block;
+    color: #6c757d;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .35px;
+}
+.mz-ficha-venta-actual strong {
+    display: block;
+    margin-top: 2px;
+    color: #263238;
+    font-size: 27px;
+    line-height: 1.15;
+}
+.mz-ficha-ventas-12m {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.mz-ficha-resumen-card {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid #e4e8eb;
+    border-radius: 7px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.mz-ficha-resumen-total {
+    background: #f5faff;
+    border-color: #cfe5f5;
+}
+.mz-ficha-resumen-valor {
+    margin-top: 4px;
+    color: #263238;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.mz-ficha-resumen-card small {
+    display: block;
+    margin-top: 3px;
+    color: #8a9499;
+    font-size: 9px;
+    line-height: 1.25;
+}
+.mz-ficha-seccion {
+    margin: 14px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #edf0f2;
+    color: #455a64;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .25px;
+}
+.mz-ficha-seccion i {
+    width: 17px;
+    color: #8a9ba5;
+}
+.mz-ficha-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+.mz-ficha-kpi {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 105px;
+    padding: 8px 9px;
+    border: 1px solid #e4e8eb;
+    border-radius: 6px;
+    background: #fafbfc;
+}
+.mz-ficha-kpi > span {
+    display: block;
+    min-height: 28px;
+    color: #66757d;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.mz-ficha-kpi > span i {
+    width: 14px;
+    color: #8a9ba5;
+}
+.mz-ficha-kpi > strong {
+    display: block;
+    margin-top: 3px;
+    color: #263238;
+    font-size: 18px;
+    line-height: 1.2;
+}
+.mz-ficha-kpi-action {
+    width: 100%;
+    margin-top: auto;
+    padding: 6px 0 0;
+    border: 0;
+    border-top: 1px solid #e2e8ec;
+    outline: 0;
+    background: transparent;
+    color: #3c8dbc;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: left;
+}
+.mz-ficha-kpi-action:hover,
+.mz-ficha-kpi-action:focus {
+    color: #246a91;
+    text-decoration: underline;
+}
+.mz-ficha-kpi-success .mz-ficha-kpi-action {
+    border-top-color: #d5ecdf;
+    color: #008d4c;
+}
+.mz-ficha-kpi-warning .mz-ficha-kpi-action {
+    border-top-color: #f4dfba;
+    color: #d58512;
+}
+.mz-ficha-kpi-success {
+    border-color: #ccebd9;
+    background: #f4fbf7;
+}
+.mz-ficha-kpi-warning {
+    border-color: #f7dfb3;
+    background: #fff9ef;
+}
+.mz-ficha-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+.mz-ficha-meta > span {
+    padding: 5px 8px;
+    border-radius: 12px;
+    background: #f0f2f4;
+    color: #66757d;
+    font-size: 10px;
+    white-space: nowrap;
+}
+.mz-ficha-meta i {
+    margin-right: 2px;
+    color: #87969e;
+}
+#mzFichaVentaVendedores li,
+#mzFichaVendedores li {
+    padding: 5px 2px;
+    border-bottom: 1px dashed #edf0f2;
+    font-size: 11px;
+}
+#mzFichaVentaVendedores li:last-child,
+#mzFichaVendedores li:last-child {
+    border-bottom: 0;
+}
+#mzFichaDetalle .btn-block {
+    border-radius: 5px;
+    font-weight: 600;
 }
 .mz-hist-grid {
     display: grid;

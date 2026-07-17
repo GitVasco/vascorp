@@ -317,7 +317,7 @@ class ControladorZonasComerciales
 		return ModeloZonasComerciales::mdlZonasPorVendedor($codVendedor);
 	}
 
-	static public function ctrResumenMapa($vista = null, $anio = null, $mes = null, $idGrupoMarca = null)
+	static public function ctrResumenMapa($vista = null, $anio = null, $mes = null, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso", "zonas" => array());
@@ -342,6 +342,7 @@ class ControladorZonasComerciales
 		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
 			$idGrupoMarca = null;
 		}
+		$filtroDistribuidor = ModeloZonasComerciales::normalizarFiltroDistribuidor($filtroDistribuidor);
 
 		$vistaHist = $vista === "" ? "lima" : $vista;
 
@@ -350,24 +351,27 @@ class ControladorZonasComerciales
 			"anio" => $anio,
 			"mes" => $mes,
 			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
+			"filtro_distribuidor" => $filtroDistribuidor,
 			"geo_asignacion" => ModeloZonasComerciales::mdlMapaGeoAsignaciones(),
-			"ventas_geo" => ModeloZonasComerciales::mdlVentasGeoPeriodo($anio, $mes, $idGrupoMarca),
+			"ventas_geo" => ModeloZonasComerciales::mdlVentasGeoPeriodo($anio, $mes, $idGrupoMarca, $filtroDistribuidor),
 			"zonas" => ModeloZonasComerciales::mdlResumenMapaZonas(
 				$vista === "" ? null : $vista,
 				$anio,
 				$mes,
-				$idGrupoMarca
+				$idGrupoMarca,
+				$filtroDistribuidor
 			),
 			"historico_12m" => ModeloZonasComerciales::mdlVentasTotalesVistaUltimos12Meses(
 				$vistaHist,
 				$anio,
 				$mes,
-				$idGrupoMarca
+				$idGrupoMarca,
+				$filtroDistribuidor
 			)
 		);
 	}
 
-	static public function ctrClientesVentaZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null)
+	static public function ctrClientesVentaZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso", "clientes" => array());
@@ -392,9 +396,10 @@ class ControladorZonasComerciales
 		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
 			$idGrupoMarca = null;
 		}
+		$filtroDistribuidor = ModeloZonasComerciales::normalizarFiltroDistribuidor($filtroDistribuidor);
 
 		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
-		$clientes = ModeloZonasComerciales::mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca);
+		$clientes = ModeloZonasComerciales::mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca, $filtroDistribuidor);
 		$total = 0.0;
 		$totalNuevos = 0;
 		foreach ($clientes as $c) {
@@ -409,6 +414,7 @@ class ControladorZonasComerciales
 			"anio" => $anio,
 			"mes" => $mes,
 			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
+			"filtro_distribuidor" => $filtroDistribuidor,
 			"zona" => $zona ? array(
 				"id" => (int) $zona["id"],
 				"codigo" => $zona["codigo"],
@@ -422,7 +428,7 @@ class ControladorZonasComerciales
 		);
 	}
 
-	static public function ctrClientesNuevosZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null)
+	static public function ctrClientesNuevosZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso", "clientes" => array());
@@ -447,9 +453,10 @@ class ControladorZonasComerciales
 		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
 			$idGrupoMarca = null;
 		}
+		$filtroDistribuidor = ModeloZonasComerciales::normalizarFiltroDistribuidor($filtroDistribuidor);
 
 		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
-		$clientes = ModeloZonasComerciales::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca);
+		$clientes = ModeloZonasComerciales::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca, $filtroDistribuidor);
 		$total = 0.0;
 		foreach ($clientes as $c) {
 			$total += (float) $c["venta_real"];
@@ -460,6 +467,7 @@ class ControladorZonasComerciales
 			"anio" => $anio,
 			"mes" => $mes,
 			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
+			"filtro_distribuidor" => $filtroDistribuidor,
 			"zona" => $zona ? array(
 				"id" => (int) $zona["id"],
 				"codigo" => $zona["codigo"],
@@ -467,6 +475,48 @@ class ControladorZonasComerciales
 				"color" => isset($zona["color"]) ? $zona["color"] : "#777"
 			) : null,
 			"total_venta" => round($total, 2),
+			"total_clientes" => count($clientes),
+			"clientes" => $clientes
+		);
+	}
+
+	static public function ctrClientesSinAtenderZona($idZona, $anio = null, $mes = null, $idGrupoMarca = null, $filtroDistribuidor = "con")
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "clientes" => array());
+		}
+		$idZona = (int) $idZona;
+		if ($idZona < 1) {
+			return array("ok" => false, "mensaje" => "Zona inválida", "clientes" => array());
+		}
+		date_default_timezone_set("America/Lima");
+		$anio = $anio === null || $anio === "" ? (int) date("Y") : (int) $anio;
+		$mes = $mes === null || $mes === "" ? (int) date("n") : (int) $mes;
+		if ($anio < 2000 || $anio > 2100) {
+			$anio = (int) date("Y");
+		}
+		if ($mes < 1 || $mes > 12) {
+			$mes = (int) date("n");
+		}
+		$idGrupoMarca = $idGrupoMarca === null || $idGrupoMarca === "" ? null : (int) $idGrupoMarca;
+		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
+			$idGrupoMarca = null;
+		}
+		$filtroDistribuidor = ModeloZonasComerciales::normalizarFiltroDistribuidor($filtroDistribuidor);
+		$zona = ModeloZonasComerciales::mdlZonaPorId($idZona);
+		$clientes = ModeloZonasComerciales::mdlClientesSinAtenderZonaPeriodo($idZona, $anio, $mes, 500, $idGrupoMarca, $filtroDistribuidor);
+		return array(
+			"ok" => true,
+			"anio" => $anio,
+			"mes" => $mes,
+			"id_grupo_marca" => $idGrupoMarca === null ? 0 : $idGrupoMarca,
+			"filtro_distribuidor" => $filtroDistribuidor,
+			"zona" => $zona ? array(
+				"id" => (int) $zona["id"],
+				"codigo" => $zona["codigo"],
+				"nombre" => $zona["nombre"],
+				"color" => isset($zona["color"]) ? $zona["color"] : "#777"
+			) : null,
 			"total_clientes" => count($clientes),
 			"clientes" => $clientes
 		);

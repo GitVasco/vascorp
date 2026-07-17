@@ -551,15 +551,35 @@ class ModeloZonasComerciales
 		return array("inicio" => $inicio, "fin" => $fin);
 	}
 
+	private static function tablaMovimientos($anio)
+	{
+		$anio = (int) $anio;
+		if ($anio < 2000 || $anio > 2100) {
+			return null;
+		}
+		$tabla = "movimientosjf_" . $anio;
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT TABLE_NAME
+			 FROM information_schema.TABLES
+			 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tabla
+			 LIMIT 1"
+		);
+		$stmt->bindValue(":tabla", $tabla, PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchColumn() ? $tabla : null;
+	}
+
 	/**
-	 * Vendedores con asignación vigente al grupo de marcas.
+	 * Vendedores con asignación vigente actualmente al grupo de marcas.
+	 * El mapa usa la segmentación comercial actual también sobre períodos
+	 * históricos, para que un grupo configurado hoy permita analizar meses
+	 * anteriores.
 	 * null = sin filtro (ambos grupos); [] = grupo sin vendedores.
 	 *
 	 * @param int|null $idGrupoMarca
-	 * @param string $fechaRef Y-m-d
 	 * @return string[]|null
 	 */
-	static public function mdlCodigosVendedorGrupoMarca($idGrupoMarca, $fechaRef)
+	static public function mdlCodigosVendedorGrupoMarca($idGrupoMarca)
 	{
 		$idGrupoMarca = (int) $idGrupoMarca;
 		if ($idGrupoMarca < 1) {
@@ -568,6 +588,7 @@ class ModeloZonasComerciales
 
 		require_once dirname(__FILE__) . "/grupos-marcas-comercial.modelo.php";
 		$vigencia = ModeloGruposMarcasComercial::sqlAsignacionVigenteEnFecha("vgm", ":fecha_ref");
+		$fechaRef = date("Y-m-d");
 
 		$stmt = Conexion::conectar()->prepare(
 			"SELECT DISTINCT TRIM(vgm.cod_vendedor) AS cod_vendedor
@@ -620,19 +641,75 @@ class ModeloZonasComerciales
 		return "{$exprVendedor} IN (" . implode(", ", $quoted) . ")";
 	}
 
+	static public function normalizarFiltroDistribuidor($filtro)
+	{
+		$filtro = strtolower(trim((string) $filtro));
+		return in_array($filtro, array("solo", "sin"), true) ? $filtro : "con";
+	}
+
+	/**
+	 * Filtra por la categoría comercial efectiva del cliente. Si pertenece a un
+	 * grupo empresarial, prevalece la categoría del grupo, igual que en el
+	 * módulo de categorías comerciales.
+	 */
+	private static function sqlFiltroDistribuidor($aliasCliente, $filtro, $fechaRef)
+	{
+		$filtro = self::normalizarFiltroDistribuidor($filtro);
+		if ($filtro === "con") {
+			return "1=1";
+		}
+
+		// La categoría actual segmenta también las ventas históricas.
+		$fechaRef = date("Y-m-d H:i:s");
+		$fecha = Conexion::conectar()->quote($fechaRef);
+		$categoria = "CASE
+			WHEN {$aliasCliente}.grupo IS NOT NULL AND TRIM({$aliasCliente}.grupo) <> '' THEN (
+				SELECT UPPER(TRIM(cat.codigo))
+				FROM categorias_clientes_asignacionesjf a
+				INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+				WHERE a.tipo_entidad = 'grupo'
+				  AND a.codigo_entidad = {$aliasCliente}.grupo
+				  AND a.estado = 1
+				  AND cat.estado = 1
+				  AND a.vigencia_desde <= {$fecha}
+				  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= {$fecha})
+				ORDER BY a.id DESC
+				LIMIT 1
+			)
+			ELSE (
+				SELECT UPPER(TRIM(cat.codigo))
+				FROM categorias_clientes_asignacionesjf a
+				INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+				WHERE a.tipo_entidad = 'cliente'
+				  AND a.codigo_entidad = {$aliasCliente}.codigo
+				  AND a.estado = 1
+				  AND cat.estado = 1
+				  AND a.vigencia_desde <= {$fecha}
+				  AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= {$fecha})
+				ORDER BY a.id DESC
+				LIMIT 1
+			)
+		END";
+
+		return $filtro === "solo"
+			? "COALESCE(({$categoria}), '') = 'DIST'"
+			: "COALESCE(({$categoria}), '') <> 'DIST'";
+	}
+
 	/**
 	 * Venta real (neto) del mes por zona efectiva del cliente,
 	 * solo documentos de vendedores activos.
 	 * $idGrupoMarca: null/0 = ambos; >0 = solo vendedores del grupo.
 	 * Retorna [id_zona => ['venta_real'=>float, 'por_vendedor'=>[...]]]
 	 */
-	static public function mdlVentasZonaEfectivaPeriodo($anio, $mes, $idGrupoMarca = null)
+	static public function mdlVentasZonaEfectivaPeriodo($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sql = "SELECT
 				CASE
@@ -658,6 +735,7 @@ class ModeloZonasComerciales
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
 			  AND {$filtroVend}
+			  AND {$filtroDist}
 			GROUP BY
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -712,13 +790,14 @@ class ModeloZonasComerciales
 	 *
 	 * @return array{departamentos:array<string,float>,distritos:array<string,float>,provincias:array<string,float>}
 	 */
-	static public function mdlVentasGeoPeriodo($anio, $mes, $idGrupoMarca = null)
+	static public function mdlVentasGeoPeriodo($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sql = "SELECT
 				UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
@@ -738,6 +817,7 @@ class ModeloZonasComerciales
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
 			  AND TRIM(IFNULL(c.ubigeo, '')) <> ''
 			  AND {$filtroVend}
+			  AND {$filtroDist}
 			GROUP BY
 				UPPER(TRIM(IFNULL(u.Departamento, ''))),
 				UPPER(TRIM(IFNULL(u.Provincia, ''))),
@@ -816,13 +896,14 @@ class ModeloZonasComerciales
 	 * Cantidad de clientes distintos con venta en el período por zona efectiva.
 	 * Retorna [id_zona => int]
 	 */
-	static public function mdlContarClientesConVentaPorZona($anio, $mes, $idGrupoMarca = null)
+	static public function mdlContarClientesConVentaPorZona($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sql = "SELECT
 				CASE
@@ -846,6 +927,7 @@ class ModeloZonasComerciales
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
 			  AND {$filtroVend}
+			  AND {$filtroDist}
 			GROUP BY
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -872,7 +954,7 @@ class ModeloZonasComerciales
 	 * primera venta válida de un vendedor activo cae en el mes, sin grupo.
 	 * Retorna [id_zona => int]
 	 */
-	static public function mdlContarClientesNuevosPorZona($anio, $mes, $idGrupoMarca = null)
+	static public function mdlContarClientesNuevosPorZona($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$rango = self::rangoMes($anio, $mes);
@@ -880,8 +962,9 @@ class ModeloZonasComerciales
 		$tipos0 = self::sqlTiposVentaReal("v0");
 		$joinActivo = self::sqlJoinVendedorActivo("v", "ma");
 		$joinV0 = self::sqlJoinVendedorActivo("v0", "m0");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v0.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sql = "SELECT
 				CASE
@@ -915,6 +998,7 @@ class ModeloZonasComerciales
 			WHERE p.primera >= :ini AND p.primera < :fin
 			  AND (c.grupo IS NULL OR TRIM(c.grupo) = '')
 			  AND {$filtroVend}
+			  AND {$filtroDist}
 			GROUP BY
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -937,18 +1021,21 @@ class ModeloZonasComerciales
 	}
 
 	/**
-	 * Cartera de vendedores activos en la zona, sin venta de vendedor activo en el mes.
+	 * Cartera de vendedores activos en la zona, con compra en los 2 años previos
+	 * y sin venta de vendedor activo en el mes.
 	 * Retorna [id_zona => int]
 	 */
-	static public function mdlContarClientesSinAtenderPorZona($anio, $mes, $idGrupoMarca = null)
+	static public function mdlContarClientesSinAtenderPorZona($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
+		$tiposHistorico = self::sqlTiposVentaReal("vh");
 		$joinActivoVenta = self::sqlJoinVendedorActivo("v", "ma");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroCartera = self::sqlFiltroCodigosVendedor("TRIM(c.vendedor)", $codigos);
 		$filtroVendVenta = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sql = "SELECT
 				CASE
@@ -969,6 +1056,15 @@ class ModeloZonasComerciales
 			WHERE c.estado = 1
 			  AND TRIM(IFNULL(c.vendedor, '')) <> ''
 			  AND {$filtroCartera}
+			  AND {$filtroDist}
+			  AND EXISTS (
+				SELECT 1
+				FROM ventajf vh
+				WHERE vh.cliente = c.codigo
+				  AND vh.fecha >= :hist_ini AND vh.fecha < :hist_fin
+				  AND {$tiposHistorico}
+				  AND UPPER(IFNULL(vh.estado, '')) <> 'ANULADO'
+			  )
 			  AND NOT EXISTS (
 				SELECT 1
 				FROM ventajf v
@@ -989,6 +1085,9 @@ class ModeloZonasComerciales
 			HAVING id_zona IS NOT NULL AND id_zona > 0";
 
 		$stmt = Conexion::conectar()->prepare($sql);
+		$inicioHistorico = date("Y-m-d", strtotime($rango["inicio"] . " -2 years"));
+		$stmt->bindValue(":hist_ini", $inicioHistorico, PDO::PARAM_STR);
+		$stmt->bindValue(":hist_fin", $rango["inicio"], PDO::PARAM_STR);
 		$stmt->bindParam(":ini", $rango["inicio"], PDO::PARAM_STR);
 		$stmt->bindParam(":fin", $rango["fin"], PDO::PARAM_STR);
 		$stmt->execute();
@@ -1001,11 +1100,181 @@ class ModeloZonasComerciales
 		return $mapa;
 	}
 
+	static public function mdlContarModelosConVentaPorZona($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
+	{
+		$tabla = self::tablaMovimientos($anio);
+		if ($tabla === null) {
+			return array();
+		}
+		$rango = self::rangoMes($anio, $mes);
+		$tipos = self::sqlTiposVentaReal("m");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
+		$filtroVendedor = self::sqlFiltroCodigosVendedor("TRIM(m.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
+		$sql = "SELECT base.id_zona, COUNT(*) AS modelos_con_venta
+			FROM (
+				SELECT
+					CASE
+						WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
+						WHEN g.id_zona IS NOT NULL AND g.id_zona > 0 THEN g.id_zona
+						ELSE r.id_zona
+					END AS id_zona,
+					TRIM(a.modelo) AS modelo,
+					SUM(IFNULL(m.cantidad, 0)) AS unidades
+				FROM {$tabla} m
+				INNER JOIN articulojf a ON a.articulo = m.articulo
+				INNER JOIN clientesjf c ON c.codigo = m.cliente
+				INNER JOIN maestrajf ma
+					ON ma.codigo = TRIM(m.vendedor)
+				   AND UPPER(ma.tipo_dato) = 'TVEND'
+				   AND ma.estado_decisiones = 1
+				LEFT JOIN grupos_empresarialesjf g
+					ON g.codigo = c.grupo AND g.estado = 1
+				LEFT JOIN zonas_comerciales_ubigeojf r
+					ON r.cod_ubi = c.ubigeo
+				WHERE m.fecha >= :ini AND m.fecha < :fin
+				  AND {$tipos}
+				  AND TRIM(IFNULL(m.vendedor, '')) <> ''
+				  AND TRIM(IFNULL(a.modelo, '')) <> ''
+				  AND {$filtroVendedor}
+				  AND {$filtroDist}
+				  AND EXISTS (
+					SELECT 1
+					FROM ventajf v
+					WHERE v.tipo = m.tipo
+					  AND v.documento = m.documento
+					  AND v.fecha = m.fecha
+					  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+				  )
+				GROUP BY id_zona, TRIM(a.modelo)
+				HAVING id_zona IS NOT NULL AND id_zona > 0 AND unidades > 0
+			) base
+			GROUP BY base.id_zona";
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":ini", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$mapa[(int) $fila["id_zona"]] = (int) $fila["modelos_con_venta"];
+		}
+		return $mapa;
+	}
+
+	static public function mdlTotalModelosCartera($idGrupoMarca = null)
+	{
+		$idGrupoMarca = $idGrupoMarca === null || $idGrupoMarca === "" ? null : (int) $idGrupoMarca;
+		$sql = "SELECT COUNT(DISTINCT TRIM(m.modelo)) AS total
+			FROM modelojf m";
+		if ($idGrupoMarca !== null && $idGrupoMarca > 0) {
+			$sql .= " INNER JOIN grupos_marcas_detallejf d
+					ON d.id_marca = m.id_marca
+				   AND d.id_grupo_marca = :id_grupo
+				INNER JOIN grupos_marcas_comercialjf g
+					ON g.id = d.id_grupo_marca AND g.estado = 1";
+		}
+		$sql .= " WHERE UPPER(TRIM(IFNULL(m.estado, ''))) = 'ACTIVO'
+			  AND TRIM(IFNULL(m.modelo, '')) <> ''";
+		$stmt = Conexion::conectar()->prepare($sql);
+		if ($idGrupoMarca !== null && $idGrupoMarca > 0) {
+			$stmt->bindValue(":id_grupo", $idGrupoMarca, PDO::PARAM_INT);
+		}
+		$stmt->execute();
+		return (int) $stmt->fetchColumn();
+	}
+
+	static public function mdlClientesSinAtenderZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null, $filtroDistribuidor = "con")
+	{
+		$idZona = (int) $idZona;
+		$limite = (int) $limite;
+		if ($idZona < 1) {
+			return array();
+		}
+		if ($limite < 1 || $limite > 2000) {
+			$limite = 500;
+		}
+
+		$rango = self::rangoMes($anio, $mes);
+		$tipos = self::sqlTiposVentaReal("v");
+		$tiposUltima = self::sqlTiposVentaReal("vu");
+		$tiposHistorico = self::sqlTiposVentaReal("vh");
+		$joinActivoVenta = self::sqlJoinVendedorActivo("v", "ma");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
+		$filtroCartera = self::sqlFiltroCodigosVendedor("TRIM(c.vendedor)", $codigos);
+		$filtroVendVenta = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
+
+		$sql = "SELECT c.codigo,
+				IFNULL(NULLIF(TRIM(c.nombre), ''), c.codigo) AS nombre,
+				TRIM(c.vendedor) AS cod_vendedor,
+				IFNULL(NULLIF(TRIM(mc.descripcion), ''), TRIM(c.vendedor)) AS nombre_vendedor,
+				NULLIF(TRIM(IFNULL(g.nombre, '')), '') AS nombre_grupo,
+				(
+					SELECT MAX(vu.fecha)
+					FROM ventajf vu
+					WHERE vu.cliente = c.codigo
+					  AND vu.fecha < :inicio_ultima
+					  AND {$tiposUltima}
+					  AND UPPER(IFNULL(vu.estado, '')) <> 'ANULADO'
+				) AS ultima_venta
+			FROM clientesjf c
+			INNER JOIN maestrajf mc
+				ON mc.codigo = TRIM(c.vendedor)
+			   AND UPPER(mc.tipo_dato) = 'TVEND'
+			   AND mc.estado_decisiones = 1
+			LEFT JOIN grupos_empresarialesjf g
+				ON g.codigo = c.grupo AND g.estado = 1
+			LEFT JOIN zonas_comerciales_ubigeojf r
+				ON r.cod_ubi = c.ubigeo
+			WHERE c.estado = 1
+			  AND TRIM(IFNULL(c.vendedor, '')) <> ''
+			  AND {$filtroCartera}
+			  AND {$filtroDist}
+			  AND (
+				CASE
+					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
+					WHEN g.id_zona IS NOT NULL AND g.id_zona > 0 THEN g.id_zona
+					ELSE r.id_zona
+				END
+			  ) = :id_zona
+			  AND EXISTS (
+				SELECT 1
+				FROM ventajf vh
+				WHERE vh.cliente = c.codigo
+				  AND vh.fecha >= :hist_ini AND vh.fecha < :hist_fin
+				  AND {$tiposHistorico}
+				  AND UPPER(IFNULL(vh.estado, '')) <> 'ANULADO'
+			  )
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM ventajf v
+				{$joinActivoVenta}
+				WHERE v.cliente = c.codigo
+				  AND v.fecha >= :ini AND v.fecha < :fin
+				  AND {$tipos}
+				  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+				  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+				  AND {$filtroVendVenta}
+			  )
+			ORDER BY ultima_venta IS NULL DESC, ultima_venta ASC, nombre ASC
+			LIMIT {$limite}";
+		$stmt = Conexion::conectar()->prepare($sql);
+		$inicioHistorico = date("Y-m-d", strtotime($rango["inicio"] . " -2 years"));
+		$stmt->bindValue(":hist_ini", $inicioHistorico, PDO::PARAM_STR);
+		$stmt->bindValue(":hist_fin", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":inicio_ultima", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":ini", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":id_zona", $idZona, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
 	/**
 	 * Clientes con venta en el período cuya zona efectiva = $idZona
 	 * (mismos criterios de venta real / vendedores activos).
 	 */
-	static public function mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null)
+	static public function mdlClientesVentaZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$idZona = (int) $idZona;
@@ -1021,8 +1290,9 @@ class ModeloZonasComerciales
 
 		$rango = self::rangoMes($anio, $mes);
 		$tipos = self::sqlTiposVentaReal("v");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sqlCatBase = "CASE
 					WHEN c.grupo IS NOT NULL AND TRIM(c.grupo) <> '' THEN (
@@ -1078,6 +1348,7 @@ class ModeloZonasComerciales
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
 			  AND {$filtroVend}
+			  AND {$filtroDist}
 			  AND (
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -1096,7 +1367,7 @@ class ModeloZonasComerciales
 		$stmt->execute();
 
 		$nuevosSet = array();
-		foreach (self::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 5000, $idGrupoMarca) as $n) {
+		foreach (self::mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, 5000, $idGrupoMarca, $filtroDistribuidor) as $n) {
 			$nuevosSet[$n["codigo"]] = true;
 		}
 
@@ -1133,7 +1404,7 @@ class ModeloZonasComerciales
 	 * Detalle de clientes nuevos de la zona en el período
 	 * (1ª venta de vendedor activo en el mes, sin grupo; vendedor = esa 1ª venta).
 	 */
-	static public function mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null)
+	static public function mdlClientesNuevosZonaPeriodo($idZona, $anio, $mes, $limite = 500, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$idZona = (int) $idZona;
@@ -1153,9 +1424,10 @@ class ModeloZonasComerciales
 		$joinPrimera = self::sqlJoinVendedorActivo("v", "ma");
 		$joinV0 = self::sqlJoinVendedorActivo("v0", "m0");
 		$joinV2 = self::sqlJoinVendedorActivo("v2", "m2");
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend0 = self::sqlFiltroCodigosVendedor("TRIM(v0.vendedor)", $codigos);
 		$filtroVend2 = self::sqlFiltroCodigosVendedor("TRIM(v2.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($rango["fin"] . " -1 day")));
 
 		$sql = "SELECT
 				c.codigo AS codigo_cliente,
@@ -1200,6 +1472,7 @@ class ModeloZonasComerciales
 			WHERE p.primera >= :ini AND p.primera < :fin
 			  AND (c.grupo IS NULL OR TRIM(c.grupo) = '')
 			  AND {$filtroVend0}
+			  AND {$filtroDist}
 			  AND (
 				CASE
 					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
@@ -1240,7 +1513,7 @@ class ModeloZonasComerciales
 	 * cerrando en $anio/$mes, filtrados por vista de mapa (lima | peru).
 	 * Retorna labels + series[] con 12 valores por zona.
 	 */
-	static public function mdlVentasTotalesVistaUltimos12Meses($vista, $anioFin, $mesFin, $idGrupoMarca = null)
+	static public function mdlVentasTotalesVistaUltimos12Meses($vista, $anioFin, $mesFin, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		$vista = trim((string) $vista);
@@ -1317,9 +1590,9 @@ class ModeloZonasComerciales
 		$tipos = self::sqlTiposVentaReal("v");
 		$joinActivo = self::sqlJoinVendedorActivo("v", "ma");
 		// Misma vigencia que el resumen del mes seleccionado (no la del inicio de la ventana).
-		$fechaRefGrupo = date("Y-m-01", $tsFin);
-		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $fechaRefGrupo);
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor("c", $filtroDistribuidor, date("Y-m-d", strtotime($finExcl . " -1 day")));
 
 		$sql = "SELECT
 				z.id AS id_zona,
@@ -1346,6 +1619,7 @@ class ModeloZonasComerciales
 			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
 			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
 			  AND {$filtroVend}
+			  AND {$filtroDist}
 			GROUP BY z.id, YEAR(v.fecha), MONTH(v.fecha)
 			ORDER BY z.id ASC, anio ASC, mes ASC";
 
@@ -1398,7 +1672,70 @@ class ModeloZonasComerciales
 		);
 	}
 
-	static public function mdlResumenMapaZonas($vista = null, $anio = null, $mes = null, $idGrupoMarca = null)
+	static public function mdlPromedioVentasZonaUltimos12MesesCompletos($anio, $mes, $idGrupoMarca = null, $filtroDistribuidor = "con")
+	{
+		$rango = self::rangoMes($anio, $mes);
+		$inicio = date("Y-m-d", strtotime($rango["inicio"] . " -12 months"));
+		$fin = $rango["inicio"];
+		$tipos = self::sqlTiposVentaReal("v");
+		$codigos = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
+		$filtroVend = self::sqlFiltroCodigosVendedor("TRIM(v.vendedor)", $codigos);
+		$filtroDist = self::sqlFiltroDistribuidor(
+			"c",
+			$filtroDistribuidor,
+			date("Y-m-d", strtotime($rango["fin"] . " -1 day"))
+		);
+
+		$sql = "SELECT
+				CASE
+					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
+					WHEN g.id_zona IS NOT NULL AND g.id_zona > 0 THEN g.id_zona
+					ELSE r.id_zona
+				END AS id_zona,
+				SUM(v.neto) AS venta_total
+			FROM ventajf v
+			" . self::sqlJoinVendedorActivo("v", "ma") . "
+			INNER JOIN clientesjf c ON c.codigo = v.cliente
+			LEFT JOIN grupos_empresarialesjf g
+				ON g.codigo = c.grupo AND g.estado = 1
+			LEFT JOIN zonas_comerciales_ubigeojf r
+				ON r.cod_ubi = c.ubigeo
+			WHERE v.fecha >= :ini AND v.fecha < :fin
+			  AND {$tipos}
+			  AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+			  AND TRIM(IFNULL(v.vendedor, '')) <> ''
+			  AND {$filtroVend}
+			  AND {$filtroDist}
+			GROUP BY
+				CASE
+					WHEN c.id_zona IS NOT NULL AND c.id_zona > 0 THEN c.id_zona
+					WHEN g.id_zona IS NOT NULL AND g.id_zona > 0 THEN g.id_zona
+					ELSE r.id_zona
+				END
+			HAVING id_zona IS NOT NULL AND id_zona > 0";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":ini", $inicio, PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $fin, PDO::PARAM_STR);
+		$stmt->execute();
+
+		$promedios = array();
+		$totales = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$idZona = (int) $fila["id_zona"];
+			$totales[$idZona] = round((float) $fila["venta_total"], 2);
+			$promedios[$idZona] = round($totales[$idZona] / 12, 2);
+		}
+
+		return array(
+			"desde" => $inicio,
+			"hasta" => date("Y-m-d", strtotime($fin . " -1 day")),
+			"por_zona" => $promedios,
+			"total_por_zona" => $totales
+		);
+	}
+
+	static public function mdlResumenMapaZonas($vista = null, $anio = null, $mes = null, $idGrupoMarca = null, $filtroDistribuidor = "con")
 	{
 
 		date_default_timezone_set("America/Lima");
@@ -1415,9 +1752,10 @@ class ModeloZonasComerciales
 		if ($idGrupoMarca !== null && $idGrupoMarca < 1) {
 			$idGrupoMarca = null;
 		}
+		$filtroDistribuidor = self::normalizarFiltroDistribuidor($filtroDistribuidor);
 
 		$rango = self::rangoMes($anio, $mes);
-		$codigosGrupo = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca, $rango["inicio"]);
+		$codigosGrupo = self::mdlCodigosVendedorGrupoMarca($idGrupoMarca);
 		$setGrupo = null;
 		if (is_array($codigosGrupo)) {
 			$setGrupo = array();
@@ -1427,10 +1765,18 @@ class ModeloZonasComerciales
 		}
 
 		$zonas = self::mdlListarZonas(true);
-		$ventas = self::mdlVentasZonaEfectivaPeriodo($anio, $mes, $idGrupoMarca);
-		$clientesVenta = self::mdlContarClientesConVentaPorZona($anio, $mes, $idGrupoMarca);
-		$clientesNuevos = self::mdlContarClientesNuevosPorZona($anio, $mes, $idGrupoMarca);
-		$clientesSinAtender = self::mdlContarClientesSinAtenderPorZona($anio, $mes, $idGrupoMarca);
+		$ventas = self::mdlVentasZonaEfectivaPeriodo($anio, $mes, $idGrupoMarca, $filtroDistribuidor);
+		$clientesVenta = self::mdlContarClientesConVentaPorZona($anio, $mes, $idGrupoMarca, $filtroDistribuidor);
+		$clientesNuevos = self::mdlContarClientesNuevosPorZona($anio, $mes, $idGrupoMarca, $filtroDistribuidor);
+		$clientesSinAtender = self::mdlContarClientesSinAtenderPorZona($anio, $mes, $idGrupoMarca, $filtroDistribuidor);
+		$modelosConVenta = self::mdlContarModelosConVentaPorZona($anio, $mes, $idGrupoMarca, $filtroDistribuidor);
+		$totalModelosCartera = self::mdlTotalModelosCartera($idGrupoMarca);
+		$promedios12m = self::mdlPromedioVentasZonaUltimos12MesesCompletos(
+			$anio,
+			$mes,
+			$idGrupoMarca,
+			$filtroDistribuidor
+		);
 		$lista = array();
 		$vista = $vista === null ? "" : trim((string) $vista);
 
@@ -1463,6 +1809,16 @@ class ModeloZonasComerciales
 			$cliVenta = isset($clientesVenta[$id]) ? (int) $clientesVenta[$id] : 0;
 			$cliNuevos = isset($clientesNuevos[$id]) ? (int) $clientesNuevos[$id] : 0;
 			$cliSinAtender = isset($clientesSinAtender[$id]) ? (int) $clientesSinAtender[$id] : 0;
+			$modelosVenta = isset($modelosConVenta[$id]) ? (int) $modelosConVenta[$id] : 0;
+			$promedioVentaMensual = isset($promedios12m["por_zona"][$id])
+				? (float) $promedios12m["por_zona"][$id]
+				: 0.0;
+			$ventaTotal12m = isset($promedios12m["total_por_zona"][$id])
+				? (float) $promedios12m["total_por_zona"][$id]
+				: 0.0;
+			$coberturaModelos = $totalModelosCartera > 0
+				? number_format($modelosVenta * 100 / $totalModelosCartera, 1, ".", "")
+				: null;
 
 			$lista[] = array(
 				"id" => $id,
@@ -1480,6 +1836,13 @@ class ModeloZonasComerciales
 				"clientes_con_venta" => $cliVenta,
 				"clientes_nuevos" => $cliNuevos,
 				"clientes_sin_atender" => $cliSinAtender,
+				"modelos_con_venta" => $modelosVenta,
+				"total_modelos_cartera" => $totalModelosCartera,
+				"cobertura_modelos_pct" => $coberturaModelos,
+				"promedio_venta_mensual_12m" => $promedioVentaMensual,
+				"venta_total_12m" => $ventaTotal12m,
+				"promedio_venta_desde" => $promedios12m["desde"],
+				"promedio_venta_hasta" => $promedios12m["hasta"],
 				"venta_real" => round($ventaZona, 2),
 				"venta_por_vendedor" => $vendVentas
 			);

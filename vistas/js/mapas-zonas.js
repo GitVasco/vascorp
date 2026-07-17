@@ -353,17 +353,30 @@
         return !isNaN(v) && v > 0 ? v : 0;
     }
 
+    function mzFiltroDistribuidor() {
+        var v = String($("#mzFiltroDistribuidor").val() || "con").toLowerCase();
+        return v === "solo" || v === "sin" ? v : "con";
+    }
+
     function mzLeerPeriodoUrl() {
         try {
             var params = new URLSearchParams(window.location.search);
             var anio = parseInt(params.get("anio"), 10);
             var mes = parseInt(params.get("mes"), 10);
+            var grupoMarca = parseInt(params.get("grupo_marca"), 10);
+            var distribuidores = String(params.get("distribuidores") || "con").toLowerCase();
+            var vista = String(params.get("vista") || "lima").toLowerCase();
+            var zona = String(params.get("zona") || "").trim();
             return {
                 anio: !isNaN(anio) && anio >= 2000 && anio <= 2100 ? anio : null,
-                mes: !isNaN(mes) && mes >= 1 && mes <= 12 ? mes : null
+                mes: !isNaN(mes) && mes >= 1 && mes <= 12 ? mes : null,
+                grupoMarca: !isNaN(grupoMarca) && grupoMarca > 0 ? grupoMarca : 0,
+                distribuidores: distribuidores === "solo" || distribuidores === "sin" ? distribuidores : "con",
+                vista: vista === "peru" ? "peru" : "lima",
+                zona: /^[A-Za-z0-9_-]+$/.test(zona) ? zona : ""
             };
         } catch (e) {
-            return { anio: null, mes: null };
+            return { anio: null, mes: null, grupoMarca: 0, distribuidores: "con", vista: "lima", zona: "" };
         }
     }
 
@@ -373,6 +386,14 @@
             var url = new URL(window.location.href);
             url.searchParams.set("anio", String(p.anio));
             url.searchParams.set("mes", String(p.mes));
+            url.searchParams.set("distribuidores", mzFiltroDistribuidor());
+            url.searchParams.set("grupo_marca", String(mzGrupoMarca()));
+            url.searchParams.set("vista", mzVista);
+            if (mzSeleccion) {
+                url.searchParams.set("zona", mzSeleccion);
+            } else {
+                url.searchParams.delete("zona");
+            }
             if (window.history && window.history.replaceState) {
                 window.history.replaceState(null, "", url.pathname + url.search + url.hash);
             }
@@ -413,12 +434,22 @@
         if (u.mes != null) {
             $("#mzMes").val(String(u.mes));
         }
+        $("#mzFiltroDistribuidor").val(u.distribuidores);
+        var $grupo = $("input[name='mzGrupoMarca'][value='" + u.grupoMarca + "']");
+        if (!$grupo.length) {
+            $grupo = $("input[name='mzGrupoMarca'][value='0']");
+        }
+        $("input[name='mzGrupoMarca']").prop("checked", false);
+        $grupo.prop("checked", true);
+        mzVista = u.vista;
+        mzSeleccion = u.zona || null;
+        mzAplicarEstiloToggleGrupo();
         mzEscribirPeriodoUrl();
     }
 
     function mzCacheKey(vista) {
         var p = mzPeriodo();
-        return vista + "|" + p.anio + "|" + p.mes + "|g" + mzGrupoMarca();
+        return vista + "|" + p.anio + "|" + p.mes + "|g" + mzGrupoMarca() + "|d" + mzFiltroDistribuidor();
     }
 
     function mzFmt(n) {
@@ -427,6 +458,11 @@
 
     function mzMoney(n) {
         return "S/ " + Math.round(Number(n) || 0).toLocaleString("es-PE");
+    }
+
+    function mzFechaCorta(fecha) {
+        var p = String(fecha || "").split("-");
+        return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : String(fecha || "");
     }
 
     function mzEsc(s) {
@@ -1345,12 +1381,15 @@
         }
 
         var soloNuevos = modo === "nuevos";
+        var sinAtender = modo === "sin_atender";
         var p = mzPeriodo();
         var nombre = z ? z.nombre : "Zona";
         var colorZona = z ? z.color || "#3c8dbc" : "#3c8dbc";
-        $("#mzModalTituloTipo").text(soloNuevos ? "Clientes nuevos" : "Clientes con venta");
+        $("#mzModalTituloTipo").text(soloNuevos ? "Clientes nuevos" : (sinAtender ? "Clientes sin atender" : "Clientes con venta"));
         $("#mzModalZonaNombre").text(nombre);
-        $("#mzModalHeader").css("background", soloNuevos ? "#00a65a" : colorZona);
+        $("#mzModalHeader").css("background", soloNuevos ? "#00a65a" : (sinAtender ? "#f39c12" : colorZona));
+        $("#mzModalColVendedor").text(sinAtender ? "Vendedor asignado" : "Vendedor");
+        $("#mzModalColValor").text(sinAtender ? "Última compra" : "Venta S/");
         $("#mzModalPeriodo").text(p.mes + "/" + p.anio);
         $("#mzModalTotalVenta").text("…");
         $("#mzModalTotalCli").text("…");
@@ -1362,11 +1401,12 @@
         $.post(
             "ajax/zonas-comerciales.ajax.php",
             {
-                accion: soloNuevos ? "clientesNuevosZona" : "clientesVentaZona",
+                accion: soloNuevos ? "clientesNuevosZona" : (sinAtender ? "clientesSinAtenderZona" : "clientesVentaZona"),
                 idZona: idZona,
                 anio: p.anio,
                 mes: p.mes,
-                id_grupo_marca: mzGrupoMarca()
+                id_grupo_marca: mzGrupoMarca(),
+                filtro_distribuidor: mzFiltroDistribuidor()
             },
             function (resp) {
                 if (!resp || !resp.ok) {
@@ -1377,16 +1417,19 @@
                     );
                     return;
                 }
-                $("#mzModalTotalVenta").text(mzMoney(resp.total_venta));
+                $("#mzModalTotalVenta").text(sinAtender ? "—" : mzMoney(resp.total_venta));
                 $("#mzModalTotalCli").text(mzFmt(resp.total_clientes));
                 if (resp.zona && resp.zona.nombre) {
                     $("#mzModalZonaNombre").text(resp.zona.nombre);
                 }
                 var tip = soloNuevos
                     ? "primera venta del período · vendedor de esa venta"
-                    : "máx. 500, nuevos primero · vendedores con venta";
-                $("#mzModalResumen").html(
-                    "Período: <strong>" +
+                    : (sinAtender ? "con compra en los 2 años previos y sin venta válida en el período" : "máx. 500, nuevos primero · vendedores con venta");
+                $("#mzModalResumen").html(sinAtender
+                    ? "Período: <strong>" + mzEsc(String(p.mes + "/" + p.anio))
+                        + "</strong>. <span id='mzModalTotalCli'>" + mzEsc(mzFmt(resp.total_clientes))
+                        + "</span> clientes (" + tip + ")."
+                    : "Período: <strong>" +
                         mzEsc(String(p.mes + "/" + p.anio)) +
                         "</strong>. Total: <strong id='mzModalTotalVenta'>" +
                         mzEsc(mzMoney(resp.total_venta)) +
@@ -1394,15 +1437,14 @@
                         mzEsc(mzFmt(resp.total_clientes)) +
                         "</span> clientes (" +
                         tip +
-                        ")."
-                );
+                        ").");
                 var rows = resp.clientes || [];
                 if (!rows.length) {
                     $("#mzTablaClientes tbody").html(
                         "<tr><td colspan='4' class='text-muted'>" +
                             (soloNuevos
                                 ? "Ningún cliente nuevo en este período"
-                                : "Ningún cliente con venta en este período") +
+                                : (sinAtender ? "Todos los clientes de la cartera tuvieron venta en este período" : "Ningún cliente con venta en este período")) +
                             "</td></tr>"
                     );
                     return;
@@ -1436,9 +1478,14 @@
                               badgeCat +
                               "</span>"
                             : "";
-                    var vend = soloNuevos
+                    var vend = sinAtender
+                        ? (c.cod_vendedor || "—") + (c.nombre_vendedor ? " — " + c.nombre_vendedor : "")
+                        : soloNuevos
                         ? c.cod_vendedor || "—"
                         : c.codigos_vendedor || c.cod_vendedor || "—";
+                    var valorFinal = sinAtender
+                        ? (c.ultima_venta || "Sin venta previa")
+                        : mzMoney(c.venta_real);
                     html +=
                         "<tr>" +
                         "<td>" +
@@ -1451,11 +1498,11 @@
                         "</span>" +
                         badgesRight +
                         "</div></td>" +
-                        "<td><code>" +
+                        "<td" + (sinAtender ? " class='mz-vendedor-asignado'" : "") + "><code>" +
                         mzEsc(vend) +
                         "</code></td>" +
                         "<td class='text-right'><strong>" +
-                        mzMoney(c.venta_real) +
+                        mzEsc(valorFinal) +
                         "</strong></td>" +
                         "</tr>";
                 });
@@ -1499,6 +1546,7 @@
 
     function mzLimpiarSeleccion() {
         mzSeleccion = null;
+        mzEscribirPeriodoUrl();
         $(".mz-treemap-cell").removeClass("mz-active");
         mzResaltarSeleccionMapa();
         mzRestaurarVistaMapa();
@@ -1511,6 +1559,7 @@
         }
         var misma = mzSeleccion === codigo;
         mzSeleccion = codigo;
+        mzEscribirPeriodoUrl();
         $(".mz-treemap-cell").removeClass("mz-active");
         $(".mz-treemap-cell[data-codigo='" + codigo + "']").addClass("mz-active");
 
@@ -1532,9 +1581,38 @@
         $("#mzFichaHeader").css("background", z.color || "#3c8dbc");
         $("#mzFichaDesc").text(z.descripcion || "");
         $("#mzFichaVenta").text(mzMoney(z.venta_real));
+        $("#mzFichaPromedioVenta")
+            .attr(
+                "title",
+                "Promedio de los 12 meses completos anteriores al período seleccionado"
+            )
+            .html(
+                "<strong>" + mzEsc(mzMoney(z.promedio_venta_mensual_12m)) + "</strong>"
+                + "<br><small class='text-muted'>"
+                + mzEsc(mzFechaCorta(z.promedio_venta_desde))
+                + " – "
+                + mzEsc(mzFechaCorta(z.promedio_venta_hasta))
+                + "</small>"
+            );
+        $("#mzFichaVentaTotal12m")
+            .attr(
+                "title",
+                "Venta acumulada del mismo período usado para calcular el promedio mensual"
+            )
+            .html("<strong>" + mzEsc(mzMoney(z.venta_total_12m)) + "</strong>");
         $("#mzFichaClientesVenta").text(
             mzFmt(z.clientes_con_venta != null ? z.clientes_con_venta : 0)
         );
+        var modelosVenta = z.modelos_con_venta != null ? z.modelos_con_venta : 0;
+        var coberturaModelos = z.cobertura_modelos_pct;
+        $("#mzFichaModelosVenta")
+            .attr("title", "Cartera activa: " + mzFmt(z.total_modelos_cartera != null ? z.total_modelos_cartera : 0) + " modelos")
+            .html(
+                mzEsc(mzFmt(modelosVenta))
+                + (coberturaModelos !== null && coberturaModelos !== undefined
+                    ? " <span class='label label-info'>" + mzEsc(Number(coberturaModelos).toLocaleString("es-PE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })) + "% cartera</span>"
+                    : "")
+            );
         $("#mzFichaClientesNuevos").text(
             mzFmt(z.clientes_nuevos != null ? z.clientes_nuevos : 0)
         );
@@ -1546,6 +1624,7 @@
         $("#mzFichaCodigo").text(z.codigo || "");
         $("#mzBtnFichaClientes").attr("data-id-zona", z.id).attr("data-codigo", z.codigo);
         $("#mzBtnFichaNuevos").attr("data-id-zona", z.id).attr("data-codigo", z.codigo);
+        $("#mzBtnFichaSinAtender").attr("data-id-zona", z.id).attr("data-codigo", z.codigo);
 
         var $ulVenta = $("#mzFichaVentaVendedores").empty();
         var ventasVend = z.venta_por_vendedor || [];
@@ -1608,7 +1687,8 @@
                 vista: mzVista,
                 anio: p.anio,
                 mes: p.mes,
-                id_grupo_marca: grupo
+                id_grupo_marca: grupo,
+                filtro_distribuidor: mzFiltroDistribuidor()
             },
             function (resp) {
                 if (seq !== mzCargaSeq) {
@@ -1695,6 +1775,7 @@
 
     function mzCambiarGrupo() {
         mzAplicarEstiloToggleGrupo();
+        mzEscribirPeriodoUrl();
         mzCargarVista(mzVista, true);
     }
 
@@ -1717,7 +1798,7 @@
         mzCargarVista(mzVista, true);
     });
 
-    $("#mzAnio, #mzMes").on("change", function () {
+    $("#mzAnio, #mzMes, #mzFiltroDistribuidor").on("change", function () {
         mzEscribirPeriodoUrl();
         mzCargarVista(mzVista, true);
     });
@@ -1752,6 +1833,14 @@
         mzAbrirClientesZona(idZona, codigo, "nuevos");
     });
 
+    $(document).on("click", ".btnMzVerSinAtender", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var idZona = $(this).attr("data-id-zona") || $(this).data("idZona");
+        var codigo = $(this).attr("data-codigo") || $(this).data("codigo");
+        mzAbrirClientesZona(idZona, codigo, "sin_atender");
+    });
+
     mzAplicarPeriodoUrl();
 
     if ($("#mzMapLima").length) {
@@ -1761,6 +1850,13 @@
                 "<div class='alert alert-warning' style='margin:12px;'>No se cargó el mapa (Leaflet). Revisa conexión a internet/CDN.</div>"
             );
         }
-        mzCargarVista("lima", true);
+        if (mzVista === "peru") {
+            $("#mzVistaLima").hide();
+            $("#mzVistaPeru").show();
+            $("#mzToggleVista label").removeClass("active btn-primary").addClass("btn-default");
+            $("#mzToggleVista label").has("input[value='peru']").removeClass("btn-default").addClass("active btn-primary");
+            $("input[name='mzVista'][value='peru']").prop("checked", true);
+        }
+        mzCargarVista(mzVista, true);
     }
 })();
