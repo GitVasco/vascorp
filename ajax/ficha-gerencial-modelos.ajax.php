@@ -28,6 +28,7 @@ $acciones = array(
 	"catalogo" => "ctrCatalogo",
 	"resumen" => "ctrResumen",
 	"resumenComparativo" => "ctrResumenComparativo",
+	"comparacionModelos" => "ctrComparacionModelos",
 	"variantes" => "ctrVariantes",
 	"rankings" => "ctrRankings",
 	"evolucion" => "ctrEvolucion",

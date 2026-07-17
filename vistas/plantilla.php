@@ -43,6 +43,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Ficha gerencial de modelos | Vasco System";
         } elseif ($_GET["ruta"] === "resumen-gerencial-modelos") {
             $__tituloVentana = "Resumen gerencial de modelos | Vasco System";
+        } elseif ($_GET["ruta"] === "comparacion-gerencial-modelos") {
+            $__tituloVentana = "Comparación gerencial de modelos | Vasco System";
         } elseif ($_GET["ruta"] === "zonas-comerciales") {
             $__tituloVentana = "Zonas comerciales | Vasco System";
         } elseif ($_GET["ruta"] === "grupos-marcas") {
@@ -117,7 +119,11 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") : ?>
-    <link rel="stylesheet" href="vistas/css/resumen-gerencial-modelos.css?v=4">
+    <link rel="stylesheet" href="vistas/css/resumen-gerencial-modelos.css?v=6">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comparacion-gerencial-modelos") : ?>
+    <link rel="stylesheet" href="vistas/css/comparacion-gerencial-modelos.css?v=8">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") : ?>
@@ -398,6 +404,13 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/resumen-gerencial-modelos.php";
+                }
+            } else if ($_GET["ruta"] == "comparacion-gerencial-modelos") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/comparacion-gerencial-modelos.php";
                 }
             } else if ($_GET["ruta"] == "linea-credito") {
 
@@ -868,7 +881,10 @@ CUERPO DOCUMENTO
     <script src="vistas/js/ficha-gerencial-modelos.js?v=33"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") { ?>
-    <script src="vistas/js/resumen-gerencial-modelos.js?v=4"></script>
+    <script src="vistas/js/resumen-gerencial-modelos.js?v=7"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comparacion-gerencial-modelos") { ?>
+    <script src="vistas/js/comparacion-gerencial-modelos.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
     <script src="vistas/js/zonas-comerciales.js?v=5"></script>

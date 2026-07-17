@@ -1,6 +1,7 @@
 var resumenModelosSolicitud = null;
 var resumenModelosGeneracion = 0;
 var resumenModelosRespuesta = null;
+var resumenModelosSeleccionados = [];
 
 function resumenModelosEscapar(valor) {
     return $("<div>").text(valor === null || valor === undefined ? "" : String(valor)).html();
@@ -47,6 +48,34 @@ function resumenModelosActualizarUrl(parametros) {
 
 function resumenModelosMostrarError(mensaje) {
     $("#resumenModelosError").text(mensaje || "No se pudo cargar el resumen").show();
+}
+
+function resumenModelosActualizarSeleccion() {
+    $("#resumenModelosSeleccionadosTexto").text(resumenModelosSeleccionados.length + " de 4 seleccionados");
+    $("#btnCompararModelosSeleccionados").prop("disabled", resumenModelosSeleccionados.length < 2);
+}
+
+function resumenModelosFiltrarFilas() {
+    var normalizar = function (valor) {
+        var texto = String(valor || "").toLowerCase();
+        return typeof texto.normalize === "function"
+            ? texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            : texto;
+    };
+    var termino = normalizar($("#buscarResumenModelos").val()).trim();
+    var visibles = 0;
+    $("#tablaResumenModelos tr").each(function () {
+        if (!$(this).find(".resumen-modelo-check").length) {
+            $(this).show();
+            return;
+        }
+        var coincide = !termino || normalizar($(this).text()).indexOf(termino) !== -1;
+        $(this).toggle(coincide);
+        if (coincide) {
+            visibles++;
+        }
+    });
+    $("#resumenModelosCoincidencias").text(visibles + (visibles === 1 ? " modelo" : " modelos"));
 }
 
 function resumenModelosRankingSemaforo(posicion, total) {
@@ -103,6 +132,9 @@ function resumenModelosRender(resp) {
         }
 
         return "<tr>"
+            + "<td class='text-center'><input type='checkbox' class='resumen-modelo-check' value='"
+            + resumenModelosEscapar(modelo) + "'"
+            + (resumenModelosSeleccionados.indexOf(modelo) !== -1 ? " checked" : "") + "></td>"
             + "<td><a href='" + resumenModelosEscapar(enlace) + "' title='Abrir ficha gerencial'><strong>"
             + resumenModelosEscapar(modelo) + "</strong> <i class='fa fa-external-link'></i></a></td>"
             + "<td>" + resumenModelosEscapar(item.nombre || modelo) + "</td>"
@@ -123,14 +155,17 @@ function resumenModelosRender(resp) {
     }).join("");
 
     $("#tablaResumenModelos").html(
-        filas || "<tr><td colspan='14' class='text-muted text-center'>No hay modelos para comparar</td></tr>"
+        filas || "<tr><td colspan='15' class='text-muted text-center'>No hay modelos para comparar</td></tr>"
     );
+    resumenModelosFiltrarFilas();
 }
 
 function resumenModelosCargar() {
     var parametros = resumenModelosParametros();
     resumenModelosGeneracion++;
     var generacion = resumenModelosGeneracion;
+    resumenModelosSeleccionados = [];
+    resumenModelosActualizarSeleccion();
     if (resumenModelosSolicitud && resumenModelosSolicitud.readyState !== 4) {
         resumenModelosSolicitud.abort();
     }
@@ -196,6 +231,7 @@ $("#btnLimpiarResumenModelos").on("click", function (evento) {
     $("#resumenModelosGrupo").val("");
     $("#resumenModelosAnio").val(String(hoy.getFullYear()));
     $("#resumenModelosMes").val(String(hoy.getMonth() + 1));
+    $("#buscarResumenModelos").val("");
     $("input[name='resumenModelosOrden'][value='ventas']").prop("checked", true);
     resumenModelosCargar();
 });
@@ -205,6 +241,38 @@ $("input[name='resumenModelosOrden']").on("change", function () {
     if (resumenModelosRespuesta) {
         resumenModelosRender(resumenModelosRespuesta);
     }
+});
+$("#buscarResumenModelos").on("input", resumenModelosFiltrarFilas);
+$(document).on("change", ".resumen-modelo-check", function () {
+    var modelo = String($(this).val() || "");
+    if (this.checked) {
+        if (resumenModelosSeleccionados.length >= 4) {
+            this.checked = false;
+            if (window.toastr) {
+                toastr.warning("Solo puedes comparar hasta 4 modelos");
+            }
+            return;
+        }
+        if (resumenModelosSeleccionados.indexOf(modelo) === -1) {
+            resumenModelosSeleccionados.push(modelo);
+        }
+    } else {
+        resumenModelosSeleccionados = resumenModelosSeleccionados.filter(function (item) {
+            return item !== modelo;
+        });
+    }
+    resumenModelosActualizarSeleccion();
+});
+$("#btnCompararModelosSeleccionados").on("click", function () {
+    if (resumenModelosSeleccionados.length < 2 || resumenModelosSeleccionados.length > 4) {
+        return;
+    }
+    var parametros = resumenModelosParametros();
+    window.location = "index.php?ruta=comparacion-gerencial-modelos"
+        + "&modelos=" + encodeURIComponent(resumenModelosSeleccionados.join(","))
+        + "&id_grupo=" + encodeURIComponent(parametros.id_grupo)
+        + "&anio=" + encodeURIComponent(parametros.anio)
+        + "&mes=" + encodeURIComponent(parametros.mes);
 });
 
 if ($("#zonaResumenModelos").length) {

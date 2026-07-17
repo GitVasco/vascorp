@@ -188,7 +188,7 @@ class ControladorFichaGerencialModelos
 		}
 	}
 
-	static public function ctrResumenComparativo($post)
+	static private function ctrResumenComparativoInterno($post, $modelosFiltro = array())
 	{
 		try {
 			$ctx = self::ctrContextoComparativo($post);
@@ -203,7 +203,8 @@ class ControladorFichaGerencialModelos
 			$filas = ModeloFichaGerencialModelos::mdlResumenComparativo(
 				$ctx["anio"],
 				$ctx["mes"],
-				$idGrupo
+				$idGrupo,
+				$modelosFiltro
 			);
 			$totalesGrupo = array();
 			foreach ($filas as $fila) {
@@ -308,6 +309,133 @@ class ControladorFichaGerencialModelos
 			);
 		} catch (Exception $e) {
 			return array("ok" => false, "mensaje" => "No se pudo construir el resumen comparativo");
+		}
+	}
+
+	static public function ctrResumenComparativo($post)
+	{
+		return self::ctrResumenComparativoInterno($post);
+	}
+
+	static public function ctrComparacionModelos($post)
+	{
+		try {
+			$entrada = isset($post["modelos"]) ? $post["modelos"] : array();
+			if (!is_array($entrada)) {
+				$entrada = explode(",", (string) $entrada);
+			}
+			$modelos = array();
+			foreach ($entrada as $valor) {
+				$modelo = self::ctrModelo(array("modelo" => trim((string) $valor)));
+				if ($modelo === null) {
+					return array("ok" => false, "mensaje" => "La selección contiene un modelo inválido");
+				}
+				if (!in_array($modelo, $modelos, true)) {
+					$modelos[] = $modelo;
+				}
+			}
+			if (count($modelos) < 2 || count($modelos) > 4) {
+				return array("ok" => false, "mensaje" => "Selecciona entre 2 y 4 modelos");
+			}
+
+			$resumen = self::ctrResumenComparativoInterno($post, $modelos);
+			if (!$resumen["ok"]) {
+				return $resumen;
+			}
+			$porModelo = array();
+			foreach ($resumen["data"] as $fila) {
+				$porModelo[$fila["modelo"]] = $fila;
+			}
+
+			$idGrupos = array();
+			foreach ($porModelo as $fila) {
+				if ($fila["grupo_id"] !== null && !in_array((int) $fila["grupo_id"], $idGrupos, true)) {
+					$idGrupos[] = (int) $fila["grupo_id"];
+				}
+			}
+			$datosRanking = ModeloFichaGerencialModelos::mdlDatosRankingGrupos(
+				$idGrupos,
+				$resumen["periodo"]["anio"],
+				$resumen["periodo"]["mes"]
+			);
+			$rankingPorGrupo = array();
+			foreach ($datosRanking as $filaRanking) {
+				$claveGrupo = (string) $filaRanking["grupo_id"];
+				if (!isset($rankingPorGrupo[$claveGrupo])) {
+					$rankingPorGrupo[$claveGrupo] = array();
+				}
+				$rankingPorGrupo[$claveGrupo][] = $filaRanking;
+			}
+			$mapaRanking = array();
+			$mapaRankingUtilidad = array();
+			foreach ($rankingPorGrupo as $claveGrupo => $filasGrupo) {
+				usort($filasGrupo, function ($a, $b) {
+					$diferencia = (float) $b["unidades_vendidas"] - (float) $a["unidades_vendidas"];
+					return $diferencia == 0.0 ? strcmp($a["modelo"], $b["modelo"]) : ($diferencia > 0 ? 1 : -1);
+				});
+				$totalGrupo = count($filasGrupo);
+				foreach ($filasGrupo as $posicion => $filaRanking) {
+					$mapaRanking[$claveGrupo . "|" . $filaRanking["modelo"]] = array($posicion + 1, $totalGrupo);
+				}
+				$filasUtilidad = array_values(array_filter($filasGrupo, function ($filaRanking) {
+					return $filaRanking["utilidad"] !== null;
+				}));
+				usort($filasUtilidad, function ($a, $b) {
+					$diferencia = (float) $b["utilidad"] - (float) $a["utilidad"];
+					return $diferencia == 0.0 ? strcmp($a["modelo"], $b["modelo"]) : ($diferencia > 0 ? 1 : -1);
+				});
+				$totalUtilidad = count($filasUtilidad);
+				foreach ($filasUtilidad as $posicion => $filaRanking) {
+					$mapaRankingUtilidad[$claveGrupo . "|" . $filaRanking["modelo"]] = array($posicion + 1, $totalUtilidad);
+				}
+			}
+
+			$evolucionActual = ModeloFichaGerencialModelos::mdlEvolucionModelos($modelos, $resumen["periodo"]["anio"]);
+			$evolucionAnterior = ModeloFichaGerencialModelos::mdlEvolucionModelos($modelos, $resumen["periodo"]["anio"] - 1);
+			$actualPorModeloMes = array();
+			$anteriorPorModeloMes = array();
+			foreach ($evolucionActual as $filaEvolucion) {
+				$actualPorModeloMes[$filaEvolucion["modelo"]][(int) $filaEvolucion["mes"]] = $filaEvolucion["unidades_vendidas"];
+			}
+			foreach ($evolucionAnterior as $filaEvolucion) {
+				$anteriorPorModeloMes[$filaEvolucion["modelo"]][(int) $filaEvolucion["mes"]] = $filaEvolucion["unidades_vendidas"];
+			}
+
+			$comparacion = array();
+			foreach ($modelos as $modelo) {
+				if (!isset($porModelo[$modelo])) {
+					return array("ok" => false, "mensaje" => "Uno de los modelos no pertenece al grupo seleccionado o ya no está activo");
+				}
+				$serieActual = array();
+				$serieAnterior = array();
+				for ($mes = 1; $mes <= 12; $mes++) {
+					$serieActual[] = isset($actualPorModeloMes[$modelo][$mes]) ? $actualPorModeloMes[$modelo][$mes] : "0";
+					$serieAnterior[] = isset($anteriorPorModeloMes[$modelo][$mes]) ? $anteriorPorModeloMes[$modelo][$mes] : "0";
+				}
+
+				$fila = $porModelo[$modelo];
+				$claveRanking = (string) $fila["grupo_id"] . "|" . $modelo;
+				$fila["ranking"] = isset($mapaRanking[$claveRanking]) ? $mapaRanking[$claveRanking][0] : null;
+				$fila["ranking_total"] = isset($mapaRanking[$claveRanking]) ? $mapaRanking[$claveRanking][1] : 0;
+				$fila["ranking_utilidad"] = isset($mapaRankingUtilidad[$claveRanking]) ? $mapaRankingUtilidad[$claveRanking][0] : null;
+				$fila["ranking_utilidad_total"] = isset($mapaRankingUtilidad[$claveRanking]) ? $mapaRankingUtilidad[$claveRanking][1] : 0;
+				$fila["evolucion_unidades"] = $serieActual;
+				$fila["evolucion_unidades_anterior"] = $serieAnterior;
+				$comparacion[] = $fila;
+			}
+
+			return array(
+				"ok" => true,
+				"data" => $comparacion,
+				"periodo" => $resumen["periodo"],
+				"anio_anterior" => $resumen["anio_anterior"],
+				"meta" => self::ctrMeta(
+					"resumen comparativo y evolución mensual",
+					"comparación homogénea de 2 a 4 modelos para el mismo período"
+				)
+			);
+		} catch (Exception $e) {
+			return array("ok" => false, "mensaje" => "No se pudo construir la comparación de modelos");
 		}
 	}
 

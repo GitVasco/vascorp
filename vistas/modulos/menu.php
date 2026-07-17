@@ -142,6 +142,7 @@
             if ($puedeVerFichaModelos) {
                 $rutasActivasMetasInteligencia[] = "ficha-gerencial-modelos";
                 $rutasActivasMetasInteligencia[] = "resumen-gerencial-modelos";
+                $rutasActivasMetasInteligencia[] = "comparacion-gerencial-modelos";
             }
 
             $rutasActivasCostosRentabilidad = array();

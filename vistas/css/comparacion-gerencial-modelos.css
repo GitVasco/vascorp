@@ -1,0 +1,369 @@
+.comparacion-modelos-page .content {
+    padding-top: 12px;
+}
+
+.comparacion-modelos-barra {
+    display: flex;
+    margin-bottom: 12px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#comparacionModelosPeriodo {
+    color: #52606b;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.comparacion-modelos-grid {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.comparacion-modelos-grid.modelos-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.comparacion-modelos-grid.modelos-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.comparacion-modelos-grid.modelos-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.comparacion-modelo-cabecera,
+.comparacion-indicadores-card {
+    position: relative;
+    padding: 16px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e2e7ea;
+    border-top: 4px solid #3c8dbc;
+    border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(52, 73, 94, .07);
+}
+
+.comparacion-modelo-cabecera {
+    min-height: 205px;
+    text-align: center;
+}
+
+.comparacion-modelo-indice {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 24px;
+}
+
+.comparacion-modelo-cabecera h3 {
+    margin: 4px 0 7px;
+    color: #2f4050;
+    font-size: 22px;
+}
+
+.comparacion-modelo-cabecera > strong,
+.comparacion-modelo-cabecera > small {
+    display: block;
+}
+
+.comparacion-modelo-cabecera > strong {
+    min-height: 34px;
+    color: #3d4b58;
+    font-size: 13px;
+}
+
+.comparacion-modelo-cabecera > small {
+    margin-bottom: 9px;
+    color: #7b8790;
+}
+
+.comparacion-cabecera-rankings {
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.comparacion-ranking {
+    color: #52606b;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.comparacion-ranking.alto i,
+.comparacion-inventario-estado.alto {
+    color: #00a65a;
+}
+
+.comparacion-ranking.medio i,
+.comparacion-inventario-estado.medio {
+    color: #f39c12;
+}
+
+.comparacion-ranking.bajo i,
+.comparacion-inventario-estado.bajo {
+    color: #dd4b39;
+}
+
+.comparacion-ranking.sin-dato i,
+.comparacion-inventario-estado.sin-dato {
+    color: #7f8c8d;
+}
+
+.comparacion-inventario-estado {
+    margin: 5px 0 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.comparacion-modelos-box {
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.comparacion-modelos-box .box-title i {
+    margin-right: 6px;
+}
+
+.comparacion-graficos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.comparacion-graficos-grid .comparacion-modelos-box {
+    margin-bottom: 0;
+}
+
+.comparacion-indicadores-card h4 {
+    margin: 0 0 10px;
+    color: #34495e;
+    font-size: 15px;
+    text-align: center;
+}
+
+.comparacion-indicadores-card > div {
+    display: flex;
+    padding: 6px 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.comparacion-indicadores-card > div:last-child {
+    border-bottom: 0;
+}
+
+.comparacion-indicadores-card span {
+    color: #78848d;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.comparacion-indicadores-card span i {
+    width: 17px;
+    margin-right: 4px;
+    color: #3c8dbc;
+    font-size: 12px;
+    text-align: center;
+}
+
+.comparacion-indicadores-card > div:nth-of-type(2) span i,
+.comparacion-indicadores-card > div:nth-of-type(7) span i {
+    color: #f39c12;
+}
+
+.comparacion-indicadores-card > div:nth-of-type(3) span i,
+.comparacion-indicadores-card > div:nth-of-type(6) span i {
+    color: #00a65a;
+}
+
+.comparacion-indicadores-card > div:nth-of-type(4) span i,
+.comparacion-indicadores-card > div:nth-of-type(9) span i {
+    color: #605ca8;
+}
+
+.comparacion-indicadores-card > div:nth-of-type(5) span i,
+.comparacion-indicadores-card > div:nth-of-type(8) span i {
+    color: #dd4b39;
+}
+
+.comparacion-indicadores-card strong {
+    color: #34495e;
+    font-size: 12px;
+    text-align: right;
+}
+
+.comparacion-grafico {
+    position: relative;
+    height: 255px;
+}
+
+.comparacion-grafico-leyenda {
+    display: flex;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: #68737d;
+    font-size: 10px;
+}
+
+.comparacion-grafico-leyenda span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.comparacion-grafico-leyenda i {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+}
+
+.comparacion-grafico.grande {
+    height: 320px;
+}
+
+.comparacion-grafico.radar {
+    height: 255px;
+    margin: 0 auto;
+}
+
+.comparacion-radar-descripcion {
+    margin-bottom: 6px;
+    font-size: 11px;
+    text-align: center;
+}
+
+.comparacion-grafico canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.comparacion-modelos-tabla {
+    min-width: 620px;
+    margin-bottom: 0;
+    font-size: 12px;
+}
+
+.comparacion-ganadores-titulo {
+    margin: 0 0 10px;
+    color: #52606b;
+    font-size: 13px;
+}
+
+.comparacion-ganadores-titulo i {
+    margin-right: 5px;
+    color: #f39c12;
+}
+
+.comparacion-ganadores-grid {
+    min-width: 760px;
+    margin-bottom: 14px;
+}
+
+.comparacion-ganador-card {
+    padding: 11px;
+    background: #fff;
+    border: 1px solid #e2e7ea;
+    border-top: 3px solid #3c8dbc;
+    border-radius: 7px;
+}
+
+.comparacion-ganador-card > strong,
+.comparacion-ganador-card > span {
+    display: block;
+}
+
+.comparacion-ganador-card > strong {
+    margin-bottom: 3px;
+    color: #34495e;
+    font-size: 14px;
+}
+
+.comparacion-ganador-card > span {
+    margin-bottom: 7px;
+    color: #d77d00;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.comparacion-ganador-card small {
+    display: inline-block;
+    margin: 2px 4px 2px 0;
+    padding: 3px 7px;
+    background: #e8f7ef;
+    border-radius: 10px;
+    color: #008d4c;
+    font-size: 9px;
+}
+
+.comparacion-ganador-card em {
+    color: #8a959e;
+    font-size: 10px;
+}
+
+.comparacion-modelos-tabla th,
+.comparacion-modelos-tabla td {
+    padding: 8px !important;
+    text-align: center;
+    vertical-align: middle !important;
+}
+
+.comparacion-modelos-tabla th:first-child {
+    width: 220px;
+    text-align: left;
+}
+
+.comparacion-modelos-tabla thead th {
+    background: #f4f7f9;
+    color: #45515c;
+}
+
+.comparacion-modelos-tabla .comparacion-mejor {
+    background: #e8f7ef;
+    color: #008d4c;
+    font-weight: 700;
+}
+
+.comparacion-trofeo {
+    color: #f39c12;
+}
+
+@media (max-width: 767px) {
+    .comparacion-modelos-grid.modelos-2,
+    .comparacion-modelos-grid.modelos-3,
+    .comparacion-modelos-grid.modelos-4 {
+        grid-template-columns: 1fr;
+    }
+
+    .comparacion-modelos-barra {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .comparacion-graficos-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .comparacion-cabecera-rankings {
+        flex-direction: column;
+        gap: 4px;
+    }
+}

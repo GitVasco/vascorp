@@ -13,6 +13,34 @@
     font-size: 11px;
 }
 
+.resumen-modelos-buscador {
+    position: relative;
+    display: flex;
+    max-width: 620px;
+    margin-bottom: 10px;
+    align-items: center;
+    gap: 10px;
+}
+
+.resumen-modelos-buscador > i {
+    position: absolute;
+    z-index: 2;
+    left: 11px;
+    color: #8a959e;
+}
+
+.resumen-modelos-buscador .form-control {
+    padding-left: 32px;
+    border-radius: 17px;
+}
+
+#resumenModelosCoincidencias {
+    min-width: 75px;
+    color: #7b8790;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
 .resumen-ranking-leyenda {
     display: flex;
     flex-wrap: wrap;
@@ -70,6 +98,17 @@
     font-size: 12px;
 }
 
+.resumen-modelos-seleccion-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#resumenModelosSeleccionadosTexto {
+    color: #68737d;
+    font-size: 11px;
+}
+
 .resumen-modelos-tabla-wrap {
     max-height: calc(100vh - 285px);
     min-height: 260px;
@@ -96,10 +135,14 @@
     white-space: nowrap;
 }
 
-.resumen-modelos-tabla thead th:nth-child(1),
 .resumen-modelos-tabla thead th:nth-child(2),
-.resumen-modelos-tabla thead th:nth-child(3) {
+.resumen-modelos-tabla thead th:nth-child(3),
+.resumen-modelos-tabla thead th:nth-child(4) {
     text-align: left;
+}
+
+.resumen-modelos-tabla thead th:first-child {
+    text-align: center;
 }
 
 .resumen-modelos-tabla tbody td {
@@ -109,10 +152,14 @@
     white-space: nowrap;
 }
 
-.resumen-modelos-tabla tbody td:nth-child(1),
 .resumen-modelos-tabla tbody td:nth-child(2),
-.resumen-modelos-tabla tbody td:nth-child(3) {
+.resumen-modelos-tabla tbody td:nth-child(3),
+.resumen-modelos-tabla tbody td:nth-child(4) {
     text-align: left;
+}
+
+.resumen-modelos-tabla tbody td:first-child {
+    text-align: center;
 }
 
 .resumen-modelos-tabla td small {
@@ -124,27 +171,34 @@
 }
 
 .resumen-modelos-tabla td:first-child {
-    min-width: 95px;
+    min-width: 55px;
 }
 
 .resumen-modelos-tabla td:nth-child(2) {
-    min-width: 190px;
+    min-width: 95px;
 }
 
 .resumen-modelos-tabla td:nth-child(3) {
+    min-width: 190px;
+}
+
+.resumen-modelos-tabla td:nth-child(4) {
     min-width: 145px;
 }
 
-.resumen-modelos-tabla td:nth-child(4),
 .resumen-modelos-tabla td:nth-child(5) {
     min-width: 115px;
 }
 
-.resumen-modelos-tabla td:first-child a {
+.resumen-modelos-tabla td:nth-child(6) {
+    min-width: 115px;
+}
+
+.resumen-modelos-tabla td:nth-child(2) a {
     color: #3c8dbc;
 }
 
-.resumen-modelos-tabla td:first-child a:hover {
+.resumen-modelos-tabla td:nth-child(2) a:hover {
     color: #216b96;
     text-decoration: underline;
 }

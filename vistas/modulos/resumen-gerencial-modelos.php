@@ -90,12 +90,23 @@ $mesesResumenModelos = array(
         <div class="box box-info" id="zonaResumenModelos">
             <div class="box-header with-border">
                 <h3 class="box-title"><i class="fa fa-table"></i> Comparativo de modelos</h3>
-                <span class="resumen-modelos-cargando pull-right"></span>
+                <div class="box-tools pull-right resumen-modelos-seleccion-tools">
+                    <span id="resumenModelosSeleccionadosTexto">0 de 4 seleccionados</span>
+                    <button type="button" class="btn btn-success btn-sm" id="btnCompararModelosSeleccionados" disabled>
+                        <i class="fa fa-columns"></i> Comparar seleccionados
+                    </button>
+                    <span class="resumen-modelos-cargando"></span>
+                </div>
             </div>
             <div class="box-body">
                 <p class="text-muted resumen-modelos-descripcion">
                     La variación interanual compara las unidades acumuladas hasta el mes consultado. El stock disponible y la lista 9 corresponden a sus valores actuales.
                 </p>
+                <div class="resumen-modelos-buscador">
+                    <i class="fa fa-search"></i>
+                    <input type="text" class="form-control" id="buscarResumenModelos" placeholder="Buscar por código, nombre, marca o grupo">
+                    <span id="resumenModelosCoincidencias"></span>
+                </div>
                 <div class="resumen-ranking-leyenda">
                     <span><i class="fa fa-check alto"></i> Top 20%</span>
                     <span><i class="fa fa-circle medio"></i> Entre 21% y 50%</span>
@@ -105,6 +116,7 @@ $mesesResumenModelos = array(
                     <table class="table table-condensed table-hover resumen-modelos-tabla">
                         <thead>
                             <tr>
+                                <th class="text-center">Elegir</th>
                                 <th>Modelo</th>
                                 <th>Nombre</th>
                                 <th>Marca / grupo</th>
@@ -122,7 +134,7 @@ $mesesResumenModelos = array(
                             </tr>
                         </thead>
                         <tbody id="tablaResumenModelos">
-                            <tr><td colspan="14" class="text-muted text-center">Cargando información...</td></tr>
+                            <tr><td colspan="15" class="text-muted text-center">Cargando información...</td></tr>
                         </tbody>
                     </table>
                 </div>

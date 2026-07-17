@@ -229,6 +229,88 @@ class ModeloFichaGerencialModelos
 		);
 	}
 
+	static public function mdlDatosRankingGrupos($idGrupos, $anio, $mes)
+	{
+		$idGrupos = array_values(array_unique(array_filter(array_map("intval", $idGrupos))));
+		$tabla = self::mdlResolverTablaMovimientos($anio);
+		if ($tabla === null || empty($idGrupos)) {
+			return array();
+		}
+		$marcadores = array();
+		foreach ($idGrupos as $indice => $idGrupo) {
+			$marcadores[] = ":grupo_" . $indice;
+		}
+		$rango = self::mdlRangoMes($anio, $mes);
+		$sql = "SELECT ventas.grupo_id,
+				ventas.modelo,
+				ventas.unidades_vendidas,
+				CASE
+					WHEN p.precio9 IS NOT NULL AND c.costo_unitario IS NOT NULL THEN
+						CAST(
+							(ventas.unidades_vendidas * p.precio9)
+							- (ventas.unidades_vendidas * c.costo_unitario)
+							AS DECIMAL(20,4)
+						)
+					ELSE NULL
+				END AS utilidad
+			FROM (
+				SELECT gm.id_grupo AS grupo_id,
+					TRIM(a.modelo) AS modelo,
+					SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
+				FROM articulojf a
+				INNER JOIN modelojf mo
+					ON TRIM(mo.modelo) = TRIM(a.modelo)
+					AND UPPER(TRIM(IFNULL(mo.estado, ''))) = 'ACTIVO'
+				INNER JOIN (
+					SELECT d.id_marca, d.id_grupo_marca AS id_grupo
+					FROM grupos_marcas_detallejf d
+					INNER JOIN grupos_marcas_comercialjf g
+						ON g.id = d.id_grupo_marca AND g.estado = 1
+					WHERE d.id_grupo_marca IN (" . implode(", ", $marcadores) . ")
+					GROUP BY d.id_marca, d.id_grupo_marca
+				) gm ON gm.id_marca = mo.id_marca
+				INNER JOIN {$tabla} m ON m.articulo = a.articulo
+				WHERE m.fecha >= :inicio AND m.fecha < :fin
+				  AND " . self::sqlTiposVenta("m") . "
+				  AND " . self::sqlCabeceraValida("m") . "
+				GROUP BY gm.id_grupo, TRIM(a.modelo)
+			) ventas
+			LEFT JOIN (
+				SELECT TRIM(modelo) AS modelo, MAX(id) AS id
+				FROM preciojf
+				GROUP BY TRIM(modelo)
+			) ultimo_precio ON ultimo_precio.modelo = ventas.modelo
+			LEFT JOIN preciojf p ON p.id = ultimo_precio.id
+			LEFT JOIN costos_modelo_mensualjf c
+				ON c.modelo = ventas.modelo
+				AND c.estado = 'aprobado'
+				AND (c.anio * 100 + c.mes) <= :periodo_costo
+			LEFT JOIN costos_modelo_mensualjf costo_nuevo
+				ON costo_nuevo.modelo = c.modelo
+				AND costo_nuevo.estado = 'aprobado'
+				AND (costo_nuevo.anio * 100 + costo_nuevo.mes) <= :periodo_costo_nuevo
+				AND (
+					(costo_nuevo.anio * 100 + costo_nuevo.mes) > (c.anio * 100 + c.mes)
+					OR (
+						(costo_nuevo.anio * 100 + costo_nuevo.mes) = (c.anio * 100 + c.mes)
+						AND costo_nuevo.id > c.id
+					)
+				)
+			WHERE costo_nuevo.id IS NULL
+			ORDER BY ventas.grupo_id, ventas.unidades_vendidas DESC, ventas.modelo";
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($idGrupos as $indice => $idGrupo) {
+			$stmt->bindValue(":grupo_" . $indice, $idGrupo, PDO::PARAM_INT);
+		}
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$periodoCosto = (int) $anio * 100 + (int) $mes;
+		$stmt->bindValue(":periodo_costo", $periodoCosto, PDO::PARAM_INT);
+		$stmt->bindValue(":periodo_costo_nuevo", $periodoCosto, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
 	static public function mdlLideresComerciales($modelo, $anio, $mes)
 	{
 		$tabla = self::mdlResolverTablaMovimientos($anio);
@@ -389,7 +471,7 @@ class ModeloFichaGerencialModelos
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
-	static public function mdlResumenComparativo($anio, $mes, $idGrupo = 0)
+	static public function mdlResumenComparativo($anio, $mes, $idGrupo = 0, $modelos = array())
 	{
 		$tabla = self::mdlResolverTablaMovimientos($anio);
 		if ($tabla === null) {
@@ -404,6 +486,19 @@ class ModeloFichaGerencialModelos
 		$finAnterior = $mes === 12
 			? sprintf("%04d-01-01", $anioAnterior + 1)
 			: sprintf("%04d-%02d-01", $anioAnterior, $mes + 1);
+		$modelos = array_values(array_unique(array_filter(array_map("trim", $modelos))));
+		$marcadoresModelos = array(
+			"anterior" => array(),
+			"ventas" => array(),
+			"inventario" => array(),
+			"precio" => array(),
+			"principal" => array()
+		);
+		foreach ($modelos as $indice => $modelo) {
+			foreach ($marcadoresModelos as $seccion => $marcadores) {
+				$marcadoresModelos[$seccion][] = ":modelo_{$seccion}_{$indice}";
+			}
+		}
 
 		if ($tablaAnterior !== null) {
 			$sqlAnterior = "SELECT TRIM(a.modelo) AS modelo,
@@ -412,7 +507,8 @@ class ModeloFichaGerencialModelos
 				INNER JOIN articulojf a ON a.articulo = m.articulo
 				WHERE m.fecha >= :inicio_anterior AND m.fecha < :fin_anterior
 				  AND " . self::sqlTiposVenta("m") . "
-				  AND " . self::sqlCabeceraValida("m") . "
+				  AND " . self::sqlCabeceraValida("m")
+				  . (!empty($modelos) ? " AND TRIM(a.modelo) IN (" . implode(", ", $marcadoresModelos["anterior"]) . ")" : "") . "
 				GROUP BY TRIM(a.modelo)";
 		} else {
 			$sqlAnterior = "SELECT NULL AS modelo, 0 AS unidades_acumuladas_anterior WHERE 1 = 0";
@@ -490,7 +586,8 @@ class ModeloFichaGerencialModelos
 				INNER JOIN articulojf a ON a.articulo = m.articulo
 				WHERE m.fecha >= :inicio_anio_actual AND m.fecha < :fin_actual
 				  AND " . self::sqlTiposVenta("m") . "
-				  AND " . self::sqlCabeceraValida("m") . "
+				  AND " . self::sqlCabeceraValida("m")
+				  . (!empty($modelos) ? " AND TRIM(a.modelo) IN (" . implode(", ", $marcadoresModelos["ventas"]) . ")" : "") . "
 				GROUP BY TRIM(a.modelo)
 			) ventas ON ventas.modelo = TRIM(mo.modelo)
 			LEFT JOIN ({$sqlAnterior}) anterior ON anterior.modelo = TRIM(mo.modelo)
@@ -499,11 +596,13 @@ class ModeloFichaGerencialModelos
 					COALESCE(SUM(IFNULL(stock, 0) - IFNULL(pedidos, 0)), 0) AS stock_disponible
 				FROM articulojf
 				WHERE UPPER(TRIM(IFNULL(estado, ''))) = 'ACTIVO'
+				" . (!empty($modelos) ? " AND TRIM(modelo) IN (" . implode(", ", $marcadoresModelos["inventario"]) . ")" : "") . "
 				GROUP BY TRIM(modelo)
 			) inv ON inv.modelo = TRIM(mo.modelo)
 			LEFT JOIN (
 				SELECT TRIM(modelo) AS modelo, MAX(id) AS id
 				FROM preciojf
+				" . (!empty($modelos) ? " WHERE TRIM(modelo) IN (" . implode(", ", $marcadoresModelos["precio"]) . ")" : "") . "
 				GROUP BY TRIM(modelo)
 			) ultimo_precio ON ultimo_precio.modelo = TRIM(mo.modelo)
 			LEFT JOIN preciojf p ON p.id = ultimo_precio.id
@@ -525,6 +624,9 @@ class ModeloFichaGerencialModelos
 			WHERE UPPER(TRIM(IFNULL(mo.estado, ''))) = 'ACTIVO'
 			  AND TRIM(IFNULL(mo.modelo, '')) <> ''
 			  AND costo_nuevo.id IS NULL";
+		if (!empty($modelos)) {
+			$sql .= " AND TRIM(mo.modelo) IN (" . implode(", ", $marcadoresModelos["principal"]) . ")";
+		}
 		if ((int) $idGrupo > 0) {
 			$sql .= " AND gm.id_grupo IS NOT NULL";
 		}
@@ -544,6 +646,14 @@ class ModeloFichaGerencialModelos
 		$stmt->bindValue(":periodo_costo_nuevo", $periodoCosto, PDO::PARAM_INT);
 		if ((int) $idGrupo > 0) {
 			$stmt->bindValue(":id_grupo_mapeo", (int) $idGrupo, PDO::PARAM_INT);
+		}
+		foreach ($modelos as $indice => $modelo) {
+			foreach ($marcadoresModelos as $seccion => $marcadores) {
+				if ($seccion === "anterior" && $tablaAnterior === null) {
+					continue;
+				}
+				$stmt->bindValue(":modelo_{$seccion}_{$indice}", $modelo, PDO::PARAM_STR);
+			}
 		}
 		$stmt->execute();
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -669,6 +779,41 @@ class ModeloFichaGerencialModelos
 			ORDER BY mes";
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $inicio, PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $fin, PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	static public function mdlEvolucionModelos($modelos, $anio)
+	{
+		$modelos = array_values(array_unique(array_filter(array_map("trim", $modelos))));
+		$tabla = self::mdlResolverTablaMovimientos($anio);
+		if ($tabla === null || empty($modelos)) {
+			return array();
+		}
+		$marcadores = array();
+		foreach ($modelos as $indice => $modelo) {
+			$marcadores[] = ":modelo_" . $indice;
+		}
+		$inicio = sprintf("%04d-01-01", (int) $anio);
+		$fin = sprintf("%04d-01-01", (int) $anio + 1);
+		$sql = "SELECT TRIM(a.modelo) AS modelo,
+				MONTH(m.fecha) AS mes,
+				COALESCE(SUM(IFNULL(m.total, 0)), 0) AS venta_neta,
+				COALESCE(SUM(IFNULL(m.cantidad, 0)), 0) AS unidades_vendidas
+			FROM articulojf a
+			INNER JOIN {$tabla} m ON m.articulo = a.articulo
+			WHERE TRIM(a.modelo) IN (" . implode(", ", $marcadores) . ")
+			  AND m.fecha >= :inicio AND m.fecha < :fin
+			  AND " . self::sqlTiposVenta("m") . "
+			  AND " . self::sqlCabeceraValida("m") . "
+			GROUP BY TRIM(a.modelo), MONTH(m.fecha)
+			ORDER BY TRIM(a.modelo), mes";
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($modelos as $indice => $modelo) {
+			$stmt->bindValue(":modelo_" . $indice, $modelo, PDO::PARAM_STR);
+		}
 		$stmt->bindValue(":inicio", $inicio, PDO::PARAM_STR);
 		$stmt->bindValue(":fin", $fin, PDO::PARAM_STR);
 		$stmt->execute();
