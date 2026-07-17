@@ -14,7 +14,7 @@ class ControladorFichaGerencialModelos
 			&& usuarioPuedeModulo("gestion_comercial", "ficha_modelos", "conciliar");
 	}
 
-	static private function ctrPeriodo($post, $requiereMes = true)
+	static private function ctrPeriodoSimple($post, $requiereMes = true)
 	{
 		$anio = isset($post["anio"]) ? (int) $post["anio"] : (int) date("Y");
 		$mes = isset($post["mes"]) ? (int) $post["mes"] : (int) date("n");
@@ -25,6 +25,26 @@ class ControladorFichaGerencialModelos
 			return null;
 		}
 		return array("anio" => $anio, "mes" => $mes);
+	}
+
+	/**
+	 * Acepta desde/hasta (YYYY-MM) o compatibilidad anio+mes.
+	 */
+	static private function ctrPeriodoRango($post)
+	{
+		$desde = isset($post["desde"]) ? trim((string) $post["desde"]) : "";
+		$hasta = isset($post["hasta"]) ? trim((string) $post["hasta"]) : "";
+		if ($desde === "" && $hasta === "") {
+			$simple = self::ctrPeriodoSimple($post);
+			if ($simple === null) {
+				return null;
+			}
+			$desde = sprintf("%04d-%02d", $simple["anio"], $simple["mes"]);
+			$hasta = $desde;
+		} elseif ($desde === "" || $hasta === "") {
+			return null;
+		}
+		return ModeloFichaGerencialModelos::mdlConstruirPeriodo($desde, $hasta, 12);
 	}
 
 	static private function ctrModelo($post)
@@ -45,28 +65,40 @@ class ControladorFichaGerencialModelos
 		);
 	}
 
+	static private function ctrPeriodoRespuesta($periodo)
+	{
+		return array(
+			"desde" => $periodo["desde"],
+			"hasta" => $periodo["hasta"],
+			"inicio" => $periodo["inicio"],
+			"fin_exclusivo" => $periodo["fin"],
+			"meses" => (int) $periodo["meses"],
+			"parcial" => !empty($periodo["parcial"]),
+			"anio" => (int) $periodo["hasta_anio"],
+			"mes" => (int) $periodo["hasta_mes"]
+		);
+	}
+
 	static private function ctrContexto($post)
 	{
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso para consultar la ficha");
 		}
 		$modelo = self::ctrModelo($post);
-		$periodo = self::ctrPeriodo($post);
+		$periodo = self::ctrPeriodoRango($post);
 		if ($modelo === null || $periodo === null) {
-			return array("ok" => false, "mensaje" => "Modelo o período inválidos");
+			return array("ok" => false, "mensaje" => "Modelo o período inválidos. Usa un rango de hasta 12 meses sin meses futuros.");
 		}
 		$cabecera = ModeloFichaGerencialModelos::mdlCabeceraModelo($modelo);
 		if (!$cabecera) {
 			return array("ok" => false, "mensaje" => "El modelo no existe o no está activo");
 		}
-		if (ModeloFichaGerencialModelos::mdlResolverTablaMovimientos($periodo["anio"]) === null) {
-			return array("ok" => false, "mensaje" => "No existe información de movimientos para el año seleccionado");
-		}
 		return array(
 			"ok" => true,
 			"modelo" => $modelo,
-			"anio" => $periodo["anio"],
-			"mes" => $periodo["mes"],
+			"periodo" => $periodo,
+			"anio" => (int) $periodo["hasta_anio"],
+			"mes" => (int) $periodo["hasta_mes"],
 			"cabecera" => $cabecera
 		);
 	}
@@ -76,7 +108,7 @@ class ControladorFichaGerencialModelos
 		if (!self::ctrPuedeVer()) {
 			return array("ok" => false, "mensaje" => "Sin permiso para consultar el resumen");
 		}
-		$periodo = self::ctrPeriodo($post);
+		$periodo = self::ctrPeriodoSimple($post);
 		if ($periodo === null) {
 			return array("ok" => false, "mensaje" => "Período inválido");
 		}
@@ -112,6 +144,22 @@ class ControladorFichaGerencialModelos
 		}
 	}
 
+	static private function ctrTotalesVentasMensuales($ventasMensuales)
+	{
+		$ventaNeta = 0.0;
+		$unidades = 0.0;
+		$ultimaVenta = null;
+		foreach ($ventasMensuales as $fila) {
+			$ventaNeta += (float) $fila["venta_neta"];
+			$unidades += (float) $fila["unidades_vendidas"];
+		}
+		return array(
+			"venta_neta" => number_format($ventaNeta, 4, ".", ""),
+			"unidades_vendidas" => number_format($unidades, 4, ".", ""),
+			"ultima_venta" => $ultimaVenta
+		);
+	}
+
 	static public function ctrResumen($post)
 	{
 		try {
@@ -119,55 +167,50 @@ class ControladorFichaGerencialModelos
 			if (!$ctx["ok"]) {
 				return $ctx;
 			}
+			$periodo = $ctx["periodo"];
 			$inventario = ModeloFichaGerencialModelos::mdlInventarioResumen($ctx["modelo"]);
-			$ventas = ModeloFichaGerencialModelos::mdlVentasResumen($ctx["modelo"], $ctx["anio"], $ctx["mes"]);
-			$unidadesNetas = isset($ventas["unidades_vendidas"]) ? $ventas["unidades_vendidas"] : "0";
+			$ventasMensuales = ModeloFichaGerencialModelos::mdlVentasMensuales($ctx["modelo"], $periodo);
+			$ventas = self::ctrTotalesVentasMensuales($ventasMensuales);
+			$unidadesNetas = $ventas["unidades_vendidas"];
+			$ventaNeta = $ventas["venta_neta"];
 			$precio9 = ModeloFichaGerencialModelos::mdlPrecio9Valorizado($ctx["modelo"], $unidadesNetas);
-			$ranking = ModeloFichaGerencialModelos::mdlRankingGeneral($ctx["modelo"], $ctx["anio"], $ctx["mes"]);
-			$lideresComerciales = ModeloFichaGerencialModelos::mdlLideresComerciales($ctx["modelo"], $ctx["anio"], $ctx["mes"]);
-			$rentabilidad = null;
-			if ($precio9) {
-				$rentabilidad = ModeloCostosModeloMensual::mdlCalcularRentabilidadUltimoAprobado(
-					$ctx["modelo"],
-					$ctx["anio"],
-					$ctx["mes"],
-					$precio9["ventas_acumuladas"],
-					$unidadesNetas
-				);
-				if ($rentabilidad) {
-					$rentabilidad["costo_arrastrado"] = (int) $rentabilidad["costo_anio"] !== $ctx["anio"]
-						|| (int) $rentabilidad["costo_mes"] !== $ctx["mes"];
-				}
-			}
+			$rentabilidad = ModeloCostosModeloMensual::mdlCalcularRentabilidadRango(
+				$ctx["modelo"],
+				$ventasMensuales,
+				$ventaNeta,
+				$unidadesNetas
+			);
 
 			$precioPromedio = null;
-			$unidades = isset($ventas["unidades_vendidas"]) ? (float) $ventas["unidades_vendidas"] : 0.0;
+			$unidades = (float) $unidadesNetas;
 			if ($unidades != 0.0) {
-				$precioPromedio = number_format((float) $ventas["venta_neta"] / $unidades, 4, ".", "");
+				$precioPromedio = number_format((float) $ventaNeta / $unidades, 4, ".", "");
 			}
 			$stockDisponible = isset($inventario["stock_disponible"]) ? (float) $inventario["stock_disponible"] : 0.0;
-			$rotacion = $stockDisponible > 0 ? $unidades / $stockDisponible : null;
-			$diasPeriodo = ($ctx["anio"] === (int) date("Y") && $ctx["mes"] === (int) date("n"))
-				? (int) date("j")
-				: cal_days_in_month(CAL_GREGORIAN, $ctx["mes"], $ctx["anio"]);
+			$meses = max(1, (int) $periodo["meses"]);
+			$promedioMensualUnidades = $unidades / $meses;
+			$rotacion = $stockDisponible > 0 ? $promedioMensualUnidades / $stockDisponible : null;
+			$diasPeriodo = ModeloFichaGerencialModelos::mdlDiasEfectivosPeriodo($periodo);
 			$promedioDiario = $diasPeriodo > 0 ? $unidades / $diasPeriodo : 0.0;
 			$diasInventario = ($stockDisponible > 0 && $promedioDiario > 0)
 				? $stockDisponible / $promedioDiario
 				: null;
+			$fuentesAnios = array_map(function ($anio) {
+				return "movimientosjf_" . $anio;
+			}, $periodo["anios"]);
 
 			return array(
 				"ok" => true,
 				"cabecera" => $ctx["cabecera"],
-				"periodo" => array("anio" => $ctx["anio"], "mes" => $ctx["mes"]),
+				"periodo" => self::ctrPeriodoRespuesta($periodo),
 				"ventas" => $ventas,
 				"inventario" => $inventario,
 				"precio_promedio" => $precioPromedio,
 				"precio_lista9" => $precio9 ? $precio9["precio9"] : null,
 				"ventas_acumuladas" => $precio9 ? $precio9["ventas_acumuladas"] : null,
-				"ranking_general" => $ranking,
-				"lideres_comerciales" => $lideresComerciales,
 				"rotacion_promedio" => $rotacion === null ? null : number_format($rotacion, 4, ".", ""),
 				"dias_inventario" => $diasInventario === null ? null : number_format($diasInventario, 2, ".", ""),
+				"promedio_mensual_unidades" => number_format($promedioMensualUnidades, 4, ".", ""),
 				"rentabilidad" => $rentabilidad ? $rentabilidad : array(
 					"costo_anio" => null,
 					"costo_mes" => null,
@@ -178,13 +221,53 @@ class ControladorFichaGerencialModelos
 					"estado" => "costo_pendiente_aprobacion"
 				),
 				"meta" => array(
-					"ventas" => self::ctrMeta("movimientosjf_" . $ctx["anio"] . " + articulojf + preciojf", "ventas acumuladas = unidades netas × precio de lista 9"),
-					"inventario" => self::ctrMeta("articulojf", "stock disponible = stock físico - pedidos"),
-					"rentabilidad" => self::ctrMeta("costos_modelo_mensualjf + preciojf", "usa el costo aprobado del período o el último aprobado anterior; nunca uno futuro")
+					"ventas" => self::ctrMeta(
+						implode(" + ", $fuentesAnios) . " + articulojf + preciojf",
+						"venta neta del período; valorización lista 9 = unidades netas × precio de lista 9"
+					),
+					"inventario" => self::ctrMeta("articulojf", "stock disponible actual = stock físico - pedidos (fotografía actual, no histórica)"),
+					"rentabilidad" => self::ctrMeta(
+						"costos_modelo_mensualjf",
+						"costo de venta = suma mensual de unidades × costo aprobado no futuro de cada mes; con un solo costo aprobado se aplica a todo el rango"
+					)
 				)
 			);
 		} catch (Exception $e) {
 			return array("ok" => false, "mensaje" => "No se pudo construir el resumen");
+		}
+	}
+
+	static public function ctrRanking($post)
+	{
+		try {
+			$ctx = self::ctrContexto($post);
+			if (!$ctx["ok"]) {
+				return $ctx;
+			}
+			return array(
+				"ok" => true,
+				"ranking_general" => ModeloFichaGerencialModelos::mdlRankingGeneral($ctx["modelo"], $ctx["periodo"])
+			);
+		} catch (Exception $e) {
+			return array("ok" => false, "mensaje" => "No se pudo cargar el ranking");
+		}
+	}
+
+	static public function ctrLideres($post)
+	{
+		try {
+			$ctx = self::ctrContexto($post);
+			if (!$ctx["ok"]) {
+				return $ctx;
+			}
+			return array(
+				"ok" => true,
+				"periodo" => self::ctrPeriodoRespuesta($ctx["periodo"]),
+				"lideres_comerciales" => ModeloFichaGerencialModelos::mdlLideresComerciales($ctx["modelo"], $ctx["periodo"]),
+				"meta" => self::ctrMeta("movimientos + catálogo comercial", "Ventas del período por zona, vendedor y cliente")
+			);
+		} catch (Exception $e) {
+			return array("ok" => false, "mensaje" => "No se pudieron cargar los líderes comerciales");
 		}
 	}
 
@@ -446,19 +529,27 @@ class ControladorFichaGerencialModelos
 			if (!$ctx["ok"]) {
 				return $ctx;
 			}
-			$filas = ModeloFichaGerencialModelos::mdlVariantes($ctx["modelo"], $ctx["anio"], $ctx["mes"]);
+			$periodo = $ctx["periodo"];
+			$filas = ModeloFichaGerencialModelos::mdlVariantes($ctx["modelo"], $periodo);
 			$colores = array();
 			$tallas = array();
 			foreach ($filas as $fila) {
 				$colores[$fila["cod_color"]] = $fila["color"];
 				$tallas[$fila["cod_talla"]] = $fila["talla"];
 			}
+			$fuentes = array_map(function ($anio) {
+				return "movimientosjf_" . $anio;
+			}, $periodo["anios"]);
 			return array(
 				"ok" => true,
+				"periodo" => self::ctrPeriodoRespuesta($periodo),
 				"data" => $filas,
 				"colores" => $colores,
 				"tallas" => $tallas,
-				"meta" => self::ctrMeta("articulojf + movimientosjf_" . $ctx["anio"], "Agregado por código de color y talla")
+				"meta" => self::ctrMeta(
+					"articulojf + " . implode(" + ", $fuentes),
+					"Ventas del período; stock/pedidos = situación actual"
+				)
 			);
 		} catch (Exception $e) {
 			return array("ok" => false, "mensaje" => "No se pudieron cargar las variantes");
@@ -524,31 +615,40 @@ class ControladorFichaGerencialModelos
 			if (!$ctx["ok"]) {
 				return $ctx;
 			}
-			$construirSerie = function ($anio) use ($ctx) {
-				$mapa = array();
-				foreach (ModeloFichaGerencialModelos::mdlEvolucion($ctx["modelo"], $anio) as $fila) {
-					$mapa[(int) $fila["mes"]] = $fila;
-				}
-				$serie = array();
-				for ($mes = 1; $mes <= 12; $mes++) {
-					$serie[] = array(
-						"mes" => $mes,
-						"venta_neta" => isset($mapa[$mes]) ? (float) $mapa[$mes]["venta_neta"] : 0,
-						"unidades_vendidas" => isset($mapa[$mes]) ? (float) $mapa[$mes]["unidades_vendidas"] : 0
+			$periodo = $ctx["periodo"];
+			$periodoAnterior = ModeloFichaGerencialModelos::mdlPeriodoHomologoAnterior($periodo);
+			$data = ModeloFichaGerencialModelos::mdlEvolucionPeriodo($ctx["modelo"], $periodo);
+			$dataAnterior = array();
+			if ($periodoAnterior) {
+				try {
+					$dataAnterior = ModeloFichaGerencialModelos::mdlEvolucionPeriodo(
+						$ctx["modelo"],
+						$periodoAnterior
 					);
+				} catch (Exception $eAnterior) {
+					$dataAnterior = array();
+					$periodoAnterior = null;
 				}
-				return $serie;
-			};
-			$anioAnterior = $ctx["anio"] - 1;
+			}
+			$etiquetaAnterior = $periodoAnterior
+				? ($periodoAnterior["desde"] === $periodoAnterior["hasta"]
+					? $periodoAnterior["desde"]
+					: $periodoAnterior["desde"] . " a " . $periodoAnterior["hasta"])
+				: "Período anterior";
+			$etiquetaActual = $periodo["desde"] === $periodo["hasta"]
+				? $periodo["desde"]
+				: $periodo["desde"] . " a " . $periodo["hasta"];
 			return array(
 				"ok" => true,
-				"anio" => $ctx["anio"],
-				"anio_anterior" => $anioAnterior,
-				"data" => $construirSerie($ctx["anio"]),
-				"data_anterior" => $construirSerie($anioAnterior),
+				"periodo" => self::ctrPeriodoRespuesta($periodo),
+				"periodo_anterior" => $periodoAnterior ? self::ctrPeriodoRespuesta($periodoAnterior) : null,
+				"anio" => $etiquetaActual,
+				"anio_anterior" => $etiquetaAnterior,
+				"data" => $data,
+				"data_anterior" => $dataAnterior,
 				"meta" => self::ctrMeta(
-					"movimientosjf_" . $ctx["anio"] . " + movimientosjf_" . $anioAnterior,
-					"Suma mensual de ventas y unidades netas comparada con el año anterior"
+					"movimientos por período",
+					"Suma mensual de ventas y unidades netas del rango vs período homólogo del año anterior"
 				)
 			);
 		} catch (Exception $e) {
@@ -563,10 +663,12 @@ class ControladorFichaGerencialModelos
 			if (!$ctx["ok"]) {
 				return $ctx;
 			}
+			$periodo = $ctx["periodo"];
 			return array(
 				"ok" => true,
-				"data" => ModeloFichaGerencialModelos::mdlDetalleArticulos($ctx["modelo"], $ctx["anio"], $ctx["mes"]),
-				"meta" => self::ctrMeta("articulojf + movimientosjf_" . $ctx["anio"], "Una fila por SKU activo o con venta en el período")
+				"periodo" => self::ctrPeriodoRespuesta($periodo),
+				"data" => ModeloFichaGerencialModelos::mdlDetalleArticulos($ctx["modelo"], $periodo),
+				"meta" => self::ctrMeta("articulojf + movimientos", "Una fila por SKU activo o con venta en el período")
 			);
 		} catch (Exception $e) {
 			return array("ok" => false, "mensaje" => "No se pudo cargar el detalle");
@@ -583,11 +685,16 @@ class ControladorFichaGerencialModelos
 			if (!$ctx["ok"]) {
 				return $ctx;
 			}
+			$periodo = $ctx["periodo"];
 			return array(
 				"ok" => true,
-				"data" => ModeloFichaGerencialModelos::mdlConciliacion($ctx["modelo"], $ctx["anio"], $ctx["mes"]),
+				"periodo" => self::ctrPeriodoRespuesta($periodo),
+				"data" => ModeloFichaGerencialModelos::mdlConciliacion($ctx["modelo"], $periodo),
 				"auditoria" => ModeloFichaGerencialModelos::mdlAuditoriaCatalogo($ctx["modelo"]),
-				"meta" => self::ctrMeta("movimientosjf + ventajf + articulojf", "Motor de líneas vs líneas con cabecera no anulada")
+				"meta" => self::ctrMeta(
+					"movimientosjf + ventajf + articulojf",
+					"Motor de líneas vs líneas con cabecera no anulada; NC no atribuibles son globales del período"
+				)
 			);
 		} catch (Exception $e) {
 			return array("ok" => false, "mensaje" => "No se pudo ejecutar la conciliación");

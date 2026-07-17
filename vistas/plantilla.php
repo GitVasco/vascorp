@@ -115,7 +115,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
-    <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=35">
+    <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=40">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") : ?>
@@ -878,7 +878,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/costos-modelo-mensual.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") { ?>
-    <script src="vistas/js/ficha-gerencial-modelos.js?v=33"></script>
+    <script src="vistas/js/ficha-gerencial-modelos.js?v=39"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") { ?>
     <script src="vistas/js/resumen-gerencial-modelos.js?v=7"></script>

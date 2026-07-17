@@ -2355,7 +2355,7 @@ class ModeloMateriaPrima
 			LIMIT :start, :length";
 
 		$stmt = Conexion::conectar()->prepare($sql);
-		
+
 		if (!empty($search)) {
 			$searchParam = "%$search%";
 			$stmt->bindParam(":search1", $searchParam, PDO::PARAM_STR);
@@ -2366,10 +2366,10 @@ class ModeloMateriaPrima
 			$stmt->bindParam(":search6", $searchParam, PDO::PARAM_STR);
 			$stmt->bindParam(":search7", $searchParam, PDO::PARAM_STR);
 		}
-		
+
 		$stmt->bindParam(":start", $start, PDO::PARAM_INT);
 		$stmt->bindParam(":length", $length, PDO::PARAM_INT);
-		
+
 		$stmt->execute();
 		$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

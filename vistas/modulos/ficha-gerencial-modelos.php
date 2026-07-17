@@ -7,19 +7,34 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
 $puedeConciliarFicha = function_exists("usuarioPuedeModulo")
     && usuarioPuedeModulo("gestion_comercial", "ficha_modelos", "conciliar");
 $modeloInicialFicha = isset($_GET["modelo"]) ? trim($_GET["modelo"]) : "";
-$anioInicialFicha = isset($_GET["anio"]) ? (int) $_GET["anio"] : (int) date("Y");
-$mesInicialFicha = isset($_GET["mes"]) ? (int) $_GET["mes"] : (int) date("n");
-if ($anioInicialFicha < 2021 || $anioInicialFicha > (int) date("Y")) {
-    $anioInicialFicha = (int) date("Y");
+$anioActualFicha = (int) date("Y");
+$mesActualFicha = (int) date("n");
+$desdeInicialFicha = isset($_GET["desde"]) ? trim($_GET["desde"]) : "";
+$hastaInicialFicha = isset($_GET["hasta"]) ? trim($_GET["hasta"]) : "";
+if ($desdeInicialFicha === "" || $hastaInicialFicha === "") {
+    $anioInicialFicha = isset($_GET["anio"]) ? (int) $_GET["anio"] : $anioActualFicha;
+    $mesInicialFicha = isset($_GET["mes"]) ? (int) $_GET["mes"] : $mesActualFicha;
+    if ($anioInicialFicha < 2021 || $anioInicialFicha > $anioActualFicha) {
+        $anioInicialFicha = $anioActualFicha;
+    }
+    if ($mesInicialFicha < 1 || $mesInicialFicha > 12) {
+        $mesInicialFicha = $mesActualFicha;
+    }
+    if ($anioInicialFicha === $anioActualFicha && $mesInicialFicha > $mesActualFicha) {
+        $mesInicialFicha = $mesActualFicha;
+    }
+    $desdeInicialFicha = sprintf("%04d-%02d", $anioInicialFicha, $mesInicialFicha);
+    $hastaInicialFicha = $desdeInicialFicha;
 }
-if ($mesInicialFicha < 1 || $mesInicialFicha > 12) {
-    $mesInicialFicha = (int) date("n");
-}
-$mesesFicha = array(
-    1 => "Enero", 2 => "Febrero", 3 => "Marzo", 4 => "Abril",
-    5 => "Mayo", 6 => "Junio", 7 => "Julio", 8 => "Agosto",
-    9 => "Septiembre", 10 => "Octubre", 11 => "Noviembre", 12 => "Diciembre"
+$mesesNombreFicha = array(
+    1 => "Ene", 2 => "Feb", 3 => "Mar", 4 => "Abr",
+    5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Ago",
+    9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dic"
 );
+$etiquetaPeriodoInicialFicha = $desdeInicialFicha === $hastaInicialFicha
+    ? ($mesesNombreFicha[(int) substr($hastaInicialFicha, 5, 2)] . " " . substr($hastaInicialFicha, 0, 4))
+    : ($mesesNombreFicha[(int) substr($desdeInicialFicha, 5, 2)] . " " . substr($desdeInicialFicha, 0, 4)
+        . " – " . $mesesNombreFicha[(int) substr($hastaInicialFicha, 5, 2)] . " " . substr($hastaInicialFicha, 0, 4));
 $paletaColoresFicha = array();
 $archivoPaletaFicha = dirname(__FILE__) . "/../js/data/colores-modelos.json";
 if (is_readable($archivoPaletaFicha)) {
@@ -42,38 +57,50 @@ if (is_readable($archivoPaletaFicha)) {
     <section class="content">
         <div class="box box-primary ficha-filtros">
             <div class="box-body">
-                <div class="row">
-                    <div class="col-md-2 col-sm-4">
+                <div class="row ficha-filtros-row">
+                    <div class="col-md-2 col-sm-6">
                         <label>Marca</label>
                         <select class="form-control" id="fichaFiltroMarca">
                             <option value="">Todas</option>
                         </select>
                     </div>
-                    <div class="col-md-4 col-sm-8">
+                    <div class="col-md-4 col-sm-6">
                         <label>Modelo</label>
                         <select class="form-control selectpicker" id="fichaFiltroModelo" data-live-search="true" data-width="100%">
                             <option value="">Cargando modelos...</option>
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-4">
-                        <label>Año</label>
-                        <select class="form-control" id="fichaFiltroAnio">
-                            <?php for ($anio = (int) date("Y"); $anio >= 2021; $anio--) { ?>
-                            <option value="<?php echo $anio; ?>" <?php echo $anio === $anioInicialFicha ? "selected" : ""; ?>>
-                                <?php echo $anio; ?>
-                            </option>
-                            <?php } ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <label>Mes</label>
-                        <select class="form-control" id="fichaFiltroMes">
-                            <?php foreach ($mesesFicha as $numero => $nombre) { ?>
-                            <option value="<?php echo $numero; ?>" <?php echo $numero === $mesInicialFicha ? "selected" : ""; ?>>
-                                <?php echo $nombre; ?>
-                            </option>
-                            <?php } ?>
-                        </select>
+                    <div class="col-md-4 col-sm-8 ficha-periodo-wrap">
+                        <label>Período</label>
+                        <button type="button" class="btn btn-default btn-block ficha-periodo-btn" id="fichaFiltroPeriodo">
+                            <i class="fa fa-calendar"></i>
+                            <span id="fichaFiltroPeriodoTexto"><?php echo htmlspecialchars($etiquetaPeriodoInicialFicha); ?></span>
+                            <i class="fa fa-caret-down pull-right"></i>
+                        </button>
+                        <div id="fichaPeriodoPanel" class="ficha-periodo-panel" style="display:none;">
+                            <div class="ficha-periodo-presets">
+                                <button type="button" class="ficha-periodo-preset" data-preset="mes_actual">Mes actual</button>
+                                <button type="button" class="ficha-periodo-preset" data-preset="ultimos_3">Últimos 3 meses</button>
+                                <button type="button" class="ficha-periodo-preset" data-preset="ultimos_6">Últimos 6 meses</button>
+                                <button type="button" class="ficha-periodo-preset" data-preset="ultimos_12">Últimos 12 meses</button>
+                                <button type="button" class="ficha-periodo-preset" data-preset="anio_actual">Año actual</button>
+                                <button type="button" class="ficha-periodo-preset" data-preset="anio_anterior">Año anterior</button>
+                            </div>
+                            <div class="ficha-periodo-custom">
+                                <p class="ficha-periodo-custom-titulo">Rango personalizado</p>
+                                <label for="fichaPeriodoDesdeSelect">Desde</label>
+                                <select class="form-control input-sm" id="fichaPeriodoDesdeSelect"></select>
+                                <label for="fichaPeriodoHastaSelect">Hasta</label>
+                                <select class="form-control input-sm" id="fichaPeriodoHastaSelect"></select>
+                                <p class="help-block">Hasta 12 meses · stock siempre actual</p>
+                                <div class="ficha-periodo-acciones">
+                                    <button type="button" class="btn btn-default btn-sm" id="fichaPeriodoCancelar">Cancelar</button>
+                                    <button type="button" class="btn btn-primary btn-sm" id="fichaPeriodoAplicar">Aplicar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="fichaFiltroDesde" value="<?php echo htmlspecialchars($desdeInicialFicha); ?>">
+                        <input type="hidden" id="fichaFiltroHasta" value="<?php echo htmlspecialchars($hastaInicialFicha); ?>">
                     </div>
                     <div class="col-md-2 col-sm-4">
                         <label>&nbsp;</label>
@@ -94,9 +121,9 @@ if (is_readable($archivoPaletaFicha)) {
                 <div class="ficha-kpi-card"><span class="ficha-kpi-label">Unidades vendidas</span><strong id="kpiUnidades">—</strong><small>Unidades netas</small></div>
                 <div class="ficha-kpi-card"><span class="ficha-kpi-label">Utilidad</span><strong id="kpiUtilidad">—</strong><small id="kpiCostoVenta">—</small></div>
                 <div class="ficha-kpi-card"><span class="ficha-kpi-label">Margen promedio</span><strong id="kpiMargen">—</strong><small id="kpiCostoEstado">—</small></div>
-                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Stock disponible</span><strong id="kpiStockDisponible">—</strong><small>Stock − pedidos</small></div>
-                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Rotación promedio</span><strong id="kpiRotacionPromedio">—</strong><small>Veces en el período</small></div>
-                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Días de inventario</span><strong id="kpiDiasInventario">—</strong><small>Cobertura estimada</small></div>
+                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Stock disponible</span><strong id="kpiStockDisponible">—</strong><small>Actual · stock − pedidos</small></div>
+                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Rotación estimada</span><strong id="kpiRotacionPromedio">—</strong><small>Prom. mensual / stock actual</small></div>
+                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Días de inventario</span><strong id="kpiDiasInventario">—</strong><small>Cobertura vs ritmo del período</small></div>
             </div>
 
             <div class="ficha-cuerpo-grid">
@@ -246,7 +273,7 @@ if (is_readable($archivoPaletaFicha)) {
                                             <thead>
                                                 <tr>
                                                     <th>Combinación</th>
-                                                    <th>Ventas del mes</th>
+                                                    <th>Ventas del período</th>
                                                     <th>Prom. unidades/mes</th>
                                                     <th>Stock</th>
                                                     <th>Pedidos</th>
@@ -401,6 +428,8 @@ if (is_readable($archivoPaletaFicha)) {
 <script>
 window.fichaModelosConfig = {
     modeloInicial: <?php echo json_encode($modeloInicialFicha); ?>,
+    desdeInicial: <?php echo json_encode($desdeInicialFicha); ?>,
+    hastaInicial: <?php echo json_encode($hastaInicialFicha); ?>,
     puedeConciliar: <?php echo $puedeConciliarFicha ? "true" : "false"; ?>,
     paletaColores: <?php echo json_encode($paletaColoresFicha, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
 };

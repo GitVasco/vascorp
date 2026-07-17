@@ -591,6 +591,118 @@ class ModeloCostosModeloMensual
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
+	static public function mdlCostosAprobadosModelo($modelo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT anio, mes, costo_unitario
+			 FROM costos_modelo_mensualjf
+			 WHERE modelo = :modelo AND estado = 'aprobado'
+			 ORDER BY anio ASC, mes ASC, id ASC"
+		);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	static private function mdlCostoAprobadoHasta($costos, $anio, $mes)
+	{
+		$limite = (int) $anio * 100 + (int) $mes;
+		$seleccion = null;
+		foreach ($costos as $costo) {
+			$clave = (int) $costo["anio"] * 100 + (int) $costo["mes"];
+			if ($clave <= $limite) {
+				$seleccion = $costo;
+			} else {
+				break;
+			}
+		}
+		return $seleccion;
+	}
+
+	/**
+	 * Rentabilidad de un rango: aplica a cada mes el último costo aprobado no futuro.
+	 * Si el modelo tiene un único costo aprobado, se usa también en meses anteriores a ese registro.
+	 * $ventasPorMes: filas con anio, mes, unidades_vendidas, venta_neta.
+	 */
+	static public function mdlCalcularRentabilidadRango($modelo, $ventasPorMes, $ventaNetaTotal, $unidadesTotal)
+	{
+		$modelo = trim((string) $modelo);
+		$ventaNetaTotal = (float) $ventaNetaTotal;
+		$unidadesTotal = (float) $unidadesTotal;
+		if (empty($ventasPorMes)) {
+			return null;
+		}
+
+		$costos = self::mdlCostosAprobadosModelo($modelo);
+		if (empty($costos)) {
+			return null;
+		}
+		$costoUnicoFallback = count($costos) === 1 ? $costos[0] : null;
+
+		$costoVenta = 0.0;
+		$mesesConCosto = 0;
+		$mesesSinCosto = 0;
+		$costoAnio = null;
+		$costoMes = null;
+		$costoUnitario = null;
+		$costoArrastrado = false;
+
+		foreach ($ventasPorMes as $fila) {
+			$anio = (int) $fila["anio"];
+			$mes = (int) $fila["mes"];
+			$unidadesMes = (float) $fila["unidades_vendidas"];
+			if ($unidadesMes == 0.0) {
+				continue;
+			}
+			$costo = self::mdlCostoAprobadoHasta($costos, $anio, $mes);
+			if (!$costo || $costo["costo_unitario"] === null) {
+				if ($costoUnicoFallback) {
+					$costo = $costoUnicoFallback;
+				} else {
+					$mesesSinCosto++;
+					continue;
+				}
+			}
+			$mesesConCosto++;
+			$costoVenta += $unidadesMes * (float) $costo["costo_unitario"];
+			$costoAnio = (int) $costo["anio"];
+			$costoMes = (int) $costo["mes"];
+			$costoUnitario = $costo["costo_unitario"];
+			if ((int) $costo["anio"] !== $anio || (int) $costo["mes"] !== $mes) {
+				$costoArrastrado = true;
+			}
+		}
+
+		if ($mesesConCosto === 0) {
+			return null;
+		}
+		if ($mesesSinCosto > 0) {
+			return null;
+		}
+
+		$utilidad = $ventaNetaTotal - $costoVenta;
+		$margen = $ventaNetaTotal > 0
+			? ($utilidad * 100 / $ventaNetaTotal)
+			: null;
+
+		return array(
+			"modelo" => $modelo,
+			"anio" => null,
+			"mes" => null,
+			"costo_anio" => $costoAnio,
+			"costo_mes" => $costoMes,
+			"costo_unitario" => $costoUnitario === null ? null : number_format((float) $costoUnitario, 4, ".", ""),
+			"venta_neta" => number_format($ventaNetaTotal, 4, ".", ""),
+			"unidades_vendidas" => number_format($unidadesTotal, 4, ".", ""),
+			"costo_venta" => number_format($costoVenta, 4, ".", ""),
+			"utilidad" => number_format($utilidad, 4, ".", ""),
+			"margen_pct" => $margen === null ? null : number_format($margen, 4, ".", ""),
+			"costo_arrastrado" => $costoArrastrado,
+			"meses_con_costo" => $mesesConCosto,
+			"estado" => "ok"
+		);
+	}
+
 	static public function mdlHistorial($modelo, $anio, $mes)
 	{
 		$stmt = Conexion::conectar()->prepare(

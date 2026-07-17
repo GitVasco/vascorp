@@ -23,10 +23,16 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
 	return;
 }
 
+if (session_status() === PHP_SESSION_ACTIVE) {
+	session_write_close();
+}
+
 $accion = isset($_POST["accion"]) ? trim($_POST["accion"]) : "";
 $acciones = array(
 	"catalogo" => "ctrCatalogo",
 	"resumen" => "ctrResumen",
+	"ranking" => "ctrRanking",
+	"lideres" => "ctrLideres",
 	"resumenComparativo" => "ctrResumenComparativo",
 	"comparacionModelos" => "ctrComparacionModelos",
 	"variantes" => "ctrVariantes",

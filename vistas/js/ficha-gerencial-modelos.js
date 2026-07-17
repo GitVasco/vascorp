@@ -60,12 +60,214 @@ function fichaMetaTexto(meta) {
     return "Fuente: " + (meta.fuente || "—") + " · " + (meta.formula || "") + " · Consultado: " + (meta.consultado_en || "—");
 }
 
+function fichaYmAClave(ym) {
+    var partes = String(ym || "").split("-");
+    if (partes.length !== 2) {
+        return null;
+    }
+    return Number(partes[0]) * 100 + Number(partes[1]);
+}
+
+function fichaSumarMesesYm(ym, delta) {
+    var partes = String(ym || "").split("-");
+    if (partes.length !== 2) {
+        return "";
+    }
+    var anio = Number(partes[0]);
+    var mes = Number(partes[1]) + Number(delta || 0);
+    while (mes > 12) {
+        mes -= 12;
+        anio += 1;
+    }
+    while (mes < 1) {
+        mes += 12;
+        anio -= 1;
+    }
+    return anio + "-" + ("0" + mes).slice(-2);
+}
+
+function fichaMesActualYm() {
+    var hoy = new Date();
+    return hoy.getFullYear() + "-" + ("0" + (hoy.getMonth() + 1)).slice(-2);
+}
+
+function fichaEtiquetaYm(ym) {
+    var meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    var partes = String(ym || "").split("-");
+    if (partes.length !== 2) {
+        return String(ym || "—");
+    }
+    return meses[Number(partes[1]) - 1] + " " + partes[0];
+}
+
+function fichaEtiquetaPeriodo(desde, hasta) {
+    if (!desde || !hasta) {
+        return "—";
+    }
+    return desde === hasta
+        ? fichaEtiquetaYm(desde)
+        : fichaEtiquetaYm(desde) + " – " + fichaEtiquetaYm(hasta);
+}
+
+function fichaMesesEnRango(desde, hasta) {
+    var inicio = fichaYmAClave(desde);
+    var fin = fichaYmAClave(hasta);
+    if (inicio === null || fin === null || inicio > fin) {
+        return 0;
+    }
+    return (Number(String(hasta).slice(0, 4)) - Number(String(desde).slice(0, 4))) * 12
+        + (Number(String(hasta).slice(5, 7)) - Number(String(desde).slice(5, 7)))
+        + 1;
+}
+
+function fichaValidarPeriodo(desde, hasta) {
+    if (!desde || !hasta) {
+        return "Selecciona el período";
+    }
+    if (fichaYmAClave(desde) > fichaYmAClave(hasta)) {
+        return "El inicio del período no puede ser posterior al fin";
+    }
+    var meses = fichaMesesEnRango(desde, hasta);
+    if (meses < 1 || meses > 12) {
+        return "El período máximo permitido es de 12 meses";
+    }
+    if (fichaYmAClave(hasta) > fichaYmAClave(fichaMesActualYm())) {
+        return "No se pueden consultar meses futuros";
+    }
+    return "";
+}
+
+function fichaActualizarPeriodoUi(desde, hasta) {
+    $("#fichaFiltroDesde").val(desde);
+    $("#fichaFiltroHasta").val(hasta);
+    $("#fichaFiltroPeriodoTexto").text(fichaEtiquetaPeriodo(desde, hasta));
+    $("#fichaPeriodoDesdeSelect").val(desde);
+    $("#fichaPeriodoHastaSelect").val(hasta);
+}
+
+function fichaOpcionesMesesDisponibles() {
+    var opciones = [];
+    var hoy = new Date();
+    var anioMax = hoy.getFullYear();
+    var mesMax = hoy.getMonth() + 1;
+    for (var anio = anioMax; anio >= 2021; anio--) {
+        var limiteMes = anio === anioMax ? mesMax : 12;
+        for (var mes = limiteMes; mes >= 1; mes--) {
+            opciones.push(anio + "-" + ("0" + mes).slice(-2));
+        }
+    }
+    return opciones;
+}
+
+function fichaRellenarSelectoresPeriodo() {
+    var opciones = fichaOpcionesMesesDisponibles();
+    var html = opciones.map(function (ym) {
+        return "<option value='" + ym + "'>" + fichaEtiquetaYm(ym) + "</option>";
+    }).join("");
+    $("#fichaPeriodoDesdeSelect, #fichaPeriodoHastaSelect").html(html);
+}
+
+function fichaPresetPeriodo(preset) {
+    var actual = fichaMesActualYm();
+    var desde = actual;
+    var hasta = actual;
+    if (preset === "ultimos_3") {
+        desde = fichaSumarMesesYm(actual, -2);
+    } else if (preset === "ultimos_6") {
+        desde = fichaSumarMesesYm(actual, -5);
+    } else if (preset === "ultimos_12") {
+        desde = fichaSumarMesesYm(actual, -11);
+    } else if (preset === "anio_actual") {
+        desde = String(new Date().getFullYear()) + "-01";
+        hasta = actual;
+    } else if (preset === "anio_anterior") {
+        var anioAnterior = new Date().getFullYear() - 1;
+        desde = anioAnterior + "-01";
+        hasta = anioAnterior + "-12";
+    }
+    if (fichaYmAClave(desde) < 202101) {
+        desde = "2021-01";
+    }
+    return { desde: desde, hasta: hasta };
+}
+
+function fichaCerrarPeriodoPanel() {
+    $("#fichaPeriodoPanel").hide();
+}
+
+function fichaAbrirPeriodoPanel() {
+    var desde = $("#fichaFiltroDesde").val() || fichaMesActualYm();
+    var hasta = $("#fichaFiltroHasta").val() || desde;
+    $("#fichaPeriodoDesdeSelect").val(desde);
+    $("#fichaPeriodoHastaSelect").val(hasta);
+    $("#fichaPeriodoPanel").show();
+}
+
+function fichaAplicarPeriodoSeleccion(recargar) {
+    var desde = $("#fichaPeriodoDesdeSelect").val();
+    var hasta = $("#fichaPeriodoHastaSelect").val();
+    var errorPeriodo = fichaValidarPeriodo(desde, hasta);
+    if (errorPeriodo) {
+        alert(errorPeriodo);
+        return false;
+    }
+    fichaActualizarPeriodoUi(desde, hasta);
+    fichaCerrarPeriodoPanel();
+    if (recargar && $("#fichaFiltroModelo").val()) {
+        fichaCargarTodo();
+    }
+    return true;
+}
+
+function fichaInicializarPeriodoPicker() {
+    if (!$("#fichaFiltroPeriodo").length) {
+        return;
+    }
+    fichaRellenarSelectoresPeriodo();
+    var desde = $("#fichaFiltroDesde").val() || fichaMesActualYm();
+    var hasta = $("#fichaFiltroHasta").val() || desde;
+    fichaActualizarPeriodoUi(desde, hasta);
+
+    $("#fichaFiltroPeriodo").on("click", function (evento) {
+        evento.stopPropagation();
+        if ($("#fichaPeriodoPanel").is(":visible")) {
+            fichaCerrarPeriodoPanel();
+        } else {
+            fichaAbrirPeriodoPanel();
+        }
+    });
+    $("#fichaPeriodoPanel").on("click", function (evento) {
+        evento.stopPropagation();
+    });
+    $(document).on("click.fichaPeriodo", function () {
+        fichaCerrarPeriodoPanel();
+    });
+    $(".ficha-periodo-preset").on("click", function () {
+        var preset = fichaPresetPeriodo($(this).data("preset"));
+        fichaActualizarPeriodoUi(preset.desde, preset.hasta);
+        fichaAplicarPeriodoSeleccion(true);
+    });
+    $("#fichaPeriodoAplicar").on("click", function () {
+        fichaAplicarPeriodoSeleccion(true);
+    });
+    $("#fichaPeriodoCancelar").on("click", function () {
+        fichaCerrarPeriodoPanel();
+    });
+}
+
 function fichaParametros() {
     return {
         modelo: $("#fichaFiltroModelo").val() || "",
-        anio: $("#fichaFiltroAnio").val(),
-        mes: $("#fichaFiltroMes").val()
+        desde: $("#fichaFiltroDesde").val() || "",
+        hasta: $("#fichaFiltroHasta").val() || ""
     };
+}
+
+function fichaValidarParametros(parametros) {
+    if (!parametros.modelo) {
+        return "Selecciona un modelo";
+    }
+    return fichaValidarPeriodo(parametros.desde, parametros.hasta);
 }
 
 function fichaAbortarSolicitudes() {
@@ -117,8 +319,8 @@ function fichaActualizarUrl(parametros) {
         return;
     }
     var url = "index.php?ruta=ficha-gerencial-modelos&modelo=" + encodeURIComponent(parametros.modelo)
-        + "&anio=" + encodeURIComponent(parametros.anio)
-        + "&mes=" + encodeURIComponent(parametros.mes);
+        + "&desde=" + encodeURIComponent(parametros.desde)
+        + "&hasta=" + encodeURIComponent(parametros.hasta);
     window.history.replaceState({}, "", url);
 }
 
@@ -143,6 +345,7 @@ function fichaCargarCatalogo(seleccionarModelo, cargarDespues) {
         (resp.modelos || []).forEach(function (item) {
             $modelos.append($("<option>").val(item.modelo).text(item.modelo + " — " + item.nombre));
         });
+        $("#fichaFiltroModelo").off("change.fichaAuto");
         if (seleccionarModelo) {
             $modelos.val(String(seleccionarModelo));
         }
@@ -152,6 +355,7 @@ function fichaCargarCatalogo(seleccionarModelo, cargarDespues) {
         if (typeof $modelos.selectpicker === "function") {
             $modelos.selectpicker("refresh");
         }
+        $("#fichaFiltroModelo").on("change.fichaAuto", fichaCargarTodo);
         if (cargarDespues && $modelos.val()) {
             fichaCargarTodo();
         }
@@ -172,15 +376,15 @@ function fichaRenderResumen(resp) {
     $("#fichaModeloTipo").text(cabecera.tipo || "—");
     $("#fichaModeloLinea").text(cabecera.linea || "—");
     $("#fichaModeloEstado").text(cabecera.estado || "Activo");
-    $("#fichaModeloPeriodo").text($("#fichaFiltroMes option:selected").text() + " " + resp.periodo.anio);
+    var periodo = resp.periodo || {};
+    $("#fichaModeloPeriodo").text(fichaEtiquetaPeriodo(periodo.desde, periodo.hasta)
+        + (periodo.parcial ? " · parcial" : ""));
     $("#fichaMetaCabecera").text(fichaMetaTexto(resp.meta && resp.meta.ventas));
 
     var ranking = resp.ranking_general || {};
     var grupoRanking = ranking.grupo && ranking.grupo.nombre ? ranking.grupo.nombre : "";
-    $("#kpiRankingGeneral").text(ranking.posicion ? "# " + ranking.posicion : "—");
-    $("#kpiRankingTotal").text(ranking.total_modelos_con_venta
-        ? (grupoRanking ? grupoRanking + " · " : "") + "de " + ranking.total_modelos_con_venta + " modelos"
-        : "Sin grupo o ventas");
+    $("#kpiRankingGeneral").text("…");
+    $("#kpiRankingTotal").text("Calculando ranking…");
     $("#kpiVentasAcumuladas").text(resp.ventas_acumuladas === null ? "Sin precio" : fichaMoneda(resp.ventas_acumuladas));
     $("#kpiPrecioLista9").text(resp.precio_lista9 === null ? "Lista 9 no registrada" : "Lista 9: " + fichaMoneda(resp.precio_lista9));
     $("#kpiUnidades").text(fichaNumero(ventas.unidades_vendidas, 0));
@@ -205,19 +409,38 @@ function fichaRenderResumen(resp) {
             : "";
         $("#kpiCostoEstado").text("Costo unitario: " + fichaMoneda(renta.costo_unitario) + origenCosto);
     }
-    fichaRenderLideresComerciales(resp);
+    $("#preguntaMargenPromedio").text(renta.margen_pct !== null && renta.margen_pct !== undefined
+        ? fichaNumero(renta.margen_pct, 1) + "%"
+        : "");
+}
+
+function fichaRenderRanking(resp) {
+    if (!fichaResumenActual) {
+        return;
+    }
+    fichaResumenActual.ranking_general = resp.ranking_general || {};
+    var ranking = fichaResumenActual.ranking_general || {};
+    var grupoRanking = ranking.grupo && ranking.grupo.nombre ? ranking.grupo.nombre : "";
+    $("#kpiRankingGeneral").text(ranking.posicion ? "# " + ranking.posicion : "—");
+    $("#kpiRankingTotal").text(ranking.total_modelos_con_venta
+        ? (grupoRanking ? grupoRanking + " · " : "") + "de " + ranking.total_modelos_con_venta + " modelos"
+        : "Sin grupo o ventas");
+    $("#preguntaRankingModelo").text(ranking.posicion
+        ? "# " + ranking.posicion + (ranking.total_modelos_con_venta ? " de " + ranking.total_modelos_con_venta : "")
+        : "");
 }
 
 function fichaRenderLideresComerciales(resp) {
+    var base = fichaResumenActual || resp;
     var lideres = resp.lideres_comerciales || {};
     var zona = lideres.zona || null;
     var vendedor = lideres.vendedor || null;
     var cliente = lideres.cliente || null;
-    var ventaTotal = Number(resp.ventas && resp.ventas.venta_neta || 0);
-    var costoUnitario = resp.rentabilidad
-        && resp.rentabilidad.costo_unitario !== null
-        && resp.rentabilidad.costo_unitario !== undefined
-        ? Number(resp.rentabilidad.costo_unitario)
+    var ventaTotal = Number(base.ventas && base.ventas.venta_neta || 0);
+    var costoUnitario = base.rentabilidad
+        && base.rentabilidad.costo_unitario !== null
+        && base.rentabilidad.costo_unitario !== undefined
+        ? Number(base.rentabilidad.costo_unitario)
         : null;
     var participacion = function (item) {
         return item && ventaTotal > 0
@@ -332,13 +555,6 @@ function fichaRenderLideresComerciales(resp) {
 
     $("#preguntaZonaMayorVenta").text(zona ? zona.nombre : "");
     $("#preguntaVendedorMayorVenta").text(vendedor ? vendedor.nombre : "");
-    $("#preguntaMargenPromedio").text(resp.rentabilidad && resp.rentabilidad.margen_pct !== null
-        ? fichaNumero(resp.rentabilidad.margen_pct, 1) + "%"
-        : "");
-    var ranking = resp.ranking_general || {};
-    $("#preguntaRankingModelo").text(ranking.posicion
-        ? "# " + ranking.posicion + (ranking.total_modelos_con_venta ? " de " + ranking.total_modelos_con_venta : "")
-        : "");
 }
 
 function fichaRenderVariantes(resp) {
@@ -367,13 +583,39 @@ function fichaRenderVariantes(resp) {
         return "<span class='ficha-talla-item'>" + fichaEscapar(item.nombre) + "</span>";
     }).join("") || "Sin tallas");
 
-    var ventasPorColor = {};
+    var resumenPorColor = {};
     var totalVentasMatriz = 0;
+    var totalPromedioMensualMatriz = 0;
+    var totalStockMatriz = 0;
+    var totalUnidadesMatriz = 0;
+    var totalesPorTalla = {};
     var ventaMaximaCombinacion = 0;
     filas.forEach(function (fila) {
         var venta = Number(fila.venta_neta || 0);
-        ventasPorColor[fila.cod_color] = Number(ventasPorColor[fila.cod_color] || 0) + venta;
+        var unidades = Number(fila.unidades_vendidas || 0);
+        var stock = Number(fila.stock_disponible || 0);
+        var promedio = Number(fila.promedio_mensual_unidades || 0);
+        if (!totalesPorTalla[fila.cod_talla]) {
+            totalesPorTalla[fila.cod_talla] = { unidades: 0, venta: 0 };
+        }
+        totalesPorTalla[fila.cod_talla].unidades += unidades;
+        totalesPorTalla[fila.cod_talla].venta += venta;
+        if (!resumenPorColor[fila.cod_color]) {
+            resumenPorColor[fila.cod_color] = {
+                venta_neta: 0,
+                promedio_mensual_unidades: 0,
+                stock_disponible: 0,
+                unidades_vendidas: 0
+            };
+        }
+        resumenPorColor[fila.cod_color].venta_neta += venta;
+        resumenPorColor[fila.cod_color].promedio_mensual_unidades += promedio;
+        resumenPorColor[fila.cod_color].stock_disponible += stock;
+        resumenPorColor[fila.cod_color].unidades_vendidas += unidades;
         totalVentasMatriz += venta;
+        totalPromedioMensualMatriz += promedio;
+        totalStockMatriz += stock;
+        totalUnidadesMatriz += unidades;
         ventaMaximaCombinacion = Math.max(ventaMaximaCombinacion, venta);
     });
     var nivelSemaforo = function (fila) {
@@ -396,11 +638,19 @@ function fichaRenderVariantes(resp) {
         }
         return { clase: "muy-bajo", porcentaje: porcentaje };
     };
-    var html = "<thead><tr><th>Color / Talla</th>";
+    var html = "<thead><tr><th rowspan='2'>Color / Talla</th>";
+    if (tallas.length) {
+        html += "<th colspan='" + tallas.length + "' class='ficha-matriz-grupo'>Combinaciones color × talla</th>";
+    }
+    html += "<th colspan='5' class='ficha-matriz-resumen ficha-matriz-grupo'>Resumen agrupado por color</th></tr><tr>";
     tallas.forEach(function (talla) {
         html += "<th>" + fichaEscapar(talla.nombre) + "</th>";
     });
-    html += "<th class='ficha-matriz-resumen'>Ventas (S/)</th><th class='ficha-matriz-resumen'>Participación</th>";
+    html += "<th class='ficha-matriz-resumen'>Ventas (S/)</th>"
+        + "<th class='ficha-matriz-resumen'>Prom. und./mes</th>"
+        + "<th class='ficha-matriz-resumen'>Stock</th>"
+        + "<th class='ficha-matriz-resumen'>Rotación</th>"
+        + "<th class='ficha-matriz-resumen'>Participación</th>";
     html += "</tr></thead><tbody>";
     colores.forEach(function (color) {
         html += "<tr><td class='ficha-matriz-color'><i style='background-color:"
@@ -424,13 +674,40 @@ function fichaRenderVariantes(resp) {
                 html += "<td class='text-muted'>—</td>";
             }
         });
-        var ventaColor = Number(ventasPorColor[color.codigo] || 0);
+        var resumenColor = resumenPorColor[color.codigo] || {};
+        var ventaColor = Number(resumenColor.venta_neta || 0);
         var participacionColor = totalVentasMatriz !== 0 ? ventaColor * 100 / totalVentasMatriz : 0;
+        var rotacionColor = Number(resumenColor.stock_disponible || 0) > 0
+            ? fichaNumero(Number(resumenColor.unidades_vendidas || 0) / Number(resumenColor.stock_disponible), 2)
+            : "—";
         html += "<td class='ficha-matriz-venta'>" + fichaMoneda(ventaColor) + "</td>"
+            + "<td class='ficha-matriz-resumen-valor'>" + fichaNumero(resumenColor.promedio_mensual_unidades, 1) + "</td>"
+            + "<td class='ficha-matriz-resumen-valor'>" + fichaNumero(resumenColor.stock_disponible, 0) + "</td>"
+            + "<td class='ficha-matriz-resumen-valor'>" + rotacionColor + "</td>"
             + "<td class='ficha-matriz-participacion'>" + fichaNumero(participacionColor, 0) + "%</td>";
         html += "</tr>";
     });
-    html += "</tbody>";
+    if (colores.length) {
+        var rotacionTotal = totalStockMatriz > 0
+            ? fichaNumero(totalUnidadesMatriz / totalStockMatriz, 2)
+            : "—";
+        html += "</tbody><tfoot><tr><td class='ficha-matriz-total-label'>Total</td>";
+        tallas.forEach(function (talla) {
+            var totalTalla = totalesPorTalla[talla.codigo] || { unidades: 0, venta: 0 };
+            html += "<td class='ficha-matriz-total-celda' title='Unidades: "
+                + fichaNumero(totalTalla.unidades, 0)
+                + " · Ventas: " + fichaMoneda(totalTalla.venta) + "'>"
+                + fichaNumero(totalTalla.unidades, 0) + "</td>";
+        });
+        html += "<td class='ficha-matriz-venta ficha-matriz-total-valor'>" + fichaMoneda(totalVentasMatriz) + "</td>"
+            + "<td class='ficha-matriz-resumen-valor ficha-matriz-total-valor'>" + fichaNumero(totalPromedioMensualMatriz, 1) + "</td>"
+            + "<td class='ficha-matriz-resumen-valor ficha-matriz-total-valor'>" + fichaNumero(totalStockMatriz, 0) + "</td>"
+            + "<td class='ficha-matriz-resumen-valor ficha-matriz-total-valor'>" + rotacionTotal + "</td>"
+            + "<td class='ficha-matriz-participacion ficha-matriz-total-valor'>100%</td>"
+            + "</tr></tfoot>";
+    } else {
+        html += "</tbody>";
+    }
     $("#fichaMatrizVariantes").html(html);
     $("#zonaVariantes .ficha-fuente").text(fichaMetaTexto(resp.meta));
     var rankings = fichaRankingsDesdeVariantes(filas, resp.meta);
@@ -509,12 +786,20 @@ function fichaRenderPreguntasVariantes(resp) {
     }
 
     var parametros = fichaParametros();
-    var hoy = new Date();
-    var anio = Number(parametros.anio);
-    var mes = Number(parametros.mes);
-    var diasPeriodo = hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes
-        ? hoy.getDate()
-        : new Date(anio, mes, 0).getDate();
+    var mesesRango = Math.max(1, fichaMesesEnRango(parametros.desde, parametros.hasta));
+    var diasPeriodo = Math.max(1, mesesRango * 30);
+    if (fichaResumenActual && fichaResumenActual.periodo) {
+        var periodoResumen = fichaResumenActual.periodo;
+        if (periodoResumen.inicio && periodoResumen.fin_exclusivo) {
+            var inicioMs = Date.parse(periodoResumen.inicio);
+            var finMs = Date.parse(periodoResumen.fin_exclusivo);
+            var hoyMs = Date.now();
+            if (isFinite(inicioMs) && isFinite(finMs)) {
+                var finEfectivo = Math.min(finMs, hoyMs + 24 * 60 * 60 * 1000);
+                diasPeriodo = Math.max(1, Math.round((finEfectivo - inicioMs) / (24 * 60 * 60 * 1000)));
+            }
+        }
+    }
     var combinaciones = resp.todas_combinaciones || [];
     var agotarse = combinaciones.filter(function (item) {
         return Number(item.stock || 0) > 0 && Number(item.unidades || 0) > 0;
@@ -613,16 +898,65 @@ function fichaRenderRankings(resp) {
     $("#tablaCombinacionesFicha").html(html || "<tr><td colspan='6' class='text-muted text-center'>Sin combinaciones</td></tr>");
 }
 
+function fichaRecrearCanvasGraficoUnidades() {
+    var $contenedor = $(".ficha-grafico-compacto");
+    if (!$contenedor.length) {
+        return null;
+    }
+    $contenedor.empty().append("<canvas id='graficoUnidadesFicha' height='105'></canvas>");
+    return document.getElementById("graficoUnidadesFicha");
+}
+
+function fichaDibujarGraficoUnidades(labels, unidadesAnterior, unidades, resp) {
+    if (typeof Chart !== "function") {
+        return false;
+    }
+    var canvas = fichaRecrearCanvasGraficoUnidades();
+    if (!canvas || !canvas.getContext) {
+        return false;
+    }
+    var etiquetas = labels.length ? labels.slice() : ["Sin datos"];
+    var serieAnterior = unidadesAnterior.length ? unidadesAnterior.slice() : [0];
+    var serieActual = unidades.length ? unidades.slice() : [0];
+    while (serieAnterior.length < etiquetas.length) {
+        serieAnterior.push(0);
+    }
+    while (serieActual.length < etiquetas.length) {
+        serieActual.push(0);
+    }
+    serieAnterior = serieAnterior.slice(0, etiquetas.length);
+    serieActual = serieActual.slice(0, etiquetas.length);
+    fichaGraficoUnidades = new Chart(canvas.getContext("2d")).Line({
+        labels: etiquetas,
+        datasets: [
+            {
+                label: String(resp.anio_anterior || "Período homólogo"),
+                fillColor: "rgba(160,174,192,0)",
+                strokeColor: "#a0aec0",
+                pointColor: "#a0aec0",
+                data: serieAnterior
+            },
+            {
+                label: String(resp.anio || "Período actual"),
+                fillColor: "rgba(60,141,188,0)",
+                strokeColor: "#3c8dbc",
+                pointColor: "#3c8dbc",
+                data: serieActual
+            }
+        ]
+    }, {
+        datasetFill: false,
+        bezierCurve: true,
+        bezierCurveTension: 0.35,
+        pointDotRadius: 3,
+        scaleBeginAtZero: true
+    });
+    return true;
+}
+
 function fichaRenderEvolucion(resp) {
-    var meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    var mesesCompletos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    var mesSeleccionado = Number($("#fichaFiltroMes").val() || 0);
-    var filasPeriodo = (resp.data || []).filter(function (item) {
-        return Number(item.mes || 0) <= mesSeleccionado;
-    });
-    var filasPeriodoAnterior = (resp.data_anterior || []).filter(function (item) {
-        return Number(item.mes || 0) <= mesSeleccionado;
-    });
+    var filasPeriodo = resp.data || [];
+    var filasPeriodoAnterior = resp.data_anterior || [];
     var totalVentasPeriodo = filasPeriodo.reduce(function (total, item) {
         return total + Number(item.venta_neta || 0);
     }, 0);
@@ -650,52 +984,51 @@ function fichaRenderEvolucion(resp) {
         $("#comparativoIconoTendenciaFicha").removeClass("fa-exchange fa-arrow-up fa-arrow-down fa-minus")
             .addClass(variacionInteranual > 0 ? "fa-arrow-up" : (variacionInteranual < 0 ? "fa-arrow-down" : "fa-minus"));
         $("#comparativoDireccionFicha").text(direccionInteranual);
-        $("#comparativoVariacionFicha").text((variacionInteranual > 0 ? "+" : "") + fichaNumero(variacionInteranual, 1) + "% vs " + resp.anio_anterior);
+        $("#comparativoVariacionFicha").text((variacionInteranual > 0 ? "+" : "") + fichaNumero(variacionInteranual, 1) + "% vs período homólogo");
     } else {
         $tendenciaInteranual.addClass("estable");
         $("#comparativoIconoTendenciaFicha").removeClass("fa-exchange fa-arrow-up fa-arrow-down").addClass("fa-minus");
         $("#comparativoDireccionFicha").text("Sin base comparable");
         $("#comparativoVariacionFicha").text("");
     }
-    $("#preguntaPromedioMensual").text(mesSeleccionado > 0
-        ? fichaNumero(totalUnidadesPeriodo / mesSeleccionado, 0) + " unidades"
-        : "");
+    var mesesRango = Math.max(1, filasPeriodo.length || fichaMesesEnRango(
+        resp.periodo && resp.periodo.desde,
+        resp.periodo && resp.periodo.hasta
+    ));
+    $("#preguntaPromedioMensual").text(fichaNumero(totalUnidadesPeriodo / mesesRango, 0) + " unidades");
     var mejorMes = filasPeriodo.slice().sort(function (a, b) {
         return Number(b.unidades_vendidas || 0) - Number(a.unidades_vendidas || 0);
     })[0];
     $("#preguntaMejorMes").text(mejorMes
-        ? mesesCompletos[Number(mejorMes.mes) - 1] + " " + $("#fichaFiltroAnio").val()
+        ? fichaEtiquetaYm(mejorMes.periodo || (mejorMes.anio + "-" + ("0" + mejorMes.mes).slice(-2)))
         : "");
-    var unidades = (resp.data || []).map(function (item) { return Number(item.unidades_vendidas || 0); });
-    var unidadesAnterior = (resp.data_anterior || []).map(function (item) { return Number(item.unidades_vendidas || 0); });
-    var limitarPeriodo = function (datos) {
-        return datos.slice(0, mesSeleccionado);
-    };
-    unidades = limitarPeriodo(unidades);
-    unidadesAnterior = limitarPeriodo(unidadesAnterior);
-    var mesesPeriodo = meses.slice(0, mesSeleccionado);
-    $("#leyendaAnioAnteriorFicha").text(resp.anio_anterior);
-    $("#leyendaAnioActualFicha").text(resp.anio);
-    $("#tituloGraficoUnidadesFicha").text("Unidades netas · " + resp.anio + " vs " + resp.anio_anterior);
-    if (fichaGraficoUnidades && typeof fichaGraficoUnidades.destroy === "function") {
-        fichaGraficoUnidades.destroy();
-    }
-    fichaGraficoUnidades = new Chart(document.getElementById("graficoUnidadesFicha").getContext("2d")).Line({
-        labels: mesesPeriodo,
-        datasets: [
-            { label: String(resp.anio_anterior), fillColor: "rgba(160,174,192,0)", strokeColor: "#a0aec0", pointColor: "#a0aec0", data: unidadesAnterior },
-            { label: String(resp.anio), fillColor: "rgba(60,141,188,0)", strokeColor: "#3c8dbc", pointColor: "#3c8dbc", data: unidades }
-        ]
-    }, {
-        responsive: true,
-        maintainAspectRatio: false,
-        datasetFill: false,
-        bezierCurve: true,
-        bezierCurveTension: 0.35,
-        pointDotRadius: 3,
-        scaleBeginAtZero: true
+    var unidades = filasPeriodo.map(function (item) { return Number(item.unidades_vendidas || 0); });
+    var unidadesAnterior = filasPeriodoAnterior.map(function (item) { return Number(item.unidades_vendidas || 0); });
+    var mesesPeriodo = filasPeriodo.map(function (item) {
+        return fichaEtiquetaYm(item.periodo || (item.anio + "-" + ("0" + item.mes).slice(-2)));
     });
-    $("#zonaEvolucion .ficha-fuente").text(fichaMetaTexto(resp.meta));
+    if (!mesesPeriodo.length && resp.periodo && resp.periodo.desde && resp.periodo.hasta) {
+        var cursor = resp.periodo.desde;
+        var limite = resp.periodo.hasta;
+        while (cursor && fichaYmAClave(cursor) <= fichaYmAClave(limite)) {
+            mesesPeriodo.push(fichaEtiquetaYm(cursor));
+            unidades.push(0);
+            cursor = fichaSumarMesesYm(cursor, 1);
+        }
+    }
+    $("#leyendaAnioAnteriorFicha").text(resp.anio_anterior || "Período homólogo");
+    $("#leyendaAnioActualFicha").text(resp.anio || "Período actual");
+    $("#tituloGraficoUnidadesFicha").text("Unidades netas · " + (resp.anio || "Período") + " vs homólogo");
+    window.requestAnimationFrame(function () {
+        if (!fichaDibujarGraficoUnidades(mesesPeriodo, unidadesAnterior, unidades, resp)) {
+            $(".ficha-grafico-compacto").html(
+                "<p class='text-muted text-center' style='margin:24px 0 0;'>No se pudo dibujar el gráfico</p>"
+            );
+        }
+    });
+    if ($("#zonaEvolucion .ficha-fuente").length) {
+        $("#zonaEvolucion .ficha-fuente").text(fichaMetaTexto(resp.meta));
+    }
 }
 
 function fichaRenderConciliacion(resp) {
@@ -719,20 +1052,34 @@ function fichaRenderConciliacion(resp) {
 }
 
 function fichaCargarZona(accion, zona, render, parametros, generacion) {
-    fichaEstadoZona(zona, "cargando");
+    if (zona) {
+        fichaEstadoZona(zona, "cargando");
+    }
     fichaPost(accion, parametros, generacion).done(function (resp) {
         if (!resp || !resp.ok) {
-            fichaEstadoZona(zona, "error", resp && resp.mensaje ? resp.mensaje : "Error");
+            if (zona) {
+                fichaEstadoZona(zona, "error", resp && resp.mensaje ? resp.mensaje : "Error");
+            }
             if (zona === "zonaVariantes") {
                 fichaEstadoZona("zonaRankings", "error", "No disponible");
             }
             return;
         }
-        render(resp);
-        fichaEstadoZona(zona, "ok");
+        try {
+            render(resp);
+            if (zona) {
+                fichaEstadoZona(zona, "ok");
+            }
+        } catch (errorRender) {
+            if (zona) {
+                fichaEstadoZona(zona, "error", "No se pudo mostrar la información");
+            }
+        }
     }).fail(function (error) {
         if (generacion === fichaGeneracion && (!error || !error.obsoleta)) {
-            fichaEstadoZona(zona, "error", "No disponible");
+            if (zona) {
+                fichaEstadoZona(zona, "error", "No disponible");
+            }
             if (zona === "zonaVariantes") {
                 fichaEstadoZona("zonaRankings", "error", "No disponible");
             }
@@ -746,8 +1093,9 @@ function fichaLimpiarPreguntasRapidas() {
 
 function fichaCargarTodo() {
     var parametros = fichaParametros();
-    if (!parametros.modelo) {
-        fichaMostrarErrorGlobal("Selecciona un modelo");
+    var errorValidacion = fichaValidarParametros(parametros);
+    if (errorValidacion) {
+        fichaMostrarErrorGlobal(errorValidacion);
         return;
     }
     fichaLimpiarPreguntasRapidas();
@@ -756,6 +1104,10 @@ function fichaCargarTodo() {
     fichaAbortarSolicitudes();
     fichaActualizarUrl(parametros);
     $("#fichaMensajeGlobal").removeClass("alert-danger").addClass("alert-info").text("Cargando ficha...").show();
+    $("#fichaContenido").show();
+    fichaEstadoZona("zonaRankings", "cargando");
+    fichaEstadoZona("zonaVariantes", "cargando");
+    fichaEstadoZona("zonaEvolucion", "cargando");
 
     fichaPost("resumen", parametros, generacion).done(function (resp) {
         if (!resp || !resp.ok) {
@@ -764,26 +1116,32 @@ function fichaCargarTodo() {
         }
         fichaRenderResumen(resp);
         $("#fichaMensajeGlobal").hide();
-        $("#fichaContenido").show();
-        fichaEstadoZona("zonaRankings", "cargando");
-        fichaCargarZona("variantes", "zonaVariantes", fichaRenderVariantes, parametros, generacion);
-        fichaCargarZona("evolucion", "zonaEvolucion", fichaRenderEvolucion, parametros, generacion);
-        if (window.fichaModelosConfig && window.fichaModelosConfig.puedeConciliar) {
-            fichaCargarZona("conciliacion", "zonaConciliacion", fichaRenderConciliacion, parametros, generacion);
-        }
     }).fail(function (error) {
         if (generacion === fichaGeneracion && (!error || !error.obsoleta)) {
             fichaMostrarErrorGlobal("No se pudo cargar la ficha");
         }
     });
+
+    fichaCargarZona("ranking", null, fichaRenderRanking, parametros, generacion);
+    fichaCargarZona("lideres", null, fichaRenderLideresComerciales, parametros, generacion);
+    fichaCargarZona("variantes", "zonaVariantes", fichaRenderVariantes, parametros, generacion);
+    fichaCargarZona("evolucion", "zonaEvolucion", fichaRenderEvolucion, parametros, generacion);
+    if (window.fichaModelosConfig && window.fichaModelosConfig.puedeConciliar) {
+        fichaCargarZona("conciliacion", "zonaConciliacion", fichaRenderConciliacion, parametros, generacion);
+    }
 }
 
 $("#btnCargarFichaModelo").on("click", fichaCargarTodo);
-$("#fichaFiltroModelo, #fichaFiltroAnio, #fichaFiltroMes").on("change", fichaCargarTodo);
+$("#fichaFiltroModelo").on("change.fichaAuto", fichaCargarTodo);
 $("#fichaFiltroMarca").on("change", function () {
     fichaCargarCatalogo("", true);
 });
 
 if ($("#fichaFiltroModelo").length) {
-    fichaCargarCatalogo(window.fichaModelosConfig ? window.fichaModelosConfig.modeloInicial : "", true);
+    var configInicial = window.fichaModelosConfig || {};
+    if (configInicial.desdeInicial && configInicial.hastaInicial) {
+        fichaActualizarPeriodoUi(configInicial.desdeInicial, configInicial.hastaInicial);
+    }
+    fichaInicializarPeriodoPicker();
+    fichaCargarCatalogo(configInicial.modeloInicial || "", true);
 }

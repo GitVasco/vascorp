@@ -42,6 +42,138 @@ class ModeloFichaGerencialModelos
 		return array("inicio" => $inicio, "fin" => $fin);
 	}
 
+	/**
+	 * Normaliza un período YYYY-MM..YYYY-MM a fechas inclusivas/exclusivas.
+	 * Devuelve null si el rango es inválido.
+	 */
+	static public function mdlConstruirPeriodo($desdeYm, $hastaYm, $maxMeses = 12)
+	{
+		if (!preg_match('/^(\d{4})-(\d{2})$/', (string) $desdeYm, $desdeMatch)
+			|| !preg_match('/^(\d{4})-(\d{2})$/', (string) $hastaYm, $hastaMatch)
+		) {
+			return null;
+		}
+		$desdeAnio = (int) $desdeMatch[1];
+		$desdeMes = (int) $desdeMatch[2];
+		$hastaAnio = (int) $hastaMatch[1];
+		$hastaMes = (int) $hastaMatch[2];
+		$anioMin = 2021;
+		$anioMax = (int) date("Y");
+		$mesActual = (int) date("n");
+		if ($desdeMes < 1 || $desdeMes > 12 || $hastaMes < 1 || $hastaMes > 12) {
+			return null;
+		}
+		if ($desdeAnio < $anioMin || $hastaAnio < $anioMin || $desdeAnio > $anioMax || $hastaAnio > $anioMax) {
+			return null;
+		}
+		$desdeClave = $desdeAnio * 100 + $desdeMes;
+		$hastaClave = $hastaAnio * 100 + $hastaMes;
+		$actualClave = $anioMax * 100 + $mesActual;
+		if ($desdeClave > $hastaClave || $hastaClave > $actualClave) {
+			return null;
+		}
+		$meses = (($hastaAnio - $desdeAnio) * 12) + ($hastaMes - $desdeMes) + 1;
+		if ($meses < 1 || $meses > (int) $maxMeses) {
+			return null;
+		}
+
+		$anios = array();
+		for ($anio = $desdeAnio; $anio <= $hastaAnio; $anio++) {
+			$tabla = self::mdlResolverTablaMovimientos($anio);
+			if ($tabla === null) {
+				return null;
+			}
+			$anios[] = $anio;
+		}
+
+		$inicio = sprintf("%04d-%02d-01", $desdeAnio, $desdeMes);
+		$fin = $hastaMes === 12
+			? sprintf("%04d-01-01", $hastaAnio + 1)
+			: sprintf("%04d-%02d-01", $hastaAnio, $hastaMes + 1);
+		$parcial = ($hastaAnio === $anioMax && $hastaMes === $mesActual);
+
+		return array(
+			"desde" => sprintf("%04d-%02d", $desdeAnio, $desdeMes),
+			"hasta" => sprintf("%04d-%02d", $hastaAnio, $hastaMes),
+			"inicio" => $inicio,
+			"fin" => $fin,
+			"fin_exclusivo" => $fin,
+			"meses" => $meses,
+			"anios" => $anios,
+			"parcial" => $parcial,
+			"anio" => $hastaAnio,
+			"mes" => $hastaMes,
+			"desde_anio" => $desdeAnio,
+			"desde_mes" => $desdeMes,
+			"hasta_anio" => $hastaAnio,
+			"hasta_mes" => $hastaMes
+		);
+	}
+
+	static public function mdlPeriodoDesdeAnioMes($anio, $mes)
+	{
+		return self::mdlConstruirPeriodo(
+			sprintf("%04d-%02d", (int) $anio, (int) $mes),
+			sprintf("%04d-%02d", (int) $anio, (int) $mes)
+		);
+	}
+
+	static public function mdlPeriodoHomologoAnterior($periodo)
+	{
+		if (!is_array($periodo) || empty($periodo["desde"]) || empty($periodo["hasta"])) {
+			return null;
+		}
+		$mover = function ($ym, $deltaAnios) {
+			if (!preg_match('/^(\d{4})-(\d{2})$/', $ym, $match)) {
+				return null;
+			}
+			return sprintf("%04d-%02d", ((int) $match[1]) + $deltaAnios, (int) $match[2]);
+		};
+		$desde = $mover($periodo["desde"], -1);
+		$hasta = $mover($periodo["hasta"], -1);
+		if ($desde === null || $hasta === null) {
+			return null;
+		}
+		return self::mdlConstruirPeriodo($desde, $hasta, max(12, (int) $periodo["meses"]));
+	}
+
+	static public function mdlDiasEfectivosPeriodo($periodo)
+	{
+		$inicio = new DateTime($periodo["inicio"]);
+		$finExclusivo = new DateTime($periodo["fin"]);
+		$hoy = new DateTime(date("Y-m-d"));
+		if ($finExclusivo > $hoy) {
+			$finExclusivo = clone $hoy;
+			$finExclusivo->modify("+1 day");
+		}
+		$dias = (int) $inicio->diff($finExclusivo)->days;
+		return max(1, $dias);
+	}
+
+	/**
+	 * Subconsulta UNION ALL segura sobre movimientosjf_YYYY validados.
+	 */
+	static public function mdlSqlFuenteMovimientos($anios, $columnas = null)
+	{
+		$anios = array_values(array_unique(array_map("intval", (array) $anios)));
+		sort($anios);
+		if (empty($anios)) {
+			return null;
+		}
+		if ($columnas === null) {
+			$columnas = "articulo, cantidad, total, fecha, tipo, documento, cliente, vendedor";
+		}
+		$partes = array();
+		foreach ($anios as $anio) {
+			$tabla = self::mdlResolverTablaMovimientos($anio);
+			if ($tabla === null) {
+				return null;
+			}
+			$partes[] = "SELECT {$columnas} FROM {$tabla}";
+		}
+		return "(" . implode(" UNION ALL ", $partes) . ")";
+	}
+
 	static public function mdlResolverTablaMovimientos($anio)
 	{
 		static $cache = array();
@@ -164,10 +296,12 @@ class ModeloFichaGerencialModelos
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
-	static public function mdlRankingGeneral($modelo, $anio, $mes)
+	static public function mdlRankingGeneral($modelo, $periodo)
 	{
-		$tabla = self::mdlResolverTablaMovimientos($anio);
-		if ($tabla === null) {
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
 			return null;
 		}
 		$stmtGrupo = Conexion::conectar()->prepare(
@@ -191,10 +325,9 @@ class ModeloFichaGerencialModelos
 			);
 		}
 
-		$rango = self::mdlRangoMes($anio, $mes);
 		$sql = "SELECT TRIM(a.modelo) AS modelo,
 				SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
-			FROM {$tabla} m
+			FROM {$fuente} m
 			INNER JOIN articulojf a ON a.articulo = m.articulo
 			INNER JOIN modelojf mo ON TRIM(mo.modelo) = TRIM(a.modelo)
 				AND UPPER(TRIM(IFNULL(mo.estado, ''))) = 'ACTIVO'
@@ -207,8 +340,8 @@ class ModeloFichaGerencialModelos
 			ORDER BY unidades_vendidas DESC, modelo ASC";
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":id_grupo", (int) $grupo["id"], PDO::PARAM_INT);
-		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$stmt->execute();
 		$posicion = null;
 		$total = 0;
@@ -311,10 +444,12 @@ class ModeloFichaGerencialModelos
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
-	static public function mdlLideresComerciales($modelo, $anio, $mes)
+	static public function mdlLideresComerciales($modelo, $periodo)
 	{
-		$tabla = self::mdlResolverTablaMovimientos($anio);
-		if ($tabla === null) {
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
 			return array(
 				"zona" => null,
 				"zonas" => array(),
@@ -324,16 +459,15 @@ class ModeloFichaGerencialModelos
 				"clientes" => array()
 			);
 		}
-		$rango = self::mdlRangoMes($anio, $mes);
 		$where = "TRIM(a.modelo) = :modelo
 			AND m.fecha >= :inicio AND m.fecha < :fin
 			AND " . self::sqlTiposVenta("m") . "
 			AND " . self::sqlCabeceraValida("m");
-		$ejecutar = function ($sql, $todos = false) use ($modelo, $rango) {
+		$ejecutar = function ($sql, $todos = false) use ($modelo, $periodo) {
 			$stmt = Conexion::conectar()->prepare($sql);
 			$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
-			$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-			$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+			$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+			$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 			$stmt->execute();
 			if ($todos) {
 				return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -351,7 +485,7 @@ class ModeloFichaGerencialModelos
 				SELECT TRIM(m.cliente) AS cliente,
 					SUM(IFNULL(m.total, 0)) AS venta_neta,
 					SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
-				FROM {$tabla} m
+				FROM {$fuente} m
 				INNER JOIN articulojf a ON a.articulo = m.articulo
 				WHERE {$where}
 				GROUP BY TRIM(m.cliente)
@@ -385,7 +519,7 @@ class ModeloFichaGerencialModelos
 				SELECT TRIM(m.vendedor) AS codigo,
 					SUM(IFNULL(m.total, 0)) AS venta_neta,
 					SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
-				FROM {$tabla} m
+				FROM {$fuente} m
 				INNER JOIN articulojf a ON a.articulo = m.articulo
 				WHERE {$where}
 				GROUP BY TRIM(m.vendedor)
@@ -420,7 +554,7 @@ class ModeloFichaGerencialModelos
 					SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas,
 					COUNT(DISTINCT CONCAT(m.tipo, '|', m.documento, '|', m.fecha)) AS pedidos,
 					MAX(m.fecha) AS ultima_compra
-				FROM {$tabla} m
+				FROM {$fuente} m
 				INNER JOIN articulojf a ON a.articulo = m.articulo
 				WHERE {$where}
 				GROUP BY TRIM(m.cliente)
@@ -659,17 +793,18 @@ class ModeloFichaGerencialModelos
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
-	static public function mdlVentasResumen($modelo, $anio, $mes)
+	static public function mdlVentasResumen($modelo, $periodo)
 	{
-		$tabla = self::mdlResolverTablaMovimientos($anio);
-		if ($tabla === null) {
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
 			return null;
 		}
-		$rango = self::mdlRangoMes($anio, $mes);
 		$sql = "SELECT COALESCE(SUM(IFNULL(m.total, 0)), 0) AS venta_neta,
 				COALESCE(SUM(IFNULL(m.cantidad, 0)), 0) AS unidades_vendidas,
 				MAX(CASE WHEN m.tipo <> 'E05' THEN m.fecha ELSE NULL END) AS ultima_venta
-			FROM {$tabla} m
+			FROM {$fuente} m
 			INNER JOIN articulojf a ON a.articulo = m.articulo
 			WHERE TRIM(a.modelo) = :modelo
 			  AND m.fecha >= :inicio AND m.fecha < :fin
@@ -677,19 +812,48 @@ class ModeloFichaGerencialModelos
 			  AND " . self::sqlCabeceraValida("m");
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
-		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$stmt->execute();
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
-	static public function mdlVariantes($modelo, $anio, $mes)
+	static public function mdlVentasMensuales($modelo, $periodo)
 	{
-		$tabla = self::mdlResolverTablaMovimientos($anio);
-		if ($tabla === null) {
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
 			return array();
 		}
-		$rango = self::mdlRangoMes($anio, $mes);
+		$sql = "SELECT YEAR(m.fecha) AS anio,
+				MONTH(m.fecha) AS mes,
+				COALESCE(SUM(IFNULL(m.total, 0)), 0) AS venta_neta,
+				COALESCE(SUM(IFNULL(m.cantidad, 0)), 0) AS unidades_vendidas
+			FROM {$fuente} m
+			INNER JOIN articulojf a ON a.articulo = m.articulo
+			WHERE TRIM(a.modelo) = :modelo
+			  AND m.fecha >= :inicio AND m.fecha < :fin
+			  AND " . self::sqlTiposVenta("m") . "
+			  AND " . self::sqlCabeceraValida("m") . "
+			GROUP BY YEAR(m.fecha), MONTH(m.fecha)
+			ORDER BY anio, mes";
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	static public function mdlVariantes($modelo, $periodo)
+	{
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
+			return array();
+		}
 		$sql = "SELECT TRIM(a.cod_color) AS cod_color,
 				MAX(IFNULL(NULLIF(TRIM(a.color), ''), TRIM(a.cod_color))) AS color,
 				TRIM(a.cod_talla) AS cod_talla,
@@ -702,13 +866,14 @@ class ModeloFichaGerencialModelos
 				COALESCE(SUM(CASE WHEN UPPER(TRIM(IFNULL(a.estado, ''))) = 'ACTIVO' THEN IFNULL(a.stock, 0) - IFNULL(a.pedidos, 0) ELSE 0 END), 0) AS stock_disponible,
 				COALESCE(SUM(CASE WHEN UPPER(TRIM(IFNULL(a.estado, ''))) = 'ACTIVO' THEN IFNULL(a.taller, 0) + IFNULL(a.servicio, 0) + IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0) ELSE 0 END), 0) AS en_proceso,
 				COALESCE(SUM(IFNULL(mv.unidades, 0)), 0) AS unidades_vendidas,
-				COALESCE(SUM(IFNULL(mv.venta, 0)), 0) AS venta_neta
+				COALESCE(SUM(IFNULL(mv.venta, 0)), 0) AS venta_neta,
+				CAST(COALESCE(SUM(IFNULL(mv.unidades, 0)), 0) / :meses AS DECIMAL(20,4)) AS promedio_mensual_unidades
 			FROM articulojf a
 			LEFT JOIN (
 				SELECT m.articulo,
 					SUM(IFNULL(m.cantidad, 0)) AS unidades,
 					SUM(IFNULL(m.total, 0)) AS venta
-				FROM {$tabla} m
+				FROM {$fuente} m
 				INNER JOIN articulojf av ON av.articulo = m.articulo
 				WHERE TRIM(av.modelo) = :modelo_ventas
 				  AND m.fecha >= :inicio AND m.fecha < :fin
@@ -723,39 +888,11 @@ class ModeloFichaGerencialModelos
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":modelo_ventas", trim((string) $modelo), PDO::PARAM_STR);
 		$stmt->bindValue(":modelo_variantes", trim((string) $modelo), PDO::PARAM_STR);
-		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":meses", max(1, (int) $periodo["meses"]), PDO::PARAM_INT);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$stmt->execute();
-		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-		$inicioAnio = sprintf("%04d-01-01", (int) $anio);
-		$stmtPromedio = Conexion::conectar()->prepare(
-			"SELECT TRIM(a.cod_color) AS cod_color,
-				TRIM(a.cod_talla) AS cod_talla,
-				CAST(SUM(IFNULL(m.cantidad, 0)) / :meses AS DECIMAL(20,4)) AS promedio_mensual_unidades
-			 FROM {$tabla} m
-			 INNER JOIN articulojf a ON a.articulo = m.articulo
-			 WHERE TRIM(a.modelo) = :modelo
-			   AND m.fecha >= :inicio_anio AND m.fecha < :fin
-			   AND " . self::sqlTiposVenta("m") . "
-			   AND " . self::sqlCabeceraValida("m") . "
-			 GROUP BY TRIM(a.cod_color), TRIM(a.cod_talla)"
-		);
-		$stmtPromedio->bindValue(":meses", max(1, (int) $mes), PDO::PARAM_INT);
-		$stmtPromedio->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
-		$stmtPromedio->bindValue(":inicio_anio", $inicioAnio, PDO::PARAM_STR);
-		$stmtPromedio->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
-		$stmtPromedio->execute();
-		$promedios = array();
-		foreach ($stmtPromedio->fetchAll(PDO::FETCH_ASSOC) as $promedio) {
-			$promedios[$promedio["cod_color"] . "|" . $promedio["cod_talla"]] = $promedio["promedio_mensual_unidades"];
-		}
-		foreach ($filas as &$fila) {
-			$clave = $fila["cod_color"] . "|" . $fila["cod_talla"];
-			$fila["promedio_mensual_unidades"] = isset($promedios[$clave]) ? $promedios[$clave] : "0.0000";
-		}
-		unset($fila);
-		return $filas;
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
 	static public function mdlEvolucion($modelo, $anio)
@@ -783,6 +920,58 @@ class ModeloFichaGerencialModelos
 		$stmt->bindValue(":fin", $fin, PDO::PARAM_STR);
 		$stmt->execute();
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	static public function mdlEvolucionPeriodo($modelo, $periodo)
+	{
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
+			return array();
+		}
+		$sql = "SELECT YEAR(m.fecha) AS anio,
+				MONTH(m.fecha) AS mes,
+				COALESCE(SUM(IFNULL(m.total, 0)), 0) AS venta_neta,
+				COALESCE(SUM(IFNULL(m.cantidad, 0)), 0) AS unidades_vendidas
+			FROM {$fuente} m
+			INNER JOIN articulojf a ON a.articulo = m.articulo
+			WHERE TRIM(a.modelo) = :modelo
+			  AND m.fecha >= :inicio AND m.fecha < :fin
+			  AND " . self::sqlTiposVenta("m") . "
+			  AND " . self::sqlCabeceraValida("m") . "
+			GROUP BY YEAR(m.fecha), MONTH(m.fecha)
+			ORDER BY anio, mes";
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$mapa = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$clave = sprintf("%04d-%02d", (int) $fila["anio"], (int) $fila["mes"]);
+			$mapa[$clave] = $fila;
+		}
+		$serie = array();
+		$cursorAnio = (int) $periodo["desde_anio"];
+		$cursorMes = (int) $periodo["desde_mes"];
+		for ($i = 0; $i < (int) $periodo["meses"]; $i++) {
+			$clave = sprintf("%04d-%02d", $cursorAnio, $cursorMes);
+			$serie[] = array(
+				"anio" => $cursorAnio,
+				"mes" => $cursorMes,
+				"periodo" => $clave,
+				"etiqueta" => $clave,
+				"venta_neta" => isset($mapa[$clave]) ? (float) $mapa[$clave]["venta_neta"] : 0,
+				"unidades_vendidas" => isset($mapa[$clave]) ? (float) $mapa[$clave]["unidades_vendidas"] : 0
+			);
+			$cursorMes++;
+			if ($cursorMes > 12) {
+				$cursorMes = 1;
+				$cursorAnio++;
+			}
+		}
+		return $serie;
 	}
 
 	static public function mdlEvolucionModelos($modelos, $anio)
@@ -820,13 +1009,17 @@ class ModeloFichaGerencialModelos
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
-	static public function mdlDetalleArticulos($modelo, $anio, $mes)
+	static public function mdlDetalleArticulos($modelo, $periodo)
 	{
-		$tabla = self::mdlResolverTablaMovimientos($anio);
-		if ($tabla === null) {
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(
+				isset($periodo["anios"]) ? $periodo["anios"] : array(),
+				"articulo, cantidad, total, fecha, tipo, documento, cliente, vendedor"
+			)
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
 			return array();
 		}
-		$rango = self::mdlRangoMes($anio, $mes);
 		$sql = "SELECT a.articulo,
 				IFNULL(a.estado, '') AS estado,
 				TRIM(IFNULL(a.cod_color, '')) AS cod_color,
@@ -851,7 +1044,7 @@ class ModeloFichaGerencialModelos
 					SUM(CASE WHEN " . self::sqlTiposVenta("m") . " AND " . self::sqlCabeceraValida("m") . " THEN IFNULL(m.total, 0) ELSE 0 END) AS venta_neta,
 					SUM(CASE WHEN m.tipo = 'E20' THEN IFNULL(m.cantidad, 0) ELSE 0 END) AS produccion,
 					MAX(CASE WHEN m.tipo IN ('S02', 'S03', 'S70', 'S05') AND " . self::sqlCabeceraValida("m") . " THEN m.fecha ELSE NULL END) AS ultima_venta
-				FROM {$tabla} m
+				FROM {$fuente} m
 				INNER JOIN articulojf ad ON ad.articulo = m.articulo
 				WHERE TRIM(ad.modelo) = :modelo_mov
 				  AND m.fecha >= :inicio AND m.fecha < :fin
@@ -864,8 +1057,8 @@ class ModeloFichaGerencialModelos
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":modelo_mov", trim((string) $modelo), PDO::PARAM_STR);
 		$stmt->bindValue(":modelo_detalle", trim((string) $modelo), PDO::PARAM_STR);
-		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$stmt->execute();
 		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		$ultimas = self::mdlUltimasVentasModelo($modelo);
@@ -913,28 +1106,29 @@ class ModeloFichaGerencialModelos
 		return $mapa;
 	}
 
-	static public function mdlConciliacion($modelo, $anio, $mes)
+	static public function mdlConciliacion($modelo, $periodo)
 	{
-		$tabla = self::mdlResolverTablaMovimientos($anio);
-		if ($tabla === null) {
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
 			return null;
 		}
-		$rango = self::mdlRangoMes($anio, $mes);
 		$sql = "SELECT
 				COALESCE(SUM(IFNULL(m.total, 0)), 0) AS motor_lineas,
 				COALESCE(SUM(CASE WHEN " . self::sqlCabeceraValida("m") . " THEN IFNULL(m.total, 0) ELSE 0 END), 0) AS ficha_lineas,
 				COALESCE(SUM(CASE WHEN NOT " . self::sqlCabeceraValida("m") . " THEN IFNULL(m.total, 0) ELSE 0 END), 0) AS excluido_sin_cabecera_valida,
 				SUM(CASE WHEN NOT " . self::sqlCabeceraValida("m") . " THEN 1 ELSE 0 END) AS lineas_excluidas,
 				COUNT(*) AS lineas_totales
-			FROM {$tabla} m
+			FROM {$fuente} m
 			INNER JOIN articulojf a ON a.articulo = m.articulo
 			WHERE TRIM(a.modelo) = :modelo
 			  AND m.fecha >= :inicio AND m.fecha < :fin
 			  AND " . self::sqlTiposVenta("m");
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
-		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$stmt->execute();
 		$totales = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -945,21 +1139,23 @@ class ModeloFichaGerencialModelos
 			   AND v.tipo = 'E05'
 			   AND UPPER(TRIM(IFNULL(v.estado, ''))) <> 'ANULADO'
 			   AND NOT EXISTS (
-					SELECT 1 FROM {$tabla} md
+					SELECT 1 FROM {$fuente} md
 					WHERE md.tipo = v.tipo
 					  AND md.documento = v.documento
 					  AND md.fecha = v.fecha
 					  AND IFNULL(md.cantidad, 0) <> 0
 			   )"
 		);
-		$nc->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
-		$nc->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$nc->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$nc->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$nc->execute();
 
 		return array(
 			"modelo" => trim((string) $modelo),
-			"anio" => (int) $anio,
-			"mes" => (int) $mes,
+			"desde" => $periodo["desde"],
+			"hasta" => $periodo["hasta"],
+			"anio" => (int) $periodo["hasta_anio"],
+			"mes" => (int) $periodo["hasta_mes"],
 			"totales" => $totales,
 			"nc_no_atribuibles_periodo" => $nc->fetch(PDO::FETCH_ASSOC)
 		);
