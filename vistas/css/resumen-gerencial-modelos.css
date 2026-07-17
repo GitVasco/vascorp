@@ -1,0 +1,207 @@
+.resumen-modelos-page .content {
+    padding-top: 12px;
+}
+
+.resumen-modelos-filtros,
+#zonaResumenModelos {
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.resumen-modelos-descripcion {
+    margin-bottom: 10px;
+    font-size: 11px;
+}
+
+.resumen-ranking-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 10px;
+}
+
+.resumen-ranking-leyenda span {
+    padding: 4px 9px;
+    background: #f7f9fa;
+    border: 1px solid #e2e7ea;
+    border-radius: 12px;
+    color: #66727c;
+}
+
+.resumen-ranking-leyenda i {
+    margin-right: 4px;
+}
+
+.resumen-ranking-leyenda .alto {
+    color: #00a65a;
+}
+
+.resumen-ranking-leyenda .medio {
+    color: #f39c12;
+}
+
+.resumen-ranking-leyenda .bajo {
+    color: #dd4b39;
+}
+
+.resumen-modelos-orden {
+    display: flex;
+    min-height: 34px;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 10px;
+    background: #f7f9fa;
+    border: 1px solid #d2d6de;
+    border-radius: 4px;
+}
+
+.resumen-modelos-orden label {
+    margin: 0;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.resumen-modelos-orden input {
+    margin-right: 5px;
+}
+
+.resumen-modelos-acciones .btn {
+    font-size: 12px;
+}
+
+.resumen-modelos-tabla-wrap {
+    max-height: calc(100vh - 285px);
+    min-height: 260px;
+    overflow: auto;
+    border: 1px solid #e8ecef;
+    border-radius: 7px;
+}
+
+.resumen-modelos-tabla {
+    min-width: 1680px;
+    margin-bottom: 0;
+    font-size: 11px;
+}
+
+.resumen-modelos-tabla thead th {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    padding: 9px 7px;
+    background: #f5f8fa;
+    border-bottom: 2px solid #d8e1e7;
+    color: #52606b;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.resumen-modelos-tabla thead th:nth-child(1),
+.resumen-modelos-tabla thead th:nth-child(2),
+.resumen-modelos-tabla thead th:nth-child(3) {
+    text-align: left;
+}
+
+.resumen-modelos-tabla tbody td {
+    padding: 8px 7px;
+    text-align: right;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.resumen-modelos-tabla tbody td:nth-child(1),
+.resumen-modelos-tabla tbody td:nth-child(2),
+.resumen-modelos-tabla tbody td:nth-child(3) {
+    text-align: left;
+}
+
+.resumen-modelos-tabla td small {
+    display: block;
+    margin-top: 2px;
+    color: #8a9299;
+    font-size: 9px;
+    white-space: normal;
+}
+
+.resumen-modelos-tabla td:first-child {
+    min-width: 95px;
+}
+
+.resumen-modelos-tabla td:nth-child(2) {
+    min-width: 190px;
+}
+
+.resumen-modelos-tabla td:nth-child(3) {
+    min-width: 145px;
+}
+
+.resumen-modelos-tabla td:nth-child(4),
+.resumen-modelos-tabla td:nth-child(5) {
+    min-width: 115px;
+}
+
+.resumen-modelos-tabla td:first-child a {
+    color: #3c8dbc;
+}
+
+.resumen-modelos-tabla td:first-child a:hover {
+    color: #216b96;
+    text-decoration: underline;
+}
+
+.resumen-modelos-alza {
+    color: #00a65a;
+    font-weight: 700;
+}
+
+.resumen-modelos-baja {
+    color: #dd4b39;
+    font-weight: 700;
+}
+
+.resumen-modelos-estable {
+    color: #7f8c8d;
+    font-weight: 700;
+}
+
+.resumen-ranking-semaforo {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #52606b;
+    white-space: nowrap;
+}
+
+.resumen-ranking-semaforo.alto i {
+    color: #008d4c;
+}
+
+.resumen-ranking-semaforo.medio i {
+    color: #d77d00;
+}
+
+.resumen-ranking-semaforo.bajo i {
+    color: #c63e2d;
+}
+
+.resumen-ranking-semaforo.sin-dato i {
+    color: #7f8c8d;
+}
+
+#zonaResumenModelos > .box-header .box-title i {
+    margin-right: 6px;
+    color: #00c0ef;
+}
+
+.resumen-modelos-cargando {
+    color: #777;
+    font-size: 12px;
+}
+
+@media (max-width: 767px) {
+    .resumen-modelos-tabla-wrap {
+        max-height: none;
+    }
+}

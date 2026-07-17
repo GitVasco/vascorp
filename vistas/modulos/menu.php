@@ -102,12 +102,14 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "asignacion_grupos_marcas");
             $puedeVerCostosModelo = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "costos_modelo");
+            $puedeVerFichaModelos = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardCobranzas
                 || $puedeVerCentroDecisiones
                 || $puedeVerHistorialCredito
                 || $puedeVerLineaCredito;
-            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor;
+            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor || $puedeVerFichaModelos;
             $mostrarCostosRentabilidad = $puedeVerCostosModelo;
             $mostrarCatalogosComerciales = $puedeVerCategoriasComerciales
                 || $puedeVerCategoriasPorRevisar
@@ -136,6 +138,10 @@
             if ($puedeVerMetasVendedor) {
                 $rutasActivasMetasInteligencia[] = "metas-vendedor";
                 $rutasActivasMetasInteligencia[] = "metas-retos";
+            }
+            if ($puedeVerFichaModelos) {
+                $rutasActivasMetasInteligencia[] = "ficha-gerencial-modelos";
+                $rutasActivasMetasInteligencia[] = "resumen-gerencial-modelos";
             }
 
             $rutasActivasCostosRentabilidad = array();
@@ -270,6 +276,20 @@
                                     <a href="index.php?ruta=metas-retos">
                                         <i class="fa fa-trophy"></i>
                                         <span>Metas / retos</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerFichaModelos) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "resumen-gerencial-modelos") echo 'active'; ?>">
+                                    <a href="index.php?ruta=resumen-gerencial-modelos">
+                                        <i class="fa fa-table"></i>
+                                        <span>Resumen de modelos</span>
+                                    </a>
+                                </li>
+                                <li class="<?php if ($_GET["ruta"] == "ficha-gerencial-modelos") echo 'active'; ?>">
+                                    <a href="index.php?ruta=ficha-gerencial-modelos">
+                                        <i class="fa fa-cube"></i>
+                                        <span>Análisis de modelos</span>
                                     </a>
                                 </li>
                                 <?php } ?>

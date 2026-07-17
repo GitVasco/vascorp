@@ -1,6 +1,6 @@
 # Plan: Ficha gerencial de modelos
 
-**Estado:** arquitectura y hoja de ruta propuesta.  
+**Estado:** Fase 0 y primera entrega operativa implementadas.
 **Referencia visual:** [`docs/ficha_modelos.png`](ficha_modelos.png).  
 **Objetivo:** ofrecer en una sola vista la información gerencial de un modelo —ventas, stock, colores/tallas, producción, rentabilidad y alertas— para evitar consolidar múltiples archivos Excel.
 
@@ -20,21 +20,22 @@ La vista será de solo lectura para gerencia en su primera versión. La edición
 | Ventas por artículo/modelo | `movimientosjf_AAAA` unido a `articulojf`, y `ventajf` para cabecera. `ModeloMetricasComerciales` ya usa estos movimientos para ventas permitidas por modelo. | Ventas monetarias, unidades, color/talla, vendedor, cliente, zona y evolución. |
 | Producción | Movimientos tipo `E20`, consultas `mdlMovProdMod()` y módulos de producción. | Unidades producidas, evolución y contraste producción vs venta. |
 | Precios | `preciojf` y métodos `mdlVerPrecios()` / módulo de modelos. | Precio de lista y, después, precio promedio vendido. |
-| Costos | Existe `costos-modelo.php`, pero usa JSON históricos/archivos (`vistas/json`) y datos de 2022. | Referencia de UX solamente; **no usar como fuente oficial** de margen/utilidad hasta normalizar costos. |
+| Costos | `costos_modelo_mensualjf` con carga, aprobación e historial; módulo `costos-mensuales-modelo`. | Fuente oficial de costo mensual. La ficha consume exclusivamente filas aprobadas del mismo modelo/período. |
 | Cobertura comercial | Grupos de marcas y cobertura vendedor–marca ya planificados/implementados en modelos de métricas. | Filtros y análisis de ventas por vendedor, sin duplicar regla de cobertura. |
 
 ### Hallazgos importantes
 
 - La mayor parte del MVP puede construirse con datos ya disponibles en base de datos.
-- No hay una fuente única confirmada de costo unitario vigente por modelo/artículo y período. Por eso **utilidad y margen reales no deben aparecer en la Fase 1** con datos estimados o JSON antiguos.
+- Ya existe una fuente única aprobable de costo unitario mensual por modelo. Utilidad y margen aparecen solo cuando el costo del mismo período está aprobado.
 - Las tablas de movimientos están particionadas por año (`movimientosjf_YYYY`). La capa de datos debe resolver esta partición de forma segura y no dejar años fijos como ocurre en consultas antiguas.
 - Los indicadores deben usar ventas netas válidas y tratar devoluciones/notas de crédito igual que el motor comercial; no usar solamente sumas de cabecera si se requiere color/talla.
+- Las ventas históricas de SKU hoy inactivos permanecen en matriz, rankings y detalle para conciliar con el KPI; su inventario operativo se muestra en cero y se etiqueta con su estado.
 
 ## 3. Arquitectura propuesta
 
 ```text
 Ruta / ficha
-index.php?ruta=ficha-modelo&modelo={codigo}&anio={YYYY}&mes={MM}
+index.php?ruta=ficha-gerencial-modelos&modelo={codigo}&anio={YYYY}&mes={MM}
         │
         ├── Vista PHP: filtros, contenedores y permisos
         ├── JS: carga progresiva de zonas vía AJAX
@@ -44,7 +45,7 @@ index.php?ruta=ficha-modelo&modelo={codigo}&anio={YYYY}&mes={MM}
         │     ├── ventas por modelo/variante
         │     ├── inventario y producción
         │     ├── clientes, vendedores y zonas
-        │     ├── costos (fase posterior)
+        │     ├── costos mensuales aprobados
         │     └── reglas de salud/alertas
         └── JSON por zona: resumen, matriz, rankings, evolución, alertas
 ```
@@ -56,6 +57,7 @@ Archivos propuestos:
 - `ajax/ficha-gerencial-modelos.ajax.php`
 - `vistas/modulos/ficha-gerencial-modelos.php`
 - `vistas/js/ficha-gerencial-modelos.js`
+- `vistas/css/ficha-gerencial-modelos.css`
 - `docs/sql/indices-ficha-gerencial-modelos.sql`
 
 No reutilizar `vistas/modulos/costos/costos-modelo.php` como backend: mezcla cálculo, HTML y archivos JSON de un año histórico. La nueva capa debe consultar BD con parámetros preparados y devolver JSON.
@@ -68,7 +70,7 @@ Antes de programar cada zona, Cursor debe centralizar estas definiciones en un �
 |---|---|---|
 | Ventas S/ | `SUM(m.total)` de líneas de venta válidas del modelo en el período, incluyendo devoluciones como importe/cantidad negativa según regla actual. | `movimientosjf_AAAA` + `articulojf` |
 | Unidades vendidas | `SUM(m.cantidad)` de las mismas líneas. | `movimientosjf_AAAA` |
-| Stock físico | `SUM(MAX(stock, 0))` de los artículos activos del modelo. | `articulojf` |
+| Stock físico | `SUM(stock)` de los artículos activos del modelo; los negativos se muestran y auditan, no se ocultan. | `articulojf` |
 | Stock disponible | Stock físico menos pedidos comprometidos; mostrar componentes por separado. | `articulojf.stock - articulojf.pedidos` |
 | En proceso | Taller + servicio + almacén de corte + orden de corte; nunca sumarlo al stock disponible sin etiqueta. | `articulojf` |
 | Rotación | Unidades vendidas del período ÷ inventario promedio. Si no hay inventario histórico confiable, mostrar “pendiente de histórico” y no inventar el promedio. | ventas + inventario histórico futuro |
@@ -83,14 +85,14 @@ Antes de programar cada zona, Cursor debe centralizar estas definiciones en un �
 
 **Propósito:** definir métricas, asegurar fuentes y evitar que la ficha muestre números contradictorios.
 
-- [ ] Crear permisos `gestion_comercial.ficha_modelos.ver`; edición no aplica en la ficha inicial.
-- [ ] Registrar ruta, menú “Análisis de modelos” y acceso desde `modelosjf` mediante botón “Ver ficha”.
-- [ ] Crear búsqueda de modelo por código/nombre, filtros de período, marca y comparación.
-- [ ] Implementar `mdlResolverTablaMovimientos($anio)` con verificación de tabla existente; nunca concatenar un año no validado.
-- [ ] Definir tipos de documento, anulaciones, devoluciones y notas de crédito para ventas por línea, reutilizando la regla del motor comercial.
-- [ ] Crear consultas de conciliación: total de la ficha vs reporte de ventas existente, para una muestra de modelos y períodos.
-- [ ] Auditar nulos/duplicados de modelo, marca, color, talla y artículos sin modelo.
-- [ ] Revisar `EXPLAIN` e instalar solo índices necesarios sobre fecha/tipo/artículo/vendedor en las tablas de movimientos.
+- [x] Crear permisos `gestion_comercial.ficha_modelos.ver`; edición no aplica en la ficha inicial.
+- [x] Registrar ruta, menú “Análisis de modelos” y acceso desde `modelosjf` mediante botón “Ver ficha”.
+- [x] Crear selector de modelo activo, filtros de período y marca persistidos en URL.
+- [x] Implementar `mdlResolverTablaMovimientos($anio)` con verificación exacta de tabla; nunca concatenar un año no validado.
+- [x] Definir tipos `S02`, `S03`, `S70`, `S05`, `E05`, anulaciones y NC sin líneas según el motor comercial.
+- [x] Crear consultas de conciliación para los modelos `10026`, `10273`, `10353` y `10054`.
+- [x] Auditar por modelo variantes sin color/talla y stock/disponible negativos.
+- [x] Revisar `EXPLAIN`, instalar los índices medidos y documentarlos en `docs/sql/indices-ficha-gerencial-modelos.sql`.
 
 **Entregable:** ruta funcional con selector de modelo y un panel técnico de conciliación solo para administrador.
 
@@ -106,6 +108,7 @@ Zonas de la imagen que entran:
 4. **Rankings básicos:** colores, tallas, top 10 combinaciones color–talla.
 5. **Evolución:** gráfico mensual de ventas y unidades del año seleccionado.
 6. **Detalle:** tabla paginada de artículos/SKU con color, talla, stock, pedidos, en proceso, ventas y última venta.
+7. **Rentabilidad:** costo unitario aprobado, costo de venta, utilidad y margen; si falta aprobación se muestra pendiente.
 
 **Criterio de aceptación:** gerencia puede elegir un modelo y período, entender qué se vende y qué queda disponible por variante sin abrir un Excel.
 
@@ -141,21 +144,20 @@ Zonas de la imagen que entran:
 
 **Propósito:** habilitar utilidad, margen y decisiones de precio con trazabilidad.
 
-Requiere implementar el módulo independiente descrito en `PLAN_COSTOS_MENSUALES_MODELO.md`, que será la fuente de verdad de costo mensual por modelo. La ficha solo consume costos **aprobados** de ese módulo; no permite modificarlos.
+El módulo independiente descrito en `PLAN_COSTOS_MENSUALES_MODELO.md` ya está implementado. La ficha consume costos **aprobados** de ese módulo y no permite modificarlos.
 
 Modelo de datos de referencia:
 
 ```text
-costo_modelo_periodojf
-  modelo / artículo opcional
-  fecha_inicio, fecha_fin
-  costo_material, mano_obra, cif, costo_total
-  fuente, estado_aprobacion, usuario, fechas de auditoría
+costos_modelo_mensualjf
+  modelo, anio, mes
+  costo_unitario
+  fuente, estado, usuarios y fechas de auditoría
 ```
 
 Una vez aprobada:
 
-- [ ] Margen promedio y utilidad del período por modelo/variante.
+- [x] Margen promedio y utilidad del período por modelo.
 - [ ] Ranking por rentabilidad y no solo por ventas.
 - [ ] Alertas de variantes que venden pero destruyen margen.
 - [ ] Comparación de precio promedio vendido vs costo y lista de precios.
@@ -185,20 +187,20 @@ Los costos históricos se deben congelar por vigencia; no recalcular utilidades 
 
 ### Estructura inicial
 
-- [ ] Crear los cinco archivos de la arquitectura propuesta.
-- [ ] Añadir permisos, ruta, menú y botón de acceso desde el maestro de modelos.
-- [ ] Implementar endpoint `resumen` (cabecera + tarjetas) y manejo de estados vacío/error.
-- [ ] Implementar filtros de modelo/período; persistirlos en URL para compartir la ficha.
-- [ ] Registrar fecha/hora de actualización y fuente de cada bloque.
+- [x] Crear controlador, modelo, AJAX, vista, JS y CSS de la arquitectura propuesta.
+- [x] Añadir permisos, ruta, menú y botón de acceso desde el maestro de modelos.
+- [x] Implementar endpoint `resumen` (cabecera + tarjetas) y manejo de estados vacío/error.
+- [x] Implementar filtros de modelo/período; persistirlos en URL para compartir la ficha.
+- [x] Registrar fecha/hora de actualización y fuente de cada bloque.
 
 ### Métricas del MVP
 
-- [ ] Catálogo/imagen desde `modelojf` y marca desde `marcasjf`.
-- [ ] Variantes e inventario desde `articulojf`.
-- [ ] Ventas/unidades por línea desde `movimientosjf_AAAA` + `articulojf`.
-- [ ] Matriz y rankings color–talla agregados en SQL.
-- [ ] Serie mensual para evolución.
-- [ ] Pruebas de conciliación contra informes existentes y casos con devolución/anulación.
+- [x] Catálogo/imagen desde `modelojf` y marca desde `marcasjf`.
+- [x] Variantes e inventario desde `articulojf`.
+- [x] Ventas/unidades por línea desde `movimientosjf_AAAA` + `articulojf`.
+- [x] Matriz y rankings color–talla agregados por lote.
+- [x] Serie mensual para evolución.
+- [x] Conciliación técnica contra líneas del motor comercial y cabeceras no anuladas.
 
 ### Entregas posteriores
 
@@ -224,13 +226,13 @@ Los costos históricos se deben congelar por vigencia; no recalcular utilidades 
 1. La ficha muestra solo modelos activos, con filtro por marca.
 2. Stock disponible = `stock - pedidos`; taller, servicio, almacén de corte y orden de corte se muestran como cantidades separadas en proceso.
 3. Las ventas incluyen todos los canales y vendedores por defecto. En una fase posterior se puede agregar el filtro opcional “solo cobertura comercial”.
-4. Margen y utilidad quedan fuera del MVP. Se implementará un módulo independiente de carga y aprobación de costos mensuales por modelo.
+4. Margen y utilidad forman parte del MVP cuando existe costo mensual aprobado; de lo contrario quedan nulos y visibles como pendientes.
 5. El comparativo estándar será contra el mismo período del año anterior.
 6. Modelos de conciliación inicial: `10026`, `10273`, `10353`, `10054`.
 
 ## 10. Orden de inicio para Cursor
 
 1. Implementar Fase 0 y conciliar primero los modelos `10026`, `10273`, `10353` y `10054`.
-2. Implementar la Fase 1 completa sin margen, utilidad, pronóstico ni IA.
-3. Implementar el módulo de costos mensuales por separado, según `PLAN_COSTOS_MENSUALES_MODELO.md`.
-4. Solo cuando existan costos aprobados, iniciar la Fase 4 de rentabilidad en esta ficha.
+2. Implementar la Fase 1 con rentabilidad aprobada, sin pronóstico ni IA.
+3. Continuar con vendedores, clientes, zonas y comparativo anual.
+4. Incorporar después salud de inventario, alertas y pronóstico explicable.

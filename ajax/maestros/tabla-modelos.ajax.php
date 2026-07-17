@@ -1,5 +1,10 @@
 <?php
 
+if (!isset($_SESSION)) {
+    session_start();
+}
+
+require_once "../../controladores/permisos-modulos.config.php";
 require_once "../../controladores/modelos.controlador.php";
 require_once "../../modelos/modelos.modelo.php";
 
@@ -15,6 +20,8 @@ class TablaModelos
 
     public function mostrarTablaModelos()
     {
+        $puedeVerFicha = function_exists("usuarioPuedeVerModulo")
+            && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
         $item = null;
         $valor = null;
 
@@ -54,6 +61,12 @@ class TablaModelos
                 //     $_GET["perfil"]=="Sistemas"){
 
                 $botones =  "<div class='btn-group'><button class='btn btn-xs btn-primary btnVerModelo' modelo='" . $modelos[$i]["modelo"] . "' data-toggle='modal' data-target='#modalVerModelo'><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-warning btnEditarModelo' modelo='" . $modelos[$i]["modelo"] . "' data-toggle='modal' data-target='#modalEditarModelo'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarModelo' idModelo='" . $modelos[$i]["id_modelo"] . "' modelo='" . $modelos[$i]["modelo"] . "' imagen='" . $modelos[$i]["imagen"] . "'><i class='fa fa-times'></i></button><button class='btn btn-xs btn-default  btnReporteOM' title='Reporte Operaciones por modelo' codigo='" . $modelos[$i]["modelo"] . "' style='border:green 1px solid'><img src='vistas/img/plantilla/excel.png' width='17px'></button><button class='btn btn-xs btn-info btnGenerarArticulo' modelo='" . $modelos[$i]["modelo"] . "' title='Generar Articulo'><i class='fa fa-tag'></i></button><button class='btn btn-xs btnVerPrecio' modelo='" . $modelos[$i]["modelo"] . "'  descripcion = '" . $modelos[$i]["nombre"] . "' style='background:gray' data-toggle='modal' data-target='#modalVerPrecio'><i class='fa fa-money'></i></button></div>";
+                if ($puedeVerFicha && strtoupper(trim($modelos[$i]["estado"])) === "ACTIVO") {
+                    $enlaceFicha = "<a class='btn btn-xs btn-success' href='index.php?ruta=ficha-gerencial-modelos&amp;modelo="
+                        . rawurlencode($modelos[$i]["modelo"])
+                        . "' title='Ver ficha gerencial'><i class='fa fa-line-chart'></i></a>";
+                    $botones = str_replace("</div>", $enlaceFicha . "</div>", $botones);
+                }
 
                 // }else{
 

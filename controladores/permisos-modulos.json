@@ -48,6 +48,10 @@
       "ver": [6],
       "editar": [6],
       "aprobar": [6]
+    },
+    "ficha_modelos": {
+      "ver": [6],
+      "conciliar": [6]
     }
   },
   "vasco_online": {

@@ -39,6 +39,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Metas / retos | Vasco System";
         } elseif ($_GET["ruta"] === "costos-mensuales-modelo") {
             $__tituloVentana = "Costos mensuales por modelo | Vasco System";
+        } elseif ($_GET["ruta"] === "ficha-gerencial-modelos") {
+            $__tituloVentana = "Ficha gerencial de modelos | Vasco System";
+        } elseif ($_GET["ruta"] === "resumen-gerencial-modelos") {
+            $__tituloVentana = "Resumen gerencial de modelos | Vasco System";
         } elseif ($_GET["ruta"] === "zonas-comerciales") {
             $__tituloVentana = "Zonas comerciales | Vasco System";
         } elseif ($_GET["ruta"] === "grupos-marcas") {
@@ -106,6 +110,14 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") : ?>
     <link rel="stylesheet" href="vistas/css/linea-credito.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
+    <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=35">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") : ?>
+    <link rel="stylesheet" href="vistas/css/resumen-gerencial-modelos.css?v=4">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") : ?>
@@ -372,6 +384,20 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/costos-mensuales-modelo.php";
+                }
+            } else if ($_GET["ruta"] == "ficha-gerencial-modelos") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/ficha-gerencial-modelos.php";
+                }
+            } else if ($_GET["ruta"] == "resumen-gerencial-modelos") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/resumen-gerencial-modelos.php";
                 }
             } else if ($_GET["ruta"] == "linea-credito") {
 
@@ -837,6 +863,12 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "costos-mensuales-modelo") { ?>
     <script src="vistas/js/costos-modelo-mensual.js?v=2"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") { ?>
+    <script src="vistas/js/ficha-gerencial-modelos.js?v=33"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") { ?>
+    <script src="vistas/js/resumen-gerencial-modelos.js?v=4"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "zonas-comerciales") { ?>
     <script src="vistas/js/zonas-comerciales.js?v=5"></script>

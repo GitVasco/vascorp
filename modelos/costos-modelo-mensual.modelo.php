@@ -538,6 +538,59 @@ class ModeloCostosModeloMensual
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
+	static public function mdlCalcularRentabilidadUltimoAprobado($modelo, $anio, $mes, $ventaNeta, $unidades)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT base.modelo,
+				base.anio_solicitado AS anio,
+				base.mes_solicitado AS mes,
+				base.costo_anio,
+				base.costo_mes,
+				base.costo_unitario,
+				base.venta_neta,
+				base.unidades_vendidas,
+				base.costo_venta,
+				CAST(base.venta_neta - base.costo_venta AS DECIMAL(20,4)) AS utilidad,
+				CASE
+					WHEN base.venta_neta > 0 THEN
+						CAST(((base.venta_neta - base.costo_venta) / base.venta_neta) * 100 AS DECIMAL(10,4))
+					ELSE NULL
+				END AS margen_pct
+			 FROM (
+				SELECT c.modelo,
+					CAST(:anio_solicitado AS UNSIGNED) AS anio_solicitado,
+					CAST(:mes_solicitado AS UNSIGNED) AS mes_solicitado,
+					c.anio AS costo_anio,
+					c.mes AS costo_mes,
+					c.costo_unitario,
+					parametros.venta_neta,
+					parametros.unidades_vendidas,
+					CAST(parametros.unidades_vendidas * c.costo_unitario AS DECIMAL(20,4)) AS costo_venta
+				FROM costos_modelo_mensualjf c
+				CROSS JOIN (
+					SELECT
+						CAST(:venta_neta AS DECIMAL(20,4)) AS venta_neta,
+						CAST(:unidades AS DECIMAL(14,4)) AS unidades_vendidas
+				) parametros
+				WHERE c.modelo = :modelo
+				  AND c.estado = 'aprobado'
+				  AND (c.anio < :anio_limite OR (c.anio = :anio_limite_igual AND c.mes <= :mes_limite))
+				ORDER BY c.anio DESC, c.mes DESC, c.id DESC
+				LIMIT 1
+			 ) base"
+		);
+		$stmt->bindValue(":anio_solicitado", (int) $anio, PDO::PARAM_INT);
+		$stmt->bindValue(":mes_solicitado", (int) $mes, PDO::PARAM_INT);
+		$stmt->bindValue(":venta_neta", $ventaNeta, PDO::PARAM_STR);
+		$stmt->bindValue(":unidades", $unidades, PDO::PARAM_STR);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->bindValue(":anio_limite", (int) $anio, PDO::PARAM_INT);
+		$stmt->bindValue(":anio_limite_igual", (int) $anio, PDO::PARAM_INT);
+		$stmt->bindValue(":mes_limite", (int) $mes, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch(PDO::FETCH_ASSOC);
+	}
+
 	static public function mdlHistorial($modelo, $anio, $mes)
 	{
 		$stmt = Conexion::conectar()->prepare(
