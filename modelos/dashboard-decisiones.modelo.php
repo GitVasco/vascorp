@@ -667,7 +667,19 @@ class ModeloDashboardDecisiones
 
         $sql = "SELECT
                     COUNT(*) AS docs,
-                    SUM(IFNULL(v.neto, 0)) AS soles
+                    SUM(IFNULL(v.neto, 0)) AS soles,
+                    SUM(
+                        CASE
+                            WHEN v.tipo = 'S70' THEN IFNULL(v.neto, 0)
+                            ELSE 0
+                        END
+                    ) AS soles_proformas,
+                    SUM(
+                        CASE
+                            WHEN v.tipo = 'S70' THEN 1
+                            ELSE 0
+                        END
+                    ) AS docs_proformas
                 FROM ventajf v
                 {$join}
                 WHERE v.fecha >= :fecha_ini
@@ -682,11 +694,18 @@ class ModeloDashboardDecisiones
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        $soles = isset($row["soles"]) ? (float) $row["soles"] : 0;
+        $solesProformas = isset($row["soles_proformas"]) ? (float) $row["soles_proformas"] : 0;
+        $pctProformas = ($soles > 0) ? round(($solesProformas / $soles) * 100, 1) : 0.0;
+
         return array(
             "anio" => $rango["anio"],
             "mes" => $rango["mes"],
             "docs" => isset($row["docs"]) ? (int) $row["docs"] : 0,
-            "soles" => isset($row["soles"]) ? (float) $row["soles"] : 0,
+            "soles" => $soles,
+            "soles_proformas" => round($solesProformas, 2),
+            "docs_proformas" => isset($row["docs_proformas"]) ? (int) $row["docs_proformas"] : 0,
+            "pct_proformas" => $pctProformas,
         );
     }
 

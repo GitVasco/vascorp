@@ -52,6 +52,28 @@ $estadosPipeline = array(
                 <div class="dd-decision-card-value">S/ <?php echo number_format((float) $cartera["deuda_vencida"], 0); ?></div>
                 <div class="dd-decision-card-meta"><?php echo (int) $cartera["clientes_vencidos"]; ?> clientes</div>
             </div>
+            <?php
+            $pctProformas = isset($facturadoResumen["pct_proformas"])
+                ? (float) $facturadoResumen["pct_proformas"]
+                : 0.0;
+            $solesProformas = isset($facturadoResumen["soles_proformas"])
+                ? (float) $facturadoResumen["soles_proformas"]
+                : 0.0;
+            $docsProformas = isset($facturadoResumen["docs_proformas"])
+                ? (int) $facturadoResumen["docs_proformas"]
+                : 0;
+            $claseProformas = ($pctProformas > 20) ? "dd-decision-card--danger" : "dd-decision-card--ok";
+            ?>
+            <div class="dd-decision-card <?php echo $claseProformas; ?>"
+                 title="Proformas S70 sobre ventas del mes (S02, S03 y S70)">
+                <div class="dd-decision-card-label"><i class="fa fa-file-text-o"></i> Proformas / ventas</div>
+                <div class="dd-decision-card-value"><?php echo number_format($pctProformas, 1); ?>%</div>
+                <div class="dd-decision-card-meta">
+                    S/ <?php echo number_format($solesProformas, 0); ?>
+                    · <?php echo $docsProformas; ?> guías
+                    · mes actual
+                </div>
+            </div>
         </div>
 
         <?php
