@@ -3,6 +3,9 @@
     "dashboard_cobranzas": {
       "ver": [6, 32, 105]
     },
+    "dashboard_cxc": {
+      "ver": [6, 32, 105]
+    },
     "centro_decisiones": {
       "ver": [6, 32, 105],
       "registrar": [6, 32],

@@ -337,6 +337,21 @@ class ControladorLineaCredito
         }
 
         $codigoGrupo = trim((string) $cliente["grupo"]);
+
+        return self::ctrReferenciaCupoGrupo($codigoGrupo, $lineaRecomendadaIc);
+    }
+
+    /**
+     * Referencia de línea/deuda consolidada de un grupo empresarial.
+     */
+    public static function ctrReferenciaCupoGrupo($codigoGrupo, $lineaRecomendadaIc = null)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return null;
+        }
+
         $grupo = ModeloGruposEmpresariales::mdlMostrarGrupos("codigo", $codigoGrupo);
         $lineaGrupo = ModeloLineaCredito::mdlGrupoLinea($codigoGrupo);
         $lineaOperativa = ModeloInteligenciaComercial::mdlLineaCreditoOperativaGrupo($codigoGrupo);
@@ -397,6 +412,120 @@ class ControladorLineaCredito
             "etiqueta_linea" => ($lineaAprobada !== null && $lineaAprobada > 0)
                 ? "Aprobada del grupo"
                 : "Recomendada IC (grupo)",
+        );
+    }
+
+    /**
+     * Completa línea de referencia en filas del Top de deuda (misma lógica que Línea de crédito).
+     */
+    public static function ctrEnriquecerLineasReferenciaTopDeuda(array $filas)
+    {
+        if (count($filas) === 0) {
+            return $filas;
+        }
+
+        $codigosCliente = array();
+        $codigosGrupo = array();
+
+        foreach ($filas as $fila) {
+            $tipo = isset($fila['tipo_entidad']) ? (string) $fila['tipo_entidad'] : 'cliente';
+            $codigo = isset($fila['codigo']) ? trim((string) $fila['codigo']) : '';
+
+            if ($codigo === '') {
+                continue;
+            }
+
+            if ($tipo === 'grupo') {
+                $codigosGrupo[] = $codigo;
+            } else {
+                $codigosCliente[] = $codigo;
+            }
+        }
+
+        $mapa = ModeloLineaCredito::mdlMapaLineasReferenciaDashboard($codigosCliente, $codigosGrupo);
+
+        foreach ($filas as &$fila) {
+            $tipo = isset($fila['tipo_entidad']) ? (string) $fila['tipo_entidad'] : 'cliente';
+            $codigo = isset($fila['codigo']) ? trim((string) $fila['codigo']) : '';
+            $clave = ($tipo === 'grupo' ? 'grupo|' : 'cliente|') . $codigo;
+            $ref = null;
+
+            if ($codigo !== '' && isset($mapa[$clave])) {
+                $ref = $mapa[$clave];
+            }
+
+            if ((!$ref || (float) $ref['linea_referencia'] <= 0) && $codigo !== '') {
+                if ($tipo === 'grupo') {
+                    $grupoRef = self::ctrReferenciaCupoGrupo($codigo);
+                    if ($grupoRef && (float) $grupoRef['linea_referencia'] > 0) {
+                        $ref = array(
+                            'linea_referencia' => (float) $grupoRef['linea_referencia'],
+                            'etiqueta_linea' => $grupoRef['etiqueta_linea'],
+                        );
+                    }
+                } else {
+                    $clienteRef = self::ctrReferenciaCupoPedido($codigo);
+                    if ($clienteRef && (float) $clienteRef['linea_referencia'] > 0) {
+                        $ref = array(
+                            'linea_referencia' => (float) $clienteRef['linea_referencia'],
+                            'etiqueta_linea' => $clienteRef['etiqueta_linea'],
+                        );
+                    } else {
+                        $ref = self::ctrLineaReferenciaIcFallback($tipo, $codigo);
+                    }
+                }
+            }
+
+            if ($ref && (float) $ref['linea_referencia'] > 0) {
+                $fila['linea_credito'] = (float) $ref['linea_referencia'];
+                $fila['linea_credito_etiqueta'] = isset($ref['etiqueta_linea']) ? (string) $ref['etiqueta_linea'] : '';
+            } else {
+                $fila['linea_credito'] = null;
+                $fila['linea_credito_etiqueta'] = '';
+            }
+        }
+        unset($fila);
+
+        return $filas;
+    }
+
+    private static function ctrLineaReferenciaIcFallback($tipoEntidad, $codigo)
+    {
+        $codigo = trim((string) $codigo);
+
+        if ($codigo === '') {
+            return null;
+        }
+
+        if ($tipoEntidad === 'grupo') {
+            $motores = self::ctrMotoresGrupoIc($codigo);
+            $motor3 = isset($motores['motor3']) ? $motores['motor3'] : null;
+        } else {
+            $motor1 = ControladorInteligenciaComercial::ctrCalcularMotorRiesgoCredito($codigo);
+            $motor2 = ControladorInteligenciaComercial::ctrCalcularMotorComercial($codigo);
+            $motor4 = ControladorInteligenciaComercial::ctrCalcularMotorFidelidad($codigo);
+            $motor3 = ControladorInteligenciaComercial::ctrCalcularMotorLineaCredito($codigo, $motor1, $motor2, $motor4);
+        }
+
+        if (!$motor3 || empty($motor3['linea']['linea_recomendada'])) {
+            return null;
+        }
+
+        $recomendada = (float) $motor3['linea']['linea_recomendada'];
+
+        if ($recomendada <= 0) {
+            return null;
+        }
+
+        if (function_exists('icRedondearLineaCredito')) {
+            $recomendada = icRedondearLineaCredito($recomendada);
+        } else {
+            $recomendada = round($recomendada, 2);
+        }
+
+        return array(
+            'linea_referencia' => $recomendada,
+            'etiqueta_linea' => 'Recomendada IC',
         );
     }
 

@@ -42,11 +42,16 @@ $estadosPipeline = array(
                 <div class="dd-decision-card-value">S/ <?php echo number_format((float) $alertas["generados_antiguos_soles"], 0); ?></div>
                 <div class="dd-decision-card-meta"><?php echo (int) $alertas["generados_antiguos"]; ?> ped.</div>
             </div>
-            <div class="dd-decision-card dd-decision-card--neutral">
-                <div class="dd-decision-card-label"><i class="fa fa-hourglass-half"></i> Estancados +3 días</div>
-                <div class="dd-decision-card-value">S/ <?php echo number_format((float) $pedidos["soles_estancados"], 0); ?></div>
-                <div class="dd-decision-card-meta"><?php echo (int) $pedidos["estancados_3d"]; ?> ped. · post-aprobación</div>
-            </div>
+            <a href="#ddSeccionCola" class="dd-decision-card dd-decision-card--neutral <?php echo ((int) $pedidos["estancados_3d"] > 0) ? "dd-decision-card--pulse" : ""; ?>">
+                <div class="dd-decision-card-label"><i class="fa fa-inbox"></i> En cola</div>
+                <div class="dd-decision-card-value">S/ <?php echo number_format((float) $pedidos["soles_post_aprobacion"], 0); ?></div>
+                <div class="dd-decision-card-meta">
+                    <?php echo (int) $pedidos["post_aprobacion_total"]; ?> ped. · Aprobado · APT · Confirmado
+                    <?php if ((int) $pedidos["estancados_3d"] > 0) : ?>
+                        · <?php echo (int) $pedidos["estancados_3d"]; ?> con +3 días
+                    <?php endif; ?>
+                </div>
+            </a>
             <div class="dd-decision-card dd-decision-card--cartera">
                 <div class="dd-decision-card-label"><i class="fa fa-money"></i> Cartera vencida</div>
                 <div class="dd-decision-card-value">S/ <?php echo number_format((float) $cartera["deuda_vencida"], 0); ?></div>
@@ -452,9 +457,10 @@ $estadosPipeline = array(
 
         <div class="row dd-row-compact">
             <div class="col-md-6">
-                <div class="box box-warning dd-box">
+                <div class="box box-warning dd-box" id="ddSeccionCola">
                     <div class="box-header with-border dd-box-header-compact">
-                        <h3 class="box-title"><i class="fa fa-hourglass-half"></i> Estancados +3 días</h3>
+                        <h3 class="box-title"><i class="fa fa-inbox"></i> En cola</h3>
+                        <small class="text-muted pull-right" style="margin-right:8px;">Aprobado · APT · Confirmado</small>
                         <?php
                         $pctPromedioEstancados = 0;
                         if (!empty($estancados)) {
@@ -466,9 +472,14 @@ $estadosPipeline = array(
                         }
                         ?>
                         <div class="dd-header-tools pull-right">
+                            <?php if ((int) $pedidos["estancados_3d"] > 0) : ?>
+                                <span class="dd-resumen-chip dd-resumen-chip--warn" title="Pedidos con 3 o más días desde la fecha del pedido">
+                                    <?php echo (int) $pedidos["estancados_3d"]; ?> con +3 días
+                                </span>
+                            <?php endif; ?>
                             <span class="dd-resumen-chip dd-pct-completo"
                                   style="<?php echo ddPctCompletoEstilo($pctPromedioEstancados); ?>"
-                                  title="Promedio del % completo de los pedidos estancados">
+                                  title="Promedio del % completo de los pedidos en cola">
                                 Prom. <?php echo $pctPromedioEstancados; ?>%
                             </span>
                         </div>
@@ -487,12 +498,13 @@ $estadosPipeline = array(
                             </thead>
                             <tbody>
                                 <?php if (empty($estancados)) : ?>
-                                    <tr><td colspan="6" class="text-center text-muted">Sin pedidos estancados en estos estados.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted">Sin pedidos en cola (Aprobado, APT o Confirmado).</td></tr>
                                 <?php else : ?>
                                     <?php foreach ($estancados as $row) :
                                         $pctCompleto = (int) (isset($row["pct_completo"]) ? $row["pct_completo"] : 0);
+                                        $diasPost = (int) $row["dias_sin_avance"];
                                         ?>
-                                        <tr>
+                                        <tr class="<?php echo ($diasPost >= 3) ? "dd-row-mora" : ""; ?>">
                                             <td>
                                                 <a href="#"
                                                    class="dd-link-pedido"
@@ -515,7 +527,7 @@ $estadosPipeline = array(
                                                     <?php echo $pctCompleto; ?>%
                                                 </span>
                                             </td>
-                                            <td><span class="dd-dias dd-dias--<?php echo ((int) $row["dias_sin_avance"] >= 7) ? "alto" : "medio"; ?>"><?php echo (int) $row["dias_sin_avance"]; ?>d</span></td>
+                                            <td><span class="dd-dias dd-dias--<?php echo ($diasPost >= 3) ? "alto" : "medio"; ?>"><?php echo $diasPost; ?>d</span></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

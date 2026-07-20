@@ -211,6 +211,21 @@ class ModeloDashboardDecisiones
                     SUM(
                         CASE
                             WHEN t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
+                                AND COALESCE(t.lista, '') <> 'precio1'
+                                THEN IFNULL(t.op_gravada, 0)
+                            ELSE 0
+                        END
+                    ) AS soles_post_aprobacion,
+                    SUM(
+                        CASE
+                            WHEN t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
+                                THEN 1
+                            ELSE 0
+                        END
+                    ) AS post_aprobacion_total,
+                    SUM(
+                        CASE
+                            WHEN t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
                                 AND DATEDIFF(CURDATE(), DATE(t.fecha)) >= 3
                                 AND COALESCE(t.lista, '') <> 'precio1'
                                 THEN IFNULL(t.op_gravada, 0)
@@ -247,6 +262,8 @@ class ModeloDashboardDecisiones
             "soles_apt" => 0,
             "soles_confirmados" => 0,
             "soles_pipeline" => 0,
+            "soles_post_aprobacion" => 0,
+            "post_aprobacion_total" => 0,
             "soles_estancados" => 0,
             "estancados_3d" => 0,
         );
@@ -291,9 +308,8 @@ class ModeloDashboardDecisiones
                     GROUP BY dt.codigo
                 ) cov ON cov.codigo = t.codigo
                 WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
-                  AND DATEDIFF(CURDATE(), DATE(t.fecha)) >= 3
                   AND {$whereVend}
-                ORDER BY dias_sin_avance DESC, t.op_gravada DESC";
+                ORDER BY dias_sin_avance ASC, t.op_gravada DESC";
 
         $stmt = Conexion::conectar()->prepare($sql);
         self::bindParams($stmt, $params);

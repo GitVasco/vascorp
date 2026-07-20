@@ -28,20 +28,55 @@ class ModeloLineaCredito
                 ), 0) AS deuda_vencida";
     }
 
+    /**
+     * Excluye canales de contado / showroom / digital (p. ej. 08, 08C, 08L).
+     * Reutiliza la config de IC si está cargada.
+     */
+    private static function sqlExcluirVendedoresContado($aliasCliente = "c")
+    {
+        $campo = "TRIM(COALESCE({$aliasCliente}.vendedor, ''))";
+
+        if (function_exists("icMotor2SqlExcluirVendedorPrefijosZona")) {
+            $sqlPrefijos = icMotor2SqlExcluirVendedorPrefijosZona($campo);
+        } else {
+            $sqlPrefijos = "{$campo} NOT LIKE '08%'";
+        }
+
+        $codigosExactos = array("99", "23");
+        if (function_exists("icConfigMotor2")) {
+            $cfg = icConfigMotor2();
+            if (!empty($cfg["ventas_excluir_vendedores"]) && is_array($cfg["ventas_excluir_vendedores"])) {
+                $codigosExactos = $cfg["ventas_excluir_vendedores"];
+            }
+        }
+
+        $partesExactos = array();
+        foreach ($codigosExactos as $codigo) {
+            $codigo = trim((string) $codigo);
+            if ($codigo === "") {
+                continue;
+            }
+            $codigoSql = str_replace(array("'", "\\"), "", $codigo);
+            $partesExactos[] = "'{$codigoSql}'";
+        }
+
+        $sqlExactos = $partesExactos
+            ? " AND {$campo} NOT IN (" . implode(", ", $partesExactos) . ")"
+            : "";
+
+        return " AND ({$sqlPrefijos}){$sqlExactos}";
+    }
+
     private static function sqlFiltroCarteraActiva($aliasCliente = "c")
     {
         $tipos = self::sqlTiposVentaIc();
         $meses = (int) self::MESES_COMPRA_ACTIVA;
+        $excluirContado = self::sqlExcluirVendedoresContado($aliasCliente);
 
         return "
             AND {$aliasCliente}.estado = 1
             AND {$aliasCliente}.fecha IS NOT NULL
-            AND TRIM(COALESCE({$aliasCliente}.vendedor, '')) IN (
-                SELECT m.codigo
-                FROM maestrajf m
-                WHERE UPPER(m.tipo_dato) = 'TVEND'
-                  AND m.estado_decisiones = 1
-            )
+            {$excluirContado}
             AND (
                 EXISTS (
                     SELECT 1
@@ -253,6 +288,231 @@ class ModeloLineaCredito
         $stmt->execute();
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    private static function normalizarCodigosLista(array $codigos)
+    {
+        $lista = array();
+
+        foreach ($codigos as $codigo) {
+            $codigo = trim((string) $codigo);
+
+            if ($codigo !== '') {
+                $lista[$codigo] = $codigo;
+            }
+        }
+
+        return array_values($lista);
+    }
+
+    private static function resolverLineaReferenciaMontos($aprobada, $recomendada, $operativa, $prefijoEtiqueta = '')
+    {
+        $aprobada = (float) $aprobada;
+        $recomendada = (float) $recomendada;
+        $operativa = (float) $operativa;
+
+        if ($aprobada > 0) {
+            return array(
+                'linea_referencia' => $aprobada,
+                'etiqueta_linea' => $prefijoEtiqueta . 'Aprobada',
+            );
+        }
+
+        if ($recomendada > 0) {
+            if (function_exists('icRedondearLineaCredito')) {
+                $recomendada = icRedondearLineaCredito($recomendada);
+            } else {
+                $recomendada = round($recomendada, 2);
+            }
+
+            return array(
+                'linea_referencia' => $recomendada,
+                'etiqueta_linea' => $prefijoEtiqueta . 'Recomendada IC',
+            );
+        }
+
+        if ($operativa > 0) {
+            return array(
+                'linea_referencia' => $operativa,
+                'etiqueta_linea' => $prefijoEtiqueta . 'Operativa',
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Líneas de referencia (aprobada → recomendada → operativa) para el Top de deuda CxC.
+     * Incluye estado vigente e historial reciente por código.
+     */
+    static public function mdlMapaLineasReferenciaDashboard(array $codigosCliente, array $codigosGrupo)
+    {
+        $mapa = array();
+        $codigosCliente = self::normalizarCodigosLista($codigosCliente);
+        $codigosGrupo = self::normalizarCodigosLista($codigosGrupo);
+
+        if (count($codigosCliente) > 0) {
+            $marcadores = array();
+
+            foreach ($codigosCliente as $i => $codigo) {
+                $marcadores[] = ':cli' . $i;
+            }
+
+            $sql = "SELECT TRIM(codigo_cliente) AS codigo,
+                    linea_aprobada, linea_recomendada, linea_operativa
+                FROM linea_credito_clientejf
+                WHERE TRIM(codigo_cliente) IN (" . implode(', ', $marcadores) . ")";
+            $stmt = Conexion::conectar()->prepare($sql);
+
+            foreach ($codigosCliente as $i => $codigo) {
+                $stmt->bindValue(':cli' . $i, $codigo, PDO::PARAM_STR);
+            }
+
+            $stmt->execute();
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($filas as $fila) {
+                $ref = self::resolverLineaReferenciaMontos(
+                    $fila['linea_aprobada'],
+                    $fila['linea_recomendada'],
+                    $fila['linea_operativa']
+                );
+
+                if ($ref) {
+                    $mapa['cliente|' . trim($fila['codigo'])] = $ref;
+                }
+            }
+
+            $faltantes = array();
+
+            foreach ($codigosCliente as $codigo) {
+                if (!isset($mapa['cliente|' . $codigo])) {
+                    $faltantes[] = $codigo;
+                }
+            }
+
+            if (count($faltantes) > 0) {
+                $marcadores = array();
+
+                foreach ($faltantes as $i => $codigo) {
+                    $marcadores[] = ':hcli' . $i;
+                }
+
+                $sqlHist = "SELECT TRIM(h.codigo_cliente) AS codigo,
+                        h.linea_aprobada, h.linea_recomendada, h.linea_operativa
+                    FROM linea_credito_historialjf h
+                    INNER JOIN (
+                        SELECT codigo_cliente, MAX(id) AS ultimo_id
+                        FROM linea_credito_historialjf
+                        WHERE TRIM(codigo_cliente) IN (" . implode(', ', $marcadores) . ")
+                        GROUP BY codigo_cliente
+                    ) u ON u.ultimo_id = h.id";
+                $stmtHist = Conexion::conectar()->prepare($sqlHist);
+
+                foreach ($faltantes as $i => $codigo) {
+                    $stmtHist->bindValue(':hcli' . $i, $codigo, PDO::PARAM_STR);
+                }
+
+                $stmtHist->execute();
+                $hist = $stmtHist->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($hist as $fila) {
+                    $ref = self::resolverLineaReferenciaMontos(
+                        $fila['linea_aprobada'],
+                        $fila['linea_recomendada'],
+                        $fila['linea_operativa'],
+                        'Hist. '
+                    );
+
+                    if ($ref) {
+                        $mapa['cliente|' . trim($fila['codigo'])] = $ref;
+                    }
+                }
+            }
+        }
+
+        if (count($codigosGrupo) > 0) {
+            $marcadores = array();
+
+            foreach ($codigosGrupo as $i => $codigo) {
+                $marcadores[] = ':grp' . $i;
+            }
+
+            $sqlGrupo = "SELECT TRIM(codigo_grupo) AS codigo,
+                    linea_aprobada, linea_recomendada, linea_operativa
+                FROM linea_credito_grupojf
+                WHERE TRIM(codigo_grupo) IN (" . implode(', ', $marcadores) . ")";
+            $stmtGrupo = Conexion::conectar()->prepare($sqlGrupo);
+
+            foreach ($codigosGrupo as $i => $codigo) {
+                $stmtGrupo->bindValue(':grp' . $i, $codigo, PDO::PARAM_STR);
+            }
+
+            $stmtGrupo->execute();
+            $filasGrupo = $stmtGrupo->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($filasGrupo as $fila) {
+                $ref = self::resolverLineaReferenciaMontos(
+                    $fila['linea_aprobada'],
+                    $fila['linea_recomendada'],
+                    $fila['linea_operativa'],
+                    'Grupo · '
+                );
+
+                if ($ref) {
+                    $mapa['grupo|' . trim($fila['codigo'])] = $ref;
+                }
+            }
+
+            $faltantesGrupo = array();
+
+            foreach ($codigosGrupo as $codigo) {
+                if (!isset($mapa['grupo|' . $codigo])) {
+                    $faltantesGrupo[] = $codigo;
+                }
+            }
+
+            if (count($faltantesGrupo) > 0) {
+                $marcadores = array();
+
+                foreach ($faltantesGrupo as $i => $codigo) {
+                    $marcadores[] = ':hgrp' . $i;
+                }
+
+                $sqlHistGrupo = "SELECT TRIM(h.codigo_grupo) AS codigo,
+                        h.linea_aprobada, h.linea_recomendada, h.linea_operativa
+                    FROM linea_credito_historial_grupojf h
+                    INNER JOIN (
+                        SELECT codigo_grupo, MAX(id) AS ultimo_id
+                        FROM linea_credito_historial_grupojf
+                        WHERE TRIM(codigo_grupo) IN (" . implode(', ', $marcadores) . ")
+                        GROUP BY codigo_grupo
+                    ) u ON u.ultimo_id = h.id";
+                $stmtHistGrupo = Conexion::conectar()->prepare($sqlHistGrupo);
+
+                foreach ($faltantesGrupo as $i => $codigo) {
+                    $stmtHistGrupo->bindValue(':hgrp' . $i, $codigo, PDO::PARAM_STR);
+                }
+
+                $stmtHistGrupo->execute();
+                $histGrupo = $stmtHistGrupo->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($histGrupo as $fila) {
+                    $ref = self::resolverLineaReferenciaMontos(
+                        $fila['linea_aprobada'],
+                        $fila['linea_recomendada'],
+                        $fila['linea_operativa'],
+                        'Grupo · Hist. '
+                    );
+
+                    if ($ref) {
+                        $mapa['grupo|' . trim($fila['codigo'])] = $ref;
+                    }
+                }
+            }
+        }
+
+        return $mapa;
     }
 
     static public function mdlHistorialCliente($codigoCliente, $limite = 24)

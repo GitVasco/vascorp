@@ -80,6 +80,8 @@
             <?php
             $puedeVerDashboardCobranzas = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas");
+            $puedeVerDashboardCxc = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cxc");
             $puedeVerCentroDecisiones = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "centro_decisiones");
             $puedeVerHistorialCredito = function_exists("usuarioPuedeModulo")
@@ -106,6 +108,7 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardCobranzas
+                || $puedeVerDashboardCxc
                 || $puedeVerCentroDecisiones
                 || $puedeVerHistorialCredito
                 || $puedeVerLineaCredito;
@@ -120,6 +123,9 @@
             $rutasActivasCreditoCobranzas = array();
             if ($puedeVerDashboardCobranzas) {
                 $rutasActivasCreditoCobranzas[] = "dashboard-cobranzas";
+            }
+            if ($puedeVerDashboardCxc) {
+                $rutasActivasCreditoCobranzas[] = "dashboard-cxc";
             }
             if ($puedeVerCentroDecisiones) {
                 $rutasActivasCreditoCobranzas[] = "dashboard-decisiones";
@@ -217,6 +223,14 @@
                                     <a href="index.php?ruta=dashboard-cobranzas">
                                         <i class="fa fa-dashboard"></i>
                                         <span>Dashboard cobranzas</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerDashboardCxc) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "dashboard-cxc") echo 'active'; ?>">
+                                    <a href="index.php?ruta=dashboard-cxc">
+                                        <i class="fa fa-pie-chart"></i>
+                                        <span>Dashboard CxC</span>
                                     </a>
                                 </li>
                                 <?php } ?>

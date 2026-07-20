@@ -1006,7 +1006,7 @@
     $("#btnLcCierreMensual").on("click", function () {
         swal({
             title: "¿Ejecutar cierre mensual?",
-            text: "Se procesarán solo clientes con vendedor activo y compra/pedido en los últimos 24 meses.",
+            text: "Se procesarán clientes con compra/pedido en los últimos 24 meses, excluyendo canales de contado (08, showroom, digital, etc.).",
             type: "warning",
             showCancelButton: true,
             confirmButtonText: "Ejecutar",
