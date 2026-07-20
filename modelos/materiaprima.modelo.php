@@ -883,16 +883,7 @@ class ModeloMateriaPrima
 	{
 
 
-		$stmt = Conexion::conectar()->prepare("SELECT 
-			GREATEST(
-				IFNULL((SELECT MAX(CAST(CodPro AS UNSIGNED)) FROM producto), 0),
-				IFNULL((SELECT MAX(CAST(CodPro AS UNSIGNED)) FROM preciomp), 0)
-			) AS CodPro,
-			GREATEST(
-				IFNULL((SELECT MAX(LENGTH(CodPro)) FROM producto), 6),
-				IFNULL((SELECT MAX(LENGTH(CodPro)) FROM preciomp), 6),
-				6
-			) AS LenCod");
+		$stmt = Conexion::conectar()->prepare("SELECT MAX(CodPro) AS CodPro FROM producto");
 
 		$stmt->execute();
 
@@ -901,6 +892,50 @@ class ModeloMateriaPrima
 		$stmt->close();
 
 		$stmt = null;
+	}
+
+	/*
+	* Siguiente CodPro libre.
+	* Mantiene el mismo ancho de dígitos del MAX actual (no alarga el código:
+	* si la columna es fija, un código más largo se trunca y genera duplicados).
+	*/
+	static public function mdlSiguienteCodProLibre()
+	{
+
+		$ultimoCod = self::mdlMostrarUltimoCodPro();
+
+		if (!$ultimoCod || $ultimoCod["CodPro"] === null || $ultimoCod["CodPro"] === "") {
+			return "000001";
+		}
+
+		$codigoActual = (string) $ultimoCod["CodPro"];
+		$len = strlen($codigoActual);
+		$siguiente = $codigoActual + 1;
+
+		$maxIntentos = 5000;
+		for ($i = 0; $i < $maxIntentos; $i++) {
+
+			// No generar CodPro con más dígitos que los actuales
+			if (strlen((string) $siguiente) > $len) {
+				return false;
+			}
+
+			$codigoPro = str_pad($siguiente, $len, '0', STR_PAD_LEFT);
+
+			$stmt = Conexion::conectar()->prepare("SELECT CodPro FROM producto WHERE CodPro = :CodPro LIMIT 1");
+			$stmt->bindParam(":CodPro", $codigoPro, PDO::PARAM_STR);
+			$stmt->execute();
+
+			if (!$stmt->fetch()) {
+				// Limpia precio huérfano del mismo código para no chocar el INSERT
+				self::mdlEliminarPrecioMP($codigoPro);
+				return $codigoPro;
+			}
+
+			$siguiente++;
+		}
+
+		return false;
 	}
 
 	/*
@@ -925,7 +960,7 @@ class ModeloMateriaPrima
 	}
 
 	/*
-	* Elimina un registro de preciomp (rollback si falla producto)
+	* Elimina un registro de preciomp (rollback / limpieza de huérfanos)
 	*/
 	static public function mdlEliminarPrecioMP($codpro)
 	{

@@ -137,7 +137,8 @@ class ControladorFichaGerencialModelos
 				"ok" => true,
 				"modelos" => ModeloFichaGerencialModelos::mdlCatalogoModelosActivos($idMarca, $q),
 				"marcas" => ModeloFichaGerencialModelos::mdlMarcasConModelosActivos(),
-				"grupos" => ModeloFichaGerencialModelos::mdlGruposConModelosActivos()
+				"grupos" => ModeloFichaGerencialModelos::mdlGruposConModelosActivos(),
+				"categorias" => ModeloFichaGerencialModelos::mdlCatalogoCategoriasSubcategorias()
 			);
 		} catch (Exception $e) {
 			return array("ok" => false, "mensaje" => "No se pudo cargar el catálogo");
@@ -271,6 +272,54 @@ class ControladorFichaGerencialModelos
 		}
 	}
 
+	static private function ctrAsignarRankingUnidades(&$resultado, $campoPosicion, $campoTotal, $filtroClave = null)
+	{
+		$indices = array();
+		foreach ($resultado as $indice => $fila) {
+			if ((int) $fila["movimientos_periodo"] <= 0) {
+				continue;
+			}
+			if ($filtroClave !== null) {
+				if ($fila[$filtroClave] === null || $fila[$filtroClave] === "" || (int) $fila[$filtroClave] <= 0) {
+					continue;
+				}
+			}
+			$indices[] = $indice;
+		}
+		usort($indices, function ($indiceA, $indiceB) use (&$resultado) {
+			$diferencia = (float) $resultado[$indiceB]["unidades_vendidas"] - (float) $resultado[$indiceA]["unidades_vendidas"];
+			if ($diferencia == 0.0) {
+				return strcmp($resultado[$indiceA]["modelo"], $resultado[$indiceB]["modelo"]);
+			}
+			return $diferencia > 0 ? 1 : -1;
+		});
+
+		if ($filtroClave === null) {
+			$total = count($indices);
+			foreach ($indices as $posicion => $indiceResultado) {
+				$resultado[$indiceResultado][$campoPosicion] = $posicion + 1;
+				$resultado[$indiceResultado][$campoTotal] = $total;
+			}
+			return;
+		}
+
+		$porClave = array();
+		foreach ($indices as $indiceResultado) {
+			$clave = (string) $resultado[$indiceResultado][$filtroClave];
+			if (!isset($porClave[$clave])) {
+				$porClave[$clave] = array();
+			}
+			$porClave[$clave][] = $indiceResultado;
+		}
+		foreach ($porClave as $indicesGrupo) {
+			$total = count($indicesGrupo);
+			foreach ($indicesGrupo as $posicion => $indiceResultado) {
+				$resultado[$indiceResultado][$campoPosicion] = $posicion + 1;
+				$resultado[$indiceResultado][$campoTotal] = $total;
+			}
+		}
+	}
+
 	static private function ctrResumenComparativoInterno($post, $modelosFiltro = array())
 	{
 		try {
@@ -279,28 +328,23 @@ class ControladorFichaGerencialModelos
 				return $ctx;
 			}
 			$idGrupo = isset($post["id_grupo"]) ? (int) $post["id_grupo"] : 0;
+			$idCategoria = isset($post["id_categoria"]) ? (int) $post["id_categoria"] : 0;
+			$idSubcategoria = isset($post["id_subcategoria"]) ? (int) $post["id_subcategoria"] : 0;
 			if ($idGrupo < 0) {
 				return array("ok" => false, "mensaje" => "Grupo inválido");
+			}
+			if ($idCategoria < 0 || $idSubcategoria < 0) {
+				return array("ok" => false, "mensaje" => "Categoría inválida");
 			}
 
 			$filas = ModeloFichaGerencialModelos::mdlResumenComparativo(
 				$ctx["anio"],
 				$ctx["mes"],
 				$idGrupo,
-				$modelosFiltro
+				$modelosFiltro,
+				$idCategoria,
+				$idSubcategoria
 			);
-			$totalesGrupo = array();
-			foreach ($filas as $fila) {
-				if ((int) $fila["movimientos_periodo"] <= 0 || $fila["grupo_id"] === null) {
-					continue;
-				}
-				$claveGrupo = (string) $fila["grupo_id"];
-				$totalesGrupo[$claveGrupo] = isset($totalesGrupo[$claveGrupo])
-					? $totalesGrupo[$claveGrupo] + 1
-					: 1;
-			}
-
-			$posicionesGrupo = array();
 			$diasPeriodo = ($ctx["anio"] === (int) date("Y") && $ctx["mes"] === (int) date("n"))
 				? (int) date("j")
 				: cal_days_in_month(CAL_GREGORIAN, $ctx["mes"], $ctx["anio"]);
@@ -318,25 +362,25 @@ class ControladorFichaGerencialModelos
 					? (((float) $fila["unidades_acumuladas"] - $unidadesAnterior) * 100 / abs($unidadesAnterior))
 					: null;
 
-				$ranking = null;
-				$totalRanking = 0;
-				if ((int) $fila["movimientos_periodo"] > 0 && $fila["grupo_id"] !== null) {
-					$claveGrupo = (string) $fila["grupo_id"];
-					$posicionesGrupo[$claveGrupo] = isset($posicionesGrupo[$claveGrupo])
-						? $posicionesGrupo[$claveGrupo] + 1
-						: 1;
-					$ranking = $posicionesGrupo[$claveGrupo];
-					$totalRanking = isset($totalesGrupo[$claveGrupo]) ? $totalesGrupo[$claveGrupo] : 0;
-				}
-
 				$resultado[] = array(
 					"modelo" => $fila["modelo"],
 					"nombre" => $fila["nombre"],
 					"marca" => $fila["marca"],
 					"grupo_id" => $fila["grupo_id"] === null ? null : (int) $fila["grupo_id"],
 					"grupo" => $fila["grupo_nombre"],
-					"ranking" => $ranking,
-					"ranking_total" => $totalRanking,
+					"id_categoria" => $fila["id_categoria"] === null ? null : (int) $fila["id_categoria"],
+					"categoria" => $fila["nombre_categoria"] !== "" ? $fila["nombre_categoria"] : null,
+					"id_subcategoria" => $fila["id_subcategoria"] === null ? null : (int) $fila["id_subcategoria"],
+					"subcategoria" => $fila["nombre_subcategoria"] !== "" ? $fila["nombre_subcategoria"] : null,
+					"movimientos_periodo" => (int) $fila["movimientos_periodo"],
+					"ranking_general" => null,
+					"ranking_general_total" => 0,
+					"ranking_categoria" => null,
+					"ranking_categoria_total" => 0,
+					"ranking_subcategoria" => null,
+					"ranking_subcategoria_total" => 0,
+					"ranking" => null,
+					"ranking_total" => 0,
 					"ranking_utilidad" => null,
 					"ranking_utilidad_total" => 0,
 					"ventas_acumuladas" => $fila["ventas_acumuladas"],
@@ -352,6 +396,15 @@ class ControladorFichaGerencialModelos
 					"costo_anio" => $fila["costo_anio"] === null ? null : (int) $fila["costo_anio"],
 					"costo_mes" => $fila["costo_mes"] === null ? null : (int) $fila["costo_mes"]
 				);
+			}
+
+			self::ctrAsignarRankingUnidades($resultado, "ranking_general", "ranking_general_total", null);
+			self::ctrAsignarRankingUnidades($resultado, "ranking_categoria", "ranking_categoria_total", "id_categoria");
+			self::ctrAsignarRankingUnidades($resultado, "ranking_subcategoria", "ranking_subcategoria_total", "id_subcategoria");
+
+			foreach ($resultado as $indice => $filaResultado) {
+				$resultado[$indice]["ranking"] = $filaResultado["ranking_general"];
+				$resultado[$indice]["ranking_total"] = $filaResultado["ranking_general_total"];
 			}
 
 			$indicesUtilidadPorGrupo = array();
@@ -387,7 +440,7 @@ class ControladorFichaGerencialModelos
 				"anio_anterior" => $ctx["anio"] - 1,
 				"meta" => self::ctrMeta(
 					"movimientos, catálogo, precio9, inventario y costos aprobados",
-					"comparación de modelos activos; variación interanual acumulada hasta el mes seleccionado"
+					"comparación de modelos activos; ranking ventas por unidades (general / categoría / subcategoría); utilidad por grupo comercial"
 				)
 			);
 		} catch (Exception $e) {

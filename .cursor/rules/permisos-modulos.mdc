@@ -43,6 +43,7 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `zonas_comerciales` | `ver`, `editar` | Zonas comerciales + Mapas de zonas (Fase 4) |
 | `grupos_marcas` | `ver`, `editar` | Grupos comerciales de marcas |
 | `asignacion_grupos_marcas` | `ver`, `editar` | Asignación vendedor–grupo con vigencia |
+| `categorias_modelos` | `ver`, `editar` | Clasificación de modelos (categoría/subcategoría) |
 
 ### vasco_online
 

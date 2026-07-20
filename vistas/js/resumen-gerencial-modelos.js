@@ -2,6 +2,7 @@ var resumenModelosSolicitud = null;
 var resumenModelosGeneracion = 0;
 var resumenModelosRespuesta = null;
 var resumenModelosSeleccionados = [];
+var resumenModelosCategorias = [];
 
 function resumenModelosEscapar(valor) {
     return $("<div>").text(valor === null || valor === undefined ? "" : String(valor)).html();
@@ -28,6 +29,8 @@ function resumenModelosMoneda(valor) {
 function resumenModelosParametros() {
     return {
         id_grupo: $("#resumenModelosGrupo").val() || "",
+        id_categoria: $("#resumenModelosCategoria").val() || "",
+        id_subcategoria: $("#resumenModelosSubcategoria").val() || "",
         anio: $("#resumenModelosAnio").val(),
         mes: $("#resumenModelosMes").val(),
         orden: $("input[name='resumenModelosOrden']:checked").val() || "ventas"
@@ -40,6 +43,8 @@ function resumenModelosActualizarUrl(parametros) {
     }
     var url = "index.php?ruta=resumen-gerencial-modelos"
         + "&id_grupo=" + encodeURIComponent(parametros.id_grupo)
+        + "&id_categoria=" + encodeURIComponent(parametros.id_categoria)
+        + "&id_subcategoria=" + encodeURIComponent(parametros.id_subcategoria)
         + "&anio=" + encodeURIComponent(parametros.anio)
         + "&mes=" + encodeURIComponent(parametros.mes)
         + "&orden=" + encodeURIComponent(parametros.orden);
@@ -89,6 +94,30 @@ function resumenModelosRankingSemaforo(posicion, total) {
         + resumenModelosNumero(posicion, 0) + " de " + resumenModelosNumero(total, 0) + "</span>";
 }
 
+function resumenModelosLlenarSubcategorias(idCategoria, idSubSeleccionada) {
+    var $sub = $("#resumenModelosSubcategoria").empty().append('<option value="">Todas</option>');
+    var catId = Number(idCategoria) || 0;
+    if (!catId) {
+        $sub.val("");
+        return;
+    }
+    var cat = null;
+    resumenModelosCategorias.forEach(function (item) {
+        if (Number(item.id) === catId) {
+            cat = item;
+        }
+    });
+    if (!cat) {
+        return;
+    }
+    (cat.subcategorias || []).forEach(function (sub) {
+        $sub.append($("<option>").val(sub.id).text(sub.nombre));
+    });
+    if (idSubSeleccionada) {
+        $sub.val(String(idSubSeleccionada));
+    }
+}
+
 function resumenModelosRender(resp) {
     var periodo = resp.periodo || {};
     var orden = $("input[name='resumenModelosOrden']:checked").val() || "ventas";
@@ -110,7 +139,9 @@ function resumenModelosRender(resp) {
             + "&modelo=" + encodeURIComponent(modelo)
             + "&anio=" + encodeURIComponent(periodo.anio)
             + "&mes=" + encodeURIComponent(periodo.mes);
-        var ranking = resumenModelosRankingSemaforo(item.ranking, item.ranking_total);
+        var rkGeneral = resumenModelosRankingSemaforo(item.ranking_general, item.ranking_general_total);
+        var rkCat = resumenModelosRankingSemaforo(item.ranking_categoria, item.ranking_categoria_total);
+        var rkSub = resumenModelosRankingSemaforo(item.ranking_subcategoria, item.ranking_subcategoria_total);
         var rankingUtilidad = resumenModelosRankingSemaforo(item.ranking_utilidad, item.ranking_utilidad_total);
         var variacionNumero = Number(item.variacion_interanual_pct);
         var variacion = item.variacion_interanual_pct === null
@@ -130,6 +161,10 @@ function resumenModelosRender(resp) {
             && (Number(item.costo_anio) !== Number(periodo.anio) || Number(item.costo_mes) !== Number(periodo.mes))) {
             costo += "<small>Último anterior</small>";
         }
+        var catSub = item.categoria
+            ? (resumenModelosEscapar(item.categoria)
+                + (item.subcategoria ? "<small>" + resumenModelosEscapar(item.subcategoria) + "</small>" : ""))
+            : "<span class='text-muted'>Sin clasificar</span>";
 
         return "<tr>"
             + "<td class='text-center'><input type='checkbox' class='resumen-modelo-check' value='"
@@ -140,7 +175,10 @@ function resumenModelosRender(resp) {
             + "<td>" + resumenModelosEscapar(item.nombre || modelo) + "</td>"
             + "<td>" + resumenModelosEscapar(item.marca || "Sin marca")
             + (item.grupo ? "<small>" + resumenModelosEscapar(item.grupo) + "</small>" : "") + "</td>"
-            + "<td>" + ranking + "</td>"
+            + "<td>" + catSub + "</td>"
+            + "<td>" + rkGeneral + "</td>"
+            + "<td>" + rkCat + "</td>"
+            + "<td>" + rkSub + "</td>"
             + "<td>" + rankingUtilidad + "</td>"
             + "<td>" + resumenModelosMoneda(item.ventas_acumuladas) + "</td>"
             + "<td>" + resumenModelosNumero(item.unidades_vendidas, 0) + "</td>"
@@ -155,7 +193,7 @@ function resumenModelosRender(resp) {
     }).join("");
 
     $("#tablaResumenModelos").html(
-        filas || "<tr><td colspan='15' class='text-muted text-center'>No hay modelos para comparar</td></tr>"
+        filas || "<tr><td colspan='18' class='text-muted text-center'>No hay modelos para comparar</td></tr>"
     );
     resumenModelosFiltrarFilas();
 }
@@ -199,7 +237,7 @@ function resumenModelosCargar() {
     });
 }
 
-function resumenModelosCargarGrupos() {
+function resumenModelosCargarCatalogo() {
     $.ajax({
         url: "ajax/ficha-gerencial-modelos.ajax.php",
         method: "POST",
@@ -207,7 +245,7 @@ function resumenModelosCargarGrupos() {
         data: { accion: "catalogo" }
     }).done(function (resp) {
         if (!resp || !resp.ok) {
-            resumenModelosMostrarError(resp && resp.mensaje ? resp.mensaje : "No se pudieron cargar los grupos");
+            resumenModelosMostrarError(resp && resp.mensaje ? resp.mensaje : "No se pudo cargar el catálogo");
             return;
         }
         var $grupo = $("#resumenModelosGrupo");
@@ -215,9 +253,20 @@ function resumenModelosCargarGrupos() {
             $grupo.append($("<option>").val(item.id).text(item.nombre));
         });
         $grupo.val(String($grupo.data("inicial") || ""));
+
+        resumenModelosCategorias = resp.categorias || [];
+        var $cat = $("#resumenModelosCategoria");
+        resumenModelosCategorias.forEach(function (item) {
+            $cat.append($("<option>").val(item.id).text(item.nombre));
+        });
+        var catInicial = String($cat.data("inicial") || "");
+        var subInicial = String($("#resumenModelosSubcategoria").data("inicial") || "");
+        $cat.val(catInicial);
+        resumenModelosLlenarSubcategorias(catInicial, subInicial);
+
         resumenModelosCargar();
     }).fail(function () {
-        resumenModelosMostrarError("No se pudieron cargar los grupos");
+        resumenModelosMostrarError("No se pudo cargar el catálogo");
     });
 }
 
@@ -229,6 +278,8 @@ $("#btnLimpiarResumenModelos").on("click", function (evento) {
     evento.preventDefault();
     var hoy = new Date();
     $("#resumenModelosGrupo").val("");
+    $("#resumenModelosCategoria").val("");
+    resumenModelosLlenarSubcategorias("", "");
     $("#resumenModelosAnio").val(String(hoy.getFullYear()));
     $("#resumenModelosMes").val(String(hoy.getMonth() + 1));
     $("#buscarResumenModelos").val("");
@@ -236,6 +287,11 @@ $("#btnLimpiarResumenModelos").on("click", function (evento) {
     resumenModelosCargar();
 });
 $("#resumenModelosGrupo, #resumenModelosAnio, #resumenModelosMes").on("change", resumenModelosCargar);
+$("#resumenModelosCategoria").on("change", function () {
+    resumenModelosLlenarSubcategorias($(this).val(), "");
+    resumenModelosCargar();
+});
+$("#resumenModelosSubcategoria").on("change", resumenModelosCargar);
 $("input[name='resumenModelosOrden']").on("change", function () {
     resumenModelosActualizarUrl(resumenModelosParametros());
     if (resumenModelosRespuesta) {
@@ -276,5 +332,5 @@ $("#btnCompararModelosSeleccionados").on("click", function () {
 });
 
 if ($("#zonaResumenModelos").length) {
-    resumenModelosCargarGrupos();
+    resumenModelosCargarCatalogo();
 }

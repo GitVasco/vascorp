@@ -53,6 +53,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Grupos de marcas | Vasco System";
         } elseif ($_GET["ruta"] === "asignacion-grupos-marcas") {
             $__tituloVentana = "Asignación de grupos de marcas | Vasco System";
+        } elseif ($_GET["ruta"] === "categorias-modelos") {
+            $__tituloVentana = "Clasificación de modelos | Vasco System";
+        } elseif ($_GET["ruta"] === "categorias-subcategorias-modelos") {
+            $__tituloVentana = "Categorías / subcategorías de modelos | Vasco System";
         } elseif ($_GET["ruta"] === "mapas-zonas") {
             $__tituloVentana = "Mapas de zonas | Vasco System";
         } elseif ($_GET["ruta"] === "linea-credito") {
@@ -121,11 +125,15 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
-    <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=40">
+    <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=44">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") : ?>
+    <link rel="stylesheet" href="vistas/css/categorias-modelos.css?v=7">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") : ?>
-    <link rel="stylesheet" href="vistas/css/resumen-gerencial-modelos.css?v=6">
+    <link rel="stylesheet" href="vistas/css/resumen-gerencial-modelos.css?v=8">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comparacion-gerencial-modelos") : ?>
@@ -479,6 +487,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "trabajador2" ||
                 $_GET["ruta"] == "operaciones" ||
                 $_GET["ruta"] == "modelosjf" ||
+                $_GET["ruta"] == "categorias-subcategorias-modelos" ||
                 $_GET["ruta"] == "crear-articulo" ||
                 $_GET["ruta"] == "sectores" ||
                 $_GET["ruta"] == "paras" ||
@@ -694,6 +703,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/asignacion-grupos-marcas.php";
                 }
+            } else if ($_GET["ruta"] == "categorias-modelos") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/categorias-modelos.php";
+                }
             } else if ($_GET["ruta"] == "mapas-zonas") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "zonas_comerciales")) {
@@ -894,10 +910,10 @@ CUERPO DOCUMENTO
     <script src="vistas/js/costos-modelo-mensual.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") { ?>
-    <script src="vistas/js/ficha-gerencial-modelos.js?v=39"></script>
+    <script src="vistas/js/ficha-gerencial-modelos.js?v=46"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") { ?>
-    <script src="vistas/js/resumen-gerencial-modelos.js?v=7"></script>
+    <script src="vistas/js/resumen-gerencial-modelos.js?v=8"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comparacion-gerencial-modelos") { ?>
     <script src="vistas/js/comparacion-gerencial-modelos.js?v=9"></script>
@@ -910,6 +926,12 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "asignacion-grupos-marcas") { ?>
     <script src="vistas/js/asignacion-grupos-marcas.js?v=1"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") { ?>
+    <script src="vistas/js/categorias-modelos.js?v=10"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-subcategorias-modelos") { ?>
+    <script src="vistas/js/categorias-subcategorias-modelos.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mapas-zonas") { ?>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>

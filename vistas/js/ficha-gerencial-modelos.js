@@ -3,6 +3,7 @@ var fichaSolicitudes = [];
 var fichaGraficoUnidades = null;
 var fichaCatalogoGeneracion = 0;
 var fichaResumenActual = null;
+var fichaRankingPendiente = null;
 
 function fichaEscapar(valor) {
     return $("<div>").text(valor === null || valor === undefined ? "" : String(valor)).html();
@@ -373,18 +374,18 @@ function fichaRenderResumen(resp) {
     $("#fichaModeloNombre").text(cabecera.nombre || cabecera.modelo || "—");
     $("#fichaModeloCodigo").text(cabecera.modelo || "—");
     $("#fichaModeloMarca").text(cabecera.marca || "—");
-    $("#fichaModeloTipo").text(cabecera.tipo || "—");
-    $("#fichaModeloLinea").text(cabecera.linea || "—");
     $("#fichaModeloEstado").text(cabecera.estado || "Activo");
     var periodo = resp.periodo || {};
     $("#fichaModeloPeriodo").text(fichaEtiquetaPeriodo(periodo.desde, periodo.hasta)
         + (periodo.parcial ? " · parcial" : ""));
     $("#fichaMetaCabecera").text(fichaMetaTexto(resp.meta && resp.meta.ventas));
 
-    var ranking = resp.ranking_general || {};
-    var grupoRanking = ranking.grupo && ranking.grupo.nombre ? ranking.grupo.nombre : "";
-    $("#kpiRankingGeneral").text("…");
-    $("#kpiRankingTotal").text("Calculando ranking…");
+    $("#fichaModeloCategoria").text("—");
+    $("#fichaModeloSubcategoria").text("—");
+    fichaPintarRank("#fichaRankGeneral", null);
+    fichaPintarRank("#fichaRankCategoria", null);
+    fichaPintarRank("#fichaRankSubcategoria", null);
+    $("#fichaClasificarLink").hide();
     $("#kpiVentasAcumuladas").text(resp.ventas_acumuladas === null ? "Sin precio" : fichaMoneda(resp.ventas_acumuladas));
     $("#kpiPrecioLista9").text(resp.precio_lista9 === null ? "Lista 9 no registrada" : "Lista 9: " + fichaMoneda(resp.precio_lista9));
     $("#kpiUnidades").text(fichaNumero(ventas.unidades_vendidas, 0));
@@ -412,22 +413,105 @@ function fichaRenderResumen(resp) {
     $("#preguntaMargenPromedio").text(renta.margen_pct !== null && renta.margen_pct !== undefined
         ? fichaNumero(renta.margen_pct, 1) + "%"
         : "");
+
+    // Si el ranking llegó antes que el resumen, aplicarlo ahora
+    if (fichaRankingPendiente) {
+        fichaAplicarRanking(fichaRankingPendiente);
+    }
 }
 
-function fichaRenderRanking(resp) {
-    if (!fichaResumenActual) {
+function fichaClaseRanking(bloque) {
+    if (!bloque || bloque.posicion == null || !bloque.total) {
+        return "rank-na";
+    }
+    var ratio = Number(bloque.posicion) / Number(bloque.total);
+    if (ratio <= 0.25) {
+        return "rank-alto";
+    }
+    if (ratio <= 0.5) {
+        return "rank-medio-alto";
+    }
+    if (ratio <= 0.75) {
+        return "rank-medio";
+    }
+    return "rank-bajo";
+}
+
+function fichaPintarRank(selector, bloque) {
+    var $el = $(selector);
+    var $item = $el.closest(".ficha-rank-item");
+    $item.removeClass("rank-oro rank-alto rank-medio-alto rank-medio rank-bajo rank-na");
+    if (!bloque) {
+        $el.text("…");
+        $item.addClass("rank-na");
+        return;
+    }
+    $el.text(
+        bloque.posicion
+            ? ("# " + bloque.posicion + (bloque.total ? " / " + bloque.total : ""))
+            : "—"
+    );
+    $item.addClass(fichaClaseRanking(bloque));
+}
+
+function fichaAplicarRanking(resp) {
+    if (!fichaResumenActual || !resp) {
         return;
     }
     fichaResumenActual.ranking_general = resp.ranking_general || {};
     var ranking = fichaResumenActual.ranking_general || {};
-    var grupoRanking = ranking.grupo && ranking.grupo.nombre ? ranking.grupo.nombre : "";
-    $("#kpiRankingGeneral").text(ranking.posicion ? "# " + ranking.posicion : "—");
-    $("#kpiRankingTotal").text(ranking.total_modelos_con_venta
-        ? (grupoRanking ? grupoRanking + " · " : "") + "de " + ranking.total_modelos_con_venta + " modelos"
-        : "Sin grupo o ventas");
-    $("#preguntaRankingModelo").text(ranking.posicion
-        ? "# " + ranking.posicion + (ranking.total_modelos_con_venta ? " de " + ranking.total_modelos_con_venta : "")
-        : "");
+    var ranks = ranking.ranking || {};
+    var gen = ranks.general || {};
+    var catRank = ranks.categoria || {};
+    var subRank = ranks.subcategoria || {};
+    var cat = ranking.categoria && ranking.categoria.nombre ? ranking.categoria.nombre : "";
+    var sub = ranking.subcategoria && ranking.subcategoria.nombre ? ranking.subcategoria.nombre : "";
+
+    $("#fichaModeloCategoria").text(cat || (ranking.estado === "sin_clasificacion" ? "Sin clasificar" : "—"));
+    $("#fichaModeloSubcategoria").text(sub || "—");
+
+    fichaPintarRank("#fichaRankGeneral", gen);
+    fichaPintarRank("#fichaRankCategoria", catRank);
+    fichaPintarRank("#fichaRankSubcategoria", subRank);
+
+    if (ranking.estado === "sin_clasificacion") {
+        $("#preguntaRankingModelo").text(
+            gen.posicion ? ("General # " + gen.posicion + (gen.total ? " de " + gen.total : "")) : ""
+        );
+        if (window.fichaModelosConfig && window.fichaModelosConfig.puedeEditarCategoriasModelos) {
+            var codigoModelo = $("#fichaModeloCodigo").text() || "";
+            $("#fichaClasificarHref").attr(
+                "href",
+                "index.php?ruta=categorias-modelos&modelo=" + encodeURIComponent(codigoModelo)
+            );
+            $("#fichaClasificarLink").show();
+        } else {
+            $("#fichaClasificarLink").hide();
+        }
+        return;
+    }
+
+    $("#fichaClasificarLink").hide();
+    var partes = [];
+    if (gen.posicion) {
+        partes.push("G #" + gen.posicion);
+    }
+    if (catRank.posicion) {
+        partes.push("Cat #" + catRank.posicion);
+    }
+    if (subRank.posicion) {
+        partes.push("Sub #" + subRank.posicion);
+    }
+    $("#preguntaRankingModelo").text(partes.join(" · "));
+}
+
+function fichaRenderRanking(resp) {
+    fichaRankingPendiente = resp || null;
+    if (!fichaResumenActual) {
+        // El resumen aún no llegó; se aplicará al terminar fichaRenderResumen
+        return;
+    }
+    fichaAplicarRanking(resp);
 }
 
 function fichaRenderLideresComerciales(resp) {
@@ -1101,6 +1185,8 @@ function fichaCargarTodo() {
     fichaLimpiarPreguntasRapidas();
     fichaGeneracion++;
     var generacion = fichaGeneracion;
+    fichaResumenActual = null;
+    fichaRankingPendiente = null;
     fichaAbortarSolicitudes();
     fichaActualizarUrl(parametros);
     $("#fichaMensajeGlobal").removeClass("alert-danger").addClass("alert-info").text("Cargando ficha...").show();

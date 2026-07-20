@@ -2474,23 +2474,8 @@ $("#guardarModelo").click(function () {
         dataType: "json",
         success: function (respuestaDet) {
             var ped = respuestaDet;
-            var alertaCob = null;
             if (respuestaDet && typeof respuestaDet === "object") {
                 ped = respuestaDet.pedido;
-                alertaCob = respuestaDet.alerta_cobertura || null;
-            }
-
-            function mostrarAlertaCobertura() {
-                if (!alertaCob) {
-                    return;
-                }
-                if (typeof toastr !== "undefined") {
-                    toastr["warning"](alertaCob, "Cobertura de marcas", { timeOut: 8000 });
-                } else if (typeof swal === "function") {
-                    swal({ type: "warning", title: "Cobertura de marcas", text: alertaCob });
-                } else {
-                    alert(alertaCob);
-                }
             }
 
             if (ped == "toast" || respuestaDet == "toast") {
@@ -2502,12 +2487,10 @@ $("#guardarModelo").click(function () {
                 $("#modalModificarClienteP").modal("hide");
 
                 Command: toastr["success"]("El modelo fue registrado");
-                mostrarAlertaCobertura();
                 $("#updDivB").load(" #updDivB"); //actualizas el div
                 $("#updDivC").load(" #updDivC"); //actualizas el div
                 $("#updDiv").load(" #updDiv"); //actualizas el div
             } else {
-                mostrarAlertaCobertura();
                 window.location.href =
                     "index.php?ruta=crear-pedidocv&pedido=" + ped;
             }

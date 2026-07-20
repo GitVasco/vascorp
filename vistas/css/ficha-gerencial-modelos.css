@@ -218,6 +218,79 @@
     margin-left: 18px;
 }
 
+.ficha-rankings-modelo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #f7f9fb;
+    border: 1px solid #e6e9ed;
+    border-radius: 4px;
+}
+
+.ficha-rank-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    border-left: 3px solid #cfd6dd;
+    background: #fff;
+}
+
+.ficha-rank-label {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.ficha-rank-item strong {
+    color: #1f2d3d;
+    font-size: 15px;
+    white-space: nowrap;
+}
+
+.ficha-rank-item.rank-alto {
+    border-left-color: #00a65a;
+    background: #eef9f2;
+}
+
+.ficha-rank-item.rank-alto strong {
+    color: #008d4c;
+}
+
+.ficha-rank-item.rank-medio-alto {
+    border-left-color: #3c8dbc;
+    background: #eef6fb;
+}
+
+.ficha-rank-item.rank-medio-alto strong {
+    color: #2e6f95;
+}
+
+.ficha-rank-item.rank-medio {
+    border-left-color: #f39c12;
+    background: #fff7ea;
+}
+
+.ficha-rank-item.rank-medio strong {
+    color: #c77c0a;
+}
+
+.ficha-rank-item.rank-bajo {
+    border-left-color: #dd4b39;
+    background: #fdf0ee;
+}
+
+.ficha-rank-item.rank-bajo strong {
+    color: #c23321;
+}
+
+.ficha-rank-item.rank-na strong {
+    color: #9aa3ab;
+}
+
 .ficha-presentacion-card .ficha-identidad span {
     display: block;
     margin: 7px 0 0;
@@ -298,7 +371,7 @@
 
 .ficha-cabecera-kpis {
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 10px;
     margin-bottom: 20px;
 }
@@ -385,14 +458,14 @@
     border-top: 3px solid #3c8dbc;
 }
 
-.ficha-kpi-card:nth-child(4),
-.ficha-kpi-card:nth-child(5) {
+.ficha-kpi-card:nth-child(3),
+.ficha-kpi-card:nth-child(4) {
     border-top-color: #00a65a;
 }
 
+.ficha-kpi-card:nth-child(5),
 .ficha-kpi-card:nth-child(6),
-.ficha-kpi-card:nth-child(7),
-.ficha-kpi-card:nth-child(8) {
+.ficha-kpi-card:nth-child(7) {
     border-top-color: #f39c12;
 }
 

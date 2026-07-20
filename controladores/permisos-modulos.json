@@ -47,6 +47,10 @@
       "ver": [6, 105],
       "editar": [6]
     },
+    "categorias_modelos": {
+      "ver": [6, 7, 8, 33, 50, 72, 105],
+      "editar": [6, 7, 8, 33, 50, 72, 105]
+    },
     "costos_modelo": {
       "ver": [6],
       "editar": [6],

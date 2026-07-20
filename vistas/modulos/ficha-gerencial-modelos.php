@@ -6,6 +6,8 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
 
 $puedeConciliarFicha = function_exists("usuarioPuedeModulo")
     && usuarioPuedeModulo("gestion_comercial", "ficha_modelos", "conciliar");
+$puedeEditarCategoriasModelos = function_exists("usuarioPuedeModulo")
+    && usuarioPuedeModulo("gestion_comercial", "categorias_modelos", "editar");
 $modeloInicialFicha = isset($_GET["modelo"]) ? trim($_GET["modelo"]) : "";
 $anioActualFicha = (int) date("Y");
 $mesActualFicha = (int) date("n");
@@ -116,7 +118,6 @@ if (is_readable($archivoPaletaFicha)) {
 
         <div id="fichaContenido" style="display:none;">
             <div class="ficha-cabecera-kpis">
-                <div class="ficha-kpi-card"><span class="ficha-kpi-label">Ranking del grupo</span><strong id="kpiRankingGeneral">—</strong><small id="kpiRankingTotal">—</small></div>
                 <div class="ficha-kpi-card"><span class="ficha-kpi-label">Ventas acumuladas</span><strong id="kpiVentasAcumuladas">—</strong><small id="kpiPrecioLista9">Lista 9: —</small></div>
                 <div class="ficha-kpi-card"><span class="ficha-kpi-label">Unidades vendidas</span><strong id="kpiUnidades">—</strong><small>Unidades netas</small></div>
                 <div class="ficha-kpi-card"><span class="ficha-kpi-label">Utilidad</span><strong id="kpiUtilidad">—</strong><small id="kpiCostoVenta">—</small></div>
@@ -143,9 +144,26 @@ if (is_readable($archivoPaletaFicha)) {
                                 <p class="ficha-identidad">
                                     <span>Código: <strong id="fichaModeloCodigo">—</strong></span>
                                     <span>Marca: <strong id="fichaModeloMarca">—</strong></span>
-                                    <span>Tipo: <strong id="fichaModeloTipo">—</strong></span>
-                                    <span>Línea: <strong id="fichaModeloLinea">—</strong></span>
+                                    <span>Categoría: <strong id="fichaModeloCategoria">—</strong></span>
+                                    <span>Subcategoría: <strong id="fichaModeloSubcategoria">—</strong></span>
                                     <span>Período: <strong id="fichaModeloPeriodo">—</strong></span>
+                                </p>
+                                <div class="ficha-rankings-modelo" id="fichaRankingsModelo">
+                                    <div class="ficha-rank-item">
+                                        <span class="ficha-rank-label">Ranking general</span>
+                                        <strong id="fichaRankGeneral">—</strong>
+                                    </div>
+                                    <div class="ficha-rank-item">
+                                        <span class="ficha-rank-label">Ranking categoría</span>
+                                        <strong id="fichaRankCategoria">—</strong>
+                                    </div>
+                                    <div class="ficha-rank-item">
+                                        <span class="ficha-rank-label">Ranking subcategoría</span>
+                                        <strong id="fichaRankSubcategoria">—</strong>
+                                    </div>
+                                </div>
+                                <p id="fichaClasificarLink" class="ficha-clasificar-link" style="display:none;margin-top:8px;">
+                                    <a id="fichaClasificarHref" href="index.php?ruta=categorias-modelos">Clasificar este modelo</a>
                                 </p>
                             </div>
                         </div>
@@ -431,6 +449,7 @@ window.fichaModelosConfig = {
     desdeInicial: <?php echo json_encode($desdeInicialFicha); ?>,
     hastaInicial: <?php echo json_encode($hastaInicialFicha); ?>,
     puedeConciliar: <?php echo $puedeConciliarFicha ? "true" : "false"; ?>,
+    puedeEditarCategoriasModelos: <?php echo $puedeEditarCategoriasModelos ? "true" : "false"; ?>,
     paletaColores: <?php echo json_encode($paletaColoresFicha, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
 };
 </script>

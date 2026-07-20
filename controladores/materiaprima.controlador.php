@@ -159,39 +159,13 @@ class ControladorMateriaPrima
 			$fecha = new DateTime();
 			$PcReg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
 
-			$ultimoCod = ModeloMateriaPrima::mdlMostrarUltimoCodPro();
-			$suma = intval($ultimoCod["CodPro"]) + 1;
-			$lenCod = max(intval($ultimoCod["LenCod"]), strlen((string) $suma));
-			$codigoPro = str_pad($suma, $lenCod, '0', STR_PAD_LEFT);
+			$codigoPro = ModeloMateriaPrima::mdlSiguienteCodProLibre();
 
-			$datos = array(
-				"Cod_Local" => '01',
-				"Cod_Entidad" => '01',
-				"CodPro" => $codigoPro,
-				"CodProv1" => isset($_POST["nuevoProveedor"]) ? $_POST["nuevoProveedor"] : "",
-				"PreProv1" => isset($_POST["nuevoPrecioSIGV"]) ? $_POST["nuevoPrecioSIGV"] : "0",
-				"MonProv1" => isset($_POST["nuevaMoneda"]) ? $_POST["nuevaMoneda"] : "",
-				"ObsProv1" => isset($_POST["nuevaObservacion1"]) ? $_POST["nuevaObservacion1"] : "",
-				"CodProv2" => isset($_POST["nuevoProveedor1"]) ? $_POST["nuevoProveedor1"] : "",
-				"PreProv2" => isset($_POST["nuevoPrecioSIGV1"]) ? $_POST["nuevoPrecioSIGV1"] : "0",
-				"MonProv2" => isset($_POST["nuevaMoneda1"]) ? $_POST["nuevaMoneda1"] : "",
-				"ObsProv2" => isset($_POST["nuevaObservacion2"]) ? $_POST["nuevaObservacion2"] : "",
-				"CodProv3" => isset($_POST["nuevoProveedor2"]) ? $_POST["nuevoProveedor2"] : "",
-				"PreProv3" => isset($_POST["nuevoPrecioSIGV2"]) ? $_POST["nuevoPrecioSIGV2"] : "0",
-				"MonProv3" => isset($_POST["nuevaMoneda2"]) ? $_POST["nuevaMoneda2"] : "",
-				"ObsProv3" => isset($_POST["nuevaObservacion3"]) ? $_POST["nuevaObservacion3"] : "",
-				"FecReg" => $fecha->format("Y-m-d H:i:s"),
-				"PcReg" => $PcReg,
-				"UsuReg" => $_SESSION["nombre"]
-			);
-
-			$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp", $datos);
-
-			if ($respuesta != "ok") {
+			if ($codigoPro === false || $codigoPro === null || $codigoPro === "") {
 				echo '<script>
 						swal({
 							type: "error",
-							title: "No se pudo registrar el precio de la materia prima",
+							title: "No hay CodPro disponible con el ancho actual. No se pueden crear más materias primas sin ampliar la columna.",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							}).then(function(result){
@@ -240,11 +214,47 @@ class ControladorMateriaPrima
 				"UsuReg" => $_SESSION["nombre"]
 			);
 
+			// Primero producto (fuente de CodPro), luego precio
 			$respuesta2 = ModeloMateriaPrima::mdlIngresarMateriaPrima("producto", $datos2);
 
 			if ($respuesta2 != "ok") {
-				ModeloMateriaPrima::mdlEliminarPrecioMP($codigoPro);
+				echo '<script>
+						swal({
+							type: "error",
+							title: "No se pudo crear la materia prima",
+							showConfirmButton: true,
+							confirmButtonText: "Cerrar"
+							}).then(function(result){
+										if (result.value) {
+										window.location = "materiaprima";
+										}
+									})
+						</script>';
+				return;
 			}
+
+			$datos = array(
+				"Cod_Local" => '01',
+				"Cod_Entidad" => '01',
+				"CodPro" => $codigoPro,
+				"CodProv1" => isset($_POST["nuevoProveedor"]) ? $_POST["nuevoProveedor"] : "",
+				"PreProv1" => isset($_POST["nuevoPrecioSIGV"]) ? $_POST["nuevoPrecioSIGV"] : "0",
+				"MonProv1" => isset($_POST["nuevaMoneda"]) ? $_POST["nuevaMoneda"] : "",
+				"ObsProv1" => isset($_POST["nuevaObservacion1"]) ? $_POST["nuevaObservacion1"] : "",
+				"CodProv2" => isset($_POST["nuevoProveedor1"]) ? $_POST["nuevoProveedor1"] : "",
+				"PreProv2" => isset($_POST["nuevoPrecioSIGV1"]) ? $_POST["nuevoPrecioSIGV1"] : "0",
+				"MonProv2" => isset($_POST["nuevaMoneda1"]) ? $_POST["nuevaMoneda1"] : "",
+				"ObsProv2" => isset($_POST["nuevaObservacion2"]) ? $_POST["nuevaObservacion2"] : "",
+				"CodProv3" => isset($_POST["nuevoProveedor2"]) ? $_POST["nuevoProveedor2"] : "",
+				"PreProv3" => isset($_POST["nuevoPrecioSIGV2"]) ? $_POST["nuevoPrecioSIGV2"] : "0",
+				"MonProv3" => isset($_POST["nuevaMoneda2"]) ? $_POST["nuevaMoneda2"] : "",
+				"ObsProv3" => isset($_POST["nuevaObservacion3"]) ? $_POST["nuevaObservacion3"] : "",
+				"FecReg" => $fecha->format("Y-m-d H:i:s"),
+				"PcReg" => $PcReg,
+				"UsuReg" => $_SESSION["nombre"]
+			);
+
+			$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp", $datos);
 
 			if ($respuesta == "ok" && $respuesta2 == "ok") {
 
@@ -258,7 +268,7 @@ class ControladorMateriaPrima
 
 						swal({
 							type: "warning",
-							title: "La materia prima no fue creada con exito",
+							title: "La materia prima se creó, pero no se registró el precio. Edítela para completar el precio.",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							}).then(function(result){
@@ -512,41 +522,13 @@ class ControladorMateriaPrima
 				$fecha = new DateTime();
 				$PcReg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
 
-				$ultimoCod = ModeloMateriaPrima::mdlMostrarUltimoCodPro();
-				$suma = intval($ultimoCod["CodPro"]) + 1;
-				$lenCod = max(intval($ultimoCod["LenCod"]), strlen((string) $suma));
-				$codigoPro = str_pad($suma, $lenCod, '0', STR_PAD_LEFT);
+				$codigoPro = ModeloMateriaPrima::mdlSiguienteCodProLibre();
 
-
-
-				$datos = array(
-					"Cod_Local" => '01',
-					"Cod_Entidad" => '01',
-					"CodPro" => $codigoPro,
-					"CodProv1" => isset($_POST["duplicarProveedor"]) ? $_POST["duplicarProveedor"] : "",
-					"PreProv1" => isset($_POST["duplicarPrecioSIGV"]) ? $_POST["duplicarPrecioSIGV"] : "0",
-					"MonProv1" => isset($_POST["duplicarMoneda"]) ? $_POST["duplicarMoneda"] : "",
-					"ObsProv1" => isset($_POST["duplicarObservacion1"]) ? $_POST["duplicarObservacion1"] : "",
-					"CodProv2" => isset($_POST["duplicarProveedor1"]) ? $_POST["duplicarProveedor1"] : "",
-					"PreProv2" => isset($_POST["duplicarPrecioSIGV1"]) ? $_POST["duplicarPrecioSIGV1"] : "0",
-					"MonProv2" => isset($_POST["duplicarMoneda1"]) ? $_POST["duplicarMoneda1"] : "",
-					"ObsProv2" => isset($_POST["duplicarObservacion2"]) ? $_POST["duplicarObservacion2"] : "",
-					"CodProv3" => isset($_POST["duplicarProveedor2"]) ? $_POST["duplicarProveedor2"] : "",
-					"PreProv3" => isset($_POST["duplicarPrecioSIGV2"]) ? $_POST["duplicarPrecioSIGV2"] : "0",
-					"MonProv3" => isset($_POST["duplicarMoneda2"]) ? $_POST["duplicarMoneda2"] : "",
-					"ObsProv3" => isset($_POST["duplicarObservacion3"]) ? $_POST["duplicarObservacion3"] : "",
-					"FecReg" => $fecha->format("Y-m-d H:i:s"),
-					"PcReg" => $PcReg,
-					"UsuReg" => $_SESSION["nombre"]
-				);
-
-				$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp", $datos);
-
-				if ($respuesta != "ok") {
+				if ($codigoPro === false || $codigoPro === null || $codigoPro === "") {
 					echo '<script>
 						swal({
 							type: "error",
-							title: "No se pudo registrar el precio de la materia prima",
+							title: "No hay CodPro disponible con el ancho actual. No se pueden crear más materias primas sin ampliar la columna.",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							}).then(function(result){
@@ -591,9 +573,43 @@ class ControladorMateriaPrima
 				$respuesta2 = ModeloMateriaPrima::mdlIngresarMateriaPrima("producto", $datos2);
 
 				if ($respuesta2 != "ok") {
-					ModeloMateriaPrima::mdlEliminarPrecioMP($codigoPro);
+					echo '<script>
+						swal({
+							type: "error",
+							title: "No se pudo crear la materia prima",
+							showConfirmButton: true,
+							confirmButtonText: "Cerrar"
+							}).then(function(result){
+										if (result.value) {
+										window.location = "materiaprima";
+										}
+									})
+						</script>';
+					return;
 				}
 
+				$datos = array(
+					"Cod_Local" => '01',
+					"Cod_Entidad" => '01',
+					"CodPro" => $codigoPro,
+					"CodProv1" => isset($_POST["duplicarProveedor"]) ? $_POST["duplicarProveedor"] : "",
+					"PreProv1" => isset($_POST["duplicarPrecioSIGV"]) ? $_POST["duplicarPrecioSIGV"] : "0",
+					"MonProv1" => isset($_POST["duplicarMoneda"]) ? $_POST["duplicarMoneda"] : "",
+					"ObsProv1" => isset($_POST["duplicarObservacion1"]) ? $_POST["duplicarObservacion1"] : "",
+					"CodProv2" => isset($_POST["duplicarProveedor1"]) ? $_POST["duplicarProveedor1"] : "",
+					"PreProv2" => isset($_POST["duplicarPrecioSIGV1"]) ? $_POST["duplicarPrecioSIGV1"] : "0",
+					"MonProv2" => isset($_POST["duplicarMoneda1"]) ? $_POST["duplicarMoneda1"] : "",
+					"ObsProv2" => isset($_POST["duplicarObservacion2"]) ? $_POST["duplicarObservacion2"] : "",
+					"CodProv3" => isset($_POST["duplicarProveedor2"]) ? $_POST["duplicarProveedor2"] : "",
+					"PreProv3" => isset($_POST["duplicarPrecioSIGV2"]) ? $_POST["duplicarPrecioSIGV2"] : "0",
+					"MonProv3" => isset($_POST["duplicarMoneda2"]) ? $_POST["duplicarMoneda2"] : "",
+					"ObsProv3" => isset($_POST["duplicarObservacion3"]) ? $_POST["duplicarObservacion3"] : "",
+					"FecReg" => $fecha->format("Y-m-d H:i:s"),
+					"PcReg" => $PcReg,
+					"UsuReg" => $_SESSION["nombre"]
+				);
+
+				$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp", $datos);
 
 				if ($respuesta == "ok" && $respuesta2 == "ok") {
 
@@ -607,7 +623,7 @@ class ControladorMateriaPrima
 
 						swal({
 							type: "warning",
-							title: "La materia prima no fue creada con exito",
+							title: "La materia prima se creó, pero no se registró el precio. Edítela para completar el precio.",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							}).then(function(result){

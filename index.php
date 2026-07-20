@@ -34,6 +34,8 @@ require_once "controladores/costos-modelo-mensual.controlador.php";
 
 require_once "controladores/ficha-gerencial-modelos.controlador.php";
 
+require_once "controladores/categorias-modelos.controlador.php";
+
 require_once "controladores/metricas-comerciales.controlador.php";
 
 require_once "controladores/categorias-clientes.controlador.php";
@@ -198,6 +200,8 @@ require_once "modelos/metas-retos.modelo.php";
 require_once "modelos/costos-modelo-mensual.modelo.php";
 
 require_once "modelos/ficha-gerencial-modelos.modelo.php";
+
+require_once "modelos/categorias-modelos.modelo.php";
 
 require_once "modelos/metricas-comerciales.modelo.php";
 

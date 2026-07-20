@@ -312,35 +312,9 @@ class AjaxMateriaPrima{
 			$fecha = new DateTime();
 			$PcReg= gethostbyaddr($_SERVER['REMOTE_ADDR']);
 
-			$ultimoCod = ModeloMateriaPrima::mdlMostrarUltimoCodPro();
-            $suma = intval($ultimoCod["CodPro"]) + 1;
-            $lenCod = max(intval($ultimoCod["LenCod"]), strlen((string) $suma));
-            $codigoPro = str_pad($suma, $lenCod, '0', STR_PAD_LEFT);
+			$codigoPro = ModeloMateriaPrima::mdlSiguienteCodProLibre();
 
-
-
-			$datos = array(	"Cod_Local"=>'01',
-							"Cod_Entidad"=>'01',
-							"CodPro"=>$codigoPro,
-							"CodProv1"=>$codprov1,
-							"PreProv1"=>$preprov1,
-							"MonProv1"=>$monprov1,
-							"ObsProv1"=>$obsprov1,
-							"CodProv2"=>$codprov2,
-							"PreProv2"=>$preprov2,
-							"MonProv2"=>$monprov2,
-							"ObsProv2"=>$obsprov2,
-							"CodProv3"=>$codprov3,
-							"PreProv3"=>$preprov3,
-							"MonProv3"=>$monprov3,
-							"ObsProv3"=>$obsprov3,
-							"FecReg"=>$fecha->format("Y-m-d H:i:s"),
-							"PcReg"=>$PcReg,
-							"UsuReg"=>$_SESSION["nombre"]);
-
-			$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp",$datos);
-
-			if ($respuesta != "ok") {
+			if ($codigoPro === false || $codigoPro === null || $codigoPro === "") {
 				echo "error";
 				return;
 			}
@@ -373,14 +347,38 @@ class AjaxMateriaPrima{
 							"PcReg"=>$PcReg,
 							"UsuReg"=>$_SESSION["nombre"]);
 
-				$respuesta2 = ModeloMateriaPrima::mdlIngresarMateriaPrima("producto",$datos2);
+			$respuesta2 = ModeloMateriaPrima::mdlIngresarMateriaPrima("producto",$datos2);
 
-				if ($respuesta2 != "ok") {
-					ModeloMateriaPrima::mdlEliminarPrecioMP($codigoPro);
-					$respuesta = "error";
-				} else {
-					$respuesta = "ok";
-				}
+			if ($respuesta2 != "ok") {
+				echo "error";
+				return;
+			}
+
+			$datos = array(	"Cod_Local"=>'01',
+							"Cod_Entidad"=>'01',
+							"CodPro"=>$codigoPro,
+							"CodProv1"=>$codprov1,
+							"PreProv1"=>$preprov1,
+							"MonProv1"=>$monprov1,
+							"ObsProv1"=>$obsprov1,
+							"CodProv2"=>$codprov2,
+							"PreProv2"=>$preprov2,
+							"MonProv2"=>$monprov2,
+							"ObsProv2"=>$obsprov2,
+							"CodProv3"=>$codprov3,
+							"PreProv3"=>$preprov3,
+							"MonProv3"=>$monprov3,
+							"ObsProv3"=>$obsprov3,
+							"FecReg"=>$fecha->format("Y-m-d H:i:s"),
+							"PcReg"=>$PcReg,
+							"UsuReg"=>$_SESSION["nombre"]);
+
+			$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp",$datos);
+
+			if ($respuesta != "ok") {
+				// La MP ya existe con CodPro único; el precio se puede completar al editar
+				$respuesta = "ok";
+			}
 
 			}
 		}

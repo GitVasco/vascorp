@@ -8,57 +8,90 @@
     border-radius: 8px;
 }
 
+.resumen-modelos-filtros .box-body {
+    padding: 14px 16px 10px;
+}
+
+.resumen-modelos-filtros label {
+    margin-bottom: 4px;
+    color: #52606b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.resumen-modelos-filtros .form-control {
+    height: 36px;
+    font-size: 13px;
+}
+
 .resumen-modelos-descripcion {
-    margin-bottom: 10px;
-    font-size: 11px;
+    margin-bottom: 12px;
+    color: #5f6b75;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.resumen-modelos-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 18px;
+    margin-bottom: 12px;
 }
 
 .resumen-modelos-buscador {
     position: relative;
     display: flex;
-    max-width: 620px;
-    margin-bottom: 10px;
+    flex: 1 1 420px;
+    min-width: 280px;
+    max-width: none;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .resumen-modelos-buscador > i {
     position: absolute;
     z-index: 2;
-    left: 11px;
+    left: 12px;
     color: #8a959e;
+    font-size: 14px;
 }
 
 .resumen-modelos-buscador .form-control {
-    padding-left: 32px;
-    border-radius: 17px;
+    height: 38px;
+    padding-left: 36px;
+    border-radius: 19px;
+    font-size: 14px;
 }
 
 #resumenModelosCoincidencias {
-    min-width: 75px;
-    color: #7b8790;
-    font-size: 10px;
+    min-width: 90px;
+    color: #5f6b75;
+    font-size: 13px;
+    font-weight: 600;
     white-space: nowrap;
 }
 
 .resumen-ranking-leyenda {
     display: flex;
     flex-wrap: wrap;
+    flex: 0 1 auto;
     gap: 8px;
-    margin-bottom: 10px;
-    font-size: 10px;
+    margin: 0;
+    font-size: 13px;
 }
 
 .resumen-ranking-leyenda span {
-    padding: 4px 9px;
+    padding: 6px 11px;
     background: #f7f9fa;
     border: 1px solid #e2e7ea;
-    border-radius: 12px;
-    color: #66727c;
+    border-radius: 14px;
+    color: #52606b;
+    font-weight: 600;
 }
 
 .resumen-ranking-leyenda i {
-    margin-right: 4px;
+    margin-right: 5px;
 }
 
 .resumen-ranking-leyenda .alto {
@@ -75,10 +108,10 @@
 
 .resumen-modelos-orden {
     display: flex;
-    min-height: 34px;
+    min-height: 36px;
     align-items: center;
-    gap: 16px;
-    padding: 6px 10px;
+    gap: 14px;
+    padding: 6px 12px;
     background: #f7f9fa;
     border: 1px solid #d2d6de;
     border-radius: 4px;
@@ -86,7 +119,8 @@
 
 .resumen-modelos-orden label {
     margin: 0;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
     white-space: nowrap;
 }
 
@@ -95,7 +129,8 @@
 }
 
 .resumen-modelos-acciones .btn {
-    font-size: 12px;
+    height: 36px;
+    font-size: 13px;
 }
 
 .resumen-modelos-seleccion-tools {
@@ -105,39 +140,45 @@
 }
 
 #resumenModelosSeleccionadosTexto {
-    color: #68737d;
-    font-size: 11px;
+    color: #52606b;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .resumen-modelos-tabla-wrap {
-    max-height: calc(100vh - 285px);
-    min-height: 260px;
+    max-height: calc(100vh - 300px);
+    min-height: 320px;
     overflow: auto;
     border: 1px solid #e8ecef;
     border-radius: 7px;
 }
 
 .resumen-modelos-tabla {
-    min-width: 1680px;
+    width: 100%;
+    min-width: 1480px;
     margin-bottom: 0;
-    font-size: 11px;
+    font-size: 13px;
+    table-layout: auto;
 }
 
 .resumen-modelos-tabla thead th {
     position: sticky;
     z-index: 2;
     top: 0;
-    padding: 9px 7px;
+    padding: 11px 10px;
     background: #f5f8fa;
     border-bottom: 2px solid #d8e1e7;
-    color: #52606b;
+    color: #3d4a54;
+    font-size: 12px;
+    font-weight: 700;
     text-align: right;
     white-space: nowrap;
 }
 
 .resumen-modelos-tabla thead th:nth-child(2),
 .resumen-modelos-tabla thead th:nth-child(3),
-.resumen-modelos-tabla thead th:nth-child(4) {
+.resumen-modelos-tabla thead th:nth-child(4),
+.resumen-modelos-tabla thead th:nth-child(5) {
     text-align: left;
 }
 
@@ -146,15 +187,19 @@
 }
 
 .resumen-modelos-tabla tbody td {
-    padding: 8px 7px;
+    padding: 10px;
     text-align: right;
     vertical-align: middle;
     white-space: nowrap;
+    color: #2f3a42;
+    font-size: 13px;
+    line-height: 1.35;
 }
 
 .resumen-modelos-tabla tbody td:nth-child(2),
 .resumen-modelos-tabla tbody td:nth-child(3),
-.resumen-modelos-tabla tbody td:nth-child(4) {
+.resumen-modelos-tabla tbody td:nth-child(4),
+.resumen-modelos-tabla tbody td:nth-child(5) {
     text-align: left;
 }
 
@@ -164,38 +209,38 @@
 
 .resumen-modelos-tabla td small {
     display: block;
-    margin-top: 2px;
-    color: #8a9299;
-    font-size: 9px;
+    margin-top: 3px;
+    color: #6b7780;
+    font-size: 12px;
+    font-weight: 500;
     white-space: normal;
 }
 
 .resumen-modelos-tabla td:first-child {
-    min-width: 55px;
+    width: 52px;
 }
 
 .resumen-modelos-tabla td:nth-child(2) {
-    min-width: 95px;
+    min-width: 88px;
 }
 
 .resumen-modelos-tabla td:nth-child(3) {
-    min-width: 190px;
+    min-width: 150px;
+    max-width: 220px;
+    white-space: normal;
 }
 
-.resumen-modelos-tabla td:nth-child(4) {
-    min-width: 145px;
-}
-
+.resumen-modelos-tabla td:nth-child(4),
 .resumen-modelos-tabla td:nth-child(5) {
-    min-width: 115px;
-}
-
-.resumen-modelos-tabla td:nth-child(6) {
-    min-width: 115px;
+    min-width: 120px;
+    max-width: 170px;
+    white-space: normal;
 }
 
 .resumen-modelos-tabla td:nth-child(2) a {
     color: #3c8dbc;
+    font-size: 13px;
+    font-weight: 700;
 }
 
 .resumen-modelos-tabla td:nth-child(2) a:hover {
@@ -221,10 +266,10 @@
 .resumen-ranking-semaforo {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-size: 10px;
+    gap: 6px;
+    font-size: 13px;
     font-weight: 700;
-    color: #52606b;
+    color: #3d4a54;
     white-space: nowrap;
 }
 
@@ -244,6 +289,10 @@
     color: #7f8c8d;
 }
 
+#zonaResumenModelos > .box-header .box-title {
+    font-size: 16px;
+}
+
 #zonaResumenModelos > .box-header .box-title i {
     margin-right: 6px;
     color: #00c0ef;
@@ -251,11 +300,16 @@
 
 .resumen-modelos-cargando {
     color: #777;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 @media (max-width: 767px) {
     .resumen-modelos-tabla-wrap {
         max-height: none;
+    }
+
+    .resumen-modelos-toolbar {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
