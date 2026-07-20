@@ -3,9 +3,130 @@
 }
 
 .cxc-dashboard .cxc-filtros-box {
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 }
 
+.cxc-dashboard .cxc-filtros-box > .box-body.cxc-filtros-body {
+    padding: 8px 12px;
+}
+
+.cxc-dashboard .cxc-filtros-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 10px;
+}
+
+.cxc-dashboard .cxc-filtro-item {
+    min-width: 0;
+}
+
+.cxc-dashboard .cxc-filtro-item--anio {
+    width: 88px;
+}
+
+.cxc-dashboard .cxc-filtro-item--mes {
+    width: 132px;
+}
+
+.cxc-dashboard .cxc-filtro-item--wide {
+    width: 200px;
+    max-width: 240px;
+}
+
+.cxc-dashboard .cxc-filtro-item label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    margin: 0 0 2px;
+    line-height: 1.2;
+}
+
+.cxc-dashboard .cxc-filtro-item .bootstrap-select {
+    width: 100% !important;
+}
+
+.cxc-dashboard .cxc-filtro-item .bootstrap-select > .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    height: 30px;
+    line-height: 1.3;
+}
+
+.cxc-dashboard .cxc-check-todos-vendedores {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 0 1px;
+    padding: 4px 8px;
+    height: 30px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    background: #f8fafc;
+    font-size: 11px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.cxc-dashboard .cxc-check-todos-vendedores input {
+    margin: 0;
+}
+
+.cxc-dashboard .cxc-check-todos-vendedores:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+
+.cxc-dashboard .cxc-filtros-meta-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding-bottom: 2px;
+}
+
+.cxc-dashboard .cxc-filtros-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.cxc-dashboard .cxc-filtros-chip i {
+    opacity: 0.75;
+    font-size: 10px;
+}
+
+.cxc-dashboard .cxc-filtros-chip--muted {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.cxc-dashboard .cxc-filtros-chip--warn {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.cxc-dashboard .cxc-filtros-chip--info {
+    background: #ecfeff;
+    color: #0e7490;
+}
+
+.cxc-dashboard .cxc-filtros-meta-inline .cxc-limpiar-filtros-detalle {
+    font-size: 11px;
+}
+
+/* compat: selectores antiguos */
 .cxc-dashboard .cxc-filtros-header {
     display: flex;
     align-items: flex-start;
@@ -37,14 +158,6 @@
     align-items: flex-start;
 }
 
-.cxc-dashboard .cxc-filtro-item {
-    min-width: 140px;
-}
-
-.cxc-dashboard .cxc-filtro-item--wide {
-    min-width: 220px;
-}
-
 .cxc-dashboard .cxc-filtro-item--check {
     min-width: 200px;
     display: flex;
@@ -52,11 +165,21 @@
     padding-bottom: 2px;
 }
 
-.cxc-dashboard .cxc-filtro-item label {
-    display: block;
-    font-size: 12px;
-    font-weight: bold;
-    margin-bottom: 5px;
+.cxc-dashboard .cxc-filtros-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #eef2f7;
+}
+
+.cxc-dashboard .cxc-filtros-grupo,
+.cxc-dashboard .cxc-filtros-grupo-lbl,
+.cxc-dashboard .cxc-filtros-grupo-campos,
+.cxc-dashboard .cxc-filtros-grupo--vendedor {
+    /* legacy no-op */
 }
 
 .cxc-dashboard .cxc-seccion-titulo {
@@ -909,16 +1032,111 @@
     margin-top: -4px;
 }
 
+.cxc-dashboard .cxc-detalle-filtros-activos {
+    padding: 8px 15px 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cxc-dashboard .cxc-detalle-filtros-activos .label {
+    font-weight: normal;
+}
+
+.cxc-dashboard .cxc-limpiar-filtros-detalle {
+    font-size: 12px;
+}
+
 .cxc-dashboard .cxc-detalle-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .cxc-dashboard .cxc-detalle-paginacion {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.cxc-dashboard .cxc-detalle-nota {
+    font-size: 11px;
+}
+
+.cxc-dashboard .cxc-panel-detalle-docs.cxc-detalle--cargando {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.cxc-dashboard .cxc-detalle-cod {
+    font-size: 12px;
+    color: #334155;
+}
+
+.cxc-dashboard .cxc-detalle-cliente {
+    display: inline-block;
+    max-width: 220px;
+    font-size: 11px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.cxc-dashboard .cxc-tabla-detalle > tbody > tr > td,
+.cxc-dashboard .cxc-tabla-detalle > thead > tr > th {
+    padding: 4px 6px;
+    font-size: 11px;
+}
+
+.cxc-dashboard .cxc-detalle-nombre {
+    font-size: 11px;
+    color: #64748b;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cxc-dashboard .cxc-detalle-doc {
+    background: #f1f5f9;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #0f172a;
+}
+
+.cxc-dashboard .cxc-detalle-saldo {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cxc-dashboard .cxc-detalle-dias--vencido {
+    color: #b91c1c;
+    font-weight: 600;
+}
+
+.cxc-dashboard .cxc-detalle-rango {
+    font-weight: normal;
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.cxc-dashboard .cxc-detalle-fila--vencido td {
+    background-color: #fff7ed;
+}
+
+.cxc-dashboard .cxc-detalle-fila--critico td {
+    background-color: #fef2f2;
+}
+
+.cxc-dashboard .cxc-detalle-fila--vigente td {
+    background-color: transparent;
 }
 
 .cxc-dashboard .cxc-top-clientes-leyenda {
@@ -1132,9 +1350,152 @@
     padding: 8px 12px;
 }
 
+.cxc-dashboard .cxc-panel-morosidad {
+    margin-bottom: 16px;
+}
+
+.cxc-dashboard .cxc-moro-nivel {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.cxc-dashboard .cxc-moro-nivel--bajo { background: #dcfce7; color: #166534; }
+.cxc-dashboard .cxc-moro-nivel--medio { background: #fef3c7; color: #92400e; }
+.cxc-dashboard .cxc-moro-nivel--alto { background: #ffedd5; color: #9a3412; }
+.cxc-dashboard .cxc-moro-nivel--critico { background: #fee2e2; color: #991b1b; }
+
+.cxc-dashboard .cxc-moro-kpis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.cxc-dashboard .cxc-moro-kpi {
+    flex: 1 1 140px;
+    min-width: 120px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.cxc-dashboard .cxc-moro-kpi--indice {
+    background: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.cxc-dashboard .cxc-moro-kpi__label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+
+.cxc-dashboard .cxc-moro-kpi__valor {
+    display: block;
+    font-size: 18px;
+    line-height: 1.2;
+    color: #0f172a;
+}
+
+.cxc-dashboard .cxc-moro-kpi__sub {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.cxc-dashboard .cxc-moro-subtitulo {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.cxc-dashboard .cxc-moro-grid {
+    margin-bottom: 8px;
+}
+
+.cxc-dashboard .cxc-moro-barra {
+    margin-bottom: 8px;
+}
+
+.cxc-dashboard .cxc-moro-barra__meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #475569;
+    margin-bottom: 2px;
+}
+
+.cxc-dashboard .cxc-moro-barra__track {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.cxc-dashboard .cxc-moro-barra__fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.cxc-dashboard .cxc-moro-barra__fill--r030 { background: #6BCB9A; }
+.cxc-dashboard .cxc-moro-barra__fill--r3160 { background: #FFD166; }
+.cxc-dashboard .cxc-moro-barra__fill--r6190 { background: #FFAB6B; }
+.cxc-dashboard .cxc-moro-barra__fill--r91180 { background: #FF7B7B; }
+.cxc-dashboard .cxc-moro-barra__fill--r180 { background: #E56B8A; }
+
+.cxc-dashboard .cxc-moro-mini-track {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.cxc-dashboard .cxc-moro-mini-fill {
+    height: 100%;
+    background: #f97316;
+    border-radius: 999px;
+}
+
+.cxc-dashboard .cxc-tabla-moro-vend td,
+.cxc-dashboard .cxc-tabla-moro-vend th,
+.cxc-dashboard .cxc-tabla-moro-cli td,
+.cxc-dashboard .cxc-tabla-moro-cli th {
+    font-size: 11px;
+    padding: 4px 6px !important;
+    vertical-align: middle !important;
+}
+
+.cxc-dashboard .cxc-moro-acciones {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.cxc-dashboard .cxc-moro-acciones li {
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.4;
+}
+
 @media (max-width: 991px) {
-    .cxc-dashboard .cxc-filtros-header {
-        flex-direction: column;
+    .cxc-dashboard .cxc-filtros-meta-inline {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .cxc-dashboard .cxc-filtro-item--wide {
+        width: 100%;
+        max-width: none;
     }
 
     .cxc-dashboard .cxc-detalle-tools {

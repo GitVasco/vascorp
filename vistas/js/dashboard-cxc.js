@@ -52,7 +52,7 @@
         var params = [
             'ruta=dashboard-cxc',
             'año=' + encodeURIComponent(estado.anio),
-            'mes=' + encodeURIComponent(estado.mes)
+            'mes=' + encodeURIComponent(estado.mes === undefined || estado.mes === null || estado.mes === '' ? '' : estado.mes)
         ];
 
         if (estado.vendedor) {
@@ -105,8 +105,196 @@
         return 'S/ ' + n.toLocaleString('es-PE', { maximumFractionDigits: 0 });
     }
 
+    function formatearMontoDec(valor) {
+        var n = Number(valor) || 0;
+        return 'S/ ' + n.toLocaleString('es-PE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
     function formatearEntero(valor) {
         return (Number(valor) || 0).toLocaleString('es-PE', { maximumFractionDigits: 0 });
+    }
+
+    function etiquetaClienteDetalle(fila) {
+        var cod = String(fila.cliente || '').trim();
+        var nom = String(fila.nombre_cliente || '').trim();
+        if (!nom || nom === cod) {
+            return cod;
+        }
+        return cod + ' - ' + nom;
+    }
+
+    function etiquetaDocumentoDetalle(fila) {
+        var tipo = String(fila.tipo_doc || '').trim();
+        var num = String(fila.num_cta || '').trim();
+        return (tipo + '-' + num).replace(/^-+|-+$/g, '');
+    }
+
+    function soloFecha(valor) {
+        return String(valor || '').substring(0, 10);
+    }
+
+    var labelsClasifDetalle = {
+        regular: 'Por vencer',
+        vencido: 'Vencido',
+        '180+': '+180',
+        incobrable: 'Incobrable'
+    };
+
+    var clasesClasifDetalle = {
+        regular: 'label-success',
+        vencido: 'label-warning',
+        '180+': 'label-danger',
+        incobrable: 'label-purple'
+    };
+
+    var labelsRangoDetalle = {
+        'por-vencer': 'Por vencer',
+        '0-30': '0–30',
+        '31-60': '31–60',
+        '61-90': '61–90',
+        '91-180': '91–180',
+        '180+': '+180',
+        incobrable: 'Incobrable'
+    };
+
+    function ajaxDetalleDocumentos(estado) {
+        var params = paramsAjax(estado, {
+            accion: 'detalle',
+            pagina: estado.pagina || 1,
+            por_pagina: 25
+        });
+        var qs = Object.keys(params).map(function (k) {
+            return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+        }).join('&');
+
+        return fetch('ajax/dashboard-cxc.ajax.php?' + qs, { credentials: 'same-origin' })
+            .then(function (resp) {
+                return resp.json();
+            });
+    }
+
+    function marcarDetalleCargando(cargando) {
+        var panel = document.querySelector('.cxc-panel-detalle-docs');
+        if (panel) {
+            panel.classList.toggle('cxc-detalle--cargando', cargando);
+        }
+    }
+
+    function renderPaginacionDetalle(pag) {
+        var contenedor = document.getElementById('cxcDetallePaginacion');
+        if (!contenedor) {
+            return;
+        }
+
+        var pagina = Number(pag && pag.pagina) || 1;
+        var totalPaginas = Number(pag && pag.total_paginas) || 0;
+
+        contenedor.setAttribute('data-pagina', String(pagina));
+        contenedor.setAttribute('data-total-paginas', String(totalPaginas));
+
+        if (totalPaginas <= 1) {
+            contenedor.innerHTML = '';
+            return;
+        }
+
+        var html = '';
+        html += '<button type="button" class="btn btn-default btn-sm cxc-detalle-prev"' +
+            (pagina <= 1 ? ' disabled' : '') + '>' +
+            '<i class="fa fa-chevron-left"></i> Anterior</button>';
+        html += '<span class="cxc-detalle-pagina-label">Página ' + pagina + ' de ' + totalPaginas + '</span>';
+        html += '<button type="button" class="btn btn-default btn-sm cxc-detalle-next"' +
+            (pagina >= totalPaginas ? ' disabled' : '') + '>' +
+            'Siguiente <i class="fa fa-chevron-right"></i></button>';
+        contenedor.innerHTML = html;
+    }
+
+    function renderTablaDetalleDocumentos(data) {
+        var table = document.getElementById('tablaDetalleDocumentosCxc');
+        if (!table || !data) {
+            return;
+        }
+
+        var filas = data.filas || [];
+        var pag = data.paginacion || {};
+        var saldoTotal = Number(data.saldo_total) || 0;
+        var tbody = table.querySelector('tbody');
+        var tfoot = table.querySelector('tfoot');
+        var html = '';
+
+        if (!filas.length) {
+            html = '<tr><td colspan="9" class="text-muted">Sin documentos para los filtros actuales</td></tr>';
+            if (tfoot) {
+                tfoot.innerHTML = '';
+            }
+        } else {
+            filas.forEach(function (fila) {
+                var clasifKey = fila.clasificacion || '';
+                var clasif = labelsClasifDetalle[clasifKey] || clasifKey;
+                var claseClasif = clasesClasifDetalle[clasifKey] || 'label-default';
+                var rangoKey = fila.rango || '';
+                var rangoLabel = labelsRangoDetalle[rangoKey] || rangoKey;
+                var dias = Number(fila.dias_antiguedad) || 0;
+                var esVencido = clasifKey === 'vencido' || clasifKey === '180+' || clasifKey === 'incobrable';
+                var claseFila = esVencido ? 'cxc-detalle-fila--vencido' : 'cxc-detalle-fila--vigente';
+                if (clasifKey === '180+') {
+                    claseFila = 'cxc-detalle-fila--critico';
+                }
+
+                html += '<tr class="' + claseFila + '">';
+                html += '<td><span class="cxc-detalle-cliente">' + escapeHtml(etiquetaClienteDetalle(fila)) + '</span></td>';
+                html += '<td>' + escapeHtml(fila.vendedor || '') + '</td>';
+                html += '<td><code class="cxc-detalle-doc">' + escapeHtml(etiquetaDocumentoDetalle(fila)) + '</code></td>';
+                html += '<td>' + escapeHtml(soloFecha(fila.fecha)) + '</td>';
+                html += '<td>' + escapeHtml(soloFecha(fila.fecha_ven)) + '</td>';
+                html += '<td class="text-right cxc-detalle-saldo">' + formatearMontoDec(fila.saldo) + '</td>';
+                html += '<td class="text-right ' + (esVencido ? 'cxc-detalle-dias--vencido' : 'text-muted') + '">' + dias + '</td>';
+                html += '<td><span class="label label-default cxc-detalle-rango">' + escapeHtml(rangoLabel) + '</span></td>';
+                html += '<td><span class="label ' + escapeHtml(claseClasif) + '">' + escapeHtml(clasif) + '</span></td>';
+                html += '</tr>';
+            });
+
+            var footHtml = '<tr class="cxc-fila-total">' +
+                '<td colspan="5"><strong>Total filtrado (' + formatearEntero(pag.total_registros || 0) + ' docs)</strong></td>' +
+                '<td class="text-right"><strong>' + formatearMontoDec(saldoTotal) + '</strong></td>' +
+                '<td colspan="3"></td></tr>';
+
+            if (!tfoot) {
+                tfoot = document.createElement('tfoot');
+                table.appendChild(tfoot);
+            }
+            tfoot.innerHTML = footHtml;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = html;
+        }
+
+        renderPaginacionDetalle(pag);
+    }
+
+    function cargarDetalleDocumentos(pagina) {
+        var estado = leerEstado();
+        estado.pagina = Math.max(1, Number(pagina) || 1);
+        escribirEstado(estado);
+        actualizarUrlSinRecarga(estado);
+        marcarDetalleCargando(true);
+
+        return ajaxDetalleDocumentos(estado)
+            .then(function (resp) {
+                if (!resp || !resp.ok || !resp.data) {
+                    return;
+                }
+                renderTablaDetalleDocumentos(resp.data);
+            })
+            .catch(function () {
+                /* sin feedback invasivo */
+            })
+            .then(function () {
+                marcarDetalleCargando(false);
+            });
     }
 
     function escapeHtml(texto) {
@@ -567,7 +755,11 @@
         }
 
         check.addEventListener('change', function () {
-            actualizarTablasVendedorAjax();
+            var estado = leerEstado();
+            estado.todosVendedores = check.checked;
+            estado.pagina = 1;
+            // Recarga: afecta cartera/ventas por vendedor, detalle y visión de morosidad
+            irConEstado(estado);
         });
     }
 
@@ -684,30 +876,40 @@
     }
 
     function bindPaginacionDetalle() {
-        var contenedor = document.getElementById('cxcDetallePaginacion');
-        if (!contenedor) {
+        var panel = document.querySelector('.cxc-panel-detalle-docs');
+        if (!panel) {
             return;
         }
 
-        var prev = contenedor.querySelector('.cxc-detalle-prev');
-        var next = contenedor.querySelector('.cxc-detalle-next');
+        panel.addEventListener('click', function (ev) {
+            var prev = ev.target.closest('.cxc-detalle-prev');
+            var next = ev.target.closest('.cxc-detalle-next');
+            if (!prev && !next) {
+                return;
+            }
 
-        if (prev) {
-            prev.addEventListener('click', function () {
-                var estado = leerEstado();
-                estado.pagina = Math.max(1, (estado.pagina || 1) - 1);
-                irConEstado(estado);
-            });
-        }
+            ev.preventDefault();
+            if ((prev && prev.disabled) || (next && next.disabled)) {
+                return;
+            }
 
-        if (next) {
-            next.addEventListener('click', function () {
-                var estado = leerEstado();
-                var totalPaginas = parseInt(contenedor.getAttribute('data-total-paginas') || '0', 10);
-                estado.pagina = Math.min(totalPaginas, (estado.pagina || 1) + 1);
-                irConEstado(estado);
-            });
-        }
+            var contenedor = document.getElementById('cxcDetallePaginacion');
+            var paginaActual = parseInt((contenedor && contenedor.getAttribute('data-pagina')) || '1', 10) || 1;
+            var totalPaginas = parseInt((contenedor && contenedor.getAttribute('data-total-paginas')) || '0', 10) || 0;
+            var nuevaPagina = paginaActual;
+
+            if (prev) {
+                nuevaPagina = Math.max(1, paginaActual - 1);
+            } else {
+                nuevaPagina = Math.min(totalPaginas || paginaActual + 1, paginaActual + 1);
+            }
+
+            if (nuevaPagina === paginaActual) {
+                return;
+            }
+
+            cargarDetalleDocumentos(nuevaPagina);
+        });
     }
 
     function initGraficoVentasTendencia() {

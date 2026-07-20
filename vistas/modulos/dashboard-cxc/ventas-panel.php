@@ -10,13 +10,16 @@ $filasTipo = isset($tipoDoc['filas']) ? $tipoDoc['filas'] : array();
 $porZona = isset($ventasDashboard['por_zona']) ? $ventasDashboard['por_zona'] : array('filas' => array(), 'total' => 0);
 $filasZona = isset($porZona['filas']) ? $porZona['filas'] : array();
 $tendencia = isset($ventasDashboard['tendencia']) ? $ventasDashboard['tendencia'] : array();
-$labelAct = isset($tendencia['mes_actual']['label']) ? $tendencia['mes_actual']['label'] : 'Mes actual';
-$labelAnt = isset($tendencia['mes_anterior']['label']) ? $tendencia['mes_anterior']['label'] : 'Mes anterior';
+$periodoAnual = isset($filtros) && (!empty($filtros['periodo_anual']) || (int) $filtros['mes'] === 0);
+$labelAct = isset($tendencia['mes_actual']['label']) ? $tendencia['mes_actual']['label'] : ($periodoAnual ? 'Año actual' : 'Mes actual');
+$labelAnt = isset($tendencia['mes_anterior']['label']) ? $tendencia['mes_anterior']['label'] : ($periodoAnual ? 'Año anterior' : 'Mes anterior');
 $totalAct = isset($tendencia['mes_actual']['total']) ? (float) $tendencia['mes_actual']['total'] : 0;
 $totalAnt = isset($tendencia['mes_anterior']['total']) ? (float) $tendencia['mes_anterior']['total'] : 0;
 $variacionTendencia = $totalAnt > 0 ? round((($totalAct - $totalAnt) / $totalAnt) * 100, 1) : 0;
 $claseVariacion = $variacionTendencia > 0 ? 'cxc-variacion--sube' : ($variacionTendencia < 0 ? 'cxc-variacion--baja' : 'cxc-variacion--neutro');
 $signoVariacion = $variacionTendencia > 0 ? '+' : '';
+$labelColVentaPeriodo = $periodoAnual ? 'Venta del año' : 'Venta del mes';
+$labelColVentaAnio = $periodoAnual ? 'Año ant.' : 'Venta del año';
 ?>
 
 <div class="box box-default cxc-panel cxc-panel-ventas-unificado">
@@ -43,8 +46,8 @@ $signoVariacion = $variacionTendencia > 0 ? '+' : '';
                                 <thead>
                                     <tr>
                                         <th>Vendedor</th>
-                                        <th class="text-right">Venta del mes</th>
-                                        <th class="text-right">Venta del año</th>
+                                        <th class="text-right"><?php echo htmlspecialchars($labelColVentaPeriodo); ?></th>
+                                        <th class="text-right"><?php echo htmlspecialchars($labelColVentaAnio); ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>

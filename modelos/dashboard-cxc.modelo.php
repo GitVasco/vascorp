@@ -28,11 +28,21 @@ class ModeloDashboardCxc
     {
         $anio = (int) $anio;
         $mes = (int) $mes;
+
+        if ($mes === 0) {
+            $mes = 12;
+        }
+
         $ultimoDia = self::diasDelMes($anio, $mes);
         $fechaCorte = sprintf('%04d-%02d-%02d', $anio, $mes, $ultimoDia);
         $hoy = date('Y-m-d');
 
         return $fechaCorte > $hoy ? $hoy : $fechaCorte;
+    }
+
+    private static function esPeriodoAnual(array $filtros)
+    {
+        return !empty($filtros['periodo_anual']) || (int) $filtros['mes'] === 0;
     }
 
     private static function fechaCorteSql(array $filtros)
@@ -135,7 +145,7 @@ class ModeloDashboardCxc
         return 'bajo';
     }
 
-    /** Solo tablas «por vendedor» (cartera y ventas). El resto del dashboard usa sqlFromBase(). */
+    /** Tablas por vendedor + detalle de documentos. El resto del dashboard usa sqlFromBase(). */
     private static function sqlFromBaseTablaVendedor(array $filtros)
     {
         $joinVendedor = self::sqlJoinMaestraVendedor('cc.vendedor', $filtros);
@@ -235,6 +245,22 @@ class ModeloDashboardCxc
         }
     }
 
+    /**
+     * Detalle operativo: por defecto sin Incobrables; el resto de rangos sí.
+     * Solo incluye Incobrables si el filtro de rango es explícitamente "incobrable".
+     */
+    private static function sqlFiltroDetalleDocumentos(array $filtros, $alias = 'cc')
+    {
+        $rango = isset($filtros['rango']) ? trim((string) $filtros['rango']) : '';
+        $sqlExtra = self::sqlFiltroRango($rango, $filtros, $alias);
+
+        if ($rango === '') {
+            $sqlExtra .= ' AND NOT (' . self::sqlEsIncobrable($alias) . ')';
+        }
+
+        return $sqlExtra;
+    }
+
     public static function mdlVendedoresFiltro()
     {
         $sql = "SELECT DISTINCT
@@ -261,12 +287,13 @@ class ModeloDashboardCxc
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function mdlKpis(array $filtros)
+    public static function mdlKpis(array $filtros, $scopeVendedor = false)
     {
         $fechaSql = self::fechaCorteSql($filtros);
         $dias = self::sqlDiasVencido('cc', $fechaSql);
         $vencido = self::sqlEsVencido('cc', $fechaSql);
         $incobrable = self::sqlEsIncobrable();
+        $from = $scopeVendedor ? self::sqlFromBaseTablaVendedor($filtros) : self::sqlFromBase();
 
         $sql = "SELECT
                 COALESCE(SUM(cc.saldo), 0) AS total_por_cobrar,
@@ -277,8 +304,9 @@ class ModeloDashboardCxc
                 COALESCE(SUM(CASE WHEN cc.fecha_ven >= {$fechaSql} AND cc.fecha_ven <= DATE_ADD({$fechaSql}, INTERVAL 30 DAY) THEN cc.saldo ELSE 0 END), 0) AS cobranza_proyectada_30,
                 COALESCE(SUM(CASE WHEN cc.fecha_ven >= DATE_SUB({$fechaSql}, INTERVAL 30 DAY) AND cc.fecha_ven < {$fechaSql} THEN cc.saldo ELSE 0 END), 0) AS cobranza_proyectada_30_ant,
                 COUNT(DISTINCT cc.cliente) AS clientes_con_deuda,
+                COUNT(DISTINCT CASE WHEN {$vencido} AND NOT ({$incobrable}) THEN cc.cliente END) AS clientes_morosos,
                 COUNT(DISTINCT CASE WHEN {$incobrable} THEN cc.cliente END) AS clientes_incobrable
-            " . self::sqlFromBase() . "
+            " . $from . "
             WHERE " . self::sqlWhereBase();
 
         $stmt = Conexion::conectar()->prepare($sql);
@@ -297,6 +325,7 @@ class ModeloDashboardCxc
                 'cobranza_proyectada_30' => 0,
                 'cobranza_proyectada_30_ant' => 0,
                 'clientes_con_deuda' => 0,
+                'clientes_morosos' => 0,
                 'clientes_incobrable' => 0,
             );
         }
@@ -310,16 +339,18 @@ class ModeloDashboardCxc
             'cobranza_proyectada_30' => (float) $fila['cobranza_proyectada_30'],
             'cobranza_proyectada_30_ant' => (float) $fila['cobranza_proyectada_30_ant'],
             'clientes_con_deuda' => (int) $fila['clientes_con_deuda'],
+            'clientes_morosos' => (int) $fila['clientes_morosos'],
             'clientes_incobrable' => (int) $fila['clientes_incobrable'],
         );
     }
 
-    public static function mdlAntiguedad(array $filtros)
+    public static function mdlAntiguedad(array $filtros, $scopeVendedor = false)
     {
         $fechaSql = self::fechaCorteSql($filtros);
         $dias = self::sqlDiasVencido('cc', $fechaSql);
         $vencido = self::sqlEsVencido('cc', $fechaSql);
         $incobrable = self::sqlEsIncobrable();
+        $from = $scopeVendedor ? self::sqlFromBaseTablaVendedor($filtros) : self::sqlFromBase();
 
         $sql = "SELECT
                 COALESCE(SUM(CASE WHEN NOT ({$incobrable}) AND NOT {$vencido} THEN cc.saldo ELSE 0 END), 0) AS por_vencer,
@@ -337,7 +368,7 @@ class ModeloDashboardCxc
                 COUNT(DISTINCT CASE WHEN NOT ({$incobrable}) AND {$vencido} AND {$dias} > 180 THEN cc.cliente END) AS clientes_180_mas,
                 COUNT(DISTINCT CASE WHEN {$incobrable} THEN cc.cliente END) AS clientes_incobrables,
                 COUNT(DISTINCT cc.cliente) AS clientes_total
-            " . self::sqlFromBase() . "
+            " . $from . "
             WHERE " . self::sqlWhereBase();
 
         $stmt = Conexion::conectar()->prepare($sql);
@@ -422,7 +453,7 @@ class ModeloDashboardCxc
         return $rangos;
     }
 
-    public static function mdlTopClientes(array $filtros, $limite = 10)
+    public static function mdlTopClientes(array $filtros, $limite = 10, $scopeVendedor = false)
     {
         $limite = max(1, min(50, (int) $limite));
         $fechaSql = self::fechaCorteSql($filtros);
@@ -430,6 +461,7 @@ class ModeloDashboardCxc
         $vencido = self::sqlEsVencido('cc', $fechaSql);
         $incobrable = self::sqlEsIncobrable();
         $entidadKey = self::sqlExprEntidadTopDeuda('ge', 'cc');
+        $from = $scopeVendedor ? self::sqlFromBaseTablaVendedor($filtros) : self::sqlFromBase();
 
         $sql = "SELECT
                 CASE
@@ -453,7 +485,7 @@ class ModeloDashboardCxc
                 MAX({$dias}) AS antiguedad_max,
                 MAX(CASE WHEN {$incobrable} THEN 1 ELSE 0 END) AS es_incobrable,
                 COUNT(DISTINCT cc.cliente) AS num_clientes
-            " . self::sqlFromBase() . "
+            " . $from . "
             " . self::sqlJoinGrupoEmpresarial('cl', 'ge') . "
             WHERE " . self::sqlWhereBase() . "
             GROUP BY {$entidadKey}
@@ -487,10 +519,10 @@ class ModeloDashboardCxc
 
     public static function mdlConteoDetalle(array $filtros)
     {
-        $sqlExtra = self::sqlFiltroRango(isset($filtros['rango']) ? $filtros['rango'] : '', $filtros);
+        $sqlExtra = self::sqlFiltroDetalleDocumentos($filtros);
 
         $sql = "SELECT COUNT(*) AS total
-            " . self::sqlFromBase() . "
+            " . self::sqlFromBaseTablaVendedor($filtros) . "
             WHERE " . self::sqlWhereBase() . $sqlExtra;
 
         $stmt = Conexion::conectar()->prepare($sql);
@@ -512,7 +544,7 @@ class ModeloDashboardCxc
         $dias = self::sqlDiasVencido('cc', $fechaSql);
         $vencido = self::sqlEsVencido('cc', $fechaSql);
         $incobrable = self::sqlEsIncobrable();
-        $sqlExtra = self::sqlFiltroRango(isset($filtros['rango']) ? $filtros['rango'] : '', $filtros);
+        $sqlExtra = self::sqlFiltroDetalleDocumentos($filtros);
 
         switch ($orden) {
             case 'cliente_asc':
@@ -555,7 +587,7 @@ class ModeloDashboardCxc
                     WHEN {$dias} BETWEEN 31 AND 60 THEN '31-60'
                     ELSE '0-30'
                 END AS rango
-            " . self::sqlFromBase() . "
+            " . self::sqlFromBaseTablaVendedor($filtros) . "
             WHERE " . self::sqlWhereBase() . $sqlExtra . "
             ORDER BY {$orderBy}
             LIMIT {$porPagina} OFFSET {$offset}";
@@ -569,10 +601,10 @@ class ModeloDashboardCxc
 
     public static function mdlTotalesDetalleFiltrado(array $filtros)
     {
-        $sqlExtra = self::sqlFiltroRango(isset($filtros['rango']) ? $filtros['rango'] : '', $filtros);
+        $sqlExtra = self::sqlFiltroDetalleDocumentos($filtros);
 
         $sql = "SELECT COALESCE(SUM(cc.saldo), 0) AS saldo_total
-            " . self::sqlFromBase() . "
+            " . self::sqlFromBaseTablaVendedor($filtros) . "
             WHERE " . self::sqlWhereBase() . $sqlExtra;
 
         $stmt = Conexion::conectar()->prepare($sql);
@@ -590,6 +622,18 @@ class ModeloDashboardCxc
     {
         $anio = (int) $anio;
         $mes = (int) $mes;
+
+        if ($mes === 0) {
+            $inicio = sprintf('%04d-01-01', $anio);
+            $fin = sprintf('%04d-01-01', $anio + 1);
+
+            if ($anio === (int) date('Y')) {
+                $fin = date('Y-m-d', strtotime(date('Y-m-d') . ' +1 day'));
+            }
+
+            return array('inicio' => $inicio, 'fin' => $fin);
+        }
+
         $inicio = sprintf('%04d-%02d-01', $anio, $mes);
 
         if ($mes === 12) {
@@ -599,6 +643,57 @@ class ModeloDashboardCxc
         }
 
         return array('inicio' => $inicio, 'fin' => $fin);
+    }
+
+    private static function rangosComparativoVentas(array $filtros)
+    {
+        if (self::esPeriodoAnual($filtros)) {
+            $act = self::rangoMesVentas($filtros['anio'], 0);
+            $anioAnt = (int) $filtros['anio'] - 1;
+            $ant = self::rangoMesVentas($anioAnt, 0);
+
+            return array(
+                'actual' => $act,
+                'anterior' => $ant,
+                'anio_anterior' => $anioAnt,
+                'mes_anterior' => 0,
+            );
+        }
+
+        $act = self::rangoMesVentas($filtros['anio'], $filtros['mes']);
+        $mesAnt = (int) $filtros['mes'] - 1;
+        $anioAnt = (int) $filtros['anio'];
+
+        if ($mesAnt < 1) {
+            $mesAnt = 12;
+            $anioAnt--;
+        }
+
+        $ant = self::rangoMesVentas($anioAnt, $mesAnt);
+
+        return array(
+            'actual' => $act,
+            'anterior' => $ant,
+            'anio_anterior' => $anioAnt,
+            'mes_anterior' => $mesAnt,
+        );
+    }
+
+    private static function rangoAnioVentasHastaMes($anio, $mes)
+    {
+        $anio = (int) $anio;
+        $mes = (int) $mes;
+
+        if ($mes === 0) {
+            return self::rangoMesVentas($anio, 0);
+        }
+
+        $finMes = self::rangoMesVentas($anio, $mes);
+
+        return array(
+            'inicio' => sprintf('%04d-01-01', $anio),
+            'fin' => $finMes['fin'],
+        );
     }
 
     private static function sqlZonaEfectivaExpr()
@@ -637,43 +732,24 @@ class ModeloDashboardCxc
         $stmt->bindValue(':zona_valor', (int) $filtros['zona'], PDO::PARAM_INT);
     }
 
-    private static function rangosComparativoVentas(array $filtros)
-    {
-        $act = self::rangoMesVentas($filtros['anio'], $filtros['mes']);
-        $mesAnt = (int) $filtros['mes'] - 1;
-        $anioAnt = (int) $filtros['anio'];
-
-        if ($mesAnt < 1) {
-            $mesAnt = 12;
-            $anioAnt--;
-        }
-
-        $ant = self::rangoMesVentas($anioAnt, $mesAnt);
-
-        return array(
-            'actual' => $act,
-            'anterior' => $ant,
-            'anio_anterior' => $anioAnt,
-            'mes_anterior' => $mesAnt,
-        );
-    }
-
-    private static function rangoAnioVentasHastaMes($anio, $mes)
-    {
-        $anio = (int) $anio;
-        $mes = (int) $mes;
-        $finMes = self::rangoMesVentas($anio, $mes);
-
-        return array(
-            'inicio' => sprintf('%04d-01-01', $anio),
-            'fin' => $finMes['fin'],
-        );
-    }
-
     public static function mdlVentasPorVendedor(array $filtros)
     {
         $rangoMes = self::rangoMesVentas($filtros['anio'], $filtros['mes']);
-        $rangoAnio = self::rangoAnioVentasHastaMes($filtros['anio'], $filtros['mes']);
+
+        if (self::esPeriodoAnual($filtros)) {
+            $anioAnt = (int) $filtros['anio'] - 1;
+            if ((int) $filtros['anio'] === (int) date('Y')) {
+                $rangoAnio = array(
+                    'inicio' => sprintf('%04d-01-01', $anioAnt),
+                    'fin' => date('Y-m-d', strtotime(date('Y-m-d') . ' -1 year +1 day')),
+                );
+            } else {
+                $rangoAnio = self::rangoMesVentas($anioAnt, 0);
+            }
+        } else {
+            $rangoAnio = self::rangoAnioVentasHastaMes($filtros['anio'], $filtros['mes']);
+        }
+
         $joinVendedor = self::sqlJoinMaestraVendedor('v.vendedor', $filtros);
 
         $sql = "SELECT
@@ -810,6 +886,11 @@ class ModeloDashboardCxc
     public static function mdlVentasTendenciaDiaria(array $filtros)
     {
         $rangos = self::rangosComparativoVentas($filtros);
+
+        if (self::esPeriodoAnual($filtros)) {
+            return self::mdlVentasTendenciaMensualAnio($filtros, $rangos);
+        }
+
         $diasAct = self::diasDelMes($filtros['anio'], $filtros['mes']);
         $diasAnt = self::diasDelMes($rangos['anio_anterior'], $rangos['mes_anterior']);
         $maxDias = max($diasAct, $diasAnt);
@@ -861,6 +942,7 @@ class ModeloDashboardCxc
 
         return array(
             'labels' => $labels,
+            'granularidad' => 'dia',
             'mes_actual' => array(
                 'anio' => (int) $filtros['anio'],
                 'mes' => (int) $filtros['mes'],
@@ -870,6 +952,81 @@ class ModeloDashboardCxc
             'mes_anterior' => array(
                 'anio' => (int) $rangos['anio_anterior'],
                 'mes' => (int) $rangos['mes_anterior'],
+                'montos' => $anterior,
+                'total' => array_sum($anterior),
+            ),
+        );
+    }
+
+    private static function mdlVentasTendenciaMensualAnio(array $filtros, array $rangos)
+    {
+        $sql = "SELECT
+                CASE
+                    WHEN v.fecha >= :ini_act AND v.fecha < :fin_act THEN 'act'
+                    WHEN v.fecha >= :ini_ant AND v.fecha < :fin_ant THEN 'ant'
+                    ELSE 'otro'
+                END AS periodo,
+                MONTH(v.fecha) AS mes,
+                COALESCE(SUM(v.neto), 0) AS venta
+            " . self::sqlFromVentas() . "
+            WHERE (
+                    (v.fecha >= :ini_act_w AND v.fecha < :fin_act_w)
+                 OR (v.fecha >= :ini_ant_w AND v.fecha < :fin_ant_w)
+                )
+              AND " . self::sqlWhereVentasFiltros() . "
+            GROUP BY periodo, MONTH(v.fecha)
+            HAVING periodo IN ('act', 'ant')
+            ORDER BY periodo ASC, mes ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        self::bindVentasFiltros($stmt, $filtros);
+        $stmt->bindValue(':ini_act', $rangos['actual']['inicio'], PDO::PARAM_STR);
+        $stmt->bindValue(':fin_act', $rangos['actual']['fin'], PDO::PARAM_STR);
+        $stmt->bindValue(':ini_ant', $rangos['anterior']['inicio'], PDO::PARAM_STR);
+        $stmt->bindValue(':fin_ant', $rangos['anterior']['fin'], PDO::PARAM_STR);
+        $stmt->bindValue(':ini_act_w', $rangos['actual']['inicio'], PDO::PARAM_STR);
+        $stmt->bindValue(':fin_act_w', $rangos['actual']['fin'], PDO::PARAM_STR);
+        $stmt->bindValue(':ini_ant_w', $rangos['anterior']['inicio'], PDO::PARAM_STR);
+        $stmt->bindValue(':fin_ant_w', $rangos['anterior']['fin'], PDO::PARAM_STR);
+        $stmt->execute();
+
+        $porMes = array('act' => array(), 'ant' => array());
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+            $porMes[$fila['periodo']][(int) $fila['mes']] = (float) $fila['venta'];
+        }
+
+        $labelsCortos = array(
+            1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic',
+        );
+
+        $mesHasta = 12;
+        if ((int) $filtros['anio'] === (int) date('Y')) {
+            $mesHasta = (int) date('n');
+        }
+
+        $labels = array();
+        $actual = array();
+        $anterior = array();
+
+        for ($mes = 1; $mes <= $mesHasta; $mes++) {
+            $labels[] = $labelsCortos[$mes];
+            $actual[] = isset($porMes['act'][$mes]) ? $porMes['act'][$mes] : 0;
+            $anterior[] = isset($porMes['ant'][$mes]) ? $porMes['ant'][$mes] : 0;
+        }
+
+        return array(
+            'labels' => $labels,
+            'granularidad' => 'mes',
+            'mes_actual' => array(
+                'anio' => (int) $filtros['anio'],
+                'mes' => 0,
+                'montos' => $actual,
+                'total' => array_sum($actual),
+            ),
+            'mes_anterior' => array(
+                'anio' => (int) $rangos['anio_anterior'],
+                'mes' => 0,
                 'montos' => $anterior,
                 'total' => array_sum($anterior),
             ),

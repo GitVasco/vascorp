@@ -73,52 +73,29 @@ if (!function_exists('usuarioPuedeVerModulo') || !usuarioPuedeVerModulo('gestion
             ?>
 
             <div class="box box-primary cxc-filtros-box">
-                <div class="box-header with-border cxc-filtros-header">
-                    <div class="cxc-filtros-resumen">
-                        <h3 class="cxc-filtros-titulo">
-                            Corte: <b><?php echo htmlspecialchars($fechaCorte); ?></b>
-                            — <b><?php echo (int) $anioActual; ?></b> / <b><?php echo htmlspecialchars($nomMes); ?></b>
-                            <span class="cxc-filtros-sub"> · Vendedor: <b><?php echo htmlspecialchars($labelVendedor); ?></b></span>
-                        </h3>
-                        <?php if ($rangoActual !== '' || $clienteActual !== '') { ?>
-                        <p class="cxc-filtros-activos">
-                            Filtros activos:
-                            <?php if ($rangoActual !== '') { ?>
-                                <span class="label label-warning">Rango: <?php echo htmlspecialchars($rangoActual); ?></span>
-                            <?php } ?>
-                            <?php if ($clienteActual !== '') { ?>
-                                <span class="label label-info">Cliente: <?php echo htmlspecialchars($clienteActual); ?></span>
-                            <?php } ?>
-                            <a href="#" class="cxc-limpiar-filtros-detalle">Limpiar detalle</a>
-                        </p>
-                        <?php } ?>
-                    </div>
-
-                    <div class="cxc-filtros-controles">
-                        <div class="cxc-filtro-item">
+                <div class="box-body cxc-filtros-body">
+                    <div class="cxc-filtros-toolbar">
+                        <div class="cxc-filtro-item cxc-filtro-item--anio">
                             <label for="anioCxc">Año</label>
-                            <select class="form-control selectpicker" id="anioCxc" data-live-search="true">
-                                <option value="">Seleccionar año</option>
+                            <select class="form-control input-sm selectpicker" id="anioCxc" data-live-search="true" data-style="btn-default btn-sm" title="Año">
                                 <?php foreach ($annosPermitidos as $anio) : ?>
                                     <option value="<?php echo (int) $anio; ?>" <?php echo ($anioActual == $anio) ? 'selected' : ''; ?>><?php echo (int) $anio; ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
-                        <div class="cxc-filtro-item">
+                        <div class="cxc-filtro-item cxc-filtro-item--mes">
                             <label for="mesCxc">Mes</label>
-                            <select class="form-control selectpicker" id="mesCxc" data-live-search="true">
-                                <option value="">Seleccionar mes</option>
+                            <select class="form-control input-sm selectpicker" id="mesCxc" data-live-search="true" data-style="btn-default btn-sm" title="Mes">
+                                <option value="0" <?php echo ($mesActual === 0) ? 'selected' : ''; ?>>Año completo</option>
                                 <?php foreach ($meses as $num => $nombre) : ?>
                                     <option value="<?php echo (int) $num; ?>" <?php echo ($mesActual == $num) ? 'selected' : ''; ?>><?php echo htmlspecialchars($nombre); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <div class="cxc-filtro-item cxc-filtro-item--wide">
                             <label for="vendedorCxc">Vendedor</label>
-                            <select class="form-control selectpicker" id="vendedorCxc" data-live-search="true">
-                                <option value="">TODOS</option>
+                            <select class="form-control input-sm selectpicker" id="vendedorCxc" data-live-search="true" data-style="btn-default btn-sm" title="Todos">
+                                <option value="">Todos</option>
                                 <?php foreach ($vendedores as $v) : ?>
                                     <option value="<?php echo htmlspecialchars($v['codigo']); ?>" <?php echo ($vendedorActual === $v['codigo']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($v['codigo'] . ' - ' . $v['descripcion']); ?>
@@ -126,16 +103,32 @@ if (!function_exists('usuarioPuedeVerModulo') || !usuarioPuedeVerModulo('gestion
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
-                        <div class="cxc-filtro-item cxc-filtro-item--check">
-                            <label class="cxc-check-todos-vendedores" for="cxcIncluirTodosVendedores"
-                                title="Solo aplica a las tablas Cartera por vendedor y Ventas por vendedor">
-                                <input type="checkbox"
-                                    id="cxcIncluirTodosVendedores"
-                                    <?php echo $todosVendedores ? 'checked' : ''; ?>>
-                                Incluir todos los vendedores
-                                <small class="text-muted">(tablas por vendedor)</small>
-                            </label>
+                        <label class="cxc-check-todos-vendedores" for="cxcIncluirTodosVendedores"
+                            title="Aplica a cartera/ventas por vendedor, detalle de documentos y visión de morosidad">
+                            <input type="checkbox"
+                                id="cxcIncluirTodosVendedores"
+                                <?php echo $todosVendedores ? 'checked' : ''; ?>>
+                            <span>Inactivos</span>
+                        </label>
+                        <div class="cxc-filtros-meta-inline">
+                            <span class="cxc-filtros-chip">
+                                <i class="fa fa-calendar"></i>
+                                <?php echo htmlspecialchars($fechaCorte); ?>
+                            </span>
+        <?php if (empty($filtros['todos_vendedores'])) { ?>
+        <span class="cxc-filtros-chip cxc-filtros-chip--muted">Activos</span>
+        <?php } else { ?>
+        <span class="cxc-filtros-chip cxc-filtros-chip--muted">Incluye inactivos</span>
+        <?php } ?>
+                            <?php if ($rangoActual !== '') { ?>
+                            <span class="cxc-filtros-chip cxc-filtros-chip--warn"><?php echo htmlspecialchars($rangoActual); ?></span>
+                            <?php } ?>
+                            <?php if ($clienteActual !== '') { ?>
+                            <span class="cxc-filtros-chip cxc-filtros-chip--info"><?php echo htmlspecialchars($clienteActual); ?></span>
+                            <?php } ?>
+                            <?php if ($rangoActual !== '' || $clienteActual !== '') { ?>
+                            <a href="#" class="cxc-limpiar-filtros-detalle">Limpiar</a>
+                            <?php } ?>
                         </div>
                     </div>
                 </div>
@@ -191,6 +184,8 @@ if (!function_exists('usuarioPuedeVerModulo') || !usuarioPuedeVerModulo('gestion
                     <?php include __DIR__ . '/dashboard-cxc/tabla-detalle-documentos.php'; ?>
                 </div>
             </div>
+
+            <?php include __DIR__ . '/dashboard-cxc/vision-morosidad.php'; ?>
 
             </div><!-- /.cxc-seccion-cxc -->
 

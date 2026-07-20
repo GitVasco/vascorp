@@ -11,8 +11,10 @@ $mesesCortos = array(
     7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic',
 );
 
-$labelMesAnt = isset($mesesCortos[$k['mes_anterior']]) ? $mesesCortos[$k['mes_anterior']] : '';
-$textoMesAnt = trim($labelMesAnt . ' ' . $k['anio_anterior']);
+$periodoAnual = !empty($k['periodo_anual']);
+$textoMesAnt = $periodoAnual
+    ? (string) $k['anio_anterior']
+    : trim((isset($mesesCortos[$k['mes_anterior']]) ? $mesesCortos[$k['mes_anterior']] : '') . ' ' . $k['anio_anterior']);
 
 if (!function_exists('cxcFormatoVariacion')) {
     function cxcFormatoVariacion($valor)
@@ -65,7 +67,7 @@ $cajas = array(
         'id' => 'cxcKpiVentaMes',
         'clase' => 'cxc-kpi-card--green',
         'icono' => 'fa-shopping-cart',
-        'label' => 'Venta del mes',
+        'label' => $periodoAnual ? 'Venta del año' : 'Venta del mes',
         'valor' => 'S/ ' . number_format($k['venta_mes'], 0),
         'trend' => true,
         'var' => $k['venta_mes_var'],
@@ -75,7 +77,7 @@ $cajas = array(
         'id' => 'cxcKpiMetaMes',
         'clase' => 'cxc-kpi-card--purple',
         'icono' => 'fa-bullseye',
-        'label' => 'Meta mensual',
+        'label' => $periodoAnual ? 'Meta anual' : 'Meta mensual',
         'valor' => 'S/ ' . number_format($k['meta_mes'], 0),
         'meta' => true,
         'pct_meta' => $pctMetaBarra,
@@ -84,7 +86,7 @@ $cajas = array(
         'id' => 'cxcKpiCobranzaMes',
         'clase' => 'cxc-kpi-card--teal',
         'icono' => 'fa-money',
-        'label' => 'Cobranza del mes',
+        'label' => $periodoAnual ? 'Cobranza del año' : 'Cobranza del mes',
         'valor' => 'S/ ' . number_format($k['cobranza_mes'], 0),
         'trend' => true,
         'var' => $k['cobranza_mes_var'],

@@ -991,11 +991,23 @@
     }
 
     function postDecisionCredito(accion, data) {
+        // serialize() devuelve string; $.extend(string) lo parte en caracteres
+        // y nunca envía codigo_cliente / motivo. Objetos sí se mergean bien.
+        var payload;
+        if (typeof data === "string") {
+            payload = "accion=" + encodeURIComponent(accion);
+            if (data) {
+                payload += "&" + data;
+            }
+        } else {
+            payload = $.extend({ accion: accion }, data || {});
+        }
+
         return $.ajax({
             url: "ajax/dashboard-decisiones/decisiones-credito.ajax.php",
             method: "POST",
             dataType: "json",
-            data: $.extend({ accion: accion }, data),
+            data: payload,
         });
     }
 
