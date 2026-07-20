@@ -64,7 +64,20 @@ class AjaxMateriaPrima{
 			$respuestaDetalle = ControladorMateriaPrima::ctrVisualizarMateriaPrimaDetalle($valor);
 
 			echo json_encode($respuestaDetalle);
-	}	
+	}
+
+	/*
+	* ÓRDENES DE COMPRA / SERVICIO POR MATERIA PRIMA
+	*/
+	public $ordenesMp;
+	public function ajaxOrdenesMp(){
+
+		$valor = $this->ordenesMp;
+
+		$respuesta = ControladorMateriaPrima::ctrOrdenesMp($valor);
+
+		echo json_encode($respuesta);
+	}
 
 	/* 
 	* VISUALIZAR  MATERIA PRIMA DE ARTICULO
@@ -300,9 +313,9 @@ class AjaxMateriaPrima{
 			$PcReg= gethostbyaddr($_SERVER['REMOTE_ADDR']);
 
 			$ultimoCod = ModeloMateriaPrima::mdlMostrarUltimoCodPro();
-
-            $suma = $ultimoCod["CodPro"]+1;
-            $codigoPro = str_pad($suma,strlen($ultimoCod["CodPro"]),'0',STR_PAD_LEFT);
+            $suma = intval($ultimoCod["CodPro"]) + 1;
+            $lenCod = max(intval($ultimoCod["LenCod"]), strlen((string) $suma));
+            $codigoPro = str_pad($suma, $lenCod, '0', STR_PAD_LEFT);
 
 
 
@@ -326,8 +339,11 @@ class AjaxMateriaPrima{
 							"UsuReg"=>$_SESSION["nombre"]);
 
 			$respuesta = ModeloMateriaPrima::mdlIngresarPrecioMP("preciomp",$datos);
-			
 
+			if ($respuesta != "ok") {
+				echo "error";
+				return;
+			}
 
 			$datos2 = array("CodAlt"=>$codalt,
 							"Cod_Local"=>'01',
@@ -358,6 +374,13 @@ class AjaxMateriaPrima{
 							"UsuReg"=>$_SESSION["nombre"]);
 
 				$respuesta2 = ModeloMateriaPrima::mdlIngresarMateriaPrima("producto",$datos2);
+
+				if ($respuesta2 != "ok") {
+					ModeloMateriaPrima::mdlEliminarPrecioMP($codigoPro);
+					$respuesta = "error";
+				} else {
+					$respuesta = "ok";
+				}
 
 			}
 		}
@@ -713,6 +736,17 @@ if(isset($_POST["articuloMPDetalle"])){
 	$visualizarMateriaPrimaDetalle -> articuloMPDetalle = $_POST["articuloMPDetalle"];
 	$visualizarMateriaPrimaDetalle -> ajaxVisualizarMateriaPrimaDetalle();
   
+}
+
+/*
+ * ÓRDENES DE COMPRA / SERVICIO POR MATERIA PRIMA
+*/
+if(isset($_POST["ordenesMp"])){
+
+	$ordenesMp = new AjaxMateriaPrima();
+	$ordenesMp -> ordenesMp = $_POST["ordenesMp"];
+	$ordenesMp -> ajaxOrdenesMp();
+
 }
 
 /* 

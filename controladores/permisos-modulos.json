@@ -28,8 +28,8 @@
       "ver": [6, 105]
     },
     "categorias_comerciales": {
-      "ver": [6],
-      "editar": [6]
+      "ver": [6, 105],
+      "editar": [6, 105]
     },
     "categorias_por_revisar": {
       "ver": [6, 105],

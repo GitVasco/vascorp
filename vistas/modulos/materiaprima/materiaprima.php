@@ -41,6 +41,45 @@
             </div>
             <div class="box-body">
 
+                <style>
+                    .mp-acciones {
+                        display: inline-flex;
+                        flex-wrap: nowrap;
+                        gap: 2px;
+                        align-items: center;
+                        white-space: nowrap;
+                    }
+                    .mp-acciones .btn {
+                        margin: 0 !important;
+                        float: none !important;
+                        flex: 0 0 auto;
+                    }
+                    .mp-texto-corto {
+                        display: inline-block;
+                        max-width: 100%;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        vertical-align: middle;
+                    }
+                    table.tablaMateriaPrima td,
+                    table.tablaMateriaPrimaPaginado td {
+                        vertical-align: middle !important;
+                    }
+                    table.tablaMateriaPrima td:nth-child(7),
+                    table.tablaMateriaPrimaPaginado td:nth-child(7) {
+                        max-width: 150px;
+                        white-space: nowrap;
+                    }
+                    table.tablaMateriaPrima td:last-child,
+                    table.tablaMateriaPrimaPaginado td:last-child,
+                    table.tablaMateriaPrima th:last-child,
+                    table.tablaMateriaPrimaPaginado th:last-child {
+                        white-space: nowrap;
+                        width: 1%;
+                    }
+                </style>
+
                 <table class="table table-bordered table-striped dt-responsive tablaMateriaPrima" width="100%">
 
                     <thead>
@@ -56,7 +95,7 @@
                             <th>Proveedor</th>
                             <th>Stock</th>
                             <th>Estado</th>
-                            <th style="width:220px">Acciones</th>
+                            <th style="width:170px; min-width:170px">Acciones</th>
 
                         </tr>
 
@@ -1808,6 +1847,126 @@ MODAL VISUALIZAR INFORMACION
 
 
             </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!--=====================================
+MODAL ÓRDENES DE COMPRA / SERVICIO
+======================================-->
+
+<div id="modalOrdenesMp" class="modal fade" role="dialog">
+
+    <div class="modal-dialog" style="width: 85% !important;">
+
+        <div class="modal-content">
+
+            <div class="modal-header" style="background:#3c8dbc; color:white">
+
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+
+                <h4 class="modal-title">Órdenes de Compra / Servicio</h4>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div class="box-body">
+
+                    <div class="form-group col-lg-2">
+                        <label>CodPro</label>
+                        <input type="text" class="form-control input-sm" id="ocos_codpro" readonly>
+                    </div>
+
+                    <div class="form-group col-lg-2">
+                        <label>CodFab</label>
+                        <input type="text" class="form-control input-sm" id="ocos_codfab" readonly>
+                    </div>
+
+                    <div class="form-group col-lg-4">
+                        <label>Descripción</label>
+                        <input type="text" class="form-control input-sm" id="ocos_descripcion" readonly>
+                    </div>
+
+                    <div class="form-group col-lg-2">
+                        <label>Color</label>
+                        <input type="text" class="form-control input-sm" id="ocos_color" readonly>
+                    </div>
+
+                    <div class="form-group col-lg-2">
+                        <label>Stock</label>
+                        <input type="text" class="form-control input-sm" id="ocos_stock" readonly>
+                    </div>
+
+                    <div class="clearfix"></div>
+
+                    <h4 style="margin-top:15px">
+                        Órdenes de Compra pendientes
+                        <span class="label label-primary" id="ocos_oc_count">0</span>
+                    </h4>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-condensed" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Nro OC</th>
+                                    <th>Emisión</th>
+                                    <th>Llegada</th>
+                                    <th>Proveedor</th>
+                                    <th>Cantidad</th>
+                                    <th>Saldo</th>
+                                    <th>Estado</th>
+                                    <th>Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocos_oc_body">
+                                <tr class="ocos-empty">
+                                    <td colspan="8" class="text-center text-muted">Sin órdenes de compra pendientes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 style="margin-top:20px">
+                        Órdenes de Servicio pendientes
+                        <span class="label label-warning" id="ocos_os_count">0</span>
+                    </h4>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-condensed" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Nro OS</th>
+                                    <th>Emisión</th>
+                                    <th>Entrega</th>
+                                    <th>Rol</th>
+                                    <th>MP Origen</th>
+                                    <th>MP Destino</th>
+                                    <th>Cantidad</th>
+                                    <th>Saldo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocos_os_body">
+                                <tr class="ocos-empty">
+                                    <td colspan="9" class="text-center text-muted">Sin órdenes de servicio pendientes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger pull-left" data-dismiss="modal">Salir</button>
+            </div>
 
         </div>
 

@@ -11,6 +11,15 @@ function cargarTablaMateriaPrima() {
             [20, 40, 60, -1],
             [20, 40, 60, "Todos"],
         ],
+        columnDefs: [
+            {
+                targets: -1,
+                orderable: false,
+                searchable: false,
+                className: "text-center",
+                width: "170px",
+            },
+        ],
         language: {
             sProcessing: "Procesando...",
             sLengthMenu: "Mostrar _MENU_ registros",
@@ -70,6 +79,15 @@ function cargarTablaMateriaPrimaPaginado() {
         lengthMenu: [
             [20, 40, 60, 100],
             [20, 40, 60, 100],
+        ],
+        columnDefs: [
+            {
+                targets: -1,
+                orderable: false,
+                searchable: false,
+                className: "text-center",
+                width: "170px",
+            },
         ],
         language: {
             sProcessing: "Procesando...",
@@ -213,17 +231,17 @@ function editarMateriaPrima(idMateriaPrima) {
             $("#editarProveedor").selectpicker("refresh");
             $("#editarMoneda").val(respuesta["MonProv1"]);
             $("#editarMoneda").selectpicker("refresh");
-            $("#editarPrecioSIGV").val(respuesta["PreProv1"]);
+            $("#editarPrecioSIGV").val(respuesta["PreProv1"] || "0");
             $("#editarProveedor1").val(respuesta["CodProv2"]);
             $("#editarProveedor1").selectpicker("refresh");
             $("#editarMoneda1").val(respuesta["MonProv2"]);
             $("#editarMoneda1").selectpicker("refresh");
-            $("#editarPrecioSIGV1").val(respuesta["PreProv2"]);
+            $("#editarPrecioSIGV1").val(respuesta["PreProv2"] || "0");
             $("#editarProveedor2").val(respuesta["CodProv3"]);
             $("#editarProveedor2").selectpicker("refresh");
             $("#editarMoneda2").val(respuesta["MonProv3"]);
             $("#editarMoneda2").selectpicker("refresh");
-            $("#editarPrecioSIGV2").val(respuesta["PreProv3"]);
+            $("#editarPrecioSIGV2").val(respuesta["PreProv3"] || "0");
             $("#editarObservacion1").val(respuesta["ObsProv1"]);
             $("#editarObservacion2").val(respuesta["ObsProv2"]);
             $("#editarObservacion3").val(respuesta["ObsProv3"]);
@@ -358,6 +376,123 @@ $(".tablaMateriaPrima").on("click", ".btnVisualizarArticulos", function () {
 $(".tablaMateriaPrimaPaginado").on("click", ".btnVisualizarArticulos", function () {
     var articuloMP = $(this).attr("articuloMP");
     visualizarArticulos(articuloMP);
+});
+
+/*
+ * VISUALIZAR ÓRDENES DE COMPRA / SERVICIO DE LA MP
+ */
+function visualizarOrdenesMp(codpro) {
+    var datos = new FormData();
+    datos.append("ordenesMp", codpro);
+
+    $("#ocos_codpro").val("");
+    $("#ocos_codfab").val("");
+    $("#ocos_descripcion").val("");
+    $("#ocos_color").val("");
+    $("#ocos_stock").val("");
+    $("#ocos_oc_count").text("0");
+    $("#ocos_os_count").text("0");
+    $("#ocos_oc_body").html(
+        '<tr class="ocos-empty"><td colspan="8" class="text-center text-muted">Cargando...</td></tr>'
+    );
+    $("#ocos_os_body").html(
+        '<tr class="ocos-empty"><td colspan="9" class="text-center text-muted">Cargando...</td></tr>'
+    );
+
+    $.ajax({
+        url: "ajax/materiaprima.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            var mp = respuesta.mp || {};
+            $("#ocos_codpro").val(mp.codpro || mp.CodPro || "");
+            $("#ocos_codfab").val(mp.codfab || mp.CodFab || "");
+            $("#ocos_descripcion").val(mp.descripcion || mp.despro || mp.DesPro || "");
+            $("#ocos_color").val(mp.color || "");
+            $("#ocos_stock").val(mp.stock || mp.CodAlm01 || "");
+
+            var oc = respuesta.oc || [];
+            $("#ocos_oc_count").text(oc.length);
+            if (oc.length === 0) {
+                $("#ocos_oc_body").html(
+                    '<tr class="ocos-empty"><td colspan="8" class="text-center text-muted">Sin órdenes de compra pendientes</td></tr>'
+                );
+            } else {
+                var htmlOc = "";
+                for (var i = 0; i < oc.length; i++) {
+                    var estadoOc =
+                        oc[i].estac === "ABI"
+                            ? "<span class='label label-success'>ABI</span>"
+                            : "<span class='label label-warning'>PAR</span>";
+                    htmlOc +=
+                        "<tr>" +
+                        "<td>" + (oc[i].nro || "") + "</td>" +
+                        "<td>" + (oc[i].fecemi || "") + "</td>" +
+                        "<td>" + (oc[i].fecllegada || "") + "</td>" +
+                        "<td>" + (oc[i].proveedor || "") + "</td>" +
+                        "<td>" + (oc[i].cantidad || "") + "</td>" +
+                        "<td>" + (oc[i].saldo || "") + "</td>" +
+                        "<td>" + estadoOc + "</td>" +
+                        "<td>" + (oc[i].precio || "") + "</td>" +
+                        "</tr>";
+                }
+                $("#ocos_oc_body").html(htmlOc);
+            }
+
+            var os = respuesta.os || [];
+            $("#ocos_os_count").text(os.length);
+            if (os.length === 0) {
+                $("#ocos_os_body").html(
+                    '<tr class="ocos-empty"><td colspan="9" class="text-center text-muted">Sin órdenes de servicio pendientes</td></tr>'
+                );
+            } else {
+                var htmlOs = "";
+                for (var j = 0; j < os.length; j++) {
+                    var estadoOs =
+                        os[j].estos === "ABI"
+                            ? "<span class='label label-success'>ABI</span>"
+                            : "<span class='label label-warning'>PAR</span>";
+                    var rolLabel =
+                        os[j].rol === "ORIGEN"
+                            ? "<span class='label label-info'>ORIGEN</span>"
+                            : "<span class='label label-primary'>DESTINO</span>";
+                    htmlOs +=
+                        "<tr>" +
+                        "<td>" + (os[j].nro || "") + "</td>" +
+                        "<td>" + (os[j].fecemi || "") + "</td>" +
+                        "<td>" + (os[j].fecent || "") + "</td>" +
+                        "<td>" + rolLabel + "</td>" +
+                        "<td>" + (os[j].codpro_origen || "") + " - " + (os[j].des_origen || "") + "</td>" +
+                        "<td>" + (os[j].codpro_destino || "") + " - " + (os[j].des_destino || "") + "</td>" +
+                        "<td>" + (os[j].cantidad || "") + "</td>" +
+                        "<td>" + (os[j].saldo || "") + "</td>" +
+                        "<td>" + estadoOs + "</td>" +
+                        "</tr>";
+                }
+                $("#ocos_os_body").html(htmlOs);
+            }
+        },
+        error: function () {
+            $("#ocos_oc_body").html(
+                '<tr class="ocos-empty"><td colspan="8" class="text-center text-danger">Error al cargar órdenes de compra</td></tr>'
+            );
+            $("#ocos_os_body").html(
+                '<tr class="ocos-empty"><td colspan="9" class="text-center text-danger">Error al cargar órdenes de servicio</td></tr>'
+            );
+        },
+    });
+}
+
+$(".tablaMateriaPrima").on("click", ".btnOrdenesMp", function () {
+    visualizarOrdenesMp($(this).attr("codpro"));
+});
+
+$(".tablaMateriaPrimaPaginado").on("click", ".btnOrdenesMp", function () {
+    visualizarOrdenesMp($(this).attr("codpro"));
 });
 
 /*
@@ -836,17 +971,17 @@ function duplicarMateriaPrima(idMateriaPrima) {
             $("#duplicarProveedor").selectpicker("refresh");
             $("#duplicarMoneda").val(respuesta["MonProv1"]);
             $("#duplicarMoneda").selectpicker("refresh");
-            $("#duplicarPrecioSIGV").val(respuesta["PreProv1"]);
+            $("#duplicarPrecioSIGV").val(respuesta["PreProv1"] || "0");
             $("#duplicarProveedor1").val(respuesta["CodProv2"]);
             $("#duplicarProveedor1").selectpicker("refresh");
             $("#duplicarMoneda1").val(respuesta["MonProv2"]);
             $("#duplicarMoneda1").selectpicker("refresh");
-            $("#duplicarPrecioSIGV1").val(respuesta["PreProv2"]);
+            $("#duplicarPrecioSIGV1").val(respuesta["PreProv2"] || "0");
             $("#duplicarProveedor2").val(respuesta["CodProv3"]);
             $("#duplicarProveedor2").selectpicker("refresh");
             $("#duplicarMoneda2").val(respuesta["MonProv3"]);
             $("#duplicarMoneda2").selectpicker("refresh");
-            $("#duplicarPrecioSIGV2").val(respuesta["PreProv3"]);
+            $("#duplicarPrecioSIGV2").val(respuesta["PreProv3"] || "0");
             $("#duplicarObservacion1").val(respuesta["ObsProv1"]);
             $("#duplicarObservacion2").val(respuesta["ObsProv2"]);
             $("#duplicarObservacion3").val(respuesta["ObsProv3"]);
@@ -1050,18 +1185,18 @@ $("#formularioEditarMateria").on(
         var stkmax = $("#editarStockMaximo").val();
 
         //datos de precio mp
-        var codprov1 = $("#editarProveedor").val();
-        var preprov1 = $("#editarPrecioSIGV").val();
-        var monprov1 = $("#editarMoneda").val();
-        var obsprov1 = $("#editarObservacion1").val();
-        var codprov2 = $("#editarProveedor1").val();
-        var preprov2 = $("#editarPrecioSIGV1").val();
-        var monprov2 = $("#editarMoneda1").val();
-        var obsprov2 = $("#editarObservacion2").val();
-        var codprov3 = $("#editarProveedor2").val();
-        var preprov3 = $("#editarPrecioSIGV2").val();
-        var monprov3 = $("#editarMoneda2").val();
-        var obsprov3 = $("#editarObservacion3").val();
+        var codprov1 = $("#editarProveedor").val() || "";
+        var preprov1 = $("#editarPrecioSIGV").val() || "0";
+        var monprov1 = $("#editarMoneda").val() || "";
+        var obsprov1 = $("#editarObservacion1").val() || "";
+        var codprov2 = $("#editarProveedor1").val() || "";
+        var preprov2 = $("#editarPrecioSIGV1").val() || "0";
+        var monprov2 = $("#editarMoneda1").val() || "";
+        var obsprov2 = $("#editarObservacion2").val() || "";
+        var codprov3 = $("#editarProveedor2").val() || "";
+        var preprov3 = $("#editarPrecioSIGV2").val() || "0";
+        var monprov3 = $("#editarMoneda2").val() || "";
+        var obsprov3 = $("#editarObservacion3").val() || "";
 
         var datos = new Array();
 
@@ -1141,18 +1276,18 @@ $("#formDuplicarMateriaPrima").submit(function (e) {
     var stkmax = $("#duplicarStockMaximo").val();
 
     //datos de precio mp
-    var codprov1 = $("#duplicarProveedor").val();
-    var preprov1 = $("#duplicarPrecioSIGV").val();
-    var monprov1 = $("#duplicarMoneda").val();
-    var obsprov1 = $("#duplicarObservacion1").val();
-    var codprov2 = $("#duplicarProveedor1").val();
-    var preprov2 = $("#duplicarPrecioSIGV1").val();
-    var monprov2 = $("#duplicarMoneda1").val();
-    var obsprov2 = $("#duplicarObservacion2").val();
-    var codprov3 = $("#duplicarProveedor2").val();
-    var preprov3 = $("#duplicarPrecioSIGV2").val();
-    var monprov3 = $("#duplicarMoneda2").val();
-    var obsprov3 = $("#duplicarObservacion3").val();
+    var codprov1 = $("#duplicarProveedor").val() || "";
+    var preprov1 = $("#duplicarPrecioSIGV").val() || "0";
+    var monprov1 = $("#duplicarMoneda").val() || "";
+    var obsprov1 = $("#duplicarObservacion1").val() || "";
+    var codprov2 = $("#duplicarProveedor1").val() || "";
+    var preprov2 = $("#duplicarPrecioSIGV1").val() || "0";
+    var monprov2 = $("#duplicarMoneda1").val() || "";
+    var obsprov2 = $("#duplicarObservacion2").val() || "";
+    var codprov3 = $("#duplicarProveedor2").val() || "";
+    var preprov3 = $("#duplicarPrecioSIGV2").val() || "0";
+    var monprov3 = $("#duplicarMoneda2").val() || "";
+    var obsprov3 = $("#duplicarObservacion3").val() || "";
 
     var datos = new Array();
 

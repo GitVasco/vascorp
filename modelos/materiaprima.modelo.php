@@ -768,6 +768,8 @@ class ModeloMateriaPrima
 	static public function mdlIngresarPrecioMP($tabla, $datos)
 	{
 
+		$datos = self::mdlNormalizarDatosPrecio($datos);
+
 		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla(Cod_Local,Cod_Entidad,CodPro, CodProv1, PreProv1,MonProv1,ObsProv1,CodProv2, PreProv2,MonProv2,ObsProv2,CodProv3,PreProv3,MonProv3,ObsProv3,FecReg,UsuReg,PcReg) VALUES (:Cod_Local,:Cod_Entidad,:CodPro,:CodProv1, :PreProv1,:MonProv1,UPPER(:ObsProv1),:CodProv2,:PreProv2,:MonProv2,UPPER(:ObsProv2),:CodProv3,:PreProv3,:MonProv3,UPPER(:ObsProv3),:FecReg,UPPER(:UsuReg),UPPER(:PcReg))");
 
 		$stmt->bindParam(":Cod_Local", $datos["Cod_Local"], PDO::PARAM_STR);
@@ -881,7 +883,16 @@ class ModeloMateriaPrima
 	{
 
 
-		$stmt = Conexion::conectar()->prepare("SELECT MAX(CodPro) AS CodPro FROM producto");
+		$stmt = Conexion::conectar()->prepare("SELECT 
+			GREATEST(
+				IFNULL((SELECT MAX(CAST(CodPro AS UNSIGNED)) FROM producto), 0),
+				IFNULL((SELECT MAX(CAST(CodPro AS UNSIGNED)) FROM preciomp), 0)
+			) AS CodPro,
+			GREATEST(
+				IFNULL((SELECT MAX(LENGTH(CodPro)) FROM producto), 6),
+				IFNULL((SELECT MAX(LENGTH(CodPro)) FROM preciomp), 6),
+				6
+			) AS LenCod");
 
 		$stmt->execute();
 
@@ -892,15 +903,71 @@ class ModeloMateriaPrima
 		$stmt = null;
 	}
 
+	/*
+	* Normaliza precios/códigos vacíos para evitar fallo de INSERT en preciomp
+	*/
+	static public function mdlNormalizarDatosPrecio($datos)
+	{
+
+		foreach (array("PreProv1", "PreProv2", "PreProv3") as $campo) {
+			if (!isset($datos[$campo]) || $datos[$campo] === "" || $datos[$campo] === null) {
+				$datos[$campo] = "0";
+			}
+		}
+
+		foreach (array("CodProv1", "CodProv2", "CodProv3", "MonProv1", "MonProv2", "MonProv3", "ObsProv1", "ObsProv2", "ObsProv3") as $campo) {
+			if (!isset($datos[$campo]) || $datos[$campo] === null) {
+				$datos[$campo] = "";
+			}
+		}
+
+		return $datos;
+	}
+
+	/*
+	* Elimina un registro de preciomp (rollback si falla producto)
+	*/
+	static public function mdlEliminarPrecioMP($codpro)
+	{
+
+		$stmt = Conexion::conectar()->prepare("DELETE FROM preciomp WHERE CodPro = :CodPro");
+		$stmt->bindParam(":CodPro", $codpro, PDO::PARAM_STR);
+
+		if ($stmt->execute()) {
+			return "ok";
+		}
+
+		return "error";
+	}
+
 
 	/*=============================================
-	EDITAR PRECIO DE MATERIA PRIMA
+	EDITAR PRECIO DE MATERIA PRIMA (UPSERT)
 	=============================================*/
 
 	static public function mdlEditarPrecioMP($tabla, $datos)
 	{
 
-		$stmt = Conexion::conectar()->prepare("UPDATE preciomp SET CodProv1=:CodProv1,MonProv1=:MonProv1,PreProv1=:PreProv1, ObsProv1=UPPER(:ObsProv1),CodProv2=:CodProv2,MonProv2=:MonProv2,PreProv2=:PreProv2,ObsProv2=UPPER(:ObsProv2),CodProv3=:CodProv3,MonProv3=:MonProv3,PreProv3=:PreProv3,ObsProv3=UPPER(:ObsProv3),UsuMod=UPPER(:UsuMod),FecMod=:FecMod,PcMod=UPPER(:PcMod) WHERE CodPro = :CodPro");
+		$datos = self::mdlNormalizarDatosPrecio($datos);
+
+		$stmtExiste = Conexion::conectar()->prepare("SELECT CodPro FROM $tabla WHERE CodPro = :CodPro LIMIT 1");
+		$stmtExiste->bindParam(":CodPro", $datos["CodPro"], PDO::PARAM_STR);
+		$stmtExiste->execute();
+		$existe = $stmtExiste->fetch();
+
+		if (!$existe) {
+
+			$datosInsert = $datos;
+			$datosInsert["Cod_Local"] = isset($datos["Cod_Local"]) ? $datos["Cod_Local"] : "01";
+			$datosInsert["Cod_Entidad"] = isset($datos["Cod_Entidad"]) ? $datos["Cod_Entidad"] : "01";
+			$datosInsert["FecReg"] = isset($datos["FecMod"]) ? $datos["FecMod"] : (isset($datos["FecReg"]) ? $datos["FecReg"] : date("Y-m-d H:i:s"));
+			$datosInsert["UsuReg"] = isset($datos["UsuMod"]) ? $datos["UsuMod"] : (isset($datos["UsuReg"]) ? $datos["UsuReg"] : "");
+			$datosInsert["PcReg"] = isset($datos["PcMod"]) ? $datos["PcMod"] : (isset($datos["PcReg"]) ? $datos["PcReg"] : "");
+
+			return self::mdlIngresarPrecioMP($tabla, $datosInsert);
+		}
+
+		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET CodProv1=:CodProv1,MonProv1=:MonProv1,PreProv1=:PreProv1, ObsProv1=UPPER(:ObsProv1),CodProv2=:CodProv2,MonProv2=:MonProv2,PreProv2=:PreProv2,ObsProv2=UPPER(:ObsProv2),CodProv3=:CodProv3,MonProv3=:MonProv3,PreProv3=:PreProv3,ObsProv3=UPPER(:ObsProv3),UsuMod=UPPER(:UsuMod),FecMod=:FecMod,PcMod=UPPER(:PcMod) WHERE CodPro = :CodPro");
 
 		$stmt->bindParam(":CodPro", $datos["CodPro"], PDO::PARAM_STR);
 		$stmt->bindParam(":CodProv1", $datos["CodProv1"], PDO::PARAM_STR);
@@ -2381,5 +2448,79 @@ class ModeloMateriaPrima
 
 		$stmt->close();
 		$stmt = null;
+	}
+
+	/*
+	* ÓRDENES DE COMPRA PENDIENTES POR MATERIA PRIMA
+	*/
+	static public function mdlOrdenesCompraPorMp($codpro)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT 
+			ocd.nro,
+			DATE(oc.FecEmi) AS fecemi,
+			DATE(oc.Fecllegada) AS fecllegada,
+			IFNULL(prov.RazPro, '') AS proveedor,
+			ocd.canpro AS cantidad,
+			ocd.cantni AS saldo,
+			ocd.estac,
+			ocd.PrePro AS precio
+		FROM ocompra oc
+		INNER JOIN ocomdet ocd
+			ON oc.nro = ocd.nro
+		LEFT JOIN proveedor AS prov
+			ON prov.codruc = ocd.codruc
+		WHERE ocd.codpro = :codpro
+			AND ocd.estac IN ('ABI', 'PAR')
+			AND ocd.estoco = '03'
+		ORDER BY oc.FecEmi DESC, ocd.nro DESC");
+
+		$stmt->bindParam(":codpro", $codpro, PDO::PARAM_STR);
+		$stmt->execute();
+
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*
+	* ÓRDENES DE SERVICIO PENDIENTES POR MATERIA PRIMA (origen o destino)
+	*/
+	static public function mdlOrdenesServicioPorMp($codpro)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT 
+			osd.Nro AS nro,
+			DATE_FORMAT(os.FecEmi, '%Y-%m-%d') AS fecemi,
+			DATE_FORMAT(os.FecEnt, '%Y-%m-%d') AS fecent,
+			osd.CodProOrigen AS codpro_origen,
+			p1.DesPro AS des_origen,
+			osd.CodProDestino AS codpro_destino,
+			p2.DesPro AS des_destino,
+			osd.CantidadIni AS cantidad,
+			osd.Saldo AS saldo,
+			osd.EstOS AS estos,
+			CASE
+				WHEN osd.CodProOrigen = :codpro1 THEN 'ORIGEN'
+				WHEN osd.CodProDestino = :codpro2 THEN 'DESTINO'
+				ELSE ''
+			END AS rol
+		FROM oserviciodet osd
+		INNER JOIN oservicio os
+			ON os.Nro = osd.Nro
+		INNER JOIN Producto p1
+			ON p1.CodPro = osd.CodProOrigen
+		INNER JOIN Producto p2
+			ON p2.CodPro = osd.CodProDestino
+		WHERE (osd.CodProOrigen = :codpro3 OR osd.CodProDestino = :codpro4)
+			AND osd.EstReg = '1'
+			AND osd.EstOS IN ('ABI', 'PAR')
+		ORDER BY os.FecEmi DESC, osd.Nro DESC");
+
+		$stmt->bindParam(":codpro1", $codpro, PDO::PARAM_STR);
+		$stmt->bindParam(":codpro2", $codpro, PDO::PARAM_STR);
+		$stmt->bindParam(":codpro3", $codpro, PDO::PARAM_STR);
+		$stmt->bindParam(":codpro4", $codpro, PDO::PARAM_STR);
+		$stmt->execute();
+
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 }

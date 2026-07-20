@@ -41,6 +41,45 @@
             </div>
             <div class="box-body">
 
+                <style>
+                    .mp-acciones {
+                        display: inline-flex;
+                        flex-wrap: nowrap;
+                        gap: 2px;
+                        align-items: center;
+                        white-space: nowrap;
+                    }
+                    .mp-acciones .btn {
+                        margin: 0 !important;
+                        float: none !important;
+                        flex: 0 0 auto;
+                    }
+                    .mp-texto-corto {
+                        display: inline-block;
+                        max-width: 100%;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        vertical-align: middle;
+                    }
+                    table.tablaMateriaPrima td,
+                    table.tablaMateriaPrimaPaginado td {
+                        vertical-align: middle !important;
+                    }
+                    table.tablaMateriaPrima td:nth-child(7),
+                    table.tablaMateriaPrimaPaginado td:nth-child(7) {
+                        max-width: 150px;
+                        white-space: nowrap;
+                    }
+                    table.tablaMateriaPrima td:last-child,
+                    table.tablaMateriaPrimaPaginado td:last-child,
+                    table.tablaMateriaPrima th:last-child,
+                    table.tablaMateriaPrimaPaginado th:last-child {
+                        white-space: nowrap;
+                        width: 1%;
+                    }
+                </style>
+
                 <table class="table table-bordered table-striped dt-responsive tablaMateriaPrimaPaginado" width="100%">
 
                     <thead>
@@ -56,7 +95,7 @@
                             <th>Proveedor</th>
                             <th>Stock</th>
                             <th>Estado</th>
-                            <th style="width:220px">Acciones</th>
+                            <th style="width:170px; min-width:170px">Acciones</th>
 
                         </tr>
 
