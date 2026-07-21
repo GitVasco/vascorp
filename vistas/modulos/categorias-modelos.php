@@ -1,10 +1,9 @@
 <?php
-if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos")) {
+if (!isset($_SESSION["maestros"]) || (int) $_SESSION["maestros"] !== 1) {
     denegarAccesoModulo();
     return;
 }
-$puedeEditarCategoriasModelos = function_exists("usuarioPuedeModulo")
-    && usuarioPuedeModulo("gestion_comercial", "categorias_modelos", "editar");
+$puedeEditarCategoriasModelos = true;
 $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : "";
 ?>
 <div class="content-wrapper cat-modelos-page">

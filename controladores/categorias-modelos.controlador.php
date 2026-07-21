@@ -4,14 +4,12 @@ class ControladorCategoriasModelos
 {
 	static private function ctrPuedeVer()
 	{
-		return function_exists("usuarioPuedeVerModulo")
-			&& usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos");
+		return isset($_SESSION["maestros"]) && (int) $_SESSION["maestros"] === 1;
 	}
 
 	static private function ctrPuedeEditar()
 	{
-		return function_exists("usuarioPuedeModulo")
-			&& usuarioPuedeModulo("gestion_comercial", "categorias_modelos", "editar");
+		return self::ctrPuedeVer();
 	}
 
 	static private function ctrUsuarioId()

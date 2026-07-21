@@ -102,8 +102,6 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "grupos_marcas");
             $puedeVerAsignacionGruposMarcas = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "asignacion_grupos_marcas");
-            $puedeVerCategoriasModelos = function_exists("usuarioPuedeVerModulo")
-                && usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos");
             $puedeVerCostosModelo = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "costos_modelo");
             $puedeVerFichaModelos = function_exists("usuarioPuedeVerModulo")
@@ -739,7 +737,6 @@
 
                         </li>
 
-                        <?php if ($puedeVerCategoriasModelos) { ?>
                         <li class="<?php if ($_GET["ruta"] == "categorias-subcategorias-modelos") echo 'active'; ?>">
 
                             <a href="index.php?ruta=categorias-subcategorias-modelos">
@@ -760,7 +757,6 @@
                             </a>
 
                         </li>
-                        <?php } ?>
 
                         <li class="<?php if ($_GET["ruta"] == "operaciones") echo 'active'; ?>">
 

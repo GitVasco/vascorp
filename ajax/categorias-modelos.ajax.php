@@ -4,7 +4,6 @@ if (!isset($_SESSION)) {
 	session_start();
 }
 
-require_once "../controladores/permisos-modulos.config.php";
 require_once "../controladores/categorias-modelos.controlador.php";
 require_once "../modelos/categorias-modelos.modelo.php";
 
@@ -15,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 	return;
 }
 
-if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos")) {
+if (!isset($_SESSION["maestros"]) || (int) $_SESSION["maestros"] !== 1) {
 	echo json_encode(array("ok" => false, "mensaje" => "Sin permiso"));
 	return;
 }

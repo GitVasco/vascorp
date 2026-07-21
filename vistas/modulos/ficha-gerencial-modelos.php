@@ -6,8 +6,7 @@ if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion
 
 $puedeConciliarFicha = function_exists("usuarioPuedeModulo")
     && usuarioPuedeModulo("gestion_comercial", "ficha_modelos", "conciliar");
-$puedeEditarCategoriasModelos = function_exists("usuarioPuedeModulo")
-    && usuarioPuedeModulo("gestion_comercial", "categorias_modelos", "editar");
+$puedeEditarCategoriasModelos = isset($_SESSION["maestros"]) && (int) $_SESSION["maestros"] === 1;
 $modeloInicialFicha = isset($_GET["modelo"]) ? trim($_GET["modelo"]) : "";
 $anioActualFicha = (int) date("Y");
 $mesActualFicha = (int) date("n");

@@ -705,7 +705,7 @@ CUERPO DOCUMENTO
                 }
             } else if ($_GET["ruta"] == "categorias-modelos") {
 
-                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos")) {
+                if (!isset($_SESSION["maestros"]) || (int) $_SESSION["maestros"] !== 1) {
                     denegarAccesoModulo();
                 } else {
                     include "modulos/categorias-modelos.php";
