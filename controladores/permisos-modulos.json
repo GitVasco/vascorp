@@ -25,7 +25,7 @@
       "cerrar_mes": [6, 32]
     },
     "inteligencia_comercial": {
-      "ver": [6, 105]
+      "ver": [6, 32, 105]
     },
     "categorias_comerciales": {
       "ver": [6, 105],

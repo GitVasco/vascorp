@@ -625,6 +625,15 @@ CUERPO DOCUMENTO
 
                 include "modulos/tarjetas/" . $_GET["ruta"] . ".php";
             } else if (
+                $_GET["ruta"] == "recetas-modelo" ||
+                $_GET["ruta"] == "editar-receta-modelo"
+            ) {
+                if (!isset($_SESSION["tarjetas"]) || (int) $_SESSION["tarjetas"] !== 1) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/recetas-modelo/" . $_GET["ruta"] . ".php";
+                }
+            } else if (
                 $_GET["ruta"] == "categorias" ||
                 $_GET["ruta"] == "productos" ||
                 $_GET["ruta"] == "ventas" ||
@@ -865,6 +874,9 @@ CUERPO DOCUMENTO
     <script src="vistas/js/colores.js"></script>
     <script src="vistas/js/materiaprima.js"></script>
     <script src="vistas/js/tarjetas.js"></script>
+    <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "recetas-modelo" || $_GET["ruta"] == "editar-receta-modelo")) { ?>
+    <script src="vistas/js/recetas-modelo.js?v=22"></script>
+    <?php } ?>
     <script src="vistas/js/movimientos.js"></script>
     <script src="vistas/js/ordencorte.js"></script>
     <script src="vistas/js/urgencias.js"></script>

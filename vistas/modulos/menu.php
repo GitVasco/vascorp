@@ -1132,7 +1132,9 @@
                 <li class="treeview <?php if (
                                         $_GET["ruta"] == "tarjetas" ||
                                         $_GET["ruta"] == "ficha-tecnica" ||
-                                        $_GET["ruta"] == "crear-tarjeta"
+                                        $_GET["ruta"] == "crear-tarjeta" ||
+                                        $_GET["ruta"] == "recetas-modelo" ||
+                                        $_GET["ruta"] == "editar-receta-modelo"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1157,6 +1159,19 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Administrar Tarjetas</span>
+
+                            </a>
+
+                        </li>
+                        <li class="<?php if (
+                                        $_GET["ruta"] == "recetas-modelo" ||
+                                        $_GET["ruta"] == "editar-receta-modelo"
+                                    ) echo 'active'; ?>">
+
+                            <a href="recetas-modelo">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Recetas por modelo</span>
 
                             </a>
 
