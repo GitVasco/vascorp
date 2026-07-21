@@ -13,6 +13,7 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
         <h1>Clasificación de modelos <small>emparejar disponibles → subcategoría</small></h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
+            <li>Maestros</li>
             <li class="active">Clasificación de modelos</li>
         </ol>
     </section>

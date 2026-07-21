@@ -570,6 +570,8 @@ class ControladorLineaCredito
     {
         $totales = array(
             "clientes" => count($miembros),
+            "en_cartera" => 0,
+            "fuera_cartera" => 0,
             "deuda" => 0.0,
             "deuda_vencida" => 0.0,
             "cupo" => 0.0,
@@ -585,6 +587,12 @@ class ControladorLineaCredito
             $cupo = isset($fila["cupo_disponible"]) ? (float) $fila["cupo_disponible"] : 0.0;
             $recomendada = isset($fila["linea_recomendada"]) ? (float) $fila["linea_recomendada"] : 0.0;
             $aprobada = isset($fila["linea_aprobada"]) ? (float) $fila["linea_aprobada"] : 0.0;
+
+            if (!empty($fila["fuera_cartera"])) {
+                $totales["fuera_cartera"]++;
+            } else {
+                $totales["en_cartera"]++;
+            }
 
             $totales["deuda"] += $deuda;
             $totales["deuda_vencida"] += $deudaVencida;
@@ -646,6 +654,7 @@ class ControladorLineaCredito
         }
 
         $miembros = ModeloLineaCredito::mdlListarClientesConLineaPorGrupo($codigoGrupo);
+        $totalesGrupo = self::ctrTotalesCarteraGrupo($miembros);
         $lineaGrupo = ModeloLineaCredito::mdlGrupoLinea($codigoGrupo);
         $motores = self::ctrMotoresGrupoIc($codigoGrupo);
         $motor1 = $motores["motor1"];
@@ -667,6 +676,19 @@ class ControladorLineaCredito
         $deudaVencida = isset($lineaOperGrupo["deuda_vencida"])
             ? round((float) $lineaOperGrupo["deuda_vencida"], 2)
             : null;
+
+        // Preferir suma live de miembros (misma fuente que la tabla); fallback a IC.
+        if ($deudaIc === null) {
+            $deudaIc = $totalesGrupo["deuda"];
+        }
+        if ($deudaVencida === null) {
+            $deudaVencida = $totalesGrupo["deuda_vencida"];
+        }
+
+        // Alinear totales de deuda con el consolidado mostrado en el hero.
+        $totalesGrupo["deuda"] = $deudaIc;
+        $totalesGrupo["deuda_vencida"] = $deudaVencida;
+
         $lineaAprobada = ($lineaGrupo && !empty($lineaGrupo["linea_aprobada"]))
             ? round((float) $lineaGrupo["linea_aprobada"], 2)
             : null;
@@ -717,7 +739,8 @@ class ControladorLineaCredito
                 "accion_linea" => ($motor3 && isset($motor3["accion"]["etiqueta"])) ? $motor3["accion"]["etiqueta"] : null,
             ),
             "peor_ruc" => ($motor1 && !empty($motor1["peor_ruc"]["codigo"])) ? $motor1["peor_ruc"] : null,
-            "totales_cartera" => self::ctrTotalesCarteraGrupo($miembros),
+            "totales_cartera" => $totalesGrupo,
+            "totales_grupo" => $totalesGrupo,
             "miembros" => $miembros,
             "url_ic" => "index.php?ruta=inteligencia-comercial&modo=grupo&grupo=" . urlencode($codigoGrupo),
             "piso_categoria" => self::ctrPisoCategoriaDetalle("grupo", $codigoGrupo),
@@ -946,7 +969,69 @@ class ControladorLineaCredito
             return array("ok" => false, "msg" => "Sin permiso.");
         }
 
+        $resultado = self::ctrPersistirActualizacionCliente($codigoCliente);
+
+        if (!$resultado["ok"]) {
+            return $resultado;
+        }
+
+        return self::ctrDetalleCliente($codigoCliente);
+    }
+
+    /**
+     * Recalcula y persiste snapshot del grupo sin crear un segundo CIERRE_MENSUAL.
+     */
+    public static function ctrActualizarGrupo($codigoGrupo)
+    {
+        if (!function_exists("usuarioPuedeDashboardCobranzas") || !usuarioPuedeDashboardCobranzas()) {
+            return array("ok" => false, "msg" => "Sin permiso.");
+        }
+
+        $resultado = self::ctrPersistirActualizacionGrupo($codigoGrupo);
+
+        if (!$resultado["ok"]) {
+            return $resultado;
+        }
+
+        return self::ctrDetalleGrupo($codigoGrupo);
+    }
+
+    /**
+     * Tras asignar/quitar un local del grupo: refresca snapshots del cliente y del grupo.
+     * No exige permiso de cobranzas (lo dispara administración de grupos).
+     */
+    public static function ctrRefrescarTrasCambioMembresiaGrupo($codigoGrupo, $codigoCliente = null)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+        $codigoCliente = $codigoCliente !== null ? trim((string) $codigoCliente) : "";
+        $okCliente = true;
+        $okGrupo = true;
+
+        if ($codigoCliente !== "") {
+            $resCliente = self::ctrPersistirActualizacionCliente($codigoCliente);
+            $okCliente = !empty($resCliente["ok"]);
+        }
+
+        if ($codigoGrupo !== "") {
+            $resGrupo = self::ctrPersistirActualizacionGrupo($codigoGrupo);
+            $okGrupo = !empty($resGrupo["ok"]);
+        }
+
+        return array(
+            "ok" => $okCliente || $okGrupo,
+            "cliente" => $okCliente,
+            "grupo" => $okGrupo,
+        );
+    }
+
+    private static function ctrPersistirActualizacionCliente($codigoCliente)
+    {
         $codigoCliente = trim((string) $codigoCliente);
+
+        if ($codigoCliente === "") {
+            return array("ok" => false, "msg" => "Cliente no indicado.");
+        }
+
         $fila = ModeloLineaCredito::mdlClienteLinea($codigoCliente);
         $lineaAprobada = ($fila && $fila["linea_aprobada"] !== null) ? $fila["linea_aprobada"] : null;
 
@@ -957,15 +1042,69 @@ class ControladorLineaCredito
         }
 
         $periodo = self::ctrPeriodoCierre();
+        $usuarioId = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
         self::ctrPersistirSnapshot(
             $snapshot,
             "ACTUALIZACION_INDIVIDUAL",
             $periodo["anio"],
             $periodo["mes"],
-            (int) $_SESSION["id"]
+            $usuarioId
         );
 
-        return self::ctrDetalleCliente($codigoCliente);
+        return array("ok" => true);
+    }
+
+    private static function ctrPersistirActualizacionGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "" || $codigoGrupo === "__sin_grupo__") {
+            return array("ok" => false, "msg" => "Grupo no indicado.");
+        }
+
+        $fila = ModeloLineaCredito::mdlGrupoLinea($codigoGrupo);
+        $lineaAprobada = ($fila && $fila["linea_aprobada"] !== null) ? $fila["linea_aprobada"] : null;
+        $snapshot = self::ctrSnapshotGrupoDesdeIc($codigoGrupo, $lineaAprobada);
+
+        if (!$snapshot) {
+            return array("ok" => false, "msg" => "No se pudo calcular la línea del grupo.");
+        }
+
+        $periodo = self::ctrPeriodoCierre();
+        $usuarioId = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
+        self::ctrPersistirSnapshotGrupo(
+            $snapshot,
+            "ACTUALIZACION_GRUPO",
+            $periodo["anio"],
+            $periodo["mes"],
+            $usuarioId
+        );
+
+        return array("ok" => true);
+    }
+
+    private static function ctrRefrescarMiembrosGrupo($codigoGrupo, $idUsuario)
+    {
+        $codigos = ModeloLineaCredito::mdlCodigosMiembrosGrupo($codigoGrupo);
+
+        foreach ($codigos as $codigo) {
+            $fila = ModeloLineaCredito::mdlClienteLinea($codigo);
+            $lineaAprobada = ($fila && $fila["linea_aprobada"] !== null) ? $fila["linea_aprobada"] : null;
+            $snapshot = self::ctrSnapshotDesdeIc($codigo, $lineaAprobada);
+
+            if (!$snapshot) {
+                continue;
+            }
+
+            $periodo = self::ctrPeriodoCierre();
+            self::ctrPersistirSnapshot(
+                $snapshot,
+                "ACTUALIZACION_INDIVIDUAL",
+                $periodo["anio"],
+                $periodo["mes"],
+                (int) $idUsuario
+            );
+        }
     }
 
     private static function ctrProcesarClienteCierre($codigo, $periodo, $idUsuario)
@@ -1027,15 +1166,24 @@ class ControladorLineaCredito
             return "omitido";
         }
 
-        if (ModeloLineaCredito::mdlExisteCierreMensualGrupo($codigoGrupo, $periodo["anio"], $periodo["mes"])) {
-            return "omitido";
-        }
+        // Siempre refrescar deuda/scores de locales del grupo (aunque ya tengan cierre).
+        self::ctrRefrescarMiembrosGrupo($codigoGrupo, $idUsuario);
+
+        $yaCerrado = ModeloLineaCredito::mdlExisteCierreMensualGrupo(
+            $codigoGrupo,
+            $periodo["anio"],
+            $periodo["mes"]
+        );
 
         $fila = ModeloLineaCredito::mdlGrupoLinea($codigoGrupo);
         $lineaAprobada = ($fila && $fila["linea_aprobada"] !== null) ? $fila["linea_aprobada"] : null;
         $snapshot = self::ctrSnapshotGrupoDesdeIc($codigoGrupo, $lineaAprobada);
 
         if (!$snapshot) {
+            if ($yaCerrado) {
+                return "omitido";
+            }
+
             ModeloLineaCredito::mdlRegistrarHistorialGrupo(array(
                 "codigo_grupo" => $codigoGrupo,
                 "anio" => $periodo["anio"],
@@ -1056,6 +1204,19 @@ class ControladorLineaCredito
             ));
 
             return "error";
+        }
+
+        if ($yaCerrado) {
+            // Ya hubo CIERRE_MENSUAL del periodo: actualizar estado vigente sin duplicar cierre.
+            self::ctrPersistirSnapshotGrupo(
+                $snapshot,
+                "ACTUALIZACION_GRUPO",
+                $periodo["anio"],
+                $periodo["mes"],
+                (int) $idUsuario
+            );
+
+            return "actualizado";
         }
 
         self::ctrPersistirSnapshotGrupo(

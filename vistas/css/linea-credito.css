@@ -654,6 +654,21 @@
     letter-spacing: 0.03em;
 }
 
+.lc-miles-preview {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #1e6b3a;
+    line-height: 1.3;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.lc-input-miles {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
 /* Tabla principal — badge riesgo */
 .lc-riesgo-badge {
     display: inline-block;
@@ -709,6 +724,28 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.lc-fuera-cartera-tag {
+    display: inline-block;
+    margin-top: 4px;
+    margin-left: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    color: #7d6608;
+    background: #fef9e7;
+    border: 1px solid #f9e79f;
+}
+
+.lc-row--fuera-cartera {
+    background: #fffdf5;
+}
+
+.lc-grupo-empty--warn {
+    color: #7d6608;
+    background: #fef9e7;
+    border: 1px solid #f9e79f;
 }
 
 .lc-row--grupo .lc-col-linea,
@@ -923,6 +960,13 @@
     color: #fff;
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
+}
+
+.lc-grupo-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .lc-grupo-card__head--compact .btn:hover {

@@ -4,14 +4,112 @@
     var lcGrupoFiltro = "";
     var lcGrupoDeudaTotal = 0;
     var tablaLc = null;
+    var lcUrlSyncLock = false;
 
     function fmtMoney(v) {
         if (v === null || v === undefined || v === "") return "—";
         return "S/ " + Number(v).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    /** Solo dígitos → entero (p. ej. "200.000" → 200000). */
+    function parseMiles(str) {
+        var digits = String(str == null ? "" : str).replace(/\D/g, "");
+        if (!digits) {
+            return 0;
+        }
+        return parseInt(digits, 10) || 0;
+    }
+
+    /** Entero → miles con punto (es-PE): 200000 → "200.000". */
+    function fmtMilesInput(n) {
+        var num = Math.floor(Math.abs(Number(n) || 0));
+        if (!num) {
+            return "";
+        }
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function sincronizarInputMiles($input) {
+        var raw = parseMiles($input.val());
+        var formatted = fmtMilesInput(raw);
+        var $form = $input.closest("form");
+        var $raw = $form.find(".lc-miles-raw");
+        var $preview = $form.find(".lc-miles-preview");
+
+        if ($input.val() !== formatted) {
+            $input.val(formatted);
+        }
+        if ($raw.length) {
+            $raw.val(raw > 0 ? String(raw) : "");
+        }
+        if ($preview.length) {
+            if (raw > 0) {
+                $preview.html("Se registrará: <strong>" + fmtMoney(raw) + "</strong>");
+            } else {
+                $preview.text("Escriba el monto; se formatea en miles automáticamente.");
+            }
+        }
+        return raw;
+    }
+
     function esc(s) {
         return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function lcLeerParamsUrl() {
+        try {
+            var params = new URLSearchParams(window.location.search || "");
+            return {
+                grupo: String(params.get("grupo") || "").trim(),
+                cliente: String(params.get("cliente") || "").trim(),
+            };
+        } catch (e) {
+            return { grupo: "", cliente: "" };
+        }
+    }
+
+    /**
+     * Mantiene ?ruta=linea-credito&grupo=…&cliente=… para poder refrescar/compartir.
+     * opts.grupo / opts.cliente: string o "" para borrar; undefined = dejar el estado actual.
+     */
+    function lcActualizarUrl(opts) {
+        if (lcUrlSyncLock || !window.history || !window.history.replaceState) {
+            return;
+        }
+
+        opts = opts || {};
+        var params;
+
+        try {
+            params = new URLSearchParams(window.location.search || "");
+        } catch (e) {
+            return;
+        }
+
+        if (!params.get("ruta")) {
+            params.set("ruta", "linea-credito");
+        }
+
+        var grupo = opts.grupo !== undefined ? String(opts.grupo || "").trim() : String(lcGrupoFiltro || "").trim();
+        var cliente = opts.cliente !== undefined
+            ? String(opts.cliente || "").trim()
+            : String(lcContext.cliente || "").trim();
+
+        if (grupo) {
+            params.set("grupo", grupo);
+        } else {
+            params.delete("grupo");
+        }
+
+        if (cliente) {
+            params.set("cliente", cliente);
+        } else {
+            params.delete("cliente");
+        }
+
+        var qs = params.toString();
+        var url = window.location.pathname + (qs ? "?" + qs : "") + (window.location.hash || "");
+        window.history.replaceState(null, "", url);
     }
 
     function postLc(accion, data, opts) {
@@ -201,7 +299,7 @@
 
     function buildVeredictoGrupo(data) {
         var c = data.consolidado || {};
-        var tot = data.totales_cartera || {};
+        var tot = data.totales_grupo || data.totales_cartera || {};
         var riesgo = Number(c.score_riesgo);
         var util = Number(c.utilizacion_pct);
         var cupo = Number(c.cupo_disponible);
@@ -366,7 +464,10 @@
             '<div class="lc-form-inline-grupo__fields">' +
             '<div class="lc-form-inline-grupo__field">' +
             '<label class="lc-field-lbl">Nueva línea</label>' +
-            '<input type="number" step="1000" min="1000" class="form-control input-sm" name="linea_aprobada" placeholder="Ej. 200000" required></div>' +
+            '<input type="text" inputmode="numeric" autocomplete="off" class="form-control input-sm lc-input-miles" ' +
+            'placeholder="Ej. 200.000" required>' +
+            '<input type="hidden" name="linea_aprobada" class="lc-miles-raw" value="">' +
+            '<small class="lc-miles-preview">Escriba el monto; se formatea en miles automáticamente.</small></div>' +
             '<div class="lc-form-inline-grupo__field lc-form-inline-grupo__field--wide">' +
             '<label class="lc-field-lbl">Motivo</label>' +
             '<input type="text" class="form-control input-sm" name="motivo" placeholder="Motivo del cambio…" required></div>' +
@@ -424,15 +525,21 @@
     function renderPanelGrupo(data) {
         var g = data.grupo || {};
         var c = data.consolidado || {};
-        var tot = data.totales_cartera || {};
+        var tot = data.totales_grupo || data.totales_cartera || {};
         var veredicto = buildVeredictoGrupo(data);
         var accClr = accionColor(c.accion_linea);
         var refGrupo = lineaCreditoRefGrupo(c);
         var vacioHtml = "";
         var histCount = (data.historial_grupo && data.historial_grupo.length) || 0;
+        var fueraCartera = Number(tot.fuera_cartera || 0);
 
         if (!tot.clientes) {
-            vacioHtml = '<div class="lc-grupo-empty lc-grupo-empty--compact">Ningún local de este grupo está en la cartera activa.</div>';
+            vacioHtml = '<div class="lc-grupo-empty lc-grupo-empty--compact">Este grupo no tiene locales activos.</div>';
+        } else if (fueraCartera > 0) {
+            vacioHtml =
+                '<div class="lc-grupo-empty lc-grupo-empty--compact lc-grupo-empty--warn">' +
+                fueraCartera + " local(es) fuera de cartera activa (incluidos en la deuda del grupo)." +
+                "</div>";
         }
 
         var peorHtml = "";
@@ -452,9 +559,12 @@
             "<div class=\"lc-grupo-card__title\">" +
             "<h4><i class=\"fa fa-sitemap\"></i> " + esc(g.nombre) + "</h4>" +
             "<small>" + esc(g.codigo) + " · " + (tot.clientes || 0) + " local(es)</small></div>" +
+            '<div class="lc-grupo-card__actions">' +
+            '<button type="button" class="btn btn-default btn-xs" id="btnLcActualizarGrupo" data-grupo="' + esc(g.codigo) + '" title="Recalcular deuda, scores y snapshot del grupo">' +
+            '<i class="fa fa-refresh"></i> Actualizar</button>' +
             '<a href="' + esc(data.url_ic || "#") + '" class="btn btn-default btn-xs" target="_blank" rel="noopener noreferrer" title="Análisis en IC">' +
             '<i class="fa fa-line-chart"></i> IC</a>' +
-            "</div>" +
+            "</div></div>" +
             '<div class="lc-grupo-card__body lc-grupo-card__body--compact">' +
             '<div class="lc-veredicto lc-veredicto--inline lc-veredicto--' + veredicto.cls + '">' +
             '<i class="fa ' + veredicto.icon + '"></i>' +
@@ -483,6 +593,144 @@
             vacioHtml +
             "</div></div>"
         );
+    }
+
+    function fmtDeudaCell(deuda) {
+        var n = Number(deuda || 0);
+        return '<strong class="lc-deuda-val">' + fmtMoney(n) + "</strong>";
+    }
+
+    function fmtVencidaCell(vencida) {
+        var n = Number(vencida || 0);
+        if (n > 0) {
+            return '<strong class="lc-vencida-val lc-vencida-val--alert">' + fmtMoney(n) + "</strong>";
+        }
+        return '<span class="text-muted">—</span>';
+    }
+
+    function badgeFueraCartera() {
+        return '<span class="lc-fuera-cartera-tag" title="No está en cartera activa; su deuda sí cuenta en el grupo">' +
+            '<i class="fa fa-eye-slash"></i> Fuera de cartera</span>';
+    }
+
+    function scoreBadgeHtml(score) {
+        if (score === null || score === undefined || score === "") {
+            return '<span class="text-muted">—</span>';
+        }
+        var sr = Number(score);
+        var srCls = "default";
+        if (sr >= 90) srCls = "success";
+        else if (sr >= 80) srCls = "primary";
+        else if (sr >= 70) srCls = "info";
+        else if (sr >= 60) srCls = "warning";
+        else srCls = "danger";
+        return '<span class="lc-riesgo-badge lc-riesgo-badge--' + srCls + '">' + sr.toFixed(1) + "</span>";
+    }
+
+    function aplicarDeudaFila($row, miembro) {
+        var deuda = Number(miembro.deuda_actual || 0);
+        var vencida = Number(miembro.deuda_vencida || 0);
+        $row.find("td.lc-col-deuda").attr("data-deuda", deuda).html(fmtDeudaCell(deuda));
+        $row.find("td.lc-col-vencida").attr("data-vencida", vencida).html(fmtVencidaCell(vencida));
+
+        var $nombre = $row.find("td:first .lc-nombre");
+        $row.find(".lc-fuera-cartera-tag").remove();
+        if (Number(miembro.fuera_cartera) === 1) {
+            $row.addClass("lc-row--fuera-cartera");
+            if ($nombre.length) {
+                $nombre.after(badgeFueraCartera());
+            } else {
+                $row.find("td:first").append(badgeFueraCartera());
+            }
+        } else {
+            $row.removeClass("lc-row--fuera-cartera");
+        }
+    }
+
+    function filaLocalGrupoHtml(miembro, codigoGrupo, nombreGrupo) {
+        var deuda = Number(miembro.deuda_actual || 0);
+        var vencida = Number(miembro.deuda_vencida || 0);
+        var fuera = Number(miembro.fuera_cartera) === 1;
+        var badges = '<span class="lc-grupo-tag" title="Pertenece a grupo empresarial">' +
+            '<i class="fa fa-sitemap"></i> ' + esc(nombreGrupo) + "</span>";
+        if (fuera) {
+            badges += badgeFueraCartera();
+        }
+
+        return (
+            '<tr class="lc-row--grupo' + (fuera ? " lc-row--fuera-cartera" : "") + ' lc-row--inyectada" ' +
+            'data-cliente="' + esc(miembro.codigo) + '" ' +
+            'data-grupo="' + esc(codigoGrupo) + '" ' +
+            'data-grupo-nombre="' + esc(nombreGrupo) + '" ' +
+            'data-inyectada="1">' +
+            "<td><strong class=\"lc-cod\">" + esc(miembro.codigo) + "</strong>" +
+            '<div class="lc-nombre">' + esc(miembro.nombre) + "</div>" + badges + "</td>" +
+            '<td class="lc-col-linea">' + fmtMoney(miembro.linea_operativa) + "</td>" +
+            '<td class="lc-col-linea">' + fmtMoney(miembro.linea_recomendada) + "</td>" +
+            '<td class="lc-col-aprobada"><button type="button" class="btn btn-xs btn-primary btnLcIrGrupo lc-btn-grupo-inline" ' +
+            'data-grupo="' + esc(codigoGrupo) + '" data-nombre="' + esc(nombreGrupo) + '" title="La línea aprobada se gestiona a nivel de grupo">' +
+            '<i class="fa fa-sitemap"></i> Grupo</button></td>' +
+            '<td class="lc-col-deuda" data-deuda="' + deuda + '">' + fmtDeudaCell(deuda) + "</td>" +
+            '<td class="lc-col-vencida" data-vencida="' + vencida + '">' + fmtVencidaCell(vencida) + "</td>" +
+            '<td class="lc-col-pct"><span class="text-muted">—</span></td>' +
+            '<td class="lc-col-cupo"><span class="text-muted lc-cupo-grupo-hint" title="El cupo se valida contra la línea del grupo">' +
+            '<i class="fa fa-level-up"></i> Consolidado</span></td>' +
+            '<td class="lc-col-riesgo">' + scoreBadgeHtml(miembro.score_riesgo) + "</td>" +
+            '<td class="lc-col-fecha"><small>' + esc(miembro.fecha_actualizacion || "—") + "</small></td>" +
+            '<td class="text-center lc-col-acciones">' +
+            '<button type="button" class="btn btn-xs btn-default btnLcDetalle" data-cliente="' + esc(miembro.codigo) +
+            '" data-nombre="' + esc(miembro.nombre) + '" title="Ver detalle del local">' +
+            '<i class="fa fa-search"></i></button></td></tr>'
+        );
+    }
+
+    function limpiarLocalesInyectados() {
+        if (!tablaLc) {
+            $("#tablaLineaCredito tbody tr.lc-row--inyectada").remove();
+            return;
+        }
+        tablaLc.rows(function (idx, data, node) {
+            return $(node).attr("data-inyectada") === "1";
+        }).remove().draw(false);
+    }
+
+    function sincronizarLocalesGrupo(data) {
+        var miembros = data.miembros || [];
+        var g = data.grupo || {};
+        var codigoGrupo = g.codigo || lcGrupoFiltro;
+        var nombreGrupo = g.nombre || codigoGrupo;
+        var presentes = {};
+
+        $("#tablaLineaCredito tbody tr").each(function () {
+            var $row = $(this);
+            var codigo = String($row.data("cliente") || "");
+            if (!codigo) {
+                return;
+            }
+            presentes[codigo] = $row;
+        });
+
+        miembros.forEach(function (m) {
+            var codigo = String(m.codigo || "");
+            if (!codigo) {
+                return;
+            }
+            if (presentes[codigo]) {
+                aplicarDeudaFila(presentes[codigo], m);
+            } else if (tablaLc) {
+                tablaLc.row.add($(filaLocalGrupoHtml(m, codigoGrupo, nombreGrupo))).draw(false);
+            } else {
+                $("#tablaLineaCredito tbody").append(filaLocalGrupoHtml(m, codigoGrupo, nombreGrupo));
+            }
+        });
+    }
+
+    function deudaTotalDesdeDetalleGrupo(resp) {
+        if (resp.consolidado && resp.consolidado.deuda_actual != null) {
+            return parseFloat(resp.consolidado.deuda_actual) || 0;
+        }
+        var tot = resp.totales_grupo || resp.totales_cartera || {};
+        return tot.deuda ? parseFloat(tot.deuda) : 0;
     }
 
     function limpiarFiltroGrupo() {
@@ -645,6 +893,7 @@
     }
 
     function ocultarPanelGrupo() {
+        limpiarLocalesInyectados();
         $("#lcPanelGrupo").hide().empty();
         lcGrupoDeudaTotal = 0;
         actualizarPctDeudaLocales();
@@ -660,6 +909,8 @@
             '<div class="lc-grupo-loading"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Calculando análisis consolidado…</p></div>'
         );
 
+        limpiarLocalesInyectados();
+
         postLc("detalle_grupo", { codigo_grupo: codigoGrupo }, { timeout: 120000 })
             .done(function (resp) {
                 if (!resp || !resp.ok) {
@@ -670,9 +921,8 @@
                     actualizarPctDeudaLocales();
                     return;
                 }
-                lcGrupoDeudaTotal = (resp.totales_cartera && resp.totales_cartera.deuda)
-                    ? parseFloat(resp.totales_cartera.deuda)
-                    : 0;
+                sincronizarLocalesGrupo(resp);
+                lcGrupoDeudaTotal = deudaTotalDesdeDetalleGrupo(resp);
                 lcGrupoPiso = resp.piso_categoria || null;
                 $("#lcPanelGrupo").html(renderPanelGrupo(resp));
                 actualizarLayoutGrupo();
@@ -689,7 +939,7 @@
             });
     }
 
-    function aplicarFiltroGrupo() {
+    function aplicarFiltroGrupo(opts) {
         var val = $("#lcFiltroGrupo").val() || "";
         lcGrupoFiltro = val;
         actualizarTituloTabla();
@@ -704,6 +954,99 @@
         if (tablaLc) {
             tablaLc.draw();
             actualizarContadorTabla();
+        }
+
+        if (!opts || !opts.fromUrl) {
+            // Al cambiar filtro se limpia el cliente de la URL (salvo restauración inicial).
+            if (!opts || opts.clearCliente !== false) {
+                if (!$("#modalLcDetalle").hasClass("in") && !$("#modalLcDetalle").hasClass("show")) {
+                    lcContext.cliente = "";
+                    lcContext.nombre = "";
+                }
+            }
+            lcActualizarUrl({
+                grupo: val,
+                cliente: (opts && opts.keepCliente) ? lcContext.cliente : (
+                    ($("#modalLcDetalle").hasClass("in") || $("#modalLcDetalle").hasClass("show"))
+                        ? lcContext.cliente
+                        : ""
+                ),
+            });
+        }
+    }
+
+    function abrirDetalleCliente(codigo, nombre) {
+        codigo = String(codigo || "").trim();
+        if (!codigo) {
+            return;
+        }
+
+        if (!nombre) {
+            var $row = $("#tablaLineaCredito tbody tr").filter(function () {
+                return String($(this).data("cliente") || "") === codigo;
+            }).first();
+            if ($row.length) {
+                var $btn = $row.find(".btnLcDetalle");
+                nombre = ($btn.data("nombre") || $row.find(".lc-nombre").first().text() || "").trim();
+            }
+        }
+
+        lcContext.cliente = codigo;
+        lcContext.nombre = nombre || codigo;
+        $("#lcDetalleTitulo").html(
+            '<i class="fa fa-user"></i> ' + esc(lcContext.nombre) +
+            '<span class="lc-modal-cod">' + esc(lcContext.cliente) + "</span>"
+        );
+        lcActualizarUrl({ cliente: codigo });
+        $("#modalLcDetalle").modal("show");
+        cargarDetalle().done(function (resp) {
+            if (resp && resp.ok && resp.cliente) {
+                if (resp.cliente.nombre) {
+                    lcContext.nombre = resp.cliente.nombre;
+                    $("#lcDetalleTitulo").html(
+                        '<i class="fa fa-user"></i> ' + esc(lcContext.nombre) +
+                        '<span class="lc-modal-cod">' + esc(lcContext.cliente) + "</span>"
+                    );
+                }
+            }
+            mostrarDetalle(resp);
+        });
+    }
+
+    function restaurarDesdeUrl() {
+        var params = lcLeerParamsUrl();
+        lcUrlSyncLock = true;
+
+        if (params.grupo) {
+            var $sel = $("#lcFiltroGrupo");
+            var grupoOk = false;
+            if ($sel.length) {
+                $sel.find("option").each(function () {
+                    if (String($(this).val()) === params.grupo) {
+                        grupoOk = true;
+                        return false;
+                    }
+                });
+            }
+            if (grupoOk) {
+                $sel.val(params.grupo);
+                if ($.fn.selectpicker) {
+                    $sel.selectpicker("refresh");
+                }
+                aplicarFiltroGrupo({ fromUrl: true, clearCliente: false, keepCliente: true });
+            }
+        }
+
+        lcUrlSyncLock = false;
+        lcActualizarUrl({
+            grupo: lcGrupoFiltro,
+            cliente: params.cliente || "",
+        });
+
+        if (params.cliente) {
+            window.setTimeout(function () {
+                abrirDetalleCliente(params.cliente);
+            }, 250);
         }
     }
 
@@ -728,7 +1071,7 @@
             if (tipo === "CIERRE_MENSUAL") tlCls = "lc-tl--cierre";
             else if (tipo === "LINEA_APROBADA" || tipo === "LINEA_ACTUALIZADA") tlCls = "lc-tl--aprobada";
             else if (tipo === "LINEA_RECHAZADA") tlCls = "lc-tl--rechazada";
-            else if (tipo === "ACTUALIZACION_INDIVIDUAL") tlCls = "lc-tl--actualizacion";
+            else if (tipo === "ACTUALIZACION_INDIVIDUAL" || tipo === "ACTUALIZACION_GRUPO") tlCls = "lc-tl--actualizacion";
 
             if (det && det.motivo) {
                 motivoHtml = '<br><em class="lc-tl-motivo">Motivo: ' + esc(det.motivo) + "</em>";
@@ -766,8 +1109,11 @@
             '<form id="lcFormRegistroLinea">' +
             '<input type="hidden" name="codigo_cliente" value="' + esc(lcContext.cliente) + '">' +
             '<div class="row">' +
-            '<div class="col-sm-4"><label class="lc-field-lbl">Nueva línea (miles)</label>' +
-            '<input type="number" step="1000" min="1000" class="form-control input-sm" name="linea_aprobada" placeholder="Ej. 20000" required></div>' +
+            '<div class="col-sm-4"><label class="lc-field-lbl">Nueva línea</label>' +
+            '<input type="text" inputmode="numeric" autocomplete="off" class="form-control input-sm lc-input-miles" ' +
+            'placeholder="Ej. 20.000" required>' +
+            '<input type="hidden" name="linea_aprobada" class="lc-miles-raw" value="">' +
+            '<small class="lc-miles-preview">Escriba el monto; se formatea en miles automáticamente.</small></div>' +
             '<div class="col-sm-8"><label class="lc-field-lbl">Motivo del cambio</label>' +
             '<input type="text" class="form-control input-sm" name="motivo" placeholder="Ej. Buen historial de pago, incremento por volumen…" required></div>' +
             "</div>" +
@@ -961,6 +1307,8 @@
         if ($.fn.selectpicker && $("#lcFiltroGrupo").length) {
             $("#lcFiltroGrupo").selectpicker();
         }
+
+        restaurarDesdeUrl();
     });
 
     $(document).on("click", ".btnLcIrGrupo, .btnLcIrGrupoModal", function (e) {
@@ -970,6 +1318,8 @@
         if (!codigo) {
             return;
         }
+        lcContext.cliente = "";
+        lcContext.nombre = "";
         $("#modalLcDetalle").modal("hide");
         seleccionarGrupo(codigo, { scroll: true });
     });
@@ -981,14 +1331,14 @@
     });
 
     $(document).on("click", ".btnLcDetalle", function () {
-        lcContext.cliente = $(this).data("cliente");
-        lcContext.nombre = $(this).data("nombre");
-        $("#lcDetalleTitulo").html(
-            '<i class="fa fa-user"></i> ' + esc(lcContext.nombre) +
-            '<span class="lc-modal-cod">' + esc(lcContext.cliente) + "</span>"
-        );
-        $("#modalLcDetalle").modal("show");
-        cargarDetalle().done(mostrarDetalle);
+        abrirDetalleCliente($(this).data("cliente"), $(this).data("nombre"));
+    });
+
+    $("#modalLcDetalle").on("hidden.bs.modal", function () {
+        lcContext.cliente = "";
+        lcContext.nombre = "";
+        lcContext.pisoCategoria = null;
+        lcActualizarUrl({ cliente: "" });
     });
 
     $(document).on("click", "#btnLcActualizarCliente", function () {
@@ -1001,6 +1351,43 @@
             })
             .fail(function () { swal("Error", "No se pudo actualizar.", "error"); })
             .always(function () { $btn.prop("disabled", false); });
+    });
+
+    $(document).on("click", "#btnLcActualizarGrupo", function () {
+        var $btn = $(this);
+        var codigoGrupo = $btn.data("grupo") || lcGrupoFiltro;
+
+        if (!codigoGrupo || codigoGrupo === "__sin_grupo__") {
+            return;
+        }
+
+        $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Actualizando…');
+        postLc("actualizar_grupo", { codigo_grupo: codigoGrupo }, { timeout: 120000 })
+            .done(function (resp) {
+                if (!resp || !resp.ok) {
+                    swal("Atención", (resp && resp.msg) || "No se pudo actualizar el grupo.", "warning");
+                    return;
+                }
+                sincronizarLocalesGrupo(resp);
+                lcGrupoDeudaTotal = deudaTotalDesdeDetalleGrupo(resp);
+                lcGrupoPiso = resp.piso_categoria || lcGrupoPiso;
+                $("#lcPanelGrupo").html(renderPanelGrupo(resp));
+                actualizarLayoutGrupo();
+                actualizarPctDeudaLocales();
+                if (tablaLc) {
+                    tablaLc.columns.adjust().draw(false);
+                }
+                swal("Actualizado", "Grupo recalculado desde Inteligencia Comercial.", "success");
+            })
+            .fail(function (xhr) {
+                swal("Error", msgAjaxError(xhr, "No se pudo actualizar el grupo."), "error");
+            })
+            .always(function () {
+                var $nuevo = $("#btnLcActualizarGrupo");
+                if ($nuevo.length) {
+                    $nuevo.prop("disabled", false).html('<i class="fa fa-refresh"></i> Actualizar');
+                }
+            });
     });
 
     $("#btnLcCierreMensual").on("click", function () {
@@ -1067,10 +1454,22 @@
         });
     });
 
+    $(document).on("input blur", ".lc-input-miles", function () {
+        sincronizarInputMiles($(this));
+    });
+
     $(document).on("submit", "#lcFormRegistroLineaGrupo", function (e) {
         e.preventDefault();
         var $form = $(this);
-        var lineaNueva = $form.find('[name="linea_aprobada"]').val();
+        var $miles = $form.find(".lc-input-miles");
+        var lineaNueva = sincronizarInputMiles($miles);
+
+        if (lineaNueva < 1000) {
+            swal("Atención", "Ingrese una línea de al menos S/ 1.000.", "warning");
+            $miles.focus();
+            return;
+        }
+
         confirmarSiBajoPiso(lineaNueva, lcGrupoPiso, function () {
             postLc("registrar_linea_grupo", $form.serialize())
                 .done(function (resp) {
@@ -1079,10 +1478,10 @@
                         return;
                     }
                     lcGrupoPiso = resp.piso_categoria || lcGrupoPiso;
+                    limpiarLocalesInyectados();
+                    sincronizarLocalesGrupo(resp);
                     $("#lcPanelGrupo").html(renderPanelGrupo(resp));
-                    lcGrupoDeudaTotal = (resp.totales_cartera && resp.totales_cartera.deuda)
-                        ? parseFloat(resp.totales_cartera.deuda)
-                        : 0;
+                    lcGrupoDeudaTotal = deudaTotalDesdeDetalleGrupo(resp);
                     actualizarLayoutGrupo();
                     actualizarPctDeudaLocales();
                     swalRegistroOk(resp, "Línea aprobada del grupo guardada en historial.");
@@ -1096,7 +1495,15 @@
     $(document).on("submit", "#lcFormRegistroLinea", function (e) {
         e.preventDefault();
         var $form = $(this);
-        var lineaNueva = $form.find('[name="linea_aprobada"]').val();
+        var $miles = $form.find(".lc-input-miles");
+        var lineaNueva = sincronizarInputMiles($miles);
+
+        if (lineaNueva < 1000) {
+            swal("Atención", "Ingrese una línea de al menos S/ 1.000.", "warning");
+            $miles.focus();
+            return;
+        }
+
         confirmarSiBajoPiso(lineaNueva, lcContext.pisoCategoria, function () {
             postLc("registrar_linea", $form.serialize())
                 .done(function (resp) {

@@ -49,11 +49,25 @@ if (isset($_POST["codigoGrupo"])) {
 }
 
 if (isset($_POST["accion"]) && $_POST["accion"] === "asignar") {
+	require_once "../controladores/config.php";
+	require_once "../controladores/inteligencia-comercial.config.php";
+	require_once "../modelos/conexion.php";
+	require_once "../modelos/inteligencia-comercial.modelo.php";
+	require_once "../modelos/linea-credito.modelo.php";
+	require_once "../controladores/inteligencia-comercial.controlador.php";
+	require_once "../controladores/linea-credito.controlador.php";
 	$ctrl = new ControladorGruposEmpresariales();
 	$ctrl->ctrAsignarCliente();
 }
 
 if (isset($_POST["accion"]) && $_POST["accion"] === "quitar") {
+	require_once "../controladores/config.php";
+	require_once "../controladores/inteligencia-comercial.config.php";
+	require_once "../modelos/conexion.php";
+	require_once "../modelos/inteligencia-comercial.modelo.php";
+	require_once "../modelos/linea-credito.modelo.php";
+	require_once "../controladores/inteligencia-comercial.controlador.php";
+	require_once "../controladores/linea-credito.controlador.php";
 	$ctrl = new ControladorGruposEmpresariales();
 	$ctrl->ctrQuitarCliente();
 }

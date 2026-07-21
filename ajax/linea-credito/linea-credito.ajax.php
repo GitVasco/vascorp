@@ -48,6 +48,11 @@ switch ($accion) {
         $respuesta = ControladorLineaCredito::ctrActualizarCliente($cliente);
         break;
 
+    case "actualizar_grupo":
+        $grupo = isset($_POST["codigo_grupo"]) ? trim((string) $_POST["codigo_grupo"]) : "";
+        $respuesta = ControladorLineaCredito::ctrActualizarGrupo($grupo);
+        break;
+
     case "cierre_mensual":
         $respuesta = ControladorLineaCredito::ctrCierreMensual();
         break;

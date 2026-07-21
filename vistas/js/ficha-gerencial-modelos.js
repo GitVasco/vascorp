@@ -1,6 +1,11 @@
 var fichaGeneracion = 0;
 var fichaSolicitudes = [];
 var fichaGraficoUnidades = null;
+var fichaGraficosRanking = {
+    grupo: null,
+    categoria: null,
+    subcategoria: null
+};
 var fichaCatalogoGeneracion = 0;
 var fichaResumenActual = null;
 var fichaRankingPendiente = null;
@@ -474,9 +479,15 @@ function fichaAplicarRanking(resp) {
     fichaPintarRank("#fichaRankCategoria", catRank);
     fichaPintarRank("#fichaRankSubcategoria", subRank);
 
+    if (ranking.estado === "sin_grupo") {
+        $("#fichaClasificarLink").hide();
+        $("#preguntaRankingModelo").text("");
+        return;
+    }
+
     if (ranking.estado === "sin_clasificacion") {
         $("#preguntaRankingModelo").text(
-            gen.posicion ? ("General # " + gen.posicion + (gen.total ? " de " + gen.total : "")) : ""
+            gen.posicion ? ("Grupo # " + gen.posicion + (gen.total ? " de " + gen.total : "")) : ""
         );
         if (window.fichaModelosConfig && window.fichaModelosConfig.puedeEditarCategoriasModelos) {
             var codigoModelo = $("#fichaModeloCodigo").text() || "";
@@ -494,7 +505,7 @@ function fichaAplicarRanking(resp) {
     $("#fichaClasificarLink").hide();
     var partes = [];
     if (gen.posicion) {
-        partes.push("G #" + gen.posicion);
+        partes.push("Grupo #" + gen.posicion);
     }
     if (catRank.posicion) {
         partes.push("Cat #" + catRank.posicion);
@@ -649,10 +660,16 @@ function fichaRenderVariantes(resp) {
     var tallaVista = {};
     var mapa = {};
     filas.forEach(function (fila) {
+        var activos = Number(fila.articulos_activos || 0);
         if (!colorVisto[fila.cod_color]) {
-            colorVisto[fila.cod_color] = true;
-            colores.push({ codigo: fila.cod_color, nombre: fila.color });
+            colorVisto[fila.cod_color] = {
+                codigo: fila.cod_color,
+                nombre: fila.color,
+                articulos_activos: 0
+            };
+            colores.push(colorVisto[fila.cod_color]);
         }
+        colorVisto[fila.cod_color].articulos_activos += activos;
         if (!tallaVista[fila.cod_talla]) {
             tallaVista[fila.cod_talla] = true;
             tallas.push({ codigo: fila.cod_talla, nombre: fila.talla });
@@ -660,7 +677,10 @@ function fichaRenderVariantes(resp) {
         mapa[fila.cod_color + "|" + fila.cod_talla] = fila;
     });
     $("#fichaColoresDisponibles").html(colores.map(function (item) {
-        return "<span class='ficha-color-item'><i style='background-color:"
+        var inactivo = Number(item.articulos_activos || 0) <= 0;
+        return "<span class='ficha-color-item" + (inactivo ? " ficha-color-item--inactivo" : "") + "'"
+            + (inactivo ? " title='Color sin artículos activos'" : "")
+            + "><i style='background-color:"
             + fichaColorVisual(item.nombre) + "'></i><span>" + fichaEscapar(item.nombre) + "</span></span>";
     }).join("") || "Sin colores");
     $("#fichaTallasDisponibles").html(tallas.map(function (item) {
@@ -991,6 +1011,133 @@ function fichaRecrearCanvasGraficoUnidades() {
     return document.getElementById("graficoUnidadesFicha");
 }
 
+function fichaSeriePuestoGrafico(serie) {
+    return (serie || []).map(function (valor) {
+        if (valor === null || valor === undefined || valor === "") {
+            return null;
+        }
+        var numero = Number(valor);
+        return isFinite(numero) && numero > 0 ? -numero : null;
+    });
+}
+
+function fichaRecrearCanvasRanking(canvasId) {
+    var $contenedor = $('.ficha-grafico-ranking[data-canvas="' + canvasId + '"]');
+    if (!$contenedor.length) {
+        return null;
+    }
+    $contenedor.empty().append("<canvas id='" + canvasId + "' height='120'></canvas>");
+    return document.getElementById(canvasId);
+}
+
+function fichaDibujarGraficoPuesto(canvasId, claveGrafico, labels, serie, color, titulo) {
+    if (typeof Chart !== "function") {
+        return false;
+    }
+    var canvas = fichaRecrearCanvasRanking(canvasId);
+    if (!canvas || !canvas.getContext) {
+        return false;
+    }
+    var etiquetas = labels.length ? labels.slice() : ["Sin datos"];
+    var datos = fichaSeriePuestoGrafico(serie);
+    if (!datos.length) {
+        datos = [null];
+    }
+    while (datos.length < etiquetas.length) {
+        datos.push(null);
+    }
+    datos = datos.slice(0, etiquetas.length);
+    fichaGraficosRanking[claveGrafico] = new Chart(canvas.getContext("2d")).Line({
+        labels: etiquetas,
+        datasets: [
+            {
+                label: titulo || "Puesto",
+                fillColor: "rgba(60,141,188,0)",
+                strokeColor: color || "#3c8dbc",
+                pointColor: color || "#3c8dbc",
+                pointStrokeColor: "#fff",
+                data: datos
+            }
+        ]
+    }, {
+        datasetFill: false,
+        bezierCurve: true,
+        bezierCurveTension: 0.35,
+        pointDotRadius: 3,
+        scaleBeginAtZero: false,
+        scaleLabel: "<%if (value){%>#<%= Math.abs(value) %><%}%>",
+        tooltipTemplate: "<%if (label){%><%=label%>: <%}%><%if (value === null || typeof value === 'undefined'){%>Sin ventas<%}else{%>#<%= Math.abs(value) %><%}%>"
+    });
+    return true;
+}
+
+function fichaRenderEvolucionRanking(resp) {
+    var periodos = resp.periodos || resp.etiquetas || [];
+    var labels = periodos.map(function (periodo) {
+        return fichaEtiquetaYm(periodo);
+    });
+    var mensaje = resp.mensaje
+        || "Puesto mensual por ventas netas del mes (grupo, categoría y subcategoría).";
+    if (resp.grupo && resp.grupo.nombre) {
+        mensaje = "Grupo: " + resp.grupo.nombre + ". " + mensaje;
+    }
+    $("#fichaEvolucionRankingMensaje").text(mensaje);
+
+    var sinClasificacion = resp.estado !== "ok";
+    $("#fichaRankCatVacio").toggle(sinClasificacion).text(
+        resp.estado === "sin_grupo" ? "Sin grupo comercial" : "Sin clasificación"
+    );
+    $("#fichaRankSubVacio").toggle(sinClasificacion).text(
+        resp.estado === "sin_grupo" ? "Sin grupo comercial" : "Sin clasificación"
+    );
+
+    window.requestAnimationFrame(function () {
+        fichaDibujarGraficoPuesto(
+            "graficoRankGrupoFicha",
+            "grupo",
+            labels,
+            resp.grupo_serie || [],
+            "#3c8dbc",
+            "Grupo"
+        );
+        if (resp.estado === "ok") {
+            $("#fichaRankCatVacio").hide();
+            $("#fichaRankSubVacio").hide();
+            fichaDibujarGraficoPuesto(
+                "graficoRankCategoriaFicha",
+                "categoria",
+                labels,
+                resp.categoria_serie || [],
+                "#00a65a",
+                "Categoría"
+            );
+            fichaDibujarGraficoPuesto(
+                "graficoRankSubcategoriaFicha",
+                "subcategoria",
+                labels,
+                resp.subcategoria_serie || [],
+                "#605ca8",
+                "Subcategoría"
+            );
+        } else {
+            $('.ficha-grafico-ranking[data-canvas="graficoRankCategoriaFicha"]').empty();
+            $('.ficha-grafico-ranking[data-canvas="graficoRankSubcategoriaFicha"]').empty();
+            fichaGraficosRanking.categoria = null;
+            fichaGraficosRanking.subcategoria = null;
+            if (resp.estado === "sin_grupo") {
+                $('.ficha-grafico-ranking[data-canvas="graficoRankGrupoFicha"]').html(
+                    "<p class='text-muted text-center' style='margin:40px 0 0;'>Sin grupo comercial</p>"
+                );
+                fichaGraficosRanking.grupo = null;
+            }
+        }
+    });
+
+    if ($("#zonaEvolucionRanking .ficha-fuente").length) {
+        $("#zonaEvolucionRanking .ficha-fuente").text(fichaMetaTexto(resp.meta));
+    }
+}
+
 function fichaDibujarGraficoUnidades(labels, unidadesAnterior, unidades, resp) {
     if (typeof Chart !== "function") {
         return false;
@@ -1194,6 +1341,7 @@ function fichaCargarTodo() {
     fichaEstadoZona("zonaRankings", "cargando");
     fichaEstadoZona("zonaVariantes", "cargando");
     fichaEstadoZona("zonaEvolucion", "cargando");
+    fichaEstadoZona("zonaEvolucionRanking", "cargando");
 
     fichaPost("resumen", parametros, generacion).done(function (resp) {
         if (!resp || !resp.ok) {
@@ -1212,6 +1360,7 @@ function fichaCargarTodo() {
     fichaCargarZona("lideres", null, fichaRenderLideresComerciales, parametros, generacion);
     fichaCargarZona("variantes", "zonaVariantes", fichaRenderVariantes, parametros, generacion);
     fichaCargarZona("evolucion", "zonaEvolucion", fichaRenderEvolucion, parametros, generacion);
+    fichaCargarZona("evolucion_ranking", "zonaEvolucionRanking", fichaRenderEvolucionRanking, parametros, generacion);
     if (window.fichaModelosConfig && window.fichaModelosConfig.puedeConciliar) {
         fichaCargarZona("conciliacion", "zonaConciliacion", fichaRenderConciliacion, parametros, generacion);
     }

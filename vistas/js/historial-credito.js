@@ -154,7 +154,7 @@
 
         return (
             "<tr>" +
-            '<td><span class="hc-fecha">' +
+            '<td class="text-center hc-fecha-cell"><span class="hc-fecha">' +
             fmtFecha(row.fecha) +
             "</span></td>" +
             '<td><span class="label label-' +
@@ -170,9 +170,9 @@
             "</span> " +
             escapeHtml(row.cliente_nombre || "") +
             "</td>" +
-            '<td class="text-right">' +
+            '<td class="text-right hc-monto"><strong>' +
             fmtMonto(row.pedido_lista, row.pedido_total) +
-            "</td>" +
+            "</strong></td>" +
             '<td class="hc-detalle">' +
             detalle +
             "</td>" +

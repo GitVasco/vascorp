@@ -120,8 +120,7 @@
                 || $puedeVerCategoriasPorRevisar
                 || $puedeVerZonasComerciales
                 || $puedeVerGruposMarcas
-                || $puedeVerAsignacionGruposMarcas
-                || $puedeVerCategoriasModelos;
+                || $puedeVerAsignacionGruposMarcas;
 
             $rutasActivasCreditoCobranzas = array();
             if ($puedeVerDashboardCobranzas) {
@@ -175,9 +174,6 @@
             }
             if ($puedeVerAsignacionGruposMarcas) {
                 $rutasActivasCatalogosComerciales[] = "asignacion-grupos-marcas";
-            }
-            if ($puedeVerCategoriasModelos) {
-                $rutasActivasCatalogosComerciales[] = "categorias-modelos";
             }
 
             $rutasActivasGestionComercial = array_merge(
@@ -393,14 +389,6 @@
                                     <a href="index.php?ruta=asignacion-grupos-marcas">
                                         <i class="fa fa-handshake-o"></i>
                                         <span>Asignación de grupos</span>
-                                    </a>
-                                </li>
-                                <?php } ?>
-                                <?php if ($puedeVerCategoriasModelos) { ?>
-                                <li class="<?php if ($_GET["ruta"] == "categorias-modelos") echo 'active'; ?>">
-                                    <a href="index.php?ruta=categorias-modelos">
-                                        <i class="fa fa-sitemap"></i>
-                                        <span>Clasificación de modelos</span>
                                     </a>
                                 </li>
                                 <?php } ?>
@@ -636,6 +624,7 @@
                                         $_GET["ruta"] == "marcas" ||
                                         $_GET["ruta"] == "modelosjf" ||
                                         $_GET["ruta"] == "categorias-subcategorias-modelos" ||
+                                        $_GET["ruta"] == "categorias-modelos" ||
                                         $_GET["ruta"] == "operaciones" ||
                                         $_GET["ruta"] == "paras" ||
                                         $_GET["ruta"] == "sectores" ||
@@ -750,13 +739,23 @@
 
                         </li>
 
-                        <?php if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("gestion_comercial", "categorias_modelos")) { ?>
+                        <?php if ($puedeVerCategoriasModelos) { ?>
                         <li class="<?php if ($_GET["ruta"] == "categorias-subcategorias-modelos") echo 'active'; ?>">
 
                             <a href="index.php?ruta=categorias-subcategorias-modelos">
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Categorías / subcategorías</span>
+
+                            </a>
+
+                        </li>
+                        <li class="<?php if ($_GET["ruta"] == "categorias-modelos") echo 'active'; ?>">
+
+                            <a href="index.php?ruta=categorias-modelos">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Clasificación de modelos</span>
 
                             </a>
 

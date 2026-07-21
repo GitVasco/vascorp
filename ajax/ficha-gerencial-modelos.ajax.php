@@ -38,6 +38,7 @@ $acciones = array(
 	"variantes" => "ctrVariantes",
 	"rankings" => "ctrRankings",
 	"evolucion" => "ctrEvolucion",
+	"evolucion_ranking" => "ctrEvolucionRanking",
 	"detalle" => "ctrDetalle",
 	"conciliacion" => "ctrConciliacion"
 );

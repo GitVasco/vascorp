@@ -894,10 +894,10 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cxc.js?v=20"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=20"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=22"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=20"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=22"></script>
     <script src="vistas/js/historial-credito.js?v=10"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>

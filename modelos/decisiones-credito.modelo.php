@@ -675,11 +675,13 @@ class ModeloDecisionesCredito
 
         $sql = "SELECT
                     a.*,
+                    COALESCE(t.total, a.pedido_total) AS pedido_total_con_igv,
                     IFNULL(u.nombre, CONCAT('Usuario #', a.usuario_id)) AS usuario_nombre,
                     IFNULL(c.nombre, '') AS cliente_nombre
                 FROM decision_credito_accionjf a
                 LEFT JOIN usuariosjf u ON u.id = a.usuario_id
                 LEFT JOIN clientesjf c ON c.codigo = a.codigo_cliente
+                LEFT JOIN temporaljf t ON t.codigo = a.codigo_pedido
                 WHERE " . implode(" AND ", $where) . "
                 ORDER BY a.fecha DESC, a.id DESC
                 LIMIT {$limite}";
@@ -695,6 +697,12 @@ class ModeloDecisionesCredito
         $salida = array();
 
         foreach ($filas as $fila) {
+            if (array_key_exists("pedido_total_con_igv", $fila)) {
+                if ($fila["pedido_total_con_igv"] !== null && $fila["pedido_total_con_igv"] !== "") {
+                    $fila["pedido_total"] = $fila["pedido_total_con_igv"];
+                }
+                unset($fila["pedido_total_con_igv"]);
+            }
             $fila["tipo_etiqueta"] = function_exists("dcEtiquetaTipoAccion")
                 ? dcEtiquetaTipoAccion($fila["tipo_accion"])
                 : $fila["tipo_accion"];

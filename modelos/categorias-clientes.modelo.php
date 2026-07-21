@@ -30,7 +30,7 @@ class ModeloCategoriasClientes
 
 	/*=============================================
 	Categoría efectiva por lote de clientes (grupo gana)
-	Devuelve mapa: codigo_cliente => [codigo, nombre, color]
+	Devuelve mapa: codigo_cliente => [codigo, nombre, color, codigo_grupo, nombre_grupo]
 	=============================================*/
 	static public function mdlCategoriasEfectivasPorClientes(array $codigosClientes)
 	{
@@ -55,6 +55,8 @@ class ModeloCategoriasClientes
 
 		$sql = "SELECT
 					c.codigo AS codigo_cliente,
+					NULLIF(TRIM(c.grupo), '') AS codigo_grupo,
+					g.nombre AS nombre_grupo,
 					CASE
 						WHEN c.grupo IS NOT NULL AND c.grupo <> '' THEN (
 							SELECT cat.codigo
@@ -134,6 +136,10 @@ class ModeloCategoriasClientes
 						)
 					END AS categoria_color
 				FROM clientesjf c
+				LEFT JOIN grupos_empresarialesjf g
+				  ON g.codigo = c.grupo
+				 AND c.grupo IS NOT NULL
+				 AND TRIM(c.grupo) <> ''
 				WHERE c.codigo IN (" . implode(", ", $placeholders) . ")";
 
 		$stmt = Conexion::conectar()->prepare($sql);
@@ -145,7 +151,10 @@ class ModeloCategoriasClientes
 		$mapa = array();
 		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 			$codigoCat = isset($row["categoria_codigo"]) ? trim((string) $row["categoria_codigo"]) : "";
-			if ($codigoCat === "") {
+			$codigoGrupo = isset($row["codigo_grupo"]) ? trim((string) $row["codigo_grupo"]) : "";
+			$nombreGrupo = isset($row["nombre_grupo"]) ? trim((string) $row["nombre_grupo"]) : "";
+
+			if ($codigoCat === "" && $codigoGrupo === "") {
 				continue;
 			}
 
@@ -153,6 +162,8 @@ class ModeloCategoriasClientes
 				"codigo" => $codigoCat,
 				"nombre" => isset($row["categoria_nombre"]) ? trim((string) $row["categoria_nombre"]) : $codigoCat,
 				"color" => isset($row["categoria_color"]) ? trim((string) $row["categoria_color"]) : "",
+				"codigo_grupo" => $codigoGrupo,
+				"nombre_grupo" => $nombreGrupo !== "" ? $nombreGrupo : $codigoGrupo,
 			);
 		}
 

@@ -2,6 +2,22 @@
     margin-top: 0;
 }
 
+.hc-monto {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.hc-monto strong {
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.hc-fecha-cell {
+    text-align: center !important;
+    white-space: nowrap;
+}
+
 .hc-header-row {
     display: flex;
     align-items: flex-start;

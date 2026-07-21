@@ -296,6 +296,28 @@ class ModeloFichaGerencialModelos
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
 
+	/**
+	 * Grupo comercial activo de la marca del modelo (MIN id si hay más de uno).
+	 */
+	private static function mdlGrupoComercialModelo($modelo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT g.id, g.codigo, IFNULL(g.nombre, '') AS nombre
+			 FROM modelojf m
+			 INNER JOIN grupos_marcas_detallejf d ON d.id_marca = m.id_marca
+			 INNER JOIN grupos_marcas_comercialjf g
+				ON g.id = d.id_grupo_marca AND g.estado = 1
+			 WHERE TRIM(m.modelo) = :modelo
+			   AND UPPER(TRIM(IFNULL(m.estado, ''))) = 'ACTIVO'
+			 ORDER BY g.id ASC
+			 LIMIT 1"
+		);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->execute();
+		$fila = $stmt->fetch(PDO::FETCH_ASSOC);
+		return $fila ? $fila : null;
+	}
+
 	static public function mdlRankingGeneral($modelo, $periodo)
 	{
 		$fuente = is_array($periodo)
@@ -306,6 +328,34 @@ class ModeloFichaGerencialModelos
 		}
 
 		$modelo = trim((string) $modelo);
+		$grupo = self::mdlGrupoComercialModelo($modelo);
+		$rankVacio = array("posicion" => null, "total" => 0, "ventas_netas_modelo" => null);
+
+		if (!$grupo) {
+			return array(
+				"estado" => "sin_grupo",
+				"posicion" => null,
+				"total_modelos_con_venta" => 0,
+				"categoria" => null,
+				"subcategoria" => null,
+				"ranking" => array(
+					"general" => $rankVacio,
+					"categoria" => $rankVacio,
+					"subcategoria" => $rankVacio
+				),
+				"metrica" => "venta_neta",
+				"ventas_netas_modelo" => null,
+				"mensaje" => "La marca de este modelo no pertenece a un grupo comercial activo; no se puede calcular el ranking.",
+				"grupo" => null
+			);
+		}
+
+		$payloadGrupo = array(
+			"id" => (int) $grupo["id"],
+			"codigo" => $grupo["codigo"],
+			"nombre" => $grupo["nombre"]
+		);
+
 		$stmtClasif = Conexion::conectar()->prepare(
 			"SELECT s.id AS id_subcategoria, s.codigo AS codigo_subcategoria, s.nombre AS nombre_subcategoria,
 				c.id AS id_categoria, c.codigo AS codigo_categoria, c.nombre AS nombre_categoria
@@ -319,6 +369,7 @@ class ModeloFichaGerencialModelos
 		$stmtClasif->execute();
 		$clasif = $stmtClasif->fetch(PDO::FETCH_ASSOC);
 
+		// Universo: modelos activos del mismo grupo comercial, con venta neta ≠ 0 en el período.
 		$sql = "SELECT TRIM(a.modelo) AS modelo,
 				ms.id_subcategoria,
 				s.id_categoria,
@@ -328,6 +379,9 @@ class ModeloFichaGerencialModelos
 			INNER JOIN articulojf a ON a.articulo = m.articulo
 			INNER JOIN modelojf mo ON TRIM(mo.modelo) = TRIM(a.modelo)
 				AND UPPER(TRIM(IFNULL(mo.estado, ''))) = 'ACTIVO'
+			INNER JOIN grupos_marcas_detallejf dgm
+				ON dgm.id_marca = mo.id_marca
+				AND dgm.id_grupo_marca = :id_grupo
 			LEFT JOIN modelo_subcategoriajf ms ON ms.modelo = TRIM(mo.modelo)
 			LEFT JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
 			WHERE m.fecha >= :inicio AND m.fecha < :fin
@@ -337,6 +391,7 @@ class ModeloFichaGerencialModelos
 			HAVING SUM(IFNULL(m.total, 0)) <> 0
 			ORDER BY venta_neta DESC, unidades_vendidas DESC, modelo ASC";
 		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":id_grupo", (int) $grupo["id"], PDO::PARAM_INT);
 		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
 		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
 		$stmt->execute();
@@ -347,10 +402,10 @@ class ModeloFichaGerencialModelos
 		$idSub = $clasif ? (int) $clasif["id_subcategoria"] : 0;
 		$rankCat = $clasif
 			? self::mdlPosicionRankingFilas($filas, $modelo, $idCat, null)
-			: array("posicion" => null, "total" => 0, "ventas_netas_modelo" => null);
+			: $rankVacio;
 		$rankSub = $clasif
 			? self::mdlPosicionRankingFilas($filas, $modelo, null, $idSub)
-			: array("posicion" => null, "total" => 0, "ventas_netas_modelo" => null);
+			: $rankVacio;
 
 		if (!$clasif) {
 			return array(
@@ -366,8 +421,8 @@ class ModeloFichaGerencialModelos
 				),
 				"metrica" => "venta_neta",
 				"ventas_netas_modelo" => $rankGeneral["ventas_netas_modelo"],
-				"mensaje" => "Este modelo aún no está clasificado; solo se calcula el ranking general.",
-				"grupo" => null
+				"mensaje" => "Este modelo aún no está clasificado; solo se calcula el ranking del grupo comercial.",
+				"grupo" => $payloadGrupo
 			);
 		}
 
@@ -395,7 +450,7 @@ class ModeloFichaGerencialModelos
 				? $rankSub["ventas_netas_modelo"]
 				: $rankGeneral["ventas_netas_modelo"],
 			"mensaje" => null,
-			"grupo" => null
+			"grupo" => $payloadGrupo
 		);
 	}
 
@@ -425,6 +480,206 @@ class ModeloFichaGerencialModelos
 			"posicion" => $posicion,
 			"total" => $total,
 			"ventas_netas_modelo" => $ventasModelo
+		);
+	}
+
+	private static function mdlOrdenarFilasRanking(&$filas)
+	{
+		usort($filas, function ($a, $b) {
+			$ventaA = (float) $a["venta_neta"];
+			$ventaB = (float) $b["venta_neta"];
+			if ($ventaA !== $ventaB) {
+				return $ventaA > $ventaB ? -1 : 1;
+			}
+			$unidadesA = (float) $a["unidades_vendidas"];
+			$unidadesB = (float) $b["unidades_vendidas"];
+			if ($unidadesA !== $unidadesB) {
+				return $unidadesA > $unidadesB ? -1 : 1;
+			}
+			return strcmp((string) $a["modelo"], (string) $b["modelo"]);
+		});
+	}
+
+	/**
+	 * Evolución mensual del puesto (grupo / categoría / subcategoría) en el período.
+	 * Cada punto = ranking solo de ese mes.
+	 */
+	static public function mdlEvolucionRanking($modelo, $periodo)
+	{
+		$fuente = is_array($periodo)
+			? self::mdlSqlFuenteMovimientos(isset($periodo["anios"]) ? $periodo["anios"] : array())
+			: null;
+		if ($fuente === null || !is_array($periodo)) {
+			return null;
+		}
+
+		$modelo = trim((string) $modelo);
+		$grupo = self::mdlGrupoComercialModelo($modelo);
+		$serieVacia = function () use ($periodo) {
+			$etiquetas = array();
+			$periodos = array();
+			$nulos = array();
+			$totales = array();
+			$cursorAnio = (int) $periodo["desde_anio"];
+			$cursorMes = (int) $periodo["desde_mes"];
+			for ($i = 0; $i < (int) $periodo["meses"]; $i++) {
+				$clave = sprintf("%04d-%02d", $cursorAnio, $cursorMes);
+				$periodos[] = $clave;
+				$etiquetas[] = $clave;
+				$nulos[] = null;
+				$totales[] = array("grupo" => 0, "categoria" => 0, "subcategoria" => 0);
+				$cursorMes++;
+				if ($cursorMes > 12) {
+					$cursorMes = 1;
+					$cursorAnio++;
+				}
+			}
+			return array($etiquetas, $periodos, $nulos, $totales);
+		};
+
+		if (!$grupo) {
+			list($etiquetas, $periodos, $nulos, $totales) = $serieVacia();
+			return array(
+				"estado" => "sin_grupo",
+				"grupo" => null,
+				"categoria" => null,
+				"subcategoria" => null,
+				"etiquetas" => $etiquetas,
+				"periodos" => $periodos,
+				"grupo_serie" => $nulos,
+				"categoria_serie" => $nulos,
+				"subcategoria_serie" => $nulos,
+				"totales" => $totales,
+				"mensaje" => "La marca de este modelo no pertenece a un grupo comercial activo."
+			);
+		}
+
+		$stmtClasif = Conexion::conectar()->prepare(
+			"SELECT s.id AS id_subcategoria, s.codigo AS codigo_subcategoria, s.nombre AS nombre_subcategoria,
+				c.id AS id_categoria, c.codigo AS codigo_categoria, c.nombre AS nombre_categoria
+			 FROM modelo_subcategoriajf ms
+			 INNER JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
+			 INNER JOIN categoria_modelojf c ON c.id = s.id_categoria AND c.estado = 1
+			 WHERE ms.modelo = :modelo
+			 LIMIT 1"
+		);
+		$stmtClasif->bindValue(":modelo", $modelo, PDO::PARAM_STR);
+		$stmtClasif->execute();
+		$clasif = $stmtClasif->fetch(PDO::FETCH_ASSOC);
+
+		$sql = "SELECT YEAR(m.fecha) AS anio,
+				MONTH(m.fecha) AS mes,
+				TRIM(a.modelo) AS modelo,
+				ms.id_subcategoria,
+				s.id_categoria,
+				SUM(IFNULL(m.total, 0)) AS venta_neta,
+				SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
+			FROM {$fuente} m
+			INNER JOIN articulojf a ON a.articulo = m.articulo
+			INNER JOIN modelojf mo ON TRIM(mo.modelo) = TRIM(a.modelo)
+				AND UPPER(TRIM(IFNULL(mo.estado, ''))) = 'ACTIVO'
+			INNER JOIN grupos_marcas_detallejf dgm
+				ON dgm.id_marca = mo.id_marca
+				AND dgm.id_grupo_marca = :id_grupo
+			LEFT JOIN modelo_subcategoriajf ms ON ms.modelo = TRIM(mo.modelo)
+			LEFT JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
+			WHERE m.fecha >= :inicio AND m.fecha < :fin
+			  AND " . self::sqlTiposVenta("m") . "
+			  AND " . self::sqlCabeceraValida("m") . "
+			GROUP BY YEAR(m.fecha), MONTH(m.fecha), TRIM(a.modelo), ms.id_subcategoria, s.id_categoria
+			HAVING SUM(IFNULL(m.total, 0)) <> 0";
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":id_grupo", (int) $grupo["id"], PDO::PARAM_INT);
+		$stmt->bindValue(":inicio", $periodo["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $periodo["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+
+		$porMes = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$clave = sprintf("%04d-%02d", (int) $fila["anio"], (int) $fila["mes"]);
+			if (!isset($porMes[$clave])) {
+				$porMes[$clave] = array();
+			}
+			$porMes[$clave][] = $fila;
+		}
+
+		$idCat = $clasif ? (int) $clasif["id_categoria"] : null;
+		$idSub = $clasif ? (int) $clasif["id_subcategoria"] : null;
+
+		$etiquetas = array();
+		$periodos = array();
+		$serieGrupo = array();
+		$serieCat = array();
+		$serieSub = array();
+		$totales = array();
+
+		$cursorAnio = (int) $periodo["desde_anio"];
+		$cursorMes = (int) $periodo["desde_mes"];
+		for ($i = 0; $i < (int) $periodo["meses"]; $i++) {
+			$clave = sprintf("%04d-%02d", $cursorAnio, $cursorMes);
+			$filasMes = isset($porMes[$clave]) ? $porMes[$clave] : array();
+			self::mdlOrdenarFilasRanking($filasMes);
+
+			$rankGrupo = self::mdlPosicionRankingFilas($filasMes, $modelo, null, null);
+			$rankCat = ($idCat !== null)
+				? self::mdlPosicionRankingFilas($filasMes, $modelo, $idCat, null)
+				: array("posicion" => null, "total" => 0);
+			$rankSub = ($idSub !== null)
+				? self::mdlPosicionRankingFilas($filasMes, $modelo, null, $idSub)
+				: array("posicion" => null, "total" => 0);
+
+			$periodos[] = $clave;
+			$etiquetas[] = $clave;
+			$serieGrupo[] = $rankGrupo["posicion"];
+			$serieCat[] = $rankCat["posicion"];
+			$serieSub[] = $rankSub["posicion"];
+			$totales[] = array(
+				"grupo" => (int) $rankGrupo["total"],
+				"categoria" => (int) $rankCat["total"],
+				"subcategoria" => (int) $rankSub["total"]
+			);
+
+			$cursorMes++;
+			if ($cursorMes > 12) {
+				$cursorMes = 1;
+				$cursorAnio++;
+			}
+		}
+
+		$payloadGrupo = array(
+			"id" => (int) $grupo["id"],
+			"codigo" => $grupo["codigo"],
+			"nombre" => $grupo["nombre"]
+		);
+		$payloadCat = $clasif
+			? array(
+				"id" => (int) $clasif["id_categoria"],
+				"codigo" => $clasif["codigo_categoria"],
+				"nombre" => $clasif["nombre_categoria"]
+			)
+			: null;
+		$payloadSub = $clasif
+			? array(
+				"id" => (int) $clasif["id_subcategoria"],
+				"codigo" => $clasif["codigo_subcategoria"],
+				"nombre" => $clasif["nombre_subcategoria"]
+			)
+			: null;
+
+		return array(
+			"estado" => $clasif ? "ok" : "sin_clasificacion",
+			"grupo" => $payloadGrupo,
+			"categoria" => $payloadCat,
+			"subcategoria" => $payloadSub,
+			"etiquetas" => $etiquetas,
+			"periodos" => $periodos,
+			"grupo_serie" => $serieGrupo,
+			"categoria_serie" => $serieCat,
+			"subcategoria_serie" => $serieSub,
+			"totales" => $totales,
+			"mensaje" => $clasif
+				? null
+				: "Sin clasificación: solo se calcula la evolución del ranking de grupo."
 		);
 	}
 

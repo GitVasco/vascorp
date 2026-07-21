@@ -261,6 +261,31 @@
     white-space: nowrap;
 }
 
+.dd-grupo-tag {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 140px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #2c5282;
+    background: #eaf2fb;
+    border: 1px solid #b8d4f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.dd-grupo-tag i {
+    font-size: 8px;
+    opacity: 0.85;
+}
+
 .dd-aprobar-cat-cliente {
     margin: 0 0 8px;
     font-size: 14px;

@@ -219,6 +219,14 @@ class ControladorGruposEmpresariales
 			// Al entrar al grupo deja de aplicar categoría individual.
 			ControladorCategoriasClientes::ctrCerrarAsignacionEntidad("cliente", $codigoCliente);
 
+			if (class_exists("ControladorLineaCredito")) {
+				try {
+					ControladorLineaCredito::ctrRefrescarTrasCambioMembresiaGrupo($codigoGrupo, $codigoCliente);
+				} catch (Exception $e) {
+					// La asignación ya se guardó; el refresco de línea no debe bloquearla.
+				}
+			}
+
 			$clienteAsignado = ModeloGruposEmpresariales::mdlMostrarClientePorCodigo($codigoCliente);
 			$total = ModeloGruposEmpresariales::mdlContarClientesPorGrupo($codigoGrupo, true);
 			$categoriaGrupo = ControladorCategoriasClientes::ctrCategoriaVigenteGrupo($codigoGrupo);
@@ -306,6 +314,14 @@ class ControladorGruposEmpresariales
 		if ($respuesta === "ok") {
 			// Al salir del grupo queda sin categoría hasta asignación individual.
 			ControladorCategoriasClientes::ctrCerrarAsignacionEntidad("cliente", $codigoCliente);
+
+			if (class_exists("ControladorLineaCredito")) {
+				try {
+					ControladorLineaCredito::ctrRefrescarTrasCambioMembresiaGrupo($grupoReferencia, $codigoCliente);
+				} catch (Exception $e) {
+					// El retiro ya se guardó; el refresco de línea no debe bloquearlo.
+				}
+			}
 
 			$total = $grupoReferencia !== ""
 				? ModeloGruposEmpresariales::mdlContarClientesPorGrupo($grupoReferencia, true)

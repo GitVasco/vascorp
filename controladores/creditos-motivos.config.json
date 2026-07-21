@@ -188,6 +188,31 @@
       "descripcion": "Hay aval o solicitud respaldada por ventas/jefatura."
     },
     {
+      "codigo": "PAGO_CONTADO_CONFIRMADO",
+      "etiqueta": "Pago al contado confirmado",
+      "descripcion": "El cliente paga de contado; se libera el pedido."
+    },
+    {
+      "codigo": "CONTRA_ENTREGA_OK",
+      "etiqueta": "Contra entrega / pago a la entrega",
+      "descripcion": "Condición contra entrega validada para despacho."
+    },
+    {
+      "codigo": "CLIENTE_RECOGE_PAGA",
+      "etiqueta": "Cliente recoge y paga",
+      "descripcion": "Retiro en almacén o agencia con pago inmediato."
+    },
+    {
+      "codigo": "TRANSFERENCIA_VERIFICADA",
+      "etiqueta": "Transferencia / depósito verificado",
+      "descripcion": "Se confirmó el abono o voucher antes de aprobar."
+    },
+    {
+      "codigo": "PEDIDO_CONTADO_OPERATIVO",
+      "etiqueta": "Pedido contado operativo",
+      "descripcion": "Aprobado por flujo operativo de contado (sin evaluación de línea)."
+    },
+    {
       "codigo": "OTRO",
       "etiqueta": "Otro motivo",
       "descripcion": "Motivo no cubierto por el catálogo; conviene detallar en la observación."

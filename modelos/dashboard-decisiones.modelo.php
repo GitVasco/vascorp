@@ -127,7 +127,7 @@ class ModeloDashboardDecisiones
         $sql = "SELECT
                     t.codigo,
                     t.estado,
-                    t.op_gravada AS total,
+                    t.total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente
@@ -281,7 +281,7 @@ class ModeloDashboardDecisiones
                     c.nombre AS cliente,
                     t.vendedor,
                     t.estado,
-                    t.op_gravada AS total,
+                    t.total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_sin_avance,
@@ -411,7 +411,7 @@ class ModeloDashboardDecisiones
                     t.codigo,
                     c.codigo AS cod_cli,
                     c.nombre AS cliente,
-                    t.op_gravada AS total,
+                    t.total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente,
@@ -474,8 +474,10 @@ class ModeloDashboardDecisiones
                     t.vendedor,
                     IFNULL(ven.descripcion, t.vendedor) AS nom_vendedor,
                     t.estado,
-                    t.op_gravada AS total,
+                    t.total,
                     t.lista,
+                    t.condicion_venta,
+                    cv.codigo AS condicion_codigo,
                     cv.descripcion AS condicion,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_pendiente,
@@ -532,7 +534,7 @@ class ModeloDashboardDecisiones
                     c.nombre AS cliente,
                     t.vendedor,
                     t.estado,
-                    t.op_gravada AS total,
+                    t.total,
                     t.lista,
                     DATE(t.fecha) AS fecha,
                     DATEDIFF(CURDATE(), DATE(t.fecha)) AS dias_en_estado
@@ -783,7 +785,7 @@ class ModeloDashboardDecisiones
                     t.estado,
                     t.cliente AS cod_cli,
                     c.nombre AS cliente,
-                    IFNULL(t.op_gravada, t.total) AS total,
+                    IFNULL(t.total, t.op_gravada) AS total,
                     t.lista
                 FROM temporaljf t
                 LEFT JOIN clientesjf c ON t.cliente = c.codigo

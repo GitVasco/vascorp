@@ -28,6 +28,49 @@ class ModeloLineaCredito
                 ), 0) AS deuda_vencida";
     }
 
+    private static function sqlDeudaActualLiveSubquery($aliasCliente = "c")
+    {
+        return "IFNULL((
+                    SELECT SUM(IFNULL(ct.saldo, 0))
+                    FROM cuenta_ctejf ct
+                    WHERE ct.cliente = {$aliasCliente}.codigo
+                      AND ct.tip_mov = '+'
+                      AND UPPER(ct.estado) = 'PENDIENTE'
+                      AND IFNULL(ct.saldo, 0) > 0
+                ), 0) AS deuda_actual";
+    }
+
+    /**
+     * Condición booleana de cartera activa (sin el AND inicial ni estado).
+     * Usada para CASE fuera_cartera sobre miembros ya filtrados por estado=1.
+     */
+    private static function sqlExpresionCarteraActivaSinEstado($aliasCliente = "c")
+    {
+        $tipos = self::sqlTiposVentaIc();
+        $meses = (int) self::MESES_COMPRA_ACTIVA;
+        $excluirContado = self::sqlExcluirVendedoresContado($aliasCliente);
+
+        return "{$aliasCliente}.fecha IS NOT NULL
+            {$excluirContado}
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM ventajf v
+                    WHERE v.cliente = {$aliasCliente}.codigo
+                      AND v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                      AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+                      AND UPPER(TRIM(v.tipo)) IN ({$tipos})
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM temporaljf t
+                    WHERE t.cliente = {$aliasCliente}.codigo
+                      AND t.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
+                      AND UPPER(IFNULL(t.estado, '')) <> 'ANULADO'
+                )
+            )";
+    }
+
     /**
      * Excluye canales de contado / showroom / digital (p. ej. 08, 08C, 08L).
      * Reutiliza la config de IC si está cargada.
@@ -69,31 +112,9 @@ class ModeloLineaCredito
 
     private static function sqlFiltroCarteraActiva($aliasCliente = "c")
     {
-        $tipos = self::sqlTiposVentaIc();
-        $meses = (int) self::MESES_COMPRA_ACTIVA;
-        $excluirContado = self::sqlExcluirVendedoresContado($aliasCliente);
-
         return "
             AND {$aliasCliente}.estado = 1
-            AND {$aliasCliente}.fecha IS NOT NULL
-            {$excluirContado}
-            AND (
-                EXISTS (
-                    SELECT 1
-                    FROM ventajf v
-                    WHERE v.cliente = {$aliasCliente}.codigo
-                      AND v.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
-                      AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
-                      AND UPPER(TRIM(v.tipo)) IN ({$tipos})
-                )
-                OR EXISTS (
-                    SELECT 1
-                    FROM temporaljf t
-                    WHERE t.cliente = {$aliasCliente}.codigo
-                      AND t.fecha >= DATE_SUB(CURDATE(), INTERVAL {$meses} MONTH)
-                      AND UPPER(IFNULL(t.estado, '')) <> 'ANULADO'
-                )
-            )";
+            AND " . self::sqlExpresionCarteraActivaSinEstado($aliasCliente);
     }
 
     static public function mdlClientesCarteraActiva()
@@ -202,7 +223,7 @@ class ModeloLineaCredito
                     lc.linea_operativa,
                     lc.linea_recomendada,
                     lc.linea_aprobada,
-                    lc.deuda_actual,
+                    " . self::sqlDeudaActualLiveSubquery("c") . ",
                     " . self::sqlDeudaVencidaSubquery("c") . ",
                     lc.cupo_disponible,
                     lc.utilizacion_pct,
@@ -212,7 +233,8 @@ class ModeloLineaCredito
                     lc.accion_linea,
                     lc.ultimo_cierre_anio,
                     lc.ultimo_cierre_mes,
-                    lc.fecha_actualizacion
+                    lc.fecha_actualizacion,
+                    0 AS fuera_cartera
                 FROM clientesjf c
                 LEFT JOIN linea_credito_clientejf lc ON lc.codigo_cliente = c.codigo
                 WHERE 1 = 1" . self::sqlFiltroCarteraActiva("c");
@@ -243,6 +265,8 @@ class ModeloLineaCredito
             return array();
         }
 
+        $exprCartera = self::sqlExpresionCarteraActivaSinEstado("c");
+
         $stmt = Conexion::conectar()->prepare(
             "SELECT
                     c.codigo,
@@ -251,7 +275,7 @@ class ModeloLineaCredito
                     lc.linea_operativa,
                     lc.linea_recomendada,
                     lc.linea_aprobada,
-                    lc.deuda_actual,
+                    " . self::sqlDeudaActualLiveSubquery("c") . ",
                     " . self::sqlDeudaVencidaSubquery("c") . ",
                     lc.cupo_disponible,
                     lc.utilizacion_pct,
@@ -259,16 +283,55 @@ class ModeloLineaCredito
                     lc.score_comercial,
                     lc.score_fidelidad,
                     lc.accion_linea,
-                    lc.fecha_actualizacion
+                    lc.fecha_actualizacion,
+                    CASE WHEN ({$exprCartera}) THEN 0 ELSE 1 END AS fuera_cartera
                 FROM clientesjf c
                 LEFT JOIN linea_credito_clientejf lc ON lc.codigo_cliente = c.codigo
-                WHERE c.grupo = :grupo" . self::sqlFiltroCarteraActiva("c") . "
-                ORDER BY c.nombre ASC"
+                WHERE c.grupo = :grupo
+                  AND c.estado = 1
+                ORDER BY
+                    CASE WHEN ({$exprCartera}) THEN 0 ELSE 1 END ASC,
+                    c.nombre ASC"
         );
         $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($filas as &$fila) {
+            $fila["fuera_cartera"] = !empty($fila["fuera_cartera"]) ? 1 : 0;
+            $fila["deuda_actual"] = round((float) $fila["deuda_actual"], 2);
+            $fila["deuda_vencida"] = round((float) $fila["deuda_vencida"], 2);
+        }
+        unset($fila);
+
+        return $filas;
+    }
+
+    static public function mdlCodigosMiembrosGrupo($codigoGrupo)
+    {
+        $codigoGrupo = trim((string) $codigoGrupo);
+
+        if ($codigoGrupo === "") {
+            return array();
+        }
+
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT codigo
+             FROM clientesjf
+             WHERE grupo = :grupo
+               AND estado = 1
+             ORDER BY nombre ASC"
+        );
+        $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $codigos = array();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+            $codigos[] = $fila["codigo"];
+        }
+
+        return $codigos;
     }
 
     static public function mdlClienteLinea($codigoCliente)

@@ -161,6 +161,72 @@ function dcEtiquetaMotivoAprobacion($codigo)
 }
 
 /**
+ * Condiciones de venta tratadas como pago inmediato (contado / contra entrega).
+ */
+function dcCodigosCondicionContado()
+{
+    return array("01", "02");
+}
+
+/**
+ * ¿La condición de venta es al contado / contra entrega?
+ * Acepta código ("01") o descripción ("CONTADO").
+ */
+function dcEsCondicionContado($codigoODescripcion)
+{
+    $valor = strtoupper(trim((string) $codigoODescripcion));
+
+    if ($valor === "") {
+        return false;
+    }
+
+    if (in_array($valor, dcCodigosCondicionContado(), true)) {
+        return true;
+    }
+
+    if (strpos($valor, "CONTADO") !== false || strpos($valor, "CONTRA ENTREGA") !== false) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Filtra motivos de aprobación según contexto: credito | contado.
+ * Sin campo "aplica" → válido en ambos.
+ */
+function dcListarMotivosAprobacionPorContexto($contexto = "credito")
+{
+    $contexto = strtolower(trim((string) $contexto));
+    if ($contexto !== "contado") {
+        $contexto = "credito";
+    }
+
+    $salida = array();
+    foreach (dcListarMotivosAprobacion() as $motivo) {
+        if (!is_array($motivo) || empty($motivo["codigo"])) {
+            continue;
+        }
+
+        if (empty($motivo["aplica"]) || !is_array($motivo["aplica"])) {
+            $salida[] = $motivo;
+            continue;
+        }
+
+        $aplica = array();
+        foreach ($motivo["aplica"] as $item) {
+            $aplica[] = strtolower(trim((string) $item));
+        }
+
+        if (in_array($contexto, $aplica, true)) {
+            $salida[] = $motivo;
+        }
+    }
+
+    return $salida;
+}
+
+/**
  * Etiqueta para bitácora: prueba motivos de no aprobación y de aprobación.
  */
 function dcEtiquetaMotivoAccion($codigo)

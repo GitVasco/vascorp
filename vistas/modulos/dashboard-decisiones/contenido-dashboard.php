@@ -351,13 +351,22 @@ $estadosPipeline = array(
                                                         && dcUsuarioPuedeAprobarPedido()
                                                         && empty($row["decision_credito"])
                                                     ) : ?>
+                                                    <?php
+                                                    $esContadoDash = function_exists("dcEsCondicionContado")
+                                                        && (
+                                                            dcEsCondicionContado(isset($row["condicion_codigo"]) ? $row["condicion_codigo"] : "")
+                                                            || dcEsCondicionContado(isset($row["condicion"]) ? $row["condicion"] : "")
+                                                        );
+                                                    ?>
                                                     <button type="button"
                                                         class="btn btn-xs btn-success btnDdAprobarPedido"
                                                         title="Aprobar pedido"
                                                         data-pedido="<?php echo htmlspecialchars($row["codigo"]); ?>"
                                                         data-cliente="<?php echo htmlspecialchars($row["cliente"]); ?>"
                                                         data-cod-cli="<?php echo htmlspecialchars($row["cod_cli"]); ?>"
-                                                        data-tiene-categoria="<?php echo !empty($row["categoria_codigo"]) ? "1" : "0"; ?>">
+                                                        data-tiene-categoria="<?php echo !empty($row["categoria_codigo"]) ? "1" : "0"; ?>"
+                                                        data-es-contado="<?php echo $esContadoDash ? "1" : "0"; ?>"
+                                                        data-condicion="<?php echo htmlspecialchars(isset($row["condicion"]) ? $row["condicion"] : ""); ?>">
                                                         <i class="fa fa-check"></i>
                                                     </button>
                                                     <?php endif; ?>

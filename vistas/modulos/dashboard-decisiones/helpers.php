@@ -189,6 +189,33 @@ if (!function_exists("ddBadgeCategoriaCorta")) {
     }
 }
 
+if (!function_exists("ddBadgeGrupoCorto")) {
+    function ddBadgeGrupoCorto($fila = null)
+    {
+        if (!is_array($fila)) {
+            return "";
+        }
+
+        $codigoGrupo = isset($fila["codigo_grupo"]) ? trim((string) $fila["codigo_grupo"]) : "";
+        $nombreGrupo = isset($fila["nombre_grupo"]) ? trim((string) $fila["nombre_grupo"]) : "";
+
+        if ($codigoGrupo === "" && $nombreGrupo === "") {
+            return "";
+        }
+
+        $etiqueta = $nombreGrupo !== "" ? $nombreGrupo : $codigoGrupo;
+        $titulo = $codigoGrupo !== "" && $nombreGrupo !== "" && $codigoGrupo !== $nombreGrupo
+            ? ($codigoGrupo . " · " . $nombreGrupo)
+            : $etiqueta;
+
+        return '<span class="dd-grupo-tag" title="'
+            . htmlspecialchars($titulo, ENT_QUOTES, "UTF-8")
+            . '"><i class="fa fa-sitemap"></i> '
+            . htmlspecialchars($etiqueta, ENT_QUOTES, "UTF-8")
+            . "</span>";
+    }
+}
+
 if (!function_exists("ddClienteLinea")) {
     function ddClienteLinea($codigo, $nombre, $categoria = null)
     {
@@ -212,6 +239,11 @@ if (!function_exists("ddClienteLinea")) {
         $badge = ddBadgeCategoriaCorta($categoria);
         if ($badge !== "") {
             $html .= $badge;
+        }
+
+        $badgeGrupo = ddBadgeGrupoCorto($categoria);
+        if ($badgeGrupo !== "") {
+            $html .= $badgeGrupo;
         }
 
         return $html . "</span>";

@@ -204,11 +204,11 @@ function hcFmtMonto($lista, $monto)
                             <table class="table table-hover table-condensed hc-tabla" id="hcTabla">
                                 <thead>
                                     <tr>
-                                        <th>Fecha</th>
+                                        <th class="text-center">Fecha</th>
                                         <th>Tipo</th>
                                         <th>Pedido</th>
                                         <th>Cliente</th>
-                                        <th class="text-right">Monto</th>
+                                        <th class="text-right">Monto c/IGV</th>
                                         <th>Detalle</th>
                                         <th>Usuario</th>
                                     </tr>
@@ -224,7 +224,7 @@ function hcFmtMonto($lista, $monto)
                                     <?php else : ?>
                                         <?php foreach ($filas as $row) : ?>
                                             <tr>
-                                                <td>
+                                                <td class="text-center hc-fecha-cell">
                                                     <span class="hc-fecha"><?php echo htmlspecialchars(date("d/m/Y H:i", strtotime($row["fecha"]))); ?></span>
                                                 </td>
                                                 <td>
@@ -237,11 +237,11 @@ function hcFmtMonto($lista, $monto)
                                                     <span class="hc-cli-cod"><?php echo htmlspecialchars($row["codigo_cliente"]); ?></span>
                                                     <?php echo htmlspecialchars($row["cliente_nombre"]); ?>
                                                 </td>
-                                                <td class="text-right">
-                                                    <?php echo hcFmtMonto(
+                                                <td class="text-right hc-monto">
+                                                    <strong><?php echo hcFmtMonto(
                                                         isset($row["pedido_lista"]) ? $row["pedido_lista"] : "",
                                                         isset($row["pedido_total"]) ? $row["pedido_total"] : null
-                                                    ); ?>
+                                                    ); ?></strong>
                                                 </td>
                                                 <td class="hc-detalle">
                                                     <?php

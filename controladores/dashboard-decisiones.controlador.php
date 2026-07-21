@@ -77,6 +77,12 @@ class ControladorDashboardDecisiones
             $lista = isset($row["lista"]) ? $row["lista"] : "";
             $enSoles = ($lista !== "precio1");
 
+            $condicionCodigo = isset($row["condicion_codigo"]) ? trim((string) $row["condicion_codigo"]) : "";
+            $condicionDesc = isset($row["condicion"]) ? trim((string) $row["condicion"]) : "";
+            $esContado = function_exists("dcEsCondicionContado")
+                && (dcEsCondicionContado($condicionCodigo) || dcEsCondicionContado($condicionDesc));
+            $row["es_contado"] = $esContado ? 1 : 0;
+
             if ($estado === "GENERADO") {
                 $generados[] = $row;
                 if ($enSoles) {
@@ -619,9 +625,11 @@ class ControladorDashboardDecisiones
                 ? $mapa[$codigoCliente]
                 : null;
 
-            $filas[$idx]["categoria_codigo"] = $cat ? $cat["codigo"] : null;
-            $filas[$idx]["categoria_nombre"] = $cat ? $cat["nombre"] : null;
-            $filas[$idx]["categoria_color"] = $cat ? $cat["color"] : null;
+            $filas[$idx]["categoria_codigo"] = ($cat && !empty($cat["codigo"])) ? $cat["codigo"] : null;
+            $filas[$idx]["categoria_nombre"] = ($cat && !empty($cat["nombre"])) ? $cat["nombre"] : null;
+            $filas[$idx]["categoria_color"] = ($cat && isset($cat["color"])) ? $cat["color"] : null;
+            $filas[$idx]["codigo_grupo"] = ($cat && !empty($cat["codigo_grupo"])) ? $cat["codigo_grupo"] : null;
+            $filas[$idx]["nombre_grupo"] = ($cat && !empty($cat["nombre_grupo"])) ? $cat["nombre_grupo"] : null;
         }
 
         return $filas;

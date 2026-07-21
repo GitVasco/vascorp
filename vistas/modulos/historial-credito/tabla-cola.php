@@ -47,7 +47,9 @@ if (!function_exists("hcRenderAccionesPedido")) {
                 . ' data-pedido="' . htmlspecialchars($row["codigo"]) . '"'
                 . ' data-cliente="' . htmlspecialchars($row["cliente"]) . '"'
                 . ' data-cod-cli="' . htmlspecialchars($row["cod_cli"]) . '"'
-                . ' data-tiene-categoria="' . (!empty($row["categoria_codigo"]) ? "1" : "0") . '">'
+                . ' data-tiene-categoria="' . (!empty($row["categoria_codigo"]) ? "1" : "0") . '"'
+                . ' data-es-contado="' . (!empty($row["es_contado"]) ? "1" : "0") . '"'
+                . ' data-condicion="' . htmlspecialchars(isset($row["condicion"]) ? $row["condicion"] : "") . '">'
                 . '<i class="fa fa-check"></i></button>';
         }
 
@@ -99,15 +101,18 @@ if (!function_exists("hcRenderFilasCola")) {
             }
             $html .= "</td>";
             $html .= '<td class="dd-col-cliente"><div class="dd-cell-main dd-cell-cliente" title="'
-                . htmlspecialchars($row["cod_cli"] . " · " . $row["cliente"]) . '">'
+                . htmlspecialchars(
+                    $row["cod_cli"] . " · " . $row["cliente"]
+                    . (!empty($row["nombre_grupo"]) ? (" · " . $row["nombre_grupo"]) : "")
+                ) . '">'
                 . ddClienteLinea($row["cod_cli"], $row["cliente"], $row)
                 . "</div></td>";
             $html .= '<td><div class="dd-cell-main"><span class="dd-cod-cli">'
                 . htmlspecialchars($row["vendedor"]) . "</span> "
                 . htmlspecialchars($row["nom_vendedor"]) . "</div></td>";
             $html .= "<td><small>" . htmlspecialchars($row["condicion"]) . "</small></td>";
-            $html .= "<td>" . ddFormatoMonto($row["lista"], $row["total"]) . "</td>";
-            $html .= "<td>" . htmlspecialchars($row["fecha"]) . "</td>";
+            $html .= '<td class="text-right hc-monto"><strong>' . ddFormatoMonto($row["lista"], $row["total"]) . "</strong></td>";
+            $html .= '<td class="text-center hc-fecha-cell">' . htmlspecialchars($row["fecha"]) . "</td>";
             $html .= '<td><span class="dd-dias dd-dias--'
                 . (((int) $row["dias_pendiente"] >= 2) ? "alto" : "medio") . '">'
                 . (int) $row["dias_pendiente"] . "d</span></td>";
@@ -158,8 +163,8 @@ if (!function_exists("hcRenderFilasCola")) {
                     <th class="dd-col-cliente">Cliente</th>
                     <th>Vendedor</th>
                     <th>Condición</th>
-                    <th>Total</th>
-                    <th>Fecha</th>
+                    <th class="text-right">Total c/IGV</th>
+                    <th class="text-center">Fecha</th>
                     <th>Días</th>
                     <th class="text-center" width="150px"></th>
                 </tr>
@@ -186,8 +191,8 @@ if (!function_exists("hcRenderFilasCola")) {
                     <th class="dd-col-cliente">Cliente</th>
                     <th>Vendedor</th>
                     <th>Condición</th>
-                    <th>Total</th>
-                    <th>Fecha</th>
+                    <th class="text-right">Total c/IGV</th>
+                    <th class="text-center">Fecha</th>
                     <th>Días</th>
                     <th class="text-center" width="150px"></th>
                 </tr>

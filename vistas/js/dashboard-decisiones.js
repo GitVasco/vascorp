@@ -1383,6 +1383,8 @@
         var cliente = $btn.data("cliente") || "";
         var codCli = $btn.data("cod-cli") || "";
         var tieneCategoria = String($btn.data("tiene-categoria") || "0") === "1";
+        var esContado = String($btn.data("es-contado") || "0") === "1";
+        var condicion = $btn.data("condicion") || "";
 
         if (!pedido) {
             return;
@@ -1394,6 +1396,8 @@
                 pedido: pedido,
                 cliente: cliente,
                 codCli: codCli,
+                esContado: esContado,
+                condicion: condicion,
             });
             return;
         }
@@ -1403,6 +1407,8 @@
             pedido: pedido,
             cliente: cliente,
             idCategoria: 0,
+            esContado: esContado,
+            condicion: condicion,
         });
     });
 
@@ -1573,6 +1579,8 @@
             pedido: ctx.pedido,
             cliente: ctx.cliente,
             idCategoria: idCategoria,
+            esContado: !!ctx.esContado,
+            condicion: ctx.condicion || "",
         });
     });
 
@@ -1607,20 +1615,31 @@
             return;
         }
 
+        var esContado = !!ddAprobarPedidoCtx.esContado;
+        var condicion = ddAprobarPedidoCtx.condicion || "";
         var detalle =
             "Pedido " +
             ddAprobarPedidoCtx.pedido +
             (ddAprobarPedidoCtx.cliente
                 ? " · " + ddAprobarPedidoCtx.cliente
-                : "");
+                : "") +
+            (condicion ? " · " + condicion : "");
         $("#ddAprobarPedidoInfo").text(detalle);
 
         var conCategoria = (ddAprobarPedidoCtx.idCategoria || 0) > 0;
-        $("#ddAprobarPedidoHint").text(
-            conCategoria
-                ? "Se asignará la categoría seleccionada. Motivo y observación son opcionales."
-                : "El pedido pasará a APROBADO. Motivo y observación son opcionales."
-        );
+        if (esContado) {
+            $("#ddAprobarPedidoHint").text(
+                conCategoria
+                    ? "Pedido al contado: se asignará la categoría. Motivo y observación son opcionales (incluye motivos de contado)."
+                    : "Pedido al contado. Motivo y observación son opcionales (incluye motivos de contado)."
+            );
+        } else {
+            $("#ddAprobarPedidoHint").text(
+                conCategoria
+                    ? "Se asignará la categoría seleccionada. Motivo y observación son opcionales."
+                    : "El pedido pasará a APROBADO. Motivo y observación son opcionales."
+            );
+        }
         $("#ddAprobarPedidoConfirm").html(
             conCategoria
                 ? '<i class="fa fa-check"></i> Asignar y aprobar'

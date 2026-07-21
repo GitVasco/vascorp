@@ -351,6 +351,33 @@
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35);
 }
 
+.ficha-color-item--inactivo {
+    opacity: 0.55;
+    color: #8a959e;
+}
+
+.ficha-color-item--inactivo i {
+    filter: grayscale(1);
+    border-style: dashed;
+    border-color: #b0b8bf;
+    box-shadow: none;
+    position: relative;
+}
+
+.ficha-color-item--inactivo i::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -2px;
+    right: -2px;
+    border-top: 1.5px solid #8a959e;
+    transform: rotate(-35deg);
+}
+
+.ficha-color-item--inactivo > span {
+    text-decoration: line-through;
+}
+
 .ficha-tallas-disponibles {
     display: flex;
     flex-wrap: wrap;
@@ -1095,6 +1122,46 @@
     color: #3c8dbc;
 }
 
+.ficha-evolucion-ranking-ayuda {
+    margin: 0 0 12px;
+    font-size: 12px;
+}
+
+.ficha-evolucion-ranking-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.ficha-evolucion-ranking-columna {
+    float: none;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin-bottom: 12px;
+}
+
+.ficha-grafico-ranking {
+    position: relative;
+    min-height: 160px;
+    height: 160px;
+    padding: 8px;
+    background: linear-gradient(180deg, #fbfcfd 0%, #fff 100%);
+    border: 1px solid #edf0f2;
+    border-radius: 8px;
+}
+
+.ficha-grafico-ranking canvas {
+    display: block;
+    width: 100% !important;
+    height: 140px !important;
+}
+
+.ficha-rank-vacio {
+    margin-top: 8px;
+    font-size: 12px;
+}
+
 .ficha-comparativo-anual {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1223,15 +1290,19 @@
 
 @media (max-width: 991px) {
     .ficha-evolucion-row,
-    .ficha-evolucion-columna {
+    .ficha-evolucion-columna,
+    .ficha-evolucion-ranking-row {
         display: block;
     }
 
-    .ficha-evolucion-columna {
+    .ficha-evolucion-columna,
+    .ficha-evolucion-ranking-columna {
         float: left;
+        width: 100%;
     }
 
-    .ficha-grafico-compacto {
+    .ficha-grafico-compacto,
+    .ficha-grafico-ranking {
         height: 220px;
         min-height: 220px;
     }

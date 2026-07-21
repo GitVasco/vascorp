@@ -150,7 +150,7 @@ if (is_readable($archivoPaletaFicha)) {
                                 </p>
                                 <div class="ficha-rankings-modelo" id="fichaRankingsModelo">
                                     <div class="ficha-rank-item">
-                                        <span class="ficha-rank-label">Ranking general</span>
+                                        <span class="ficha-rank-label">Ranking grupo</span>
                                         <strong id="fichaRankGeneral">—</strong>
                                     </div>
                                     <div class="ficha-rank-item">
@@ -425,6 +425,41 @@ if (is_readable($archivoPaletaFicha)) {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="box box-primary ficha-zona" id="zonaEvolucionRanking">
+                <div class="box-header with-border">
+                    <h3 class="box-title"><i class="fa fa-line-chart"></i> Evolución de puesto</h3>
+                    <span class="ficha-cargando pull-right"></span>
+                </div>
+                <div class="box-body">
+                    <p class="ficha-evolucion-ranking-ayuda text-muted" id="fichaEvolucionRankingMensaje">
+                        Puesto mensual por ventas netas del mes (grupo, categoría y subcategoría).
+                    </p>
+                    <div class="row ficha-evolucion-ranking-row">
+                        <div class="col-md-4 ficha-evolucion-ranking-columna">
+                            <h5 class="text-center ficha-grafico-titulo"><i class="fa fa-users"></i> Ranking grupo</h5>
+                            <div class="chart ficha-grafico-ranking" data-canvas="graficoRankGrupoFicha">
+                                <canvas id="graficoRankGrupoFicha" height="120"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4 ficha-evolucion-ranking-columna">
+                            <h5 class="text-center ficha-grafico-titulo"><i class="fa fa-folder-open"></i> Ranking categoría</h5>
+                            <div class="chart ficha-grafico-ranking" data-canvas="graficoRankCategoriaFicha">
+                                <canvas id="graficoRankCategoriaFicha" height="120"></canvas>
+                            </div>
+                            <p class="text-center text-muted ficha-rank-vacio" id="fichaRankCatVacio" style="display:none;">Sin clasificación</p>
+                        </div>
+                        <div class="col-md-4 ficha-evolucion-ranking-columna">
+                            <h5 class="text-center ficha-grafico-titulo"><i class="fa fa-tags"></i> Ranking subcategoría</h5>
+                            <div class="chart ficha-grafico-ranking" data-canvas="graficoRankSubcategoriaFicha">
+                                <canvas id="graficoRankSubcategoriaFicha" height="120"></canvas>
+                            </div>
+                            <p class="text-center text-muted ficha-rank-vacio" id="fichaRankSubVacio" style="display:none;">Sin clasificación</p>
+                        </div>
+                    </div>
+                    <p class="ficha-fuente text-muted" style="margin-top:8px;"></p>
                 </div>
             </div>
 

@@ -709,6 +709,41 @@ class ControladorFichaGerencialModelos
 		}
 	}
 
+	static public function ctrEvolucionRanking($post)
+	{
+		try {
+			$ctx = self::ctrContexto($post);
+			if (!$ctx["ok"]) {
+				return $ctx;
+			}
+			$data = ModeloFichaGerencialModelos::mdlEvolucionRanking($ctx["modelo"], $ctx["periodo"]);
+			if ($data === null) {
+				return array("ok" => false, "mensaje" => "No se pudo calcular la evolución del ranking");
+			}
+			return array(
+				"ok" => true,
+				"periodo" => self::ctrPeriodoRespuesta($ctx["periodo"]),
+				"estado" => $data["estado"],
+				"grupo" => $data["grupo"],
+				"categoria" => $data["categoria"],
+				"subcategoria" => $data["subcategoria"],
+				"etiquetas" => $data["etiquetas"],
+				"periodos" => $data["periodos"],
+				"grupo_serie" => $data["grupo_serie"],
+				"categoria_serie" => $data["categoria_serie"],
+				"subcategoria_serie" => $data["subcategoria_serie"],
+				"totales" => $data["totales"],
+				"mensaje" => $data["mensaje"],
+				"meta" => self::ctrMeta(
+					"movimientos + grupos_marcas + clasificación",
+					"Puesto mensual por venta neta dentro del grupo comercial (y cat/sub si aplica); cada mes se rankea de forma independiente"
+				)
+			);
+		} catch (Exception $e) {
+			return array("ok" => false, "mensaje" => "No se pudo cargar la evolución del ranking");
+		}
+	}
+
 	static public function ctrDetalle($post)
 	{
 		try {
