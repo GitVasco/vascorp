@@ -23,19 +23,65 @@
     $linea = $_GET["linea"];
     #var_dump($cliente);
 
-    if ($linea == "1") {
-        $logo = "jackyform_paloma2.png";
-        $vendedor = "'00','00A','00B','01','02','03','04','05','07','07A','14','15','19','21','22','23','24J','25','27','31'";
-    } else if ($linea == "2") {
-        $logo = "rosaflor.png";
-        $vendedor = "'18','18A','24','26','28','30','32'";
-    } else if ($linea == "4") {
-        $logo = "jackyform_paloma2.png";
-        $vendedor = "'22A','26A'";
-    } else {
-        $logo = "jackyform_paloma2.png";
-        $vendedor  = "'00','00A','00B','01','02','03','04','05','07','07A','14','15','18','19','21','22','23','25','18A','24','24J','26','27','28','30','31','32'";
+    /*
+     * Config única de vendedores:
+     * - marca: etiqueta en el detalle (JACKYFORM / ROSAFLOR / VASCO / ELASTICOS)
+     * - opcion: 1 JackyForm | 2 Rosaflor | 4 22A/26A
+     *   La opción 3 (Ambos) = 1 + 2
+     */
+    $configVendedores = [
+        '00'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '00A' => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '00B' => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '01'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '02'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '03'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '04'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '05'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '07'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '07A' => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '14'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '15'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '19'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '21'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '22'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '22A' => ['marca' => 'JACKYFORM', 'opcion' => '4'],
+        '23'  => ['marca' => 'ELASTICOS', 'opcion' => '1'],
+        '24J' => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '25'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '27'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '31'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '18'  => ['marca' => 'VASCO',     'opcion' => '2'],
+        '18A' => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+        '24'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+        '26'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+        '26A' => ['marca' => 'ROSAFLOR',  'opcion' => '4'],
+        '28'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+        '30'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+        '32'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+    ];
+
+    $logosLinea = [
+        '1' => 'jackyform_paloma2.png',
+        '2' => 'rosaflor.png',
+        '3' => 'jackyform_paloma2.png',
+        '4' => 'jackyform_paloma2.png',
+    ];
+
+    $lineaConsulta = in_array($linea, ['1', '2', '3', '4'], true) ? $linea : '3';
+    $logo = $logosLinea[$lineaConsulta];
+
+    $codigos = [];
+    foreach ($configVendedores as $codigo => $cfg) {
+        if ($lineaConsulta === '3') {
+            if ($cfg['opcion'] === '1' || $cfg['opcion'] === '2') {
+                $codigos[] = $codigo;
+            }
+        } elseif ($cfg['opcion'] === $lineaConsulta) {
+            $codigos[] = $codigo;
+        }
     }
+    $vendedor = "'" . implode("','", $codigos) . "'";
 
     $ctaCab = Controladorcuentas::ctrEstadoCuentaCab($cliente, $vendedor);
     #var_dump($ctaCab);
@@ -163,15 +209,10 @@
 
             $montoTotal += $value["monto"];
 
-            if ($value["vendedor"] == "18A" || $value["vendedor"] == "24" || $value["vendedor"] == "26") {
-                $linea = "ROSAFLOR";
-            } else if ($value["vendedor"] == "18") {
-                $linea = "VASCO";
-            } else if ($value["vendedor"] == "23") {
-                $linea = "ELASTICOS";
-            } else {
-                $linea = "JACKYFORM";
-            }
+            $codVendedor = $value["vendedor"];
+            $marcaLinea = isset($configVendedores[$codVendedor])
+                ? $configVendedores[$codVendedor]["marca"]
+                : "JACKYFORM";
 
             if ($value["protesta"] == "SI") {
 
@@ -191,7 +232,7 @@
                                 <td style="width:12%;text-align:left;">' . $value["num_cta"] . '</td>
                                 <td style="width:8%;text-align:left;">' . $value["fecha"] . '</td>
                                 <td style="width:8%;text-align:left;">' . $value["fecha_ven"] . '</td>
-                                <td style="width:12%;text-align:left;">' . $value["vendedor"] . ' - ' . $linea . '</td>
+                                <td style="width:12%;text-align:left;">' . $value["vendedor"] . ' - ' . $marcaLinea . '</td>
                                 <td style="width:8%;text-align:left;">' . $value["num_unico"] . '</td>
                                 <td style="width:8%;text-align:center;">' . $value["banco"] . '</td>
                                 <td style="width:8%;text-align:right;">S/ ' . number_format($value["monto"], 2) . '</td>
