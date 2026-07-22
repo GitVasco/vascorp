@@ -273,10 +273,17 @@ $estadosPipeline = array(
                         <h3 class="box-title">
                             <i class="fa fa-flag"></i> Pendientes de aprobación de crédito
                         </h3>
-                        <span class="label label-warning pull-right"><?php echo count($generados); ?></span>
+                        <div class="dd-header-tools pull-right">
+                            <label class="dd-avance-check"
+                                   title="Mostrar solo pedidos con objeción de crédito vigente">
+                                <input type="checkbox" id="ddFiltroSoloObjecion" value="1">
+                                Solo con objeción
+                            </label>
+                            <span class="label label-warning" id="ddBadgeGenerados"><?php echo count($generados); ?></span>
+                        </div>
                     </div>
                     <div class="box-body table-responsive dd-table-wrap dd-table-wrap--generados dd-box-body-compact">
-                        <table class="table table-hover table-condensed dd-table dd-table-compact">
+                        <table class="table table-hover table-condensed dd-table dd-table-compact" id="ddTablaGenerados">
                             <thead>
                                 <tr>
                                     <th>Pedido</th>
@@ -294,7 +301,8 @@ $estadosPipeline = array(
                                     <tr><td colspan="8" class="text-center text-muted">No hay pedidos GENERADOS pendientes de aprobación.</td></tr>
                                 <?php else : ?>
                                     <?php foreach ($generados as $row) : ?>
-                                        <tr class="<?php echo ((int) $row["cliente_en_mora"] === 1) ? "dd-row-mora" : ""; ?>">
+                                        <tr class="<?php echo ((int) $row["cliente_en_mora"] === 1) ? "dd-row-mora" : ""; ?>"
+                                            data-tiene-objecion="<?php echo !empty($row["decision_credito"]) ? "1" : "0"; ?>">
                                             <td>
                                                 <?php if ((int) $row["cliente_en_mora"] === 1) : ?>
                                                     <i class="fa fa-warning text-danger" title="Cliente con deuda vencida"></i>

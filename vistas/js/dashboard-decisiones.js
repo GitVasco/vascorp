@@ -7,6 +7,7 @@
         motivosAprobacion: [],
     };
     var ddIncluirGeneradosAvance = false;
+    var ddSoloObjecion = false;
     var ddMotivosAprobacionCache = null;
 
     function fmtSolesEntero(value) {
@@ -27,6 +28,51 @@
             return "warn";
         }
         return "bad";
+    }
+
+    function aplicarFiltroSoloObjecion(solo) {
+        ddSoloObjecion = !!solo;
+        var $check = $("#ddFiltroSoloObjecion");
+        if ($check.length) {
+            $check.prop("checked", ddSoloObjecion);
+        }
+
+        var $tbody = $("#ddTablaGenerados tbody");
+        if (!$tbody.length) {
+            return;
+        }
+
+        var $rows = $tbody.find("tr[data-tiene-objecion]");
+        $tbody.find("tr.dd-filtro-objecion-empty").remove();
+
+        if (!$rows.length) {
+            return;
+        }
+
+        var visibles = 0;
+        $rows.each(function () {
+            var tiene = String($(this).attr("data-tiene-objecion") || "") === "1";
+            var mostrar = !ddSoloObjecion || tiene;
+            $(this).toggle(mostrar);
+            if (mostrar) {
+                visibles++;
+            }
+        });
+
+        if (ddSoloObjecion && visibles === 0) {
+            $tbody.append(
+                '<tr class="dd-filtro-objecion-empty">' +
+                    '<td colspan="8" class="text-center text-muted">' +
+                    "No hay pedidos con objeción en la cola." +
+                    "</td></tr>"
+            );
+        }
+
+        var $badge = $("#ddBadgeGenerados");
+        if ($badge.length) {
+            var total = $rows.length;
+            $badge.text(ddSoloObjecion ? visibles + "/" + total : total);
+        }
     }
 
     function aplicarAvanceIncluirGenerados(incluir) {
@@ -1083,6 +1129,7 @@
 
                 $("#ddContenidoDashboard").html(resp.html);
                 aplicarAvanceIncluirGenerados(ddIncluirGeneradosAvance);
+                aplicarFiltroSoloObjecion(ddSoloObjecion);
 
                 if (opciones.actualizarUrl) {
                     if (window.history && window.history.replaceState) {
@@ -1137,7 +1184,12 @@
             aplicarAvanceIncluirGenerados($(this).is(":checked"));
         });
 
+        $(document).on("change", "#ddFiltroSoloObjecion", function () {
+            aplicarFiltroSoloObjecion($(this).is(":checked"));
+        });
+
         aplicarAvanceIncluirGenerados(false);
+        aplicarFiltroSoloObjecion(false);
         $("#btnDdActualizar").on("click", function () {
             refrescarDashboard($("#ddFiltroVendedor").val(), { actualizarUrl: false });
         });
