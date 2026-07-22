@@ -1552,4 +1552,182 @@ class ModeloFichaGerencialModelos
 		$stmt->execute();
 		return $stmt->fetch(PDO::FETCH_ASSOC);
 	}
+
+	/**
+	 * Tela principal del modelo: receta PUBLICADA vigente, o fallback a tarjetas (tej_princ=si).
+	 * @return array|null { etiqueta, codigo_sublinea, mp_codigo, fuente }
+	 */
+	static public function mdlTelaPrincipalModelo($modelo)
+	{
+		$modelo = trim((string) $modelo);
+		if ($modelo === "") {
+			return null;
+		}
+
+		try {
+			$fecha = date("Y-m-d");
+			$stmt = Conexion::conectar()->prepare(
+				"SELECT r.id AS id_receta, r.version,
+					d.id AS id_detalle,
+					IFNULL(d.nombre_rol, '') AS nombre_rol,
+					IFNULL(d.codigo_sublinea, '') AS codigo_sublinea,
+					IFNULL(d.mp_base_codigo, '') AS mp_base_codigo
+				 FROM recetas_modelo r
+				 INNER JOIN recetas_modelo_detalles d
+				   ON d.id_receta_modelo = r.id
+				  AND d.activo = 1
+				  AND d.es_tela_principal = 1
+				 WHERE TRIM(r.modelo) = :modelo
+				   AND r.estado = 'PUBLICADA'
+				   AND (r.vigente_desde IS NULL OR r.vigente_desde <= :fecha1)
+				   AND (r.vigente_hasta IS NULL OR r.vigente_hasta >= :fecha2)
+				 ORDER BY r.version DESC, d.orden ASC, d.id ASC
+				 LIMIT 1"
+			);
+			$stmt->bindValue(":modelo", $modelo, PDO::PARAM_STR);
+			$stmt->bindValue(":fecha1", $fecha, PDO::PARAM_STR);
+			$stmt->bindValue(":fecha2", $fecha, PDO::PARAM_STR);
+			$stmt->execute();
+			$receta = $stmt->fetch(PDO::FETCH_ASSOC);
+
+			if ($receta) {
+				$mpCodigo = trim((string) $receta["mp_base_codigo"]);
+				$mpDesc = "";
+				$mpColor = "";
+
+				$stmtMp = Conexion::conectar()->prepare(
+					"SELECT
+						TRIM(v.mp_codigo) AS mp_codigo,
+						COUNT(*) AS veces,
+						IFNULL(MAX(p.DesPro), '') AS descripcion,
+						IFNULL(MAX(tc.Des_Larga), '') AS color
+					 FROM recetas_modelo_variantes v
+					 LEFT JOIN producto p ON TRIM(p.CodPro) = TRIM(v.mp_codigo)
+					 LEFT JOIN Tabla_M_Detalle tc
+					   ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro
+					 WHERE v.id_receta_modelo_detalle = :id_det
+					   AND TRIM(IFNULL(v.mp_codigo, '')) <> ''
+					 GROUP BY TRIM(v.mp_codigo)
+					 ORDER BY veces DESC, mp_codigo ASC
+					 LIMIT 1"
+				);
+				$stmtMp->bindValue(":id_det", (int) $receta["id_detalle"], PDO::PARAM_INT);
+				$stmtMp->execute();
+				$mpRow = $stmtMp->fetch(PDO::FETCH_ASSOC);
+				if ($mpRow) {
+					$mpCodigo = trim((string) $mpRow["mp_codigo"]);
+					$mpDesc = trim((string) $mpRow["descripcion"]);
+					$mpColor = trim((string) $mpRow["color"]);
+				} elseif ($mpCodigo !== "") {
+					$info = self::mdlInfoMpBasica($mpCodigo);
+					if ($info) {
+						$mpDesc = $info["descripcion"];
+						$mpColor = $info["color"];
+					}
+				}
+
+				$nombreRol = trim((string) $receta["nombre_rol"]);
+				$sub = trim((string) $receta["codigo_sublinea"]);
+				if ($nombreRol === "Tela principal") {
+					$nombreRol = "";
+				}
+
+				$etiqueta = $mpDesc !== "" ? $mpDesc : ($nombreRol !== "" ? $nombreRol : $sub);
+				if ($etiqueta === "") {
+					$etiqueta = $mpCodigo !== "" ? $mpCodigo : "Sin nombre";
+				}
+				if ($mpColor !== "" && stripos($etiqueta, $mpColor) === false) {
+					$etiqueta .= " · " . $mpColor;
+				}
+				if ($sub !== "" && stripos($etiqueta, $sub) === false) {
+					$etiqueta .= " · " . $sub;
+				}
+
+				return array(
+					"etiqueta" => $etiqueta,
+					"codigo_sublinea" => $sub !== "" ? $sub : null,
+					"mp_codigo" => $mpCodigo !== "" ? $mpCodigo : null,
+					"fuente" => "receta",
+					"version_receta" => (int) $receta["version"],
+				);
+			}
+		} catch (Exception $e) {
+			// Tabla de recetas aún no desplegada u otro error: seguir con tarjetas
+		}
+
+		try {
+			// Fallback: tarjetas (tej_princ = si) en artículos activos del modelo
+			$stmtT = Conexion::conectar()->prepare(
+				"SELECT
+					TRIM(dt.mat_pri) AS mp_codigo,
+					COUNT(*) AS veces,
+					IFNULL(MAX(p.DesPro), '') AS descripcion,
+					IFNULL(MAX(tc.Des_Larga), '') AS color,
+					LEFT(TRIM(IFNULL(MAX(p.CodFab), '')), 6) AS codigo_sublinea
+				 FROM articulojf a
+				 INNER JOIN detalles_tarjetajf dt ON dt.articulo = a.articulo
+				 LEFT JOIN producto p ON TRIM(p.CodPro) = TRIM(dt.mat_pri)
+				 LEFT JOIN Tabla_M_Detalle tc
+				   ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro
+				 WHERE TRIM(a.modelo) = :modelo
+				   AND UPPER(TRIM(IFNULL(a.estado, ''))) = 'ACTIVO'
+				   AND LOWER(TRIM(IFNULL(dt.tej_princ, ''))) IN ('si', 's', '1')
+				   AND TRIM(IFNULL(dt.mat_pri, '')) <> ''
+				 GROUP BY TRIM(dt.mat_pri)
+				 ORDER BY veces DESC, mp_codigo ASC
+				 LIMIT 1"
+			);
+			$stmtT->bindValue(":modelo", $modelo, PDO::PARAM_STR);
+			$stmtT->execute();
+			$tarj = $stmtT->fetch(PDO::FETCH_ASSOC);
+			if (!$tarj) {
+				return null;
+			}
+
+			$mpCodigo = trim((string) $tarj["mp_codigo"]);
+			$mpDesc = trim((string) $tarj["descripcion"]);
+			$mpColor = trim((string) $tarj["color"]);
+			$sub = trim((string) $tarj["codigo_sublinea"]);
+			$etiqueta = $mpDesc !== "" ? $mpDesc : $mpCodigo;
+			if ($mpColor !== "" && stripos($etiqueta, $mpColor) === false) {
+				$etiqueta .= " · " . $mpColor;
+			}
+			if ($sub !== "" && stripos($etiqueta, $sub) === false) {
+				$etiqueta .= " · " . $sub;
+			}
+
+			return array(
+				"etiqueta" => $etiqueta,
+				"codigo_sublinea" => $sub !== "" ? $sub : null,
+				"mp_codigo" => $mpCodigo !== "" ? $mpCodigo : null,
+				"fuente" => "tarjetas",
+				"version_receta" => null,
+			);
+		} catch (Exception $e) {
+			return null;
+		}
+	}
+
+	static private function mdlInfoMpBasica($mpCodigo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT IFNULL(p.DesPro, '') AS descripcion,
+				IFNULL(tc.Des_Larga, '') AS color
+			 FROM producto p
+			 LEFT JOIN Tabla_M_Detalle tc
+			   ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro
+			 WHERE TRIM(p.CodPro) = :mp
+			 LIMIT 1"
+		);
+		$stmt->bindValue(":mp", trim((string) $mpCodigo), PDO::PARAM_STR);
+		$stmt->execute();
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$row) {
+			return null;
+		}
+		return array(
+			"descripcion" => trim((string) $row["descripcion"]),
+			"color" => trim((string) $row["color"]),
+		);
+	}
 }

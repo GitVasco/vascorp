@@ -99,6 +99,12 @@ if ($accion === "duplicarVersion") {
 	return;
 }
 
+if ($accion === "eliminarBorrador") {
+	$id = isset($_POST["id_receta"]) ? (int) $_POST["id_receta"] : 0;
+	echo json_encode(ControladorRecetasModelo::ctrEliminarBorrador($id));
+	return;
+}
+
 if ($accion === "importarDesdeTarjetas") {
 	$modelo = isset($_POST["modelo"]) ? $_POST["modelo"] : "";
 	echo json_encode(ControladorRecetasModelo::ctrImportarDesdeTarjetas($modelo));

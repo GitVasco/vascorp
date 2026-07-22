@@ -58,9 +58,9 @@ if (!isset($_SESSION["tarjetas"]) || (int) $_SESSION["tarjetas"] !== 1) {
 								<th>Art. activos</th>
 								<th>Líneas</th>
 								<th>Tela principal</th>
-								<th>Alerta</th>
+								<th>Art. sin receta</th>
 								<th>Actualizado</th>
-								<th style="width:220px;">Acciones</th>
+								<th style="width:160px; min-width:160px;">Acciones</th>
 							</tr>
 						</thead>
 						<tbody></tbody>
@@ -103,8 +103,9 @@ if (!isset($_SESSION["tarjetas"]) || (int) $_SESSION["tarjetas"] !== 1) {
 			<div class="modal-body">
 				<div class="form-group">
 					<label for="importModeloReceta">Modelo</label>
-					<select class="form-control" id="importModeloReceta">
-						<option value="">Cargando…</option>
+					<select class="form-control selectpicker" id="importModeloReceta"
+						data-live-search="true" data-size="10" data-width="100%"
+						title="Elegir modelo…">
 					</select>
 					<p class="help-block" style="margin-bottom:0;">
 						Solo aparecen modelos con tarjetas que <strong>aún no tienen receta</strong>.

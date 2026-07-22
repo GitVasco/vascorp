@@ -829,4 +829,63 @@ class ModeloRecetasModelo
 			return false;
 		}
 	}
+
+	/*=============================================
+	Eliminar BORRADOR completo (cabecera + líneas + variantes)
+	=============================================*/
+	static public function mdlEliminarBorrador($idReceta)
+	{
+		$pdo = Conexion::conectar();
+		$pdo->beginTransaction();
+
+		try {
+			$stmt = $pdo->prepare(
+				"SELECT id, estado FROM recetas_modelo WHERE id = :id LIMIT 1 FOR UPDATE"
+			);
+			$stmt->bindValue(":id", (int) $idReceta, PDO::PARAM_INT);
+			$stmt->execute();
+			$cab = $stmt->fetch(PDO::FETCH_ASSOC);
+			if (!$cab) {
+				throw new Exception("Receta no encontrada");
+			}
+			if ($cab["estado"] !== "BORRADOR") {
+				throw new Exception("Solo se puede eliminar un BORRADOR");
+			}
+
+			$ids = array();
+			$stmtIds = $pdo->prepare(
+				"SELECT id FROM recetas_modelo_detalles WHERE id_receta_modelo = :id"
+			);
+			$stmtIds->bindValue(":id", (int) $idReceta, PDO::PARAM_INT);
+			$stmtIds->execute();
+			foreach ($stmtIds->fetchAll(PDO::FETCH_ASSOC) as $row) {
+				$ids[] = (int) $row["id"];
+			}
+
+			if (!empty($ids)) {
+				$placeholders = implode(",", array_fill(0, count($ids), "?"));
+				$delVar = $pdo->prepare(
+					"DELETE FROM recetas_modelo_variantes
+					 WHERE id_receta_modelo_detalle IN ($placeholders)"
+				);
+				$delVar->execute($ids);
+
+				$delDet = $pdo->prepare(
+					"DELETE FROM recetas_modelo_detalles WHERE id_receta_modelo = ?"
+				);
+				$delDet->execute(array((int) $idReceta));
+			}
+
+			$delCab = $pdo->prepare("DELETE FROM recetas_modelo WHERE id = ?");
+			$delCab->execute(array((int) $idReceta));
+
+			$pdo->commit();
+			return true;
+		} catch (Exception $e) {
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+			return false;
+		}
+	}
 }

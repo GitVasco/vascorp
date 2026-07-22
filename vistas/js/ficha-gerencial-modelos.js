@@ -9,6 +9,8 @@ var fichaGraficosRanking = {
 var fichaCatalogoGeneracion = 0;
 var fichaResumenActual = null;
 var fichaRankingPendiente = null;
+var fichaLideresPendiente = null;
+var fichaRankingsVariantesPendiente = null;
 
 function fichaEscapar(valor) {
     return $("<div>").text(valor === null || valor === undefined ? "" : String(valor)).html();
@@ -330,6 +332,26 @@ function fichaActualizarUrl(parametros) {
     window.history.replaceState({}, "", url);
 }
 
+function fichaBindModeloChange() {
+    var $modelo = $("#fichaFiltroModelo");
+    $modelo.off("change.fichaAuto changed.bs.select.fichaAuto");
+    // selectpicker dispara changed.bs.select; el change nativo a veces no basta
+    if (typeof $modelo.selectpicker === "function") {
+        $modelo.on("changed.bs.select.fichaAuto", fichaCargarTodo);
+    } else {
+        $modelo.on("change.fichaAuto", fichaCargarTodo);
+    }
+}
+
+function fichaLimpiarCajasLideres() {
+    $("#fichaColorLiderNombre, #fichaColorLiderParticipacion, #fichaColorLiderVentas, #fichaColorLiderUtilidad").text("—");
+    $("#fichaTallaLiderNombre, #fichaTallaLiderParticipacion, #fichaTallaLiderRotacion, #fichaTallaLiderMargen").text("—");
+    $("#fichaZonaLiderNombre, #fichaZonaLiderParticipacion, #fichaZonaLiderVentas, #fichaZonaLiderUnidades").text("—");
+    $("#fichaVendedorLiderNombre, #fichaVendedorLiderParticipacion, #fichaVendedorLiderVentas").text("—");
+    $("#fichaVendedorLiderUtilidad").text("—");
+    $("#fichaClienteLiderNombre, #fichaClienteLiderVentas, #fichaClienteLiderUnidades, #fichaClienteLiderUltimaCompra").text("—");
+}
+
 function fichaCargarCatalogo(seleccionarModelo, cargarDespues) {
     fichaCatalogoGeneracion++;
     var generacionCatalogo = fichaCatalogoGeneracion;
@@ -351,7 +373,6 @@ function fichaCargarCatalogo(seleccionarModelo, cargarDespues) {
         (resp.modelos || []).forEach(function (item) {
             $modelos.append($("<option>").val(item.modelo).text(item.modelo + " — " + item.nombre));
         });
-        $("#fichaFiltroModelo").off("change.fichaAuto");
         if (seleccionarModelo) {
             $modelos.val(String(seleccionarModelo));
         }
@@ -361,7 +382,7 @@ function fichaCargarCatalogo(seleccionarModelo, cargarDespues) {
         if (typeof $modelos.selectpicker === "function") {
             $modelos.selectpicker("refresh");
         }
-        $("#fichaFiltroModelo").on("change.fichaAuto", fichaCargarTodo);
+        fichaBindModeloChange();
         if (cargarDespues && $modelos.val()) {
             fichaCargarTodo();
         }
@@ -419,9 +440,18 @@ function fichaRenderResumen(resp) {
         ? fichaNumero(renta.margen_pct, 1) + "%"
         : "");
 
-    // Si el ranking llegó antes que el resumen, aplicarlo ahora
+    var tela = resp.tela_principal || null;
+    $("#preguntaTelaPrincipal").text(tela && tela.etiqueta ? tela.etiqueta : "Sin dato");
+
+    // Reaplicar bloques que dependen del resumen (pueden haber llegado antes)
     if (fichaRankingPendiente) {
         fichaAplicarRanking(fichaRankingPendiente);
+    }
+    if (fichaLideresPendiente) {
+        fichaRenderLideresComerciales(fichaLideresPendiente);
+    }
+    if (fichaRankingsVariantesPendiente) {
+        fichaRenderLideres(fichaRankingsVariantesPendiente);
     }
 }
 
@@ -526,6 +556,7 @@ function fichaRenderRanking(resp) {
 }
 
 function fichaRenderLideresComerciales(resp) {
+    fichaLideresPendiente = resp || null;
     var base = fichaResumenActual || resp;
     var lideres = resp.lideres_comerciales || {};
     var zona = lideres.zona || null;
@@ -928,6 +959,7 @@ function fichaRenderPreguntasVariantes(resp) {
 }
 
 function fichaRenderLideres(resp) {
+    fichaRankingsVariantesPendiente = resp || null;
     var color = resp.colores && resp.colores.length ? resp.colores[0] : null;
     var talla = resp.tallas && resp.tallas.length ? resp.tallas[0] : null;
     var totalVentas = Number(resp.total_ventas || 0);
@@ -1330,10 +1362,13 @@ function fichaCargarTodo() {
         return;
     }
     fichaLimpiarPreguntasRapidas();
+    fichaLimpiarCajasLideres();
     fichaGeneracion++;
     var generacion = fichaGeneracion;
     fichaResumenActual = null;
     fichaRankingPendiente = null;
+    fichaLideresPendiente = null;
+    fichaRankingsVariantesPendiente = null;
     fichaAbortarSolicitudes();
     fichaActualizarUrl(parametros);
     $("#fichaMensajeGlobal").removeClass("alert-danger").addClass("alert-info").text("Cargando ficha...").show();
@@ -1367,7 +1402,7 @@ function fichaCargarTodo() {
 }
 
 $("#btnCargarFichaModelo").on("click", fichaCargarTodo);
-$("#fichaFiltroModelo").on("change.fichaAuto", fichaCargarTodo);
+fichaBindModeloChange();
 $("#fichaFiltroMarca").on("change", function () {
     fichaCargarCatalogo("", true);
 });

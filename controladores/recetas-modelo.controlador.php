@@ -64,7 +64,36 @@ class ControladorRecetasModelo
 		}
 
 		$lista = ModeloRecetasModelo::mdlListar($modelo, $estado);
-		return self::respuesta(true, "", $lista ? $lista : array());
+		if (!$lista) {
+			return self::respuesta(true, "", array());
+		}
+
+		require_once dirname(__FILE__) . "/../modelos/recetas-modelo.resolucion.php";
+		$cacheArts = array();
+		foreach ($lista as &$row) {
+			$idReceta = (int) $row["id"];
+			$mod = isset($row["modelo"]) ? $row["modelo"] : "";
+			if (!isset($cacheArts[$mod])) {
+				$arts = ModeloRecetasModelo::mdlArticulosActivosModelo($mod);
+				$cacheArts[$mod] = $arts ? $arts : array();
+			}
+			$estructura = self::cargarEstructuraReceta($idReceta, true);
+			if (!$estructura || !count($estructura["lineas"])) {
+				$row["articulos_sin_receta"] = count($cacheArts[$mod]);
+				continue;
+			}
+			$cobertura = ServicioRecetasModeloResolucion::validarCobertura(
+				$estructura["lineas"],
+				$estructura["variantes_por_detalle"],
+				$cacheArts[$mod],
+				$estructura["mp_info"],
+				true
+			);
+			$row["articulos_sin_receta"] = isset($cobertura["alertas"]) ? (int) $cobertura["alertas"] : 0;
+		}
+		unset($row);
+
+		return self::respuesta(true, "", $lista);
 	}
 
 	/*=============================================
@@ -672,6 +701,31 @@ class ControladorRecetasModelo
 	}
 
 	/*=============================================
+	Eliminar borrador (para corregir import / reimportar)
+	=============================================*/
+	static public function ctrEliminarBorrador($idReceta)
+	{
+		$idReceta = (int) $idReceta;
+		$cabecera = ModeloRecetasModelo::mdlObtenerCabecera($idReceta);
+		if (!$cabecera) {
+			return self::respuesta(false, "Receta no encontrada");
+		}
+		if ($cabecera["estado"] !== "BORRADOR") {
+			return self::respuesta(false, "Solo se puede eliminar un BORRADOR. Si está publicada, crea nueva versión o archívala primero.");
+		}
+
+		$ok = ModeloRecetasModelo::mdlEliminarBorrador($idReceta);
+		if (!$ok) {
+			return self::respuesta(false, "No se pudo eliminar el borrador");
+		}
+
+		return self::respuesta(true, "Borrador eliminado", array(
+			"id" => $idReceta,
+			"modelo" => $cabecera["modelo"],
+		));
+	}
+
+	/*=============================================
 	Modelos disponibles para importar (tienen tarjetas, sin receta)
 	=============================================*/
 	static public function ctrListarModelosImportTarjetas()
@@ -914,9 +968,8 @@ class ControladorRecetasModelo
 			}
 
 			$esTela = ($telaKey !== null && $k === $telaKey) ? 1 : 0;
-			if ($esTela) {
-				$nombreRol = "Tela principal";
-			}
+			// No renombrar a "Tela principal": el flag es_tela_principal basta
+			// (si no, al cambiar la tela el nombre viejo queda mal en la explosión).
 
 			$lineas[] = array(
 				"orden" => $orden,

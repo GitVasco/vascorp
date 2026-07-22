@@ -301,9 +301,12 @@ $estadosPipeline = array(
                                                 <?php endif; ?>
                                                 <strong><?php echo htmlspecialchars($row["codigo"]); ?></strong>
                                                 <?php if (!empty($row["decision_credito"])) : ?>
-                                                    <span class="label label-danger dd-motivo-badge"
-                                                          title="<?php echo htmlspecialchars($row["decision_credito"]["motivo_etiqueta"]); ?>">
-                                                        <i class="fa fa-ban"></i>
+                                                    <span class="label label-warning dd-motivo-badge"
+                                                          title="<?php echo htmlspecialchars(
+                                                              "Objeción — pedido sigue en GENERADO · "
+                                                              . $row["decision_credito"]["motivo_etiqueta"]
+                                                          ); ?>">
+                                                        <i class="fa fa-exclamation-triangle"></i>
                                                     </span>
                                                 <?php endif; ?>
                                             </td>
@@ -338,8 +341,10 @@ $estadosPipeline = array(
                                                             <i class="fa fa-user-circle"></i>
                                                         </button>
                                                         <button type="button"
-                                                            class="btn btn-xs <?php echo !empty($row["decision_credito"]) ? "btn-danger" : "btn-warning"; ?> btnDdDecisionCredito"
-                                                            title="Decisión de crédito"
+                                                            class="btn btn-xs btn-warning btnDdDecisionCredito"
+                                                            title="<?php echo !empty($row["decision_credito"])
+                                                                ? "Objeción vigente (pedido en GENERADO)"
+                                                                : "Decisión de crédito"; ?>"
                                                             data-cliente="<?php echo htmlspecialchars($row["cod_cli"]); ?>"
                                                             data-pedido="<?php echo htmlspecialchars($row["codigo"]); ?>"
                                                             data-nombre="<?php echo htmlspecialchars($row["cliente"]); ?>">

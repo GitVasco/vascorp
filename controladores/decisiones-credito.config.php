@@ -478,9 +478,9 @@ function dcClaseTipoAccion($tipo)
 {
     $map = array(
         "APROBADO" => "success",
-        "OBJECION" => "danger",
-        "OBJECION_CERRADA" => "warning",
-        "ANULADO" => "default",
+        "OBJECION" => "warning",
+        "OBJECION_CERRADA" => "info",
+        "ANULADO" => "danger",
         "CATEGORIA_ASIGNADA" => "info",
     );
 

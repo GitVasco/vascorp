@@ -503,13 +503,16 @@
             '<div class="dd-dc-alert dd-dc-alert--' +
             severidadClase(decision.motivo_severidad) +
             '">' +
-            '<div class="dd-dc-alert__icon"><i class="fa fa-ban"></i></div>' +
+            '<div class="dd-dc-alert__icon"><i class="fa fa-exclamation-triangle"></i></div>' +
             '<div class="dd-dc-alert__body">' +
-            "<strong>No aprobado:</strong> " +
+            "<strong>Objeción de crédito:</strong> " +
             escapeHtml(decision.motivo_etiqueta) +
             (decision.comentario
                 ? '<p class="dd-dc-alert__text">' + escapeHtml(decision.comentario) + "</p>"
                 : "") +
+            '<p class="dd-dc-alert__text text-muted" style="margin-top:4px;margin-bottom:0;">' +
+            '<i class="fa fa-info-circle"></i> El pedido permanece en <strong>GENERADO</strong> (no se anula).' +
+            "</p>" +
             '<span class="dd-dc-alert__meta">' +
             escapeHtml(decision.usuario_registro_nombre || "—") +
             " · " +
@@ -737,8 +740,8 @@
             "<label>Detalle</label>" +
             '<textarea class="form-control input-sm" name="comentario" rows="2" placeholder="Contexto para ventas…"></textarea>' +
             "</div></div></div>" +
-            '<button type="submit" class="btn btn-danger btn-sm dd-dc-btn-submit">' +
-            '<i class="fa fa-save"></i> Guardar motivo' +
+            '<button type="submit" class="btn btn-warning btn-sm dd-dc-btn-submit">' +
+            '<i class="fa fa-save"></i> Guardar objeción' +
             "</button></form></div>"
         );
     }
@@ -860,7 +863,7 @@
             '<ul class="dd-decision-timeline">';
             eventos.forEach(function (ev) {
                 var icono = "fa-circle";
-                if (ev.tipo_evento === "DECISION_REGISTRADA") icono = "fa-ban";
+                if (ev.tipo_evento === "DECISION_REGISTRADA") icono = "fa-exclamation-triangle";
                 if (ev.tipo_evento === "SOLICITUD_CREADA") icono = "fa-paper-plane";
                 if (ev.tipo_evento === "SOLICITUD_RESUELTA") icono = "fa-gavel";
                 if (ev.tipo_evento === "DECISION_CERRADA") icono = "fa-check";
@@ -1253,7 +1256,11 @@
                     return;
                 }
                 mostrarDecisionCredito(resp);
-                swal("Registrado", "Motivo de no aprobación guardado.", "success");
+                swal(
+                    "Registrado",
+                    "Objeción guardada. El pedido permanece en GENERADO (no se anuló).",
+                    "success"
+                );
             })
             .fail(function () {
                 swal("Error", "No se pudo registrar la decisión.", "error");

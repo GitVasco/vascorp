@@ -1124,24 +1124,21 @@
 
             <?php endif ?>
 
-            <!-- Tarjetas-->
+            <!-- Recetas (permiso tarjetas) -->
             <?php
             if ($_SESSION["tarjetas"] == 1) {
             ?>
 
                 <li class="treeview <?php if (
-                                        $_GET["ruta"] == "tarjetas" ||
-                                        $_GET["ruta"] == "ficha-tecnica" ||
-                                        $_GET["ruta"] == "crear-tarjeta" ||
                                         $_GET["ruta"] == "recetas-modelo" ||
                                         $_GET["ruta"] == "editar-receta-modelo"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
 
-                        <i class="fa fa-id-card-o text-primary"></i>
+                        <i class="fa fa-cubes text-primary"></i>
 
-                        <span>Tarjetas</span>
+                        <span>Recetas</span>
 
                         <span class="pull-right-container">
 
@@ -1153,16 +1150,6 @@
 
                     <ul class="treeview-menu">
 
-                        <li class="<?php if ($_GET["ruta"] == "tarjetas") echo 'active'; ?>">
-
-                            <a href="tarjetas">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Administrar Tarjetas</span>
-
-                            </a>
-
-                        </li>
                         <li class="<?php if (
                                         $_GET["ruta"] == "recetas-modelo" ||
                                         $_GET["ruta"] == "editar-receta-modelo"
@@ -1172,26 +1159,6 @@
 
                                 <i class="fa fa-circle-o"></i>
                                 <span>Recetas por modelo</span>
-
-                            </a>
-
-                        </li>
-                        <li class="<?php if ($_GET["ruta"] == "ficha-tecnica") echo 'active'; ?>">
-
-                            <a href="ficha-tecnica">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Fichas tecnicas</span>
-
-                            </a>
-
-                        </li>
-                        <li class="<?php if ($_GET["ruta"] == "crear-tarjeta") echo 'active'; ?>">
-
-                            <a href="crear-tarjeta">
-
-                                <i class="fa fa-circle-o"></i>
-                                <span>Crear Tarjeta</span>
 
                             </a>
 

@@ -413,6 +413,7 @@ class ServicioRecetasModeloResolucion
 				$mapa[$mp] = array(
 					"mp_codigo" => $mp,
 					"mp_descripcion" => isset($row["mp_descripcion"]) ? $row["mp_descripcion"] : null,
+					"mp_color" => isset($row["mp_color"]) ? $row["mp_color"] : null,
 					"unidad" => isset($row["mp_unidad"]) ? $row["mp_unidad"] : $row["unidad"],
 					"consumo_unitario" => 0.0,
 					"consumo_total" => 0.0,

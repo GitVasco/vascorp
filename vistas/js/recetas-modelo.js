@@ -5,11 +5,13 @@ var RM = {
 	estado: null,
 	articulos: [],
 	lineaIdx: null,
+	lineaAnteriorIdx: null,
 	mpActiva: null,
 	mpActivaUnd: "",
 	mpActivaColor: "",
 	mpCache: {},
-	dirty: false
+	dirty: false,
+	_ctxFlashTimer: null
 };
 
 function rmEsc(v) {
@@ -161,12 +163,13 @@ function rmCargarListado() {
 		var html = "";
 		lista.forEach(function (r) {
 			var id = Number(r.id);
-			var botones = "<div class='btn-group'>"
-				+ "<a class='btn btn-xs btn-primary' href='index.php?ruta=editar-receta-modelo&idReceta=" + id + "'><i class='fa fa-pencil'></i></a>"
+			var botones = "<div class='btn-group' style='display:inline-flex; flex-wrap:nowrap; white-space:nowrap;'>"
+				+ "<a class='btn btn-xs btn-primary' href='index.php?ruta=editar-receta-modelo&idReceta=" + id + "' title='Editar'><i class='fa fa-pencil'></i></a>"
 				+ "<button type='button' class='btn btn-xs btn-info btnPreviewRecetaLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' title='Previsualizar'><i class='fa fa-eye'></i></button>"
-				+ "<button type='button' class='btn btn-xs btn-warning btnDuplicarRecetaLista' data-id='" + id + "'><i class='fa fa-copy'></i></button>";
+				+ "<button type='button' class='btn btn-xs btn-warning btnDuplicarRecetaLista' data-id='" + id + "' title='Duplicar'><i class='fa fa-copy'></i></button>";
 			if (r.estado === "BORRADOR") {
-				botones += "<button type='button' class='btn btn-xs btn-success btnPublicarRecetaLista' data-id='" + id + "'><i class='fa fa-check'></i></button>";
+				botones += "<button type='button' class='btn btn-xs btn-success btnPublicarRecetaLista' data-id='" + id + "' title='Publicar'><i class='fa fa-check'></i></button>";
+				botones += "<button type='button' class='btn btn-xs btn-danger btnEliminarBorradorLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' title='Eliminar borrador'><i class='fa fa-trash'></i></button>";
 			}
 			botones += "</div>";
 
@@ -174,11 +177,18 @@ function rmCargarListado() {
 			if (!r.tela_principal_rol) {
 				alertas.push("<span class='label label-danger' title='Falta marcar tela principal'>Sin tela</span>");
 			}
-			if (r.estado === "BORRADOR") {
-				alertas.push("<span class='label label-warning'>Borrador</span>");
-			}
 			if (!Number(r.lineas_activas)) {
 				alertas.push("<span class='label label-danger'>Sin líneas</span>");
+			}
+			var sinReceta = Number(r.articulos_sin_receta);
+			if (!isFinite(sinReceta)) sinReceta = 0;
+			if (sinReceta > 0) {
+				alertas.push(
+					"<span class='label label-warning' title='Artículos activos con cobertura incompleta en esta versión'>"
+					+ sinReceta + " sin receta</span>"
+				);
+			} else if (Number(r.lineas_activas) > 0 && r.tela_principal_rol) {
+				alertas.push("<span class='label label-success' title='Todos los artículos activos tienen cobertura'>0 sin receta</span>");
 			}
 			var alertaHtml = alertas.length ? alertas.join(" ") : "<span class='text-muted'>—</span>";
 
@@ -192,7 +202,7 @@ function rmCargarListado() {
 				+ "<td>" + rmEsc(r.tela_principal_rol || "—") + "</td>"
 				+ "<td>" + alertaHtml + "</td>"
 				+ "<td>" + rmEsc(r.updated_at || r.created_at || "") + "</td>"
-				+ "<td>" + botones + "</td></tr>";
+				+ "<td style='white-space:nowrap; width:1%;'>" + botones + "</td></tr>";
 		});
 		$tb.html(html);
 	});
@@ -337,12 +347,20 @@ function rmRenderChips() {
 		if (Number(linea.activo) === 0) return;
 		rmAsegurarVariantesArticulos(linea);
 		var cont = rmContarOk(linea);
-		var active = RM.lineaIdx === idx ? " active" : "";
+		var active = RM.lineaIdx === idx;
 		var cons = linea.consumo_base != null ? linea.consumo_base : "";
+		// Si es la línea activa, preferir el valor del input (aún no sincronizado)
+		if (active) {
+			var consInput = $("#rmConsumoLinea").val();
+			if (consInput !== undefined && consInput !== null && consInput !== "") cons = consInput;
+		}
 		var esTela = Number(linea.es_tela_principal) === 1;
-		var html = "<div class='rm2-chip" + active + "' data-idx='" + idx + "'>"
-			+ "<strong>" + rmEsc(linea.nombre_rol || linea.codigo_sublinea || "Insumo") + "</strong>"
+		var html = "<div class='rm2-chip" + (active ? " active" : "") + "' data-idx='" + idx + "'>"
+			+ "<strong>" + rmEsc(rmNombreLinea(linea)) + "</strong>"
 			+ "<span class='label label-primary'>" + rmEsc(linea.codigo_sublinea || "?") + "</span>";
+		if (active) {
+			html += "<span class='rm2-chip-editando'>EDITANDO</span>";
+		}
 		if (cons !== "") {
 			html += "<span class='label label-default'>" + rmEsc(rmFmtNum(cons)) + (linea.unidad ? " " + rmEsc(linea.unidad) : "") + "</span>";
 		}
@@ -363,8 +381,8 @@ function rmRenderChips() {
 
 function rmLimpiarPickSublinea() {
 	$("#rmNuevaSublinea").val("");
-	$("#rmNuevaSublineaCod").text("1. Elegir sublínea…").addClass("empty");
-	$("#rmNuevaSublineaNom").text("Luego marca la tela principal en el chip");
+	$("#rmNuevaSublineaCod").text("Buscar y agregar otra sublínea…").addClass("empty");
+	$("#rmNuevaSublineaNom").text("Solo agrega; la edición es del chip seleccionado abajo");
 }
 
 function rmSetPickSublinea(cod, nom) {
@@ -375,6 +393,94 @@ function rmSetPickSublinea(cod, nom) {
 	} else {
 		rmLimpiarPickSublinea();
 	}
+}
+
+function rmNombreLinea(linea) {
+	var nom = linea && linea.nombre_rol != null ? String(linea.nombre_rol) : "";
+	// Nombre fantasma de import viejo: no es tela pero dice "Tela principal"
+	if (nom === "Tela principal" && Number(linea.es_tela_principal) !== 1) {
+		return linea.codigo_sublinea || "Insumo";
+	}
+	return nom || linea.codigo_sublinea || "Insumo";
+}
+
+function rmEtiquetaLinea(linea) {
+	if (!linea) return "—";
+	var nom = rmNombreLinea(linea);
+	var cod = linea.codigo_sublinea || "";
+	if (cod && nom !== cod) return nom + " · " + cod;
+	return nom || cod || "Insumo";
+}
+
+/**
+ * Encabezado persistente de la sublínea activa + franja temporal opcional.
+ * @param {string} [mensajeTemporal]
+ * @param {{mostrarVolver?: boolean}} [opts]
+ */
+function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
+	opts = opts || {};
+	var linea = rmLineaActual();
+	var $hint = $("#rmSublineaSeleccionadaHint");
+	var $ctx = $("#rmLineaActivaContexto");
+
+	if (!linea) {
+		$ctx.hide();
+		$hint.hide().empty();
+		$("#rmCtxFlash").removeClass("visible").hide();
+		$("#rmBtnVolverLineaAnterior").hide();
+		$("#rmConsumoLineaLabel").text("Consumo");
+		$("#rmUnidadLineaAddon").text("—");
+		$("#rmMatrizContexto").text("Asignar · color artículo × talla");
+		return;
+	}
+
+	var etiqueta = rmEtiquetaLinea(linea);
+	var nArts = (RM.articulos || []).length;
+	var und = linea.unidad ? String(linea.unidad) : "—";
+
+	$ctx.show();
+	$("#rmCtxNombre").text(etiqueta);
+	$("#rmCtxMeta").text(
+		"Consumo único para esta sublínea · se aplica a " + nArts
+		+ " combinación" + (nArts === 1 ? "" : "es") + " color × talla"
+	);
+	$("#rmConsumoLineaLabel").html("Consumo de: <strong>" + rmEsc(etiqueta) + "</strong>");
+	$("#rmUnidadLineaAddon").text(und);
+	$("#rmMatrizContexto").text("Asignar MP · " + etiqueta + " · color × talla");
+	$("#rmTituloArticulos").text("2. Asignar MP — «" + etiqueta + "»");
+	$hint.html("Sublínea seleccionada: <strong>" + rmEsc(etiqueta) + "</strong>").show();
+
+	if (mensajeTemporal) {
+		$("#rmCtxFlashTxt").text(mensajeTemporal);
+		var $flash = $("#rmCtxFlash").addClass("visible").show();
+		var ant = (RM.lineaAnteriorIdx !== null && RM.estado && RM.estado.lineas)
+			? RM.estado.lineas[RM.lineaAnteriorIdx]
+			: null;
+		if (opts.mostrarVolver && ant && Number(ant.activo) !== 0) {
+			$("#rmBtnVolverLineaAnterior")
+				.text("Volver a «" + rmNombreLinea(ant) + "»")
+				.show();
+		} else {
+			$("#rmBtnVolverLineaAnterior").hide();
+		}
+		if (RM._ctxFlashTimer) clearTimeout(RM._ctxFlashTimer);
+		RM._ctxFlashTimer = setTimeout(function () {
+			$flash.removeClass("visible").fadeOut(180);
+			$("#rmBtnVolverLineaAnterior").hide();
+		}, 7000);
+	}
+}
+
+/** Corrige nombres "Tela principal" huérfanos al cambiar el flag. */
+function rmNormalizarNombresTela() {
+	var changed = false;
+	(RM.estado && RM.estado.lineas || []).forEach(function (l) {
+		if (Number(l.es_tela_principal) !== 1 && String(l.nombre_rol || "") === "Tela principal") {
+			l.nombre_rol = l.codigo_sublinea || "Insumo";
+			changed = true;
+		}
+	});
+	return changed;
 }
 
 function rmCacheMp(mp) {
@@ -488,7 +594,7 @@ function rmHeredarUnidadDeMp(und) {
 	var next = String(und);
 	if (String(linea.unidad || "") !== next) rmMarcarDirty(true);
 	linea.unidad = next;
-	$("#rmUnidadLineaTxt").text(next ? (" (" + next + ")") : "");
+	$("#rmUnidadLineaAddon").text(next || "—");
 	$("#rmMpActivaUndTxt").text(next ? (" · " + next) : "");
 }
 
@@ -567,11 +673,24 @@ function rmRenderTarjetasPorArticulo() {
 
 	arts.forEach(function (art, artIdx) {
 		var n = lineas.length;
+		var prev = artIdx > 0 ? arts[artIdx - 1] : null;
+		var sepClass = "";
+		if (prev) {
+			var colorPrev = String(prev.cod_color || "");
+			var colorCur = String(art.cod_color || "");
+			var tallaPrev = String(prev.cod_talla || "");
+			var tallaCur = String(art.cod_talla || "");
+			if (colorPrev !== colorCur) {
+				sepClass = " rm2-sep-color";
+			} else if (tallaPrev !== tallaCur) {
+				sepClass = " rm2-sep-talla";
+			}
+		}
 		lineas.forEach(function (linea, i) {
 			var res = rmResolverMpLinea(linea, art);
 			var ok = !!res.mp_codigo;
 			var esTela = Number(linea.es_tela_principal) === 1;
-			var sep = artIdx > 0 && i === 0 ? " rm2-sep" : "";
+			var sep = i === 0 ? sepClass : "";
 			var row = "<tr class='" + (ok ? "ok" : "falta") + sep + "'>";
 			if (i === 0) {
 				row += "<td class='rm2-art-cell' rowspan='" + n + "'>" + rmEsc(art.articulo) + "</td>"
@@ -606,16 +725,14 @@ function rmRenderMatriz() {
 		$("#rmAyudaPaso2").show();
 		$("#rmPanelPaso2").hide();
 		$("#rmTituloArticulos").text("2. Asignar materia prima");
+		rmActualizarContextoLineaActiva();
 		return;
 	}
 	$("#rmAyudaPaso2").hide();
 	$("#rmPanelPaso2").show();
-	$("#rmTituloArticulos").text(
-		"2. Asignar MP — «" + (linea.nombre_rol || "") + "» · " + (linea.codigo_sublinea || "")
-	);
 
 	$("#rmConsumoLinea").val(linea.consumo_base != null && linea.consumo_base !== "" ? linea.consumo_base : "1");
-	$("#rmUnidadLineaTxt").text(linea.unidad ? (" (" + linea.unidad + ")") : "");
+	rmActualizarContextoLineaActiva();
 
 	rmAsegurarVariantesArticulos(linea);
 	var mapa = rmMapaVariantes(linea);
@@ -890,6 +1007,7 @@ function rmCargarTablaMp() {
 }
 
 function rmPayloadLineas() {
+	rmNormalizarNombresTela();
 	return (RM.estado.lineas || []).map(function (linea, idx) {
 		var consumo = (RM.lineaIdx === idx)
 			? ($("#rmConsumoLinea").val() || linea.consumo_base || "1")
@@ -909,7 +1027,13 @@ function rmPayloadLineas() {
 		});
 		return {
 			orden: idx + 1,
-			nombre_rol: linea.nombre_rol || ("Insumo " + (idx + 1)),
+			nombre_rol: (function () {
+				var n = linea.nombre_rol || ("Insumo " + (idx + 1));
+				if (n === "Tela principal" && !Number(linea.es_tela_principal)) {
+					n = linea.codigo_sublinea || n;
+				}
+				return n;
+			})(),
 			es_tela_principal: Number(linea.es_tela_principal) ? 1 : 0,
 			codigo_sublinea: linea.codigo_sublinea || null,
 			regla_variante: "COLOR_TALLA",
@@ -934,6 +1058,7 @@ function rmCargarEditor() {
 		(RM.estado.lineas || []).forEach(function (l) {
 			if (!Array.isArray(l.variantes)) l.variantes = [];
 		});
+		rmNormalizarNombresTela();
 		rmPost({ accion: "articulosModelo", modelo: RM.estado.cabecera.modelo }).done(function (artResp) {
 			RM.articulos = (artResp && artResp.ok && artResp.data && artResp.data.articulos)
 				? artResp.data.articulos
@@ -945,7 +1070,8 @@ function rmCargarEditor() {
 			});
 			if (RM.lineaIdx === null && RM.estado.lineas.length) RM.lineaIdx = 0;
 			RM.estado.lineas.forEach(rmAsegurarVariantesArticulos);
-			rmMarcarDirty(false);
+			if (rmNormalizarNombresTela()) rmMarcarDirty(true);
+			else rmMarcarDirty(false);
 			rmRenderCabecera();
 			rmRenderChips();
 			rmEnriquecerMpsAsignadas(function () {
@@ -976,6 +1102,7 @@ function rmGuardar(silent) {
 			if (!Array.isArray(l.variantes)) l.variantes = [];
 			rmAsegurarVariantesArticulos(l);
 		});
+		rmNormalizarNombresTela();
 		RM.lineaIdx = keep !== null && RM.estado.lineas[keep] ? keep : (RM.estado.lineas.length ? 0 : null);
 		rmMarcarDirty(false);
 		rmRenderCabecera();
@@ -1047,7 +1174,11 @@ $(document).ready(function () {
 		});
 
 		function rmCargarSelectImportTarjetas() {
-			var $sel = $("#importModeloReceta").prop("disabled", true).html("<option value=''>Cargando…</option>");
+			var $sel = $("#importModeloReceta");
+			$sel.prop("disabled", true).empty();
+			if (typeof $sel.selectpicker === "function") {
+				$sel.selectpicker("refresh");
+			}
 			rmPost({ accion: "listarModelosImportTarjetas" }).done(function (resp) {
 				$sel.empty();
 				var lista = (resp && resp.ok && resp.data && resp.data.modelos) ? resp.data.modelos : [];
@@ -1055,7 +1186,6 @@ $(document).ready(function () {
 					$sel.append("<option value=''>No hay modelos pendientes</option>");
 					return;
 				}
-				$sel.append("<option value=''>— Elegir modelo —</option>");
 				lista.forEach(function (m) {
 					var label = (m.modelo || "")
 						+ (m.nombre_modelo && m.nombre_modelo !== m.modelo ? " — " + m.nombre_modelo : "")
@@ -1066,10 +1196,19 @@ $(document).ready(function () {
 				$sel.html("<option value=''>Error al cargar</option>");
 			}).always(function () {
 				$sel.prop("disabled", false);
+				if (typeof $sel.selectpicker === "function") {
+					$sel.selectpicker("refresh");
+				}
 			});
 		}
 
 		$("#modalImportarTarjetasReceta").on("show.bs.modal", rmCargarSelectImportTarjetas);
+		$("#modalImportarTarjetasReceta").on("shown.bs.modal", function () {
+			var $sel = $("#importModeloReceta");
+			if (typeof $sel.selectpicker === "function") {
+				$sel.selectpicker("refresh");
+			}
+		});
 		$("#modalModelosSinReceta").on("show.bs.modal", rmCargarTablaModelosSinReceta);
 
 		$("#btnEjecutarImportTarjetas").on("click", function () {
@@ -1100,6 +1239,27 @@ $(document).ready(function () {
 				}
 			});
 		});
+		$(document).on("click", ".btnEliminarBorradorLista", function () {
+			var id = $(this).data("id");
+			var modelo = String($(this).attr("data-modelo") || $(this).data("modelo") || "");
+			rmConfirmarMasivo(
+				"Eliminar borrador",
+				"Se borrará la receta del modelo " + modelo + " (v. borrador). Luego podrás volver a importar desde tarjetas.",
+				function () {
+					rmPost({ accion: "eliminarBorrador", id_receta: id }).done(function (resp) {
+						if (!resp || !resp.ok) {
+							rmAlerta("error", "No se eliminó", (resp && resp.mensaje) || "");
+							return;
+						}
+						rmAlerta("success", "Eliminado", "Ya puedes reimportar el modelo si quieres.");
+						rmActualizarAlertaSinReceta();
+						rmCargarListado();
+					}).fail(function () {
+						rmAlerta("error", "Error", "No se pudo comunicar con el servidor");
+					});
+				}
+			);
+		});
 		$(document).on("click", ".btnPreviewRecetaLista", function () {
 			var id = $(this).attr("data-id") || $(this).data("id");
 			var modelo = String($(this).attr("data-modelo") || "");
@@ -1129,16 +1289,37 @@ $(document).ready(function () {
 				cantidad: $("#previewCantidad").val() || 1
 			}).done(function (resp) {
 				var $out = $("#previewExplosionResultado");
-				if (!resp || !resp.ok) {
+				var data = resp && resp.data ? resp.data : null;
+				var consolidados = data && data.consolidados ? data.consolidados : null;
+				if (!resp || (!resp.ok && !consolidados)) {
 					$out.html("<div class='alert alert-danger'>" + rmEsc((resp && resp.mensaje) || "Error") + "</div>");
 					return;
 				}
-				var html = "<table class='table table-bordered'><thead><tr><th>MP</th><th>Roles</th><th>Total</th><th>Tela</th></tr></thead><tbody>";
-				(resp.data.consolidados || []).forEach(function (c) {
-					html += "<tr><td>" + rmEsc(c.mp_codigo) + "</td><td>" + rmEsc((c.roles || []).join(", "))
-						+ "</td><td>" + rmEsc(c.consumo_total) + "</td><td>" + (c.es_tela_principal ? "SI" : "") + "</td></tr>";
+				var html = "<table class='table table-bordered table-condensed'><thead><tr>"
+					+ "<th>MP</th><th>Descripción</th><th>Color</th><th>Und</th><th>Total</th><th>Tela</th>"
+					+ "</tr></thead><tbody>";
+				(consolidados || []).forEach(function (c) {
+					html += "<tr>"
+						+ "<td>" + rmEsc(c.mp_codigo) + "</td>"
+						+ "<td>" + rmEsc(c.mp_descripcion || "") + "</td>"
+						+ "<td>" + rmEsc(c.mp_color || "") + "</td>"
+						+ "<td>" + rmEsc(c.unidad || "") + "</td>"
+						+ "<td>" + rmEsc(c.consumo_total) + "</td>"
+						+ "<td>" + (c.es_tela_principal ? "SI" : "") + "</td>"
+						+ "</tr>";
 				});
 				$out.html(html + "</tbody></table>");
+				if (!resp.ok || (data.errores && data.errores.length)) {
+					var avisos = (data.errores || []).map(function (e) {
+						return rmEsc((e.mensaje || e.tipo || "") + (e.rol ? " (" + e.rol + ")" : ""));
+					}).join("<br>");
+					$out.prepend(
+						"<div class='alert alert-warning'>"
+						+ rmEsc(resp.mensaje || "Explosión incompleta")
+						+ (avisos ? "<br>" + avisos : "")
+						+ "</div>"
+					);
+				}
 			});
 		});
 	}
@@ -1173,12 +1354,17 @@ $(document).ready(function () {
 			rmAlerta("warning", "Sublínea", "Elige una sublínea");
 			return;
 		}
-		if (!nom || nom === "\u00a0" || nom.indexOf("Luego marca") === 0) nom = sub;
+		if (!nom || nom === "\u00a0" || nom.indexOf("Solo agrega") === 0 || nom.indexOf("Luego marca") === 0) {
+			nom = sub;
+		}
+
+		rmSincronizarConsumoEnVariantes();
+		var lineaAnteriorIdx = RM.lineaIdx;
 
 		var linea = {
 			orden: RM.estado.lineas.length + 1,
 			nombre_rol: nom,
-			es_tela_principal: RM.estado.lineas.length === 0 ? 1 : 0,
+			es_tela_principal: 0,
 			codigo_sublinea: sub,
 			regla_variante: "COLOR_TALLA",
 			unidad: "",
@@ -1189,6 +1375,9 @@ $(document).ready(function () {
 		};
 		rmAsegurarVariantesArticulos(linea);
 		RM.estado.lineas.push(linea);
+		RM.lineaAnteriorIdx = (lineaAnteriorIdx !== null && RM.estado.lineas[lineaAnteriorIdx])
+			? lineaAnteriorIdx
+			: null;
 		RM.lineaIdx = RM.estado.lineas.length - 1;
 		RM.mpActiva = null;
 		RM.mpActivaUnd = "";
@@ -1198,20 +1387,59 @@ $(document).ready(function () {
 
 		rmMarcarDirty(true);
 		rmRefrescarPaso2(true);
+		rmActualizarContextoLineaActiva(
+			"Ahora estás configurando: " + rmEtiquetaLinea(linea),
+			{ mostrarVolver: RM.lineaAnteriorIdx !== null }
+		);
+		var $ctx = $("#rmLineaActivaContexto");
+		if ($ctx.length && $ctx[0].scrollIntoView) {
+			$ctx[0].scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+		setTimeout(function () {
+			$("#rmConsumoLinea").focus().select();
+		}, 120);
 	});
 
 	$(document).on("click", ".rm2-chip", function (e) {
 		if ($(e.target).closest(".rmQuitarChip, .rmToggleTela").length) return;
 		rmSincronizarConsumoEnVariantes();
-		RM.lineaIdx = Number($(this).attr("data-idx"));
+		var nuevoIdx = Number($(this).attr("data-idx"));
+		if (nuevoIdx === RM.lineaIdx) return;
+		RM.lineaAnteriorIdx = null;
+		RM.lineaIdx = nuevoIdx;
 		RM.mpActiva = null;
 		RM.mpActivaUnd = "";
 		RM.mpActivaColor = "";
+		$("#rmCtxFlash").removeClass("visible").hide();
+		$("#rmBtnVolverLineaAnterior").hide();
+		if (RM._ctxFlashTimer) {
+			clearTimeout(RM._ctxFlashTimer);
+			RM._ctxFlashTimer = null;
+		}
 		rmRenderChips();
 		rmEnriquecerMpsAsignadas(function () {
 			rmRenderMatriz();
 			rmCargarTablaMp();
 		});
+	});
+
+	$("#rmBtnVolverLineaAnterior").on("click", function () {
+		if (RM.lineaAnteriorIdx === null || !RM.estado || !RM.estado.lineas[RM.lineaAnteriorIdx]) {
+			return;
+		}
+		rmSincronizarConsumoEnVariantes();
+		RM.lineaIdx = RM.lineaAnteriorIdx;
+		RM.lineaAnteriorIdx = null;
+		RM.mpActiva = null;
+		RM.mpActivaUnd = "";
+		RM.mpActivaColor = "";
+		$("#rmCtxFlash").removeClass("visible").hide();
+		$("#rmBtnVolverLineaAnterior").hide();
+		if (RM._ctxFlashTimer) {
+			clearTimeout(RM._ctxFlashTimer);
+			RM._ctxFlashTimer = null;
+		}
+		rmRefrescarPaso2(true);
 	});
 
 	$(document).on("click", ".rmToggleTela", function (e) {
@@ -1224,6 +1452,7 @@ $(document).ready(function () {
 		var activar = Number(linea.es_tela_principal) !== 1;
 		RM.estado.lineas.forEach(function (l) { l.es_tela_principal = 0; });
 		if (activar) linea.es_tela_principal = 1;
+		rmNormalizarNombresTela();
 		rmMarcarDirty(true);
 		rmRenderChips();
 	});
@@ -1242,6 +1471,8 @@ $(document).ready(function () {
 	$("#rmConsumoLinea").on("change", function () {
 		rmSincronizarConsumoEnVariantes();
 		rmMarcarDirty(true);
+		rmRenderChips();
+		rmActualizarContextoLineaActiva();
 	});
 
 	$("#rmBtnFiltroMp").on("click", rmCargarTablaMp);

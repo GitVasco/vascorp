@@ -244,6 +244,7 @@ if (is_readable($archivoPaletaFicha)) {
                         <div class="box-body">
                             <ul class="ficha-preguntas-lista">
                                 <li><i class="fa fa-paint-brush ficha-pregunta-icono azul"></i><span>¿Cuál es el color más vendido?</span><strong id="preguntaColorMasVendido"></strong></li>
+                                <li><i class="fa fa-scissors ficha-pregunta-icono naranja"></i><span>¿Cuál es su tela principal?</span><strong id="preguntaTelaPrincipal"></strong></li>
                                 <li><i class="fa fa-tag ficha-pregunta-icono morado"></i><span>¿Qué talla rota más?</span><strong id="preguntaTallaRotaMas"></strong></li>
                                 <li><i class="fa fa-bar-chart ficha-pregunta-icono azul"></i><span>¿Promedio mensual de venta?</span><strong id="preguntaPromedioMensual"></strong></li>
                                 <li><i class="fa fa-line-chart ficha-pregunta-icono celeste"></i><span>¿Proyección del próximo mes?</span><strong id="preguntaProyeccionMes"></strong></li>

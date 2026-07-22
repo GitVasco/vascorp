@@ -31,10 +31,12 @@ if (!function_exists("hcRenderAccionesPedido")) {
                 . ' data-nombre="' . htmlspecialchars($row["cliente"]) . '">'
                 . '<i class="fa fa-user-circle"></i></button>';
 
-            $html .= '<button type="button" class="btn btn-xs '
-                . (!empty($row["decision_credito"]) ? "btn-danger" : "btn-warning")
-                . ' btnDdDecisionCredito"'
-                . ' title="Decisión de crédito"'
+            $html .= '<button type="button" class="btn btn-xs btn-warning btnDdDecisionCredito"'
+                . ' title="'
+                . (!empty($row["decision_credito"])
+                    ? "Objeción vigente (pedido en GENERADO)"
+                    : "Decisión de crédito")
+                . '"'
                 . ' data-cliente="' . htmlspecialchars($row["cod_cli"]) . '"'
                 . ' data-pedido="' . htmlspecialchars($row["codigo"]) . '"'
                 . ' data-nombre="' . htmlspecialchars($row["cliente"]) . '">'
@@ -95,9 +97,9 @@ if (!function_exists("hcRenderFilasCola")) {
                 $motivoEtiqueta = isset($row["decision_credito"]["motivo_etiqueta"])
                     ? $row["decision_credito"]["motivo_etiqueta"]
                     : "Objeción de crédito";
-                $html .= ' <span class="label label-danger dd-motivo-badge" title="'
-                    . htmlspecialchars($motivoEtiqueta) . '">'
-                    . '<i class="fa fa-ban"></i></span>';
+                $html .= ' <span class="label label-warning dd-motivo-badge" title="'
+                    . htmlspecialchars("Objeción — pedido sigue en GENERADO · " . $motivoEtiqueta) . '">'
+                    . '<i class="fa fa-exclamation-triangle"></i></span>';
             }
             $html .= "</td>";
             $html .= '<td class="dd-col-cliente"><div class="dd-cell-main dd-cell-cliente" title="'

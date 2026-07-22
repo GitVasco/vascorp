@@ -175,6 +175,7 @@ class ControladorFichaGerencialModelos
 			$unidadesNetas = $ventas["unidades_vendidas"];
 			$ventaNeta = $ventas["venta_neta"];
 			$precio9 = ModeloFichaGerencialModelos::mdlPrecio9Valorizado($ctx["modelo"], $unidadesNetas);
+			$telaPrincipal = ModeloFichaGerencialModelos::mdlTelaPrincipalModelo($ctx["modelo"]);
 			$rentabilidad = ModeloCostosModeloMensual::mdlCalcularRentabilidadRango(
 				$ctx["modelo"],
 				$ventasMensuales,
@@ -206,6 +207,7 @@ class ControladorFichaGerencialModelos
 				"periodo" => self::ctrPeriodoRespuesta($periodo),
 				"ventas" => $ventas,
 				"inventario" => $inventario,
+				"tela_principal" => $telaPrincipal,
 				"precio_promedio" => $precioPromedio,
 				"precio_lista9" => $precio9 ? $precio9["precio9"] : null,
 				"ventas_acumuladas" => $precio9 ? $precio9["ventas_acumuladas"] : null,

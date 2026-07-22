@@ -54,9 +54,9 @@
 }
 
 .hc-kpi--aprobado { border-left-color: #00a65a; }
-.hc-kpi--objecion { border-left-color: #dd4b39; }
-.hc-kpi--cerrada { border-left-color: #f39c12; }
-.hc-kpi--anulado { border-left-color: #777; }
+.hc-kpi--objecion { border-left-color: #f39c12; }
+.hc-kpi--cerrada { border-left-color: #3c8dbc; }
+.hc-kpi--anulado { border-left-color: #dd4b39; }
 
 .hc-filtros-grid {
     display: grid;

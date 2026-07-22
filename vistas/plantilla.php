@@ -65,6 +65,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Descuentos Compuestos ESSO | Vasco System";
         } elseif ($_GET["ruta"] === "inteligencia-comercial") {
             $__tituloVentana = "Inteligencia Comercial | Vasco System";
+        } elseif ($_GET["ruta"] === "recetas-modelo") {
+            $__tituloVentana = "Recetas por modelo | Vasco System";
+        } elseif ($_GET["ruta"] === "editar-receta-modelo") {
+            $__tituloVentana = "Editor de receta | Vasco System";
         }
     }
     ?>
@@ -875,7 +879,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/materiaprima.js"></script>
     <script src="vistas/js/tarjetas.js"></script>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "recetas-modelo" || $_GET["ruta"] == "editar-receta-modelo")) { ?>
-    <script src="vistas/js/recetas-modelo.js?v=22"></script>
+    <script src="vistas/js/recetas-modelo.js?v=30"></script>
     <?php } ?>
     <script src="vistas/js/movimientos.js"></script>
     <script src="vistas/js/ordencorte.js"></script>
@@ -922,7 +926,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/costos-modelo-mensual.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") { ?>
-    <script src="vistas/js/ficha-gerencial-modelos.js?v=46"></script>
+    <script src="vistas/js/ficha-gerencial-modelos.js?v=48"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") { ?>
     <script src="vistas/js/resumen-gerencial-modelos.js?v=8"></script>

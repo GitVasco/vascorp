@@ -71,6 +71,34 @@ if ($idReceta <= 0) {
 	display:inline-flex; align-items:center; gap:6px; font-size:12px;
 }
 .rm2-chip.active { border-color:#3c8dbc; background:#eaf5fb; box-shadow:0 0 0 2px rgba(60,141,188,.2); }
+.rm2-chip:not(.active) { opacity:.78; background:#f7f7f7; }
+.rm2-chip .rm2-chip-editando {
+	background:#3c8dbc; color:#fff; border-radius:10px; padding:1px 7px;
+	font-size:10px; font-weight:700; letter-spacing:.02em;
+}
+.rm2-sel-hint {
+	margin-top:8px; font-size:12px; color:#555;
+}
+.rm2-ctx {
+	margin:0 0 12px; padding:12px 14px; border-radius:4px;
+	background:linear-gradient(180deg, #eef6fb 0%, #f7fbfe 100%);
+	border:1px solid #b8d4e8;
+}
+.rm2-ctx-flash {
+	display:none; margin:0 0 10px; padding:8px 10px; border-radius:3px;
+	background:#dff0d8; border:1px solid #b2dba1; color:#3c763d;
+	font-size:13px; font-weight:600;
+	align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+}
+.rm2-ctx-flash.visible { display:flex; }
+.rm2-ctx-kicker {
+	font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+	color:#3c8dbc; margin-bottom:2px;
+}
+.rm2-ctx-nombre {
+	font-size:20px; font-weight:700; color:#222; line-height:1.25; margin-bottom:2px;
+}
+.rm2-ctx-meta { font-size:12px; color:#666; }
 .rm2-chip .rm2-chip-x { color:#dd4b39; margin-left:2px; font-size:14px; line-height:1; }
 .rm2-chip .label { margin:0; }
 .rm2-chip .rm2-btn-tela {
@@ -129,7 +157,8 @@ if ($idReceta <= 0) {
 	background:#f7f7f7; font-weight:700; white-space:nowrap;
 }
 .rm2-tabla-tarjetas .rm2-meta-cell { background:#fafafa; white-space:nowrap; }
-.rm2-tabla-tarjetas tr.rm2-sep td { border-top:2px solid #c5d0d8; }
+.rm2-tabla-tarjetas tr.rm2-sep-talla > td { border-top:1px solid #a8b8c4 !important; }
+.rm2-tabla-tarjetas tr.rm2-sep-color > td { border-top:3px solid #4a6572 !important; }
 .rm2-tabla-tarjetas tr.falta td { background:#fff8e6; }
 .rm2-tabla-tarjetas tr.ok td { background:#e8f8ef; }
 .rm2-tabla-tarjetas td.rm2-art-cell { background:#f7f7f7 !important; }
@@ -207,8 +236,8 @@ if ($idReceta <= 0) {
 					<div class="rm2-sub-pick">
 						<input type="hidden" id="rmNuevaSublinea" value="">
 						<div class="rm2-sub-info" id="rmBtnBuscarSublineaTop" title="Buscar sublínea" role="button">
-							<div class="cod empty" id="rmNuevaSublineaCod">1. Elegir sublínea…</div>
-							<div class="nom" id="rmNuevaSublineaNom">Luego marca la tela principal en el chip</div>
+							<div class="cod empty" id="rmNuevaSublineaCod">Buscar y agregar otra sublínea…</div>
+							<div class="nom" id="rmNuevaSublineaNom">Solo agrega; la edición es del chip seleccionado abajo</div>
 						</div>
 						<button type="button" class="btn rm2-sub-search" id="rmBtnBuscarSublineaIcon" title="Buscar">
 							<i class="fa fa-search"></i>
@@ -219,6 +248,7 @@ if ($idReceta <= 0) {
 					</div>
 				</div>
 				<div class="rm2-insumos" id="rmChipsInsumos"></div>
+				<div class="rm2-sel-hint" id="rmSublineaSeleccionadaHint" style="display:none;"></div>
 			</div>
 		</div>
 
@@ -231,10 +261,24 @@ if ($idReceta <= 0) {
 					<p>Agrega una sublínea arriba y selecciónala para asignar MP.</p>
 				</div>
 				<div id="rmPanelPaso2" style="display:none;">
+					<div class="rm2-ctx" id="rmLineaActivaContexto">
+						<div class="rm2-ctx-flash" id="rmCtxFlash">
+							<span id="rmCtxFlashTxt"></span>
+							<button type="button" class="btn btn-xs btn-default" id="rmBtnVolverLineaAnterior" style="display:none;">
+								Volver a la anterior
+							</button>
+						</div>
+						<div class="rm2-ctx-kicker">Editando ahora</div>
+						<div class="rm2-ctx-nombre" id="rmCtxNombre">—</div>
+						<div class="rm2-ctx-meta" id="rmCtxMeta"></div>
+					</div>
 					<div class="row" style="margin-bottom:10px;">
 						<div class="col-sm-3">
-							<label>Consumo <small class="text-muted" id="rmUnidadLineaTxt"></small></label>
-							<input type="number" step="any" class="form-control input-sm" id="rmConsumoLinea" min="0">
+							<label id="rmConsumoLineaLabel">Consumo</label>
+							<div class="input-group input-group-sm">
+								<input type="number" step="any" class="form-control" id="rmConsumoLinea" min="0">
+								<span class="input-group-addon" id="rmUnidadLineaAddon">—</span>
+							</div>
 							<small class="text-muted">Igual para todos los artículos de esta sublínea.</small>
 						</div>
 						<div class="col-sm-9">
@@ -287,7 +331,7 @@ if ($idReceta <= 0) {
 							</div>
 						</div>
 						<div class="col-md-8 rm2-col-matriz">
-							<div class="rm2-panel-title">Asignar · color artículo × talla</div>
+							<div class="rm2-panel-title" id="rmMatrizContexto">Asignar · color artículo × talla</div>
 							<div class="rm2-scroll">
 								<table class="rm2-matriz" id="rmMatriz">
 									<thead></thead>
