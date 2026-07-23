@@ -2,6 +2,16 @@
 
 class ControladorVascoSync
 {
+    private static function requireAdaptadorSaldoComercial()
+    {
+        if (!class_exists("AdaptadorSaldoComercialVasco")) {
+            require_once __DIR__ . "/adaptador-saldo-comercial-vasco.php";
+        }
+        if (!class_exists("ModeloRegularizacionesComerciales")) {
+            require_once dirname(__DIR__) . "/modelos/regularizaciones-comerciales.modelo.php";
+        }
+    }
+
     static public function maxClientesPorLote()
     {
         if (defined("VASCO_ONLINE_MAX_POR_LOTE")) {
@@ -315,7 +325,7 @@ class ControladorVascoSync
             $traceId = self::generarTraceId();
         }
 
-        $apiKey = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+        $apiKey = function_exists("obtenerApiKeyVascoOnline") ? obtenerApiKeyVascoOnline() : (defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "");
         if ($apiKey === "") {
             return array("ok" => false, "msg" => "API key no configurada en config.php");
         }
@@ -457,11 +467,22 @@ class ControladorVascoSync
 
     static public function ctrAuditarCuentas()
     {
+        self::requireAdaptadorSaldoComercial();
+
         $global = ModeloVascoSync::mdlCuentasResumenGlobal();
         $clientesConDeuda = isset($global["clientes_con_deuda"]) ? (int) $global["clientes_con_deuda"] : 0;
         $docsPendientes = isset($global["docs_pendientes"]) ? (int) $global["docs_pendientes"] : 0;
         $deudaTotal = isset($global["deuda_total"]) ? (float) $global["deuda_total"] : 0;
         $vencidoTotal = isset($global["vencido_total"]) ? (float) $global["vencido_total"] : 0;
+
+        $impactoComercial = 0.0;
+        if (ModeloRegularizacionesComerciales::mdlHayRegularizacionesActivas()) {
+            $impactoComercial = ModeloRegularizacionesComerciales::mdlSumaMontoAplicableActivoTotal();
+            $deudaTotal = max(0, round($deudaTotal - $impactoComercial, 2));
+            if ($vencidoTotal > $deudaTotal) {
+                $vencidoTotal = $deudaTotal;
+            }
+        }
 
         $bloqueadosSinDoc = ModeloVascoSync::mdlCuentasContarBloqueadosSinDoc();
         $bloqueadosExceso = ModeloVascoSync::mdlCuentasContarBloqueadosExcesoDocs();
@@ -470,8 +491,18 @@ class ControladorVascoSync
 
         $muestra = ModeloVascoSync::mdlCuentasMuestra(30);
         $muestraFormateada = array();
-
+        $docKeysMuestra = array();
         foreach ($muestra as $fila) {
+            $dk = isset($fila["doc_key"]) ? (string) $fila["doc_key"] : "";
+            if ($dk !== "") {
+                $docKeysMuestra[] = $dk;
+            }
+        }
+        $docsMuestra = !empty($docKeysMuestra)
+            ? ModeloVascoSync::mdlCuentasDocsPendientesPorDocKeys($docKeysMuestra)
+            : array();
+        $loteMuestra = AdaptadorSaldoComercialVasco::adaptarLote($muestra, $docsMuestra);
+        foreach ($loteMuestra["filas"] as $fila) {
             $muestraFormateada[] = self::formatearCuentaAuditoria($fila);
         }
 
@@ -505,6 +536,7 @@ class ControladorVascoSync
                 "docs_pendientes" => $docsPendientes,
                 "deuda_total" => round($deudaTotal, 2),
                 "vencido_total" => round($vencidoTotal, 2),
+                "impacto_regularizaciones" => $impactoComercial,
                 "lotes_estimados" => $lotesEstimados,
                 "max_por_lote" => $maxPorLote,
                 "max_docs_cliente" => self::maxDocsPendientesPorCliente(),
@@ -638,7 +670,7 @@ class ControladorVascoSync
             $traceId = self::generarTraceIdCuentas();
         }
 
-        $apiKey = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+        $apiKey = function_exists("obtenerApiKeyVascoOnline") ? obtenerApiKeyVascoOnline() : (defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "");
         if ($apiKey === "") {
             return array("ok" => false, "msg" => "API key no configurada en config.php");
         }
@@ -678,6 +710,11 @@ class ControladorVascoSync
         }
 
         $docsPorDocKey = ModeloVascoSync::mdlCuentasDocsPendientesPorDocKeys($docKeys);
+
+        self::requireAdaptadorSaldoComercial();
+        $loteComercial = AdaptadorSaldoComercialVasco::adaptarLote($filas, $docsPorDocKey);
+        $filas = $loteComercial["filas"];
+        $docsPorDocKey = $loteComercial["docs_por_doc_key"];
 
         foreach ($filas as $fila) {
             $docKey = isset($fila["doc_key"]) ? (string) $fila["doc_key"] : "";
@@ -815,7 +852,7 @@ class ControladorVascoSync
             return array("ok" => false, "msg" => "Número de lote inválido");
         }
 
-        $apiKey = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+        $apiKey = function_exists("obtenerApiKeyVascoOnline") ? obtenerApiKeyVascoOnline() : (defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "");
         if ($apiKey === "") {
             return array("ok" => false, "msg" => "API key no configurada en config.php");
         }
@@ -1040,7 +1077,7 @@ class ControladorVascoSync
             require_once __DIR__ . "/vasco-online.config.php";
         }
 
-        $apiKey = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+        $apiKey = function_exists("obtenerApiKeyVascoOnline") ? obtenerApiKeyVascoOnline() : (defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "");
         if ($apiKey === "") {
             return array("ok" => false, "msg" => "API key no configurada en config.php");
         }

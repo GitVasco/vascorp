@@ -1,0 +1,48 @@
+/* Regularizaciones comerciales excepcionales */
+
+#panelRegularizacionesComerciales .rc-aviso {
+    margin-bottom: 18px;
+}
+
+#panelRegularizacionesComerciales .rc-aviso-lista {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+#panelRegularizacionesComerciales .rc-tabla-wrap {
+    max-height: 420px;
+    overflow: auto;
+}
+
+#panelRegularizacionesComerciales .rc-acciones .btn {
+    margin: 1px 0;
+}
+
+#panelRegularizacionesComerciales .rc-cargo-sel {
+    margin-bottom: 12px;
+    background: #f7f9fb;
+}
+
+#panelRegularizacionesComerciales .rc-detalle-saldos {
+    margin-bottom: 12px;
+}
+
+#panelRegularizacionesComerciales .rc-kpi {
+    background: #f4f6f8;
+    border: 1px solid #e5e8eb;
+    border-radius: 3px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+#panelRegularizacionesComerciales .rc-kpi span {
+    display: block;
+    font-size: 11px;
+    color: #777;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+#panelRegularizacionesComerciales .rc-kpi strong {
+    font-size: 18px;
+}

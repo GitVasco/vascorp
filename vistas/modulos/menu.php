@@ -1854,6 +1854,8 @@
                 && usuarioPuedeVerModulo("vasco_online", "gestion_clientes");
             $puedeVerSolicitudesAtencionVasco = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("vasco_online", "solicitudes_atencion");
+            $puedeVerRegularizacionesComerciales = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("vasco_online", "regularizaciones_comerciales");
 
             $mostrarVascoOnline = function_exists("usuarioPuedeAlgunaOpcionSector")
                 && usuarioPuedeAlgunaOpcionSector("vasco_online");
@@ -1871,6 +1873,9 @@
                 }
                 if ($puedeVerSolicitudesAtencionVasco) {
                     $rutasActivasVascoOnline[] = "solicitudes-atencion-vasco";
+                }
+                if ($puedeVerRegularizacionesComerciales) {
+                    $rutasActivasVascoOnline[] = "regularizaciones-comerciales";
                 }
                 $isActiveVascoOnline = in_array($_GET["ruta"], $rutasActivasVascoOnline, true) ? "active" : "";
             ?>
@@ -1924,6 +1929,15 @@
                             <a href="solicitudes-atencion-vasco">
                                 <i class="fa fa-bell"></i>
                                 <span>Solicitudes atención</span>
+                            </a>
+                        </li>
+                        <?php } ?>
+
+                        <?php if ($puedeVerRegularizacionesComerciales) { ?>
+                        <li class="<?= $_GET["ruta"] == "regularizaciones-comerciales" ? "active" : ""; ?>">
+                            <a href="regularizaciones-comerciales">
+                                <i class="fa fa-balance-scale"></i>
+                                <span>Regularizaciones comerciales</span>
                             </a>
                         </li>
                         <?php } ?>

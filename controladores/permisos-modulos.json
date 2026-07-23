@@ -74,6 +74,12 @@
     "solicitudes_atencion": {
       "ver": [6],
       "resolver": [6]
+    },
+    "regularizaciones_comerciales": {
+      "ver": [6],
+      "registrar": [6],
+      "anular": [6],
+      "resolver": [6]
     }
   }
 }

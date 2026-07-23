@@ -52,6 +52,7 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `rendicion_cobranzas` | `ver`, `registrar`, `aprobar` | Rendición cobranzas |
 | `gestion_clientes` | `ver`, `gestionar` | Gestión clientes Vasco |
 | `solicitudes_atencion` | `ver`, `resolver` | Solicitudes atención |
+| `regularizaciones_comerciales` | `ver`, `registrar`, `anular`, `resolver` | Regularizaciones comerciales (solo efecto VascoPro) |
 
 ## Roles típicos en Centro de Decisiones
 

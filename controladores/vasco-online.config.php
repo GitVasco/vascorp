@@ -1,10 +1,11 @@
 <?php
 
 /**
- * Vasco Online — sync vascorp → API en internet.
+ * Vasco Online — sync vascorp → API.
  *
  * Ajusta SOLO este archivo al cambiar de entorno.
- * La API key va en controladores/config.php (junto a TOKEN_WHATSAPP, etc.).
+ * La API key de producción/pruebas va en controladores/config.php.
+ * En desarrollo se usa una key distinta (la del .env local de Vasco).
  *
  * Entornos:
  *   desarrollo  — vascorp en Docker Mac, API Vasco en otro Docker (puerto 8084 en host)
@@ -16,7 +17,8 @@
  * La URL del API real es la misma; cambia solo el origen desde donde se ejecuta vascorp.
  */
 
-$vasco_online_entorno = "pruebas";
+$vasco_online_entorno = "desarrollo";
+$GLOBALS["vasco_online_entorno"] = $vasco_online_entorno;
 
 // URL pública del API real (misma para pruebas y producción).
 define("VASCO_ONLINE_API_URL_REAL", "https://api.jackyform.com.pe");
@@ -26,6 +28,8 @@ if ($vasco_online_entorno === "desarrollo") {
     // Conecta al puerto publicado en el Mac; Host virtual para Apache del API local.
     define("VASCO_ONLINE_API_BASE_URL", "http://host.docker.internal:8084");
     define("VASCO_ONLINE_API_HOST", "api.vasco.io");
+    // Debe coincidir con API_KEY del .env local de Vasco (NO es la key de producción).
+    define("VASCO_ONLINE_API_KEY_DESARROLLO", "k6QFLuCbgpJPAXuQn2qz38sqLMrLDG");
 
 } else {
 
@@ -34,8 +38,27 @@ if ($vasco_online_entorno === "desarrollo") {
 
 }
 
-// API key en controladores/config.php (junto a otros tokens).
-// Aquí solo URLs, timeout y endpoints según entorno Docker/XAMPP.
+/**
+ * Key efectiva según entorno.
+ * desarrollo → key local; pruebas/produccion → VASCO_ONLINE_API_KEY de config.php (intacta).
+ *
+ * @return string
+ */
+function obtenerApiKeyVascoOnline()
+{
+    $entorno = isset($GLOBALS["vasco_online_entorno"]) ? $GLOBALS["vasco_online_entorno"] : "";
+
+    if ($entorno === "desarrollo"
+        && defined("VASCO_ONLINE_API_KEY_DESARROLLO")
+        && VASCO_ONLINE_API_KEY_DESARROLLO !== ""
+    ) {
+        return VASCO_ONLINE_API_KEY_DESARROLLO;
+    }
+
+    return defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+}
+
+// Timeout y endpoints (comunes).
 define("VASCO_ONLINE_SYNC_TIMEOUT", 120);
 define("VASCO_ONLINE_MAX_POR_LOTE", 500);
 define("VASCO_ONLINE_ENDPOINT_CLIENTES", "/v2/sync/customers-bulk");
@@ -56,7 +79,7 @@ function obtenerConfigVascoOnline()
         "entorno" => isset($GLOBALS["vasco_online_entorno"]) ? $GLOBALS["vasco_online_entorno"] : "",
         "base_url" => defined("VASCO_ONLINE_API_BASE_URL") ? VASCO_ONLINE_API_BASE_URL : "",
         "api_host" => defined("VASCO_ONLINE_API_HOST") ? VASCO_ONLINE_API_HOST : "",
-        "api_key" => defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "",
+        "api_key" => obtenerApiKeyVascoOnline(),
         "timeout" => defined("VASCO_ONLINE_SYNC_TIMEOUT") ? (int) VASCO_ONLINE_SYNC_TIMEOUT : 120,
         "max_por_lote" => defined("VASCO_ONLINE_MAX_POR_LOTE") ? (int) VASCO_ONLINE_MAX_POR_LOTE : 500,
         "endpoint_clientes" => defined("VASCO_ONLINE_ENDPOINT_CLIENTES") ? VASCO_ONLINE_ENDPOINT_CLIENTES : "/v2/sync/customers-bulk",
@@ -224,7 +247,7 @@ function obtenerHeadersCurlVascoOnline($url)
  */
 function vascoOnlineApiKeyEnmascarada()
 {
-    $key = defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "";
+    $key = obtenerApiKeyVascoOnline();
 
     if ($key === "") {
         return "";

@@ -156,6 +156,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "solicitudes-atencion-vasco") : ?>
     <link rel="stylesheet" href="vistas/css/vasco-solicitud-atencion.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
+    <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=1">
+    <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
     <link rel="stylesheet" href="vistas/plugins/iCheck/all.css">
@@ -751,6 +754,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/cuentas-corrientes/solicitudes-atencion-vasco.php";
                 }
+            } else if ($_GET["ruta"] == "regularizaciones-comerciales") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "regularizaciones_comerciales")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/cuentas-corrientes/regularizaciones-comerciales.php";
+                }
             } else if (
                 $_GET["ruta"] == "cuentas" ||
                 $_GET["ruta"] == "cuentas-test" ||
@@ -974,6 +984,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "solicitudes-atencion-vasco") { ?>
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
+    <script src="vistas/js/regularizaciones-comerciales.js?v=1"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js"></script>
     <script src="vistas/js/paras.js"></script>
