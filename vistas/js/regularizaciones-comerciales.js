@@ -29,13 +29,13 @@ $(function () {
 
     function badgeEstado(estado) {
         var map = {
-            ACTIVA: "label-success",
-            REQUIERE_REVISION: "label-warning",
-            RESUELTA_AUTOMATICA: "label-info",
-            ANULADA: "label-default"
+            ACTIVA: { cls: "label-success", txt: "Activa" },
+            REQUIERE_REVISION: { cls: "label-warning", txt: "Por revisar" },
+            RESUELTA_AUTOMATICA: { cls: "label-info", txt: "Resuelta" },
+            ANULADA: { cls: "label-default", txt: "Anulada" }
         };
-        var cls = map[estado] || "label-default";
-        return '<span class="label ' + cls + '">' + esc(estado) + "</span>";
+        var info = map[estado] || { cls: "label-default", txt: estado };
+        return '<span class="label ' + info.cls + '">' + esc(info.txt) + "</span>";
     }
 
     function post(accion, data) {
@@ -128,13 +128,13 @@ $(function () {
         $("#rcFechaPago").val(ymd);
 
         var html =
-            "<div><strong>Saldo oficial (no modificado):</strong> " + money(c.saldo_oficial != null ? c.saldo_oficial : c.saldo) + "</div>" +
-            "<div><strong>Regularización activa ya cargada:</strong> " + money(c.regularizacion_activa || 0) + "</div>" +
-            "<div><strong>Saldo comercial (VascoPro):</strong> " + money(c.saldo_comercial) + "</div>" +
-            "<div class='text-muted'>" + esc(c.tipo_doc) + " " + esc(c.num_cta) +
-            " · Cliente " + esc(c.cliente) +
+            '<div class="rc-sel-line"><strong>En Vascorp:</strong> ' + money(c.saldo_oficial != null ? c.saldo_oficial : c.saldo) + "</div>" +
+            '<div class="rc-sel-line"><strong>Ya regularizado:</strong> ' + money(c.regularizacion_activa || 0) + "</div>" +
+            '<div class="rc-sel-line"><strong>En VascoPro:</strong> ' + money(c.saldo_comercial) + "</div>" +
+            '<div class="rc-sel-line text-muted">' + esc(c.tipo_doc) + " " + esc(c.num_cta) +
+            " · " + esc(c.cliente) +
             (c.cliente_nombre ? " — " + esc(c.cliente_nombre) : "") +
-            " · Cargo #" + esc(c.id) + "</div>";
+            "</div>";
         $("#rcCargoSeleccionado").html(html);
         $("#rcBoxAlta").show();
         $("#rcMonto").attr("max", c.saldo_comercial).focus();
@@ -200,25 +200,25 @@ $(function () {
                 var ev = res.eventos || [];
                 var html = "";
                 html += '<div class="row rc-detalle-saldos">';
-                html += '<div class="col-sm-4"><div class="rc-kpi"><span>Saldo oficial</span><strong>' + money(res.saldo_oficial) + "</strong></div></div>";
-                html += '<div class="col-sm-4"><div class="rc-kpi"><span>Monto aplicable</span><strong>' + money(r.monto_aplicable) + "</strong></div></div>";
-                html += '<div class="col-sm-4"><div class="rc-kpi"><span>Saldo comercial</span><strong>' + money(res.saldo_comercial) + "</strong></div></div>";
+                html += '<div class="col-sm-4"><div class="rc-kpi"><span>En Vascorp</span><strong>' + money(res.saldo_oficial) + "</strong></div></div>";
+                html += '<div class="col-sm-4"><div class="rc-kpi"><span>Regularizado</span><strong>' + money(r.monto_aplicable) + "</strong></div></div>";
+                html += '<div class="col-sm-4"><div class="rc-kpi"><span>En VascoPro</span><strong>' + money(res.saldo_comercial) + "</strong></div></div>";
                 html += "</div>";
                 html += "<p>" + badgeEstado(r.estado) +
-                    " · Doc " + esc(r.tipo_doc) + " " + esc(r.num_cta) +
-                    " · Cliente " + esc(r.cliente_codigo) +
+                    " · " + esc(r.tipo_doc) + " " + esc(r.num_cta) +
+                    " · " + esc(r.cliente_codigo) +
                     (c.cliente_nombre ? " — " + esc(c.cliente_nombre) : "") +
                     "</p>";
-                html += "<p><strong>Sustento:</strong> " + esc(r.sustento_referencia) +
+                html += "<p><strong>Recibo / OP:</strong> " + esc(r.sustento_referencia) +
                     "<br><strong>Motivo:</strong> " + esc(r.motivo) +
-                    (r.observacion ? "<br><strong>Obs.:</strong> " + esc(r.observacion) : "") +
+                    (r.observacion ? "<br><strong>Nota:</strong> " + esc(r.observacion) : "") +
                     "</p>";
-                html += "<p class='text-muted'>Pago cliente: " + esc(r.fecha_pago_cliente) +
+                html += "<p class='text-muted'>Pago: " + esc(r.fecha_pago_cliente) +
                     " · Registró: " + esc(r.usuario_registro_nombre || r.usuario_registro_id) +
                     " · " + esc(r.fecha_registro) + "</p>";
 
                 html += '<h4>Historial</h4><div class="table-responsive"><table class="table table-condensed"><thead><tr>' +
-                    "<th>Fecha</th><th>Evento</th><th>Estado</th><th>Δ</th><th>Origen</th></tr></thead><tbody>";
+                    "<th>Fecha</th><th>Evento</th><th>Estado</th><th>Δ</th><th>Quién</th></tr></thead><tbody>";
                 if (!ev.length) {
                     html += '<tr><td colspan="5" class="text-muted">Sin eventos.</td></tr>';
                 } else {
@@ -282,10 +282,11 @@ $(function () {
             return;
         }
         if (!window.confirm(
-            "Confirma registrar esta regularización?\n\n" +
+            "¿Guardar esta regularización?\n\n" +
             "Monto: " + data.monto + "\n" +
-            "Sustento: " + data.sustento_referencia + "\n\n" +
-            "No modifica el saldo oficial. Solo afecta VascoPro."
+            "Recibo/OP: " + data.sustento_referencia + "\n\n" +
+            "Esto solo cambia lo que ve el vendedor en VascoPro.\n" +
+            "No registra cobro ni cambia la contabilidad."
         )) {
             return;
         }

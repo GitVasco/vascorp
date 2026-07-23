@@ -38,8 +38,11 @@ No hay migración adicional en Vasco: las tablas `collections` y `collection_aud
 |--------|------|-----|
 | **GET** | `/v2/sync/collections-pending-delivery` | Listar cobranzas pendientes (o entregadas si `status=delivered`) |
 | **POST** | `/v2/sync/collections-deliver` | Marcar una o más cobranzas como recibidas en empresa |
+| **POST** | `/v2/sync/collections-cancel` | Anular cobranzas `pending_delivery` (cobro erróneo en caja) |
 
 Autenticación: header `Authorization: {API_KEY}` (sin `Bearer`).
+
+Contrato de anulación (respuesta VascoPro): [`../../02-respuestas-vascopro/2026-07-23-collections-cancel.md`](../../02-respuestas-vascopro/2026-07-23-collections-cancel.md)
 
 ---
 

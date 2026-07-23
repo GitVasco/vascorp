@@ -65,4 +65,25 @@ if ($accion === "entregar") {
     exit;
 }
 
+if ($accion === "anular") {
+    $raw = file_get_contents("php://input");
+    $payload = json_decode($raw, true);
+
+    if (!is_array($payload)) {
+        vascoCobranzasJson(array("ok" => false, "msg" => "Body JSON inválido"));
+        exit;
+    }
+
+    $items = isset($payload["items"]) && is_array($payload["items"]) ? $payload["items"] : array();
+    $traceId = isset($payload["trace_id"]) ? trim((string) $payload["trace_id"]) : "";
+    $cancelledBy = isset($payload["cancelled_by"]) ? trim((string) $payload["cancelled_by"]) : "";
+
+    if ($cancelledBy === "" && isset($_SESSION["nombre"])) {
+        $cancelledBy = trim((string) $_SESSION["nombre"]);
+    }
+
+    vascoCobranzasJson(ControladorVascoSync::ctrAnularCobranzas($items, $cancelledBy, $traceId));
+    exit;
+}
+
 vascoCobranzasJson(array("ok" => false, "msg" => "Acción no reconocida"));

@@ -1,24 +1,363 @@
+/* Rendición Vasco — Caja */
+
 #panelRendicionVascoCaja .vasco-caja-intro {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-intro p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtros .box-body {
+    padding: 14px 16px 6px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtros-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: flex-end;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtros-grid .form-group {
+    margin-bottom: 10px;
+    min-width: 0;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtros-grid .form-group:nth-child(1) {
+    flex: 0 0 160px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtros-grid .form-group:nth-child(2) {
+    flex: 0 0 100px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtro-vendedor {
+    flex: 1 1 260px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-filtro-accion {
+    flex: 0 0 140px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-label-spacer {
+    display: block;
+    height: 20px;
+}
+
+#panelRendicionVascoCaja #filtroVendedorVasco:disabled {
+    background: #f3f5f7;
+    color: #888;
+    cursor: not-allowed;
+}
+
+/* KPIs */
+#panelRendicionVascoCaja .vasco-caja-resumen {
+    margin-bottom: 14px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi {
+    background: #fff;
+    border: 1px solid #e4e8ec;
+    border-left: 3px solid #3c8dbc;
+    border-radius: 3px;
+    padding: 12px 14px;
+    min-height: 72px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi--money {
+    border-left-color: #00a65a;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi--sel {
+    border-left-color: #f39c12;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi--hint {
+    border-left-color: #95a5a6;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi-label {
+    display: block;
+    font-size: 11px;
+    color: #7a8794;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 4px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi-value {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+#panelRendicionVascoCaja .vasco-caja-kpi-value--sm {
+    font-size: 15px;
+    font-weight: 600;
+    padding-top: 4px;
+}
+
+/* Seller cards */
+#panelRendicionVascoCaja .vasco-caja-totales-vendedor {
+    background: #fff;
+    border: 1px solid #e4e8ec;
+    border-radius: 3px;
+    padding: 12px 14px 10px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-totales-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin-bottom: 10px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-totales-titulo {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #34495e;
+}
+
+#panelRendicionVascoCaja .vasco-caja-totales-titulo .fa {
+    margin-right: 4px;
+    color: #3c8dbc;
+}
+
+#panelRendicionVascoCaja .vasco-caja-totales-hint {
+    font-size: 12px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-card {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #f7f9fb;
+    border: 1px solid #e1e6eb;
+    border-radius: 3px;
+    padding: 10px 12px;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-card:hover,
+#panelRendicionVascoCaja .vasco-caja-seller-card:focus {
+    background: #eef5fb;
+    border-color: #9fc4df;
+    outline: none;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-card.is-active {
+    background: #e8f4fc;
+    border-color: #3c8dbc;
+    box-shadow: inset 3px 0 0 #3c8dbc;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2c3e50;
+    line-height: 1.25;
+    margin-bottom: 2px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-doc {
+    display: block;
+    font-size: 11px;
+    color: #8a97a4;
+    margin-bottom: 6px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-count {
+    font-size: 11px;
+    color: #6c7a89;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-amount {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e7e4a;
+}
+
+/* Toolbar + table */
+#panelRendicionVascoCaja .vasco-caja-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-toolbar-left,
+#panelRendicionVascoCaja .vasco-caja-toolbar-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-ref-check {
+    margin: 0;
+    padding-left: 0;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+#panelRendicionVascoCaja #refGlobalVasco {
+    width: 180px;
+    display: inline-block;
+}
+
+#panelRendicionVascoCaja .vasco-caja-tabla-wrap {
+    max-height: 520px;
+    overflow: auto;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco {
+    margin-bottom: 0;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #3c8dbc;
+    color: #fff;
+    border-bottom: 0;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco td {
+    vertical-align: middle !important;
+    font-size: 13px;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-empty td {
+    padding: 28px 12px;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-monto {
+    font-weight: 600;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-vendedor-celda {
+    line-height: 1.25;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-vendedor-celda small {
+    display: block;
+    color: #8a97a4;
+    font-size: 11px;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-acciones {
+    white-space: nowrap;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-acciones .btn {
+    margin: 1px 2px;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco tr.vasco-caja-row-checked {
+    background: #f4faf6;
+}
+
+/* Log */
+#panelRendicionVascoCaja .vasco-caja-log-box .box-title {
+    font-size: 13px;
+}
+
+#panelRendicionVascoCaja .vasco-caja-trace-wrap {
+    display: inline-block;
+    max-width: 280px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+#panelRendicionVascoCaja .vasco-caja-trace {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    color: #95a5a6;
+    background: transparent;
+    padding: 0;
+    border: 0;
+    vertical-align: middle;
 }
 
 #panelRendicionVascoCaja .vasco-caja-log {
-    min-height: 120px;
-    max-height: 220px;
+    min-height: 100px;
+    max-height: 200px;
     overflow: auto;
     margin: 0;
-    background: #f9f9f9;
-    border: 1px solid #eee;
+    background: #f7f8fa;
+    border: 1px solid #e8ebef;
+    border-radius: 3px;
     padding: 10px 12px;
     font-size: 12px;
     white-space: pre-wrap;
 }
 
-#panelRendicionVascoCaja .vasco-caja-trace {
-    font-size: 11px;
-    word-break: break-all;
+@media (max-width: 991px) {
+    #panelRendicionVascoCaja .vasco-caja-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #panelRendicionVascoCaja .vasco-caja-filtro-accion {
+        flex: 1 1 140px;
+    }
 }
 
-#panelRendicionVascoCaja #tablaCobranzasVasco td {
-    vertical-align: middle !important;
+@media (max-width: 575px) {
+    #panelRendicionVascoCaja .vasco-caja-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    #panelRendicionVascoCaja .vasco-caja-filtros-grid .form-group:nth-child(1),
+    #panelRendicionVascoCaja .vasco-caja-filtros-grid .form-group:nth-child(2),
+    #panelRendicionVascoCaja .vasco-caja-filtro-vendedor,
+    #panelRendicionVascoCaja .vasco-caja-filtro-accion {
+        flex: 1 1 100%;
+    }
+
+    #panelRendicionVascoCaja #refGlobalVasco {
+        width: 100%;
+    }
 }

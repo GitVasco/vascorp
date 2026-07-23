@@ -17,6 +17,7 @@
  * La URL del API real es la misma; cambia solo el origen desde donde se ejecuta vascorp.
  */
 
+//$vasco_online_entorno = "pruebas";
 $vasco_online_entorno = "desarrollo";
 $GLOBALS["vasco_online_entorno"] = $vasco_online_entorno;
 
@@ -30,12 +31,10 @@ if ($vasco_online_entorno === "desarrollo") {
     define("VASCO_ONLINE_API_HOST", "api.vasco.io");
     // Debe coincidir con API_KEY del .env local de Vasco (NO es la key de producción).
     define("VASCO_ONLINE_API_KEY_DESARROLLO", "k6QFLuCbgpJPAXuQn2qz38sqLMrLDG");
-
 } else {
 
     // pruebas y produccion usan el API real público (HTTPS, sin trucos de Host).
     define("VASCO_ONLINE_API_BASE_URL", VASCO_ONLINE_API_URL_REAL);
-
 }
 
 /**
@@ -48,7 +47,8 @@ function obtenerApiKeyVascoOnline()
 {
     $entorno = isset($GLOBALS["vasco_online_entorno"]) ? $GLOBALS["vasco_online_entorno"] : "";
 
-    if ($entorno === "desarrollo"
+    if (
+        $entorno === "desarrollo"
         && defined("VASCO_ONLINE_API_KEY_DESARROLLO")
         && VASCO_ONLINE_API_KEY_DESARROLLO !== ""
     ) {
@@ -65,6 +65,7 @@ define("VASCO_ONLINE_ENDPOINT_CLIENTES", "/v2/sync/customers-bulk");
 define("VASCO_ONLINE_ENDPOINT_CUENTAS", "/v2/sync/account-statements-bulk");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING", "/v2/sync/collections-pending-delivery");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER", "/v2/sync/collections-deliver");
+define("VASCO_ONLINE_ENDPOINT_COBRANZAS_CANCEL", "/v2/sync/collections-cancel");
 define("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES", "/v2/sync/customer-field-updates");
 define("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES_ACK", "/v2/sync/customer-field-updates/ack");
 define("VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS", "/v2/sync/portal-visit-requests");
@@ -86,6 +87,7 @@ function obtenerConfigVascoOnline()
         "endpoint_cuentas" => defined("VASCO_ONLINE_ENDPOINT_CUENTAS") ? VASCO_ONLINE_ENDPOINT_CUENTAS : "/v2/sync/account-statements-bulk",
         "endpoint_cobranzas_pending" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING : "/v2/sync/collections-pending-delivery",
         "endpoint_cobranzas_deliver" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER : "/v2/sync/collections-deliver",
+        "endpoint_cobranzas_cancel" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_CANCEL") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_CANCEL : "/v2/sync/collections-cancel",
         "endpoint_field_updates" => defined("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES") ? VASCO_ONLINE_ENDPOINT_FIELD_UPDATES : "/v2/sync/customer-field-updates",
         "endpoint_field_updates_ack" => defined("VASCO_ONLINE_ENDPOINT_FIELD_UPDATES_ACK") ? VASCO_ONLINE_ENDPOINT_FIELD_UPDATES_ACK : "/v2/sync/customer-field-updates/ack",
         "endpoint_portal_visit_requests" => defined("VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS") ? VASCO_ONLINE_ENDPOINT_PORTAL_VISIT_REQUESTS : "/v2/sync/portal-visit-requests",
@@ -159,6 +161,17 @@ function obtenerUrlCobranzasDeliverVasco()
 {
     $config = obtenerConfigVascoOnline();
     $endpoint = isset($config["endpoint_cobranzas_deliver"]) ? $config["endpoint_cobranzas_deliver"] : "/v2/sync/collections-deliver";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlCobranzasCancelVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_cobranzas_cancel"]) ? $config["endpoint_cobranzas_cancel"] : "/v2/sync/collections-cancel";
 
     return obtenerUrlVascoEndpoint($endpoint);
 }

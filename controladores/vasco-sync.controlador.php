@@ -1067,6 +1067,13 @@ class ControladorVascoSync
         return "vascorp-deliver-" . date("Ymd-His") . "-" . $sufijo;
     }
 
+    static public function generarTraceIdCobranzasCancel()
+    {
+        $sufijo = substr(md5(uniqid("cobc", true)), 0, 6);
+
+        return "vascorp-cancel-" . date("Ymd-His") . "-" . $sufijo;
+    }
+
     /**
      * @return array{ok:bool,msg?:string,api_key?:string,timeout?:int}
      */
@@ -1363,6 +1370,173 @@ class ControladorVascoSync
                 "processed" => isset($results["processed"]) ? (int) $results["processed"] : count($itemsResult),
                 "delivered" => isset($results["delivered"]) ? (int) $results["delivered"] : 0,
                 "already_delivered" => isset($results["already_delivered"]) ? (int) $results["already_delivered"] : 0,
+                "items" => $itemsResult,
+                "failed" => $failed,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        } elseif (isset($results["error"])) {
+            $msg .= ": " . $results["error"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "failed" => $failed,
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * POST /v2/sync/collections-cancel
+     *
+     * @param array $items
+     * @param string $cancelledBy
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrAnularCobranzas($items, $cancelledBy, $traceId = "")
+    {
+        if (!function_exists("obtenerUrlCobranzasCancelVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $prep = self::prepararClienteVascoApi();
+        if (!$prep["ok"]) {
+            return $prep;
+        }
+
+        $url = obtenerUrlCobranzasCancelVasco();
+        if ($url === "") {
+            return array("ok" => false, "msg" => "URL de anulación de cobranzas no configurada");
+        }
+
+        if (!is_array($items) || count($items) === 0) {
+            return array("ok" => false, "msg" => "Seleccione al menos una cobranza");
+        }
+
+        if (count($items) > 500) {
+            return array("ok" => false, "msg" => "Máximo 500 cobranzas por anulación");
+        }
+
+        $itemsApi = array();
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $row = array();
+            $code = isset($item["code"]) ? trim((string) $item["code"]) : "";
+            $id = isset($item["id"]) ? (int) $item["id"] : 0;
+            $reason = isset($item["reason"]) ? trim((string) $item["reason"]) : "";
+
+            if ($code === "" && $id < 1) {
+                continue;
+            }
+
+            if ($reason === "") {
+                return array("ok" => false, "msg" => "El motivo de anulación es obligatorio");
+            }
+
+            if ($code !== "") {
+                $row["code"] = $code;
+            }
+            if ($id > 0) {
+                $row["id"] = $id;
+            }
+            $row["reason"] = substr($reason, 0, 255);
+
+            $itemsApi[] = $row;
+        }
+
+        if (count($itemsApi) === 0) {
+            return array("ok" => false, "msg" => "Ningún ítem válido para anular");
+        }
+
+        $traceId = trim((string) $traceId);
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdCobranzasCancel();
+        }
+
+        $cancelledBy = trim((string) $cancelledBy);
+        if ($cancelledBy === "") {
+            $cancelledBy = "caja.vascorp";
+        }
+        $cancelledBy = substr($cancelledBy, 0, 80);
+
+        $payload = array(
+            "trace_id" => $traceId,
+            "cancelled_by" => $cancelledBy,
+            "items" => $itemsApi,
+        );
+
+        $jsonBody = json_encode($payload);
+        if ($jsonBody === false) {
+            return array("ok" => false, "msg" => "No se pudo serializar la anulación a JSON");
+        }
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "Authorization: " . $prep["api_key"];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_TIMEOUT => $prep["timeout"],
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : (is_array($json) ? $json : array());
+
+        $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $itemsResult = isset($results["items"]) && is_array($results["items"]) ? $results["items"] : array();
+
+        if ($httpCode === 200 || $httpCode === 207) {
+            $ok = count($failed) === 0;
+
+            return array(
+                "ok" => $ok,
+                "partial" => !$ok,
+                "msg" => $ok
+                    ? "Cobranza(s) anulada(s) en Vasco"
+                    : "Anulación parcial (" . count($failed) . " fallidos)",
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "processed" => isset($results["processed"]) ? (int) $results["processed"] : count($itemsResult),
+                "cancelled" => isset($results["cancelled"]) ? (int) $results["cancelled"] : 0,
+                "already_cancelled" => isset($results["already_cancelled"]) ? (int) $results["already_cancelled"] : 0,
                 "items" => $itemsResult,
                 "failed" => $failed,
                 "url" => $url,

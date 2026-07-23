@@ -69,6 +69,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Recetas por modelo | Vasco System";
         } elseif ($_GET["ruta"] === "editar-receta-modelo") {
             $__tituloVentana = "Editor de receta | Vasco System";
+        } elseif ($_GET["ruta"] === "regularizaciones-comerciales") {
+            $__tituloVentana = "Regularizaciones comerciales | Vasco System";
+        } elseif ($_GET["ruta"] === "sync-vasco") {
+            $__tituloVentana = "Sincronización Vasco Online | Vasco System";
         }
     }
     ?>
@@ -157,7 +161,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/vasco-solicitud-atencion.css?v=<?php echo rand(); ?>">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
-    <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=1">
+    <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
     <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
@@ -986,7 +990,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
-    <script src="vistas/js/regularizaciones-comerciales.js?v=1"></script>
+    <script src="vistas/js/regularizaciones-comerciales.js?v=2"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js"></script>
     <script src="vistas/js/paras.js"></script>

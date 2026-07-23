@@ -1,12 +1,35 @@
-/* Regularizaciones comerciales excepcionales */
+/* Regularizaciones comerciales — UI simple */
 
-#panelRegularizacionesComerciales .rc-aviso {
-    margin-bottom: 18px;
+#panelRegularizacionesComerciales .content-header h1 {
+    display: inline-block;
 }
 
-#panelRegularizacionesComerciales .rc-aviso-lista {
-    margin: 8px 0 0;
-    padding-left: 18px;
+#panelRegularizacionesComerciales .rc-btn-ayuda {
+    margin-left: 8px;
+    vertical-align: middle;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
+    line-height: 26px;
+    background: #f39c12;
+    border-color: #e08e0b;
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.25);
+    animation: rc-ayuda-pulse 2.2s ease-in-out infinite;
+}
+
+#panelRegularizacionesComerciales .rc-btn-ayuda:hover,
+#panelRegularizacionesComerciales .rc-btn-ayuda:focus {
+    background: #e08e0b;
+    border-color: #d58512;
+    color: #fff;
+    animation: none;
+}
+
+@keyframes rc-ayuda-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.25); }
+    50% { box-shadow: 0 0 0 7px rgba(243, 156, 18, 0.08); }
 }
 
 #panelRegularizacionesComerciales .rc-tabla-wrap {
@@ -19,8 +42,15 @@
 }
 
 #panelRegularizacionesComerciales .rc-cargo-sel {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
     background: #f7f9fb;
+    border: 1px solid #e6ebf0;
+    border-radius: 3px;
+}
+
+#panelRegularizacionesComerciales .rc-cargo-sel .rc-sel-line {
+    margin: 2px 0;
 }
 
 #panelRegularizacionesComerciales .rc-detalle-saldos {
@@ -45,4 +75,12 @@
 
 #panelRegularizacionesComerciales .rc-kpi strong {
     font-size: 18px;
+}
+
+.rc-ayuda-body ul {
+    padding-left: 18px;
+}
+
+.rc-ayuda-body li {
+    margin-bottom: 4px;
 }
