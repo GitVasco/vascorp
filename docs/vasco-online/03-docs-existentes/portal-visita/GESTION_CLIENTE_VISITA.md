@@ -1,6 +1,6 @@
 # Gestionar cliente en visita — bandeja de datos para vascorp
 
-**Estado:** implementado (admin + API v2). Handoff vascorp: [`docs/VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`](VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md).
+**Estado:** implementado (admin + API v2). Handoff vascorp: [`docs/vasco-online/03-docs-existentes/implementacion-vascorp/VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`](../implementacion-vascorp/VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md).
 
 **Contexto:** en la etapa de control / adopción, el equipo va **cliente por cliente** mostrando la app y cómo se beneficia. Ahí conviene capturar datos que vascorp no trae bien (celular, autorizaciones, alta de cuenta portal) **sin depender del flujo de cobranza**.
 
@@ -53,7 +53,7 @@ Futuro: más campos que vascorp no sincronice (contacto alterno, horario, prefer
 
 ## Tabla propuesta: `customer_field_updates`
 
-Nombre orientativo; migración futura `0014` o `0015` (ver también `customer_contact_pending` en `docs/COBRANZA_NOTIFICACIONES.md` — puede unificarse en este modelo).
+Nombre orientativo; migración futura `0014` o `0015` (ver también `customer_contact_pending` en `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md` — puede unificarse en este modelo).
 
 ```sql
 -- Borrador conceptual (no aplicar aún)
@@ -107,7 +107,7 @@ Mismo patrón que sync de clientes y estados de cuenta:
 
 Payload mínimo por ítem: `id`, `external_id` / `doc_type` + `doc_number`, `phone_e164`, `whatsapp_consent`, `managed_at`, `seller_username`.
 
-Documentar contrato en `postman/VASCORP_SYNC_FIELD_UPDATES.md` y guía de implementación en `docs/VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`.
+Documentar contrato en `postman/VASCORP_SYNC_FIELD_UPDATES.md` y guía de implementación en `docs/vasco-online/03-docs-existentes/implementacion-vascorp/VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`.
 
 ---
 
@@ -149,8 +149,8 @@ Documentar contrato en `postman/VASCORP_SYNC_FIELD_UPDATES.md` y guía de implem
 
 ## Referencias
 
-- Celular y notificaciones en cobro: `docs/COBRANZA_NOTIFICACIONES.md`
-- Visita vendedor: `docs/VISITA_VENDEDOR_CHECKLIST.md`
-- Producto y portal fase 2: `docs/PRODUCTO.md`
+- Celular y notificaciones en cobro: `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md`
+- Visita vendedor: `docs/vasco-online/03-docs-existentes/portal-visita/VISITA_VENDEDOR_CHECKLIST.md`
+- Producto y portal fase 2: `docs/vasco-online/03-docs-existentes/producto/PRODUCTO.md`
 - Validación teléfono: `api/helpers/phone.php`
 - Sync clientes: `postman/VASCORP_SYNC.md`

@@ -37,7 +37,7 @@ Sin `store/` por ahora: el portal informativo del cliente llegará en otra fase.
 | **Evolution API** | WhatsApp para notificar al cliente (varios números registrados) |
 | **json.pe** | Consulta DNI/RUC (opcional) |
 
-**Gestión en visita (planificado):** tile **Gestionar** en la ficha del cliente — bandeja Vasco de datos capturados en campo (celular, autorización, cuenta portal) para consumo opcional de vascorp, sin pisar el maestro. Ver `docs/GESTION_CLIENTE_VISITA.md`.
+**Gestión en visita (planificado):** tile **Gestionar** en la ficha del cliente — bandeja Vasco de datos capturados en campo (celular, autorización, cuenta portal) para consumo opcional de vascorp, sin pisar el maestro. Ver `docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md`.
 
 ## Fases planificadas
 
@@ -50,9 +50,9 @@ Orden de implementación en el monorepo:
 3. Registro de cobranzas en campo (**solo efectivo** entregado al vendedor; la imputación a documentos la hace la empresa en vascorp, a la cuenta más antigua)
 4. Ticket virtual por cobranza (código `TKT-*`) y, opcionalmente, código de ticket físico si se entrega recibo en papel
 5. Notificación sistema + WhatsApp
-6. **Ticket como imagen** (post-MVP, no bloquea cobro): generar PNG del ticket virtual, guardarlo en `storage/` y usarlo para descarga/compartir en admin y adjunto WhatsApp — **plan técnico:** `docs/COBRANZA_TICKET_IMAGEN.md` (mockup: `admin/public/mockups/visita/cobranza-exito.html`)
+6. **Ticket como imagen** (post-MVP, no bloquea cobro): generar PNG del ticket virtual, guardarlo en `storage/` y usarlo para descarga/compartir en admin y adjunto WhatsApp — **plan técnico:** `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md` (mockup: `admin/public/mockups/visita/cobranza-exito.html`)
 7. Auditoría obligatoria
-8. Validación / supervisión vía API (efectivo pendiente de entrega a la empresa) — `GET/POST /v2/sync/collections-*` — ver `docs/VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`
+8. Validación / supervisión vía API (efectivo pendiente de entrega a la empresa) — `GET/POST /v2/sync/collections-*` — ver `docs/vasco-online/03-docs-existentes/implementacion-vascorp/VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`
 9. Consulta de facturas (solo lectura), cuando aplique
 
 **Registro de cobranza (efectivo)** — alcance acordado:
@@ -63,7 +63,7 @@ Orden de implementación en el monorepo:
 | Ticket virtual + código físico opcional | Validación / rendición de efectivo |
 | Notificación al cliente | Sincronización con vascorp si aplica |
 
-**Ticket virtual → imagen** (post-MVP; ver `docs/COBRANZA_TICKET_IMAGEN.md`):
+**Ticket virtual → imagen** (post-MVP; ver `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md`):
 
 - Tras registrar la cobranza, renderizar el ticket (datos + QR con código de cobranza/ticket) como imagen.
 - Persistir en `storage/` (misma línea que comprobantes de transferencia).
@@ -78,7 +78,7 @@ Orden de implementación en el monorepo:
 
 - Panel informativo mobile-first (estado de cuenta, cobranzas, facturas)
 - Login cliente: RUC/DNI + clave; OTP y soporte continuo
-- **Detalle operativo y roadmap:** `docs/PORTAL_CLIENTE.md`
+- **Detalle operativo y roadmap:** `docs/vasco-online/03-docs-existentes/portal-visita/PORTAL_CLIENTE.md`
 - **Índice documentación por módulo:** `docs/README.md`
 
 ### Fase 3 — Operación comercial

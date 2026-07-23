@@ -2,9 +2,9 @@
 
 Documento para llevar al proyecto **vascorp/vascopro** y cerrar la integración.
 
-Contrato HTTP detallado: [`postman/VASCORP_SYNC_ACCOUNT.md`](../postman/VASCORP_SYNC_ACCOUNT.md)  
-Guía extendida: [`VASCOPRO_SYNC_ESTADO_CUENTA.md`](VASCOPRO_SYNC_ESTADO_CUENTA.md)  
-Plantilla JSON: [`postman/samples/vascorp-account-statements-bulk.json`](../postman/samples/vascorp-account-statements-bulk.json)
+Contrato HTTP detallado: [`postman/VASCORP_SYNC_ACCOUNT.md`](../../../../postman/VASCORP_SYNC_ACCOUNT.md)  
+Guía extendida: [`VASCOPRO_SYNC_ESTADO_CUENTA.md`](../sync-estados-cuenta/VASCOPRO_SYNC_ESTADO_CUENTA.md)  
+Plantilla JSON: [`postman/samples/vascorp-account-statements-bulk.json`](../../../../postman/samples/vascorp-account-statements-bulk.json)
 
 ---
 

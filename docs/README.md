@@ -1,77 +1,54 @@
-# Documentación Vasco — índice por módulo
+# Documentación vascorp
 
-Mapa de **qué leer según tu rol**. Los contratos HTTP v2 viven en `postman/`; las guías de implementación en `docs/`.
-
----
-
-## Producto y visión
-
-| Documento | Para quién | Contenido |
-|-----------|------------|-----------|
-| [`PRODUCTO.md`](PRODUCTO.md) | Todo el equipo | Fases, actores, arquitectura monorepo, integraciones |
-| [`CHANGELOG.md`](CHANGELOG.md) | Dev / release | Cambios por versión |
+Índice de `docs/` tras la reorganización.
 
 ---
 
-## Portal cliente (fase 2)
+## Vasco Online (integración con VascoPro)
 
-| Documento | Para quién | Contenido |
-|-----------|------------|-----------|
-| [`PORTAL_CLIENTE.md`](PORTAL_CLIENTE.md) | Producto + frontend admin | Rutas `/my-account`, UX, contraseña, **notificaciones cobranzas** |
-| [`VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md`](VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md) | **vascorp** (job) | Consumir solicitudes de visita del portal |
-| [`../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md`](../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md) | **vascorp** + QA | Contrato HTTP GET/ack solicitudes visita |
+| Carpeta | Uso |
+|---------|-----|
+| [`vasco-online/01-pedidos-a-vascopro/`](vasco-online/01-pedidos-a-vascopro/) | Pedidos que **vascorp** escribe para VascoPro |
+| [`vasco-online/02-respuestas-vascopro/`](vasco-online/02-respuestas-vascopro/) | Respuestas/contratos que manda VascoPro (se copian aquí) |
+| [`vasco-online/03-docs-existentes/`](vasco-online/03-docs-existentes/) | Docs Vasco ya existentes, ordenados por tema |
 
----
+Flujo: pedido en `01` → respuesta en `02` → implementar en vascorp. Contexto histórico en `03`.
 
-## Visita del vendedor (admin)
+### Docs existentes (atajo)
 
-| Documento | Para quién | Contenido |
-|-----------|------------|-----------|
-| [`VISITA_VENDEDOR_CHECKLIST.md`](VISITA_VENDEDOR_CHECKLIST.md) | Frontend + QA | Checklist pantallas visita |
-| [`GESTION_CLIENTE_VISITA.md`](GESTION_CLIENTE_VISITA.md) | Producto | Tile Gestionar, bandeja field updates |
-| [`VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`](VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md) | **vascorp** | Sync gestión en visita (celular, WhatsApp) |
-| [`../postman/VASCORP_SYNC_FIELD_UPDATES.md`](../postman/VASCORP_SYNC_FIELD_UPDATES.md) | **vascorp** + QA | Contrato HTTP field updates |
+| Tema | Carpeta |
+|------|---------|
+| Producto / changelog | [`03-docs-existentes/producto/`](vasco-online/03-docs-existentes/producto/) |
+| Cobranzas / rendición | [`03-docs-existentes/cobranzas/`](vasco-online/03-docs-existentes/cobranzas/) |
+| Portal y visita | [`03-docs-existentes/portal-visita/`](vasco-online/03-docs-existentes/portal-visita/) |
+| Sync estados de cuenta | [`03-docs-existentes/sync-estados-cuenta/`](vasco-online/03-docs-existentes/sync-estados-cuenta/) |
+| Handoffs implementación | [`03-docs-existentes/implementacion-vascorp/`](vasco-online/03-docs-existentes/implementacion-vascorp/) |
 
----
-
-## Cobranzas
-
-| Documento | Para quién | Contenido |
-|-----------|------------|-----------|
-| [`COBRANZA_NOTIFICACIONES.md`](COBRANZA_NOTIFICACIONES.md) | Producto + backend | WhatsApp, portal, fases notificación |
-| [`COBRANZA_TICKET_IMAGEN.md`](COBRANZA_TICKET_IMAGEN.md) | Frontend + backend | Ticket PNG, compartir, Evolution API |
-| [`VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`](VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md) | **vascorp** | Rendición efectivo cobrado en campo |
-| [`VASCOPRO_SYNC_RENDICION_COBRANZAS.md`](VASCOPRO_SYNC_RENDICION_COBRANZAS.md) | **vascopro** | Guía rendición desde vascopro |
-| [`../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`](../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md) | **vascorp** + QA | Contrato HTTP collections-deliver |
+Contratos HTTP: [`../postman/`](../postman/).
 
 ---
 
-## Maestros y estados de cuenta (sync vascorp → Vasco)
+## Comercial (interno vascorp)
 
-| Documento | Para quién | Contenido |
-|-----------|------------|-----------|
-| [`VASCORP_IMPLEMENTAR_ESTADOS_CUENTA.md`](VASCORP_IMPLEMENTAR_ESTADOS_CUENTA.md) | **vascorp** | Job estados de cuenta |
-| [`VASCOPRO_SYNC_ESTADO_CUENTA.md`](VASCOPRO_SYNC_ESTADO_CUENTA.md) | **vascopro** | Sync desde vascopro |
-| [`../postman/VASCORP_SYNC.md`](../postman/VASCORP_SYNC.md) | **vascorp** + QA | Contrato `customers-bulk` |
-| [`../postman/VASCORP_SYNC_ACCOUNT.md`](../postman/VASCORP_SYNC_ACCOUNT.md) | **vascorp** + QA | Contrato `account-statements-bulk` |
+Planes de módulos comerciales: [`comercial/`](comercial/).
 
----
-
-## Mi gestión y supervisión (vendedor)
-
-| Documento | Para quién | Contenido |
-|-----------|------------|-----------|
-| [`MI_GESTION_VENDEDOR_CHECKLIST.md`](MI_GESTION_VENDEDOR_CHECKLIST.md) | Frontend + QA | Módulo `/my-management` |
-| [`SUPERVISION_VENDEDORES.md`](SUPERVISION_VENDEDORES.md) | Producto | Supervisión (futuro) |
+| Carpeta | Tema |
+|---------|------|
+| [`metas-retos/`](comercial/metas-retos/) | Metas, retos, incentivos |
+| [`zonas-marcas/`](comercial/zonas-marcas/) | Zonas y asignación de marcas |
+| [`linea-credito/`](comercial/linea-credito/) | Línea de crédito / inteligencia |
+| [`recetas-modelos/`](comercial/recetas-modelos/) | Recetas, ficha, costos, categorías |
+| [`regularizaciones/`](comercial/regularizaciones/) | Regularizaciones comerciales |
+| [`dashboard-cxc/`](comercial/dashboard-cxc/) | Dashboard CxC |
 
 ---
 
-## Postman y pruebas API
+## SQL y tests
 
-| Recurso | Para quién |
-|---------|------------|
-| [`../postman/README.md`](../postman/README.md) | Cualquier dev — importar colección, variables, flujo |
-| [`../postman/vasco-api.postman_collection.json`](../postman/vasco-api.postman_collection.json) | Requests listos |
+| Carpeta | Contenido |
+|---------|-----------|
+| [`sql/`](sql/) | Migraciones y scripts SQL |
+| [`tests/`](tests/) | Tests de documentación / adaptadores |
 
 ---
 
@@ -79,7 +56,8 @@ Mapa de **qué leer según tu rol**. Los contratos HTTP v2 viven en `postman/`; 
 
 | Si eres… | Empieza por… |
 |----------|----------------|
-| **vascorp** (integración ERP) | `postman/VASCORP_SYNC*.md` + `docs/VASCORP_IMPLEMENTAR_*.md` |
-| **Frontend admin / portal** | `PORTAL_CLIENTE.md`, `VISITA_VENDEDOR_CHECKLIST.md` |
-| **Producto / arquitectura** | `PRODUCTO.md` |
-| **Nuevo en el repo** | Este índice → módulo que toques |
+| **Pedir algo a VascoPro** | `vasco-online/01-pedidos-a-vascopro/` |
+| **Pegar respuesta de VascoPro** | `vasco-online/02-respuestas-vascopro/` |
+| **Integrar ERP / sync** | `postman/VASCORP_SYNC*.md` + `vasco-online/03-docs-existentes/implementacion-vascorp/` |
+| **Módulo comercial vascorp** | `comercial/` + `sql/` |
+| **Nuevo en el repo** | Este índice |

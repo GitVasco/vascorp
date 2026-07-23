@@ -9,8 +9,8 @@ Documento para llevar al proyecto **vascorp/vascopro** y consumir datos capturad
 | Listar bandeja | `GET` | `/v2/sync/customer-field-updates` |
 | Confirmar / rechazar | `POST` | `/v2/sync/customer-field-updates/ack` |
 
-Contrato HTTP detallado: [`postman/VASCORP_SYNC_FIELD_UPDATES.md`](../postman/VASCORP_SYNC_FIELD_UPDATES.md)  
-Contexto producto: [`GESTION_CLIENTE_VISITA.md`](GESTION_CLIENTE_VISITA.md)
+Contrato HTTP detallado: [`postman/VASCORP_SYNC_FIELD_UPDATES.md`](../../../../postman/VASCORP_SYNC_FIELD_UPDATES.md)  
+Contexto producto: [`GESTION_CLIENTE_VISITA.md`](../portal-visita/GESTION_CLIENTE_VISITA.md)
 
 ---
 

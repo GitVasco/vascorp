@@ -9,8 +9,8 @@ Documento para llevar al proyecto **vascorp/vascopro** y consumir solicitudes de
 | Listar bandeja | `GET` | `/v2/sync/portal-visit-requests` |
 | Confirmar / cerrar | `POST` | `/v2/sync/portal-visit-requests/ack` |
 
-Contrato HTTP detallado: [`postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md`](../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md)  
-Contexto producto: [`PORTAL_CLIENTE.md`](PORTAL_CLIENTE.md)
+Contrato HTTP detallado: [`postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md`](../../../../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md)  
+Contexto producto: [`PORTAL_CLIENTE.md`](../portal-visita/PORTAL_CLIENTE.md)
 
 ---
 
@@ -182,6 +182,6 @@ postToVasco('/v2/sync/portal-visit-requests/ack', [
 
 ## Referencias
 
-- Índice documentación: [`docs/README.md`](README.md)
-- Sync clientes: [`postman/VASCORP_SYNC.md`](../postman/VASCORP_SYNC.md)
-- Gestión en visita (vendedor → vascorp): [`VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`](VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md)
+- Índice documentación: [`docs/README.md`](../../../README.md)
+- Sync clientes: [`postman/VASCORP_SYNC.md`](../../../../postman/VASCORP_SYNC.md)
+- Gestión en visita (vendedor → vascorp): [`VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md`](./VASCORP_IMPLEMENTAR_GESTION_CLIENTE.md)

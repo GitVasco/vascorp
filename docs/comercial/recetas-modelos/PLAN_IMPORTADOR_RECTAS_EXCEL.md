@@ -199,7 +199,7 @@ El endpoint debe responder siempre JSON UTF-8 con `ok`, `mensaje` y datos solo c
 
 ```text
 Implementa el módulo “Importador de rectas desde Excel” siguiendo estrictamente
-docs/PLAN_IMPORTADOR_RECTAS_EXCEL.md. Antes de escribir código, completa la Fase R0:
+docs/comercial/recetas-modelos/PLAN_IMPORTADOR_RECTAS_EXCEL.md. Antes de escribir código, completa la Fase R0:
 localiza la entidad real “rectas”, confirma sus columnas y clave única con el responsable
 funcional, y no supongas una tabla destino. Mantén la arquitectura actual del proyecto
 (vista → JS → AJAX → controlador → modelo), usa PHPExcel ya incluido y no agregues

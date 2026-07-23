@@ -2,10 +2,10 @@
 
 Guía completa para implementar el job de **consulta y validación de efectivo cobrado en campo** en **vascopro/vascorp**.
 
-**Handoff (checklist para implementar en vascorp):** [`VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`](VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md)
+**Handoff (checklist para implementar en vascorp):** [`VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`](../implementacion-vascorp/VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md)
 
-Documento técnico del contrato HTTP: [`postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`](../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md)  
-Plantilla JSON deliver: [`postman/samples/vascorp-collections-deliver.json`](../postman/samples/vascorp-collections-deliver.json)
+Documento técnico del contrato HTTP: [`postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`](../../../../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md)  
+Plantilla JSON deliver: [`postman/samples/vascorp-collections-deliver.json`](../../../../postman/samples/vascorp-collections-deliver.json)
 
 ---
 
@@ -179,4 +179,4 @@ Loguear siempre `trace_id` de la respuesta para cruzar con logs de Vasco.
 | 3 | **GET/POST rendición cobranzas** (este documento) |
 | 4 | (Futuro) `GET/ack customer-contacts-pending` |
 
-Ver orden completo: [`VASCOPRO_SYNC_ESTADO_CUENTA.md`](VASCOPRO_SYNC_ESTADO_CUENTA.md) §13.
+Ver orden completo: [`VASCOPRO_SYNC_ESTADO_CUENTA.md`](../sync-estados-cuenta/VASCOPRO_SYNC_ESTADO_CUENTA.md) §13.

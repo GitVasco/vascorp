@@ -4,8 +4,8 @@
 
 **Objetivo:** que el vendedor pueda **descargar o compartir** el ticket virtual como PNG/JPEG, y que la misma imagen sirva como adjunto en WhatsApp (Evolution API) y en el futuro portal del cliente.
 
-**Contexto producto:** `docs/PRODUCTO.md` (Fase 1, ítem 6).  
-**Notificaciones:** `docs/COBRANZA_NOTIFICACIONES.md` (plantilla WhatsApp con adjunto).
+**Contexto producto:** `docs/vasco-online/03-docs-existentes/producto/PRODUCTO.md` (Fase 1, ítem 6).  
+**Notificaciones:** `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md` (plantilla WhatsApp con adjunto).
 
 ---
 
@@ -218,7 +218,7 @@ Cuando exista imagen, ampliar `WhatsappNotificationService` (fase 1.3):
 POST Evolution: mensaje texto + mediaUrl o upload del PNG
 ```
 
-Plantilla en `docs/COBRANZA_NOTIFICACIONES.md`:
+Plantilla en `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md`:
 
 > Adjunto imagen ticket cuando exista `ticket_image_path_collection`.
 
@@ -245,8 +245,8 @@ admin/views/pages/visit/actions/collect-success.php   (botón descargar / data-t
 admin/views/pages/visit/actions/collection.php        (idem)
 admin/public/customs/js/visit/visit-collect-success.js (share con File / download)
 storage/collections/.gitkeep                          (estructura)
-docs/VISITA_VENDEDOR_CHECKLIST.md                     (marcar hecho)
-docs/COBRANZA_NOTIFICACIONES.md                       (fase WhatsApp adjunto)
+docs/vasco-online/03-docs-existentes/portal-visita/VISITA_VENDEDOR_CHECKLIST.md                     (marcar hecho)
+docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md                       (fase WhatsApp adjunto)
 composer.json                                         (solo si se añade lib QR; evaluar)
 ```
 
@@ -288,6 +288,6 @@ composer.json                                         (solo si se añade lib QR;
 - UI ticket: `admin/views/pages/visit/actions/collect-success.php`, `actions/collection.php`
 - Compartir texto: `admin/public/customs/js/visit/visit-collect-success.js`
 - CSS ticket: `admin/public/customs/css/visit/visit.css` (`.vasco-visit-ticket-preview`)
-- Producto: `docs/PRODUCTO.md`
-- Notificaciones: `docs/COBRANZA_NOTIFICACIONES.md`
-- Checklist visita: `docs/VISITA_VENDEDOR_CHECKLIST.md` (paso 10)
+- Producto: `docs/vasco-online/03-docs-existentes/producto/PRODUCTO.md`
+- Notificaciones: `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md`
+- Checklist visita: `docs/vasco-online/03-docs-existentes/portal-visita/VISITA_VENDEDOR_CHECKLIST.md` (paso 10)

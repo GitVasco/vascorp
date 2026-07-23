@@ -19,7 +19,7 @@
 |--------|------------|
 | **Atender cliente** (`/visit`) | Flujo cliente a cliente; cobranzas por cliente en sesión |
 | **Mi gestión** | Vista agregada del vendedor logueado; no requiere visita activa |
-| **Gestionar cliente** (futuro) | Wizard de adopción en visita — ver `docs/GESTION_CLIENTE_VISITA.md` |
+| **Gestionar cliente** (futuro) | Wizard de adopción en visita — ver `docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md` |
 
 **Datos ya disponibles en BD:**
 
@@ -48,7 +48,7 @@
 ### Pendiente (este módulo)
 
 - [ ] RBAC migración `0017`+ (al final; ver acciones `mi_gestion_*`)
-- [ ] **Supervisión gerencia** — documentado en `docs/SUPERVISION_VENDEDORES.md` (implementación posterior)
+- [ ] **Supervisión gerencia** — documentado en `docs/vasco-online/03-docs-existentes/portal-visita/SUPERVISION_VENDEDORES.md` (implementación posterior)
 - [ ] Resto del checklist de abajo
 
 ---
@@ -151,7 +151,7 @@
 - [ ] Solo `status_collection = pending_delivery`
 - [ ] Total acumulado arriba (call-to-action informativo: «Entregar en caja/administración»)
 - [ ] Lista con monto, cliente, fecha, código cobranza
-- [ ] Sin acción de «marcar rendido» en admin vendedor (lo hace vascorp vía API v2 — ver `docs/VASCOPRO_SYNC_RENDICION_COBRANZAS.md`)
+- [ ] Sin acción de «marcar rendido» en admin vendedor (lo hace vascorp vía API v2 — ver `docs/vasco-online/03-docs-existentes/cobranzas/VASCOPRO_SYNC_RENDICION_COBRANZAS.md`)
 - [ ] Actualización al volver a la pantalla (estado cambia cuando vascorp confirma `delivered`)
 
 ---
@@ -192,15 +192,15 @@
 - [ ] Vendedor sin clientes asignados en maestro
 - [ ] Permisos: rol sin `mi_gestion_*` → 403
 - [ ] Mobile: tarjetas, scroll, filtros táctiles
-- [ ] Actualizar `docs/CHANGELOG.md` por hito
-- [ ] Referencia cruzada en `docs/PRODUCTO.md` (opcional, una línea en fase 1)
+- [ ] Actualizar `docs/vasco-online/03-docs-existentes/producto/CHANGELOG.md` por hito
+- [ ] Referencia cruzada en `docs/vasco-online/03-docs-existentes/producto/PRODUCTO.md` (opcional, una línea en fase 1)
 
 ---
 
 ## Fases posteriores (no MVP)
 
-- [ ] Clientes **gestionados** (conteo desde `customer_field_updates` — `docs/GESTION_CLIENTE_VISITA.md`)
-- [ ] Vista supervisor: elegir vendedor y ver su gestión — **plan:** `docs/SUPERVISION_VENDEDORES.md`
+- [ ] Clientes **gestionados** (conteo desde `customer_field_updates` — `docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md`)
+- [ ] Vista supervisor: elegir vendedor y ver su gestión — **plan:** `docs/vasco-online/03-docs-existentes/portal-visita/SUPERVISION_VENDEDORES.md`
 - [ ] Metas y comparativas
 - [ ] Notificaciones push «Tienes S/ X por rendir»
 - [ ] Export CSV para el vendedor
@@ -238,7 +238,7 @@ El vendedor puede:
 
 | Área | Ruta |
 |------|------|
-| Checklist | `docs/MI_GESTION_VENDEDOR_CHECKLIST.md` |
+| Checklist | `docs/vasco-online/03-docs-existentes/portal-visita/MI_GESTION_VENDEDOR_CHECKLIST.md` |
 | Migración RBAC | `migrations/0015_rbac_mi_gestion_vendedor.sql` |
 | Permisos | `admin/src/Helpers/MyManagementPermissionsHelper.php` |
 | Servicio | `admin/src/Services/SellerManagementService.php` |
@@ -250,7 +250,7 @@ El vendedor puede:
 | Estilos | `admin/public/customs/css/my-management/` |
 | JS | `admin/public/customs/js/my-management/` |
 | Referencia listado | `admin/views/pages/visit/actions/collections.php` |
-| Referencia rendición | `docs/VASCOPRO_SYNC_RENDICION_COBRANZAS.md` |
+| Referencia rendición | `docs/vasco-online/03-docs-existentes/cobranzas/VASCOPRO_SYNC_RENDICION_COBRANZAS.md` |
 
 ---
 

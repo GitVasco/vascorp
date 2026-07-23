@@ -145,17 +145,17 @@
 
 - [ ] Flujo cobranza con cliente preseleccionado (mockup: `admin/public/mockups/visita/cobrar.html`)
 - [ ] Solo **efectivo** entregado al vendedor (sin imputar documentos en campo)
-- [ ] Ticket virtual (`TKT-*` en BD; **preview UI oculto** — ver `VisitCollectUiHelper` y `docs/COBRANZA_TICKET_IMAGEN.md`)
+- [ ] Ticket virtual (`TKT-*` en BD; **preview UI oculto** — ver `VisitCollectUiHelper` y `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md`)
 - [ ] Notificación WhatsApp (texto)
-- [ ] **Ticket como imagen** (post-MVP): PNG en `storage/`, descarga/compartir y adjunto WhatsApp — plan: `docs/COBRANZA_TICKET_IMAGEN.md`
+- [ ] **Ticket como imagen** (post-MVP): PNG en `storage/`, descarga/compartir y adjunto WhatsApp — plan: `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md`
 - [ ] Auditoría de cobranza
-- [x] Rendición / validación de efectivo pendiente en empresa (API v2 GET/POST — ver `docs/VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`)
+- [x] Rendición / validación de efectivo pendiente en empresa (API v2 GET/POST — ver `docs/vasco-online/03-docs-existentes/implementacion-vascorp/VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`)
 
 ---
 
 ## Paso 10b — Gestionar cliente en visita
 
-Ver `docs/GESTION_CLIENTE_VISITA.md`.
+Ver `docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md`.
 
 - [ ] Tile **Gestionar** en dashboard del cliente (`/visit/customer`)
 - [ ] Tabla `customer_field_updates` (bandeja Vasco; no pisa maestro vascorp)
@@ -172,7 +172,7 @@ Ver `docs/GESTION_CLIENTE_VISITA.md`.
 - [ ] Cliente sin deuda
 - [ ] Permisos y ownership vendedor
 - [ ] Performance con muchos clientes
-- [ ] Actualizar `docs/CHANGELOG.md` por hito
+- [ ] Actualizar `docs/vasco-online/03-docs-existentes/producto/CHANGELOG.md` por hito
 
 ---
 
@@ -186,8 +186,8 @@ Ver `docs/GESTION_CLIENTE_VISITA.md`.
 | 4 | Grupo empresarial en visita | 🔜 Siguiente |
 | 5 | Permisos RBAC visita + rol Vendedor | ✅ Hecho (`0014`) |
 | 6 | Cobrar desde visita (efectivo + ticket virtual) | Pendiente |
-| 6b | Ticket virtual como imagen + descarga/compartir PNG | Post-MVP — `docs/COBRANZA_TICKET_IMAGEN.md` |
-| 6c | **Gestionar cliente** (bandeja datos → vascorp) | Pendiente — ver `docs/GESTION_CLIENTE_VISITA.md` |
+| 6b | Ticket virtual como imagen + descarga/compartir PNG | Post-MVP — `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md` |
+| 6c | **Gestionar cliente** (bandeja datos → vascorp) | Pendiente — ver `docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md` |
 | 7 | QR | Opcional |
 
 ---

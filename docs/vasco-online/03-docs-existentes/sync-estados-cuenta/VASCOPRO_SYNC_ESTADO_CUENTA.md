@@ -2,11 +2,11 @@
 
 Guía completa para implementar el job de sync en **vascopro/vascorp**.
 
-**Handoff (checklist para implementar en vascorp):** [`VASCORP_IMPLEMENTAR_ESTADOS_CUENTA.md`](VASCORP_IMPLEMENTAR_ESTADOS_CUENTA.md)
+**Handoff (checklist para implementar en vascorp):** [`VASCORP_IMPLEMENTAR_ESTADOS_CUENTA.md`](../implementacion-vascorp/VASCORP_IMPLEMENTAR_ESTADOS_CUENTA.md)
 
-Documento técnico del contrato HTTP: [`postman/VASCORP_SYNC_ACCOUNT.md`](../postman/VASCORP_SYNC_ACCOUNT.md)  
-Plantilla JSON batch: [`postman/samples/vascorp-account-statements-bulk.json`](../postman/samples/vascorp-account-statements-bulk.json)  
-Plantilla JSON finalize: [`postman/samples/vascorp-account-statements-finalize.json`](../postman/samples/vascorp-account-statements-finalize.json)
+Documento técnico del contrato HTTP: [`postman/VASCORP_SYNC_ACCOUNT.md`](../../../../postman/VASCORP_SYNC_ACCOUNT.md)  
+Plantilla JSON batch: [`postman/samples/vascorp-account-statements-bulk.json`](../../../../postman/samples/vascorp-account-statements-bulk.json)  
+Plantilla JSON finalize: [`postman/samples/vascorp-account-statements-finalize.json`](../../../../postman/samples/vascorp-account-statements-finalize.json)
 
 ---
 
@@ -302,4 +302,4 @@ curl -X POST "http://api.vasco.io:8084/v2/sync/account-statements-bulk" \
 1. `POST /v2/sync/customers-bulk` — maestro clientes  
 2. `POST /v2/sync/account-statements-bulk` — cuentas por cobrar  
 3. Verificar en admin → **Estados de cuenta**  
-4. Cobranzas en campo (admin visita) + `GET/POST /v2/sync/collections-*` — rendición — ver [`VASCOPRO_SYNC_RENDICION_COBRANZAS.md`](VASCOPRO_SYNC_RENDICION_COBRANZAS.md)
+4. Cobranzas en campo (admin visita) + `GET/POST /v2/sync/collections-*` — rendición — ver [`VASCOPRO_SYNC_RENDICION_COBRANZAS.md`](../cobranzas/VASCOPRO_SYNC_RENDICION_COBRANZAS.md)

@@ -3,7 +3,7 @@
 ## Objetivo
 
 Crear una vista independiente en `index.php?ruta=dashboard-cxc`, inspirada en
-`docs/panel_cxc.png`, para controlar la cartera de cuentas por cobrar. Debe ser
+`docs/comercial/dashboard-cxc/panel_cxc.png`, para controlar la cartera de cuentas por cobrar. Debe ser
 más visual, filtrable y accionable que `inicio-gerencia`, sin modificar ni
 reemplazar dicha vista.
 

@@ -64,7 +64,7 @@ Más adelante, ejecutar una **campaña activa** para que todos cambien la clave:
 
 ## Notificaciones en portal (cobranzas)
 
-Canal persistente complementario a WhatsApp (`docs/COBRANZA_NOTIFICACIONES.md`, fase 2.0).
+Canal persistente complementario a WhatsApp (`docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md`, fase 2.0).
 
 | Entrega | Estado |
 |---------|--------|
@@ -107,10 +107,10 @@ El cliente puede pedir que lo visiten o lo contacten desde `/my-account/request-
 
 | Documento | Audiencia |
 |-----------|-----------|
-| [`postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md`](../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md) | Contrato HTTP |
-| [`VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md`](VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md) | Job en vascorp |
+| [`postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md`](../../../../postman/VASCORP_SYNC_PORTAL_VISIT_REQUESTS.md) | Contrato HTTP |
+| [`VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md`](../implementacion-vascorp/VASCORP_IMPLEMENTAR_SOLICITUDES_VISITA_PORTAL.md) | Job en vascorp |
 
-Índice general: [`docs/README.md`](README.md).
+Índice general: [`docs/README.md`](../../../README.md).
 
 ---
 
@@ -129,7 +129,7 @@ El cliente puede pedir que lo visiten o lo contacten desde `/my-account/request-
 
 ## Referencias
 
-- Producto general: `docs/PRODUCTO.md`
-- Notificaciones cobranza: `docs/COBRANZA_NOTIFICACIONES.md`
+- Producto general: `docs/vasco-online/03-docs-existentes/producto/PRODUCTO.md`
+- Notificaciones cobranza: `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_NOTIFICACIONES.md`
 - Cuentas portal: `migrations/0021_customer_portal_accounts.sql`
-- Provisionamiento desde visita: `docs/GESTION_CLIENTE_VISITA.md`
+- Provisionamiento desde visita: `docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md`

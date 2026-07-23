@@ -108,6 +108,6 @@ GROUP BY u.id_user, u.name_user, svo.outcome_seller_visit_outcome;
 
 ## Referencias
 
-- Checklist vendedor: `docs/MI_GESTION_VENDEDOR_CHECKLIST.md`
-- Visita y cierre: `docs/VISITA_VENDEDOR_CHECKLIST.md`
+- Checklist vendedor: `docs/vasco-online/03-docs-existentes/portal-visita/MI_GESTION_VENDEDOR_CHECKLIST.md`
+- Visita y cierre: `docs/vasco-online/03-docs-existentes/portal-visita/VISITA_VENDEDOR_CHECKLIST.md`
 - Migración outcomes: `migrations/0017_seller_visit_outcomes.sql`

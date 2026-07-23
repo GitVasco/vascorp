@@ -1,7 +1,7 @@
 # Plan: Ficha gerencial de modelos
 
 **Estado:** Fase 0 y primera entrega operativa implementadas.
-**Referencia visual:** [`docs/ficha_modelos.png`](ficha_modelos.png).  
+**Referencia visual:** [`docs/comercial/recetas-modelos/ficha_modelos.png`](ficha_modelos.png).  
 **Objetivo:** ofrecer en una sola vista la información gerencial de un modelo —ventas, stock, colores/tallas, producción, rentabilidad y alertas— para evitar consolidar múltiples archivos Excel.
 
 ## 1. Principio de implementación

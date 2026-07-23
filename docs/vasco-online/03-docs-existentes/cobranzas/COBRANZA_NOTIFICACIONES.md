@@ -100,7 +100,7 @@ Auditoría `created`: incluir en `metadata_collection_audit` → `notification_p
 |-------|---------|
 | Botón «Compartir» en éxito | `navigator.share({ title, text, url })` o descarga cuando exista imagen |
 | Fase corta (MVP) | Compartir texto: código ticket + monto + cliente (`Web Share API`) — **implementado** |
-| Post-MVP | PNG del ticket: generación servidor, storage, descarga y adjunto WhatsApp — ver `docs/COBRANZA_TICKET_IMAGEN.md` |
+| Post-MVP | PNG del ticket: generación servidor, storage, descarga y adjunto WhatsApp — ver `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md` |
 
 ### 1.1.5 QA Fase 1.1
 
@@ -117,7 +117,7 @@ Auditoría `created`: incluir en `metadata_collection_audit` → `notification_p
 
 ## Post-MVP — Ticket virtual como imagen (PNG)
 
-**Fuera del MVP.** Plan técnico completo: **`docs/COBRANZA_TICKET_IMAGEN.md`**.
+**Fuera del MVP.** Plan técnico completo: **`docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md`**.
 
 Resumen:
 
@@ -136,7 +136,7 @@ Resumen:
 
 ## Fase 1.2 — Cola de contactos pendientes para vascorp
 
-> **Nota:** esta fase puede **unificarse** con el módulo **Gestionar** (`docs/GESTION_CLIENTE_VISITA.md`), que define una bandeja general `customer_field_updates` en lugar de solo teléfonos de cobranza.
+> **Nota:** esta fase puede **unificarse** con el módulo **Gestionar** (`docs/vasco-online/03-docs-existentes/portal-visita/GESTION_CLIENTE_VISITA.md`), que define una bandeja general `customer_field_updates` en lugar de solo teléfonos de cobranza.
 
 **Objetivo:** cuando el vendedor captura un celular en campo, vascorp puede actualizar el maestro sin perder trazabilidad.
 
@@ -317,7 +317,7 @@ Adjunto imagen ticket cuando exista `ticket_image_path_collection`.
 | # | Entrega | Esfuerzo | Valor inmediato |
 |---|---------|----------|-----------------|
 | **1** | Fase 1.1 — captura celular + compartir texto | Medio | Alto |
-| **2** | Ticket imagen + compartir PNG | Medio | Alto — ver `docs/COBRANZA_TICKET_IMAGEN.md` |
+| **2** | Ticket imagen + compartir PNG | Medio | Alto — ver `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md` |
 | **3** | Fase 1.2 — cola vascorp | Medio | Medio (datos maestros) |
 | **4** | Fase 1.3 — Evolution API | Medio-alto | Alto (automatización) |
 | **5** | Fase 2.0 — portal cliente | Alto | Muy alto (cuenta) |
@@ -335,7 +335,7 @@ admin/views/pages/visit/actions/collect.php
 admin/views/pages/visit/actions/collect-success.php
 admin/public/customs/js/visit/visit-collect.js
 admin/public/customs/css/visit/visit.css
-docs/VISITA_VENDEDOR_CHECKLIST.md                  (actualizar paso 10)
+docs/vasco-online/03-docs-existentes/portal-visita/VISITA_VENDEDOR_CHECKLIST.md                  (actualizar paso 10)
 postman/vasco-api.postman_collection.json          (fase 1.2)
 ```
 
@@ -355,6 +355,6 @@ postman/vasco-api.postman_collection.json          (fase 1.2)
 
 - Validación celular: `api/helpers/phone.php`, `ValidationHelper::validateMobilePe()`
 - Sync clientes: `postman/VASCORP_SYNC.md`
-- Producto: `docs/PRODUCTO.md` (notificaciones, ticket imagen, portal)
-- Ticket imagen (post-MVP): `docs/COBRANZA_TICKET_IMAGEN.md`
+- Producto: `docs/vasco-online/03-docs-existentes/producto/PRODUCTO.md` (notificaciones, ticket imagen, portal)
+- Ticket imagen (post-MVP): `docs/vasco-online/03-docs-existentes/cobranzas/COBRANZA_TICKET_IMAGEN.md`
 - Cobranzas BD: `migrations/0012_create_collections_tables.sql`

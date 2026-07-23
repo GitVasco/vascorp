@@ -19,7 +19,7 @@
 - #20-feat: atenciones en visita con cierre y KPIs en Mi gestión
 - #20-feat: UI mobile de subpáginas Mi gestión
 - #20-feat: compactar espaciado del dashboard Mi gestión
-- #20-feat: Mi gestión vendedor, cobranzas y historial de consultas - Módulo admin /my-management: resumen KPIs, mis cobranzas, por rendir y detalle sin visita activa - SellerManagementService y consultas agregadas por vendedor en CollectionRepository - Historial de consultas al iniciar visita (migraciones 0015 y 0016 con grupo empresarial) - Enlace discreto a consultas recientes en Atender cliente; checklist en docs/MI_GESTION_VENDEDOR_CHECKLIST.md - RBAC y cartera pendientes para cuando vascorp asigne vendedores
+- #20-feat: Mi gestión vendedor, cobranzas y historial de consultas - Módulo admin /my-management: resumen KPIs, mis cobranzas, por rendir y detalle sin visita activa - SellerManagementService y consultas agregadas por vendedor en CollectionRepository - Historial de consultas al iniciar visita (migraciones 0015 y 0016 con grupo empresarial) - Enlace discreto a consultas recientes en Atender cliente; checklist en docs/vasco-online/03-docs-existentes/portal-visita/MI_GESTION_VENDEDOR_CHECKLIST.md - RBAC y cartera pendientes para cuando vascorp asigne vendedores
 
 ## [0.9.0] - 2026-06-16
 

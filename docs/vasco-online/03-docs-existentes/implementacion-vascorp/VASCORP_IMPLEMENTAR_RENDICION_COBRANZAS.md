@@ -2,9 +2,9 @@
 
 Documento para llevar al proyecto **vascorp/vascopro** y cerrar la integración de **validación de efectivo cobrado en campo**.
 
-Contrato HTTP detallado: [`postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`](../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md)  
-Guía extendida: [`VASCOPRO_SYNC_RENDICION_COBRANZAS.md`](VASCOPRO_SYNC_RENDICION_COBRANZAS.md)  
-Plantilla JSON: [`postman/samples/vascorp-collections-deliver.json`](../postman/samples/vascorp-collections-deliver.json)
+Contrato HTTP detallado: [`postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`](../../../../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md)  
+Guía extendida: [`VASCOPRO_SYNC_RENDICION_COBRANZAS.md`](../cobranzas/VASCOPRO_SYNC_RENDICION_COBRANZAS.md)  
+Plantilla JSON: [`postman/samples/vascorp-collections-deliver.json`](../../../../postman/samples/vascorp-collections-deliver.json)
 
 ---
 
