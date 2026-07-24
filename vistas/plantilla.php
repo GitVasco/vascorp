@@ -53,6 +53,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Grupos de marcas | Vasco System";
         } elseif ($_GET["ruta"] === "asignacion-grupos-marcas") {
             $__tituloVentana = "Asignación de grupos de marcas | Vasco System";
+        } elseif ($_GET["ruta"] === "series-documentos") {
+            $__tituloVentana = "Series de documentos | Vasco System";
         } elseif ($_GET["ruta"] === "categorias-modelos") {
             $__tituloVentana = "Clasificación de modelos | Vasco System";
         } elseif ($_GET["ruta"] === "categorias-subcategorias-modelos") {
@@ -136,6 +138,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") : ?>
     <link rel="stylesheet" href="vistas/css/estado-cuenta.css?v=11">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "series-documentos") : ?>
+    <link rel="stylesheet" href="vistas/css/series-documentos.css?v=2">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
@@ -515,10 +521,19 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "unidadesmedida" ||
                 $_GET["ruta"] == "bancos" ||
                 $_GET["ruta"] == "vendedor" ||
-                $_GET["ruta"] == "tabla-maestra"
+                $_GET["ruta"] == "tabla-maestra" ||
+                $_GET["ruta"] == "series-documentos"
             ) {
 
-                include "modulos/maestros/" . $_GET["ruta"] . ".php";
+                if ($_GET["ruta"] == "series-documentos") {
+                    if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "series_documentos")) {
+                        denegarAccesoModulo();
+                    } else {
+                        include "modulos/maestros/" . $_GET["ruta"] . ".php";
+                    }
+                } else {
+                    include "modulos/maestros/" . $_GET["ruta"] . ".php";
+                }
             } else if (
                 $_GET["ruta"] == "materiaprima" ||
                 $_GET["ruta"] == "materiaprima-test" ||
@@ -964,6 +979,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "asignacion-grupos-marcas") { ?>
     <script src="vistas/js/asignacion-grupos-marcas.js?v=1"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "series-documentos") { ?>
+    <script src="vistas/js/series-documentos.js?v=3"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") { ?>
     <script src="vistas/js/categorias-modelos.js?v=10"></script>

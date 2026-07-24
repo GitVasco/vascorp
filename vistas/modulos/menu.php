@@ -633,7 +633,8 @@
                                         $_GET["ruta"] == "trabajador" ||
                                         $_GET["ruta"] == "trabajador2" ||
                                         $_GET["ruta"] == "unidadesmedida" ||
-                                        $_GET["ruta"] == "vendedor"
+                                        $_GET["ruta"] == "vendedor" ||
+                                        $_GET["ruta"] == "series-documentos"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -725,6 +726,15 @@
                             </a>
 
                         </li>
+
+                        <?php if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("gestion_comercial", "series_documentos")) { ?>
+                        <li class="<?php if ($_GET["ruta"] == "series-documentos") echo 'active'; ?>">
+                            <a href="index.php?ruta=series-documentos">
+                                <i class="fa fa-circle-o"></i>
+                                <span>Series de documentos</span>
+                            </a>
+                        </li>
+                        <?php } ?>
 
                         <li class="<?php if ($_GET["ruta"] == "modelosjf") echo 'active'; ?>">
 

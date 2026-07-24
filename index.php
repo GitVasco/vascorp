@@ -26,6 +26,8 @@ require_once "controladores/zonas-comerciales.controlador.php";
 
 require_once "controladores/grupos-marcas-comercial.controlador.php";
 
+require_once "controladores/series-documentos.controlador.php";
+
 require_once "controladores/metas-retos.config.php";
 
 require_once "controladores/metas-retos.controlador.php";
@@ -196,6 +198,8 @@ require_once "modelos/grupos-empresariales.modelo.php";
 require_once "modelos/zonas-comerciales.modelo.php";
 
 require_once "modelos/grupos-marcas-comercial.modelo.php";
+
+require_once "modelos/series-documentos.modelo.php";
 
 require_once "modelos/metas-retos.modelo.php";
 
