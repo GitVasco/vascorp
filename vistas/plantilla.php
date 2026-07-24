@@ -135,7 +135,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") : ?>
-    <link rel="stylesheet" href="vistas/css/estado-cuenta.css?v=10">
+    <link rel="stylesheet" href="vistas/css/estado-cuenta.css?v=11">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
@@ -980,7 +980,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/linea-credito.js?v=20"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") { ?>
-    <script src="vistas/js/estado-cuenta.js?v=9"></script>
+    <script src="vistas/js/estado-cuenta.js?v=10"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>
@@ -1016,6 +1016,9 @@ CUERPO DOCUMENTO
     <script src="vistas/js/bancos.js"></script>
     <script src="vistas/js/cuentas.js"></script>
     <script src="vistas/js/vendedor.js"></script>
+    <script>
+        window.URL_BASE_IMPRESION_PROFORMA = "<?php echo obtenerUrlBaseImpresionProforma(); ?>";
+    </script>
     <script src="vistas/js/facturacion.js"></script>
     <script src="vistas/js/abonos.js"></script>
     <script src="vistas/js/cierres.js"></script>

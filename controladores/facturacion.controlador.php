@@ -3853,7 +3853,7 @@ class ControladorFacturacion
             ),
             "S70" => array(
                 "title" => "Se Genero la Proforma ",
-                "url" => "extensiones/tcpdf/pdf/reporte_proforma.php?tipo=S70&documento="
+                "url" => obtenerUrlBaseImpresionProforma() . "?tipo=S70&documento="
             ),
             "E05" => array(
                 "title" => "Se Genero la Nota cred. ",

@@ -6,6 +6,7 @@
     }
 
     var API = "ajax/cuentas-corrientes/estado-cuenta.ajax.php";
+    var urlSyncLock = false;
     var state = {
         modo: null, // cliente | grupo
         cliente: null,
@@ -20,6 +21,68 @@
         soloLocal: false,
         _syncingSelects: false,
     };
+
+    function leerParamsUrl() {
+        try {
+            var params = new URLSearchParams(window.location.search || "");
+            return {
+                cliente: String(params.get("cliente") || "").trim(),
+                grupo: String(params.get("grupo") || "").trim(),
+            };
+        } catch (e) {
+            return { cliente: "", grupo: "" };
+        }
+    }
+
+    /**
+     * Mantiene ?ruta=estado-cuenta&cliente=…&grupo=… para refrescar/compartir.
+     * opts.cliente / opts.grupo: string o "" para borrar; undefined = estado actual.
+     */
+    function actualizarUrl(opts) {
+        if (urlSyncLock || !window.history || !window.history.replaceState) {
+            return;
+        }
+
+        opts = opts || {};
+        var params;
+        try {
+            params = new URLSearchParams(window.location.search || "");
+        } catch (e) {
+            return;
+        }
+
+        if (!params.get("ruta")) {
+            params.set("ruta", "estado-cuenta");
+        }
+
+        var cliente =
+            opts.cliente !== undefined
+                ? String(opts.cliente || "").trim()
+                : String(state.cliente || state.origenCliente || "").trim();
+        var grupo =
+            opts.grupo !== undefined
+                ? String(opts.grupo || "").trim()
+                : String(state.grupo || "").trim();
+
+        if (cliente) {
+            params.set("cliente", cliente);
+        } else {
+            params.delete("cliente");
+        }
+
+        if (grupo) {
+            params.set("grupo", grupo);
+        } else {
+            params.delete("grupo");
+        }
+
+        var qs = params.toString();
+        var url =
+            window.location.pathname +
+            (qs ? "?" + qs : "") +
+            (window.location.hash || "");
+        window.history.replaceState(null, "", url);
+    }
 
     function fmtMoney(n) {
         var v = Number(n) || 0;
@@ -460,6 +523,11 @@
             } else {
                 setSelects(undefined, codigoGrupo);
             }
+
+            actualizarUrl({
+                cliente: state.origenCliente || state.cliente || "",
+                grupo: state.grupo || "",
+            });
         });
     }
 
@@ -491,6 +559,10 @@
             cargarDocumentosCliente(resp.cliente.codigo);
             setSelects(state.origenCliente, state.grupo || "");
             actualizarContexto();
+            actualizarUrl({
+                cliente: state.origenCliente || "",
+                grupo: state.grupo || "",
+            });
         });
     }
 
@@ -537,6 +609,7 @@
             cargarDocumentosCliente(resp.cliente.codigo);
             setSelects(codigo, "");
             actualizarContexto();
+            actualizarUrl({ cliente: state.cliente || "", grupo: "" });
         });
     }
 
@@ -566,6 +639,26 @@
         $('#ecDocsFiltros .btn[data-filtro="pendiente"]').addClass("active");
         state.filtroDocs = "pendiente";
         showEmpty();
+        actualizarUrl({ cliente: "", grupo: "" });
+    }
+
+    function restaurarDesdeUrl() {
+        var params = leerParamsUrl();
+        if (!params.cliente && !params.grupo) {
+            return;
+        }
+
+        urlSyncLock = true;
+        if (params.cliente) {
+            setSelects(params.cliente, params.grupo || undefined);
+            urlSyncLock = false;
+            cargarCliente(params.cliente);
+            return;
+        }
+
+        setSelects("", params.grupo);
+        urlSyncLock = false;
+        cargarGrupo(params.grupo);
     }
 
     $("#ecFiltroCliente").on("changed.bs.select", function () {
@@ -577,6 +670,7 @@
             }
             if (!state.grupo) {
                 showEmpty();
+                actualizarUrl({ cliente: "", grupo: "" });
             }
             return;
         }
@@ -589,6 +683,7 @@
         if (!codigo) {
             if (!state.cliente && !state.origenCliente) {
                 showEmpty();
+                actualizarUrl({ cliente: "", grupo: "" });
             }
             return;
         }
@@ -712,5 +807,7 @@
     });
 
     showEmpty();
-    cargarClientes(false);
+    cargarClientes(false).done(function () {
+        restaurarDesdeUrl();
+    });
 })(jQuery);

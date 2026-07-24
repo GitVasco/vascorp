@@ -1531,14 +1531,13 @@ $(".tablaBoletas").on("click", ".btnImprimirBoleta", function () {
 $(".tablaProformas").on("click", ".btnImprimirProforma", function () {
     var tipo = $(this).attr("tipo");
     var documento = $(this).attr("documento");
+    var base =
+        typeof window.URL_BASE_IMPRESION_PROFORMA !== "undefined" &&
+        window.URL_BASE_IMPRESION_PROFORMA
+            ? window.URL_BASE_IMPRESION_PROFORMA
+            : "extensiones/tcpdf/pdf/reporte_proforma.php";
 
-    window.open(
-        "extensiones/tcpdf/pdf/reporte_proforma.php?tipo=" +
-            tipo +
-            "&documento=" +
-            documento,
-        "_blank"
-    );
+    window.open(base + "?tipo=" + tipo + "&documento=" + documento, "_blank");
 });
 
 /*=============================================
