@@ -184,9 +184,9 @@ class ControladorFacturacion
     /*
     * MOSTRAR UNIDADES DE BOLETA Y FACTURA PARA IMPRESION
     */
-    static public function ctrMostrarUnidadesImpresion($documento, $tipo)
+    static public function ctrMostrarUnidadesImpresion($documento, $tipo, $tabla = "movimientosjf_2026")
     {
-        $respuesta = ModeloFacturacion::mdlMostrarUnidadesImpresion($documento, $tipo);
+        $respuesta = ModeloFacturacion::mdlMostrarUnidadesImpresion($documento, $tipo, $tabla);
 
         return $respuesta;
     }

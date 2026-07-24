@@ -20,8 +20,11 @@ $venta = ControladorFacturacion::ctrMostrarVentaImpresion($documento, $tipo);
 
 $serie = substr($venta["documento"], 0, 4);
 
-$modelo = ControladorFacturacion::ctrMostrarModeloImpresion($documento, $tipo);
-$unidad = ControladorFacturacion::ctrMostrarUnidadesImpresion($documento, $tipo);
+$anno = date("Y", strtotime($venta["fecha_emision"]));
+$tabla = "movimientosjf_" . $anno;
+
+$modelo = ControladorFacturacion::ctrMostrarModeloImpresionV2($tabla, $documento, $tipo, 0, 100);
+$unidad = ControladorFacturacion::ctrMostrarUnidadesImpresion($documento, $tipo, $tabla);
 // var_dump($modelo);
 
 $subtotal = $venta["neto"] - $venta["dscto"];

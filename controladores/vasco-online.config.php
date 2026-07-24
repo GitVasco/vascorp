@@ -17,8 +17,8 @@
  * La URL del API real es la misma; cambia solo el origen desde donde se ejecuta vascorp.
  */
 
-// $vasco_online_entorno = "pruebas";
-$vasco_online_entorno = "desarrollo";
+$vasco_online_entorno = "pruebas";
+//$vasco_online_entorno = "desarrollo";
 $GLOBALS["vasco_online_entorno"] = $vasco_online_entorno;
 
 // URL pública del API real (misma para pruebas y producción).

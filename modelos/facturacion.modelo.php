@@ -1128,14 +1128,14 @@ class ModeloFacturacion
   /*
     * MOSTRAR NUMERO DE UNIDADES BOLETA FACTURA
     */
-  static public function mdlMostrarUnidadesImpresion($valor, $tipoDoc)
+  static public function mdlMostrarUnidadesImpresion($valor, $tipoDoc, $tabla = "movimientosjf_2026")
   {
 
     $sql = "SELECT 
       m.documento,
       ROUND(SUM(cantidad), 2) AS cantidad 
     FROM
-      movimientosjf_2026 m 
+      $tabla m 
     WHERE m.tipo = :tipo_doc 
       AND m.documento = :codigo 
     GROUP BY m.documento  ";

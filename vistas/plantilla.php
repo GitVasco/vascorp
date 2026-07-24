@@ -61,6 +61,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Mapas de zonas | Vasco System";
         } elseif ($_GET["ruta"] === "linea-credito") {
             $__tituloVentana = "Línea de crédito | Vasco System";
+        } elseif ($_GET["ruta"] === "estado-cuenta") {
+            $__tituloVentana = "Estado de cuenta | Vasco System";
         } elseif ($_GET["ruta"] === "descuentos-compuestos") {
             $__tituloVentana = "Descuentos Compuestos ESSO | Vasco System";
         } elseif ($_GET["ruta"] === "inteligencia-comercial") {
@@ -130,6 +132,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") : ?>
     <link rel="stylesheet" href="vistas/css/linea-credito.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") : ?>
+    <link rel="stylesheet" href="vistas/css/estado-cuenta.css?v=10">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
@@ -778,6 +784,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "cuentas-pendientes" ||
                 $_GET["ruta"] == "cuentas-canceladas" ||
                 $_GET["ruta"] == "consultar-cuentas" ||
+                $_GET["ruta"] == "estado-cuenta" ||
                 $_GET["ruta"] == "reportes-generales" ||
                 $_GET["ruta"] == "notificaciones" ||
                 $_GET["ruta"] == "letras-plazo-protesto" ||
@@ -971,6 +978,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") { ?>
     <script src="vistas/js/linea-credito.js?v=20"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") { ?>
+    <script src="vistas/js/estado-cuenta.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "descuentos-compuestos") { ?>
     <script src="vistas/js/descuentos-compuestos.js?v=<?php echo rand(); ?>"></script>

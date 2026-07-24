@@ -62,6 +62,8 @@ require_once "controladores/condicionventa.controlador.php";
 
 require_once "controladores/cuentas.controlador.php";
 
+require_once "controladores/estado-cuenta.controlador.php";
+
 require_once "controladores/materiaprima.controlador.php";
 
 require_once "controladores/tarjetas.controlador.php";
@@ -268,6 +270,8 @@ require_once "modelos/servicio.modelo.php";
 require_once "modelos/bancos.modelo.php";
 
 require_once "modelos/cuentas.modelo.php";
+
+require_once "modelos/estado-cuenta.modelo.php";
 
 require_once "modelos/dashboard-cobranzas.modelo.php";
 
