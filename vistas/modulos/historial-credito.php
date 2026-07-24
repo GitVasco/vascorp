@@ -13,7 +13,7 @@ $fechaHasta = isset($_GET["hasta"]) ? trim((string) $_GET["hasta"]) : date("Y-m-
 $tipoAccion = isset($_GET["tipo"]) ? strtoupper(trim((string) $_GET["tipo"])) : "";
 $q = isset($_GET["q"]) ? trim((string) $_GET["q"]) : "";
 $tabInicial = isset($_GET["tab"]) ? strtolower(trim((string) $_GET["tab"])) : "cola";
-if ($tabInicial !== "cola" && $tabInicial !== "movimientos") {
+if ($tabInicial !== "cola" && $tabInicial !== "movimientos" && $tabInicial !== "dashboard") {
     $tabInicial = "cola";
 }
 
@@ -56,6 +56,15 @@ function hcFmtMonto($lista, $monto)
     $simbolo = ($lista === "precio1") ? "$ " : "S/ ";
     return $simbolo . number_format((float) $monto, 2);
 }
+
+function hcDashAyuda($texto)
+{
+    return '<button type="button" class="hc-dash-ayuda" aria-label="Qué significa este indicador">'
+        . '<i class="fa fa-question"></i>'
+        . '<span class="hc-dash-ayuda-tip" role="tooltip">'
+        . htmlspecialchars((string) $texto, ENT_QUOTES, "UTF-8")
+        . '</span></button>';
+}
 ?>
 
 <div class="content-wrapper hc-page">
@@ -84,6 +93,11 @@ function hcFmtMonto($lista, $monto)
                 <a href="#hcTabCola" data-toggle="tab">
                     <i class="fa fa-inbox"></i> Cola de pedidos
                     <span class="badge" id="hcTabBadgeCola"><?php echo (int) $resumenCola["generados"]; ?></span>
+                </a>
+            </li>
+            <li class="<?php echo $tabInicial === "dashboard" ? "active" : ""; ?>">
+                <a href="#hcTabDashboard" data-toggle="tab">
+                    <i class="fa fa-bar-chart"></i> Dashboard
                 </a>
             </li>
             <li class="<?php echo $tabInicial === "movimientos" ? "active" : ""; ?>">
@@ -124,6 +138,365 @@ function hcFmtMonto($lista, $monto)
                 </form>
                 <div id="hcColaWrap">
                     <?php include __DIR__ . "/historial-credito/tabla-cola.php"; ?>
+                </div>
+            </div>
+
+            <div class="tab-pane <?php echo $tabInicial === "dashboard" ? "active" : ""; ?>" id="hcTabDashboard">
+                <form class="hc-dash-filtros" id="hcDashFiltrosForm" onsubmit="return false;">
+                    <div class="hc-dash-filtros-grid">
+                        <div class="form-group">
+                            <label for="hcDashDesde">Desde</label>
+                            <input type="date" class="form-control input-sm" id="hcDashDesde" value="<?php echo htmlspecialchars($fechaDesde); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="hcDashHasta">Hasta</label>
+                            <input type="date" class="form-control input-sm" id="hcDashHasta" value="<?php echo htmlspecialchars($fechaHasta); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="hcDashVendedor"><i class="fa fa-user"></i> Vendedor</label>
+                            <select id="hcDashVendedor"
+                                    name="vendedor"
+                                    class="form-control selectpicker hc-filtro-select"
+                                    data-live-search="true"
+                                    data-size="8"
+                                    title="Todos los vendedores">
+                                <option value="">Todos los vendedores</option>
+                                <?php foreach ($vendedoresPermitidos as $vend) : ?>
+                                    <option value="<?php echo htmlspecialchars($vend["codigo"]); ?>"
+                                        <?php echo ($vendedorSeleccionado === (string) $vend["codigo"]) ? "selected" : ""; ?>>
+                                        <?php echo htmlspecialchars($vend["codigo"] . " - " . $vend["descripcion"]); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="hcDashDiasAbiertos">Obj. abiertas ≥ días</label>
+                            <input type="number" min="1" max="90" class="form-control input-sm" id="hcDashDiasAbiertos" value="3">
+                        </div>
+                        <div class="form-group hc-dash-filtro-acciones">
+                            <label>&nbsp;</label>
+                            <div>
+                                <button type="button" class="btn btn-primary btn-sm" id="btnHcDashActualizar">
+                                    <i class="fa fa-refresh"></i> Actualizar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="hcDashLoading" class="hc-dash-loading text-center text-muted" style="display:none;">
+                    <i class="fa fa-spinner fa-spin fa-2x"></i>
+                    <p>Cargando dashboard…</p>
+                </div>
+
+                <div id="hcDashContenido">
+                    <div class="hc-dash-pulso" id="hcDashPulso">
+                        <div class="hc-dash-pulso-estado" id="hcDashPulsoEstado">
+                            <span class="hc-dash-pulso-dot" id="hcDashPulsoDot"></span>
+                            <span id="hcDashPulsoTexto">Cargando actividad…</span>
+                        </div>
+                        <div class="row hc-dash-pulso-kpis">
+                            <div class="col-xs-6 col-sm-4 col-md-2">
+                                <div class="hc-dash-pulso-item hc-dash-pulso-item--hoy">
+                                    <?php echo hcDashAyuda("Cuántas acciones de crédito se registraron hoy: aprobar, objetar, anular o cerrar objeciones."); ?>
+                                    <span class="hc-dash-pulso-lbl">Hoy</span>
+                                    <strong id="hcDashPulsoHoy">—</strong>
+                                    <span class="hc-kpi-sub">acciones</span>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 col-sm-4 col-md-2">
+                                <div class="hc-dash-pulso-item hc-dash-pulso-item--sem">
+                                    <?php echo hcDashAyuda("Total de acciones de crédito desde el lunes de esta semana hasta hoy."); ?>
+                                    <span class="hc-dash-pulso-lbl">Esta semana</span>
+                                    <strong id="hcDashPulsoSem">—</strong>
+                                    <span class="hc-kpi-sub">acciones</span>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 col-sm-4 col-md-2">
+                                <div class="hc-dash-pulso-item hc-dash-pulso-item--ultima">
+                                    <?php echo hcDashAyuda("Hace cuánto fue la última acción registrada en el historial de crédito. Sirve para ver si el equipo está gestionando ahora."); ?>
+                                    <span class="hc-dash-pulso-lbl">Última gestión</span>
+                                    <strong id="hcDashPulsoUltima">—</strong>
+                                    <span class="hc-kpi-sub" id="hcDashPulsoUltimaSub">—</span>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 col-sm-4 col-md-2">
+                                <div class="hc-dash-pulso-item hc-dash-pulso-item--team">
+                                    <?php echo hcDashAyuda("Cantidad de usuarios distintos que registraron al menos una acción de crédito hoy."); ?>
+                                    <span class="hc-dash-pulso-lbl">Analistas hoy</span>
+                                    <strong id="hcDashPulsoTeam">—</strong>
+                                    <span class="hc-kpi-sub">activos</span>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 col-sm-4 col-md-2">
+                                <div class="hc-dash-pulso-item hc-dash-pulso-item--through">
+                                    <?php echo hcDashAyuda("Promedio de acciones por día en el rango de fechas seleccionado arriba."); ?>
+                                    <span class="hc-dash-pulso-lbl">Ritmo</span>
+                                    <strong id="hcDashPulsoRitmo">—</strong>
+                                    <span class="hc-kpi-sub">acciones/día</span>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 col-sm-4 col-md-2">
+                                <div class="hc-dash-pulso-item hc-dash-pulso-item--sla">
+                                    <?php echo hcDashAyuda("Porcentaje de objeciones cerradas en 48 horas o menos, dentro del período filtrado."); ?>
+                                    <span class="hc-dash-pulso-lbl">SLA 48h</span>
+                                    <strong id="hcDashPulsoSla">—</strong>
+                                    <span class="hc-kpi-sub">obj. cerradas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hc-dash-metricas" id="hcDashKpis">
+                        <div class="hc-dash-kpi hc-dash-kpi--cola">
+                            <?php echo hcDashAyuda("Pedidos en estado GENERADO que aún esperan una decisión de crédito (aprobar, objetar o anular)."); ?>
+                            <span class="hc-kpi-lbl">Cola actual</span>
+                            <strong id="hcDashKpiCola"><?php echo (int) $resumenCola["generados"]; ?></strong>
+                            <span class="hc-kpi-sub">pedidos GENERADO</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--cola24">
+                            <?php echo hcDashAyuda("De la cola actual, cuántos pedidos llevan más de 24 horas sin gestión. El monto es la suma en soles de esos pedidos."); ?>
+                            <span class="hc-kpi-lbl">Cola sin atender 24h+</span>
+                            <strong id="hcDashSaludCola24">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashSaludColaMonto">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--edad">
+                            <?php echo hcDashAyuda("Promedio de días que los pedidos GENERADO llevan esperando. El máximo muestra el pedido más antiguo en cola."); ?>
+                            <span class="hc-kpi-lbl">Edad promedio cola</span>
+                            <strong id="hcDashSaludEdad">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashSaludEdadMax">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--aprobado">
+                            <?php echo hcDashAyuda("Aprobados ÷ total de decisiones (aprobados + objeciones + anulados) en el período. Abajo: monto en soles de pedidos aprobados."); ?>
+                            <span class="hc-kpi-lbl">Tasa aprobación</span>
+                            <strong id="hcDashKpiTasaAprob">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashKpiMontoAprob">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--objecion">
+                            <?php echo hcDashAyuda("Objeciones ÷ total de decisiones en el período. Abajo: monto en soles de esos pedidos objetados."); ?>
+                            <span class="hc-kpi-lbl">Tasa objeción</span>
+                            <strong id="hcDashKpiTasaObj">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashKpiMontoObj">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--anulado">
+                            <?php echo hcDashAyuda("Anulados ÷ total de decisiones en el período. Junto con aprobación y objeción, las tres tasas suman 100%."); ?>
+                            <span class="hc-kpi-lbl">Tasa anulación</span>
+                            <strong id="hcDashKpiTasaAnul">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashKpiAnulN">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--total">
+                            <?php echo hcDashAyuda("Total de decisiones en el período: cada aprobación, objeción o anulación cuenta como una. Abajo: desglose por cantidad."); ?>
+                            <span class="hc-kpi-lbl">Decisiones</span>
+                            <strong id="hcDashKpiDecisiones">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashKpiDecisionesDelta">apr + obj + anul</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--riesgo">
+                            <?php echo hcDashAyuda("Suma en soles de pedidos con objeción vigente (aún no cerrada ni revertida). Refleja exposición comercial pendiente de resolver."); ?>
+                            <span class="hc-kpi-lbl">Monto en riesgo</span>
+                            <strong id="hcDashKpiRiesgo">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashKpiRiesgoN">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--tiempo">
+                            <?php echo hcDashAyuda("Tiempo promedio entre registrar una objeción y cerrarla, para las objeciones resueltas en el período filtrado."); ?>
+                            <span class="hc-kpi-lbl">Tiempo resolución</span>
+                            <strong id="hcDashKpiTiempo">—</strong>
+                            <span class="hc-kpi-sub">promedio objeciones</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--delta">
+                            <?php echo hcDashAyuda("Cambio porcentual en la cantidad de decisiones vs el período anterior de igual duración (justo antes del rango de fechas)."); ?>
+                            <span class="hc-kpi-lbl">Δ vs período anterior</span>
+                            <strong id="hcDashSaludDelta">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashSaludDeltaSub">—</span>
+                        </div>
+                        <div class="hc-dash-kpi hc-dash-kpi--delta-aprob">
+                            <?php echo hcDashAyuda("Cambio porcentual en cantidad de aprobaciones vs el período anterior. Abajo: variación del monto aprobado en soles."); ?>
+                            <span class="hc-kpi-lbl">Δ aprobados</span>
+                            <strong id="hcDashSaludDeltaAprob">—</strong>
+                            <span class="hc-kpi-sub" id="hcDashSaludDeltaAprobSub">—</span>
+                        </div>
+                    </div>
+
+                    <div class="row hc-dash-graficos">
+                        <div class="col-lg-6">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-clock-o"></i> Actividad por hora</h3>
+                                </div>
+                                <div class="box-body">
+                                    <div class="hc-dash-chart-wrap hc-dash-chart-wrap--sm">
+                                        <canvas id="hcChartHora"></canvas>
+                                    </div>
+                                    <p class="text-muted hc-dash-empty" id="hcChartHoraEmpty" style="display:none;">Sin actividad en el rango.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-calendar"></i> Actividad por día</h3>
+                                </div>
+                                <div class="box-body">
+                                    <div class="hc-dash-chart-wrap hc-dash-chart-wrap--sm">
+                                        <canvas id="hcChartDow"></canvas>
+                                    </div>
+                                    <p class="text-muted hc-dash-empty" id="hcChartDowEmpty" style="display:none;">Sin actividad en el rango.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row hc-dash-graficos">
+                        <div class="col-lg-8">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-line-chart"></i> Evolución diaria</h3>
+                                </div>
+                                <div class="box-body">
+                                    <div class="hc-dash-chart-wrap">
+                                        <canvas id="hcChartSerie"></canvas>
+                                    </div>
+                                    <p class="text-muted hc-dash-empty" id="hcChartSerieEmpty" style="display:none;">Sin datos en el rango.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-filter"></i> Embudo de gestión</h3>
+                                </div>
+                                <div class="box-body">
+                                    <div class="hc-dash-chart-wrap hc-dash-chart-wrap--sm">
+                                        <canvas id="hcChartEmbudo"></canvas>
+                                    </div>
+                                    <p class="text-muted hc-dash-empty" id="hcChartEmbudoEmpty" style="display:none;">Sin decisiones en el rango.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row hc-dash-graficos">
+                        <div class="col-lg-12">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-bar-chart"></i> Pareto de motivos de objeción</h3>
+                                </div>
+                                <div class="box-body">
+                                    <div class="hc-dash-chart-wrap hc-dash-chart-wrap--md">
+                                        <canvas id="hcChartMotivos"></canvas>
+                                    </div>
+                                    <p class="text-muted hc-dash-empty" id="hcChartMotivosEmpty" style="display:none;">Sin objeciones en el rango.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row hc-dash-tablas">
+                        <div class="col-lg-12">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-bolt"></i> Últimas gestiones en tiempo real</h3>
+                                </div>
+                                <div class="box-body table-responsive">
+                                    <table class="table table-hover table-condensed hc-dash-tabla" id="hcTablaUltimas">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center">Hace</th>
+                                                <th>Tipo</th>
+                                                <th>Pedido</th>
+                                                <th>Cliente</th>
+                                                <th class="text-right">Monto</th>
+                                                <th>Detalle</th>
+                                                <th>Analista</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hcTablaUltimasBody">
+                                            <tr><td colspan="7" class="text-center text-muted">Cargando…</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row hc-dash-tablas">
+                        <div class="col-lg-6">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-users"></i> Ranking analistas</h3>
+                                </div>
+                                <div class="box-body table-responsive">
+                                    <table class="table table-hover table-condensed hc-dash-tabla" id="hcTablaAnalistas">
+                                        <thead>
+                                            <tr>
+                                                <th>Analista</th>
+                                                <th class="text-center">Aprob.</th>
+                                                <th class="text-center">Objec.</th>
+                                                <th class="text-center">% Aprob.</th>
+                                                <th class="text-right">Monto aprob. S/</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hcTablaAnalistasBody">
+                                            <tr><td colspan="5" class="text-center text-muted">Cargando…</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="box box-solid hc-dash-box">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-user-times"></i> Clientes más objetados</h3>
+                                </div>
+                                <div class="box-body table-responsive">
+                                    <table class="table table-hover table-condensed hc-dash-tabla" id="hcTablaClientes">
+                                        <thead>
+                                            <tr>
+                                                <th>Cliente</th>
+                                                <th class="text-center"># Obj.</th>
+                                                <th class="text-right">Monto S/</th>
+                                                <th>Último motivo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hcTablaClientesBody">
+                                            <tr><td colspan="4" class="text-center text-muted">Cargando…</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row hc-dash-tablas">
+                        <div class="col-lg-12">
+                            <div class="box box-solid hc-dash-box hc-dash-box--alert">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">
+                                        <i class="fa fa-exclamation-triangle"></i>
+                                        Objeciones abiertas
+                                        <small id="hcDashAbiertasSub">≥ 3 días</small>
+                                    </h3>
+                                </div>
+                                <div class="box-body table-responsive">
+                                    <table class="table table-hover table-condensed hc-dash-tabla" id="hcTablaAbiertas">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center">Días</th>
+                                                <th>Pedido</th>
+                                                <th>Cliente</th>
+                                                <th>Motivo</th>
+                                                <th class="text-right">Monto</th>
+                                                <th>Analista</th>
+                                                <th>Fecha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hcTablaAbiertasBody">
+                                            <tr><td colspan="7" class="text-center text-muted">Cargando…</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

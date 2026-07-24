@@ -398,4 +398,55 @@ class ControladorDecisionesCredito
             "filas" => $filas,
         );
     }
+
+    public static function ctrDashboardGestionCredito(array $filtros = array())
+    {
+        if (!dcUsuarioPuedeVerHistorialCredito()) {
+            return array("ok" => false, "msg" => "Sin permiso para ver el historial.");
+        }
+
+        if (empty($filtros["fecha_desde"])) {
+            $filtros["fecha_desde"] = date("Y-m-d", strtotime("-30 days"));
+        }
+
+        if (empty($filtros["fecha_hasta"])) {
+            $filtros["fecha_hasta"] = date("Y-m-d");
+        }
+
+        $vendedor = isset($filtros["vendedor"]) ? trim((string) $filtros["vendedor"]) : "";
+        if ($vendedor !== "" && class_exists("ModeloDashboardDecisiones")) {
+            $vendedor = ModeloDashboardDecisiones::normalizarVendedorFiltro($vendedor);
+        }
+        $filtros["vendedor"] = $vendedor;
+
+        $datos = ModeloDecisionesCredito::mdlDashboardGestionCredito($filtros);
+
+        $colaGenerados = 0;
+        if (class_exists("ControladorDashboardDecisiones")) {
+            $cola = ControladorDashboardDecisiones::ctrColaPedidosCredito(80, $vendedor !== "" ? $vendedor : null);
+            if (!empty($cola["ok"]) && isset($cola["resumen"]["generados"])) {
+                $colaGenerados = (int) $cola["resumen"]["generados"];
+            }
+        }
+        $datos["kpis"]["cola_generados"] = $colaGenerados;
+
+        return array(
+            "ok" => true,
+            "filtros" => $filtros,
+            "kpis" => $datos["kpis"],
+            "pulso" => $datos["pulso"],
+            "comparacion" => $datos["comparacion"],
+            "cola_salud" => $datos["cola_salud"],
+            "embudo" => $datos["embudo"],
+            "serie_diaria" => $datos["serie_diaria"],
+            "motivos" => $datos["motivos"],
+            "analistas" => $datos["analistas"],
+            "clientes_objetados" => $datos["clientes_objetados"],
+            "objeciones_abiertas" => $datos["objeciones_abiertas"],
+            "actividad_hora" => $datos["actividad_hora"],
+            "actividad_dow" => $datos["actividad_dow"],
+            "ultimas_gestiones" => $datos["ultimas_gestiones"],
+            "dias_abiertos_min" => $datos["dias_abiertos_min"],
+        );
+    }
 }
