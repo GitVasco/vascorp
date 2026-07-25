@@ -65,11 +65,11 @@ if (file_exists($rutaLetras)) {
 <div class="content-wrapper enc-page enc-page--con-dev">
 
     <section class="content-header">
-        <h1>Editar <?php echo $tipoLabel; ?></h1>
+        <h1>Editar <?php echo htmlspecialchars($tipoLabel); ?></h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li><a href="ver-nota-credito">Notas CD</a></li>
-            <li class="active">Editar</li>
+            <li><a href="ver-nota-credito">NC / ND</a></li>
+            <li class="active"><?php echo htmlspecialchars($venta["documento"]); ?></li>
         </ol>
     </section>
 
@@ -78,13 +78,16 @@ if (file_exists($rutaLetras)) {
         <header class="enc-hero">
             <div>
                 <p class="enc-hero__crumb">
-                    <a href="inicio">Inicio</a> · <a href="ver-nota-credito">Notas CD</a> · Editar
+                    <a href="inicio">Inicio</a> · <a href="ver-nota-credito">NC / ND</a> · Editar
                 </p>
-                <h1 class="enc-hero__title">Editar <?php echo htmlspecialchars($tipoLabel); ?></h1>
+                <h1 class="enc-hero__title">
+                    Editar <?php echo htmlspecialchars($tipoLabel); ?>
+                    <span class="enc-hero__doc"><?php echo htmlspecialchars($venta["documento"]); ?></span>
+                </h1>
             </div>
             <div class="enc-hero__chips">
                 <span class="enc-chip <?php echo $esCredito ? 'enc-chip--nc' : 'enc-chip--nd'; ?>">
-                    <?php echo $esCredito ? 'NC' : 'ND'; ?>
+                    <?php echo $esCredito ? 'Nota crédito' : 'Nota débito'; ?>
                 </span>
                 <span class="enc-chip enc-chip--doc"><?php echo htmlspecialchars($venta["documento"]); ?></span>
                 <?php if ($estadoDoc !== "") : ?>
@@ -440,7 +443,10 @@ if (file_exists($rutaLetras)) {
 </div>
 
 <script>
-    window.document.title = "Nc / Nd"
+    window.document.title = <?php echo json_encode(
+        "Editar " . ($esCredito ? "NC" : "ND") . " " . $venta["documento"] . " | Vasco System",
+        JSON_UNESCAPED_UNICODE
+    ); ?>;
 </script>
 
 <script>

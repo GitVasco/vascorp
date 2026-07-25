@@ -12,7 +12,21 @@ class TablaNotasCD
     public function mostrarTablaNotasCD()
     {
 
-        $notas = ControladorFacturacion::ctrRangoFechasNotasCD($_GET["fechaInicial"], $_GET["fechaFinal"]);
+        $fechaInicial = isset($_GET["fechaInicial"]) ? $_GET["fechaInicial"] : null;
+        $fechaFinal = isset($_GET["fechaFinal"]) ? $_GET["fechaFinal"] : null;
+        $tipoNota = isset($_GET["tipoNota"]) ? $_GET["tipoNota"] : "";
+
+        $notas = ControladorFacturacion::ctrRangoFechasNotasCD($fechaInicial, $fechaFinal);
+
+        if ($tipoNota === "E05" || $tipoNota === "S05") {
+            $filtradas = array();
+            foreach ($notas as $nota) {
+                if ($nota["tipo"] === $tipoNota) {
+                    $filtradas[] = $nota;
+                }
+            }
+            $notas = $filtradas;
+        }
 
         if (count($notas) > 0) {
 

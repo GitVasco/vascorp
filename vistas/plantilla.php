@@ -77,6 +77,16 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Regularizaciones comerciales | Vasco System";
         } elseif ($_GET["ruta"] === "sync-vasco") {
             $__tituloVentana = "Sincronización Vasco Online | Vasco System";
+        } elseif ($_GET["ruta"] === "ver-nota-credito") {
+            $__tituloVentana = "NC / ND | Vasco System";
+        } elseif ($_GET["ruta"] === "notas-credito") {
+            $__tituloVentana = "Nueva NC / ND | Vasco System";
+        } elseif ($_GET["ruta"] === "editar-nota-credito") {
+            $__tipoNotaTitulo = (isset($_GET["tipo"]) && $_GET["tipo"] === "S05") ? "ND" : "NC";
+            $__docNotaTitulo = isset($_GET["documento"]) ? trim((string) $_GET["documento"]) : "";
+            $__tituloVentana = $__docNotaTitulo !== ""
+                ? "Editar " . $__tipoNotaTitulo . " " . $__docNotaTitulo . " | Vasco System"
+                : "Editar " . $__tipoNotaTitulo . " | Vasco System";
         }
     }
     ?>
@@ -146,7 +156,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["editar-nota-credito", "notas-credito"], true)) : ?>
-    <link rel="stylesheet" href="vistas/css/editar-nota-credito.css?v=17">
+    <link rel="stylesheet" href="vistas/css/editar-nota-credito.css?v=18">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
@@ -1042,7 +1052,7 @@ CUERPO DOCUMENTO
     <script>
         window.URL_BASE_IMPRESION_PROFORMA = "<?php echo obtenerUrlBaseImpresionProforma(); ?>";
     </script>
-    <script src="vistas/js/facturacion.js?v=16"></script>
+    <script src="vistas/js/facturacion.js?v=19"></script>
     <script src="vistas/js/abonos.js"></script>
     <script src="vistas/js/cierres.js"></script>
     <script src="vistas/js/procedimientos.js"></script>

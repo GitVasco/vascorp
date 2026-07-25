@@ -860,6 +860,28 @@ $(document).on("change", ".optNotas1", function () {
     var serie = $("#tipoNotaSerie");
     var motivo = $("#notaMotivo");
     var documento = $("#tipoNotaDocumento");
+
+    // Título dinámico en crear NC/ND
+    if ($("#encHeroTitle").length) {
+        if (nota == "credito") {
+            $("#encPageTitle, #encHeroTitle").text("Nueva nota de crédito");
+            $("#encPageCrumb, #encHeroCrumb").text("Nota de crédito");
+            $("#encHeroChip")
+                .text("Nota crédito")
+                .removeClass("enc-chip--nd")
+                .addClass("enc-chip--nc");
+            document.title = "Nueva NC | Vasco System";
+        } else {
+            $("#encPageTitle, #encHeroTitle").text("Nueva nota de débito");
+            $("#encPageCrumb, #encHeroCrumb").text("Nota de débito");
+            $("#encHeroChip")
+                .text("Nota débito")
+                .removeClass("enc-chip--nc")
+                .addClass("enc-chip--nd");
+            document.title = "Nueva ND | Vasco System";
+        }
+    }
+
     if (nota == "credito") {
         var datos = new FormData();
         datos.append("notaCredito", nota);
@@ -1758,9 +1780,33 @@ if (localStorage.getItem("capturarRango23") != null) {
 }
 
 /*
+ * Filtro NC / ND
+ */
+var filtroTipoNotaCD = localStorage.getItem("filtroTipoNotaCD") || "";
+if (filtroTipoNotaCD) {
+    $("#filtroTipoNotaCD .btnFiltroNotaCD").removeClass("active");
+    $('#filtroTipoNotaCD .btnFiltroNotaCD[data-tipo="' + filtroTipoNotaCD + '"]').addClass("active");
+}
+
+$(document).on("click", ".btnFiltroNotaCD", function () {
+    $("#filtroTipoNotaCD .btnFiltroNotaCD").removeClass("active");
+    $(this).addClass("active");
+    filtroTipoNotaCD = $(this).attr("data-tipo") || "";
+    localStorage.setItem("filtroTipoNotaCD", filtroTipoNotaCD);
+    $(".tablaNotaCredito").DataTable().destroy();
+    cargarTablaNotaCD(
+        localStorage.getItem("fechaInicial"),
+        localStorage.getItem("fechaFinal")
+    );
+});
+
+/*
  * TABLA PARA PRODUCCION TRUSAS
  */
 function cargarTablaNotaCD(fechaInicial, fechaFinal) {
+    if (typeof filtroTipoNotaCD === "undefined") {
+        filtroTipoNotaCD = localStorage.getItem("filtroTipoNotaCD") || "";
+    }
     $(".tablaNotaCredito").DataTable({
         ajax:
             "ajax/facturacion/tabla-notacreditocd.ajax.php?perfil=" +
@@ -1768,7 +1814,9 @@ function cargarTablaNotaCD(fechaInicial, fechaFinal) {
             "&fechaInicial=" +
             fechaInicial +
             "&fechaFinal=" +
-            fechaFinal,
+            fechaFinal +
+            "&tipoNota=" +
+            encodeURIComponent(filtroTipoNotaCD),
         deferRender: true,
         retrieve: true,
         processing: true,

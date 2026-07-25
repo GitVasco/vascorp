@@ -61,6 +61,16 @@
     line-height: 1.15;
 }
 
+.enc-hero__doc {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 18px;
+    font-weight: 650;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--enc-muted, #64748b);
+    letter-spacing: 0;
+}
+
 .enc-hero__chips {
     display: flex;
     flex-wrap: wrap;

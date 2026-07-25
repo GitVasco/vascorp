@@ -8,11 +8,11 @@ $oneYearAgo = date("Y-m-d", strtotime("-1 year"));
 <div class="content-wrapper enc-page enc-page--con-dev enc-page--crear">
 
     <section class="content-header">
-        <h1>Crear nota de crédito / débito</h1>
+        <h1 id="encPageTitle">Nueva nota de crédito / débito</h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li><a href="ver-nota-credito">Notas CD</a></li>
-            <li class="active">Crear</li>
+            <li><a href="ver-nota-credito">NC / ND</a></li>
+            <li class="active" id="encPageCrumb">Crear</li>
         </ol>
     </section>
 
@@ -21,12 +21,12 @@ $oneYearAgo = date("Y-m-d", strtotime("-1 year"));
         <header class="enc-hero">
             <div>
                 <p class="enc-hero__crumb">
-                    <a href="inicio">Inicio</a> · <a href="ver-nota-credito">Notas CD</a> · Crear
+                    <a href="inicio">Inicio</a> · <a href="ver-nota-credito">NC / ND</a> · <span id="encHeroCrumb">Crear</span>
                 </p>
-                <h1 class="enc-hero__title">Nueva nota de crédito / débito</h1>
+                <h1 class="enc-hero__title" id="encHeroTitle">Nueva nota de crédito / débito</h1>
             </div>
             <div class="enc-hero__chips">
-                <span class="enc-chip enc-chip--nc">NC / ND</span>
+                <span class="enc-chip enc-chip--nc" id="encHeroChip">NC / ND</span>
             </div>
         </header>
 
@@ -309,7 +309,7 @@ $oneYearAgo = date("Y-m-d", strtotime("-1 year"));
 </div>
 
 <script>
-    window.document.title = "Nc / Nd"
+    window.document.title = "Nueva NC / ND | Vasco System";
 </script>
 
 <script>

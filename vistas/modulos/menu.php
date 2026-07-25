@@ -1456,6 +1456,7 @@
                                         $_GET["ruta"] == "boletas" ||
                                         $_GET["ruta"] == "proformas" ||
                                         $_GET["ruta"] == "ver-nota-credito" ||
+                                        $_GET["ruta"] == "editar-nota-credito" ||
                                         $_GET["ruta"] == "procesar-ce" ||
                                         $_GET["ruta"] == "reportes-ventas" ||
                                         $_GET["ruta"] == "notas-credito" ||
@@ -1556,6 +1557,7 @@
                                                 $_GET["ruta"] == "boletas" ||
                                                 $_GET["ruta"] == "proformas" ||
                                                 $_GET["ruta"] == "ver-nota-credito" ||
+                                                $_GET["ruta"] == "editar-nota-credito" ||
                                                 $_GET["ruta"] == "notas-credito" ||
                                                 $_GET["ruta"] == "errores" ||
                                                 $_GET["ruta"] == "cuadre-caja"
@@ -1615,7 +1617,11 @@
 
                                 </li>
 
-                                <li class="<?php if ($_GET["ruta"] == "ver-nota-credito") echo 'active'; ?>">
+                                <li class="<?php if (
+                                    $_GET["ruta"] == "ver-nota-credito" ||
+                                    $_GET["ruta"] == "notas-credito" ||
+                                    $_GET["ruta"] == "editar-nota-credito"
+                                ) echo 'active'; ?>">
 
                                     <a href="ver-nota-credito">
 

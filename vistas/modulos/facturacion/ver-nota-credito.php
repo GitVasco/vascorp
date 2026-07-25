@@ -4,7 +4,7 @@
     
     <h1>
       
-      Administrar notas de credito/debito
+      Notas de crédito / débito
     
     </h1>
 
@@ -12,7 +12,7 @@
       
       <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
       
-      <li class="active">Administrar notas de credito/debito</li>
+      <li class="active">Notas de crédito / débito</li>
     
     </ol>
 
@@ -25,10 +25,14 @@
       <div class="box-header with-border">
   
         <a class="btn btn-primary" href="notas-credito">
-          
           Agregar notas de credito/debito
-
         </a>
+
+        <div class="btn-group" style="margin-left:10px" id="filtroTipoNotaCD" role="group" aria-label="Filtrar tipo de nota">
+          <button type="button" class="btn btn-default btnFiltroNotaCD active" data-tipo="">Todas</button>
+          <button type="button" class="btn btn-default btnFiltroNotaCD" data-tipo="E05">Nota crédito</button>
+          <button type="button" class="btn btn-default btnFiltroNotaCD" data-tipo="S05">Nota débito</button>
+        </div>
 
         <button type="button" class="btn btn-default pull-right" id="daterange-btnNotasCD">
           <span>
@@ -272,5 +276,5 @@ MODAL CCUENTA
 </div>
 
 <script>
-window.document.title = "Notas de credito/debito"
+window.document.title = "NC / ND | Vasco System";
 </script>
