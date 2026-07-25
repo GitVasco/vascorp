@@ -503,45 +503,154 @@ $(".tablaPedidosConfirmados, .tablaPedidosGenerados, .tablaPedidosCV").on(
 );
 
 /*
+ * UX modal facturar
+ */
+function mfFormatoOpcionSerie(numero) {
+    if (!numero) {
+        return "";
+    }
+    var parts = String(numero).split("-");
+    if (parts.length < 2) {
+        return numero;
+    }
+    return parts[0] + " → " + parts[1];
+}
+
+function mfActualizarPreviewSerie($select, previewId) {
+    var $preview = $("#" + previewId);
+    if (!$preview.length) {
+        return;
+    }
+    var val = $select.val();
+    if (!val) {
+        $preview.text(
+            previewId === "seriePreview"
+                ? "El número final se asigna al generar."
+                : ""
+        );
+        return;
+    }
+    var parts = String(val).split("-");
+    var texto =
+        parts.length >= 2 ? parts[0] + " → " + parts[1] : val;
+    $preview.html(
+        'Estimado: <strong>' +
+            texto +
+            '</strong> <span class="mf-preview-note">(se confirma al generar)</span>'
+    );
+}
+
+function mfMarcarTipDoc(estado) {
+    var $tip = $("#tipDoc");
+    if (!$tip.length) {
+        return;
+    }
+    $tip.removeClass("mf-tipdoc-ok mf-tipdoc-warn");
+    $tip.css({ background: "", color: "", fontWeight: "" });
+    if (estado === "ok") {
+        $tip.addClass("mf-tipdoc-ok");
+    } else if (estado === "warn") {
+        $tip.addClass("mf-tipdoc-warn");
+    }
+}
+
+function mfEvaluarTipDocCliente(tipoDocGen) {
+    var tipoCli = ($("#tipDoc").val() || "").toUpperCase();
+    if (!tipoDocGen || !tipoCli) {
+        mfMarcarTipDoc(null);
+        return;
+    }
+    if (tipoDocGen === "01") {
+        mfMarcarTipDoc(tipoCli === "RUC" ? "ok" : "warn");
+    } else if (tipoDocGen === "03") {
+        mfMarcarTipDoc(tipoCli === "DNI" ? "ok" : "warn");
+    } else {
+        mfMarcarTipDoc(null);
+    }
+}
+
+function mfRefreshSelectpicker($select) {
+    if (!$select || !$select.length || typeof $select.selectpicker !== "function") {
+        return;
+    }
+    if (!$select.data("selectpicker")) {
+        $select.selectpicker({
+            liveSearch: true,
+            container: "body",
+            size: 8,
+        });
+    } else {
+        $select.selectpicker("refresh");
+    }
+}
+
+function mfLlenarSelectSeries($select, respuesta) {
+    $select.find("option").remove();
+    $select.append('<option value="">Seleccionar serie</option>');
+    if (respuesta && respuesta.length) {
+        for (var i = 0; i < respuesta.length; i++) {
+            var id = respuesta[i];
+            $select.append(
+                '<option value="' +
+                    id.numero +
+                    '">' +
+                    mfFormatoOpcionSerie(id.numero) +
+                    "</option>"
+            );
+        }
+    }
+    $select.val("");
+    mfRefreshSelectpicker($select);
+}
+
+function mfMostrarSerieSeparado(mostrar) {
+    var $wrap = $("#wrapSerieSeparado");
+    var $sel = $("#serieSeparado");
+    if (!$sel.length) {
+        return;
+    }
+    if (mostrar) {
+        $wrap.removeClass("hidden");
+        $sel.prop("disabled", false).prop("required", true);
+    } else {
+        $wrap.addClass("hidden");
+        $sel.prop("disabled", true).prop("required", false).val("");
+        $sel.find("option").remove();
+        $sel.append('<option value="">Seleccionar serie</option>');
+        mfActualizarPreviewSerie($sel, "serieSeparadoPreview");
+    }
+    mfRefreshSelectpicker($sel);
+}
+
+function mfResetSepararUi() {
+    var chkF = document.getElementById("chkFactura");
+    var chkB = document.getElementById("chkBoleta");
+    if (chkF) {
+        chkF.checked = false;
+    }
+    if (chkB) {
+        chkB.checked = false;
+    }
+    mfMostrarSerieSeparado(false);
+}
+
+/*
  * AL CAMBIAR EL SELECT DE DOCUMENTO
  */
 $("#tdoc").change(function () {
     var documento = document.getElementById("tdoc").value;
-    //console.log(documento);
-
-    var tipoDoc = document.getElementById("tipDoc").value;
-    //console.log(tipoDoc);
 
     if (documento == "00") {
-        $("#GuiasDiv").removeClass("disable-div");
+        $("#GuiasDiv").removeClass("hidden disable-div");
+        $("#wrapSepararDoc").removeClass("hidden");
     } else {
-        $("#GuiasDiv").addClass("disable-div");
+        $("#GuiasDiv").addClass("hidden");
+        $("#wrapSepararDoc").addClass("hidden");
     }
 
-    if (documento == "01" && tipoDoc == "DNI") {
-        document.getElementById("tipDoc").style.background = "#FF6868";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    } else if (documento == "03" && tipoDoc == "DNI") {
-        document.getElementById("tipDoc").style.background = "#52BE80";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    } else if (documento == "03" && tipoDoc == "RUC") {
-        document.getElementById("tipDoc").style.background = "#FF6868";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    } else if (documento == "01" && tipoDoc == "RUC") {
-        document.getElementById("tipDoc").style.background = "#52BE80";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    } else {
-        document.getElementById("tipDoc").style.background = "#52BE80";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    }
+    mfEvaluarTipDocCliente(documento);
 
-    document.getElementById("chkFactura").checked = false;
-    document.getElementById("chkBoleta").checked = false;
+    mfResetSepararUi();
 
     if (documento == "00") {
         document.getElementById("chkFactura").disabled = false;
@@ -549,9 +658,6 @@ $("#tdoc").change(function () {
     } else {
         document.getElementById("chkFactura").disabled = true;
         document.getElementById("chkBoleta").disabled = true;
-
-        document.getElementById("chkFactura").checked = false;
-        document.getElementById("chkBoleta").checked = false;
     }
 
     if (documento == "07") {
@@ -567,7 +673,8 @@ $("#tdoc").change(function () {
     }
 
     var serie = $("#serie");
-    //console.log(serie);
+    var $btn = $("#btnGenerarDoc");
+    $btn.prop("disabled", true);
 
     var datos = new FormData();
     datos.append("documento", documento);
@@ -581,23 +688,14 @@ $("#tdoc").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            //console.log(respuesta);
-
-            // Limpiamos el select
-            serie.find("option").remove();
-
-            serie.append('<option value="">Seleccionar Serie</option>');
-
-            for (var id of respuesta) {
-                serie.append(
-                    '<option value="' +
-                        id.numero +
-                        '">' +
-                        id.numero +
-                        "</option>"
-                );
-                //console.log(serie);
-            }
+            mfLlenarSelectSeries(serie, respuesta);
+            mfActualizarPreviewSerie(serie, "seriePreview");
+            $btn.prop("disabled", false);
+        },
+        error: function () {
+            mfLlenarSelectSeries(serie, []);
+            mfActualizarPreviewSerie(serie, "seriePreview");
+            $btn.prop("disabled", false);
         },
     });
 
@@ -701,32 +799,19 @@ $(".chkFactura").change(function () {
     var chkBox = document.getElementById("chkFactura");
 
     var documento = "01";
-    //console.log(documento);
-
     var serieSeparado = $("#serieSeparado");
-    //console.log(serieSeparado);
 
-    var tipoDoc = document.getElementById("tipDoc").value;
-    //console.log(tipoDoc);
-
-    if (tipoDoc == "DNI") {
-        document.getElementById("tipDoc").style.background = "#FF6868";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    } else {
-        document.getElementById("tipDoc").style.background = "#52BE80";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    }
+    mfEvaluarTipDocCliente(documento);
 
     if (chkBox.checked == true) {
         document.getElementById("chkBoleta").disabled = true;
         document.getElementById("chkBoleta").checked = false;
-
-        document.getElementById("serieSeparado").disabled = false;
+        mfMostrarSerieSeparado(true);
     } else {
         document.getElementById("chkBoleta").disabled = false;
-        document.getElementById("serieSeparado").disabled = true;
+        mfMostrarSerieSeparado(false);
+        mfEvaluarTipDocCliente($("#tdoc").val());
+        return;
     }
 
     var datos = new FormData();
@@ -741,58 +826,28 @@ $(".chkFactura").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            //console.log(respuesta);
-
-            // Limpiamos el select
-            serieSeparado.find("option").remove();
-
-            serieSeparado.append('<option value="">Seleccionar Serie</option>');
-
-            for (var id of respuesta) {
-                serieSeparado.append(
-                    '<option value="' +
-                        id.numero +
-                        '">' +
-                        id.numero +
-                        "</option>"
-                );
-                //console.log(serieSeparado);
-            }
+            mfLlenarSelectSeries(serieSeparado, respuesta);
+            mfActualizarPreviewSerie(serieSeparado, "serieSeparadoPreview");
         },
     });
 });
 
 $(".chkBoleta").change(function () {
     var chkBox = document.getElementById("chkBoleta");
-    //console.log(chkBox.checked);
-
     var serieSeparado = $("#serieSeparado");
-    serieSeparado.find("option").remove();
-    //console.log(serieSeparado);
-
     var documento = "03";
 
-    var tipoDoc = document.getElementById("tipDoc").value;
-    //console.log(tipoDoc);
-
-    if (tipoDoc == "RUC") {
-        document.getElementById("tipDoc").style.background = "#FF6868";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    } else {
-        document.getElementById("tipDoc").style.background = "#52BE80";
-        document.getElementById("tipDoc").style.color = "black";
-        $("#tipDoc").css("font-weight", "bold");
-    }
+    mfEvaluarTipDocCliente(documento);
 
     if (chkBox.checked == true) {
         document.getElementById("chkFactura").disabled = true;
         document.getElementById("chkFactura").checked = false;
-
-        document.getElementById("serieSeparado").disabled = false;
+        mfMostrarSerieSeparado(true);
     } else {
         document.getElementById("chkFactura").disabled = false;
-        document.getElementById("serieSeparado").disabled = true;
+        mfMostrarSerieSeparado(false);
+        mfEvaluarTipDocCliente($("#tdoc").val());
+        return;
     }
 
     var datos = new FormData();
@@ -807,25 +862,42 @@ $(".chkBoleta").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            //console.log(respuesta);
-
-            // Limpiamos el select
-            serieSeparado.find("option").remove();
-
-            serieSeparado.append('<option value="">Seleccionar Serie</option>');
-
-            for (var id of respuesta) {
-                serieSeparado.append(
-                    '<option value="' +
-                        id.numero +
-                        '">' +
-                        id.numero +
-                        "</option>"
-                );
-                //console.log(serieSeparado);
-            }
+            mfLlenarSelectSeries(serieSeparado, respuesta);
+            mfActualizarPreviewSerie(serieSeparado, "serieSeparadoPreview");
         },
     });
+});
+
+$(document).on("change", "#serie", function () {
+    mfActualizarPreviewSerie($(this), "seriePreview");
+});
+
+$(document).on("change", "#serieSeparado", function () {
+    mfActualizarPreviewSerie($(this), "serieSeparadoPreview");
+});
+
+$("#modalFacturar").on("show.bs.modal", function () {
+    var $btn = $("#btnGenerarDoc");
+    $btn.prop("disabled", false).html("Generar documento");
+
+    $("#GuiasDiv").addClass("hidden");
+    $("#wrapSepararDoc").addClass("hidden");
+    mfResetSepararUi();
+
+    if (document.getElementById("tdoc")) {
+        $("#tdoc").val("").selectpicker("refresh");
+    }
+
+    var serie = $("#serie");
+    serie.find("option").remove();
+    serie.append('<option value="">Seleccionar serie</option>');
+    serie.val("");
+    mfRefreshSelectpicker(serie);
+    mfActualizarPreviewSerie(serie, "seriePreview");
+
+    if (document.getElementById("tipDoc")) {
+        mfMarcarTipDoc(null);
+    }
 });
 
 /*
@@ -2193,95 +2265,8 @@ $("#seleccionarCliente").change(function () {
     });
 });
 
-// BUSCAR AGENCIA DE TRANSPORTES
-$("#serie").change(function () {
-    var tipo = document.getElementById("tdoc").value;
-    //console.log(tipo);
-
-    var documento = document.getElementById("serie").value;
-    if (tipo == "09") {
-        var serie = documento.substring(0, 3);
-        var talonario = documento.substr(-7);
-        //console.log(serie, Number(talonario));
-    } else {
-        var serie = documento.substring(0, 4);
-        var talonario = documento.substr(-8);
-        //console.log(serie, Number(talonario));
-    }
-
-    //*validamos si es de factura o boleta
-    if (tipo == "01" || tipo == "03" || tipo == "09") {
-        //*vemos que número trae
-        var datos = new FormData();
-        datos.append("serie", serie);
-        datos.append("talonario", talonario);
-
-        $.ajax({
-            url: "ajax/pedidos.ajax.php",
-            method: "POST",
-            data: datos,
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: "json",
-            success: function (respuesta) {
-                //console.log(respuesta["talonario"]);
-                if (Number(respuesta["talonario"]) == talonario) {
-                    document.getElementById("serie").style.background =
-                        "#FF6868";
-                    document.getElementById("serie").style.color = "black";
-                    $("#serie").css("font-weight", "bold");
-
-                    //document.getElementById("btnGenerarDoc").disabled = true;
-                } else {
-                    //*actualizamos el talonario
-                    var datos = new FormData();
-                    datos.append("serieA", serie);
-                    datos.append("talonarioA", Number(talonario));
-
-                    $.ajax({
-                        url: "ajax/pedidos.ajax.php",
-                        method: "POST",
-                        data: datos,
-                        cache: false,
-                        contentType: false,
-                        processData: false,
-                        dataType: "json",
-                        success: function (respuesta) {
-                            console.log(respuesta);
-                        },
-                    });
-                }
-            },
-        });
-    }
-});
-
-$("#modalFacturar").on("hidden.bs.modal", function () {
-    var tipo = document.getElementById("tdoc").value;
-    console.log(tipo);
-
-    console.log("mundo");
-
-    if (tipo == "01" || tipo == "03" || tipo == "09") {
-        //*actualizamos el talonario
-        var datos = new FormData();
-        datos.append("tipo", tipo);
-
-        $.ajax({
-            url: "ajax/pedidos.ajax.php",
-            method: "POST",
-            data: datos,
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: "json",
-            success: function (respuesta) {
-                console.log(respuesta);
-            },
-        });
-    }
-});
+// El correlativo se asigna atómicamente en el servidor al generar el documento.
+// No reservar / tocar talonario al elegir serie ni al cerrar el modal.
 
 //VALIDA SI ES RUC O DNI
 function ValidarRuc() {

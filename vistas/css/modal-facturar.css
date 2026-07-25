@@ -1,0 +1,279 @@
+/* =============================================================================
+   Modal facturar — layout limpio y alineado
+   ============================================================================= */
+
+#modalFacturar .mf-dialog {
+    width: 780px;
+    max-width: 96vw;
+    margin: 30px auto;
+}
+
+#modalFacturar .mf-content {
+    border: 0;
+    border-radius: 6px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    overflow: visible;
+}
+
+#modalFacturar .mf-body,
+#modalFacturar .modal-body {
+    overflow: visible;
+}
+
+#modalFacturar .mf-header {
+    background: #2f3b4c;
+    color: #fff;
+    border: 0;
+    border-radius: 6px 6px 0 0;
+    padding: 14px 18px;
+}
+
+#modalFacturar .mf-header .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+#modalFacturar .mf-header .close {
+    color: #fff;
+    opacity: 0.75;
+    text-shadow: none;
+    margin-top: 2px;
+}
+
+#modalFacturar .mf-header .close:hover {
+    opacity: 1;
+}
+
+#modalFacturar .mf-body {
+    padding: 16px 18px 8px;
+    background: #f4f6f8;
+}
+
+#modalFacturar .mf-section {
+    background: #fff;
+    border: 1px solid #e3e7ec;
+    border-radius: 5px;
+    padding: 12px 14px 4px;
+    margin-bottom: 12px;
+}
+
+#modalFacturar .mf-section-title {
+    margin: 0 0 10px;
+    padding: 0 0 8px;
+    border-bottom: 1px solid #eef1f4;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6b7785;
+}
+
+/* Grillas por sección (alineación consistente) */
+#modalFacturar .mf-grid {
+    display: grid;
+    gap: 0 12px;
+    margin: 0;
+}
+
+#modalFacturar .mf-section > .mf-grid {
+    grid-template-columns: minmax(150px, 1fr) minmax(0, 2fr);
+}
+
+#modalFacturar .mf-destino > .mf-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+#modalFacturar .mf-wrap-guia > .mf-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) minmax(110px, 0.7fr) minmax(100px, 0.65fr);
+}
+
+#modalFacturar .mf-field {
+    width: auto !important;
+    max-width: none;
+    min-width: 0;
+    padding: 0 0 10px;
+    box-sizing: border-box;
+}
+
+#modalFacturar .mf-field label,
+#modalFacturar .mf-separar-ops > span {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7785;
+    margin-bottom: 4px;
+}
+
+#modalFacturar .mf-field .form-control,
+#modalFacturar .mf-doc-row .form-control {
+    width: 100%;
+    border-radius: 3px;
+    border-color: #d4dbe3;
+    box-shadow: none;
+    height: 34px;
+}
+
+#modalFacturar .mf-field select.form-control {
+    padding-right: 24px;
+}
+
+#modalFacturar .mf-field .form-control:focus {
+    border-color: #3c8dbc;
+    box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.15);
+}
+
+#modalFacturar .mf-field .form-control[readonly] {
+    background: #f7f8fa;
+    color: #333;
+    cursor: default;
+}
+
+#modalFacturar .mf-doc-row {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 8px;
+}
+
+#modalFacturar .mf-doc-row #tipDoc {
+    width: 100%;
+    text-align: center;
+    font-weight: 700;
+}
+
+#modalFacturar .mf-doc-row #nroDoc {
+    width: 100%;
+}
+
+#modalFacturar #tipDoc.mf-tipdoc-ok {
+    background: #eaf6ee !important;
+    border-color: #a7d7b5 !important;
+    color: #1f7a3d;
+}
+
+#modalFacturar #tipDoc.mf-tipdoc-warn {
+    background: #fff4e5 !important;
+    border-color: #f0c48a !important;
+    color: #9a5b00;
+}
+
+/* Preview correlativo */
+#modalFacturar .mf-preview {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #8a94a0;
+    line-height: 1.35;
+    min-height: 15px;
+}
+
+#modalFacturar .mf-preview strong {
+    color: #2f3b4c;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 11px;
+}
+
+#modalFacturar .mf-preview-note {
+    color: #a0a8b0;
+}
+
+/* Separar: misma grilla 2 cols que Tipo | Serie */
+#modalFacturar .mf-separar {
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px dashed #e3e7ec;
+}
+
+#modalFacturar .mf-separar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0 12px;
+    align-items: start;
+}
+
+#modalFacturar .mf-separar-ops {
+    padding-bottom: 10px;
+    min-width: 0;
+}
+
+#modalFacturar .mf-separar-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    min-height: 34px;
+}
+
+#modalFacturar .mf-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+}
+
+#modalFacturar .mf-check input {
+    margin: 0;
+}
+
+#modalFacturar .mf-separar-serie {
+    min-width: 0;
+    width: 100%;
+    padding: 0 0 10px;
+}
+
+#modalFacturar .mf-wrap-guia.hidden,
+#modalFacturar .mf-separar.hidden,
+#modalFacturar .mf-separar-serie.hidden,
+#modalFacturar .mf-wrap-separar.hidden,
+#modalFacturar .mf-wrap-serie-sep.hidden {
+    display: none !important;
+}
+
+#modalFacturar .mf-footer {
+    background: #fff;
+    border-top: 1px solid #e3e7ec;
+    border-radius: 0 0 6px 6px;
+    padding: 12px 18px;
+    margin-top: 0;
+}
+
+#modalFacturar #btnGenerarDoc[disabled] {
+    cursor: not-allowed;
+    opacity: 0.75;
+}
+
+/* bootstrap-select: ocupar todo el ancho de su columna */
+#modalFacturar .bootstrap-select {
+    width: 100% !important;
+}
+
+#modalFacturar .bootstrap-select > .btn {
+    height: 34px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#modalFacturar .bootstrap-select.disabled .dropdown-toggle,
+#modalFacturar .bootstrap-select > .disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+    #modalFacturar .mf-section > .mf-grid,
+    #modalFacturar .mf-destino > .mf-grid,
+    #modalFacturar .mf-wrap-guia > .mf-grid,
+    #modalFacturar .mf-separar-row {
+        grid-template-columns: 1fr;
+    }
+
+    #modalFacturar .mf-dialog {
+        width: auto;
+        margin: 10px;
+    }
+}

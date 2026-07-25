@@ -2639,8 +2639,15 @@ $("#conGuias").click(function () {
 });
 
 function checkSubmit() {
-    document.getElementById("btnGenerarDoc").value = "Enviando...";
-    document.getElementById("btnGenerarDoc").disabled = true;
+    var btn = document.getElementById("btnGenerarDoc");
+    if (!btn) {
+        return true;
+    }
+    if (btn.disabled) {
+        return false;
+    }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generando...';
     return true;
 }
 

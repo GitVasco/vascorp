@@ -253,6 +253,80 @@ class ModeloFacturacion
     $stmt = null;
   }
 
+  /*
+   * Asigna el siguiente correlativo de forma atómica (candado FOR UPDATE).
+   * Devuelve el documento sin guion (ej. F00100005115) o null si la serie no existe.
+   */
+  static public function mdlAsignarSiguienteDocumento($tipoDocumento, $serie)
+  {
+    $map = array(
+      "01" => array("campo" => "facturas", "colSerie" => "serie_factura", "pad" => 8),
+      "03" => array("campo" => "boletas", "colSerie" => "serie_boletas", "pad" => 8),
+      "00" => array("campo" => "guias_remision", "colSerie" => "serie_guias", "pad" => 8),
+      "09" => array("campo" => "proformas", "colSerie" => "serie_proformas", "pad" => 7),
+      "07" => array("campo" => "nota_credito", "colSerie" => "serie_nc", "pad" => 8),
+      "08" => array("campo" => "nota_debito", "colSerie" => "serie_nd", "pad" => 8),
+    );
+
+    if (!isset($map[$tipoDocumento]) || $serie === null || $serie === "") {
+      return null;
+    }
+
+    $campo = $map[$tipoDocumento]["campo"];
+    $colSerie = $map[$tipoDocumento]["colSerie"];
+    $pad = (int) $map[$tipoDocumento]["pad"];
+
+    $db = Conexion::conectar();
+    $db->beginTransaction();
+
+    try {
+      $stmt = $db->prepare(
+        "SELECT id, `$campo` AS correlativo
+         FROM talonariosjf
+         WHERE `$colSerie` = :serie
+         LIMIT 1
+         FOR UPDATE"
+      );
+      $stmt->bindParam(":serie", $serie, PDO::PARAM_STR);
+
+      if (!$stmt->execute()) {
+        $db->rollBack();
+        return null;
+      }
+
+      $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+      if (!$row) {
+        $db->rollBack();
+        return null;
+      }
+
+      $nuevo = ((int) $row["correlativo"]) + 1;
+
+      $upd = $db->prepare(
+        "UPDATE talonariosjf
+         SET `$campo` = :nuevo
+         WHERE id = :id"
+      );
+      $upd->bindParam(":nuevo", $nuevo, PDO::PARAM_INT);
+      $upd->bindParam(":id", $row["id"], PDO::PARAM_INT);
+
+      if (!$upd->execute()) {
+        $db->rollBack();
+        return null;
+      }
+
+      $db->commit();
+
+      return $serie . str_pad((string) $nuevo, $pad, "0", STR_PAD_LEFT);
+    } catch (Exception $e) {
+      if ($db->inTransaction()) {
+        $db->rollBack();
+      }
+      return null;
+    }
+  }
+
 
 
   /*

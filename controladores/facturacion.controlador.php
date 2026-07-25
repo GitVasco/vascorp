@@ -3612,7 +3612,6 @@ class ControladorFacturacion
             $tipoDocumento = $_POST["tdoc"];
             $almacen = $_SESSION["almacen"] == "01" ? "stock01" : "stock05";
             $codigoAlmacen = $_SESSION["almacen"] == "01" ? "01" : "05";
-            $documento = str_replace('-', '', $_POST["serie"]);
             $cliente = $_POST["codCli"];
             $vendedor = $_POST["codVen"];
             $dscto = $_POST["dscto"] == "" ? 0 : $_POST["dscto"];
@@ -3620,22 +3619,30 @@ class ControladorFacturacion
             $usuario = $_POST["idUsuario"];
             $docOrigen = $_POST["codPedido"];
 
-            $docDestino = !empty($_POST['serieSeparado']) ? $_POST['serieSeparado'] : null;
-            $docDest = $docDestino ? str_replace('-', '', $docDestino) : '';
             $checkBoleta = !empty($_POST['chkBoleta']) ? $_POST['chkBoleta'] : null;
             $checkFactura = !empty($_POST['chkFactura']) ? $_POST['chkFactura'] : null;
 
-            $exportacion = substr($documento, 0, 2) == "FX" ? 1 : 0;
-            $tipo_moneda = substr($documento, 0, 2) == "FX" ? 2 : 1;
+            // Solo se usa la serie del POST; el correlativo se asigna atómicamente en servidor
+            $serieSeleccionada = self::ctrExtraerSeriePost(
+                isset($_POST["serie"]) ? $_POST["serie"] : "",
+                $tipoDocumento
+            );
+            $documento = null;
+            $docDest = "";
+
+            $exportacion = substr($serieSeleccionada, 0, 2) == "FX" ? 1 : 0;
+            $tipo_moneda = $exportacion ? 2 : 1;
 
             if ($checkBoleta == "on" && $checkFactura == null) {
                 $tipoDestino = "S02";
                 $nombresDestino = "BOLETA";
                 $tipoCuenta = "03";
+                $tipoDocDest = "03";
             } else {
                 $tipoDestino = "S03";
                 $nombresDestino = "FACTURA";
                 $tipoCuenta = "01";
+                $tipoDocDest = "01";
             }
 
             $chofer = !empty($_POST['chofer']) ? $_POST['chofer'] : null;
@@ -3656,21 +3663,25 @@ class ControladorFacturacion
                 case "00":
                     $tipo = "S01";
                     $nombreTipo = "GUIA REMISION";
+                    $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("00", $serieSeleccionada);
+                    if (!$documento) {
+                        self::ctrErrorCorrelativo();
+                        return;
+                    }
                     $stock = ModeloArticulos::mdlActualizarStockPedido($codigo, $almacen);
-                    $serie = (substr($documento, 0, 1) == "0") ? substr($documento, 0, 3) : substr($documento, 0, 4);
-                    ModeloFacturacion::mdlActualizarTalonarioGuia($serie);
                     if ($checkBoleta == "on" || $checkFactura == "on") {
+                        $serieDestino = self::ctrExtraerSeriePost(
+                            !empty($_POST['serieSeparado']) ? $_POST['serieSeparado'] : "",
+                            $tipoDocDest
+                        );
+                        $docDest = ModeloFacturacion::mdlAsignarSiguienteDocumento($tipoDocDest, $serieDestino);
+                        if (!$docDest) {
+                            self::ctrErrorCorrelativo();
+                            return;
+                        }
 
                         $movimientosDestino = self::ctrRegistrarMovimientos($codigo, $tipoDestino, $docDest, $cliente, $vendedor, $dscto, $nombresDestino, $codigoAlmacen);
                         $ventasDestino = self::ctrRegistrarVentas($codigo, $tipoDestino, $docDest, "", $documento, $usuario, $nombresDestino, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $exportacion, $tipo_moneda);
-
-                        $serieDestino = (substr($docDest, 0, 1) == "0") ? substr($docDest, 0, 3) : substr($docDest, 0, 4);
-                        if ($checkBoleta == "on" && $checkFactura == null) {
-                            ModeloFacturacion::mdlActualizarTalonarioBoleta($serieDestino);
-                        } else {
-                            ModeloFacturacion::mdlActualizarTalonarioFactura($serieDestino);
-                        }
-
                         $cuentas = self::ctrRegistrarCuentaCorriente($codigo, $tipoCuenta, $docDest, $usuario, $usureg, $pcreg);
                     }
 
@@ -3678,33 +3689,45 @@ class ControladorFacturacion
                 case "01":
                     $tipo = "S03";
                     $nombreTipo = "FACTURA";
+                    $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("01", $serieSeleccionada);
+                    if (!$documento) {
+                        self::ctrErrorCorrelativo();
+                        return;
+                    }
                     $stock = ModeloArticulos::mdlActualizarStockPedido($codigo, $almacen);
-                    $serie = substr($documento, 0, 4);
-                    ModeloFacturacion::mdlActualizarTalonarioFactura($serie);
                     $cuentas = self::ctrRegistrarCuentaCorriente($codigo, $tipoDocumento, $documento, $usuario, $usureg, $pcreg);
                     break;
                 case "03":
                     $tipo = "S02";
                     $nombreTipo = "BOLETA";
+                    $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("03", $serieSeleccionada);
+                    if (!$documento) {
+                        self::ctrErrorCorrelativo();
+                        return;
+                    }
                     $stock = ModeloArticulos::mdlActualizarStockPedido($codigo, $almacen);
-                    $serie = substr($documento, 0, 4);
-                    ModeloFacturacion::mdlActualizarTalonarioBoleta($serie);
                     $cuentas = self::ctrRegistrarCuentaCorriente($codigo, $tipoDocumento, $documento, $usuario, $usureg, $pcreg);
                     break;
                 case "09":
                     $tipo = "S70";
                     $nombreTipo = "PROFORMA";
+                    $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("09", $serieSeleccionada);
+                    if (!$documento) {
+                        self::ctrErrorCorrelativo();
+                        return;
+                    }
                     $stock = ModeloArticulos::mdlActualizarStockPedido($codigo, $almacen);
-                    $serie = substr($documento, 0, 3);
-                    ModeloFacturacion::mdlActualizarTalonarioProforma($serie);
                     $cuentas = self::ctrRegistrarCuentaCorriente($codigo, $tipoDocumento, $documento, $usuario, $usureg, $pcreg);
                     break;
                 case "07":
                     $tipo = "E05";
                     $nombreTipo = "NC";
+                    $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("07", $serieSeleccionada);
+                    if (!$documento) {
+                        self::ctrErrorCorrelativo();
+                        return;
+                    }
                     $stock = ModeloArticulos::mdlActualizarStockPedidoB($codigo, $almacen);
-                    $serie = substr($documento, 0, 4);
-                    ModeloFacturacion::mdlActualizarNotaSerie("nota_credito", "serie_nc", $serie);
                     $nota = self::ctrRegistrarNotaCredito($documento, $tipNota, $origenVenta, $fechaOrigen, $notaMotivo, $usuario);
                     break;
                 default:
@@ -3726,6 +3749,52 @@ class ControladorFacturacion
                 }
             }
         }
+    }
+
+    /**
+     * Extrae solo la serie del valor del select (ej. F001-00005115 → F001).
+     * El correlativo del front se ignora a propósito.
+     */
+    static private function ctrExtraerSeriePost($seriePost, $tipoDocumento)
+    {
+        $seriePost = trim((string) $seriePost);
+        if ($seriePost === "") {
+            return "";
+        }
+
+        if (strpos($seriePost, "-") !== false) {
+            return explode("-", $seriePost, 2)[0];
+        }
+
+        $documento = str_replace("-", "", $seriePost);
+
+        if ($tipoDocumento == "00") {
+            return (substr($documento, 0, 1) == "0")
+                ? substr($documento, 0, 3)
+                : substr($documento, 0, 4);
+        }
+
+        if ($tipoDocumento == "09") {
+            return substr($documento, 0, 3);
+        }
+
+        return substr($documento, 0, 4);
+    }
+
+    static private function ctrErrorCorrelativo()
+    {
+        echo '<script>
+            swal({
+                type: "error",
+                title: "No se pudo asignar el correlativo de la serie. Intente nuevamente.",
+                showConfirmButton: true,
+                confirmButtonText: "Cerrar"
+            }).then(function(result){
+                if (result.value) {
+                    window.location = "pedidoscv";
+                }
+            });
+        </script>';
     }
 
     static public function ctrRegistrarMovimientos($codigo, $tipo, $documento, $cliente, $vendedor, $dscto, $nombreTipo, $codigoAlmacen)

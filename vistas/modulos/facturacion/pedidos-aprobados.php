@@ -140,434 +140,147 @@
 <!--=====================================
 MODAL FACTURAR
 ======================================-->
-
 <div id="modalFacturar" class="modal fade" role="dialog">
-
-    <div class="modal-dialog" style="width: 70% !important;">
-
-        <div class="modal-content">
-
+    <div class="modal-dialog mf-dialog">
+        <div class="modal-content mf-content">
             <form role="form" method="post" onsubmit="return checkSubmit();">
-
-                <!--=====================================
-        CABEZA DEL MODAL
-        ======================================-->
-
-                <div class="modal-header" style="background:#3c8dbc; color:white">
-
+                <div class="modal-header mf-header">
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
-
-                    <h4 class="modal-title">Pasar Pedido a:</h4>
-
+                    <h4 class="modal-title">Pasar pedido a documento</h4>
                 </div>
-
-                <!--=====================================
-        CUERPO DEL MODAL
-        ======================================-->
-
-                <div class="modal-body">
-
-                    <div class="box-body">
-
-                        <div class="box box-primary col-lg-12 ">
-
-                            <div class="box-header">
-
-                                <b>Datos Principales</b>
-
+                <div class="modal-body mf-body">
+                    <section class="mf-section">
+                        <h5 class="mf-section-title">Pedido</h5>
+                        <div class="mf-grid">
+                            <div class="mf-field mf-col-code">
+                                <label for="codPedido">Código</label>
+                                <input type="text" class="form-control input-sm" id="codPedido" name="codPedido" readonly>
                             </div>
-
-                            <!-- ENTRADA PARA EL CODIGO DEL PEDIDO-->
-
-                            <div class="form-group col-lg-3">
-
-                                <label>Cod. Pedido</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="codPedido" name="codPedido" readonly>
-
+                            <div class="mf-field mf-col-client">
+                                <label for="nomCli">Cliente</label>
+                                <input type="text" class="form-control input-sm" id="nomCli" name="nomCli" readonly>
+                            </div>
+                            <div class="mf-field mf-col-4">
+                                <label for="codCli">Cód. cliente</label>
+                                <input type="text" class="form-control input-sm" id="codCli" name="codCli" readonly>
+                            </div>
+                            <div class="mf-field mf-col-8">
+                                <label>Documento del cliente</label>
+                                <div class="mf-doc-row">
+                                    <input type="text" class="form-control input-sm" id="tipDoc" name="tipDoc" readonly title="Tipo de documento">
+                                    <input type="text" class="form-control input-sm" id="nroDoc" name="nroDoc" readonly title="Número de documento">
                                 </div>
-
+                                <input type="hidden" name="dscto" id="dscto" value="0">
+                                <input type="hidden" name="formapago" id="formapago">
+                                <input type="hidden" name="codVen" id="codVen">
+                                <input type="hidden" name="idUsuario" id="idUsuario" value="<?php echo $_SESSION["id"]; ?>">
                             </div>
-
-                            <!-- ENTRADA PARA EL NOMBRE DEL CLIENTE-->
-
-                            <div class="form-group col-lg-9">
-
-                                <label>Cliente</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="nomCli" name="nomCli" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL codigo DEL CLIENTE-->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Cod. Cliente</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="codCli" name="codCli" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL TIPO DOCUMENTO DEL CLIENTE-->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Tipo Documento</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="tipDoc" name="tipDoc" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL NUMERO DOCUMENTO DEL CLIENTE-->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Nro. Documento</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="nroDoc" name="nroDoc" readonly>
-
-                                    <input type="hidden" class="form-control input-sm" name="dscto" id="dscto" readonly>
-                                    <input type="hidden" class="form-control input-sm" name="codVen" id="codVen" readonly>
-                                    <input type="hidden" name="idUsuario" id="idUsuario" value="<?php echo $_SESSION["id"]; ?>">
-
-                                </div>
-
-                            </div>
-
                         </div>
+                    </section>
 
-                        <div class="box box-success col-lg-12 ">
-
-                            <div class="box-header">
-
-                                <b>Documento Destino</b>
-
-                            </div>
-
-                            <!-- ENTRADA PARA TIPO DE DOCUMENTO -->
-
-                            <div class="form-group col-lg-6">
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-share-square-o"></i></span>
-                                    <select type="text" class="form-control input-sm selectpicker" name="tdoc" id="tdoc" data-live-search="true" required>
-                                        <option value="">Seleccionar tipo de documento</option>
-
-                                        <?php
-
-                                        $item = "tipo_dato";
-                                        $valor = "tdoc";
-
-                                        $documentos = ControladorCuentas::ctrMostrarPagos($item, $valor);
-                                        foreach ($documentos as $key => $value) {
-                                            echo '<option value="' . $value["codigo"] . '">' . $value["codigo"] . " - " . $value["descripcion"] . '</option>';
-                                        }
-
-                                        ?>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA NUMERO DE SERIE-->
-
-                            <div class="form-group col-lg-6">
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-                                    <select type="text" class="form-control input-md" name="serie" id="serie" required>
-                                        <option value="">Seleccionar Serie</option>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-                            <!-- CHECKBOX PARA SEPARAR DOCUMENTO -->
-
-                            <div class="form-group col-lg-6">
-
-                                <div class="form-group">
-
-                                    <label>
-                                        <input class="chkFactura" type="checkbox" id="chkFactura" name="chkFactura" disabled>
-                                        Separar Factura
-                                    </label>
-
-                                    <label>
-                                        <input class="chkBoleta" type="checkbox" id="chkBoleta" name="chkBoleta" disabled>
-                                        Separar Boleta
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA NUMERO DE SERIE DEL DOCUMENTO SEPARADO-->
-
-                            <div class="form-group col-lg-6">
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-                                    <select type="text" class="form-control input-md" name="serieSeparado" id="serieSeparado" required disabled>
-                                        <option value="">Seleccionar Serie</option>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-                            <div class="col-lg-12"></div>
-
-                            <div class="form-group col-lg-3 campoTipOrigen hidden">
-                                <label for="">Tipo doc. origen</label>
-                                <div class="input-group">
-                                    <span class="input-group-addon"><i class="fa fa-text-width"></i></span>
-                                    <select type="text" class="form-control input-sm selectpicker" name="tdocorigen" id="tdocorigen" data-live-search="true">
-                                        <option value="">Seleccionar tipo de documento</option>
-
-                                        <?php
-
-                                        $item = "tipo_dato";
-                                        $valor = "tdoc";
-
-                                        $documentos = ControladorCuentas::ctrMostrarPagos($item, $valor);
-                                        foreach ($documentos as $key => $value) {
-                                            if ($value["codigo"] == '01' || $value["codigo"] == '03') {
-                                                echo '<option value="' . $value["codigo"] . '">' . $value["codigo"] . " - " . $value["descripcion"] . '</option>';
-                                            }
-                                        }
-
-                                        ?>
-
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-group col-lg-3 campoDocOrigen hidden">
-                                <label for="">Doc. origen</label>
-                                <div class="input-group">
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-                                    <input type="text" name="serieOrigen" id="serieOrigen" class="form-control input-md">
-                                </div>
-                            </div>
-
-                            <div class="form-group col-lg-3 campoFecOrigen hidden">
-                                <label for="">Fecha origen</label>
-                                <div class="input-group">
-                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-                                    <input type="date" name="fechaOrigen" id="fechaOrigen" class="form-control input-md">
-                                </div>
-                            </div>
-
-                            <div class="form-group col-lg-3 campoMotOrigen hidden">
-                                <label for="">Motivo</label>
-
-
-                                <select class="form-control input-md selectpicker" name="notaMotivo" id="notaMotivo" data-live-search="true" style="width:200px !important">
-                                    <option value="">Seleccionar motivo</option>
+                    <section class="mf-section mf-destino">
+                        <h5 class="mf-section-title">Documento a generar</h5>
+                        <div class="mf-grid">
+                            <div class="mf-field mf-col-6">
+                                <label for="tdoc">Tipo</label>
+                                <select class="form-control input-sm selectpicker" name="tdoc" id="tdoc" data-live-search="true" data-container="body" data-size="8" required>
+                                    <option value="">Seleccionar tipo</option>
                                     <?php
                                     $item = "tipo_dato";
-                                    $valor = "TMOT";
-
+                                    $valor = "tdoc";
                                     $documentos = ControladorCuentas::ctrMostrarPagos($item, $valor);
-
                                     foreach ($documentos as $key => $value) {
                                         echo '<option value="' . $value["codigo"] . '">' . $value["codigo"] . " - " . $value["descripcion"] . '</option>';
                                     }
-
                                     ?>
                                 </select>
-
                             </div>
-
-                            <!-- <div class="box box-warning col-lg-12 ">
-
-                                <div class="box-header">
-
-                                    <b>Forma de Pago</b>
-
-                                </div>
-
-                                <div class="form-group col-lg-6">
-
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-share-square-o"></i></span>
-                                        <select type="text" class="form-control input-sm" name="formaPago" id="formaPago" disabled>
-                                            <option value="">Seleccionar Forma de Pago</option>
-
-                                        </select>
-
-                                    </div>
-
-                                </div>
-
-
-                            </div> -->
-
-                            <div class="box box-warning col-lg-12" id="GuiasDiv">
-
-                                <div class="box-header">
-
-                                    <b>Datos para la Guia de Remisión</b>
-
-                                </div>
-
-                                <!-- ENTRADA PARA TIPO DE DOCUMENTO -->
-
-                                <div class="form-group col-lg-4">
-
-                                    <label>Chofer</label>
-
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-share-square-o"></i></span>
-                                        <select type="text" class="form-control input-sm" name="chofer" id="chofer">
-                                            <option value="">Seleccionar Chofer</option>
-                                            <?php
-
-                                            $valor = "tcho";
-
-                                            $documentos = ModeloPedidos::MostrarDatos($valor);
-
-                                            foreach ($documentos as $key => $value) {
-                                                echo '<option value="' . $value["Cod_Argumento"] . '">' . $value["Cod_Argumento"] . " - " . $value["Des_Larga"] . '</option>';
-                                            }
-
-                                            ?>
-
-
-                                        </select>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="form-group col-lg-4">
-
-                                    <label>Movilidad</label>
-
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-share-square-o"></i></span>
-                                        <select type="text" class="form-control input-sm" name="carro" id="carro">
-                                            <option value="">Seleccionar Movilidad</option>
-                                            <?php
-
-                                            $valor = "tcar";
-
-                                            $documentos = ModeloPedidos::MostrarDatos($valor);
-
-                                            foreach ($documentos as $key => $value) {
-                                                echo '<option value="' . $value["Cod_Argumento"] . '">' . $value["Cod_Argumento"] . " - " . $value["Des_Larga"] . '</option>';
-                                            }
-
-                                            ?>
-
-
-                                        </select>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="form-group col-lg-2">
-                                    <label>Peso Bruto Kg.</label>
-
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                        <input type="text" class="form-control input-sm" id="peso" name="peso" placeholder="Peso KG">
-
-                                    </div>
-
-                                </div>
-
-                                <div class="form-group col-lg-2">
-
-                                    <label>N° Bultos</label>
-
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                        <input type="text" class="form-control input-sm" id="bultos" name="bultos" placeholder="# Bultos">
-
-                                    </div>
-
-                                </div>
-
+                            <div class="mf-field mf-col-6">
+                                <label for="serie">Serie</label>
+                                <select class="form-control input-sm selectpicker" name="serie" id="serie" data-live-search="true" data-container="body" data-size="8" title="Seleccionar serie" required>
+                                    <option value="">Seleccionar serie</option>
+                                </select>
+                                <p class="mf-preview" id="seriePreview">El número final se asigna al generar.</p>
                             </div>
-
                         </div>
 
+                        <div class="mf-separar hidden" id="wrapSepararDoc">
+                            <div class="mf-separar-row">
+                                <div class="mf-separar-ops">
+                                    <span>También generar</span>
+                                    <div class="mf-separar-checks">
+                                        <label class="mf-check">
+                                            <input class="chkFactura" type="checkbox" id="chkFactura" name="chkFactura" disabled>
+                                            Factura
+                                        </label>
+                                        <label class="mf-check">
+                                            <input class="chkBoleta" type="checkbox" id="chkBoleta" name="chkBoleta" disabled>
+                                            Boleta
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mf-field mf-separar-serie hidden" id="wrapSerieSeparado">
+                                    <label for="serieSeparado">Serie</label>
+                                    <select class="form-control input-sm selectpicker" name="serieSeparado" id="serieSeparado" data-live-search="true" data-container="body" data-size="8" title="Seleccionar serie" disabled>
+                                        <option value="">Seleccionar serie</option>
+                                    </select>
+                                    <p class="mf-preview" id="serieSeparadoPreview"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
-
-                    </div>
-
+                    <section class="mf-section mf-wrap-guia hidden" id="GuiasDiv">
+                        <h5 class="mf-section-title">Guía de remisión</h5>
+                        <div class="mf-grid">
+                            <div class="mf-field mf-col-4">
+                                <label for="chofer">Chofer</label>
+                                <select class="form-control input-sm" name="chofer" id="chofer">
+                                    <option value="">Seleccionar</option>
+                                    <?php
+                                    $valor = "tcho";
+                                    $documentos = ModeloPedidos::MostrarDatos($valor);
+                                    foreach ($documentos as $key => $value) {
+                                        echo '<option value="' . $value["Cod_Argumento"] . '">' . $value["Cod_Argumento"] . " - " . $value["Des_Larga"] . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="mf-field mf-col-4">
+                                <label for="carro">Movilidad</label>
+                                <select class="form-control input-sm" name="carro" id="carro">
+                                    <option value="">Seleccionar</option>
+                                    <?php
+                                    $valor = "tcar";
+                                    $documentos = ModeloPedidos::MostrarDatos($valor);
+                                    foreach ($documentos as $key => $value) {
+                                        echo '<option value="' . $value["Cod_Argumento"] . '">' . $value["Cod_Argumento"] . " - " . $value["Des_Larga"] . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="mf-field mf-col-2">
+                                <label for="peso">Peso kg</label>
+                                <input type="text" class="form-control input-sm" id="peso" name="peso" placeholder="0.00">
+                            </div>
+                            <div class="mf-field mf-col-2">
+                                <label for="bultos">Bultos</label>
+                                <input type="text" class="form-control input-sm" id="bultos" name="bultos" placeholder="0">
+                            </div>
+                        </div>
+                    </section>
                 </div>
-
-                <!--=====================================
-        PIE DEL MODAL
-        ======================================-->
-
-                <div class="modal-footer">
-
+                <div class="modal-footer mf-footer">
                     <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
-
-                    <button type="submit" id="btnGenerarDoc" class="btn btn-primary">Generar Documento</button>
-
+                    <button type="submit" id="btnGenerarDoc" class="btn btn-primary">Generar documento</button>
                 </div>
-
             </form>
-
             <?php
-
             $facturar = new controladorFacturacion();
             $facturar->ctrFacturarN();
-
             ?>
-
         </div>
-
     </div>
-
 </div>
 
 <?php
