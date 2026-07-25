@@ -3,7 +3,7 @@
     <section class="content-header">
         <h1>
             Rendición Vasco
-            <small>Caja — cobranzas en efectivo de campo</small>
+            <small>Caja — efectivo a rendir (puede haber cobro mixto)</small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
@@ -18,7 +18,11 @@
             <p>
                 Cobranzas de <strong>Vasco</strong> en
                 <span class="label label-warning">Pendiente de entrega</span>.
-                Valide el efectivo y confirme para avisar a Vasco que la empresa ya lo recibió.
+                Solo aparece lo que tiene <strong>efectivo</strong> en mano del vendedor
+                (puede ser cobro mixto: efectivo + billetera/transferencia).
+                En la grilla verá <strong>Efectivo</strong> (a rendir en caja) y
+                <strong>Otros medios</strong> (billetera/transfer, informativo).
+                Confirme solo el efectivo.
                 Si un cobro es erróneo, <strong>anúlelo</strong> con motivo (no confirmar).
                 La imputación a documentos se hace aparte en vascorp.
             </p>
@@ -63,7 +67,7 @@
                     <strong id="resumenCountVasco" class="vasco-caja-kpi-value">0</strong>
                 </div>
                 <div class="vasco-caja-kpi vasco-caja-kpi--money">
-                    <span class="vasco-caja-kpi-label">Monto total</span>
+                    <span class="vasco-caja-kpi-label">Efectivo</span>
                     <strong id="resumenMontoVasco" class="vasco-caja-kpi-value">S/ 0.00</strong>
                 </div>
                 <div class="vasco-caja-kpi vasco-caja-kpi--sel">
@@ -122,7 +126,8 @@
                                 <th>Cliente</th>
                                 <th>Doc. cliente</th>
                                 <th>Vendedor</th>
-                                <th class="text-right">Monto</th>
+                                <th class="text-right" title="Solo efectivo en custodia del vendedor">Efectivo</th>
+                                <th class="text-right" title="Billetera / transferencia (no se rinde en caja)">Otros medios</th>
                                 <th>Ticket</th>
                                 <th>Notas</th>
                                 <th style="width:170px;">Acción</th>
@@ -130,7 +135,7 @@
                         </thead>
                         <tbody id="cuerpoCobranzasVasco">
                             <tr class="vasco-caja-empty">
-                                <td colspan="10" class="text-center text-muted">
+                                <td colspan="11" class="text-center text-muted">
                                     Use <strong>Consultar</strong> para cargar cobranzas desde Vasco.
                                 </td>
                             </tr>

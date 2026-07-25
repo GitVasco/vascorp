@@ -140,6 +140,57 @@ $(function () {
         return (items || []).slice().sort(compararPorVendedor);
     }
 
+    function montoEfectivo(item) {
+        var n = parseFloat(item && item.amount);
+        return isNaN(n) ? null : n;
+    }
+
+    function montoTotalCobranza(item) {
+        if (!item) {
+            return null;
+        }
+        if (item.amount_total != null && item.amount_total !== "") {
+            var t = parseFloat(item.amount_total);
+            if (!isNaN(t)) {
+                return t;
+            }
+        }
+        return montoEfectivo(item);
+    }
+
+    function montoOtrosMedios(item) {
+        var cash = montoEfectivo(item);
+        var total = montoTotalCobranza(item);
+        if (cash == null || total == null) {
+            return null;
+        }
+        var otros = total - cash;
+        if (otros < 0) {
+            otros = 0;
+        }
+        return Math.round(otros * 100) / 100;
+    }
+
+    function celdaMontoEfectivo(item) {
+        return (
+            '<td class="text-right vasco-caja-monto vasco-caja-monto--efectivo">' +
+            fmtMoney(item.amount) +
+            "</td>"
+        );
+    }
+
+    function celdaMontoOtros(item) {
+        var otros = montoOtrosMedios(item);
+        var html = '<td class="text-right vasco-caja-monto vasco-caja-monto--otros">';
+        if (otros == null || otros < 0.01) {
+            html += '<span class="text-muted">—</span>';
+        } else {
+            html += fmtMoney(otros);
+        }
+        html += "</td>";
+        return html;
+    }
+
     function resumirPorVendedor(items) {
         var mapa = {};
         var lista = [];
@@ -156,13 +207,18 @@ $(function () {
                     sort: info.sort,
                     count: 0,
                     total: 0,
+                    otros: 0,
                 };
                 lista.push(mapa[info.key]);
             }
             mapa[info.key].count += 1;
-            var monto = parseFloat(item.amount);
-            if (!isNaN(monto)) {
+            var monto = montoEfectivo(item);
+            if (monto != null) {
                 mapa[info.key].total += monto;
+            }
+            var otros = montoOtrosMedios(item);
+            if (otros != null && otros >= 0.01) {
+                mapa[info.key].otros += otros;
             }
         });
 
@@ -198,13 +254,17 @@ $(function () {
         var opciones = ['<option value="">Todos los vendedores (' + resumen.length + ")</option>"];
 
         $.each(resumen, function (_, row) {
+            var textoMonto = fmtMoney(row.total) + " ef.";
+            if (row.otros >= 0.01) {
+                textoMonto += " · " + fmtMoney(row.otros) + " otros";
+            }
             opciones.push(
                 '<option value="' +
                     escHtml(row.key) +
                     '">' +
                     escHtml(row.label) +
                     " — " +
-                    fmtMoney(row.total) +
+                    textoMonto +
                     " (" +
                     row.count +
                     ")</option>"
@@ -243,6 +303,21 @@ $(function () {
         var cards = [];
         $.each(resumen, function (_, row) {
             var active = activeKey && row.key === activeKey ? " is-active" : "";
+            var montosHtml =
+                '<span class="vasco-caja-seller-montos">' +
+                '<span class="vasco-caja-seller-amount">' +
+                '<span class="vasco-caja-seller-amount-label">Efectivo</span>' +
+                fmtMoney(row.total) +
+                "</span>";
+            if (row.otros >= 0.01) {
+                montosHtml +=
+                    '<span class="vasco-caja-seller-otros">' +
+                    '<span class="vasco-caja-seller-amount-label">Otros</span>' +
+                    fmtMoney(row.otros) +
+                    "</span>";
+            }
+            montosHtml += "</span>";
+
             cards.push(
                 '<button type="button" class="vasco-caja-seller-card' +
                     active +
@@ -260,9 +335,7 @@ $(function () {
                     row.count +
                     (row.count === 1 ? " cobranza" : " cobranzas") +
                     "</span>" +
-                    '<span class="vasco-caja-seller-amount">' +
-                    fmtMoney(row.total) +
-                    "</span>" +
+                    montosHtml +
                     "</span>" +
                     "</button>"
             );
@@ -275,8 +348,8 @@ $(function () {
     function actualizarResumenVista(items, sellerKey) {
         var total = 0;
         $.each(items || [], function (_, item) {
-            var monto = parseFloat(item.amount);
-            if (!isNaN(monto)) {
+            var monto = montoEfectivo(item);
+            if (monto != null) {
                 total += monto;
             }
         });
@@ -303,7 +376,7 @@ $(function () {
 
         if (!estado.items.length) {
             $cuerpo.html(
-                '<tr class="vasco-caja-empty"><td colspan="10" class="text-center text-muted">' +
+                '<tr class="vasco-caja-empty"><td colspan="11" class="text-center text-muted">' +
                     "No hay cobranzas pendientes con los filtros indicados." +
                     "</td></tr>"
             );
@@ -342,9 +415,8 @@ $(function () {
                     "<td>" +
                     celdaVendedor(item) +
                     "</td>" +
-                    '<td class="text-right vasco-caja-monto">' +
-                    fmtMoney(item.amount) +
-                    "</td>" +
+                    celdaMontoEfectivo(item) +
+                    celdaMontoOtros(item) +
                     "<td>" +
                     escHtml(ticket) +
                     "</td>" +
@@ -510,7 +582,7 @@ $(function () {
                 agregarLog(
                     "Consulta OK — " +
                         estado.itemsTodos.length +
-                        " pendiente(s), total " +
+                        " pendiente(s), efectivo " +
                         fmtMoney(resp.total_amount) +
                         ", " +
                         resumirPorVendedor(estado.itemsTodos).length +

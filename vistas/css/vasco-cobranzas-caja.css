@@ -193,7 +193,7 @@
 
 #panelRendicionVascoCaja .vasco-caja-seller-meta {
     display: flex;
-    align-items: baseline;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 8px;
 }
@@ -203,10 +203,41 @@
     color: #6c7a89;
 }
 
+#panelRendicionVascoCaja .vasco-caja-seller-montos {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+}
+
 #panelRendicionVascoCaja .vasco-caja-seller-amount {
-    font-size: 14px;
+    display: block;
+    font-size: 15px;
     font-weight: 700;
     color: #1e7e4a;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-otros {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #3c5a7a;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+#panelRendicionVascoCaja .vasco-caja-seller-amount-label {
+    display: inline-block;
+    margin-right: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #8a97a4;
+    vertical-align: middle;
 }
 
 /* Toolbar + table */
@@ -272,6 +303,15 @@
     font-weight: 600;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-monto--efectivo {
+    color: #1a7a45;
+}
+
+#panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-monto--otros {
+    font-weight: 500;
+    color: #3c5a7a;
 }
 
 #panelRendicionVascoCaja #tablaCobranzasVasco .vasco-caja-vendedor-celda {

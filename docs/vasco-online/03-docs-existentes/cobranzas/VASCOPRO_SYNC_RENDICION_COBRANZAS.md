@@ -4,16 +4,37 @@ Guía completa para implementar el job de **consulta y validación de efectivo c
 
 **Handoff (checklist para implementar en vascorp):** [`VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md`](../implementacion-vascorp/VASCORP_IMPLEMENTAR_RENDICION_COBRANZAS.md)
 
-Documento técnico del contrato HTTP: [`postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`](../../../../postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md)  
-Plantilla JSON deliver: [`postman/samples/vascorp-collections-deliver.json`](../../../../postman/samples/vascorp-collections-deliver.json)
+Documento técnico del contrato HTTP: ver docs entregadas por VascoPro (`postman/VASCORP_SYNC_COLLECTIONS_DELIVER.md`).
+
+---
+
+## 0. Cambio importante — medios de pago (leer antes de tocar el job)
+
+En Vasco una cobranza puede combinar **efectivo**, **billetera** (Yape/Plin) y **transferencia**. La rendición **sigue siendo solo del efectivo** en mano del vendedor.
+
+| Campo en GET | Significado | Usar para rendir |
+|--------------|-------------|------------------|
+| **`amount`** | Monto en **efectivo** (`cash`) a entregar a caja | **Sí — este es el monto de rendición** |
+| **`amount_total`** | Total de la cobranza (cash + wallet + transfer) | No; es informativo / imputación comercial |
+| **`total_amount`** (resumen del GET) | Suma de los `amount` (cash) de los ítems | Totales de caja / pendientes |
+
+**Reglas para no confundirse:**
+
+1. **Usar siempre `amount` para la rendición en caja.** No sumar ni sustituir por `amount_total`.
+2. Si la cobranza es **mixta** (p. ej. S/ 100 total = S/ 60 cash + S/ 40 Yape): `amount = 60`, `amount_total = 100`. En caja se rinden **60**.
+3. Si el cliente pagó **solo billetera o solo transferencia**: la cobranza **no aparece** en este GET (no hay efectivo que rendir; estado interno `delivered` automático).
+4. Cobranzas antiguas (solo efectivo): `amount` ≈ `amount_total` (comportamiento igual que antes).
+5. La **imputación a documentos** en el ERP puede usar el total comercial (`amount_total`) según regla de negocio; eso es independiente de la **custodia de efectivo** (`amount`).
+
+Pantalla en vascorp: `/rendicion-vasco-caja` muestra **Efectivo** (`amount`) y **Otros medios** (`amount_total − amount`).
 
 ---
 
 ## 1. Qué resuelve esta integración
 
-Cuando un vendedor cobra en efectivo en visita, Vasco registra la cobranza con estado **`pending_delivery`** (efectivo en custodia del vendedor).
+Cuando un vendedor cobra **efectivo** en visita (solo o como parte de un pago mixto), Vasco deja esa parte en estado **`pending_delivery`** (efectivo en custodia del vendedor).
 
-La empresa debe **validar la rendición** cuando el vendedor entrega el dinero en caja/administración. Ese evento se refleja en Vasco como **`delivered`**, visible para el vendedor y el cliente en el historial.
+La empresa debe **validar la rendición** cuando el vendedor entrega **ese efectivo** en caja/administración. Ese evento se refleja en Vasco como **`delivered`**, visible para el vendedor y el cliente en el historial.
 
 **vascorp** es quien orquesta ese cierre: consulta pendientes, registra la rendición en el ERP e informa a Vasco vía API.
 
@@ -25,10 +46,10 @@ La empresa debe **validar la rendición** cuando el vendedor entrega el dinero e
 |-----------|--------|
 | Maestro de clientes sincronizado | Los ítems traen `customer.external_id` y documento |
 | Usuarios/vendedores en Vasco | `seller.id` y `seller.username` (RUC/DNI) identifican al cobrador |
-| Cobranzas registradas en admin | Sin registros en campo, el GET devuelve `items: []` |
+| Cobranzas con efectivo registradas en admin | Sin cash pendiente, el GET devuelve `items: []` |
 | `API_KEY` de Vasco en vascorp | Mismo mecanismo que sync de clientes y estados de cuenta |
 
-No hay migración adicional en Vasco: las tablas `collections` y `collection_audits` ya existen (migración `0012`).
+Tablas en Vasco: `collections`, `collection_audits` (migración `0012`) y `collection_payments` (migración `0043`, líneas por medio).
 
 ---
 
@@ -68,8 +89,8 @@ do {
     $toDeliver = [];
 
     foreach ($items as $item) {
-        // 1. Validar en ERP si aplica (vendedor, monto, cliente)
-        // 2. Registrar rendición / imputación en vascorp
+        // 1. Validar en ERP (vendedor, cliente)
+        // 2. Rendir item['amount'] (= efectivo). item['amount_total'] = total cobranza (informativo)
         $rendicionId = registrarRendicionEnErp($item);
 
         $toDeliver[] = [
@@ -94,7 +115,8 @@ do {
 
 1. Operador busca por vendedor o fecha en vascorp.
 2. vascorp llama GET con `seller_username` o `since`.
-3. Al confirmar en UI, POST con un solo ítem.
+3. Al confirmar en UI, POST deliver con un solo ítem.
+4. Si el cobro es erróneo, POST cancel con `reason` (obligatorio) → estado `cancelled` en Vasco.
 
 ---
 
@@ -121,7 +143,8 @@ do {
 | Vasco | vascorp |
 |-------|---------|
 | `code` | Referencia única `COB-YYYY-####` — usar en POST deliver |
-| `amount` | Monto PEN a rendir |
+| **`amount`** | **Efectivo PEN a rendir en caja** (no el total si hay mixto) |
+| `amount_total` | Total de la cobranza (cash + wallet + transfer); informativo |
 | `ticket_code` | Ticket virtual cliente (`TKT-*`) |
 | `physical_ticket_code` | Recibo físico opcional |
 | `notes` | Notas del vendedor |
@@ -137,6 +160,17 @@ do {
 4. **Idempotente**: reenviar un `code` ya entregado devuelve `already_delivered`, no error.
 5. **Estados no válidos**: cobranzas `cancelled` fallan en `failed[]`.
 6. **Límite**: 500 ítems por POST; paginar si hay más.
+
+---
+
+## 6b. POST cancel — reglas importantes
+
+1. Solo desde **`pending_delivery`** → `cancelled`.
+2. **`reason` obligatorio** por ítem (máx. 255).
+3. **`cancelled_by`**: usuario/proceso ERP (auditoría).
+4. **Idempotente**: ya anulada → `already_cancelled`.
+5. **`delivered` no anulable** por este endpoint → `failed[]` con mensaje claro.
+6. Tras anular, deja de aparecer en GET pendientes.
 
 ---
 
@@ -165,11 +199,18 @@ Loguear siempre `trace_id` de la respuesta para cruzar con logs de Vasco.
 ## 9. QA integración
 
 - [ ] GET sin pendientes → `count: 0`
-- [ ] GET tras cobro en campo → aparece el `COB-*` con monto y cliente correctos
+- [ ] GET tras cobro **solo efectivo** → aparece el `COB-*` con `amount` = total
+- [ ] GET tras cobro **mixto** → aparece con `amount` = solo cash y `amount_total` = suma de medios
+- [ ] Cobro **solo billetera/transfer** → **no** aparece en pendientes
 - [ ] POST deliver → 200 y `status: delivered` en ítem
 - [ ] Segundo POST mismo code → `already_delivered`
 - [ ] Admin visita → historial muestra entregada
 - [ ] `external_reference` visible en auditoría (consulta BD o futuro panel supervisión)
+- [ ] POST cancel de `pending_delivery` → `cancelled` y sale del GET pendientes
+- [ ] Segundo POST cancel → `already_cancelled`
+- [ ] POST cancel de `delivered` → `failed[]` con mensaje claro
+- [ ] `reason` + `cancelled_by` en `collection_audits`
+- [ ] UI caja: columna **Efectivo** = `amount`; **Otros medios** = `amount_total − amount`
 
 ---
 
