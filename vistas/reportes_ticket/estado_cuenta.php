@@ -21,6 +21,7 @@
     */
     $cliente = $_GET["cliente"];
     $linea = $_GET["linea"];
+    $soloProtestados = isset($_GET["filtro"]) && $_GET["filtro"] === "protestados";
     #var_dump($cliente);
 
     /*
@@ -83,14 +84,44 @@
     }
     $vendedor = "'" . implode("','", $codigos) . "'";
 
-    $ctaCab = Controladorcuentas::ctrEstadoCuentaCab($cliente, $vendedor);
+    $ctaCab = Controladorcuentas::ctrEstadoCuentaCab($cliente, $vendedor, $soloProtestados);
     #var_dump($ctaCab);
-    $ctaDet = Controladorcuentas::ctrEstadoCuentaDet($cliente, $vendedor);
+    $ctaDet = Controladorcuentas::ctrEstadoCuentaDet($cliente, $vendedor, $soloProtestados);
     #var_dump($ctaDet);
+
+    if (!$ctaCab) {
+        $ctaCab = [
+            "cliente" => $cliente,
+            "nombre" => "",
+            "direccion" => "",
+            "nom_ubigeo" => "",
+            "documento" => "",
+            "telefono" => "",
+            "saldo" => 0,
+            "gastos" => 0,
+            "monto_total" => 0,
+        ];
+        if (!is_array($ctaDet)) {
+            $ctaDet = [];
+        }
+        $ctaCabCliente = Controladorcuentas::ctrEstadoCuentaCab($cliente, $vendedor, false);
+        if ($ctaCabCliente) {
+            $ctaCab["nombre"] = $ctaCabCliente["nombre"];
+            $ctaCab["direccion"] = $ctaCabCliente["direccion"];
+            $ctaCab["nom_ubigeo"] = $ctaCabCliente["nom_ubigeo"];
+            $ctaCab["documento"] = $ctaCabCliente["documento"];
+            $ctaCab["telefono"] = $ctaCabCliente["telefono"];
+        }
+    }
 
     $hoy = date("d-m-y");
 
     $montoTotal = 0;
+    $tituloArea = "Área de créditos y cobranzas";
+    $etiquetaDeuda = $soloProtestados ? "Deuda Protestados:" : "Deuda Total:";
+    $tituloCargoProtestos = $soloProtestados
+        ? '<div style="position:absolute; left:0; right:0; top:35px; text-align:center; font-size:20px; font-weight:bold; pointer-events:none;">CARGO DE PROTESTOS</div>'
+        : '';
 
     ?>
     <div class="<!-- zona_impresion -->">
@@ -98,7 +129,9 @@
 
         <?php
 
-        echo ' <table border="0" align="left" width="1000px">
+        echo ' <div style="position:relative; width:1000px;">
+                ' . $tituloCargoProtestos . '
+                <table border="0" align="left" width="1000px">
 
                         <thead>
                     
@@ -111,9 +144,9 @@
 
                             <tr>
                         
-                                <th style="text-align:left;" colspan="11">Área de créditos y cobranzas</th>
+                                <th style="text-align:left;" colspan="11">' . $tituloArea . '</th>
                         
-                            </tr>                            
+                            </tr>
                         
                             <tr>
                         
@@ -130,7 +163,7 @@
                                 <th style="width:10%;text-align:left;">CLIENTE:</th>
                                 <td style="width:50%" colspan="4">' . $ctaCab["nombre"] . '</td>
                                 <th colspan="1"></th>
-                                <th style="text-align:right;">Deuda Total:</th>
+                                <th style="text-align:right;">' . $etiquetaDeuda . '</th>
                                 <th style="width:10%;text-align:right;" colspan="4">S/ ' . number_format($ctaCab["monto_total"], 2) . '</td>                             
 
                             </tr>
@@ -172,7 +205,8 @@
 
                         </thead>
                     
-                </table>';
+                </table>
+                </div>';
 
         echo '<br>';
         echo '<br>';

@@ -2741,6 +2741,39 @@ $(".tablaClientes").on("click", ".btnImprimirEstadoCuenta", function () {
 });
 
 /*
+ * BOTON IMPRIMIR ESTADO CUENTA — SOLO PENDIENTES PROTESTADOS
+ */
+$(".tablaClientes").on(
+    "click",
+    ".btnImprimirEstadoCuentaProtestados",
+    function () {
+        var cliente = $(this).attr("cliente");
+
+        var linea = prompt(
+            "Ingrese la linea a consultar 1. JackyForm 2. Rosalinda 3. Ambos 4. 22A/26A",
+            "",
+        );
+
+        if (linea != "") {
+            if (linea == "1" || linea == "2" || linea == "3" || linea == "4") {
+                window.open(
+                    "vistas/reportes_ticket/estado_cuenta.php?cliente=" +
+                        cliente +
+                        "&linea=" +
+                        linea +
+                        "&filtro=protestados",
+                    "_blank",
+                );
+            } else {
+                alert("Ingrese una opción válida");
+            }
+        } else {
+            alert("Ingrese una opción válida");
+        }
+    },
+);
+
+/*
  * BOTON  IMPRIMIR TICKET
  */
 $(".tablaVtasGerenciaVdor").on("click", ".btnRptPeds", function () {

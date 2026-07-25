@@ -106,6 +106,7 @@ class TablaClientes
                     . "<button type='button' class='btn btn-xs btn-warning btnEditarCliente' codigo='" . $clientes[$i]["codigo"] . "' data-toggle='modal' data-target='#modalEditarCliente' title='Editar cliente'><i class='fa fa-pencil'></i></button>"
                     . "<button type='button' class='btn btn-xs btn-primary btnEditarAval' title='Editar Aval' codigo='" . $clientes[$i]["codigo"] . "' data-toggle='modal' data-target='#modalEditarAval'><i class='fa fa-user'></i></button>"
                     . "<button type='button' title='Imprimir Estado Cuenta' class='btn btn-xs btn-success btnImprimirEstadoCuenta' cliente='" . $clientes[$i]["codigo"] . "'><i class='fa fa-diamond'></i></button>"
+                    . "<button type='button' title='Estado Cuenta pendientes protestados' class='btn btn-xs btn-danger btnImprimirEstadoCuentaProtestados' cliente='" . $clientes[$i]["codigo"] . "'><i class='fa fa-exclamation-triangle'></i></button>"
                     . "</span>";
 
                 $fechaIngreso = $clientes[$i]["fecha"];

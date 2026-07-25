@@ -4041,8 +4041,9 @@ class ModeloCuentas
 	}
 
 	//* ESTADO DE CEUNTA CABECERA
-	static public function ctrEstadoCuentaCab($cliente, $vendedor)
+	static public function ctrEstadoCuentaCab($cliente, $vendedor, $soloProtestados = false)
 	{
+		$filtroProtesta = $soloProtestados ? " AND cc.protesta = '1' " : "";
 
 		$stmt = Conexion::conectar()->prepare("SELECT 
 												cc.cliente,
@@ -4081,6 +4082,7 @@ class ModeloCuentas
 															AND cc.tip_mov = '+' 
 															AND cc.estado = 'PENDIENTE'
 															AND cc.vendedor IN ($vendedor)
+															$filtroProtesta
 														GROUP BY cc.cliente");
 
 		$stmt->bindParam(":cliente", $cliente, PDO::PARAM_STR);
@@ -4309,8 +4311,9 @@ class ModeloCuentas
 	}
 
 	//* ESTADO DE CEUNTA DETALLE
-	static public function ctrEstadoCuentaDet($cliente, $vendedor)
+	static public function ctrEstadoCuentaDet($cliente, $vendedor, $soloProtestados = false)
 	{
+		$filtroProtesta = $soloProtestados ? " AND c.protesta = '1' " : "";
 
 		$stmt = Conexion::conectar()->prepare("SELECT 
 											CASE
@@ -4361,7 +4364,8 @@ class ModeloCuentas
 												WHERE c.cliente = :cliente 
 													AND c.tip_mov = '+' 
 													AND c.estado = 'PENDIENTE'
-													AND c.vendedor IN ($vendedor) 
+													AND c.vendedor IN ($vendedor)
+													$filtroProtesta
 												ORDER BY c.tipo_doc,
 													c.fecha_ven");
 
