@@ -116,8 +116,8 @@ class AjaxFacturacion
 
         $valor = $this->documentoCredito;
         $tipo = "E05";
-        $estado = "GENERADO";
-        $respuesta = ControladorFacturacion::ctrMostrarTablas($tipo, $estado, $valor);
+        // Sin filtrar por estado: si está ENVIADO/GENERADO/etc. debe editar, no insertar de nuevo
+        $respuesta = ControladorFacturacion::ctrVerDocumento($tipo, $valor);
         echo json_encode($respuesta);
     }
 
@@ -130,8 +130,8 @@ class AjaxFacturacion
 
         $valor = $this->documentoDebito;
         $tipo = "S05";
-        $estado = "GENERADO";
-        $respuesta = ControladorFacturacion::ctrMostrarTablas($tipo, $estado, $valor);
+        // Sin filtrar por estado: si está ENVIADO/GENERADO/etc. debe editar, no insertar de nuevo
+        $respuesta = ControladorFacturacion::ctrVerDocumento($tipo, $valor);
         echo json_encode($respuesta);
     }
 

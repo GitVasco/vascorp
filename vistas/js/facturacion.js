@@ -854,7 +854,7 @@ $(".chkBoletaB").change(function () {
     //*FIN DE FORMA DE PAGO
 });
 
-$(".box").on("change", ".optNotas1", function () {
+$(document).on("change", ".optNotas1", function () {
     var nota = $(this).val();
 
     var serie = $("#tipoNotaSerie");
@@ -892,6 +892,7 @@ $(".box").on("change", ".optNotas1", function () {
                 documento.val("0");
                 $("#radioCtaCte").prop("disabled", true);
                 $("#radioCtaCte").prop("checked", false);
+                $("#wrapGeneraCtaCte").addClass("is-hidden");
             },
         });
 
@@ -960,6 +961,7 @@ $(".box").on("change", ".optNotas1", function () {
                 documento.val("0");
                 $("#radioCtaCte").prop("disabled", false);
                 $("#radioCtaCte").prop("checked", true);
+                $("#wrapGeneraCtaCte").removeClass("is-hidden");
 
                 // document.getElementById("radioCtaCte").checked = false;
             },
@@ -1139,9 +1141,145 @@ $("#notaNoAfecto").change(function () {
     $("#notaTotal").val(total.toFixed(2));
 });
 
+/*=============================================
+ * Documento de origen (NC/ND): validar F/B y cargar fecha
+ *=============================================*/
+function encTipoDocEsperado() {
+    var tipoDoc = ($("#selectNotaDocumento").val() || "").toString();
+    if (tipoDoc === "01") {
+        return { prefijo: "F", tipoVenta: "S03", etiqueta: "factura" };
+    }
+    if (tipoDoc === "03") {
+        return { prefijo: "B", tipoVenta: "S02", etiqueta: "boleta" };
+    }
+    return null;
+}
+
+function encNormalizarDocOrigen(doc) {
+    return (doc || "").toString().toUpperCase().replace(/[\s\-]+/g, "");
+}
+
+function encSetHelpOrigen(msg, ok) {
+    var $help = $("#notaNroFacturaHelp");
+    if (!$help.length) {
+        return;
+    }
+    $help.text(msg || "");
+    $help.toggleClass("is-ok", !!ok);
+}
+
+function encValidarPrefijoOrigen(doc, esperado) {
+    if (!esperado) {
+        encSetHelpOrigen("Seleccione Tipo Doc (Factura o Boleta).", false);
+        return false;
+    }
+    if (!doc) {
+        encSetHelpOrigen("Ingrese el N° Fact/Bol.", false);
+        return false;
+    }
+    if (doc.charAt(0) !== esperado.prefijo) {
+        encSetHelpOrigen(
+            "Para " +
+                esperado.etiqueta +
+                " el número debe empezar con " +
+                esperado.prefijo +
+                ".",
+            false
+        );
+        return false;
+    }
+    return true;
+}
+
+function encCargarFechaOrigen() {
+    var esperado = encTipoDocEsperado();
+    var doc = encNormalizarDocOrigen($("#notaNroFactura").val());
+    $("#notaNroFactura").val(doc);
+
+    if (!encValidarPrefijoOrigen(doc, esperado)) {
+        $("#notaFechaFactura").val("").prop("readonly", true);
+        return;
+    }
+
+    var datos = new FormData();
+    datos.append("buscarDocRelGuia", doc);
+
+    $.ajax({
+        url: "ajax/facturacion.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            if (!respuesta || !respuesta.ok) {
+                $("#notaFechaFactura").val("").prop("readonly", true);
+                encSetHelpOrigen(
+                    "No se encontró la " + esperado.etiqueta + " " + doc + ".",
+                    false
+                );
+                return;
+            }
+
+            if (respuesta.tipo !== esperado.tipoVenta) {
+                $("#notaFechaFactura").val("").prop("readonly", true);
+                encSetHelpOrigen(
+                    "El documento no corresponde a una " +
+                        esperado.etiqueta +
+                        ".",
+                    false
+                );
+                return;
+            }
+
+            var fecha = (respuesta.fecha || "").toString().substring(0, 10);
+            $("#notaFechaFactura").val(fecha).prop("readonly", true);
+            encSetHelpOrigen("Documento válido. Fecha cargada.", true);
+        },
+        error: function () {
+            $("#notaFechaFactura").val("").prop("readonly", true);
+            encSetHelpOrigen("No se pudo validar el documento.", false);
+        },
+    });
+}
+
+$(document).on("changed.bs.select", "#selectNotaDocumento", function () {
+    if ($("#notaNroFactura").length) {
+        encCargarFechaOrigen();
+    }
+});
+
+$(document).on("blur", "#notaNroFactura", function () {
+    encCargarFechaOrigen();
+});
+
+$(document).on("input", "#notaNroFactura", function () {
+    encSetHelpOrigen("", false);
+});
+
 $(".btnGuardarNotaCredito").click(function () {
     /* document.getElementById("btnBlocNCD").value = "Enviando...";
 	document.getElementById("btnBlocNCD").disabled = true; */
+
+    if ($("#notaNroFactura").length) {
+        var esperado = encTipoDocEsperado();
+        var doc = encNormalizarDocOrigen($("#notaNroFactura").val());
+        $("#notaNroFactura").val(doc);
+        if (!encValidarPrefijoOrigen(doc, esperado)) {
+            Command: toastr["error"](
+                $("#notaNroFacturaHelp").text() ||
+                    "Revise Tipo Doc y N° Fact/Bol"
+            );
+            return;
+        }
+        if (!$("#notaFechaFactura").val()) {
+            Command: toastr["error"](
+                "No hay fecha de emisión del documento origen. Verifique el N° Fact/Bol."
+            );
+            return;
+        }
+    }
 
     var nota = $("input[name=optNotas1]:checked").val();
     var chkCuenta = document.getElementById("radioCtaCte");

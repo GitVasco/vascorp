@@ -145,6 +145,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/series-documentos.css?v=2">
     <?php endif; ?>
 
+    <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["editar-nota-credito", "notas-credito"], true)) : ?>
+    <link rel="stylesheet" href="vistas/css/editar-nota-credito.css?v=17">
+    <?php endif; ?>
+
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
     <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=44">
     <?php endif; ?>
@@ -1038,7 +1042,7 @@ CUERPO DOCUMENTO
     <script>
         window.URL_BASE_IMPRESION_PROFORMA = "<?php echo obtenerUrlBaseImpresionProforma(); ?>";
     </script>
-    <script src="vistas/js/facturacion.js"></script>
+    <script src="vistas/js/facturacion.js?v=16"></script>
     <script src="vistas/js/abonos.js"></script>
     <script src="vistas/js/cierres.js"></script>
     <script src="vistas/js/procedimientos.js"></script>
