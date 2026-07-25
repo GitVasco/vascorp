@@ -459,6 +459,59 @@ class AjaxFacturacion
 
         echo json_encode($respuesta);
     }
+
+    public function ajaxBuscarDocRelacionarGuia()
+    {
+        $documento = $this->documentoBuscarRel;
+        $respuesta = ModeloFacturacion::mdlBuscarFacturaBoleta($documento);
+
+        if (!$respuesta) {
+            echo json_encode(array("ok" => false, "mensaje" => "Documento no encontrado"));
+            return;
+        }
+
+        $meta = ModeloFacturacion::mdlMetaDocRelacionado($respuesta["documento"], $respuesta["tipo"]);
+        echo json_encode(array(
+            "ok" => true,
+            "documento" => $respuesta["documento"],
+            "formato" => $meta ? $meta["formato"] : $respuesta["documento"],
+            "tipo" => $respuesta["tipo"],
+            "nombre_tipo" => $meta ? $meta["nombre"] : "",
+            "total" => $respuesta["total"],
+            "cliente" => $respuesta["cliente"],
+            "nombre" => $respuesta["nombre"],
+            "fecha" => $respuesta["fecha"],
+            "doc_origen" => $respuesta["doc_origen"]
+        ));
+    }
+
+    public function ajaxRelacionarDocumentoGuia()
+    {
+        $documentos = array();
+
+        if (!empty($this->documentosRelacionar)) {
+            $decoded = json_decode($this->documentosRelacionar, true);
+            if (is_array($decoded)) {
+                $documentos = $decoded;
+            }
+        } elseif (!empty($this->documentoRelacionar)) {
+            $documentos = array($this->documentoRelacionar);
+        }
+
+        if (count($documentos) > 1 || (!empty($this->documentosRelacionar) && is_array($documentos))) {
+            $respuesta = ControladorFacturacion::ctrRelacionarDocumentosGuia(
+                $this->guiaRelacionar,
+                $documentos
+            );
+        } else {
+            $respuesta = ControladorFacturacion::ctrRelacionarDocumentoGuia(
+                $this->guiaRelacionar,
+                isset($documentos[0]) ? $documentos[0] : ""
+            );
+        }
+
+        echo json_encode($respuesta);
+    }
 }
 
 
@@ -623,4 +676,24 @@ if (isset($_POST["documentoG"])) {
     $cancelaCuenta = new AjaxFacturacion();
     $cancelaCuenta->documentoG = $_POST["documentoG"];
     $cancelaCuenta->ajaxVerGuia();
+}
+
+/*=============================================
+BUSCAR FACTURA/BOLETA PARA RELACIONAR A GUIA
+=============================================*/
+if (isset($_POST["buscarDocRelGuia"])) {
+    $ajax = new AjaxFacturacion();
+    $ajax->documentoBuscarRel = $_POST["buscarDocRelGuia"];
+    $ajax->ajaxBuscarDocRelacionarGuia();
+}
+
+/*=============================================
+RELACIONAR DOCUMENTO A GUIA GENERADO
+=============================================*/
+if (isset($_POST["guiaRelacionar"]) && (isset($_POST["documentoRelacionar"]) || isset($_POST["documentosRelacionar"]))) {
+    $ajax = new AjaxFacturacion();
+    $ajax->guiaRelacionar = $_POST["guiaRelacionar"];
+    $ajax->documentoRelacionar = isset($_POST["documentoRelacionar"]) ? $_POST["documentoRelacionar"] : "";
+    $ajax->documentosRelacionar = isset($_POST["documentosRelacionar"]) ? $_POST["documentosRelacionar"] : "";
+    $ajax->ajaxRelacionarDocumentoGuia();
 }

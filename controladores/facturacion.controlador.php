@@ -2983,6 +2983,9 @@ class ControladorFacturacion
     {
         if (isset($_POST["tipo"])) {
             $datos = ModeloFacturacion::mdlFEGuia($_POST["tipo"], $_POST["documento"]);
+            $docsRelacionados = ModeloFacturacion::mdlListarDocsRelacionadosGuia($_POST["documento"]);
+            $cantRelacionados = count($docsRelacionados);
+            $datos["f1"] = $cantRelacionados > 0 ? (string) $cantRelacionados : "1";
 
             //todo: FILA 1
             $fila1 =    $datos["a1"] . ',' .
@@ -2999,12 +3002,25 @@ class ControladorFacturacion
             //todo: FILA 2
             $fila2 = ',,,,,,,,,,,,,,';
 
-            //todo: FILA 3
-            $fila3 =    $datos["a3"] . ',' .
-                $datos["b3"] . ',' .
-                $datos["c3"] . ',' .
-                $datos["d3"] . ',' .
-                $datos["e3"] . ',';
+            //todo: FILA 3 (uno o varios documentos relacionados)
+            $filasDocsRelacionados = array();
+            if ($cantRelacionados > 0) {
+                foreach ($docsRelacionados as $docRel) {
+                    $filasDocsRelacionados[] =
+                        $docRel["formato"] . ',' .
+                        $docRel["tipo_sunat"] . ',' .
+                        $docRel["nombre"] . ',' .
+                        '20513613939,' .
+                        'ATTACH_DOC,';
+                }
+            } else {
+                $filasDocsRelacionados[] =
+                    $datos["a3"] . ',' .
+                    $datos["b3"] . ',' .
+                    $datos["c3"] . ',' .
+                    $datos["d3"] . ',' .
+                    $datos["e3"] . ',';
+            }
 
             //todo: FILA 4
             $fila4 =    $datos["a4"] . ',' .
@@ -3095,7 +3111,9 @@ class ControladorFacturacion
 
             fwrite($fp, $fila1 . PHP_EOL);
             fwrite($fp, $fila2 . PHP_EOL);
-            fwrite($fp, $fila3 . PHP_EOL);
+            foreach ($filasDocsRelacionados as $filaDoc) {
+                fwrite($fp, $filaDoc . PHP_EOL);
+            }
             fwrite($fp, $fila4 . PHP_EOL);
             fwrite($fp, $fila5 . PHP_EOL);
             fwrite($fp, $fila6 . PHP_EOL);
@@ -3154,6 +3172,136 @@ class ControladorFacturacion
         }
 
         return $respuesta;
+    }
+
+    /*
+     * Relacionar factura/boleta existente a guía GENERADO
+     */
+    static public function ctrRelacionarDocumentoGuia($documentoGuia, $documentoRel)
+    {
+        $documentoGuia = strtoupper(preg_replace('/[\s\-]+/', '', (string) $documentoGuia));
+        $documentoRel = strtoupper(preg_replace('/[\s\-]+/', '', (string) $documentoRel));
+
+        if ($documentoGuia === "" || $documentoRel === "") {
+            return array("ok" => false, "mensaje" => "Falta la guía o el documento a relacionar.");
+        }
+
+        $guia = ModeloFacturacion::mdlMostraVentaDocumento($documentoGuia, "S01");
+        if (!$guia || empty($guia["documento"])) {
+            return array("ok" => false, "mensaje" => "No se encontró la guía " . $documentoGuia);
+        }
+
+        $estadoGuia = ModeloFacturacion::mdlEstadoFeGuia($documentoGuia);
+
+        if (!$estadoGuia || (string) $estadoGuia["facturacion"] === "2") {
+            return array("ok" => false, "mensaje" => "La guía ya está ENVIADO; no se puede modificar.");
+        }
+
+        if ((string) $estadoGuia["facturacion"] !== "0") {
+            return array("ok" => false, "mensaje" => "Solo se pueden relacionar documentos a guías en estado GENERADO.");
+        }
+
+        $ventaRel = ModeloFacturacion::mdlBuscarFacturaBoleta($documentoRel);
+        if (!$ventaRel) {
+            return array("ok" => false, "mensaje" => "No se encontró la factura/boleta " . $documentoRel);
+        }
+
+        $clienteGuia = isset($guia["cliente"]) ? trim((string) $guia["cliente"]) : "";
+        $clienteDoc = isset($ventaRel["cliente"]) ? trim((string) $ventaRel["cliente"]) : "";
+        if ($clienteGuia === "" || $clienteDoc === "" || $clienteGuia !== $clienteDoc) {
+            return array(
+                "ok" => false,
+                "mensaje" => "El documento " . $documentoRel . " pertenece a otro cliente (" . ($clienteDoc !== "" ? $clienteDoc : "sin cliente") . "). La guía es del cliente " . ($clienteGuia !== "" ? $clienteGuia : "sin cliente") . "."
+            );
+        }
+
+        $lista = ModeloFacturacion::mdlParseDocDestinoLista($estadoGuia["doc_destino"]);
+        if (in_array($documentoRel, $lista, true)) {
+            return array("ok" => false, "mensaje" => "El documento ya está relacionado a esta guía.");
+        }
+
+        $yaPorOrigen = ModeloFacturacion::mdlListarDocsRelacionadosGuia($documentoGuia);
+        foreach ($yaPorOrigen as $docYa) {
+            if ($docYa["documento"] === $documentoRel) {
+                return array("ok" => false, "mensaje" => "El documento ya está relacionado a esta guía.");
+            }
+        }
+
+        $copiar = ModeloFacturacion::mdlCopiarMovimientosDocAGuia($documentoGuia, $documentoRel);
+        if ($copiar !== "ok") {
+            return array("ok" => false, "mensaje" => "No se pudieron copiar los movimientos del documento.");
+        }
+
+        $lista[] = $documentoRel;
+        $updDest = ModeloFacturacion::mdlActualizarDocDestinoGuia($documentoGuia, $lista);
+        if ($updDest !== "ok") {
+            return array("ok" => false, "mensaje" => "Se copiaron movimientos pero no se actualizó doc_destino.");
+        }
+
+        ModeloFacturacion::mdlActualizarDocOrigenVenta($ventaRel["tipo"], $documentoRel, $documentoGuia);
+
+        return array(
+            "ok" => true,
+            "mensaje" => "Documento relacionado correctamente.",
+            "doc_destino" => ModeloFacturacion::mdlFormatearDocsDestino(implode(",", $lista)),
+            "documentos" => $lista
+        );
+    }
+
+    /*
+     * Relacionar varios documentos a una guía GENERADO
+     */
+    static public function ctrRelacionarDocumentosGuia($documentoGuia, $documentos)
+    {
+        if (!is_array($documentos)) {
+            $documentos = array();
+        }
+
+        $documentos = array_values(array_unique(array_filter(array_map(function ($doc) {
+            return strtoupper(preg_replace('/[\s\-]+/', '', (string) $doc));
+        }, $documentos))));
+
+        if ($documentoGuia === "" || !count($documentos)) {
+            return array("ok" => false, "mensaje" => "Falta la guía o la lista de documentos.");
+        }
+
+        $ok = array();
+        $errores = array();
+        $docDestino = "";
+
+        foreach ($documentos as $documentoRel) {
+            $respuesta = self::ctrRelacionarDocumentoGuia($documentoGuia, $documentoRel);
+            if (!empty($respuesta["ok"])) {
+                $ok[] = $documentoRel;
+                if (!empty($respuesta["doc_destino"])) {
+                    $docDestino = $respuesta["doc_destino"];
+                }
+            } else {
+                $errores[] = $documentoRel . ": " . (isset($respuesta["mensaje"]) ? $respuesta["mensaje"] : "error");
+            }
+        }
+
+        if (!count($ok)) {
+            return array(
+                "ok" => false,
+                "mensaje" => "No se relacionó ningún documento.",
+                "detalle" => implode("\n", $errores)
+            );
+        }
+
+        $mensaje = count($ok) . " documento(s) relacionado(s)";
+        if (count($errores)) {
+            $mensaje .= ", " . count($errores) . " con error";
+        }
+
+        return array(
+            "ok" => true,
+            "mensaje" => $mensaje,
+            "detalle" => count($errores) ? implode("\n", $errores) : "",
+            "doc_destino" => $docDestino,
+            "documentos" => $ok,
+            "errores" => $errores
+        );
     }
 
     static public function ctrAnularDocumento()

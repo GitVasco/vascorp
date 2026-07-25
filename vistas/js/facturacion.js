@@ -285,6 +285,333 @@ $(".tablaGuiasRemision tbody").on("click", "button.btnFacturarB", function () {
 });
 
 /*
+ * Relacionar varios documentos a guía GENERADO
+ */
+var docsPendientesGuia = [];
+
+function normalizarDocGuia(doc) {
+    return String(doc || "")
+        .toUpperCase()
+        .replace(/[\s\-]+/g, "")
+        .trim();
+}
+
+function formatearDocGuia(doc) {
+    var d = normalizarDocGuia(doc);
+    if (d.length >= 12) {
+        return d.substring(0, 4) + "-" + d.slice(-8);
+    }
+    return d;
+}
+
+function renderChipsDocsGuia(docs, vacioTxt) {
+    if (!docs || !docs.length) {
+        return '<span style="color:#999;">' + (vacioTxt || "Ninguno") + "</span>";
+    }
+    return docs
+        .map(function (doc) {
+            return (
+                '<span class="label label-primary" style="display:inline-block; margin:0 4px 4px 0; font-size:12px; padding:5px 8px;">' +
+                formatearDocGuia(doc) +
+                "</span>"
+            );
+        })
+        .join("");
+}
+
+function renderListaPendientesGuia() {
+    var $ul = $("#listaDocsPendientesGuia");
+    $("#cantDocsPendientesGuia").text(docsPendientesGuia.length);
+    $ul.empty();
+
+    if (!docsPendientesGuia.length) {
+        $ul.append(
+            '<li class="list-group-item" style="color:#999;">Sin documentos por relacionar</li>'
+        );
+        return;
+    }
+
+    docsPendientesGuia.forEach(function (item, idx) {
+        var titulo = item.nombre_tipo
+            ? item.nombre_tipo + " · " + item.formato
+            : item.formato;
+        var detalle =
+            (item.cliente || "") +
+            (item.nombre ? " - " + item.nombre : "") +
+            (item.total ? " · S/ " + item.total : "");
+
+        $ul.append(
+            '<li class="list-group-item" style="padding:8px 12px;">' +
+                '<button type="button" class="close btnQuitarDocPendienteGuia" data-idx="' +
+                idx +
+                '" style="font-size:16px;">&times;</button>' +
+                "<div style=\"font-weight:600;\">" +
+                titulo +
+                "</div>" +
+                '<div style="font-size:12px; color:#666;">' +
+                detalle +
+                "</div>" +
+                "</li>"
+        );
+    });
+}
+
+function agregarDocsPendientesGuia(raw) {
+    var partes = String(raw || "")
+        .split(/[,;\s\n\r]+/)
+        .map(function (x) {
+            return $.trim(x);
+        })
+        .filter(Boolean);
+
+    if (!partes.length) {
+        swal({
+            type: "warning",
+            title: "Ingresa al menos un documento",
+            confirmButtonText: "Cerrar",
+        });
+        return;
+    }
+
+    var guia = $("#guiaRelacionarDoc").val() || "";
+    var clienteGuia = String($("#clienteGuiaRelacionar").val() || "").trim();
+    var actuales = String($("#docsDestinoActualGuiaRaw").val() || "")
+        .split(/[,;]+/)
+        .map(normalizarDocGuia)
+        .filter(Boolean);
+
+    var pendientes = [];
+    var saltados = [];
+
+    partes.forEach(function (parte) {
+        var norm = normalizarDocGuia(parte);
+        if (!norm) {
+            return;
+        }
+        if (actuales.indexOf(norm) !== -1) {
+            saltados.push(formatearDocGuia(norm) + " (ya relacionado)");
+            return;
+        }
+        var yaPendiente = docsPendientesGuia.some(function (item) {
+            return item.documento === norm;
+        });
+        if (yaPendiente || pendientes.indexOf(norm) !== -1) {
+            saltados.push(formatearDocGuia(norm) + " (duplicado)");
+            return;
+        }
+        pendientes.push(norm);
+    });
+
+    if (!pendientes.length) {
+        swal({
+            type: "warning",
+            title: "No hay documentos nuevos para agregar",
+            text: saltados.length ? saltados.join("\n") : "",
+            confirmButtonText: "Cerrar",
+        });
+        return;
+    }
+
+    var $btn = $("#btnAgregarDocRelGuia");
+    $btn.prop("disabled", true);
+
+    var idx = 0;
+    var errores = saltados.slice();
+
+    function siguiente() {
+        if (idx >= pendientes.length) {
+            $btn.prop("disabled", false);
+            $("#docRelacionarGuia").val("").focus();
+            renderListaPendientesGuia();
+            if (errores.length) {
+                toastr["warning"](errores.join(" · "));
+            }
+            return;
+        }
+
+        var doc = pendientes[idx++];
+        $.ajax({
+            url: "ajax/facturacion.ajax.php",
+            method: "POST",
+            data: { buscarDocRelGuia: doc },
+            dataType: "json",
+            success: function (respuesta) {
+                if (!respuesta || !respuesta.ok) {
+                    errores.push(
+                        formatearDocGuia(doc) +
+                            ": " +
+                            ((respuesta && respuesta.mensaje) || "no encontrado")
+                    );
+                    siguiente();
+                    return;
+                }
+
+                var clienteDoc = String(respuesta.cliente || "").trim();
+                if (clienteGuia && clienteDoc && clienteGuia !== clienteDoc) {
+                    errores.push(
+                        formatearDocGuia(respuesta.documento || doc) +
+                            ": otro cliente (" +
+                            clienteDoc +
+                            ")"
+                    );
+                    siguiente();
+                    return;
+                }
+
+                docsPendientesGuia.push({
+                    documento: normalizarDocGuia(respuesta.documento),
+                    formato: respuesta.formato || formatearDocGuia(respuesta.documento),
+                    nombre_tipo: respuesta.nombre_tipo || "",
+                    total: respuesta.total || "",
+                    cliente: respuesta.cliente || "",
+                    nombre: respuesta.nombre || "",
+                    fecha: respuesta.fecha || "",
+                });
+                siguiente();
+            },
+            error: function () {
+                errores.push(formatearDocGuia(doc) + ": error de búsqueda");
+                siguiente();
+            },
+        });
+    }
+
+    siguiente();
+}
+
+$("#modalRelacionarDocGuia").on("show.bs.modal", function (e) {
+    var $btn = $(e.relatedTarget);
+    if (!$btn || !$btn.length) {
+        return;
+    }
+
+    var codigo = $btn.attr("data-documento") || $btn.data("documento") || "";
+    var docs = $btn.attr("data-doc-destino") || $btn.data("docDestino") || "";
+    var cliente = $btn.attr("data-cliente") || $btn.data("cliente") || "";
+    var nombreCliente =
+        $btn.attr("data-nombre-cliente") || $btn.data("nombreCliente") || "";
+    var docsLista = String(docs || "")
+        .split(/\s*\/\s*|\s*,\s*/)
+        .map(function (x) {
+            return $.trim(x);
+        })
+        .filter(Boolean);
+
+    docsPendientesGuia = [];
+    $("#guiaRelacionarDoc").val(codigo);
+    $("#guiaRelacionarDocLabel").text(codigo || "-");
+    $("#clienteGuiaRelacionar").val(cliente);
+    $("#clienteGuiaRelacionarLabel").text(
+        cliente
+            ? cliente + (nombreCliente ? " - " + nombreCliente : "")
+            : nombreCliente || ""
+    );
+    $("#docsDestinoActualGuiaRaw").val(
+        docsLista.map(normalizarDocGuia).join(",")
+    );
+    $("#listaDocsDestinoActualGuia").html(
+        renderChipsDocsGuia(docsLista, "Ninguno")
+    );
+    $("#docRelacionarGuia").val("");
+    renderListaPendientesGuia();
+});
+
+$("#modalRelacionarDocGuia").on("shown.bs.modal", function () {
+    $("#docRelacionarGuia").focus();
+});
+
+$("#btnAgregarDocRelGuia").on("click", function () {
+    agregarDocsPendientesGuia($("#docRelacionarGuia").val());
+});
+
+$("#docRelacionarGuia").on("keydown", function (e) {
+    if (e.keyCode === 13) {
+        e.preventDefault();
+        agregarDocsPendientesGuia($(this).val());
+    }
+});
+
+$(document).on("click", ".btnQuitarDocPendienteGuia", function () {
+    var idx = parseInt($(this).attr("data-idx"), 10);
+    if (isNaN(idx)) {
+        return;
+    }
+    docsPendientesGuia.splice(idx, 1);
+    renderListaPendientesGuia();
+});
+
+$("#btnConfirmarRelacionarDocGuia").on("click", function () {
+    var guia = $.trim($("#guiaRelacionarDoc").val() || "");
+    if (!guia) {
+        swal({
+            type: "warning",
+            title: "No hay guía seleccionada",
+            confirmButtonText: "Cerrar",
+        });
+        return;
+    }
+    if (!docsPendientesGuia.length) {
+        swal({
+            type: "warning",
+            title: "Agrega al menos un documento",
+            confirmButtonText: "Cerrar",
+        });
+        return;
+    }
+
+    var documentos = docsPendientesGuia.map(function (item) {
+        return item.documento;
+    });
+    var $btn = $(this);
+    $btn.prop("disabled", true).text("Relacionando...");
+
+    $.ajax({
+        url: "ajax/facturacion.ajax.php",
+        method: "POST",
+        data: {
+            guiaRelacionar: guia,
+            documentosRelacionar: JSON.stringify(documentos),
+        },
+        dataType: "json",
+        success: function (respuesta) {
+            $btn.prop("disabled", false).text("Relacionar");
+            if (!respuesta || !respuesta.ok) {
+                swal({
+                    type: "error",
+                    title: (respuesta && respuesta.mensaje) || "No se pudo relacionar",
+                    text: respuesta && respuesta.detalle ? respuesta.detalle : "",
+                    confirmButtonText: "Cerrar",
+                });
+                return;
+            }
+
+            $("#modalRelacionarDocGuia").modal("hide");
+            swal({
+                type: "success",
+                title: respuesta.mensaje || "Documentos relacionados",
+                text: respuesta.doc_destino
+                    ? "Doc. destino: " + respuesta.doc_destino
+                    : "",
+                confirmButtonText: "Cerrar",
+            }).then(function () {
+                recargarTablaGuiaRemision(
+                    localStorage.getItem("fechaInicial"),
+                    localStorage.getItem("fechaFinal")
+                );
+            });
+        },
+        error: function () {
+            $btn.prop("disabled", false).text("Relacionar");
+            swal({
+                type: "error",
+                title: "Error al relacionar los documentos",
+                confirmButtonText: "Cerrar",
+            });
+        },
+    });
+});
+
+/*
  * validar el checkbox
  */
 $(".chkFacturaB").change(function () {
@@ -3408,22 +3735,131 @@ $(".tablaGuiasRemision ").on(
 /*
  * cargamos la tabla para GUIAS DE REMISION
  */
-if (localStorage.getItem("capturarRangoGuia") != null) {
-    $("#daterange-btnGuiaRem span").html(
-        localStorage.getItem("capturarRangoGuia")
+function leerFiltrosGuiaUrl() {
+    try {
+        var params = new URLSearchParams(window.location.search || "");
+        return {
+            serie: String(params.get("serie") || "").trim(),
+            vendedor: String(params.get("vendedor") || "").trim(),
+        };
+    } catch (e) {
+        return { serie: "", vendedor: "" };
+    }
+}
+
+function actualizarUrlFiltrosGuia(serie, vendedor) {
+    if (!window.history || !window.history.replaceState) {
+        return;
+    }
+
+    try {
+        var url = new URL(window.location.href);
+        if (serie) {
+            url.searchParams.set("serie", serie);
+        } else {
+            url.searchParams.delete("serie");
+        }
+        if (vendedor) {
+            url.searchParams.set("vendedor", vendedor);
+        } else {
+            url.searchParams.delete("vendedor");
+        }
+        window.history.replaceState(
+            {},
+            "",
+            url.pathname + url.search + url.hash
+        );
+    } catch (e) {}
+}
+
+function urlGuiasRemisionConFiltros() {
+    var serie = $("#filtroSerieGuia").val() || "";
+    var vendedor = $("#filtroVendedorGuia").val() || "";
+    var qs = [];
+    if (serie) {
+        qs.push("serie=" + encodeURIComponent(serie));
+    }
+    if (vendedor) {
+        qs.push("vendedor=" + encodeURIComponent(vendedor));
+    }
+    return qs.length ? "guias-remision?" + qs.join("&") : "guias-remision";
+}
+
+function recargarTablaGuiaRemision(fechaInicial, fechaFinal) {
+    if ($.fn.DataTable.isDataTable(".tablaGuiasRemision")) {
+        $(".tablaGuiasRemision").DataTable().destroy();
+    }
+    cargarTablaGuiaRemision(fechaInicial, fechaFinal);
+}
+
+if ($(".tablaGuiasRemision").length) {
+    var filtrosGuiaUrl = leerFiltrosGuiaUrl();
+    if (filtrosGuiaUrl.serie) {
+        $("#filtroSerieGuia").val(filtrosGuiaUrl.serie);
+    }
+    if (filtrosGuiaUrl.vendedor) {
+        $("#filtroVendedorGuia").val(filtrosGuiaUrl.vendedor);
+    }
+    if ($("#filtroSerieGuia").hasClass("selectpicker")) {
+        $("#filtroSerieGuia").selectpicker("refresh");
+    }
+    if ($("#filtroVendedorGuia").hasClass("selectpicker")) {
+        $("#filtroVendedorGuia").selectpicker("refresh");
+    }
+    actualizarUrlFiltrosGuia(
+        $("#filtroSerieGuia").val() || "",
+        $("#filtroVendedorGuia").val() || ""
     );
-    cargarTablaGuiaRemision(
-        localStorage.getItem("fechaInicial"),
-        localStorage.getItem("fechaFinal")
+
+    if (localStorage.getItem("capturarRangoGuia") != null) {
+        $("#daterange-btnGuiaRem span").html(
+            localStorage.getItem("capturarRangoGuia")
+        );
+        cargarTablaGuiaRemision(
+            localStorage.getItem("fechaInicial"),
+            localStorage.getItem("fechaFinal")
+        );
+    } else {
+        $("#daterange-btnGuiaRem span").html(
+            '<i class="fa fa-calendar"></i> Rango de Fecha '
+        );
+        cargarTablaGuiaRemision(null, null);
+    }
+
+    $("#filtroSerieGuia, #filtroVendedorGuia").on(
+        "changed.bs.select",
+        function () {
+            var serie = $("#filtroSerieGuia").val() || "";
+            var vendedor = $("#filtroVendedorGuia").val() || "";
+            actualizarUrlFiltrosGuia(serie, vendedor);
+            recargarTablaGuiaRemision(
+                localStorage.getItem("fechaInicial"),
+                localStorage.getItem("fechaFinal")
+            );
+        }
     );
-} else {
-    $("#daterange-btnGuiaRem span").html(
-        '<i class="fa fa-calendar"></i> Rango de Fecha '
-    );
-    cargarTablaGuiaRemision(null, null);
+
+    $("#btnLimpiarFiltrosGuia").on("click", function () {
+        $("#filtroSerieGuia").val("");
+        $("#filtroVendedorGuia").val("");
+        if ($("#filtroSerieGuia").hasClass("selectpicker")) {
+            $("#filtroSerieGuia").selectpicker("refresh");
+        }
+        if ($("#filtroVendedorGuia").hasClass("selectpicker")) {
+            $("#filtroVendedorGuia").selectpicker("refresh");
+        }
+        actualizarUrlFiltrosGuia("", "");
+        recargarTablaGuiaRemision(
+            localStorage.getItem("fechaInicial"),
+            localStorage.getItem("fechaFinal")
+        );
+    });
 }
 
 function cargarTablaGuiaRemision(fechaInicial, fechaFinal) {
+    var serie = $("#filtroSerieGuia").val() || "";
+    var vendedor = $("#filtroVendedorGuia").val() || "";
+
     $(".tablaGuiasRemision").DataTable({
         ajax:
             "ajax/facturacion/tabla-guiasremision.ajax.php?perfil=" +
@@ -3431,11 +3867,15 @@ function cargarTablaGuiaRemision(fechaInicial, fechaFinal) {
             "&fechaInicial=" +
             fechaInicial +
             "&fechaFinal=" +
-            fechaFinal,
+            fechaFinal +
+            "&serie=" +
+            encodeURIComponent(serie) +
+            "&vendedor=" +
+            encodeURIComponent(vendedor),
         deferRender: true,
         retrieve: true,
         processing: true,
-        order: [[6, "desc"]],
+        order: [[5, "desc"]],
         pageLength: 20,
         lengthMenu: [
             [20, 40, 60, -1],
@@ -3524,9 +3964,7 @@ $("#daterange-btnGuiaRem").daterangepicker(
         localStorage.setItem("fechaInicial", fechaInicial);
         localStorage.setItem("fechaFinal", fechaFinal);
 
-        // Recargamos la tabla con la información para ser mostrada en la tabla
-        $(".tablaGuiasRemision").DataTable().destroy();
-        cargarTablaGuiaRemision(fechaInicial, fechaFinal);
+        recargarTablaGuiaRemision(fechaInicial, fechaFinal);
     }
 );
 
@@ -3540,8 +3978,7 @@ $(".daterangepicker.opensleft .range_inputs .CancelarGuiaRem").on(
         localStorage.removeItem("capturarRangoGuia");
         localStorage.removeItem("fechaInicial");
         localStorage.removeItem("fechaFinal");
-        localStorage.clear();
-        window.location = "guias-remision";
+        window.location = urlGuiasRemisionConFiltros();
     }
 );
 
@@ -3569,9 +4006,7 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             localStorage.setItem("capturarRangoGuia", "Hoy");
             localStorage.setItem("fechaInicial", fechaInicial);
             localStorage.setItem("fechaFinal", fechaFinal);
-            // Recargamos la tabla con la información para ser mostrada en la tabla
-            $(".tablaGuiasRemision").DataTable().destroy();
-            cargarTablaGuiaRemision(fechaInicial, fechaFinal);
+            recargarTablaGuiaRemision(fechaInicial, fechaFinal);
         }
     }
 });

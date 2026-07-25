@@ -38,6 +38,50 @@
         <div class="box">
 
             <div class="box-header with-border">
+                <?php
+                $filtroSerieGuia = isset($_GET["serie"]) ? trim((string) $_GET["serie"]) : "";
+                $filtroVendedorGuia = isset($_GET["vendedor"]) ? trim((string) $_GET["vendedor"]) : "";
+                $seriesGuia = ControladorTalonarios::ctrMostrarTalonarios("00");
+                $vendedoresGuia = ControladorVendedores::ctrMostrarVendedores(null, null);
+                if (is_array($vendedoresGuia)) {
+                    usort($vendedoresGuia, function ($a, $b) {
+                        return strcmp($a["codigo"], $b["codigo"]);
+                    });
+                }
+                ?>
+                <div class="form-inline" style="display:inline-block; margin-right:10px;">
+                    <label for="filtroSerieGuia" style="margin-right:4px;">Serie</label>
+                    <select class="form-control input-sm selectpicker" id="filtroSerieGuia" data-live-search="true" data-width="120px" title="Todas">
+                        <option value="">Todas</option>
+                        <?php
+                        if (is_array($seriesGuia)) {
+                            foreach ($seriesGuia as $serieItem) {
+                                $serieVal = $serieItem["serie_guias"];
+                                $sel = ($filtroSerieGuia !== "" && $filtroSerieGuia === $serieVal) ? " selected" : "";
+                                echo '<option value="' . htmlspecialchars($serieVal, ENT_QUOTES, "UTF-8") . '"' . $sel . '>'
+                                    . htmlspecialchars($serieVal, ENT_QUOTES, "UTF-8") . '</option>';
+                            }
+                        }
+                        ?>
+                    </select>
+                    <label for="filtroVendedorGuia" style="margin-left:10px; margin-right:4px;">Vendedor</label>
+                    <select class="form-control input-sm selectpicker" id="filtroVendedorGuia" data-live-search="true" data-width="220px" title="Todos">
+                        <option value="">Todos</option>
+                        <?php
+                        if (is_array($vendedoresGuia)) {
+                            foreach ($vendedoresGuia as $vendItem) {
+                                $codVend = $vendItem["codigo"];
+                                $sel = ($filtroVendedorGuia !== "" && $filtroVendedorGuia === $codVend) ? " selected" : "";
+                                echo '<option value="' . htmlspecialchars($codVend, ENT_QUOTES, "UTF-8") . '"' . $sel . '>'
+                                    . htmlspecialchars($codVend . " - " . $vendItem["descripcion"], ENT_QUOTES, "UTF-8") . '</option>';
+                            }
+                        }
+                        ?>
+                    </select>
+                    <button type="button" class="btn btn-default btn-sm" id="btnLimpiarFiltrosGuia" style="margin-left:8px;" title="Limpiar filtros">
+                        <i class="fa fa-eraser"></i> Limpiar
+                    </button>
+                </div>
                 <button type="button" class="btn btn-default pull-right" id="daterange-btnGuiaRem">
                     <span>
                         <i class="fa fa-calendar"></i>
@@ -72,7 +116,6 @@
 
                         <tr>
 
-                            <th>Tipo Documento</th>
                             <th>Documento</th>
                             <th>Total</th>
                             <th>Cod. Cliente</th>
@@ -765,6 +808,66 @@ EDITAR GUIA
             $facturarB->ctrActualizarGuiaRemision();
 
             ?>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!--=====================================
+RELACIONAR DOCUMENTOS A GUIA GENERADO
+======================================-->
+<div id="modalRelacionarDocGuia" class="modal fade" role="dialog">
+
+    <div class="modal-dialog" style="width: 560px;">
+
+        <div class="modal-content">
+
+            <div class="modal-header" style="background:#3c8dbc; color:white">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Relacionar documentos</h4>
+            </div>
+
+            <div class="modal-body" style="padding-top:15px;">
+
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:12px; color:#777; margin-bottom:2px;">Guía</div>
+                    <div id="guiaRelacionarDocLabel" style="font-size:18px; font-weight:700; letter-spacing:0.3px;"></div>
+                    <div id="clienteGuiaRelacionarLabel" style="font-size:13px; color:#555; margin-top:4px;"></div>
+                    <input type="hidden" id="guiaRelacionarDoc">
+                    <input type="hidden" id="docsDestinoActualGuiaRaw">
+                    <input type="hidden" id="clienteGuiaRelacionar">
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:12px; color:#777; margin-bottom:6px;">Ya relacionados</div>
+                    <div id="listaDocsDestinoActualGuia" style="min-height:28px;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-weight:600;">Agregar factura / boleta</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="docRelacionarGuia" placeholder="Uno o varios: B001-00076670, B001-00076671">
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-default" id="btnAgregarDocRelGuia">Agregar</button>
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:0;">
+                    <div style="font-size:12px; color:#777; margin-bottom:6px;">
+                        Por relacionar (<span id="cantDocsPendientesGuia">0</span>)
+                    </div>
+                    <ul id="listaDocsPendientesGuia" class="list-group" style="margin-bottom:0; max-height:220px; overflow:auto;"></ul>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarRelacionarDocGuia">Relacionar</button>
+            </div>
 
         </div>
 

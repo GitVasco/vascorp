@@ -756,6 +756,292 @@ class ModeloFacturacion
   }
 
   /*
+   * Normaliza lista de documentos en doc_destino (csv sin guiones).
+   */
+  static public function mdlParseDocDestinoLista($docDestino)
+  {
+    if ($docDestino === null || trim((string) $docDestino) === "") {
+      return array();
+    }
+
+    $parts = preg_split('/[,;]+/', (string) $docDestino);
+    $lista = array();
+
+    foreach ($parts as $part) {
+      $doc = strtoupper(preg_replace('/[\s\-]+/', '', trim($part)));
+      if ($doc !== "" && !in_array($doc, $lista, true)) {
+        $lista[] = $doc;
+      }
+    }
+
+    return $lista;
+  }
+
+  /*
+   * Formato visual: F001-00019157 / F001-00019158
+   */
+  static public function mdlFormatearDocsDestino($docDestino)
+  {
+    $lista = self::mdlParseDocDestinoLista($docDestino);
+    $out = array();
+
+    foreach ($lista as $doc) {
+      if (strlen($doc) >= 12) {
+        $out[] = substr($doc, 0, 4) . "-" . substr($doc, -8);
+      } else {
+        $out[] = $doc;
+      }
+    }
+
+    return implode(" / ", $out);
+  }
+
+  /*
+   * Documentos relacionados a una guía (doc_destino + ventas con doc_origen).
+   */
+  static public function mdlListarDocsRelacionadosGuia($documentoGuia)
+  {
+    $documentoGuia = strtoupper(preg_replace('/[\s\-]+/', '', (string) $documentoGuia));
+    $docs = array();
+    $vistos = array();
+
+    $sqlGuia = "SELECT doc_destino
+                FROM ventajf
+                WHERE tipo = 'S01'
+                  AND documento = :documento
+                LIMIT 1";
+    $stmtGuia = Conexion::conectar()->prepare($sqlGuia);
+    $stmtGuia->bindParam(":documento", $documentoGuia, PDO::PARAM_STR);
+    $stmtGuia->execute();
+    $guia = $stmtGuia->fetch(PDO::FETCH_ASSOC);
+
+    if ($guia) {
+      foreach (self::mdlParseDocDestinoLista($guia["doc_destino"]) as $doc) {
+        $meta = self::mdlMetaDocRelacionado($doc);
+        if ($meta && !isset($vistos[$doc])) {
+          $docs[] = $meta;
+          $vistos[$doc] = true;
+        }
+      }
+    }
+
+    $sqlOrigen = "SELECT documento, tipo
+                  FROM ventajf
+                  WHERE doc_origen = :guia
+                    AND tipo IN ('S02', 'S03')
+                  ORDER BY documento ASC";
+    $stmtOrigen = Conexion::conectar()->prepare($sqlOrigen);
+    $stmtOrigen->bindParam(":guia", $documentoGuia, PDO::PARAM_STR);
+    $stmtOrigen->execute();
+    $porOrigen = $stmtOrigen->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($porOrigen as $row) {
+      $doc = strtoupper(preg_replace('/[\s\-]+/', '', $row["documento"]));
+      if ($doc === "" || isset($vistos[$doc])) {
+        continue;
+      }
+      $meta = self::mdlMetaDocRelacionado($doc, $row["tipo"]);
+      if ($meta) {
+        $docs[] = $meta;
+        $vistos[$doc] = true;
+      }
+    }
+
+    return $docs;
+  }
+
+  static public function mdlMetaDocRelacionado($documento, $tipo = null)
+  {
+    $documento = strtoupper(preg_replace('/[\s\-]+/', '', (string) $documento));
+    if ($documento === "") {
+      return null;
+    }
+
+    if ($tipo === null) {
+      $ini = substr($documento, 0, 1);
+      if ($ini === "F") {
+        $tipo = "S03";
+      } elseif ($ini === "B") {
+        $tipo = "S02";
+      } else {
+        return null;
+      }
+    }
+
+    if ($tipo === "S03" || substr($documento, 0, 1) === "F") {
+      return array(
+        "documento" => $documento,
+        "tipo" => "S03",
+        "tipo_sunat" => "01",
+        "nombre" => "FACTURA ELECTRONICA",
+        "formato" => substr($documento, 0, 4) . "-" . substr($documento, -8)
+      );
+    }
+
+    if ($tipo === "S02" || substr($documento, 0, 1) === "B") {
+      return array(
+        "documento" => $documento,
+        "tipo" => "S02",
+        "tipo_sunat" => "03",
+        "nombre" => "BOLETA ELECTRONICA",
+        "formato" => substr($documento, 0, 4) . "-" . substr($documento, -8)
+      );
+    }
+
+    return null;
+  }
+
+  /*
+   * Copia movimientos de factura/boleta hacia la guía (como el SQL manual).
+   */
+  static public function mdlCopiarMovimientosDocAGuia($documentoGuia, $documentoOrigen)
+  {
+    $sql = "INSERT INTO movimientosjf_2026 (
+                tipo,
+                documento,
+                fecha,
+                articulo,
+                cliente,
+                vendedor,
+                cantidad,
+                precio,
+                total,
+                nombre_tipo,
+                almacen
+            )
+            SELECT
+                'S01',
+                :guia,
+                m.fecha,
+                m.articulo,
+                m.cliente,
+                m.vendedor,
+                m.cantidad,
+                m.precio,
+                m.total,
+                'GUIA REMISION',
+                '01'
+            FROM movimientosjf_2026 m
+            WHERE m.documento = :origen";
+
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":guia", $documentoGuia, PDO::PARAM_STR);
+    $stmt->bindParam(":origen", $documentoOrigen, PDO::PARAM_STR);
+
+    if ($stmt->execute()) {
+      return "ok";
+    }
+
+    return "error";
+  }
+
+  /*
+   * Actualiza doc_destino de la guía (csv).
+   */
+  static public function mdlActualizarDocDestinoGuia($documentoGuia, $listaDocs)
+  {
+    $listaDocs = array_values(array_unique(array_filter($listaDocs)));
+    $valor = count($listaDocs) ? implode(",", $listaDocs) : null;
+
+    $sql = "UPDATE ventajf
+            SET doc_destino = :doc_destino
+            WHERE tipo = 'S01'
+              AND documento = :documento";
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindValue(":doc_destino", $valor, $valor === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documentoGuia, PDO::PARAM_STR);
+
+    if ($stmt->execute()) {
+      return "ok";
+    }
+
+    return "error";
+  }
+
+  /*
+   * Marca doc_origen de la factura/boleta hacia la guía.
+   */
+  static public function mdlActualizarDocOrigenVenta($tipo, $documento, $docOrigen)
+  {
+    $sql = "UPDATE ventajf
+            SET doc_origen = :doc_origen
+            WHERE tipo = :tipo
+              AND documento = :documento";
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":doc_origen", $docOrigen, PDO::PARAM_STR);
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+
+    if ($stmt->execute()) {
+      return "ok";
+    }
+
+    return "error";
+  }
+
+  /*
+   * Datos de estado FE de una guía.
+   */
+  static public function mdlEstadoFeGuia($documentoGuia)
+  {
+    $sql = "SELECT facturacion, doc_destino, estado, total, cliente, vendedor, fecha
+            FROM ventajf
+            WHERE tipo = 'S01'
+              AND documento = :documento
+            LIMIT 1";
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":documento", $documentoGuia, PDO::PARAM_STR);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ? $row : null;
+  }
+
+  /*
+   * Busca factura/boleta por número (con o sin guión).
+   */
+  static public function mdlBuscarFacturaBoleta($documento)
+  {
+    $documento = strtoupper(preg_replace('/[\s\-]+/', '', (string) $documento));
+    if ($documento === "") {
+      return null;
+    }
+
+    $ini = substr($documento, 0, 1);
+    $tipos = array();
+    if ($ini === "F") {
+      $tipos = array("S03");
+    } elseif ($ini === "B") {
+      $tipos = array("S02");
+    } else {
+      $tipos = array("S03", "S02");
+    }
+
+    $in = implode(",", array_fill(0, count($tipos), "?"));
+    $sql = "SELECT
+                v.tipo,
+                v.documento,
+                v.total,
+                v.cliente,
+                v.vendedor,
+                v.fecha,
+                v.estado,
+                v.doc_origen,
+                c.nombre
+            FROM ventajf v
+            LEFT JOIN clientesjf c ON v.cliente = c.codigo
+            WHERE v.documento = ?
+              AND v.tipo IN ($in)
+            LIMIT 1";
+
+    $stmt = Conexion::conectar()->prepare($sql);
+    $params = array_merge(array($documento), $tipos);
+    $stmt->execute($params);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ? $row : null;
+  }
+
+  /*
     * MOSTRAR DETALLE DE TEMPORAL
     */
   static public function mdlMostraVentaDocumento($valor, $tipoDoc)
@@ -9677,12 +9963,10 @@ class ModeloFacturacion
     $stmt = null;
   }
 
-  static public function mdlRangoFechasGuiaRemision($fechaInicial, $fechaFinal)
+  static public function mdlRangoFechasGuiaRemision($fechaInicial, $fechaFinal, $serie = null, $vendedor = null)
   {
 
-    if ($fechaInicial == "null") {
-
-      $sql = "SELECT
+    $sql = "SELECT
                     v.tipo,
                     v.tipo_documento,
                     v.documento,
@@ -9690,11 +9974,11 @@ class ModeloFacturacion
                     v.cliente,
                     c.nombre,
                     c.tipo_documento AS tip_doc,
-                    (SELECT 
-                          tipo_doc 
+                    (SELECT
+                          tipo_doc
                         FROM
-                          tipo_documentojf td 
-                        WHERE c.tipo_documento = td.cod_doc) AS tipo_doc,	
+                          tipo_documentojf td
+                        WHERE c.tipo_documento = td.cod_doc) AS tipo_doc,
                     v.cuenta,
                     c.documento AS num_doc,
                     v.vendedor,
@@ -9720,183 +10004,50 @@ class ModeloFacturacion
                     ON v.agencia = a.id
                     LEFT JOIN ubigeojf u
                     ON c.ubigeo = u.cod_ubi
-                WHERE v.tipo = 'S01'
-                    AND YEAR(v.fecha) = YEAR(NOW())
-                    ORDER BY v.fecha DESC,
-                v.documento DESC";
+                WHERE v.tipo = 'S01'";
 
-      $stmt = Conexion::conectar()->prepare($sql);
-
-      $stmt->execute();
-
-      return $stmt->fetchAll();
+    if ($fechaInicial == "null" || $fechaInicial === null || $fechaInicial === "") {
+      $sql .= " AND YEAR(v.fecha) = YEAR(NOW())";
     } else if ($fechaInicial == $fechaFinal) {
-
-      $sql = "SELECT
-                    v.tipo,
-                    v.tipo_documento,
-                    v.documento,
-                    v.total,
-                    v.cliente,
-                    c.nombre,
-                    c.tipo_documento AS tip_doc,
-                    (SELECT 
-                          tipo_doc 
-                        FROM
-                          tipo_documentojf td 
-                        WHERE c.tipo_documento = td.cod_doc) AS tipo_doc,	
-                    v.cuenta,
-                    c.documento AS num_doc,
-                    v.vendedor,
-                    v.fecha,
-                    cv.descripcion,
-                    v.doc_destino,
-                    v.facturacion,
-                    LEFT(v.doc_destino,4) AS serie_dest,
-                    SUBSTR(v.doc_destino,5,8) AS nro_dest,
-                    v.estado,
-                    IFNULL(a.nombre, '') AS agencia,
-                    IFNULL(u.nom_ubi, '') AS ubigeo,
-                    v.usureg,
-                    v.cargo,
-                    v.recepcion
-                FROM
-                    ventajf v
-                    LEFT JOIN clientesjf c
-                    ON v.cliente = c.codigo
-                    LEFT JOIN condiciones_ventajf cv
-                    ON v.condicion_venta = cv.id
-                    LEFT JOIN agenciasjf a
-                    ON v.agencia = a.id
-                    LEFT JOIN ubigeojf u
-                    ON c.ubigeo = u.cod_ubi
-                WHERE v.tipo = 'S01'
-                    AND DATE(v.fecha)  like '%$fechaFinal%' 
-                    ORDER BY v.fecha DESC,
-                v.documento DESC";
-
-      $stmt = Conexion::conectar()->prepare($sql);
-
-      $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
-
-      $stmt->execute();
-
-      return $stmt->fetchAll();
+      $sql .= " AND DATE(v.fecha) LIKE :fechaExacta";
     } else {
-      $fechaActual = new DateTime();
-      $fechaActual->add(new DateInterval("P1D"));
-      $fechaActualMasUno = $fechaActual->format("Y-m-d");
+      $sql .= " AND DATE(v.fecha) BETWEEN :fechaInicial AND :fechaFinal";
+    }
 
-      $fechaFinal2 = new DateTime($fechaFinal);
-      $fechaFinal2->add(new DateInterval("P1D"));
-      $fechaFinalMasUno = $fechaFinal2->format("Y-m-d");
+    $serie = ($serie === null || $serie === "null") ? "" : trim((string) $serie);
+    $vendedor = ($vendedor === null || $vendedor === "null") ? "" : trim((string) $vendedor);
 
-      if ($fechaFinalMasUno == $fechaActualMasUno) {
-        $sql = "SELECT
-                        v.tipo,
-                        v.tipo_documento,
-                        v.documento,
-                        v.total,
-                        v.cliente,
-                        c.nombre,
-                        c.tipo_documento AS tip_doc,
-                        (SELECT 
-                          tipo_doc 
-                        FROM
-                          tipo_documentojf td 
-                        WHERE c.tipo_documento = td.cod_doc) AS tipo_doc,	
-                        v.cuenta,
-                        c.documento AS num_doc,
-                        v.vendedor,
-                        v.fecha,
-                        cv.descripcion,
-                        v.doc_destino,
-                        v.facturacion,
-                        LEFT(v.doc_destino,4) AS serie_dest,
-                        SUBSTR(v.doc_destino,5,8) AS nro_dest,
-                        v.estado,
-                        IFNULL(a.nombre, '') AS agencia,
-                        IFNULL(u.nom_ubi, '') AS ubigeo,
-                        v.usureg,
-                        v.cargo,
-                    v.recepcion
-                    FROM
-                        ventajf v
-                        LEFT JOIN clientesjf c
-                        ON v.cliente = c.codigo
-                        LEFT JOIN condiciones_ventajf cv
-                        ON v.condicion_venta = cv.id
-                        LEFT JOIN agenciasjf a
-                        ON v.agencia = a.id
-                        LEFT JOIN ubigeojf u
-                        ON c.ubigeo = u.cod_ubi
-                    WHERE v.tipo = 'S01'
-                        AND DATE(v.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'
-                        ORDER BY v.fecha DESC,
-                v.documento DESC";
+    if ($serie !== "") {
+      $sql .= " AND v.documento LIKE CONCAT(:serie, '%')";
+    }
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    if ($vendedor !== "") {
+      $sql .= " AND v.vendedor = :vendedor";
+    }
 
-        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+    $sql .= " ORDER BY v.fecha DESC, v.documento DESC";
 
-        $stmt->execute();
+    $stmt = Conexion::conectar()->prepare($sql);
 
-        return $stmt->fetchAll();
+    if ($fechaInicial != "null" && $fechaInicial !== null && $fechaInicial !== "") {
+      if ($fechaInicial == $fechaFinal) {
+        $stmt->bindValue(":fechaExacta", "%" . $fechaFinal . "%", PDO::PARAM_STR);
       } else {
-
-        $sql = "SELECT
-                    v.tipo,
-                    v.tipo_documento,
-                    v.documento,
-                    v.total,
-                    v.cliente,
-                    c.nombre,
-                    c.tipo_documento AS tip_doc,
-                    (SELECT 
-                          tipo_doc 
-                        FROM
-                          tipo_documentojf td 
-                        WHERE c.tipo_documento = td.cod_doc) AS tipo_doc,	
-                    v.cuenta,
-                    c.documento AS num_doc,
-                    v.vendedor,
-                    v.fecha,
-                    cv.descripcion,
-                    v.doc_destino,
-                    v.facturacion,
-                    LEFT(v.doc_destino,4) AS serie_dest,
-                    SUBSTR(v.doc_destino,5,8) AS nro_dest,
-                    v.estado,
-                    IFNULL(a.nombre, '') AS agencia,
-                    IFNULL(u.nom_ubi, '') AS ubigeo,
-                    v.usureg,
-                    v.cargo,
-                v.recepcion
-                FROM
-                    ventajf v
-                    LEFT JOIN clientesjf c
-                    ON v.cliente = c.codigo
-                    LEFT JOIN condiciones_ventajf cv
-                    ON v.condicion_venta = cv.id
-                    LEFT JOIN agenciasjf a
-                    ON v.agencia = a.id
-                    LEFT JOIN ubigeojf u
-                    ON c.ubigeo = u.cod_ubi
-                WHERE v.tipo = 'S01'
-                    AND DATE(v.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'
-                    ORDER BY v.fecha DESC,
-            v.documento DESC";
-
-        $stmt = Conexion::conectar()->prepare($sql);
-
-        $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
-
-        $stmt->execute();
-
-        return $stmt->fetchAll();
+        $stmt->bindValue(":fechaInicial", $fechaInicial, PDO::PARAM_STR);
+        $stmt->bindValue(":fechaFinal", $fechaFinal, PDO::PARAM_STR);
       }
     }
 
-    $stmt = null;
+    if ($serie !== "") {
+      $stmt->bindValue(":serie", $serie, PDO::PARAM_STR);
+    }
+
+    if ($vendedor !== "") {
+      $stmt->bindValue(":vendedor", $vendedor, PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
+
+    return $stmt->fetchAll();
   }
 }
