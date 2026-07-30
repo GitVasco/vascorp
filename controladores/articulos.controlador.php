@@ -16,6 +16,14 @@ class controladorArticulos
 		return $respuesta;
 	}
 
+	/**
+	 * Estadísticas de cabecera del módulo artículos.
+	 */
+	static public function ctrEstadisticasArticulos()
+	{
+		return ModeloArticulos::mdlEstadisticasArticulos();
+	}
+
 	/* 
 	* MOSTRAR SIN TARJETA
 	*/

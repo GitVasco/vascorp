@@ -1,3 +1,7 @@
+<?php
+$statsArt = ControladorArticulos::ctrEstadisticasArticulos();
+$totArt = $statsArt["totales"];
+?>
 <div class="content-wrapper">
 
     <section class="content-header">
@@ -20,12 +24,66 @@
 
     <section class="content">
 
+        <div class="row art-stats-row">
+            <div class="col-md-3 col-sm-6 col-xs-6">
+                <div class="info-box bg-aqua" style="min-height:60px;margin-bottom:10px;">
+                    <span class="info-box-icon" style="height:60px;width:60px;line-height:60px;font-size:22px;"><i class="fa fa-cubes"></i></span>
+                    <div class="info-box-content" style="margin-left:60px;">
+                        <span class="info-box-text">Total artículos</span>
+                        <span class="info-box-number" style="font-size:18px;"><?php echo number_format((int) $totArt["total"]); ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 col-xs-6">
+                <div class="info-box bg-green" style="min-height:60px;margin-bottom:10px;">
+                    <span class="info-box-icon" style="height:60px;width:60px;line-height:60px;font-size:22px;"><i class="fa fa-check-circle"></i></span>
+                    <div class="info-box-content" style="margin-left:60px;">
+                        <span class="info-box-text">Activos</span>
+                        <span class="info-box-number" style="font-size:18px;"><?php echo number_format((int) $totArt["activos"]); ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 col-xs-6">
+                <div class="info-box bg-red" style="min-height:60px;margin-bottom:10px;">
+                    <span class="info-box-icon" style="height:60px;width:60px;line-height:60px;font-size:22px;"><i class="fa fa-ban"></i></span>
+                    <div class="info-box-content" style="margin-left:60px;">
+                        <span class="info-box-text">Descontinuados</span>
+                        <span class="info-box-number" style="font-size:18px;"><?php echo number_format((int) $totArt["descontinuados"]); ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 col-xs-6">
+                <div class="info-box bg-yellow" style="min-height:60px;margin-bottom:10px;">
+                    <span class="info-box-icon" style="height:60px;width:60px;line-height:60px;font-size:22px;"><i class="fa fa-bullhorn"></i></span>
+                    <div class="info-box-content" style="margin-left:60px;">
+                        <span class="info-box-text">CampañaD</span>
+                        <span class="info-box-number" style="font-size:18px;"><?php echo number_format((int) $totArt["campana"]); ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="box">
 
             <div class="box-header with-border">
 
             </div>
             <div class="box-header">
+                <div class="col-md-4 col-sm-6" style="padding-left:0;">
+                    <select class="form-control selectpicker" id="filtroModeloArticulos" name="filtroModeloArticulos"
+                        data-live-search="true" data-size="10" data-width="100%"
+                        title="Filtrar por modelo" data-none-selected-text="Todos los modelos">
+                        <option value="">Todos los modelos</option>
+                        <?php
+                        $modelosFiltro = ControladorModelos::ctrMostrarModelosActivos();
+                        foreach ($modelosFiltro as $mod) {
+                            echo '<option value="' . htmlspecialchars($mod["modelo"], ENT_QUOTES, "UTF-8") . '">'
+                                . htmlspecialchars($mod["nombre"], ENT_QUOTES, "UTF-8")
+                                . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
                 <div class="pull-right">
                     <button class="btn btn-outline-success btnReporteArt" style="border:green 1px solid">
                         <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte Articulos </button>

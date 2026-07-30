@@ -1,7 +1,7 @@
 /*
  * tabla paraa cargar la lista de articulos
  */
-$(".tablaArticulos").DataTable({
+var tablaArticulosDT = $(".tablaArticulos").DataTable({
     ajax:
         "ajax/maestros/tabla-articulos.ajax.php?perfil=" +
         $("#perfilOculto").val(),
@@ -39,6 +39,21 @@ $(".tablaArticulos").DataTable({
                 ": Activar para ordenar la columna de manera descendente",
         },
     },
+});
+
+/* Filtro por modelo (columna Modelo = índice 4) */
+function filtrarArticulosPorModelo() {
+    var modelo = $("#filtroModeloArticulos").val() || "";
+    if (modelo) {
+        var escaped = $.fn.dataTable.util.escapeRegex(modelo);
+        tablaArticulosDT.column(4).search("^" + escaped + "$", true, false).draw();
+    } else {
+        tablaArticulosDT.column(4).search("").draw();
+    }
+}
+
+$("#filtroModeloArticulos").on("changed.bs.select change", function () {
+    filtrarArticulosPorModelo();
 });
 
 $("#selectArticuloUrgencia").change(function () {

@@ -4042,4 +4042,35 @@ class ModeloArticulos
 
 		$stmt = null;
 	}
+
+	/**
+	 * Estadísticas de cabecera: totales de artículos y stock.
+	 */
+	static public function mdlEstadisticasArticulos()
+	{
+		$sqlTotales = "SELECT
+				COUNT(*) AS total,
+				SUM(CASE WHEN UPPER(TRIM(IFNULL(a.estado, ''))) = 'ACTIVO' THEN 1 ELSE 0 END) AS activos,
+				SUM(CASE WHEN UPPER(TRIM(IFNULL(a.estado, ''))) IN ('DESCONTINUADO') THEN 1 ELSE 0 END) AS descontinuados,
+				SUM(CASE WHEN UPPER(TRIM(IFNULL(a.estado, ''))) IN ('CAMPAÑAD', 'CAMPANAD') THEN 1 ELSE 0 END) AS campana,
+				COALESCE(SUM(IFNULL(a.stock, 0)), 0) AS stock,
+				COALESCE(SUM(IFNULL(a.stock, 0) - IFNULL(a.pedidos, 0)), 0) AS stock_disponible
+			FROM articulojf a";
+
+		$stmt = Conexion::conectar()->prepare($sqlTotales);
+		$stmt->execute();
+		$totales = $stmt->fetch(PDO::FETCH_ASSOC);
+		$stmt = null;
+
+		return array(
+			"totales" => $totales ? $totales : array(
+				"total" => 0,
+				"activos" => 0,
+				"descontinuados" => 0,
+				"campana" => 0,
+				"stock" => 0,
+				"stock_disponible" => 0
+			)
+		);
+	}
 }
