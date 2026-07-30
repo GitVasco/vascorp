@@ -221,11 +221,11 @@ MODAL FACTURAR
                         </div>
                     </section>
 
-                    <section class="mf-section" id="wrapOrdenCompra">
+                    <section class="mf-section" id="wrapOrdenCompra"<?php echo (function_exists('feCsvOrdenCompraActiva') && !feCsvOrdenCompraActiva()) ? ' style="display:none"' : ''; ?>>
                         <div class="mf-grid">
                             <div class="mf-field mf-col-6">
                                 <label for="orden_compra">Orden de compra <span style="font-weight:normal;color:#888;">(opcional)</span></label>
-                                <input type="text" class="form-control input-sm" id="orden_compra" name="orden_compra" maxlength="20" placeholder="Ej. OC12345 (sin espacios ni guiones)" autocomplete="off">
+                                <input type="text" class="form-control input-sm" id="orden_compra" name="orden_compra" maxlength="20" placeholder="Ej. OC12345 (sin espacios ni guiones)" autocomplete="off"<?php echo (function_exists('feCsvOrdenCompraActiva') && !feCsvOrdenCompraActiva()) ? ' disabled' : ''; ?>>
                             </div>
                         </div>
                     </section>

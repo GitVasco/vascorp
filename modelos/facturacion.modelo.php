@@ -7942,6 +7942,7 @@ class ModeloFacturacion
             END AS bh1,
             v.neto - v.dscto AS bi1,
             v.total AS bj1,
+            IFNULL(c.agente_retencion, 0) AS agente_retencion,
             /*v.dscto AS bh1,*/
             /*FILA 3: solo si doc_origen es guia (Txxx / numerica / EG / G), no pedidos u otros*/
             CASE

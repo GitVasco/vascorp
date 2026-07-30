@@ -335,6 +335,10 @@ $(".tablaClientes").on("click", ".btnEditarCliente", function () {
 
             $("#editarAgencia").val(respuesta["agencia"]);
             $("#editarAgencia").selectpicker("refresh");
+            var agenteRet = respuesta["agente_retencion"];
+            $("#editarAgente_retencion").val(
+                (agenteRet == 1 || agenteRet === "1" || agenteRet === true) ? "1" : "0"
+            );
 
             $("#editarTelefono").val(respuesta["telefono"]);
             $("#editarTelefono2").val(respuesta["telefono2"]);

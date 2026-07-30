@@ -71,7 +71,8 @@ class ModeloClientes
 											fecreg,
 											direccion_despacho,
 											ubigeo_despacho,
-											agencia
+											agencia,
+											agente_retencion
 										) 
 										VALUES
 											(
@@ -98,7 +99,8 @@ class ModeloClientes
 											:fecreg,
 											UPPER(:direccion_despacho),
 											:ubigeo_despacho,
-											:agencia
+											:agencia,
+											:agente_retencion
 											)");
 
 		$stmt->bindParam(":codigoCliente", $datos["codigoCliente"], PDO::PARAM_STR);
@@ -129,6 +131,8 @@ class ModeloClientes
 		$stmt->bindParam(":direccion_despacho", $datos["direccion_despacho"], PDO::PARAM_STR);
 		$stmt->bindParam(":ubigeo_despacho", $datos["ubigeo_despacho"], PDO::PARAM_STR);
 		$stmt->bindParam(":agencia", $datos["agencia"], PDO::PARAM_STR);
+		$agenteRetencion = isset($datos["agente_retencion"]) ? (int) $datos["agente_retencion"] : 0;
+		$stmt->bindValue(":agente_retencion", $agenteRetencion === 1 ? 1 : 0, PDO::PARAM_INT);
 
 		if ($stmt->execute()) {
 
@@ -369,7 +373,8 @@ class ModeloClientes
 											lista_precios = :lista_precios ,
 											direccion_despacho = :direccion_despacho,
 											ubigeo_despacho = :ubigeo_despacho,
-											agencia = :agencia
+											agencia = :agencia,
+											agente_retencion = :agente_retencion
 										WHERE codigo = :codigoCliente ");
 
 		$stmt->bindParam(":codigoCliente", $datos["codigoCliente"], PDO::PARAM_INT);
@@ -397,6 +402,8 @@ class ModeloClientes
 		$stmt->bindParam(":direccion_despacho", $datos["direccion_despacho"], PDO::PARAM_STR);
 		$stmt->bindParam(":ubigeo_despacho", $datos["ubigeo_despacho"], PDO::PARAM_STR);
 		$stmt->bindParam(":agencia", $datos["agencia"], PDO::PARAM_STR);
+		$agenteRetencion = isset($datos["agente_retencion"]) ? (int) $datos["agente_retencion"] : 0;
+		$stmt->bindValue(":agente_retencion", $agenteRetencion === 1 ? 1 : 0, PDO::PARAM_INT);
 
 
 		if ($stmt->execute()) {

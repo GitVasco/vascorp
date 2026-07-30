@@ -51,6 +51,56 @@ Estado al documentar: cambios **sin commit** en el working tree (salvo la column
 
 - `extensiones/cantidad_en_letras_v2.php` — `number_format((float)$num, …)` para evitar warning PHP al armar monto en letras.
 
+### D) Retención IGV en CSV (FILA 1 — Legacy BP–BR)
+
+**Antes:** columnas BP, BQ, BR vacías.
+
+**Ahora** (con `FE_CSV_RETENCION = true`):
+
+- Solo **factura** (`c1 = 01`), no boleta, no exportación.
+- Solo si `clientesjf.agente_retencion = 1`.
+- **BP** = base = total precio de venta (mismo valor que BJ).
+- **BQ** = factor (`FE_CSV_RETENCION_FACTOR`, default `0.03`).
+- **BR** = monto = base × factor (2 decimales).
+
+**Archivos:** `config.php`, `facturacion.controlador.php` (`retencionIgvCsv`, `fila1SufijoDesdeBj`), `mdlFEFacturaCabA` (+ `agente_retencion`).
+
+---
+
+## Kill switches (sin revertir código)
+
+En `controladores/config.php` (archivo local / no versionado):
+
+```php
+define("FE_CSV_GUIAS_RELACIONADAS", true); // false = solo serie 0003 en FILA 3
+define("FE_CSV_ORDEN_COMPRA", true);       // false = oculta campo y FILA 7-B vacía
+define("FE_CSV_RETENCION", false);         // true = BP–BR con retención si cliente agente
+define("FE_CSV_RETENCION_FACTOR", "0.03"); // factor SUNAT (solo aplica si retención ON)
+```
+
+Si eFact rechaza en producción/fin de mes:
+
+1. Poner `false` en el flag que falle (guías, OC y/o retención).
+2. Recargar PHP (reiniciar Apache / php-fpm / OPcache).
+3. Generar un CSV de prueba y confirmar FILA 1 / FILA 3 / FILA 7-B.
+
+No hace falta `git checkout` para apagar estas funciones.
+
+### Tras validar con eFact (dejar permanente)
+
+Cuando la validación pase, pedir a Sistemas/agente:
+
+1. **Quitar** de `config.php` el `define` del feature ya estable (ej. `FE_CSV_RETENCION`).
+2. El código trata “sin define” como **siempre activo** (`feCsv*Activa()` → true).
+3. En `config.php` **solo quedan** kill switches de pruebas nuevas aún no validadas.
+4. Opcional: dejar `FE_CSV_RETENCION_FACTOR` si se quiere ajustar la tasa sin tocar código.
+
+| Define | OFF hace |
+|--------|----------|
+| `FE_CSV_GUIAS_RELACIONADAS` | Solo guía serie `0003` |
+| `FE_CSV_ORDEN_COMPRA` | Sin OC en UI/CSV |
+| `FE_CSV_RETENCION` | BP–BR vacíos |
+
 ---
 
 ## Cómo revertir el código (volver a la versión anterior)
@@ -136,8 +186,12 @@ Script de alta (por si hay que reaplicar): `docs/sql/ventajf-orden-compra.sql`
 
 ## Checklist rápido antes de producción
 
-- [ ] Generar factura **contado** con guía relacionada → FILA 3 con `SERIE-########,09`
+- [ ] Confirmar en `controladores/config.php`: `FE_CSV_GUIAS_RELACIONADAS`, `FE_CSV_ORDEN_COMPRA`, `FE_CSV_RETENCION`
+- [ ] Generar factura **contado** con guía relacionada → FILA 3 con `SERIE-########,09` (si guías ON)
 - [ ] Generar factura **crédito** con guía → FILA 3 con guía + `CUOTA001` + monto + fecha + `ATTACH_DOC`
 - [ ] Generar boleta con/sin guía
-- [ ] Facturar con OC opcional → FILA 7-B poblada; sin OC → B vacía
+- [ ] Facturar con OC opcional → FILA 7-B poblada; sin OC → B vacía (si OC ON)
+- [ ] Factura a cliente **agente_retencion=1** con `FE_CSV_RETENCION=true` → FILA 1 BP/BQ/BR (base / 0.03 / monto); boleta y no-agente → vacíos
+- [ ] Probar kill switch: `false` → sin guías electrónicas / sin OC / sin retención en CSV
 - [ ] Confirmar que eFact/OSE acepta el CSV
+- [ ] Tras OK de eFact: quitar el `define` validado de `config.php` (queda permanente)

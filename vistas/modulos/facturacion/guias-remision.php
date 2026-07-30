@@ -305,6 +305,7 @@ MODAL FACTURAR A
 
                             </div>
 
+                            <?php if (!function_exists('feCsvOrdenCompraActiva') || feCsvOrdenCompraActiva()): ?>
                             <div class="form-group col-lg-5">
 
                                 <label>Orden de compra <small>(opcional)</small></label>
@@ -318,6 +319,7 @@ MODAL FACTURAR A
                                 </div>
 
                             </div>
+                            <?php endif; ?>
 
                         </div>
 
@@ -546,6 +548,7 @@ MODAL FACTURAR B
 
                             </div>
 
+                            <?php if (!function_exists('feCsvOrdenCompraActiva') || feCsvOrdenCompraActiva()): ?>
                             <div class="form-group col-lg-6">
 
                                 <label>Orden de compra <small>(opcional)</small></label>
@@ -559,6 +562,7 @@ MODAL FACTURAR B
                                 </div>
 
                             </div>
+                            <?php endif; ?>
 
 
                         </div>

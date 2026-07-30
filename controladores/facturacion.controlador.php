@@ -4,15 +4,115 @@ class ControladorFacturacion
 {
 
     /*
+     * Kill switch FE_CSV_GUIAS_RELACIONADAS (controladores/config.php).
+     */
+    static private function feCsvGuiasActivas()
+    {
+        if (function_exists("feCsvGuiasRelacionadasActivas")) {
+            return feCsvGuiasRelacionadasActivas();
+        }
+
+        return !defined("FE_CSV_GUIAS_RELACIONADAS") || FE_CSV_GUIAS_RELACIONADAS;
+    }
+
+    /*
+     * Kill switch FE_CSV_ORDEN_COMPRA (controladores/config.php).
+     */
+    static private function feCsvOrdenCompraActiva()
+    {
+        if (function_exists("feCsvOrdenCompraActiva")) {
+            return feCsvOrdenCompraActiva();
+        }
+
+        return !defined("FE_CSV_ORDEN_COMPRA") || FE_CSV_ORDEN_COMPRA;
+    }
+
+    /*
+     * Kill switch FE_CSV_RETENCION (controladores/config.php).
+     */
+    static private function feCsvRetencionActiva()
+    {
+        if (function_exists("feCsvRetencionActiva")) {
+            return feCsvRetencionActiva();
+        }
+
+        return !defined("FE_CSV_RETENCION") || FE_CSV_RETENCION;
+    }
+
+    /*
+     * Retención IGV Legacy FILA 1: BP (base), BQ (factor), BR (monto).
+     * Solo factura (01), no exportación, cliente con agente_retencion=1 y flag activo.
+     * Base = total precio de venta (BJ); factor = FE_CSV_RETENCION_FACTOR (0.03).
+     *
+     * @return array{0:string,1:string,2:string} bp, bq, br (vacíos si no aplica)
+     */
+    static private function retencionIgvCsv($datos)
+    {
+        $vacio = array("", "", "");
+
+        if (!self::feCsvRetencionActiva()) {
+            return $vacio;
+        }
+
+        if (!isset($datos["c1"]) || (string) $datos["c1"] !== "01") {
+            return $vacio;
+        }
+
+        if (isset($datos["exportacion"]) && (string) $datos["exportacion"] !== "0" && $datos["exportacion"] !== 0) {
+            return $vacio;
+        }
+
+        $esAgente = isset($datos["agente_retencion"])
+            && ($datos["agente_retencion"] == 1 || $datos["agente_retencion"] === "1");
+        if (!$esAgente) {
+            return $vacio;
+        }
+
+        $base = isset($datos["bj1"]) ? round((float) $datos["bj1"], 2) : 0.0;
+        if ($base <= 0) {
+            return $vacio;
+        }
+
+        $factor = function_exists("feCsvRetencionFactor")
+            ? feCsvRetencionFactor()
+            : (defined("FE_CSV_RETENCION_FACTOR") ? (string) FE_CSV_RETENCION_FACTOR : "0.03");
+        $monto = round($base * (float) $factor, 2);
+
+        return array(
+            number_format($base, 2, ".", ""),
+            $factor,
+            number_format($monto, 2, ".", "")
+        );
+    }
+
+    /*
+     * Sufijo FILA 1 desde BJ: BK–BO vacíos, BP–BR retención, resto vacío (Legacy).
+     */
+    static private function fila1SufijoDesdeBj($datos)
+    {
+        list($bp, $bq, $br) = self::retencionIgvCsv($datos);
+
+        return $datos["bj1"] . ',,,,,' .
+            $bp . ',' .
+            $bq . ',' .
+            $br . ',,,,,,,,,,,,,';
+    }
+
+    /*
      * Número de guía válido para FILA 3 del Legacy CSV (eFact UBL 2.1).
      * Solo A (número) + B (09/31) son obligatorios al relacionar; C/D y demás opcionales no se usan aquí.
-     * Patrones doc + series electrónicas Vascorp (TV01, TD01, TS01, T001, 0003, EG01, G001).
+     * Con FE_CSV_GUIAS_RELACIONADAS=false: solo serie 0003 (comportamiento anterior).
+     * Con true: series electrónicas Vascorp (TV01, TD01, TS01, T001, 0003, EG01, G001).
      */
     static private function esGuiaRemisionCsv($numeroGuia)
     {
         $numeroGuia = trim((string) $numeroGuia);
         if ($numeroGuia === "") {
             return false;
+        }
+
+        if (!self::feCsvGuiasActivas()) {
+            return (bool) preg_match('/^0003-[0-9]{1,8}$/i', $numeroGuia);
         }
 
         return (bool) preg_match(
@@ -23,15 +123,32 @@ class ControladorFacturacion
 
     /*
      * Normaliza OC del cliente para eFact FILA 7-B (sin espacios/guiones, máx. 20).
+     * Con FE_CSV_ORDEN_COMPRA=false siempre retorna vacío.
      */
     static private function normalizarOrdenCompra($ordenCompra)
     {
+        if (!self::feCsvOrdenCompraActiva()) {
+            return "";
+        }
+
         $ordenCompra = preg_replace('/[\s\-]+/', '', (string) $ordenCompra);
         $ordenCompra = preg_replace('/[\r\n\t]+/', '', $ordenCompra);
         if ($ordenCompra === null || $ordenCompra === "") {
             return "";
         }
         return substr($ordenCompra, 0, 20);
+    }
+
+    /*
+     * Valor FILA 7-B según kill switch (vacío si OC desactivada).
+     */
+    static private function ordenCompraCsv($datos)
+    {
+        if (!self::feCsvOrdenCompraActiva()) {
+            return "";
+        }
+
+        return isset($datos["b7"]) ? $datos["b7"] : "";
     }
 
     /*
@@ -2287,7 +2404,7 @@ class ControladorFacturacion
                     $datos["at1"] . ',,,,,,,,,,,,,,' .
                     $datos["bh1"] . ',' .
                     $datos["bi1"] . ',' .
-                    $datos["bj1"] . ',,,,,,,,,,,,,,,,,,,,,';
+                    self::fila1SufijoDesdeBj($datos);
             } else {
 
                 //todo: FILA 1
@@ -2307,7 +2424,7 @@ class ControladorFacturacion
                     $datos["at1"] . ',,,,,,,,,,,,,,' .
                     $datos["bh1"] . ',' .
                     $datos["bi1"] . ',' .
-                    $datos["bj1"] . ',,,,,,,,,,,,,,,,,,,,,';
+                    self::fila1SufijoDesdeBj($datos);
             }
 
 
@@ -2396,7 +2513,7 @@ class ControladorFacturacion
 
             //todo: FILA 7 — A observaciones, B orden de compra (Legacy), C fecha cuota, D–G adicionales
             $fila7 =    $datos["a7"] . ',' .
-                (isset($datos["b7"]) ? $datos["b7"] : '') . ',' .
+                self::ordenCompraCsv($datos) . ',' .
                 $datos["g3"] . ',' .
                 $datos["d7"] . ',' .
                 $datos["e7"] . ',' .

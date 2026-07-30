@@ -54,6 +54,7 @@ class ControladorClientes
 				"id_zona"			=> ControladorZonasComerciales::ctrIdZonaDesdePost("id_zona"),
 				"lista_precios"		=> $_POST["lista_precios"],
 				"agencia"			=> $_POST["agencia"],
+				"agente_retencion"	=> (isset($_POST["agente_retencion"]) && (string) $_POST["agente_retencion"] === "1") ? 1 : 0,
 				"usureg"            => $usureg,
 				"pcreg"             => $pcreg,
 				"fecreg"            => $fecreg->format("Y-m-d H:i:s")
@@ -211,7 +212,8 @@ class ControladorClientes
 				"grupo"				=> trim($_POST["editarGrupo"]),
 				"id_zona"			=> ControladorZonasComerciales::ctrIdZonaDesdePost("editar_id_zona", $idZonaActual),
 				"lista_precios"		=> trim($_POST["editarLista_precios"]),
-				"agencia"			=> trim($_POST["editarAgencia"])
+				"agencia"			=> trim($_POST["editarAgencia"]),
+				"agente_retencion"	=> (isset($_POST["editarAgente_retencion"]) && (string) $_POST["editarAgente_retencion"] === "1") ? 1 : 0
 			);
 			#var_dump("datos", $datos);
 

@@ -597,6 +597,25 @@ MODAL AGREGAR CLIENTE
 
                             </div>
 
+                            <!-- AGENTE DE RETENCIÓN IGV -->
+
+                            <div class="form-group col-lg-4">
+
+                                <div class="input-group">
+
+                                    <span class="input-group-addon"><i class="fa fa-percent"></i></span>
+
+                                    <select class="form-control input-sm" id="agente_retencion" name="agente_retencion" required>
+
+                                        <option value="0" selected>Agente retención: No</option>
+                                        <option value="1">Agente retención: Sí</option>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
                         </div>
 
                         <!-- CLASIFICACIÓN COMERCIAL (ALTA) -->
@@ -1128,6 +1147,25 @@ MODAL EDITAR CLIENTE
                                         }
 
                                         ?>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+                            <!-- AGENTE DE RETENCIÓN IGV -->
+
+                            <div class="form-group col-lg-4">
+
+                                <div class="input-group">
+
+                                    <span class="input-group-addon"><i class="fa fa-percent"></i></span>
+
+                                    <select class="form-control input-sm" id="editarAgente_retencion" name="editarAgente_retencion" required>
+
+                                        <option value="0">Agente retención: No</option>
+                                        <option value="1">Agente retención: Sí</option>
 
                                     </select>
 
