@@ -437,9 +437,9 @@ MODAL EDITAR MODELO
 
                 <span class="input-group-addon"><i class="fa fa-text-height"></i></span>
 
-                <select class="form-control input-lg" name="editarTipo" required readonly>
+                <select class="form-control input-lg" id="editarTipo" name="editarTipo" required readonly>
 
-                  <option id="editarTipo"></option>
+                  <option value=""></option>
 
                 </select>
 

@@ -86,6 +86,28 @@ class ControladorFacturacion
     }
 
     /*
+     * Retención IGV para impresión de factura (mismos criterios que CSV).
+     * @return array{aplica:bool,base:string,factor:string,monto:string}
+     */
+    static public function ctrRetencionIgvImpresion($venta)
+    {
+        $esFactura = isset($venta["tipo"]) && (string) $venta["tipo"] === "S03";
+        list($base, $factor, $monto) = self::retencionIgvCsv(array(
+            "c1" => $esFactura ? "01" : "",
+            "exportacion" => isset($venta["exportacion"]) ? $venta["exportacion"] : "0",
+            "agente_retencion" => isset($venta["agente_retencion"]) ? $venta["agente_retencion"] : 0,
+            "bj1" => isset($venta["total"]) ? $venta["total"] : 0,
+        ));
+
+        return array(
+            "aplica" => ($base !== "" && $monto !== ""),
+            "base" => $base,
+            "factor" => $factor,
+            "monto" => $monto,
+        );
+    }
+
+    /*
      * Sufijo FILA 1 desde BJ: BK–BO vacíos, BP–BR retención, resto vacío (Legacy).
      */
     static private function fila1SufijoDesdeBj($datos)

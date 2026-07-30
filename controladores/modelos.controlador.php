@@ -245,7 +245,7 @@ class ControladorModelos
 
 		if (isset($_POST["editarDescripcion"])) {
 
-			if (preg_match('/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ ]+$/', $_POST["editarDescripcion"])) {
+			if (preg_match('/^[-\\(\\)\\=\\%\\&\\$\\;\\_\\*\\/\\#\\?\\¿\\!\\¡\\:\\,\\.\\0-9a-zA-ZñÑáéíóúüÁÉÍÓÚÜ ]{1,}$/', $_POST["editarDescripcion"])) {
 
 				/*=============================================
 				VALIDAR IMAGEN

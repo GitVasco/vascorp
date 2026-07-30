@@ -1,10 +1,72 @@
 <?php
 require_once "conexion.php";
 
+if (!function_exists("feModeloCodUnidadActiva")) {
+  $rutaConfigFe = dirname(__FILE__) . "/../controladores/config.php";
+  if (is_file($rutaConfigFe)) {
+    require_once $rutaConfigFe;
+  }
+}
+
 date_default_timezone_set('America/Lima'); // Reemplaza 'America/Lima' con tu zona horaria
 
 class ModeloFacturacion
 {
+
+  /*
+   * Kill switch FE_MODELO_COD_UNIDAD: unidad desde modelojf.cod_unidad.
+   */
+  static private function feUsaCodUnidadModelo()
+  {
+    if (function_exists("feModeloCodUnidadActiva")) {
+      return feModeloCodUnidadActiva();
+    }
+
+    // Sin config cargado: mismo criterio que feModeloCodUnidadActiva()
+    return !defined("FE_MODELO_COD_UNIDAD") || FE_MODELO_COD_UNIDAD;
+  }
+
+  /*
+   * JOIN a modelojf (y opcionalmente unidades_medidajf) cuando el flag está activo.
+   */
+  static private function sqlJoinModeloUnidad($aliasArt = "a", $aliasMod = "mo", $conCatalogo = false, $aliasUm = "um")
+  {
+    if (!self::feUsaCodUnidadModelo()) {
+      return "";
+    }
+
+    $sql = " LEFT JOIN modelojf {$aliasMod} ON {$aliasArt}.modelo = {$aliasMod}.modelo ";
+    if ($conCatalogo) {
+      $sql .= " LEFT JOIN unidades_medidajf {$aliasUm} ON {$aliasUm}.codigo = COALESCE(NULLIF(TRIM({$aliasMod}.cod_unidad), ''), 'C62') ";
+    }
+
+    return $sql;
+  }
+
+  /*
+   * Expresión SQL del código SUNAT de unidad.
+   * Con flag ON: modelojf.cod_unidad (vacío → C62). Con flag OFF: $legacySql intacto.
+   */
+  static private function sqlExprUnidadCodigo($legacySql, $aliasMod = "mo")
+  {
+    if (self::feUsaCodUnidadModelo()) {
+      return "COALESCE(NULLIF(TRIM({$aliasMod}.cod_unidad), ''), 'C62')";
+    }
+
+    return "(" . $legacySql . ")";
+  }
+
+  /*
+   * Expresión SQL de la descripción de unidad (guías eFact col c12).
+   */
+  static private function sqlExprUnidadDescripcion($legacySql, $aliasUm = "um")
+  {
+    if (self::feUsaCodUnidadModelo()) {
+      return "COALESCE(NULLIF(TRIM({$aliasUm}.descripcion), ''), 'PIEZAS')";
+    }
+
+    return "(" . $legacySql . ")";
+  }
 
   /*
 	* REGISTAR MOVIMIENTOS 
@@ -1246,6 +1308,8 @@ class ModeloFacturacion
                 v.tipo_documento,
                 v.tipo_moneda,
                 v.exportacion,
+                IFNULL(v.orden_compra, '') AS orden_compra,
+                IFNULL(c.agente_retencion, 0) AS agente_retencion,
                 v.lista_precios,
                 v.condicion_venta,
                 cv.descripcion,
@@ -1355,16 +1419,19 @@ class ModeloFacturacion
   static public function mdlMostrarModeloImpresion($valor, $tipoDoc)
   {
 
-    $sql = "SELECT 
-            a.modelo,
-            ROUND(SUM(cantidad), 2) AS cantidad,
-            CASE
+    $unidad = self::sqlExprUnidadCodigo("CASE
                 WHEN a.marca = 'TELAS'
                 THEN 'KGM' 
                 when a.marca = 'ELASTICOS'
                 then 'MTS'
                 ELSE 'C62' 
-            END AS unidad,
+            END");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
+    $sql = "SELECT 
+            a.modelo,
+            ROUND(SUM(cantidad), 2) AS cantidad,
+            {$unidad} AS unidad,
             a.nombre,
             ROUND(m.precio, 2) AS precio,
             ROUND(m.dscto1, 2) AS dscto1,
@@ -1373,6 +1440,7 @@ class ModeloFacturacion
             movimientosjf_2026 m 
             LEFT JOIN articulojf a 
                 ON m.articulo = a.articulo 
+            {$joinModelo}
             WHERE m.tipo = :tipo_doc 
             AND m.documento = :codigo 
             GROUP BY a.modelo ";
@@ -1396,16 +1464,19 @@ class ModeloFacturacion
   static public function mdlMostrarModeloImpresionV2($tabla, $valor, $tipoDoc, $ini, $fin)
   {
 
-    $sql = "SELECT 
-            a.modelo,
-            ROUND(SUM(cantidad), 2) AS cantidad,
-            CASE
+    $unidad = self::sqlExprUnidadCodigo("CASE
                 WHEN a.marca = 'ELASTICOS'
                 THEN 'MTR' 
                 WHEN a.marca = 'TELAS'
                 THEN 'KGM'
                 ELSE 'C62' 
-            END AS unidad,
+            END");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
+    $sql = "SELECT 
+            a.modelo,
+            ROUND(SUM(cantidad), 2) AS cantidad,
+            {$unidad} AS unidad,
             a.nombre,
             ROUND(m.precio, 2) AS precio,
             ROUND(m.dscto1, 2) AS dscto1,
@@ -1414,6 +1485,7 @@ class ModeloFacturacion
             $tabla m 
             LEFT JOIN articulojf a 
                 ON m.articulo = a.articulo 
+            {$joinModelo}
             WHERE m.tipo = :tipo_doc 
             AND m.documento = :codigo 
             GROUP BY a.modelo 
@@ -1436,10 +1508,13 @@ class ModeloFacturacion
   static public function mdlMostrarModeloImpresionV3($tabla, $valor, $tipoDoc, $ini, $fin)
   {
 
+    $unidad = self::sqlExprUnidadCodigo("'KGM'");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
     $sql = "SELECT 
             LEFT(a.articulo,8) as modelo,
             ROUND(cantidad,2) AS cantidad,
-            'KGM' AS unidad,
+            {$unidad} AS unidad,
             CONCAT(a.nombre,' - ',a.color) AS nombre,
             ROUND(m.precio, 2) AS precio,
             ROUND(m.dscto1, 2) AS dscto1,
@@ -1448,6 +1523,7 @@ class ModeloFacturacion
             $tabla m 
             LEFT JOIN articulojf a 
                 ON m.articulo = a.articulo 
+            {$joinModelo}
             WHERE m.tipo = :tipo_doc 
             AND m.documento = :codigo 
             LIMIT $ini, $fin";
@@ -1471,10 +1547,13 @@ class ModeloFacturacion
   static public function mdlMostrarModeloProforma($tabla, $valor, $tipoDoc)
   {
 
+    $unidad = self::sqlExprUnidadCodigo("'C62'");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
     $sql = "SELECT 
       a.modelo,
       ROUND(SUM(cantidad), 0) AS cantidad,
-      'C62' AS unidad,
+      {$unidad} AS unidad,
       a.nombre,
       ROUND(m.precio * 1.18, 2) AS precio,
       ROUND(m.dscto1, 2) AS dscto1,
@@ -1483,6 +1562,7 @@ class ModeloFacturacion
       $tabla m 
       LEFT JOIN articulojf a 
         ON m.articulo = a.articulo
+      {$joinModelo}
     WHERE m.tipo = :tipo_doc 
       AND m.documento = :codigo 
     GROUP BY a.modelo ";
@@ -7823,8 +7903,11 @@ class ModeloFacturacion
   static public function mdlFEFacturaDet($tipo, $documento)
   {
 
+    $unidad = self::sqlExprUnidadCodigo("'C62'");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
     $sql = "SELECT 
-      'C62' AS b9,
+      {$unidad} AS b9,
       ROUND(SUM(m.cantidad), 2) AS c9,
       REPLACE(a.nombre, 'Ñ', 'N') AS d9,
       ROUND(m.precio * 1.18, 2) AS e9,
@@ -7849,6 +7932,7 @@ class ModeloFacturacion
       movimientosjf_2026 m 
       LEFT JOIN articulojf a 
         ON m.articulo = a.articulo 
+      {$joinModelo}
     WHERE m.tipo = :tipo 
       AND m.documento = :documento
     GROUP BY m.tipo,
@@ -8549,14 +8633,17 @@ class ModeloFacturacion
   static public function mdlFEFacturaDetA($tipo, $documento)
   {
 
-    $sql = "SELECT 
-                  CASE
+    $unidad = self::sqlExprUnidadCodigo("CASE
                   WHEN a.marca = 'ELASTICOS'
                     THEN 'MTR' 
                     WHEN a.marca = 'TELAS'
                     THEN 'KGS'
                     ELSE 'C62' 
-                  END AS b9,
+                  END");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
+    $sql = "SELECT 
+                  {$unidad} AS b9,
                 ROUND(SUM(m.cantidad), 3) AS c9,
                 REPLACE(a.nombre, 'Ñ', 'N') AS d9,
                 ROUND(m.precio * 1.18, 2) AS e9,
@@ -8586,6 +8673,7 @@ class ModeloFacturacion
         movimientosjf_2026 m 
         LEFT JOIN articulojf a 
           ON m.articulo = a.articulo 
+        {$joinModelo}
       WHERE m.tipo = :tipo 
         AND m.documento = :documento
       GROUP BY m.tipo,
@@ -8608,13 +8696,16 @@ class ModeloFacturacion
   static public function mdlFEFacturaDetAExportacion($documento)
   {
 
-    $sql = "SELECT
-                    a.linea,
-                    case
+    $unidad = self::sqlExprUnidadCodigo("case
                         when a.marca = 'ELASTICOS'
                 then 'MTR'
                         else 'C62'
-                    end as b9,
+                    end");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
+    $sql = "SELECT
+                    a.linea,
+                    {$unidad} as b9,
                     ROUND(SUM(m.cantidad), 3) as c9,
                     replace(a.nombre, 'Ñ', 'N') as d9,
                     ROUND(m.precio, 2) as e9,
@@ -8652,6 +8743,7 @@ class ModeloFacturacion
             left join articulojf a
             on
                 m.articulo = a.articulo
+            {$joinModelo}
             where
                 m.tipo = 'S03'
                 and m.documento = :documento
@@ -8675,19 +8767,23 @@ class ModeloFacturacion
   static public function mdlFEGuiaDetA($tipo, $documento)
   {
 
-    $sql = "SELECT 
-                    CASE
+    $unidad = self::sqlExprUnidadCodigo("CASE
                     WHEN a.marca = 'ELASTICOS' 
                     THEN 'MTR' 
                     when a.marca = 'TELAS'
                     THEN 'KGS'
                     ELSE 'C62' 
-                    END AS b12,
-                    CASE
+                    END");
+    $descUnidad = self::sqlExprUnidadDescripcion("CASE
                     WHEN a.marca = 'ELASTICOS' 
                     THEN 'METRO' 
                     ELSE 'PIEZAS' 
-                    END AS c12,
+                    END");
+    $joinModelo = self::sqlJoinModeloUnidad("a", "mo", true);
+
+    $sql = "SELECT 
+                    {$unidad} AS b12,
+                    {$descUnidad} AS c12,
                     ROUND(SUM(m.cantidad), 3) AS d12,
                     REPLACE(a.nombre, 'Ñ', 'N') AS e12,
                     a.modelo AS f12 
@@ -8695,6 +8791,7 @@ class ModeloFacturacion
                     movimientosjf_2026 m 
                     LEFT JOIN articulojf a 
                     ON m.articulo = a.articulo 
+                    {$joinModelo}
                 WHERE m.tipo = :tipo
                     AND m.documento = :documento 
                 GROUP BY m.tipo,
@@ -8852,14 +8949,17 @@ class ModeloFacturacion
   static public function mdlFENCDetA($tipo, $documento)
   {
 
-    $sql = "SELECT 
-                  CASE
+    $unidad = self::sqlExprUnidadCodigo("CASE
                   WHEN a.marca = 'ELASTICOS'
                     THEN 'MTR' 
                     WHEN a.marca = 'TELAS'
                     THEN 'KGS'
                     ELSE 'C62' 
-                  END AS b9,
+                  END");
+    $joinModelo = self::sqlJoinModeloUnidad();
+
+    $sql = "SELECT 
+                  {$unidad} AS b9,
                 ROUND(SUM(m.cantidad)*-1, 3) AS c9,
                 REPLACE(a.nombre, 'Ñ', 'N') AS d9,
                 ROUND(m.precio * 1.18, 2) AS e9,
@@ -8893,6 +8993,7 @@ class ModeloFacturacion
                     movimientosjf_2026 m 
                     LEFT JOIN articulojf a 
                         ON m.articulo = a.articulo 
+                    {$joinModelo}
                     WHERE m.tipo = :tipo 
                     AND m.documento = :documento
                     GROUP BY m.tipo,

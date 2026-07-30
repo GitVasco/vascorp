@@ -114,8 +114,13 @@ $(".tablaModelos tbody").on("click", "button.btnEditarModelo", function () {
 
             $("#editarDescripcion").val(respuesta["nombre"]);
 
-            $("#editarTipo").val(respuesta["tipo"]);
-            $("#editarTipo").html(respuesta["tipo"]);
+            $("#editarTipo").html(
+                '<option value="' +
+                    String(respuesta["tipo"] || "").replace(/"/g, "&quot;") +
+                    '" selected>' +
+                    String(respuesta["tipo"] || "") +
+                    "</option>"
+            );
 
             var codUnidad =
                 respuesta["cod_unidad"] && String(respuesta["cod_unidad"]).trim() !== ""

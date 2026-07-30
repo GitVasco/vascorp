@@ -69,20 +69,21 @@ Estado al documentar: cambios **sin commit** en el working tree (salvo la column
 
 ## Kill switches (sin revertir código)
 
-En `controladores/config.php` (archivo local / no versionado):
+En `controladores/config.php`:
 
 ```php
-define("FE_CSV_GUIAS_RELACIONADAS", true); // false = solo serie 0003 en FILA 3
+// Guías FILA 3: YA ESTABLE (sin define). Emergencia: define("FE_CSV_GUIAS_RELACIONADAS", false);
 define("FE_CSV_ORDEN_COMPRA", true);       // false = oculta campo y FILA 7-B vacía
 define("FE_CSV_RETENCION", false);         // true = BP–BR con retención si cliente agente
 define("FE_CSV_RETENCION_FACTOR", "0.03"); // factor SUNAT (solo aplica si retención ON)
+define("FE_MODELO_COD_UNIDAD", true);      // false = CASE legado por marca (impresión + CSV/XML)
 ```
 
 Si eFact rechaza en producción/fin de mes:
 
-1. Poner `false` en el flag que falle (guías, OC y/o retención).
+1. Poner `false` en el flag que falle (OC, retención y/o unidad de medida).
 2. Recargar PHP (reiniciar Apache / php-fpm / OPcache).
-3. Generar un CSV de prueba y confirmar FILA 1 / FILA 3 / FILA 7-B.
+3. Generar un CSV de prueba y confirmar FILA 1 / FILA 3 / FILA 7-B / unidad en detalle.
 
 No hace falta `git checkout` para apagar estas funciones.
 
@@ -90,16 +91,17 @@ No hace falta `git checkout` para apagar estas funciones.
 
 Cuando la validación pase, pedir a Sistemas/agente:
 
-1. **Quitar** de `config.php` el `define` del feature ya estable (ej. `FE_CSV_RETENCION`).
-2. El código trata “sin define” como **siempre activo** (`feCsv*Activa()` → true).
+1. **Quitar** de `config.php` el `define` del feature ya estable (ej. `FE_CSV_RETENCION`, `FE_MODELO_COD_UNIDAD`).
+2. El código trata “sin define” como **siempre activo** (`feCsv*Activa()` / `feModeloCodUnidadActiva()` → true).
 3. En `config.php` **solo quedan** kill switches de pruebas nuevas aún no validadas.
 4. Opcional: dejar `FE_CSV_RETENCION_FACTOR` si se quiere ajustar la tasa sin tocar código.
 
 | Define | OFF hace |
 |--------|----------|
-| `FE_CSV_GUIAS_RELACIONADAS` | Solo guía serie `0003` |
+| `FE_CSV_GUIAS_RELACIONADAS` *(solo si lo defines)* | Solo guía serie `0003` |
 | `FE_CSV_ORDEN_COMPRA` | Sin OC en UI/CSV |
 | `FE_CSV_RETENCION` | BP–BR vacíos |
+| `FE_MODELO_COD_UNIDAD` | Unidad por CASE marca (ELASTICOS→MTR, TELAS→KGM/KGS, else C62) |
 
 ---
 
@@ -186,7 +188,7 @@ Script de alta (por si hay que reaplicar): `docs/sql/ventajf-orden-compra.sql`
 
 ## Checklist rápido antes de producción
 
-- [ ] Confirmar en `controladores/config.php`: `FE_CSV_GUIAS_RELACIONADAS`, `FE_CSV_ORDEN_COMPRA`, `FE_CSV_RETENCION`
+- [ ] Confirmar en `controladores/config.php`: `FE_CSV_ORDEN_COMPRA`, `FE_CSV_RETENCION`, `FE_MODELO_COD_UNIDAD` (guías ya permanentes)
 - [ ] Generar factura **contado** con guía relacionada → FILA 3 con `SERIE-########,09` (si guías ON)
 - [ ] Generar factura **crédito** con guía → FILA 3 con guía + `CUOTA001` + monto + fecha + `ATTACH_DOC`
 - [ ] Generar boleta con/sin guía

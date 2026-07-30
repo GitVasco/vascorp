@@ -88,6 +88,28 @@
         $cantidaUnidades += $value2["cantidad"];
     }
 
+    $ordenCompraImp = "";
+    if (
+        (!function_exists("feCsvOrdenCompraActiva") || feCsvOrdenCompraActiva())
+        && !empty($venta["orden_compra"])
+    ) {
+        $ordenCompraImp = htmlspecialchars(trim($venta["orden_compra"]));
+    }
+
+    $retencionImp = ControladorFacturacion::ctrRetencionIgvImpresion($venta);
+    $htmlRetencionObs = "";
+    $htmlRetencionTotales = "";
+    if (!empty($retencionImp["aplica"])) {
+        $pctRet = rtrim(rtrim(number_format((float) $retencionImp["factor"] * 100, 2, ".", ""), "0"), ".");
+        $htmlRetencionObs = '<p style="margin:2px 0;"><b>Retención IGV '
+            . $pctRet . '%</b> — Base: ' . $moneda . ' ' . $retencionImp["base"]
+            . ' | Monto: ' . $moneda . ' ' . $retencionImp["monto"] . '</p>';
+        $htmlRetencionTotales = '<tr>
+                        <td style="width:170px;">Retención IGV ' . $pctRet . '% ' . $moneda . '</td>
+                        <td style="width:50px; text-align:right;">' . $retencionImp["monto"] . '</td>
+                    </tr>';
+    }
+
     // Igual que el original: ~20 ítems por hoja de detalle.
     // En la última hoja (con pie + aviso) se reserva espacio.
     $ITEMS_POR_PAGINA = 20;
@@ -219,7 +241,7 @@
             <tr>
                 <td style="text-align:center;">' . $venta["fecha"] . '</td>
                 <td style="text-align:center;">' . $venta["descripcion"] . '</td>
-                <td style="text-align:center;"></td>
+                <td style="text-align:center;">' . $ordenCompraImp . '</td>
                 <td style="text-align:center;">' . $venta["fecha_vencimiento"] . '</td>
                 <td style="text-align:center;">' . $venta["doc_guia"] . '</td>
             </tr>
@@ -245,6 +267,7 @@
             <td style="width:500px; border-radius: 10px; border: 1px solid #000000; padding: 1px; vertical-align:top;">
                 <p style="margin:2px 0;">Observaciones</p>
                 <p style="margin:2px 0;">Nro. Unidades: ' . $cantidaUnidades . '</p>
+                ' . $htmlRetencionObs . '
             </td>
             <td style="width:220px; border-radius: 10px; border: 1px solid #000000; padding: 1px;">
                 <table>
@@ -280,6 +303,7 @@
                         <td style="width:170px;">IGV ' . $moneda . '</td>
                         <td style="width:50px; text-align:right;">' . number_format($venta["igv"], 2) . '</td>
                     </tr>
+                    ' . $htmlRetencionTotales . '
                     <tr>
                         <td style="width:170px;">TOTAL ' . $moneda . '</td>
                         <td style="width:50px; text-align:right;">' . number_format($venta["total"], 2) . '</td>
