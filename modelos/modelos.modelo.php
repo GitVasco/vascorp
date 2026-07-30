@@ -13,7 +13,7 @@ class ModeloModelos
 
 		if ($item != null) {
 
-			$stmt = Conexion::conectar()->prepare("SELECT t.id_modelo,t.modelo,t.nombre,t.estado,t.tipo,t.linea,t.operaciones,t.imagen,t.id_marca,m.marca FROM $tabla t LEFT JOIN marcasjf m on t.id_marca=m.id WHERE $item = :$item");
+			$stmt = Conexion::conectar()->prepare("SELECT t.id_modelo,t.modelo,t.nombre,t.estado,t.tipo,COALESCE(NULLIF(TRIM(t.cod_unidad), ''), 'C62') AS cod_unidad,t.linea,t.operaciones,t.imagen,t.id_marca,t.descuentos,t.precios,t.efectos_desc,t.efectos_igv,m.marca FROM $tabla t LEFT JOIN marcasjf m on t.id_marca=m.id WHERE $item = :$item");
 
 			$stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
 
@@ -22,7 +22,7 @@ class ModeloModelos
 			return $stmt->fetch();
 		} else {
 
-			$stmt = Conexion::conectar()->prepare("SELECT t.id_modelo,t.modelo,t.nombre,t.estado,t.tipo,t.linea,t.operaciones,t.imagen,t.articulos,m.marca FROM $tabla t LEFT JOIN marcasjf m on t.id_marca=m.id ORDER BY id_modelo ASC");
+			$stmt = Conexion::conectar()->prepare("SELECT t.id_modelo,t.modelo,t.nombre,t.estado,t.tipo,COALESCE(NULLIF(TRIM(t.cod_unidad), ''), 'C62') AS cod_unidad,t.linea,t.operaciones,t.imagen,t.articulos,m.marca FROM $tabla t LEFT JOIN marcasjf m on t.id_marca=m.id ORDER BY id_modelo ASC");
 
 			$stmt->execute();
 
@@ -63,12 +63,13 @@ class ModeloModelos
 	static public function mdlIngresarModelo($tabla, $datos)
 	{
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla(modelo,nombre,estado,tipo,imagen,id_marca) VALUES (:modelo,:nombre,:estado,:tipo, :imagen,:id_marca)");
+		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla(modelo,nombre,estado,tipo,cod_unidad,imagen,id_marca) VALUES (:modelo,:nombre,:estado,:tipo,:cod_unidad,:imagen,:id_marca)");
 
 		$stmt->bindParam(":id_marca", $datos["id_marca"], PDO::PARAM_STR);
 		$stmt->bindParam(":modelo", $datos["modelo"], PDO::PARAM_STR);
 		$stmt->bindParam(":nombre", $datos["descripcion"], PDO::PARAM_STR);
 		$stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+		$stmt->bindParam(":cod_unidad", $datos["cod_unidad"], PDO::PARAM_STR);
 		$stmt->bindParam(":imagen", $datos["imagen"], PDO::PARAM_STR);
 		$stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
 
@@ -90,10 +91,11 @@ class ModeloModelos
 	static public function mdlEditarModelo($tabla, $datos)
 	{
 
-		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET modelo = :modelo, nombre = :nombre, tipo = :tipo, imagen=:imagen, id_marca = :id_marca  WHERE modelo = :modelo");
+		$stmt = Conexion::conectar()->prepare("UPDATE $tabla SET modelo = :modelo, nombre = :nombre, tipo = :tipo, cod_unidad = :cod_unidad, imagen=:imagen, id_marca = :id_marca  WHERE modelo = :modelo");
 		$stmt->bindParam(":modelo", $datos["modelo"], PDO::PARAM_STR);
 		$stmt->bindParam(":nombre", $datos["descripcion"], PDO::PARAM_STR);
 		$stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
+		$stmt->bindParam(":cod_unidad", $datos["cod_unidad"], PDO::PARAM_STR);
 		$stmt->bindParam(":imagen", $datos["imagen"], PDO::PARAM_STR);
 		$stmt->bindParam(":id_marca", $datos["id_marca"], PDO::PARAM_INT);
 
@@ -365,6 +367,54 @@ class ModeloModelos
 		$stmt->close();
 
 		$stmt = null;
+	}
+
+	/*
+	* COLORES Y TALLAS YA CREADOS EN UN MODELO
+	*/
+	static public function mdlMostrarVariantesModelo($modelo)
+	{
+
+		$pdo = Conexion::conectar();
+
+		$stmtColores = $pdo->prepare("SELECT DISTINCT
+			a.cod_color,
+			a.color
+		FROM articulojf a
+		WHERE a.modelo = :modelo
+		ORDER BY a.cod_color ASC");
+		$stmtColores->bindParam(":modelo", $modelo, PDO::PARAM_STR);
+		$stmtColores->execute();
+		$colores = $stmtColores->fetchAll();
+
+		$stmtTallas = $pdo->prepare("SELECT DISTINCT
+			a.cod_talla,
+			a.talla
+		FROM articulojf a
+		WHERE a.modelo = :modelo
+		ORDER BY a.cod_talla ASC");
+		$stmtTallas->bindParam(":modelo", $modelo, PDO::PARAM_STR);
+		$stmtTallas->execute();
+		$tallas = $stmtTallas->fetchAll();
+
+		$stmtPares = $pdo->prepare("SELECT
+			a.cod_color,
+			a.color,
+			a.cod_talla,
+			a.talla,
+			a.articulo
+		FROM articulojf a
+		WHERE a.modelo = :modelo
+		ORDER BY a.cod_color ASC, a.cod_talla ASC");
+		$stmtPares->bindParam(":modelo", $modelo, PDO::PARAM_STR);
+		$stmtPares->execute();
+		$pares = $stmtPares->fetchAll();
+
+		return array(
+			"colores" => $colores,
+			"tallas" => $tallas,
+			"pares" => $pares
+		);
 	}
 
 	//* Actualizar Detalle

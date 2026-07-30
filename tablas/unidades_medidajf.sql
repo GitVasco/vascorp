@@ -2,7 +2,7 @@
 SQLyog Ultimate v11.11 (64 bit)
 MySQL - 5.5.5-10.1.38-MariaDB : Database - new_vasco
 *********************************************************************
-*/
+*/
 
 /*!40101 SET NAMES utf8 */;
 
@@ -29,7 +29,7 @@ CREATE TABLE `unidades_medidajf` (
 
 /*Data for the table `unidades_medidajf` */
 
-insert  into `unidades_medidajf`(`id`,`codigo`,`descripcion`) values (1,'BG','BOLSA'),(2,'BX','CAJA'),(3,'C62','UNIDAD'),(4,'DZN','DOCENA'),(5,'EST','ESTUCHE'),(6,'KGM','Kilogramos'),(7,'MTR','METROS'),(8,'PAK','PACK'),(9,'PR','PAR');
+insert  into `unidades_medidajf`(`id`,`codigo`,`descripcion`) values (1,'BG','BOLSA'),(2,'BX','CAJA'),(3,'C62','PIEZAS'),(4,'DZN','DOCENA'),(5,'EST','ESTUCHE'),(6,'KGM','Kilogramos'),(7,'MTR','METROS'),(8,'PAK','PACK'),(9,'PR','PAR');
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

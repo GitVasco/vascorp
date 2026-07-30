@@ -201,86 +201,109 @@ class controladorArticulos
 					"efectos_igv" => $efectosIGV,
 					"articulos" => 1
 				);
-				$modelo = ModeloModelos::mdlModeloPrecios($tablaModelo, $datosModelo);
+				ModeloModelos::mdlModeloPrecios($tablaModelo, $datosModelo);
 
-				$colores = json_decode($_POST["listaColores"], true);
-				$arregloCHK = $_POST["chk"];
-				$num = count($arregloCHK);
-				for ($n = 0; $n < $num; $n++) {
-					$tabla2 = "tallajf";
-					$item = "cod_talla";
-					$valor = $arregloCHK[$n];
-					$valor2 = $_POST["nuevoGrupoTalla"];
-					$talla = ModeloModelos::mdlMostrarTallaGrupo($tabla2, $item, $valor, $valor2);
-					foreach ($colores as $key => $value) {
-						$tabla = "articulojf";
-						$codigo = $_POST["nuevoModelo"] . $value["codigo"] . $talla["cod_talla"];
-						$datos = array(
-							"id_marca" => $_POST["nuevaMarca"],
-							"marca" => $_POST["nuevaDescripcionMarca"],
-							"modelo" => $_POST["nuevoModelo"],
-							"descripcion" => $_POST["nuevaDescripcion"],
-							"cod_color" => $value["codigo"],
-							"cod_talla" => $talla["cod_talla"],
-							"articulo" => $codigo,
-							"color" => $value["descripcion"],
-							"talla" => $talla["talla"]
-						);
-						$existeArticulo = ModeloArticulos::mdlMostrarArticulos($codigo);
-
-						if (empty($existeArticulo)) {
-							$respuesta = ModeloArticulos::mdlIngresarArticulo($tabla, $datos);
-							if ($respuesta == "ok") {
-
-								echo '<script>
-			
-									swal({
-										  type: "success",
-										  title: "El articulo ha sido guardado correctamente",
-										  showConfirmButton: true,
-										  confirmButtonText: "Cerrar"
-										  }).then(function(result){
-													if (result.value) {
-			
-													window.location = "modelosjf";
-			
-													}
-												})
-			
-									</script>';
+				$variantes = json_decode(isset($_POST["listaVariantes"]) ? $_POST["listaVariantes"] : "[]", true);
+				if (!is_array($variantes) || count($variantes) === 0) {
+					// Compatibilidad: colores × tallas del formulario clásico
+					$colores = json_decode(isset($_POST["listaColores"]) ? $_POST["listaColores"] : "[]", true);
+					$arregloCHK = isset($_POST["chk"]) ? $_POST["chk"] : array();
+					$variantes = array();
+					if (is_array($colores) && is_array($arregloCHK)) {
+						foreach ($arregloCHK as $codTalla) {
+							$talla = ModeloModelos::mdlMostrarTallaGrupo("tallajf", "cod_talla", $codTalla, $_POST["nuevoGrupoTalla"]);
+							if (empty($talla)) {
+								continue;
 							}
-						} else {
-							echo '<script>
-								swal({
-									type: "error",
-									title: "¡El articulo ya esta creado!",
-									showConfirmButton: true,
-									confirmButtonText: "Cerrar"
-									}).then(function(result){
-										if (result.value) {
-
-										window.location = "modelosjf";
-
-										}
-									})
-
-							</script>';
+							foreach ($colores as $value) {
+								$variantes[] = array(
+									"codigo" => $value["codigo"],
+									"descripcion" => $value["descripcion"],
+									"cod_talla" => $talla["cod_talla"],
+									"talla" => $talla["talla"]
+								);
+							}
 						}
 					}
 				}
+
+				$creados = 0;
+				$omitidos = 0;
+				$errores = 0;
+
+				foreach ($variantes as $value) {
+					if (empty($value["codigo"]) || empty($value["cod_talla"])) {
+						continue;
+					}
+					$codigo = $_POST["nuevoModelo"] . $value["codigo"] . $value["cod_talla"];
+					$datos = array(
+						"id_marca" => $_POST["nuevaMarca"],
+						"marca" => $_POST["nuevaDescripcionMarca"],
+						"modelo" => $_POST["nuevoModelo"],
+						"descripcion" => $_POST["nuevaDescripcion"],
+						"cod_color" => $value["codigo"],
+						"cod_talla" => $value["cod_talla"],
+						"articulo" => $codigo,
+						"color" => $value["descripcion"],
+						"talla" => $value["talla"]
+					);
+					$existeArticulo = ModeloArticulos::mdlMostrarArticulos($codigo);
+
+					if (!empty($existeArticulo)) {
+						$omitidos++;
+						continue;
+					}
+
+					$respuesta = ModeloArticulos::mdlIngresarArticulo("articulojf", $datos);
+					if ($respuesta == "ok") {
+						$creados++;
+					} else {
+						$errores++;
+					}
+				}
+
+				if ($creados > 0 && $errores === 0) {
+					$titulo = "Se crearon " . $creados . " artículo(s).";
+					if ($omitidos > 0) {
+						$titulo .= " " . $omitidos . " ya existían y se omitieron.";
+					}
+					$tipo = "success";
+				} elseif ($creados === 0 && $omitidos > 0 && $errores === 0) {
+					$titulo = "No había nada nuevo: " . $omitidos . " combinación(es) ya existían.";
+					$tipo = "info";
+				} elseif ($creados === 0 && $omitidos === 0) {
+					$titulo = "Selecciona al menos un color o talla nueva para crear.";
+					$tipo = "warning";
+				} else {
+					$titulo = "Se crearon " . $creados . ". Omitidos: " . $omitidos . ". Errores: " . $errores . ".";
+					$tipo = $creados > 0 ? "warning" : "error";
+				}
+
+				echo '<script>
+					swal({
+						icon: "' . $tipo . '",
+						title: "' . addslashes($titulo) . '",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then(function(result){
+						if (result.value) {
+							window.location = "modelosjf";
+						}
+					});
+				</script>';
 			} else {
 
 				echo '<script>
 
 					swal({
-						  type: "error",
-						  title: "¡El articulo ya esta creado!",
+						  icon: "error",
+						  title: "¡Datos del modelo inválidos!",
 						  showConfirmButton: true,
 						  confirmButtonText: "Cerrar"
 						  }).then(function(result){
 							if (result.value) {
 
-							window.location = "articulos";
+							window.location = "modelosjf";
 
 							}
 						})

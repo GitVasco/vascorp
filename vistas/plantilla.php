@@ -190,6 +190,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
     <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-articulo") : ?>
+    <link rel="stylesheet" href="vistas/css/crear-articulo.css?v=1">
+    <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
     <link rel="stylesheet" href="vistas/plugins/iCheck/all.css">

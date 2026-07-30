@@ -40,6 +40,31 @@ class ControladorModelos
 		return $respuesta;
 	}
 
+	/*
+	* COLORES Y TALLAS YA CREADOS EN UN MODELO
+	*/
+	static public function ctrMostrarVariantesModelo($valor)
+	{
+
+		return ModeloModelos::mdlMostrarVariantesModelo($valor);
+	}
+
+	/*
+	* Código SUNAT de unidad; si falta, C62 (piezas).
+	*/
+	static public function ctrCodUnidadModelo($valorModeloOFila)
+	{
+		if (is_array($valorModeloOFila)) {
+			$cod = isset($valorModeloOFila["cod_unidad"]) ? $valorModeloOFila["cod_unidad"] : "";
+		} else {
+			$modelo = self::ctrMostrarModelos("modelo", $valorModeloOFila);
+			$cod = (!empty($modelo) && isset($modelo["cod_unidad"])) ? $modelo["cod_unidad"] : "";
+		}
+
+		$cod = trim((string) $cod);
+		return $cod !== "" ? $cod : "C62";
+	}
+
 	/* 
 	* CREAR ARTICULO
 	*/
@@ -136,12 +161,17 @@ class ControladorModelos
 
 				$precio = ModeloModelos::mdlIngresarPrecio($tabla2, $datosPrecio);
 				$tabla = "modelojf";
+				$codUnidad = isset($_POST["nuevaUnidadMedida"]) ? trim($_POST["nuevaUnidadMedida"]) : "";
+				if ($codUnidad === "") {
+					$codUnidad = "C62";
+				}
 
 				$datos = array(
 					"id_marca" => $_POST["nuevaMarca"],
 					"modelo" => $_POST["nuevoModelo"],
 					"descripcion" => $_POST["nuevaDescripcion"],
 					"tipo" => $_POST["nuevoTipo"],
+					"cod_unidad" => $codUnidad,
 					"imagen" => $ruta,
 					"estado" => "ACTIVO"
 				);
@@ -294,11 +324,16 @@ class ControladorModelos
 					}
 				}
 				$tabla = "modelojf";
+				$codUnidad = isset($_POST["editarUnidadMedida"]) ? trim($_POST["editarUnidadMedida"]) : "";
+				if ($codUnidad === "") {
+					$codUnidad = "C62";
+				}
 				$datos = array(
 					"descripcion" => $_POST["editarDescripcion"],
 					"modelo" => $_POST["editarModelo"],
 					"id_marca" => $_POST["editarMarca"],
 					"tipo" => $_POST["editarTipo"],
+					"cod_unidad" => $codUnidad,
 					"imagen" => $ruta
 				);
 

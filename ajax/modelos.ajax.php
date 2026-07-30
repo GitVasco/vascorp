@@ -101,6 +101,15 @@ class AjaxModelos
 
 		echo json_encode($respuesta);
 	}
+
+	public $modeloVariantes;
+	public function ajaxVerVariantesModelo()
+	{
+
+		$respuesta = ControladorModelos::ctrMostrarVariantesModelo($this->modeloVariantes);
+
+		echo json_encode($respuesta);
+	}
 }
 
 
@@ -147,4 +156,15 @@ if (isset($_POST["modelo3"])) {
 	$verColorModelo = new AjaxModelos();
 	$verColorModelo->modelo3 = $_POST["modelo3"];
 	$verColorModelo->ajaxVerColorModelo();
+}
+
+/*=============================================
+VARIANTES (COLORES / TALLAS) DEL MODELO
+=============================================*/
+
+if (isset($_POST["modeloVariantes"])) {
+
+	$verVariantes = new AjaxModelos();
+	$verVariantes->modeloVariantes = $_POST["modeloVariantes"];
+	$verVariantes->ajaxVerVariantesModelo();
 }

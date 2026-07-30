@@ -50,6 +50,7 @@
               <th>Nombre</th>
               <th>Estado</th>
               <th>Tipo</th>
+              <th>Und.</th>
               <th>linea</th>
               <th>Operaciones</th>
               <th>Acciones</th>
@@ -260,6 +261,33 @@ MODAL AGREGAR MODELO
 
             </div>
 
+            <!-- UNIDAD DE MEDIDA (FE) -->
+
+            <div class="form-group">
+
+              <div class="input-group">
+
+                <span class="input-group-addon"><i class="fa fa-balance-scale"></i></span>
+
+                <select class="form-control input-lg" id="nuevaUnidadMedida" name="nuevaUnidadMedida" required>
+
+                  <?php
+                  $unidades = ControladorUnidadMedidas::ctrMostrarUnidadMedidas(null, null);
+                  foreach ($unidades as $unidad) {
+                    $sel = ($unidad["codigo"] === "C62") ? " selected" : "";
+                    echo '<option value="' . htmlspecialchars($unidad["codigo"]) . '"' . $sel . '>'
+                      . htmlspecialchars($unidad["codigo"] . " — " . $unidad["descripcion"])
+                      . '</option>';
+                  }
+                  ?>
+
+                </select>
+
+              </div>
+              <p class="help-block" style="margin:6px 0 0">Facturación electrónica. Por defecto: C62 — PIEZAS.</p>
+
+            </div>
+
             <!-- ENTRADA PARA SUBIR FOTO -->
 
             <div class="form-group">
@@ -416,6 +444,32 @@ MODAL EDITAR MODELO
                 </select>
 
               </div>
+
+            </div>
+
+            <!-- UNIDAD DE MEDIDA (FE) -->
+
+            <div class="form-group">
+
+              <div class="input-group">
+
+                <span class="input-group-addon"><i class="fa fa-balance-scale"></i></span>
+
+                <select class="form-control input-lg" id="editarUnidadMedida" name="editarUnidadMedida" required>
+
+                  <?php
+                  $unidadesEdit = ControladorUnidadMedidas::ctrMostrarUnidadMedidas(null, null);
+                  foreach ($unidadesEdit as $unidad) {
+                    echo '<option value="' . htmlspecialchars($unidad["codigo"]) . '">'
+                      . htmlspecialchars($unidad["codigo"] . " — " . $unidad["descripcion"])
+                      . '</option>';
+                  }
+                  ?>
+
+                </select>
+
+              </div>
+              <p class="help-block" style="margin:6px 0 0">Facturación electrónica (SUNAT).</p>
 
             </div>
 

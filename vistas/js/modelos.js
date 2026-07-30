@@ -117,6 +117,12 @@ $(".tablaModelos tbody").on("click", "button.btnEditarModelo", function () {
             $("#editarTipo").val(respuesta["tipo"]);
             $("#editarTipo").html(respuesta["tipo"]);
 
+            var codUnidad =
+                respuesta["cod_unidad"] && String(respuesta["cod_unidad"]).trim() !== ""
+                    ? String(respuesta["cod_unidad"]).trim()
+                    : "C62";
+            $("#editarUnidadMedida").val(codUnidad);
+
             if (respuesta["imagen"] != "") {
                 $("#imagenActual").val(respuesta["imagen"]);
 
@@ -238,185 +244,299 @@ $(".tablaModelos").on("click", ".btnReporteOM", function () {
         "vistas/reportes_excel/rpt_operacionesmodelo.php?codigo=" + codigo;
 });
 
-// ELIMINAR OPERACIÓN
 $(".tablaModelos tbody").on("click", "button.btnGenerarArticulo", function () {
     var modelo = $(this).attr("modelo");
     window.location = "index.php?ruta=crear-articulo&modelo=" + modelo;
 });
 
-//AGREGAR COLOR X ARTICULO
-$(".tablaArticuloColores tbody").on(
-    "click",
-    "button.agregarColor",
-    function () {
-        var idColor = $(this).attr("idColor");
-
-        $(this).removeClass("btn-primary agregarColor");
-
-        $(this).addClass("btn-default");
-
-        var datos = new FormData();
-        datos.append("idColores", idColor);
-
-        $.ajax({
-            url: "ajax/colores.ajax.php",
-            method: "POST",
-            data: datos,
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: "json",
-            success: function (respuesta) {
-                var codigos = respuesta["cod_color"];
-                var nombres = respuesta["nom_color"];
-
-                $(".nuevoColor").append(
-                    '<div class="row" style="padding:5px 15px">' +
-                        "<!-- Descripción del color -->" +
-                        '<div class="col-xs-12" style="padding-right:0px">' +
-                        '<div class="input-group">' +
-                        '<span class="input-group-addon"><button type="button" class="btn btn-danger btn-xs quitarColor" idColor="' +
-                        idColor +
-                        '"><i class="fa fa-times"></i></button></span>' +
-                        '<input type="text" class="form-control nuevaDescripcionColor" idColor="' +
-                        idColor +
-                        '" name="agregarColor" value="' +
-                        codigos +
-                        " - " +
-                        nombres +
-                        '"  codigoCO= "' +
-                        codigos +
-                        '" descripcion= "' +
-                        nombres +
-                        '" readonly>' +
-                        "</div>" +
-                        "</div>" +
-                        "</div>"
-                );
-                listarColores();
-            },
-        });
-    }
-);
-
 /*=============================================
-CUANDO CARGUE LA TABLA CADA VEZ QUE NAVEGUE EN ELLA
+  AMPLIAR MODELO: colores / tallas
 =============================================*/
 
-$(".tablaArticuloColores").on("draw.dt", function () {
-    //console.log("tabla");
+function caEscaparAttr(valor) {
+    return String(valor == null ? "" : valor)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
 
-    if (localStorage.getItem("quitarColor") != null) {
-        var listaidColores = JSON.parse(localStorage.getItem("quitarColor"));
+function caEscaparHtml(valor) {
+    return String(valor == null ? "" : valor)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
 
-        for (var i = 0; i < listaidColores.length; i++) {
-            $(
-                "button.recuperarBoton[idColor='" +
-                    listaidColores[i]["idColor"] +
-                    "']"
-            ).removeClass("btn-default");
-            $(
-                "button.recuperarBoton[idColor='" +
-                    listaidColores[i]["idColor"] +
-                    "']"
-            ).addClass("btn-primary agregarColor");
+function caParseJson($el) {
+    try {
+        var raw = $el.val();
+        if (!raw) {
+            return [];
+        }
+        var data = JSON.parse(raw);
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function caCodigosExistentes(lista, campo) {
+    var map = {};
+    for (var i = 0; i < lista.length; i++) {
+        map[String(lista[i][campo])] = lista[i];
+    }
+    return map;
+}
+
+function caColoresNuevosSeleccionados() {
+    var lista = [];
+    $(".nuevaDescripcionColor").each(function () {
+        lista.push({
+            id: $(this).attr("idColor"),
+            codigo: $(this).attr("codigoCO"),
+            descripcion: $(this).attr("descripcion"),
+        });
+    });
+    return lista;
+}
+
+function caTallasSeleccionadas() {
+    var lista = [];
+    $("#caTallasGrupo .ca-talla-check:checked").each(function () {
+        lista.push({
+            cod_talla: $(this).val(),
+            talla: $(this).attr("tallas"),
+            existente: $(this).attr("data-existente") === "1",
+        });
+    });
+    return lista;
+}
+
+function caConstruirVariantes() {
+    var coloresExistentes = caParseJson($("#caColoresExistentes"));
+    var coloresNuevos = caColoresNuevosSeleccionados();
+    var tallas = caTallasSeleccionadas();
+    var tallasNuevas = tallas.filter(function (t) {
+        return !t.existente;
+    });
+    var variantes = [];
+    var seen = {};
+
+    function pushPar(color, talla) {
+        var key = String(color.codigo) + "|" + String(talla.cod_talla);
+        if (seen[key]) {
+            return;
+        }
+        seen[key] = true;
+        variantes.push({
+            codigo: color.codigo,
+            descripcion: color.descripcion || color.color,
+            cod_talla: talla.cod_talla,
+            talla: talla.talla,
+        });
+    }
+
+    // Color nuevo × todas las tallas marcadas (existentes + nuevas)
+    for (var i = 0; i < coloresNuevos.length; i++) {
+        for (var j = 0; j < tallas.length; j++) {
+            pushPar(coloresNuevos[i], tallas[j]);
         }
     }
-});
 
-/*=============================================
-  QUITAR OPERACIONES POR ARTICULO Y RECUPERAR BOTÓN
-  =============================================*/
-
-var idQuitarColor = [];
-
-localStorage.removeItem("quitarColor");
-
-$(".formularioArticulo").on("click", "button.quitarColor", function () {
-    $(this).parent().parent().parent().parent().remove();
-
-    var idColor = $(this).attr("idColor");
-
-    /*=============================================
-	ALMACENAR EN EL LOCALSTORAGE EL ID DE OPERACION A QUITAR
-	=============================================*/
-
-    if (localStorage.getItem("quitarColor") == null) {
-        idQuitarColor = [];
-    } else {
-        idQuitarColor.concat(localStorage.getItem("quitarColor"));
+    // Color existente × solo tallas nuevas
+    for (var k = 0; k < coloresExistentes.length; k++) {
+        var colorExistente = {
+            codigo: coloresExistentes[k].cod_color,
+            descripcion: coloresExistentes[k].color,
+        };
+        for (var m = 0; m < tallasNuevas.length; m++) {
+            pushPar(colorExistente, tallasNuevas[m]);
+        }
     }
 
-    idQuitarColor.push({
-        idColor: idColor,
+    return variantes;
+}
+
+function caActualizarPreview() {
+    if (!$("#formularioAmpliarModelo").length) {
+        return;
+    }
+
+    var coloresNuevos = caColoresNuevosSeleccionados();
+    var tallas = caTallasSeleccionadas();
+    var tallasNuevas = tallas.filter(function (t) {
+        return !t.existente;
+    });
+    var variantes = caConstruirVariantes();
+    var $preview = $("#caPreview");
+    var $btn = $("#btnGuardarVariantes");
+    var texto;
+
+    $("#listaColores").val(JSON.stringify(coloresNuevos));
+    $("#listaVariantes").val(JSON.stringify(variantes));
+
+    if (!$("#nuevoGrupoTalla").val()) {
+        texto = "Elige un grupo de tallas.";
+        $preview.removeClass("is-ready");
+        $btn.prop("disabled", true);
+    } else if (variantes.length === 0) {
+        if (coloresNuevos.length === 0 && tallasNuevas.length === 0) {
+            texto = "Agrega un color nuevo o marca una talla nueva.";
+        } else if (coloresNuevos.length > 0 && tallas.length === 0) {
+            texto = "Marca al menos una talla para el color nuevo.";
+        } else {
+            texto = "No hay combinaciones nuevas por crear.";
+        }
+        $preview.removeClass("is-ready");
+        $btn.prop("disabled", true);
+    } else {
+        var partes = [];
+        if (coloresNuevos.length > 0) {
+            partes.push(coloresNuevos.length + " color(es) nuevo(s)");
+        }
+        if (tallasNuevas.length > 0) {
+            partes.push(tallasNuevas.length + " talla(s) nueva(s)");
+        }
+        texto =
+            "Se crearán " +
+            variantes.length +
+            " artículo(s)" +
+            (partes.length ? " · " + partes.join(" · ") : "") +
+            ".";
+        $preview.addClass("is-ready");
+        $btn.prop("disabled", false);
+    }
+
+    $("#caPreviewTexto").text(texto);
+}
+
+function caMarcarBotonesCatalogo() {
+    if (!$("#formularioAmpliarModelo").length) {
+        return;
+    }
+
+    var existentes = caCodigosExistentes(
+        caParseJson($("#caColoresExistentes")),
+        "cod_color"
+    );
+    var seleccionados = {};
+    $(".quitarColor").each(function () {
+        seleccionados[String($(this).attr("idColor"))] = true;
     });
 
-    localStorage.setItem("quitarColor", JSON.stringify(idQuitarColor));
+    $(".tablaArticuloColores tbody button.recuperarBoton").each(function () {
+        var $btn = $(this);
+        var id = String($btn.attr("idColor"));
 
-    $("button.recuperarBoton[idColor='" + idColor + "']").removeClass(
-        "btn-default"
-    );
+        $btn
+            .removeClass("btn-primary btn-default btn-success agregarColor btn-ya-tiene")
+            .prop("disabled", false);
 
-    $("button.recuperarBoton[idColor='" + idColor + "']").addClass(
-        "btn-primary agregarColor"
-    );
-
-    listarColores();
-});
-
-/*=============================================
-FUNCIÓN PARA DESACTIVAR LOS BOTONES AGREGAR CUANDO EL PRODUCTO YA HABÍA SIDO SELECCIONADO EN LA CARPETA
-=============================================*/
-
-function quitarAgregarColores() {
-    //Capturamos todos los id de productos que fueron elegidos en la venta
-    var idColores = $(".quitarColor");
-
-    //Capturamos todos los botones de agregar que aparecen en la tabla
-    var botonesTabla = $(".tablaArticuloColores tbody button.agregarColor");
-
-    //Recorremos en un ciclo para obtener los diferentes idProductos que fueron agregados a la venta
-    for (var i = 0; i < idColores.length; i++) {
-        //Capturamos los Id de los productos agregados a la venta
-        var boton = $(idColores[i]).attr("idColor");
-        //   console.log(boton);
-
-        //Hacemos un recorrido por la tabla que aparece para desactivar los botones de agregar
-        for (var j = 0; j < botonesTabla.length; j++) {
-            if ($(botonesTabla[j]).attr("idColor") == boton) {
-                $(botonesTabla[j]).removeClass("btn-primary agregarColor");
-                $(botonesTabla[j]).addClass("btn-default");
-            }
+        if (existentes[id]) {
+            $btn
+                .addClass("btn-success btn-ya-tiene")
+                .prop("disabled", true)
+                .html('<i class="fa fa-check"></i> Ya tiene');
+        } else if (seleccionados[id]) {
+            $btn.addClass("btn-default").html('<i class="fa fa-check"></i> Agregado');
+        } else {
+            $btn
+                .addClass("btn-primary agregarColor")
+                .html('<i class="fa fa-plus-circle"></i> Agregar');
         }
-    }
+    });
 }
-
-$(".tablaArticuloColores").on("draw.dt", function () {
-    quitarAgregarColores();
-});
-
-/*=============================================
-LISTAR TODOS LOS COLORES
-=============================================*/
 
 function listarColores() {
-    var listaColores = [];
-
-    var descripcion = $(".nuevaDescripcionColor");
-
-    for (var i = 0; i < descripcion.length; i++) {
-        listaColores.push({
-            id: $(descripcion[i]).attr("idColor"),
-            codigo: $(descripcion[i]).attr("codigoCO"),
-            descripcion: $(descripcion[i]).attr("descripcion"),
-        });
-    }
-    $("#listaColores").val(JSON.stringify(listaColores));
-    console.log(listaColores);
+    caActualizarPreview();
 }
+
+function quitarAgregarColores() {
+    caMarcarBotonesCatalogo();
+}
+
+$(".tablaArticuloColores tbody").on("click", "button.agregarColor", function () {
+    var idColor = $(this).attr("idColor");
+    var $btn = $(this);
+
+    $btn.removeClass("btn-primary agregarColor").addClass("btn-default");
+
+    var datos = new FormData();
+    datos.append("idColores", idColor);
+
+    $.ajax({
+        url: "ajax/colores.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            var codigos = respuesta["cod_color"];
+            var nombres = respuesta["nom_color"];
+
+            $("#caColoresNuevos .ca-empty-colores").remove();
+
+            $(".nuevoColor").append(
+                '<span class="ca-chip ca-chip-nuevo">' +
+                    '<input type="hidden" class="nuevaDescripcionColor" idColor="' +
+                    caEscaparAttr(idColor) +
+                    '" codigoCO="' +
+                    caEscaparAttr(codigos) +
+                    '" descripcion="' +
+                    caEscaparAttr(nombres) +
+                    '" value="' +
+                    caEscaparAttr(codigos + " - " + nombres) +
+                    '">' +
+                    "<strong>" +
+                    caEscaparHtml(codigos) +
+                    "</strong> " +
+                    caEscaparHtml(nombres) +
+                    '<button type="button" class="btn-quitar quitarColor" idColor="' +
+                    caEscaparAttr(idColor) +
+                    '" title="Quitar"><i class="fa fa-times"></i></button>' +
+                    "</span>"
+            );
+            listarColores();
+            caMarcarBotonesCatalogo();
+        },
+    });
+});
+
+$(".tablaArticuloColores").on("draw.dt", function () {
+    caMarcarBotonesCatalogo();
+});
+
+$(".formularioArticulo").on("click", "button.quitarColor", function () {
+    $(this).closest(".ca-chip-nuevo").remove();
+
+    if ($(".nuevaDescripcionColor").length === 0) {
+        $("#caColoresNuevos").append(
+            '<span class="ca-empty ca-empty-colores">Agrega colores desde el catálogo →</span>'
+        );
+    }
+
+    listarColores();
+    caMarcarBotonesCatalogo();
+});
 
 $("#nuevoGrupoTalla").change(function () {
     var grupo = $(this).val();
+    var $wrap = $("#caTallasGrupo");
+
+    if (!grupo) {
+        $wrap.html('<span class="ca-empty">Elige un grupo de tallas</span>');
+        caActualizarPreview();
+        return;
+    }
+
+    var existentes = caCodigosExistentes(
+        caParseJson($("#caTallasExistentes")),
+        "cod_talla"
+    );
     var datos = new FormData();
     datos.append("grupo", grupo);
 
@@ -429,23 +549,94 @@ $("#nuevoGrupoTalla").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            $(".detalle").remove();
-            for (var i = 0; i < respuesta.length; i += 1) {
-                $(".nuevaTalla").append(
-                    '<ul class="detalle" style="display:inline"><input type="checkbox" name = "chk[]" tallas="' +
-                        respuesta[i]["talla"] +
-                        '" value="' +
-                        respuesta[i]["cod_talla"] +
-                        '"><label  for="' +
-                        respuesta[i]["talla"] +
+            $wrap.empty();
+
+            if (!respuesta || !respuesta.length) {
+                $wrap.html('<span class="ca-empty">Sin tallas en este grupo</span>');
+                caActualizarPreview();
+                return;
+            }
+
+            for (var i = 0; i < respuesta.length; i++) {
+                var cod = String(respuesta[i]["cod_talla"]);
+                var nom = respuesta[i]["talla"];
+                var yaTiene = !!existentes[cod];
+                var cls = yaTiene
+                    ? "ca-talla-item is-existente"
+                    : "ca-talla-item is-nueva";
+                var checked = yaTiene ? "checked" : "";
+                var disabled = yaTiene ? "disabled" : "";
+                var badge = yaTiene
+                    ? '<span class="ca-talla-badge">ya tiene</span>'
+                    : "";
+                // Checkbox deshabilitado no se envía: hidden para chk[] + data para JS
+                var hidden =
+                    yaTiene
+                        ? '<input type="hidden" name="chk[]" value="' +
+                          cod +
+                          '">'
+                        : "";
+
+                $wrap.append(
+                    '<label class="' +
+                        cls +
                         '">' +
-                        respuesta[i]["talla"] +
-                        ' </label> <span  style="padding:10px"></ul>'
+                        hidden +
+                        '<input type="checkbox" class="ca-talla-check" name="' +
+                        (yaTiene ? "" : "chk[]") +
+                        '" value="' +
+                        cod +
+                        '" tallas="' +
+                        nom +
+                        '" data-existente="' +
+                        (yaTiene ? "1" : "0") +
+                        '" ' +
+                        checked +
+                        " " +
+                        disabled +
+                        ">" +
+                        "<span>" +
+                        nom +
+                        "</span>" +
+                        badge +
+                        "</label>"
                 );
             }
+
+            caActualizarPreview();
         },
     });
 });
+
+$(document).on("change", "#caTallasGrupo .ca-talla-check", function () {
+    var $label = $(this).closest(".ca-talla-item");
+    if ($(this).is(":checked")) {
+        $label.addClass("is-checked");
+    } else {
+        $label.removeClass("is-checked");
+    }
+    caActualizarPreview();
+});
+
+$("#formularioAmpliarModelo").on("submit", function (e) {
+    var variantes = caConstruirVariantes();
+    $("#listaVariantes").val(JSON.stringify(variantes));
+    $("#listaColores").val(JSON.stringify(caColoresNuevosSeleccionados()));
+
+    if (!variantes.length) {
+        e.preventDefault();
+        caActualizarPreview();
+        return false;
+    }
+});
+
+$(function () {
+    if ($("#formularioAmpliarModelo").length) {
+        caActualizarPreview();
+        caMarcarBotonesCatalogo();
+    }
+});
+
 $("#nuevaMarca").change(function () {
     var marca = $(this).val();
 
