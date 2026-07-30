@@ -635,6 +635,195 @@ function mfResetSepararUi() {
 }
 
 /*
+ * Nota de crédito desde pedido: validar F/B y cargar fecha de emisión
+ */
+function mfTipoDocOrigenEsperado() {
+    var tipoDoc = ($("#tdocorigen").val() || "").toString();
+    if (tipoDoc === "01") {
+        return { prefijo: "F", tipoVenta: "S03", etiqueta: "factura" };
+    }
+    if (tipoDoc === "03") {
+        return { prefijo: "B", tipoVenta: "S02", etiqueta: "boleta" };
+    }
+    return null;
+}
+
+function mfNormalizarDocOrigen(doc) {
+    return (doc || "").toString().toUpperCase().replace(/[\s\-]+/g, "");
+}
+
+function mfSetHelpOrigen(msg, ok) {
+    var $help = $("#serieOrigenHelp");
+    if (!$help.length) {
+        return;
+    }
+    $help.text(msg || "");
+    $help.toggleClass("is-ok", !!ok);
+}
+
+function mfValidarPrefijoOrigen(doc, esperado, silent) {
+    if (!esperado) {
+        if (!silent) {
+            mfSetHelpOrigen("Seleccione tipo doc. origen (Factura o Boleta).", false);
+        }
+        return false;
+    }
+    if (!doc) {
+        if (!silent) {
+            mfSetHelpOrigen("Ingrese el documento origen.", false);
+        }
+        return false;
+    }
+    if (doc.charAt(0) !== esperado.prefijo) {
+        if (!silent) {
+            mfSetHelpOrigen(
+                "Para " +
+                    esperado.etiqueta +
+                    " el número debe empezar con " +
+                    esperado.prefijo +
+                    ".",
+                false
+            );
+        }
+        return false;
+    }
+    return true;
+}
+
+function mfCargarFechaOrigenNc() {
+    if (!$("#serieOrigen").length) {
+        return;
+    }
+
+    var esperado = mfTipoDocOrigenEsperado();
+    var doc = mfNormalizarDocOrigen($("#serieOrigen").val());
+    $("#serieOrigen").val(doc);
+
+    if (!mfValidarPrefijoOrigen(doc, esperado, false)) {
+        $("#fechaOrigen").val("");
+        return;
+    }
+
+    var datos = new FormData();
+    datos.append("buscarDocRelGuia", doc);
+
+    $.ajax({
+        url: "ajax/facturacion.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            if (!respuesta || !respuesta.ok) {
+                $("#fechaOrigen").val("");
+                mfSetHelpOrigen(
+                    "No se encontró la " + esperado.etiqueta + " " + doc + ".",
+                    false
+                );
+                return;
+            }
+
+            if (respuesta.tipo !== esperado.tipoVenta) {
+                $("#fechaOrigen").val("");
+                mfSetHelpOrigen(
+                    "El documento no corresponde a una " +
+                        esperado.etiqueta +
+                        ".",
+                    false
+                );
+                return;
+            }
+
+            var fecha = (respuesta.fecha || "").toString().substring(0, 10);
+            $("#fechaOrigen").val(fecha);
+            mfSetHelpOrigen("Documento válido. Fecha de emisión cargada.", true);
+        },
+        error: function () {
+            $("#fechaOrigen").val("");
+            mfSetHelpOrigen("No se pudo validar el documento.", false);
+        },
+    });
+}
+
+function mfValidarNotaCreditoPedido() {
+    if (($("#tdoc").val() || "") !== "07") {
+        return true;
+    }
+
+    var esperado = mfTipoDocOrigenEsperado();
+    var doc = mfNormalizarDocOrigen($("#serieOrigen").val());
+    $("#serieOrigen").val(doc);
+
+    if (!mfValidarPrefijoOrigen(doc, esperado, false)) {
+        if (typeof toastr !== "undefined") {
+            toastr["error"](
+                $("#serieOrigenHelp").text() ||
+                    "Revise tipo y documento origen de la nota de crédito"
+            );
+        }
+        return false;
+    }
+
+    if (!$("#fechaOrigen").val()) {
+        if (typeof toastr !== "undefined") {
+            toastr["error"](
+                "No hay fecha de emisión del documento origen. Verifique el N° Fact/Bol."
+            );
+        }
+        mfSetHelpOrigen(
+            "No hay fecha de emisión. Verifique el documento origen.",
+            false
+        );
+        return false;
+    }
+
+    if (!$("#notaMotivo").val()) {
+        if (typeof toastr !== "undefined") {
+            toastr["error"]("Seleccione el motivo de la nota de crédito.");
+        }
+        return false;
+    }
+
+    return true;
+}
+
+window.mfValidarNotaCreditoPedido = mfValidarNotaCreditoPedido;
+
+$(document).on("changed.bs.select", "#tdocorigen", function () {
+    if (!$("#wrapNotaCredito").length || $("#wrapNotaCredito").hasClass("hidden")) {
+        return;
+    }
+    $("#fechaOrigen").val("");
+    mfSetHelpOrigen("", false);
+    var esperado = mfTipoDocOrigenEsperado();
+    if (esperado) {
+        $("#serieOrigen").attr(
+            "placeholder",
+            esperado.prefijo === "F"
+                ? "Ej. F00100012345"
+                : "Ej. B00100012345"
+        );
+    }
+    if ($("#serieOrigen").val()) {
+        mfCargarFechaOrigenNc();
+    }
+});
+
+$(document).on("blur", "#serieOrigen", function () {
+    if (!$("#wrapNotaCredito").length || $("#wrapNotaCredito").hasClass("hidden")) {
+        return;
+    }
+    mfCargarFechaOrigenNc();
+});
+
+$(document).on("input", "#serieOrigen", function () {
+    $("#fechaOrigen").val("");
+    mfSetHelpOrigen("", false);
+});
+
+/*
  * AL CAMBIAR EL SELECT DE DOCUMENTO
  */
 $("#tdoc").change(function () {
@@ -661,15 +850,27 @@ $("#tdoc").change(function () {
     }
 
     if (documento == "07") {
+        $("#wrapNotaCredito").removeClass("hidden");
         $(".campoTipOrigen").removeClass("hidden");
         $(".campoDocOrigen").removeClass("hidden");
         $(".campoFecOrigen").removeClass("hidden");
         $(".campoMotOrigen").removeClass("hidden");
+        $("#tdocorigen, #notaMotivo").prop("required", true);
+        $("#serieOrigen, #fechaOrigen").prop("required", true);
+        mfRefreshSelectpicker($("#tdocorigen"));
+        mfRefreshSelectpicker($("#notaMotivo"));
+        mfSetHelpOrigen("", false);
     } else {
+        $("#wrapNotaCredito").addClass("hidden");
         $(".campoTipOrigen").addClass("hidden");
         $(".campoDocOrigen").addClass("hidden");
         $(".campoFecOrigen").addClass("hidden");
         $(".campoMotOrigen").addClass("hidden");
+        $("#tdocorigen, #notaMotivo").prop("required", false).val("");
+        $("#serieOrigen, #fechaOrigen").prop("required", false).val("");
+        mfSetHelpOrigen("", false);
+        mfRefreshSelectpicker($("#tdocorigen"));
+        mfRefreshSelectpicker($("#notaMotivo"));
     }
 
     var serie = $("#serie");
@@ -882,8 +1083,14 @@ $("#modalFacturar").on("show.bs.modal", function () {
 
     $("#GuiasDiv").addClass("hidden");
     $("#wrapSepararDoc").addClass("hidden");
+    $("#wrapNotaCredito").addClass("hidden");
     mfResetSepararUi();
     $("#orden_compra").val("");
+    $("#tdocorigen, #notaMotivo").prop("required", false).val("");
+    $("#serieOrigen, #fechaOrigen").prop("required", false).val("");
+    mfSetHelpOrigen("", false);
+    mfRefreshSelectpicker($("#tdocorigen"));
+    mfRefreshSelectpicker($("#notaMotivo"));
 
     if (document.getElementById("tdoc")) {
         $("#tdoc").val("").selectpicker("refresh");

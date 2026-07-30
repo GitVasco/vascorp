@@ -230,6 +230,52 @@ MODAL FACTURAR
                         </div>
                     </section>
 
+
+                    <section class="mf-section mf-wrap-nc hidden" id="wrapNotaCredito">
+                        <h5 class="mf-section-title">Documento origen (nota de crédito)</h5>
+                        <div class="mf-grid">
+                            <div class="mf-field campoTipOrigen">
+                                <label for="tdocorigen">Tipo doc. origen</label>
+                                <select class="form-control input-sm selectpicker" name="tdocorigen" id="tdocorigen" data-live-search="true" data-container="body" data-size="8" title="Seleccionar tipo">
+                                    <option value="">Seleccionar tipo</option>
+                                    <?php
+                                    $item = "tipo_dato";
+                                    $valor = "tdoc";
+                                    $documentos = ControladorCuentas::ctrMostrarPagos($item, $valor);
+                                    foreach ($documentos as $key => $value) {
+                                        if ($value["codigo"] == "01" || $value["codigo"] == "03") {
+                                            echo '<option value="' . $value["codigo"] . '">' . $value["codigo"] . " - " . $value["descripcion"] . '</option>';
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="mf-field campoDocOrigen">
+                                <label for="serieOrigen">Doc. origen</label>
+                                <input type="text" class="form-control input-sm" name="serieOrigen" id="serieOrigen" placeholder="Ej. F00100012345" autocomplete="off">
+                                <p class="mf-help" id="serieOrigenHelp"></p>
+                            </div>
+                            <div class="mf-field campoFecOrigen">
+                                <label for="fechaOrigen">Fecha emisión</label>
+                                <input type="date" class="form-control input-sm" name="fechaOrigen" id="fechaOrigen" readonly>
+                            </div>
+                            <div class="mf-field campoMotOrigen">
+                                <label for="notaMotivo">Motivo</label>
+                                <select class="form-control input-sm selectpicker" name="notaMotivo" id="notaMotivo" data-live-search="true" data-container="body" data-size="8" title="Seleccionar motivo">
+                                    <option value="">Seleccionar motivo</option>
+                                    <?php
+                                    $item = "tipo_dato";
+                                    $valor = "TMOT";
+                                    $documentos = ControladorCuentas::ctrMostrarPagos($item, $valor);
+                                    foreach ($documentos as $key => $value) {
+                                        echo '<option value="' . $value["codigo"] . '">' . $value["codigo"] . " - " . $value["descripcion"] . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
                     <section class="mf-section" id="wrapOrdenCompra"<?php echo (function_exists('feCsvOrdenCompraActiva') && !feCsvOrdenCompraActiva()) ? ' style="display:none"' : ''; ?>>
                         <div class="mf-grid">
                             <div class="mf-field mf-col-6">

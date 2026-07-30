@@ -3979,6 +3979,9 @@ class ControladorFacturacion
 
             $tipNota = !empty($_POST['tdocorigen']) ? $_POST['tdocorigen'] : null;
             $origenVenta = !empty($_POST['serieOrigen']) ? $_POST['serieOrigen'] : null;
+            if ($origenVenta !== null) {
+                $origenVenta = strtoupper(preg_replace('/[\s\-]+/', '', (string) $origenVenta));
+            }
             $fechaOrigen = !empty($_POST['fechaOrigen']) ? $_POST['fechaOrigen'] : null;
             $notaMotivo = !empty($_POST['notaMotivo']) ? $_POST['notaMotivo'] : null;
 
@@ -4049,6 +4052,42 @@ class ControladorFacturacion
                 case "07":
                     $tipo = "E05";
                     $nombreTipo = "NC";
+                    if ($tipNota === "01" && ($origenVenta === null || substr($origenVenta, 0, 1) !== "F")) {
+                        echo '<script>
+                            swal({
+                                type: "error",
+                                title: "Documento origen inválido",
+                                text: "Para factura el N° origen debe empezar con F.",
+                                showConfirmButton: true,
+                                confirmButtonText: "Cerrar"
+                            });
+                        </script>';
+                        return;
+                    }
+                    if ($tipNota === "03" && ($origenVenta === null || substr($origenVenta, 0, 1) !== "B")) {
+                        echo '<script>
+                            swal({
+                                type: "error",
+                                title: "Documento origen inválido",
+                                text: "Para boleta el N° origen debe empezar con B.",
+                                showConfirmButton: true,
+                                confirmButtonText: "Cerrar"
+                            });
+                        </script>';
+                        return;
+                    }
+                    if (empty($fechaOrigen) || empty($notaMotivo) || empty($tipNota) || empty($origenVenta)) {
+                        echo '<script>
+                            swal({
+                                type: "error",
+                                title: "Faltan datos de la nota de crédito",
+                                text: "Complete tipo, documento, fecha de emisión y motivo.",
+                                showConfirmButton: true,
+                                confirmButtonText: "Cerrar"
+                            });
+                        </script>';
+                        return;
+                    }
                     $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("07", $serieSeleccionada);
                     if (!$documento) {
                         self::ctrErrorCorrelativo();

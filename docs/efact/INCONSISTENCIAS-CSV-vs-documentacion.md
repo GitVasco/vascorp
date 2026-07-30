@@ -435,4 +435,71 @@ RUC 20513613939
 
 ---
 
-*Documento preparado para envío. Versión: 30/07/2026.*
+### 6.3 Correo a Contabilidad (copia a jefatura) — pruebas internas
+
+**Para:** [Contabilidad]  
+**Copia:** [Jefatura]  
+**Asunto:** Re: solicitud a eFact (OC, guía y retenciones) — pruebas internas en Sistemas
+
+Estimados,
+
+Recibimos el reenvío de la respuesta de **eFact** respecto a consignar en el CSV (y visualizar en PDF) **orden de compra**, **guía de remisión** e **indicación de retención**.
+
+eFact indicó ubicar esos datos según el manual CSV 2.1:
+
+- **Orden de compra:** FILA 8, columna B  
+- **Guía relacionada:** FILA 4, columna A  
+
+Les confirmamos formalmente lo siguiente:
+
+---
+
+**1. Las indicaciones de eFact no se cumplen en nuestro emisor**
+
+Aplicadas en prueba, **esas ubicaciones no funcionan** con el layout que su OSE **sí procesa hoy** para nuestro RUC. No es “documentación oficial alineada a nuestro servicio”: es un PDF genérico que **no describe** el mapa real de columnas/filas que acepta su plataforma para Corporación Vasco.
+
+En correos previos ya se había advertido esa inconsistencia. Lo ocurrido lo confirma: seguir al pie de la letra lo que indicaron **rompe el procesamiento**.
+
+Además, en su respuesta **no contestaron nada sobre retenciones**, pese a que formaba parte de la consulta original.
+
+---
+
+**2. El costo real de seguir ese camino**
+
+Sin una matriz calibrada a nuestros CSV vigentes, lo único que provocan esas indicaciones es un ciclo de **prueba y error**: consume tiempo de Sistemas y Contabilidad, y en **cierre de mes** multiplica el riesgo de rechazos y demoras en la emisión masiva.
+
+Eso es exactamente lo que queremos evitar.
+
+---
+
+**3. Decisión: pruebas internas (sin ambiente cobrado de eFact)**
+
+Por esa razón, **Sistemas realizará pruebas internas** para ubicar OC, guía y retención de forma compatible con el formato que **ya procesa** eFact — y, de paso, **evitar el cobro por hora** de su ambiente de pruebas.
+
+El plan operativo:
+
+1. Emitiremos **una factura a nombre de Joel [Apellido]** (documento de prueba controlado).  
+2. Sobre ese comprobante validaremos el **procesamiento** (CSV → OSE → PDF) de los campos solicitados.  
+3. **Una vez concluidas las pruebas, esa factura debe darse de baja.**  
+4. Solo entonces, con el mapa validado, podremos replicar el comportamiento en producción sin arriesgar el cierre.
+
+Así llegamos a lo comprometido (OC, guía y retención visibles cuando corresponda), **no con la ayuda de eFact ni pagándoles horas de laboratorio**, sino con la capacidad técnica que ya tenemos en casa — partiendo del layout que **sí funciona** hoy.
+
+---
+
+**4. Pedido a Contabilidad**
+
+- Confirmar apoyo para la **emisión y baja** del comprobante de prueba a nombre de Joel.  
+- Mientras tanto, **recomendamos no aplicar en producción** las ubicaciones FILA 4 / FILA 8 indicadas por eFact.
+
+Quedamos atentos para coordinar la emisión de prueba y su baja posterior.
+
+Atentamente,
+
+Joel [Apellido]  
+[Sistemas / TI]  
+Corporación Vasco S.A.C.
+
+---
+
+*Documento preparado para envío. Versión: 30/07/2026 (incluye borrador 6.3 — pruebas internas).*

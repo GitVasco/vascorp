@@ -88,6 +88,28 @@
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) minmax(110px, 0.7fr) minmax(100px, 0.65fr);
 }
 
+#modalFacturar .mf-wrap-nc > .mf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#modalFacturar .mf-help {
+    margin: 4px 0 0;
+    font-size: 11px;
+    line-height: 1.35;
+    min-height: 15px;
+    color: #9a5b00;
+}
+
+#modalFacturar .mf-help.is-ok {
+    color: #1f7a3d;
+}
+
+@media (min-width: 700px) {
+    #modalFacturar .mf-wrap-nc > .mf-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 #modalFacturar .mf-field {
     width: auto !important;
     max-width: none;

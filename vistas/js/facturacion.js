@@ -3161,6 +3161,14 @@ function checkSubmit() {
     if (btn.disabled) {
         return false;
     }
+
+    if (
+        typeof window.mfValidarNotaCreditoPedido === "function" &&
+        !window.mfValidarNotaCreditoPedido()
+    ) {
+        return false;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generando...';
     return true;
