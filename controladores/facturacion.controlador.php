@@ -4,6 +4,37 @@ class ControladorFacturacion
 {
 
     /*
+     * Número de guía válido para FILA 3 del Legacy CSV (eFact UBL 2.1).
+     * Solo A (número) + B (09/31) son obligatorios al relacionar; C/D y demás opcionales no se usan aquí.
+     * Patrones doc + series electrónicas Vascorp (TV01, TD01, TS01, T001, 0003, EG01, G001).
+     */
+    static private function esGuiaRemisionCsv($numeroGuia)
+    {
+        $numeroGuia = trim((string) $numeroGuia);
+        if ($numeroGuia === "") {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/^(T[A-Z0-9]{3}|[0-9]{4}|EG[0-9]{2}|G[0-9]{3})-[0-9]{1,8}$/i',
+            $numeroGuia
+        );
+    }
+
+    /*
+     * Normaliza OC del cliente para eFact FILA 7-B (sin espacios/guiones, máx. 20).
+     */
+    static private function normalizarOrdenCompra($ordenCompra)
+    {
+        $ordenCompra = preg_replace('/[\s\-]+/', '', (string) $ordenCompra);
+        $ordenCompra = preg_replace('/[\r\n\t]+/', '', $ordenCompra);
+        if ($ordenCompra === null || $ordenCompra === "") {
+            return "";
+        }
+        return substr($ordenCompra, 0, 20);
+    }
+
+    /*
     * MOSTRAR CABECERA DE TEMPORAL
     */
     static public function ctrMostrarTablas($tipo, $estado, $valor)
@@ -352,6 +383,9 @@ class ControladorFacturacion
                     "documento" => $docDestino,
                     "tipo_documento" => $nombre_tipo,
                     "doc_origen" => $codigo,
+                    "orden_compra" => self::normalizarOrdenCompra(
+                        isset($_POST["orden_compra"]) ? $_POST["orden_compra"] : ""
+                    ),
                     "usuario" => $usuario,
                     "usureg" => $usureg,
                     "pcreg" => $pcreg
@@ -529,6 +563,9 @@ class ControladorFacturacion
                     "tipo_documento" => $nombre_tipo,
                     "cuenta" => $cuenta,
                     "doc_origen" => $codigo,
+                    "orden_compra" => self::normalizarOrdenCompra(
+                        isset($_POST["orden_compraB"]) ? $_POST["orden_compraB"] : (isset($_POST["orden_compra"]) ? $_POST["orden_compra"] : "")
+                    ),
                     "usuario" => $usuario,
                     "usureg" => $usureg,
                     "pcreg" => $pcreg
@@ -2071,11 +2108,10 @@ class ControladorFacturacion
             //todo: FILA 2
             $fila2 = ',,,,,,,,,,,,,,,,,,,,,,,,,,,,';
 
-            //todo: FILA 3
-            if (substr($datos["a3"], 0, 4) == "0003") {
+            //todo: FILA 3 — guía relacionada: solo A (número) + B (09); ATTACH_DOC al final
+            if (self::esGuiaRemisionCsv(isset($datos["a3"]) ? $datos["a3"] : "")) {
 
-                $fila3 =    $datos["a3"] . ',' .
-                    $datos["b3"] . ',,,' .
+                $fila3 =    $datos["a3"] . ',09,,,,' .
                     $datos["e3"];
             } else {
 
@@ -2279,14 +2315,15 @@ class ControladorFacturacion
             //todo: FILA 2
             $fila2 = ',,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,';
 
-            //todo: FILA 3
+            //todo: FILA 3 — Legacy: A número guía, B código 09 (obligatorios si hay guía).
+            // C/D (otros docs) opcionales: vacíos. E/F/G cuotas si crédito. H ATTACH_DOC.
+            $tieneGuia = self::esGuiaRemisionCsv(isset($datos["a3"]) ? $datos["a3"] : "");
 
             if ($_POST["tipo"] == "S03") {
 
-                if (substr($datos["a3"], 0, 4) == "0003") {
+                if ($tieneGuia) {
 
-                    $fila3 =    $datos["a3"] . ',' .
-                        $datos["b3"] . ',,' .
+                    $fila3 =    $datos["a3"] . ',09,,,' .
                         $datos["e3"] . ',' .
                         $datos["f3"] . ',' .
                         $datos["g3"] . ',' .
@@ -2301,10 +2338,9 @@ class ControladorFacturacion
                 }
             } else {
 
-                if (substr($datos["a3"], 0, 4) == "0003") {
+                if ($tieneGuia) {
 
-                    $fila3 =    $datos["a3"] . ',' .
-                        $datos["b3"] . ',,,,';
+                    $fila3 =    $datos["a3"] . ',09,,,,';
                 } else {
 
                     $fila3 =    ',,,,,';
@@ -2358,8 +2394,9 @@ class ControladorFacturacion
             #$monto_letras = convertir($datos["n1"]);
             $fila6 =    $monto_letras . ',,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,';
 
-            //todo: FILA 7
-            $fila7 =    $datos["a7"] . ',,' .
+            //todo: FILA 7 — A observaciones, B orden de compra (Legacy), C fecha cuota, D–G adicionales
+            $fila7 =    $datos["a7"] . ',' .
+                (isset($datos["b7"]) ? $datos["b7"] : '') . ',' .
                 $datos["g3"] . ',' .
                 $datos["d7"] . ',' .
                 $datos["e7"] . ',' .
@@ -3797,6 +3834,9 @@ class ControladorFacturacion
             $movilidad = !empty($_POST['carro']) ? $_POST['carro'] : null;
             $peso = !empty($_POST['peso']) ? $_POST['peso'] : null;
             $bultos = !empty($_POST['bultos']) ? $_POST['bultos'] : null;
+            $ordenCompra = self::normalizarOrdenCompra(
+                isset($_POST["orden_compra"]) ? $_POST["orden_compra"] : ""
+            );
 
             $tipNota = !empty($_POST['tdocorigen']) ? $_POST['tdocorigen'] : null;
             $origenVenta = !empty($_POST['serieOrigen']) ? $_POST['serieOrigen'] : null;
@@ -3829,7 +3869,7 @@ class ControladorFacturacion
                         }
 
                         $movimientosDestino = self::ctrRegistrarMovimientos($codigo, $tipoDestino, $docDest, $cliente, $vendedor, $dscto, $nombresDestino, $codigoAlmacen);
-                        $ventasDestino = self::ctrRegistrarVentas($codigo, $tipoDestino, $docDest, "", $documento, $usuario, $nombresDestino, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $exportacion, $tipo_moneda);
+                        $ventasDestino = self::ctrRegistrarVentas($codigo, $tipoDestino, $docDest, "", $documento, $usuario, $nombresDestino, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $exportacion, $tipo_moneda, $ordenCompra);
                         $cuentas = self::ctrRegistrarCuentaCorriente($codigo, $tipoCuenta, $docDest, $usuario, $usureg, $pcreg);
                     }
 
@@ -3884,7 +3924,9 @@ class ControladorFacturacion
 
             if ($stock == "ok") {
                 $movimientos = self::ctrRegistrarMovimientos($codigo, $tipo, $documento, $cliente, $vendedor, $dscto, $nombreTipo, $codigoAlmacen);
-                $ventas = self::ctrRegistrarVentas($codigo, $tipo, $documento, $docDest, $docOrigen, $usuario, $nombreTipo, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $exportacion, $tipo_moneda);
+                // OC solo aplica a factura/boleta (S03/S02); guía/proforma/NC van sin OC
+                $ocVenta = in_array($tipo, array("S02", "S03"), true) ? $ordenCompra : "";
+                $ventas = self::ctrRegistrarVentas($codigo, $tipo, $documento, $docDest, $docOrigen, $usuario, $nombreTipo, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $exportacion, $tipo_moneda, $ocVenta);
 
                 ModeloFacturacion::mdlActualizarPedidoF($codigo);
                 ModeloFacturacion::mdlActualizarPedidoB($codigo);
@@ -3968,7 +4010,7 @@ class ControladorFacturacion
         return $rptMovimientos;
     }
 
-    static public function ctrRegistrarVentas($codigo, $tipo, $documento, $docDest, $docOrigen, $usuario, $nombreTipo, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $esportacion, $tipo_moneda)
+    static public function ctrRegistrarVentas($codigo, $tipo, $documento, $docDest, $docOrigen, $usuario, $nombreTipo, $usureg, $pcreg, $chofer, $movilidad, $peso, $bultos, $esportacion, $tipo_moneda, $ordenCompra = "")
     {
         $respuestaDoc = ModeloPedidos::mdlMostraPedidosCabecera($codigo);
 
@@ -3988,6 +4030,7 @@ class ControladorFacturacion
             "condicion_venta" => $respuestaDoc["condicion_venta"],
             "doc_destino" => $docDest,
             "doc_origen" => $docOrigen,
+            "orden_compra" => $ordenCompra,
             "usuario" => $usuario,
             "tipo_documento" => $nombreTipo,
             "cuenta" => "",

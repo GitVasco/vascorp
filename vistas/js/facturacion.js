@@ -260,6 +260,7 @@ $(".tablaGuiasRemision tbody").on("click", "button.btnFacturarA", function () {
 
     $("#serieDest").val(serie_dest);
     $("#docDest").val(nro_dest);
+    $("#orden_compra").val("");
 });
 
 /*
@@ -282,6 +283,7 @@ $(".tablaGuiasRemision tbody").on("click", "button.btnFacturarB", function () {
     $("#tipDocB").val(tip_doc);
     $("#nroDocB").val(nro_doc);
     $("#codVenB").val(cod_ven);
+    $("#orden_compraB").val("");
 });
 
 /*

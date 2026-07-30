@@ -65,6 +65,7 @@ class ModeloFacturacion
                                                         condicion_venta,
                                                         doc_destino,
                                                         doc_origen,
+                                                        orden_compra,
                                                         usuario,
                                                         usureg,
                                                         pcreg,
@@ -93,6 +94,7 @@ class ModeloFacturacion
                                                         :condicion_venta,
                                                         :doc_destino,
                                                         :doc_origen,
+                                                        :orden_compra,
                                                         :usuario,
                                                         :usureg,
                                                         :pcreg,
@@ -103,6 +105,10 @@ class ModeloFacturacion
                                                         :exportacion,
                                                         :tipo_moneda
                                                         )");
+
+    $ordenCompra = isset($datos["orden_compra"]) && $datos["orden_compra"] !== ""
+      ? $datos["orden_compra"]
+      : null;
 
     $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
     $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
@@ -117,6 +123,7 @@ class ModeloFacturacion
     $stmt->bindParam(":condicion_venta", $datos["condicion_venta"], PDO::PARAM_STR);
     $stmt->bindParam(":doc_destino", $datos["doc_destino"], PDO::PARAM_STR);
     $stmt->bindParam(":doc_origen", $datos["doc_origen"], PDO::PARAM_STR);
+    $stmt->bindValue(":orden_compra", $ordenCompra, $ordenCompra === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
     $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
     $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
     $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
@@ -677,6 +684,7 @@ class ModeloFacturacion
                                                                 lista_precios,
                                                                 condicion_venta,
                                                                 doc_origen,
+                                                                orden_compra,
                                                                 usuario,
                                                                 usureg,
                                                                 pcreg
@@ -697,6 +705,7 @@ class ModeloFacturacion
                                                                 v.lista_precios,
                                                                 v.condicion_venta,
                                                                 :codigo,
+                                                                :orden_compra,
                                                                 :usuario,
                                                                 :usureg,
                                                                 :pcreg
@@ -705,12 +714,18 @@ class ModeloFacturacion
                                                             WHERE v.documento = :codigo
                                                                 AND v.tipo = :tipo_ori)");
 
+    $ordenCompra = isset($datos["orden_compra"]) && $datos["orden_compra"] !== ""
+      ? $datos["orden_compra"]
+      : null;
+    $cuenta = isset($datos["cuenta"]) ? $datos["cuenta"] : "";
+
     $stmt->bindParam(":codigo", $datos["doc_origen"], PDO::PARAM_STR);
     $stmt->bindParam(":tipo_ori", $datos["tipo_ori"], PDO::PARAM_STR);
     $stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_STR);
     $stmt->bindParam(":documento", $datos["documento"], PDO::PARAM_STR);
     $stmt->bindParam(":tipo_documento", $datos["tipo_documento"], PDO::PARAM_STR);
-    $stmt->bindParam(":cuenta", $datos["cuenta"], PDO::PARAM_STR);
+    $stmt->bindValue(":cuenta", $cuenta, PDO::PARAM_STR);
+    $stmt->bindValue(":orden_compra", $ordenCompra, $ordenCompra === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
     $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
     $stmt->bindParam(":usureg", $datos["usureg"], PDO::PARAM_STR);
     $stmt->bindParam(":pcreg", $datos["pcreg"], PDO::PARAM_STR);
@@ -7928,9 +7943,15 @@ class ModeloFacturacion
             v.neto - v.dscto AS bi1,
             v.total AS bj1,
             /*v.dscto AS bh1,*/
-            /*FILA 3*/
+            /*FILA 3: solo si doc_origen es guia (Txxx / numerica / EG / G), no pedidos u otros*/
             CASE
-                WHEN LENGTH(v.doc_origen) = 12 
+                WHEN LENGTH(v.doc_origen) = 12
+                  AND (
+                    LEFT(v.doc_origen, 1) = 'T'
+                    OR LEFT(v.doc_origen, 4) REGEXP '^[0-9]{4}$'
+                    OR LEFT(v.doc_origen, 2) = 'EG'
+                    OR (LEFT(v.doc_origen, 1) = 'G' AND LEFT(v.doc_origen, 2) <> 'EG')
+                  )
                 THEN CONCAT(
                 LEFT(v.doc_origen, 4),
                 '-',
@@ -7938,7 +7959,17 @@ class ModeloFacturacion
                 ) 
                 ELSE '' 
             END AS a3,
-            '09' AS b3,
+            CASE
+                WHEN LENGTH(v.doc_origen) = 12
+                  AND (
+                    LEFT(v.doc_origen, 1) = 'T'
+                    OR LEFT(v.doc_origen, 4) REGEXP '^[0-9]{4}$'
+                    OR LEFT(v.doc_origen, 2) = 'EG'
+                    OR (LEFT(v.doc_origen, 1) = 'G' AND LEFT(v.doc_origen, 2) <> 'EG')
+                  )
+                THEN '09'
+                ELSE ''
+            END AS b3,
             CASE
                 WHEN v.condicion_venta IN ('1', '2') 
                 THEN '' 
@@ -8000,6 +8031,7 @@ class ModeloFacturacion
                 'Nro.unidades: ',
                 ROUND(SUM(m.cantidad), 3)
             ) AS a7,
+            IFNULL(v.orden_compra, '') AS b7,
             v.cliente AS d7,
             cv.descripcion AS e7,
             v.neto AS f7,

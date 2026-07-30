@@ -325,8 +325,8 @@ function decena($numdero){
  
  
 function convertir($numero){
-		     $num = str_replace(",","",$numero);
-		     $num = number_format($num,2,'.','');
+		     $num = str_replace(",","",(string)$numero);
+		     $num = number_format((float)$num,2,'.','');
 		     $cents = substr($num,strlen($num)-2,strlen($num)-1);
 		     $num = (int)$num;
  

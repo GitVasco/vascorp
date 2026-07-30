@@ -230,6 +230,15 @@ MODAL FACTURAR
                         </div>
                     </section>
 
+                    <section class="mf-section" id="wrapOrdenCompra">
+                        <div class="mf-grid">
+                            <div class="mf-field mf-col-6">
+                                <label for="orden_compra">Orden de compra <span style="font-weight:normal;color:#888;">(opcional)</span></label>
+                                <input type="text" class="form-control input-sm" id="orden_compra" name="orden_compra" maxlength="20" placeholder="Ej. OC12345 (sin espacios ni guiones)" autocomplete="off">
+                            </div>
+                        </div>
+                    </section>
+
                     <section class="mf-section mf-wrap-guia hidden" id="GuiasDiv">
                         <h5 class="mf-section-title">Guía de remisión</h5>
                         <div class="mf-grid">

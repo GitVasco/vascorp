@@ -305,6 +305,20 @@ MODAL FACTURAR A
 
                             </div>
 
+                            <div class="form-group col-lg-5">
+
+                                <label>Orden de compra <small>(opcional)</small></label>
+
+                                <div class="input-group">
+
+                                    <span class="input-group-addon"><i class="fa fa-file-text-o"></i></span>
+
+                                    <input type="text" class="form-control input-sm" id="orden_compra" name="orden_compra" maxlength="20" placeholder="Sin espacios ni guiones" autocomplete="off">
+
+                                </div>
+
+                            </div>
+
                         </div>
 
                     </div>
@@ -527,6 +541,20 @@ MODAL FACTURAR B
 
 
                                     </select>
+
+                                </div>
+
+                            </div>
+
+                            <div class="form-group col-lg-6">
+
+                                <label>Orden de compra <small>(opcional)</small></label>
+
+                                <div class="input-group">
+
+                                    <span class="input-group-addon"><i class="fa fa-file-text-o"></i></span>
+
+                                    <input type="text" class="form-control input-sm" id="orden_compraB" name="orden_compraB" maxlength="20" placeholder="Sin espacios ni guiones" autocomplete="off">
 
                                 </div>
 

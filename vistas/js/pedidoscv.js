@@ -883,6 +883,7 @@ $("#modalFacturar").on("show.bs.modal", function () {
     $("#GuiasDiv").addClass("hidden");
     $("#wrapSepararDoc").addClass("hidden");
     mfResetSepararUi();
+    $("#orden_compra").val("");
 
     if (document.getElementById("tdoc")) {
         $("#tdoc").val("").selectpicker("refresh");
