@@ -1297,7 +1297,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
 
-                    <h4 class="modal-title">Importar cuentas de banco</h4>
+                    <h4 class="modal-title">Cancelar letras</h4>
 
                 </div>
 
@@ -1313,7 +1313,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
                         <div class="form-group">
                             <label for="">
-                                <h3>Archivo de banco</h3>
+                                <h3>Archivo de banco para cancelar letras</h3>
                             </label>
                             <div class="input-group">
 
@@ -1337,7 +1337,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
                     <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
 
-                    <button type="submit" class="btn btn-primary" name="importBanco">Importar cuentas</button>
+                    <button type="submit" class="btn btn-primary" name="importBanco">Cancelar letras</button>
 
                 </div>
 
@@ -1378,7 +1378,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
 
-                    <h4 class="modal-title">Importar letras</h4>
+                    <h4 class="modal-title">Actualizar número único</h4>
 
                 </div>
 
@@ -1394,7 +1394,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
                         <div class="form-group">
                             <label for="">
-                                <h3>Archivo de banco para letras</h3>
+                                <h3>Archivo de banco con números únicos</h3>
                             </label>
                             <div class="input-group">
 
@@ -1418,7 +1418,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
                     <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
 
-                    <button type="submit" class="btn btn-primary" name="importLetra">Importar letras</button>
+                    <button type="submit" class="btn btn-primary" name="importLetra">Actualizar números únicos</button>
 
                 </div>
 

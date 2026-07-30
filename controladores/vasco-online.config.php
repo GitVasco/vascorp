@@ -18,7 +18,7 @@
  */
 
 // $vasco_online_entorno = "pruebas";
-$vasco_online_entorno = "desarrollo";
+$vasco_online_entorno = "pruebas";
 $GLOBALS["vasco_online_entorno"] = $vasco_online_entorno;
 
 // URL pública del API real (misma para pruebas y producción).

@@ -867,7 +867,7 @@ class ControladorCuentas
 
 		if (isset($_POST["importBanco"])) {
 
-			include "/../vistas/reportes_excel/Excel/reader.php";
+			include __DIR__ . "/../vistas/reportes_excel/Excel/reader.php";
 			$directorio = "vistas/cuentas/" . $_FILES["nuevaImportacion"]["name"];
 			$archivo = move_uploaded_file($_FILES["nuevaImportacion"]['tmp_name'], $directorio);
 			$data = new Spreadsheet_Excel_Reader();
@@ -946,47 +946,73 @@ class ControladorCuentas
 
 		if (isset($_POST["importLetra"])) {
 
-			include "/../vistas/reportes_excel/Excel/reader.php";
-			$directorio = "vistas/cuentas/" . $_FILES["nuevaUnico"]["name"];
-			$archivo = move_uploaded_file($_FILES["nuevaUnico"]['tmp_name'], $directorio);
+			include __DIR__ . "/../vistas/reportes_excel/Excel/reader.php";
+
+			$nombreArchivo = basename($_FILES["nuevaUnico"]["name"]);
+			$directorio = "vistas/cuentas/" . $nombreArchivo;
+			move_uploaded_file($_FILES["nuevaUnico"]["tmp_name"], $directorio);
+
 			$data = new Spreadsheet_Excel_Reader();
-			$data->setOutputEncoding('CP1251');
-			$data->read("vistas/cuentas/" . $_FILES["nuevaUnico"]["name"]);
-			$con = ControladorUsuarios::ctrMostrarConexiones("id", 1);
-			$conexion = mysql_connect($con["ip"], $con["user"], $con["pwd"]) or die("No se pudo conectar: " . mysql_error());
-			mysql_select_db($con["db"], $conexion);
-			for ($i = 6; $i <= $data->sheets[0]['numRows']; $i++) {
-				for ($j = 1; $j <= 1; $j++) {
-					$documento = $data->sheets[0]['cells'][$i][1];
-					$unico = $data->sheets[0]['cells'][$i][2];
+			$data->setOutputEncoding("CP1251");
+			$data->read($directorio);
 
-					$sqlInsertar = mysql_query("UPDATE 
-							cuenta_ctejf 
-						  SET
-							num_unico = '" . $unico . "' 
-						  WHERE REPLACE(num_cta, '-', '') = '" . $documento . "' 
-							AND tipo_doc = '85' 
-							AND tip_mov = '+' 
-							AND YEAR(fecha) >= 2019 ") or die(mysql_error());
+			$filas = array();
+			$numRows = isset($data->sheets[0]["numRows"]) ? (int) $data->sheets[0]["numRows"] : 0;
+
+			for ($i = 6; $i <= $numRows; $i++) {
+				if (!isset($data->sheets[0]["cells"][$i][1], $data->sheets[0]["cells"][$i][2])) {
+					continue;
 				}
+
+				$documento = trim(str_replace("-", "", (string) $data->sheets[0]["cells"][$i][1]));
+				$unico = trim((string) $data->sheets[0]["cells"][$i][2]);
+
+				if ($documento === "" || $unico === "") {
+					continue;
+				}
+
+				// Si el Excel trae el mismo documento más de una vez, gana el último
+				$filas[$documento] = array(
+					"documento" => $documento,
+					"unico" => $unico
+				);
 			}
+
 			$rutaCuentas = obtenerRutaCuentas();
-			echo '<script>
 
-				swal({
-					type: "success",
-					title: "Las cuentas han sido canceladas correctamente",
-					showConfirmButton: true,
-					confirmButtonText: "Cerrar"
+			try {
+				$resultado = ModeloCuentas::mdlActualizarNumerosUnicos(array_values($filas));
+				$letras = (int) $resultado["letras"];
+				$excel = (int) $resultado["excel"];
+
+				echo '<script>
+					swal({
+						type: "success",
+						title: "Se actualizaron ' . $letras . ' letras",
+						text: "Filas leídas del Excel: ' . $excel . '",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
 					}).then(function(result){
-								if (result.value) {
-
-								window.location = "' . $rutaCuentas . '";
-
-								}
-							})
-
+						if (result.value) {
+							window.location = "' . $rutaCuentas . '";
+						}
+					})
 				</script>';
+			} catch (Exception $e) {
+				echo '<script>
+					swal({
+						type: "error",
+						title: "No se pudieron actualizar los números únicos",
+						text: ' . json_encode($e->getMessage()) . ',
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then(function(result){
+						if (result.value) {
+							window.location = "' . $rutaCuentas . '";
+						}
+					})
+				</script>';
+			}
 		}
 	}
 

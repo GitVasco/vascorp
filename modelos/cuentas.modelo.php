@@ -240,6 +240,82 @@ class ModeloCuentas
 	}
 
 	/*=============================================
+	ACTUALIZAR NÚMEROS ÚNICOS (bulk desde Excel)
+	=============================================*/
+
+	static public function mdlActualizarNumerosUnicos($filas)
+	{
+
+		if (empty($filas)) {
+			return array("letras" => 0, "excel" => 0);
+		}
+
+		$db = Conexion::conectar();
+		$db->beginTransaction();
+
+		try {
+			$db->exec("CREATE TEMPORARY TABLE tmp_num_unicos (
+				documento VARCHAR(30) NOT NULL,
+				unico VARCHAR(20) NOT NULL,
+				PRIMARY KEY (documento)
+			)");
+
+			$chunks = array_chunk(array_values($filas), 400);
+
+			foreach ($chunks as $chunk) {
+				$placeholders = array();
+				$params = array();
+
+				foreach ($chunk as $i => $fila) {
+					$placeholders[] = "(:d{$i}, :u{$i})";
+					$params[":d{$i}"] = $fila["documento"];
+					$params[":u{$i}"] = $fila["unico"];
+				}
+
+				$stmt = $db->prepare(
+					"INSERT INTO tmp_num_unicos (documento, unico) VALUES "
+					. implode(", ", $placeholders)
+					. " ON DUPLICATE KEY UPDATE unico = VALUES(unico)"
+				);
+				$stmt->execute($params);
+			}
+
+			$whereJoin = "INNER JOIN tmp_num_unicos t
+					ON REPLACE(c.num_cta, '-', '') = t.documento
+				WHERE c.tipo_doc = '85'
+					AND c.tip_mov = '+'
+					AND c.fecha >= '2019-01-01'";
+
+			$letras = (int) $db->query(
+				"SELECT COUNT(*) FROM cuenta_ctejf c " . $whereJoin
+			)->fetchColumn();
+
+			$db->exec(
+				"UPDATE cuenta_ctejf c
+				INNER JOIN tmp_num_unicos t
+					ON REPLACE(c.num_cta, '-', '') = t.documento
+				SET c.num_unico = t.unico
+				WHERE c.tipo_doc = '85'
+					AND c.tip_mov = '+'
+					AND c.fecha >= '2019-01-01'"
+			);
+
+			$db->exec("DROP TEMPORARY TABLE IF EXISTS tmp_num_unicos");
+			$db->commit();
+
+			return array(
+				"letras" => $letras,
+				"excel" => count($filas)
+			);
+		} catch (Exception $e) {
+			if ($db->inTransaction()) {
+				$db->rollBack();
+			}
+			throw $e;
+		}
+	}
+
+	/*=============================================
 	MOSTRAR CUENTAS V2
 	=============================================*/
 
