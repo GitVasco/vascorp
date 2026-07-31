@@ -1523,27 +1523,44 @@
     });
 
     function recargarControles() {
+        if (!$("#hcBodyControles").length) {
+            return;
+        }
+
         if (hcControlesXhr && hcControlesXhr.abort) {
             hcControlesXhr.abort();
         }
 
-        var vendedor = hcVendedorActual();
         hcControlesXhr = $.ajax({
             url: "ajax/dashboard-decisiones/control-post-aprobacion.ajax.php",
             method: "POST",
             dataType: "json",
-            data: { accion: "listar", limite: 100, vendedor: vendedor },
+            data: { accion: "listar", limite: 100 },
         })
             .done(function (resp) {
                 if (!resp || !resp.ok) {
+                    var msg =
+                        (resp && resp.msg) ||
+                        "No se pudo cargar la lista de controles pendientes.";
+                    $("#hcBodyControles").html(
+                        '<tr><td colspan="10" class="text-center text-danger">' +
+                            $("<div>").text(msg).html() +
+                            "</td></tr>"
+                    );
+                    $("#hcTabBadgeControles, #hcBadgeControles").text("0");
                     return;
                 }
                 $("#hcBodyControles").html(
                     resp.html ||
-                        '<tr><td colspan="9" class="text-center text-muted">Sin controles pendientes.</td></tr>'
+                        '<tr><td colspan="10" class="text-center text-muted">Sin controles pendientes.</td></tr>'
                 );
                 var total = resp.total !== undefined ? resp.total : 0;
                 $("#hcTabBadgeControles, #hcBadgeControles").text(total);
+            })
+            .fail(function () {
+                $("#hcBodyControles").html(
+                    '<tr><td colspan="10" class="text-center text-danger">Error al cargar controles pendientes.</td></tr>'
+                );
             })
             .always(function () {
                 hcControlesXhr = null;
@@ -1562,7 +1579,30 @@
                 (hcLiberarControlCtx.condicion ? " · " + hcLiberarControlCtx.condicion : "")
         );
         $("#hcLiberarControlObs").val("");
+        hcInitControlSelect($("#hcLiberarControlArea"), [], "Cargando…");
         $("#modalHcLiberarControl").modal("show");
+
+        hcCargarCatalogoControles()
+            .done(function (cat) {
+                hcInitControlSelect(
+                    $("#hcLiberarControlArea"),
+                    cat.areas,
+                    "Sin área específica…"
+                );
+                if (hcLiberarControlCtx.area) {
+                    $("#hcLiberarControlArea").val(hcLiberarControlCtx.area);
+                }
+                if ($("#hcLiberarControlArea").data("selectpicker")) {
+                    $("#hcLiberarControlArea").selectpicker("refresh");
+                }
+            })
+            .fail(function () {
+                hcInitControlSelect(
+                    $("#hcLiberarControlArea"),
+                    [],
+                    "Sin catálogo de áreas"
+                );
+            });
     }
 
     $(document).on("click", ".btnHcLiberarControl", function () {
@@ -1571,6 +1611,7 @@
             pedido: $(this).data("pedido"),
             cliente: $(this).data("cliente") || "",
             condicion: $(this).data("condicion") || "",
+            area: $(this).data("area") || "",
         });
     });
 
@@ -1579,6 +1620,7 @@
             return;
         }
         var comentario = $("#hcLiberarControlObs").val() || "";
+        var area = $("#hcLiberarControlArea").val() || "";
         $("#modalHcLiberarControl").modal("hide");
 
         $.ajax({
@@ -1589,6 +1631,7 @@
                 accion: "liberar",
                 id: hcLiberarControlCtx.id,
                 comentario_liberacion: comentario,
+                area_autoriza_codigo: area,
             },
         })
             .done(function (resp) {

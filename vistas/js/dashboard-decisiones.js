@@ -1746,9 +1746,28 @@
                         "error"
                     );
                 });
-        } else {
+        } else if (
+            String($("#ddAprobarPedidoMotivo").val() || "").toUpperCase() !==
+            "APROBADO_CON_CONDICION"
+        ) {
             $("#ddAprobarPedidoControlFields").slideUp(150);
         }
+    });
+
+    function aplicarMotivoControlAprobacion(motivo) {
+        if (String(motivo || "").toUpperCase() === "APROBADO_CON_CONDICION") {
+            if (!$("#ddAprobarPedidoRequiereControl").is(":checked")) {
+                $("#ddAprobarPedidoRequiereControl").prop("checked", true).trigger("change");
+            }
+        }
+    }
+
+    $(document).on("change", "#ddAprobarPedidoMotivo", function () {
+        aplicarMotivoControlAprobacion($(this).val());
+    });
+
+    $(document).on("changed.bs.select", "#ddAprobarPedidoMotivo", function () {
+        aplicarMotivoControlAprobacion($(this).val());
     });
 
     $(document).on(
@@ -1870,6 +1889,18 @@
 
         if (requiereControl && !controlCondicion) {
             swal("Atención", "Selecciona la condición del control.", "warning");
+            return;
+        }
+
+        if (
+            String(motivo || "").toUpperCase() === "APROBADO_CON_CONDICION" &&
+            !controlCondicion
+        ) {
+            swal(
+                "Atención",
+                "El motivo «Aprobado con condición operativa» requiere seleccionar la condición del control.",
+                "warning"
+            );
             return;
         }
 

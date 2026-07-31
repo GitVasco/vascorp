@@ -1114,36 +1114,71 @@ $("#modalFacturar").on("show.bs.modal", function () {
 
 $(
     ".tablaPedidosCV, .tablaPedidosGenerados, .tablaPedidosAprobados, .tablaPedidosAPT, .tablaPedidosConfirmados, .tablaPedidosFacturados"
-).on("click", "button.btnFacturar", function () {
-    var codigo = $(this).attr("codigo");
-    var cod_cli = $(this).attr("cod_cli");
-    var nom_cli = $(this).attr("nom_cli");
-    var tip_doc = $(this).attr("tip_doc");
-    var nro_doc = $(this).attr("nro_doc");
-    var dscto = $(this).attr("dscto");
-    var cod_ven = $(this).attr("cod_ven");
-    //console.log(nro_doc);
+).on("click", "button.btnFacturar", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-    $("#codPedido").val(codigo);
-    $("#codCli").val(cod_cli);
-    $("#nomCli").val(nom_cli);
-    $("#tipDoc").val(tip_doc);
-    $("#nroDoc").val(nro_doc);
-    $("#dscto").val(dscto);
-    $("#codVen").val(cod_ven);
+    var $btn = $(this);
+    var codigo = $btn.attr("codigo");
+    var cod_cli = $btn.attr("cod_cli");
+    var nom_cli = $btn.attr("nom_cli");
+    var tip_doc = $btn.attr("tip_doc");
+    var nro_doc = $btn.attr("nro_doc");
+    var dscto = $btn.attr("dscto");
+    var cod_ven = $btn.attr("cod_ven");
 
-    var datos = new FormData();
-    datos.append("codPedido", codigo);
+    var abrirModalFacturar = function () {
+        $("#codPedido").val(codigo);
+        $("#codCli").val(cod_cli);
+        $("#nomCli").val(nom_cli);
+        $("#tipDoc").val(tip_doc);
+        $("#nroDoc").val(nro_doc);
+        $("#dscto").val(dscto);
+        $("#codVen").val(cod_ven);
+
+        var datos = new FormData();
+        datos.append("codPedido", codigo);
+
+        $.ajax({
+            url: "ajax/pedidos.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {},
+        });
+
+        $("#modalFacturar").modal("show");
+    };
+
+    var datosControl = new FormData();
+    datosControl.append("verificarControlFacturacion", "1");
+    datosControl.append("codigoPedido", codigo);
 
     $.ajax({
-        url: "ajax/pedidos.ajax.php",
+        url: "ajax/facturacion.ajax.php",
         method: "POST",
-        data: datos,
+        data: datosControl,
         cache: false,
         contentType: false,
         processData: false,
         dataType: "json",
-        success: function (respuesta) {},
+        success: function (respuesta) {
+            if (respuesta && respuesta.bloqueado) {
+                swal(
+                    "Control pendiente",
+                    respuesta.msg || "Créditos debe liberar el control antes de facturar.",
+                    "warning"
+                );
+                return;
+            }
+            abrirModalFacturar();
+        },
+        error: function () {
+            abrirModalFacturar();
+        },
     });
 });
 
@@ -1462,17 +1497,6 @@ $(".tablaPedidosAprobados").on("click", ".btnAptear", function () {
         contentType: false,
         processData: false,
         success: function (respuesta) {
-            if (
-                typeof respuesta === "string" &&
-                respuesta.indexOf("BLOQUEO_CONTROL|") === 0
-            ) {
-                swal(
-                    "Control pendiente",
-                    respuesta.replace("BLOQUEO_CONTROL|", ""),
-                    "warning"
-                );
-                return;
-            }
             if (respuesta !== "ok") {
                 swal(
                     "Atención",

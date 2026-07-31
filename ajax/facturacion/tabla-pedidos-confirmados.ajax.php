@@ -2,6 +2,8 @@
 
 require_once "../../controladores/pedidos.controlador.php";
 require_once "../../modelos/pedidos.modelo.php";
+require_once "../../controladores/decisiones-credito.config.php";
+require_once "../../modelos/decisiones-credito.modelo.php";
 
 class TablaPedidosCV
 {
@@ -18,6 +20,14 @@ class TablaPedidosCV
         $pedidos = ControladorPedidos::ctrMostraPedidosTablas($valor);
 
         if (count($pedidos) > 0) {
+
+            $codigosPedido = array();
+            for ($j = 0; $j < count($pedidos); $j++) {
+                $codigosPedido[] = (int) $pedidos[$j]["codigo"];
+            }
+            $mapaControles = class_exists("ModeloDecisionesCredito")
+                ? ModeloDecisionesCredito::mdlMapaControlesPendientesPorPedidos($codigosPedido)
+                : array();
 
             $datosJson = '{
         "data": [';
@@ -46,7 +56,21 @@ class TablaPedidosCV
                     $estado = "<button class='btn btn-default btn-xs btn  btnConfirmar' codigo='" . $pedidos[$i]["codigo"] . "' estadoPedido='CONFIRMADO'>APT</button>";
                 } else if ($pedidos[$i]["estado"] == "CONFIRMADO") {
 
-                    $estado = "<button class='btn btn-info btn-xs btn' codigo='" . $pedidos[$i]["codigo"] . "' estadoPedido='FACTURADOS'>CONFIRMADO</button>";
+                    $codigoPedido = (int) $pedidos[$i]["codigo"];
+                    $badgeControl = "";
+                    if (isset($mapaControles[$codigoPedido])) {
+                        $ctrl = $mapaControles[$codigoPedido];
+                        $tituloCtrl = isset($ctrl["condicion_etiqueta"])
+                            ? $ctrl["condicion_etiqueta"]
+                            : $ctrl["condicion_codigo"];
+                        if ((int) $ctrl["bloquea_apt"] === 1) {
+                            $badgeControl = " <span class='label label-danger' title='"
+                                . htmlspecialchars("Control pendiente: " . $tituloCtrl, ENT_QUOTES, "UTF-8")
+                                . "'><i class='fa fa-lock'></i></span>";
+                        }
+                    }
+
+                    $estado = "<button class='btn btn-info btn-xs btn btnFacturar' codigo='" . $pedidos[$i]["codigo"] . "' estadoPedido='FACTURADOS'>CONFIRMADO</button>" . $badgeControl;
                 } else {
 
                     $estado = "<button class='btn btn-success btn-xs btn' codigo='" . $pedidos[$i]["codigo"] . "' estadoPedido='FACTURADOS'>FACTURADO</button>";

@@ -1583,7 +1583,7 @@ class ModeloDecisionesCredito
         if (!empty($control["comentario"])) {
             $msg .= " " . $control["comentario"];
         }
-        $msg .= " Créditos debe liberar el despacho en Historial de crédito.";
+        $msg .= " Créditos debe liberarlo en Historial de crédito antes de facturar.";
 
         return array(
             "control" => $control,
@@ -1631,21 +1631,65 @@ class ModeloDecisionesCredito
         return $mapa;
     }
 
-    static public function mdlListarControlesPostAprobacion(array $filtros = array())
+    static public function mdlTablaControlesPostAprobacionDisponible()
     {
-        $params = array();
+        try {
+            $stmt = Conexion::conectar()->query("SELECT 1 FROM decision_credito_controljf LIMIT 1");
+            return $stmt !== false;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    static public function mdlControlesPostAprobacionSqlWhere(array $filtros = array(), array &$params = array())
+    {
         $where = array("c.estado = 'PENDIENTE'");
 
         $vendedor = isset($filtros["vendedor"]) ? trim((string) $filtros["vendedor"]) : "";
-        if ($vendedor !== "") {
+        if ($vendedor !== "" && empty($filtros["sin_filtro_vendedor"])) {
             $where[] = "t.vendedor = :vendedor";
             $params[":vendedor"] = $vendedor;
         }
 
+        return implode(" AND ", $where);
+    }
+
+    static public function mdlContarControlesPostAprobacionPendientes($vendedor = null)
+    {
+        $filtros = array("sin_filtro_vendedor" => true);
+        if ($vendedor !== null && trim((string) $vendedor) !== "") {
+            unset($filtros["sin_filtro_vendedor"]);
+            $filtros["vendedor"] = trim((string) $vendedor);
+        }
+
+        $params = array();
+        $sqlWhere = self::mdlControlesPostAprobacionSqlWhere($filtros, $params);
+
+        try {
+            $sql = "SELECT COUNT(*) AS total
+                    FROM decision_credito_controljf c
+                    LEFT JOIN temporaljf t ON t.codigo = c.codigo_pedido
+                    WHERE {$sqlWhere}";
+            $stmt = Conexion::conectar()->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            }
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return 0;
+        }
+
+        return isset($row["total"]) ? (int) $row["total"] : 0;
+    }
+
+    static public function mdlListarControlesPostAprobacion(array $filtros = array())
+    {
+        $params = array();
+        $sqlWhere = self::mdlControlesPostAprobacionSqlWhere($filtros, $params);
+
         $limite = isset($filtros["limite"]) ? (int) $filtros["limite"] : 100;
         $limite = max(20, min(300, $limite));
-
-        $sqlWhere = implode(" AND ", $where);
 
         try {
             $sql = "SELECT c.*,
@@ -1654,14 +1698,16 @@ class ModeloDecisionesCredito
                         t.estado AS pedido_estado,
                         t.vendedor,
                         t.fecha AS pedido_fecha,
-                        IFNULL(v.descripcion, t.vendedor) AS nom_vendedor,
                         IFNULL(cl.nombre, c.codigo_cliente) AS cliente_nombre,
                         IFNULL(ur.nombre, CONCAT('Usuario #', c.usuario_registra)) AS usuario_registra_nombre,
+                        IFNULL(ven.descripcion, t.vendedor) AS nom_vendedor,
                         DATEDIFF(CURDATE(), DATE(c.fecha_registro)) AS dias_pendiente
                     FROM decision_credito_controljf c
-                    INNER JOIN temporaljf t ON t.codigo = c.codigo_pedido
+                    LEFT JOIN temporaljf t ON t.codigo = c.codigo_pedido
                     LEFT JOIN clientesjf cl ON cl.codigo = c.codigo_cliente
-                    LEFT JOIN vendedoresjf v ON v.codigo = t.vendedor
+                    LEFT JOIN maestrajf ven
+                        ON ven.codigo = t.vendedor
+                       AND ven.tipo_dato = 'TVEND'
                     LEFT JOIN usuariosjf ur ON ur.id = c.usuario_registra
                     WHERE {$sqlWhere}
                     ORDER BY c.fecha_registro ASC
@@ -1673,7 +1719,9 @@ class ModeloDecisionesCredito
             $stmt->execute();
             $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            return array();
+            return array(
+                "__list_error__" => $e->getMessage(),
+            );
         }
 
         $salida = array();
@@ -1691,9 +1739,16 @@ class ModeloDecisionesCredito
         $comentario = isset($datos["comentario_liberacion"])
             ? trim((string) $datos["comentario_liberacion"])
             : "";
+        $areaCodigo = isset($datos["area_autoriza_codigo"])
+            ? strtoupper(trim((string) $datos["area_autoriza_codigo"]))
+            : "";
 
         if ($id <= 0 || $usuarioId <= 0) {
             return array("ok" => false, "msg" => "Datos incompletos.");
+        }
+
+        if ($areaCodigo !== "" && function_exists("dcObtenerAreaAutorizacion") && !dcObtenerAreaAutorizacion($areaCodigo)) {
+            return array("ok" => false, "msg" => "Área de autorización no válida.");
         }
 
         try {
@@ -1714,11 +1769,16 @@ class ModeloDecisionesCredito
                 SET estado = 'LIBERADO',
                     usuario_liberacion = :usuario_liberacion,
                     comentario_liberacion = :comentario_liberacion,
+                    area_autoriza_codigo = CASE
+                        WHEN :area <> '' THEN :area
+                        ELSE area_autoriza_codigo
+                    END,
                     fecha_liberacion = NOW()
                 WHERE id = :id AND estado = 'PENDIENTE'";
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":id", $id, PDO::PARAM_INT);
         $stmt->bindValue(":usuario_liberacion", $usuarioId, PDO::PARAM_INT);
+        $stmt->bindValue(":area", $areaCodigo, PDO::PARAM_STR);
         if ($comentario !== "") {
             $stmt->bindValue(":comentario_liberacion", $comentario, PDO::PARAM_STR);
         } else {
@@ -1729,9 +1789,22 @@ class ModeloDecisionesCredito
             return array("ok" => false, "msg" => "No se pudo liberar el control.");
         }
 
+        try {
+            $stmtSel2 = Conexion::conectar()->prepare(
+                "SELECT * FROM decision_credito_controljf WHERE id = :id LIMIT 1"
+            );
+            $stmtSel2->bindValue(":id", $id, PDO::PARAM_INT);
+            $stmtSel2->execute();
+            $control = $stmtSel2->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $control = null;
+        }
+
         return array(
             "ok" => true,
-            "control" => self::mdlEnriquecerControlPostAprobacion($control),
+            "control" => $control
+                ? self::mdlEnriquecerControlPostAprobacion($control)
+                : array(),
         );
     }
 

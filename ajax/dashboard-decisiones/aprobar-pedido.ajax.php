@@ -39,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 
 $codigoPedido = isset($_POST["codigo_pedido"]) ? trim((string) $_POST["codigo_pedido"]) : "";
 $idCategoria = isset($_POST["id_categoria"]) ? (int) $_POST["id_categoria"] : 0;
-$motivoCodigo = isset($_POST["motivo_codigo"]) ? trim((string) $_POST["motivo_codigo"]) : "";
+$motivoCodigo = isset($_POST["motivo_codigo"]) ? strtoupper(trim((string) $_POST["motivo_codigo"])) : "";
 $comentario = isset($_POST["comentario"]) ? trim((string) $_POST["comentario"]) : "";
 $controlCondicion = isset($_POST["control_condicion_codigo"])
     ? trim((string) $_POST["control_condicion_codigo"])
@@ -51,6 +51,9 @@ $controlComentario = isset($_POST["control_comentario"])
     ? trim((string) $_POST["control_comentario"])
     : "";
 $requiereControl = isset($_POST["requiere_control"]) && (string) $_POST["requiere_control"] === "1";
+if ($motivoCodigo === "APROBADO_CON_CONDICION") {
+    $requiereControl = true;
+}
 
 if (!$requiereControl) {
     $controlCondicion = "";

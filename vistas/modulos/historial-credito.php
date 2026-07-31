@@ -32,13 +32,15 @@ $aprobados = $cola["aprobados"];
 $resumenCola = $cola["resumen"];
 
 $controlesInicial = ControladorDecisionesCredito::ctrListarControlesPostAprobacion(array(
-    "vendedor" => $vendedorSeleccionado,
     "limite" => 100,
 ));
 $filasControles = (!empty($controlesInicial["ok"]) && isset($controlesInicial["filas"]))
     ? $controlesInicial["filas"]
     : array();
 $puedeLiberarControl = !empty($controlesInicial["puede_liberar"]);
+$controlesInicialError = !empty($controlesInicial["ok"])
+    ? ""
+    : (isset($controlesInicial["msg"]) ? (string) $controlesInicial["msg"] : "");
 
 $datos = ControladorDecisionesCredito::ctrListarHistorialAcciones(array(
     "fecha_desde" => $fechaDesde,
@@ -165,9 +167,14 @@ function hcDashAyuda($texto)
                         <span class="label label-danger pull-right" id="hcBadgeControles"><?php echo count($filasControles); ?></span>
                     </div>
                     <div class="box-body">
+                        <?php if ($controlesInicialError !== "") : ?>
+                            <div class="alert alert-danger hc-controles-alert">
+                                <?php echo htmlspecialchars($controlesInicialError); ?>
+                            </div>
+                        <?php endif; ?>
                         <p class="text-muted hc-controles-intro">
-                            Pedidos aprobados con condición pendiente antes de despachar.
-                            Los marcados con <span class="label label-danger">APT</span> bloquean el paso a APT hasta liberarlos.
+                            Pedidos con condición pendiente antes de facturar (aprobado, APT o confirmado).
+                            Los marcados con <span class="label label-danger">FAC</span> bloquean la facturación hasta liberarlos.
                             Si un pedido ya aprobado requiere seguimiento, usa el botón <i class="fa fa-lock"></i> en la cola de aprobados.
                         </p>
                     </div>
@@ -176,6 +183,7 @@ function hcDashAyuda($texto)
                             <thead>
                                 <tr>
                                     <th>Pedido</th>
+                                    <th>Estado</th>
                                     <th class="dd-col-cliente">Cliente</th>
                                     <th>Condición</th>
                                     <th>Área</th>
@@ -949,8 +957,23 @@ function hcDashAyuda($texto)
             <div class="modal-body">
                 <p class="dd-aprobar-cat-cliente" id="hcLiberarControlInfo"></p>
                 <p class="text-muted" id="hcLiberarControlHint">
-                    Confirma que se cumplió la condición. El pedido podrá pasar a APT.
+                    Confirma que se cumplió la condición. Si al aprobar no quedó claro quién autorizó, indícalo aquí.
+                    El pedido podrá facturarse tras liberar.
                 </p>
+                <div class="form-group">
+                    <label for="hcLiberarControlArea">Autorizado por (área)</label>
+                    <select
+                        id="hcLiberarControlArea"
+                        class="form-control selectpicker hc-control-area-select"
+                        data-live-search="true"
+                        title="Selecciona área…"
+                    >
+                        <option value="">Sin área específica…</option>
+                    </select>
+                    <p class="help-block text-muted">
+                        Ej.: Gerencia General, Créditos y Cobranzas…
+                    </p>
+                </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="hcLiberarControlObs">Observación de cierre</label>
                     <textarea

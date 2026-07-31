@@ -571,6 +571,59 @@ function dcHtmlSelloControlCreditoImpresionCelda($texto = null)
         . "</span></span>";
 }
 
+function dcHtmlSelloControlCreditoImpresionDireccion($texto = null)
+{
+    $texto = ($texto !== null && $texto !== "") ? $texto : dcTextoSelloControlCreditoImpresion();
+    $texto = function_exists("mb_strtoupper") ? mb_strtoupper($texto, "UTF-8") : strtoupper($texto);
+
+    return '<div class="hc-print-sello-direccion">'
+        . '<span class="hc-print-sello-direccion-texto">'
+        . htmlspecialchars($texto, ENT_QUOTES, "UTF-8")
+        . "</span></div>";
+}
+
+/**
+ * Filas DIRECCIÓN + ubigeo. Con control pendiente, el aviso ocupa 2 filas a la derecha.
+ */
+function dcHtmlFilasDireccionImpresionPedido($codigoPedido, array $respuesta)
+{
+    $direccion = htmlspecialchars(isset($respuesta["direccion"]) ? (string) $respuesta["direccion"] : "", ENT_QUOTES, "UTF-8");
+    $nomUbi = htmlspecialchars(isset($respuesta["nom_ubi"]) ? (string) $respuesta["nom_ubi"] : "", ENT_QUOTES, "UTF-8");
+    $ubigeo = isset($respuesta["ubigeo"]) ? (string) $respuesta["ubigeo"] : "";
+
+    if (dcPedidoMostrarSelloControlCreditoImpresion($codigoPedido)) {
+        $sello = dcHtmlSelloControlCreditoImpresionDireccion();
+
+        return '
+                            <tr>
+                                <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
+                                <td colspan="8">' . $direccion . '</td>
+                                <td rowspan="2" class="hc-print-celda-sello-direccion" colspan="2">' . $sello . '</td>
+                            </tr>
+                            <tr>
+                                <th style="width:10%"></th>
+                                <td colspan="6">' . $nomUbi . '</td>
+                                <th style="width:6%"></th>
+                                <th style="width:6%"></th>
+                            </tr>';
+    }
+
+    $celdaUbigeo = dcCeldaUbigeoImpresionPedido($codigoPedido, $ubigeo);
+
+    return '
+                            <tr>
+                                <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
+                                <td colspan="10">' . $direccion . '</td>
+                            </tr>
+                            <tr>
+                                <th style="width:10%"></th>
+                                <td colspan="6">' . $nomUbi . '</td>
+                                <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
+                                <th style="width:6%"></th>
+                                <th style="width:6%"></th>
+                            </tr>';
+}
+
 /**
  * Contenido de la celda ubigeo: aviso con borde o ubigeo normal.
  */

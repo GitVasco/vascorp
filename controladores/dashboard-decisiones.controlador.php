@@ -113,6 +113,14 @@ class ControladorDashboardDecisiones
         }
 
         $controlesPendientes = 0;
+        if (class_exists("ModeloDecisionesCredito")) {
+            try {
+                $controlesPendientes = ModeloDecisionesCredito::mdlContarControlesPostAprobacionPendientes($vendedor);
+            } catch (Exception $e) {
+                $controlesPendientes = 0;
+            }
+        }
+
         foreach ($aprobados as $idx => $rowApr) {
             $cod = (int) $rowApr["codigo"];
             if (isset($mapaControles[$cod])) {
@@ -318,6 +326,13 @@ class ControladorDashboardDecisiones
         $controlArea = strtoupper(trim((string) $controlArea));
         $controlComentario = trim((string) $controlComentario);
         $requiereControl = ($controlCondicion !== "");
+
+        if ($motivoCodigo === "APROBADO_CON_CONDICION" && $controlCondicion === "") {
+            return array(
+                "ok" => false,
+                "msg" => "El motivo «Aprobado con condición operativa» requiere seleccionar la condición del control post-aprobación.",
+            );
+        }
 
         if ($codigoPedido === "") {
             return array("ok" => false, "msg" => "Pedido no indicado.");

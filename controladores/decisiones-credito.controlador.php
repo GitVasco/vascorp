@@ -460,7 +460,25 @@ class ControladorDecisionesCredito
             return array("ok" => false, "msg" => "Sin permiso.", "filas" => array());
         }
 
+        if (!ModeloDecisionesCredito::mdlTablaControlesPostAprobacionDisponible()) {
+            return array(
+                "ok" => false,
+                "msg" => "Falta crear la tabla decision_credito_controljf. Ejecuta docs/sql/decision-credito-control-post-aprobacion.sql en la base de datos.",
+                "filas" => array(),
+                "tabla_faltante" => true,
+            );
+        }
+
+        $filtros["sin_filtro_vendedor"] = true;
         $filas = ModeloDecisionesCredito::mdlListarControlesPostAprobacion($filtros);
+
+        if (isset($filas["__list_error__"])) {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo listar controles: " . $filas["__list_error__"],
+                "filas" => array(),
+            );
+        }
 
         return array(
             "ok" => true,
@@ -506,10 +524,10 @@ class ControladorDecisionesCredito
         }
 
         $estado = strtoupper(trim((string) $pedido["estado"]));
-        if (!in_array($estado, array("APROBADO", "APT"), true)) {
+        if (!in_array($estado, array("APROBADO", "APT", "CONFIRMADO"), true)) {
             return array(
                 "ok" => false,
-                "msg" => "Solo se puede registrar control en pedidos APROBADOS o en APT. Estado actual: "
+                "msg" => "Solo se puede registrar control en pedidos no facturados (APROBADO, APT o CONFIRMADO). Estado actual: "
                     . $estado,
             );
         }
@@ -546,11 +564,15 @@ class ControladorDecisionesCredito
         $comentario = isset($_POST["comentario_liberacion"])
             ? trim((string) $_POST["comentario_liberacion"])
             : "";
+        $areaCodigo = isset($_POST["area_autoriza_codigo"])
+            ? strtoupper(trim((string) $_POST["area_autoriza_codigo"]))
+            : "";
 
         $resultado = ModeloDecisionesCredito::mdlLiberarControlPostAprobacion(array(
             "id" => $id,
             "usuario_id" => (int) $_SESSION["id"],
             "comentario_liberacion" => $comentario,
+            "area_autoriza_codigo" => $areaCodigo,
         ));
 
         if (empty($resultado["ok"])) {
@@ -565,7 +587,9 @@ class ControladorDecisionesCredito
             $detalle = "Control liberado: "
                 . (isset($control["condicion_etiqueta"]) ? $control["condicion_etiqueta"] : $control["condicion_codigo"]);
             if (!empty($control["area_etiqueta"])) {
-                $detalle .= " · Área: " . $control["area_etiqueta"];
+                $detalle .= " · Autorizado por: " . $control["area_etiqueta"];
+            } elseif ($areaCodigo !== "" && function_exists("dcEtiquetaAreaAutorizacion")) {
+                $detalle .= " · Autorizado por: " . dcEtiquetaAreaAutorizacion($areaCodigo);
             }
 
             dcRegistrarAccionCredito(array(
@@ -574,6 +598,7 @@ class ControladorDecisionesCredito
                 "tipo_accion" => "DESPACHO_AUTORIZADO",
                 "origen" => "centro_decisiones",
                 "motivo_codigo" => isset($control["condicion_codigo"]) ? $control["condicion_codigo"] : null,
+                "area_autoriza_codigo" => $areaCodigo !== "" ? $areaCodigo : (isset($control["area_autoriza_codigo"]) ? $control["area_autoriza_codigo"] : null),
                 "comentario" => $comentario !== "" ? $comentario : null,
                 "usuario_id" => (int) $_SESSION["id"],
                 "detalle" => $detalle,
@@ -582,7 +607,7 @@ class ControladorDecisionesCredito
 
         return array(
             "ok" => true,
-            "msg" => "Despacho autorizado. El pedido ya puede pasar a APT.",
+            "msg" => "Despacho autorizado. El pedido ya puede facturarse.",
             "control" => $control,
         );
     }

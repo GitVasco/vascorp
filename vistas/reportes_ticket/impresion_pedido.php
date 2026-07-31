@@ -46,9 +46,9 @@
     $cantidadArticulos = count($articulos);
     #var_dump(count($articulos));
 
-    $celdaUbigeo = function_exists("dcCeldaUbigeoImpresionPedido")
-        ? dcCeldaUbigeoImpresionPedido($codigo, isset($respuesta["ubigeo"]) ? $respuesta["ubigeo"] : "")
-        : htmlspecialchars(isset($respuesta["ubigeo"]) ? (string) $respuesta["ubigeo"] : "", ENT_QUOTES, "UTF-8");
+    $filasDireccionImpresion = function_exists("dcHtmlFilasDireccionImpresionPedido")
+        ? dcHtmlFilasDireccionImpresionPedido($codigo, $respuesta)
+        : "";
 
     ?>
     <div class="zona_impresion">
@@ -90,22 +90,7 @@
                         
                             </tr>
                         
-                            <tr>
-                        
-                                <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                <td colspan="10">' . $respuesta["direccion"] . '</td>
-                        
-                            </tr>
-                        
-                            <tr>
-                        
-                                <th style="width:10%"></th>
-                                <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                <th style="width:6%"></th>
-                                <th style="width:6%"></th>
-                        
-                            </tr>
+                            ' . $filasDireccionImpresion . '
                         
                             <tr>
                         
@@ -395,22 +380,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -642,22 +612,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -949,22 +904,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -1196,22 +1136,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -1443,22 +1368,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -1750,22 +1660,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -1997,22 +1892,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -2244,22 +2124,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -2491,22 +2356,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -2798,22 +2648,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -3045,22 +2880,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -3292,22 +3112,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -3539,22 +3344,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -3786,22 +3576,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -4093,22 +3868,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -4340,22 +4100,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -4587,22 +4332,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -4834,22 +4564,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -5081,22 +4796,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -5328,22 +5028,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -5635,22 +5320,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -5882,22 +5552,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -6129,22 +5784,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -6376,22 +6016,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -6623,22 +6248,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -6870,22 +6480,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -7117,22 +6712,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -7424,22 +7004,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -7671,22 +7236,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -7918,22 +7468,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -8165,22 +7700,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -8412,22 +7932,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -8659,22 +8164,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -8906,22 +8396,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -9153,22 +8628,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -9460,22 +8920,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -9707,22 +9152,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -9954,22 +9384,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -10201,22 +9616,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -10448,22 +9848,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -10695,22 +10080,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -10942,22 +10312,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -11189,22 +10544,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -11436,22 +10776,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -11743,22 +11068,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -11990,22 +11300,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -12237,22 +11532,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -12484,22 +11764,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -12731,22 +11996,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -12978,22 +12228,7 @@
                                 
                                     </tr>
                                 
-                                    <tr>
-                                
-                                        <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                                        <td colspan="10">' . $respuesta["direccion"] . '</td>
-                                
-                                    </tr>
-                                
-                                    <tr>
-                                
-                                        <th style="width:10%"></th>
-                                        <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                                        <th style="width:6%"></th>
-                                        <th style="width:6%"></th>
-                                
-                                    </tr>
+                                    ' . $filasDireccionImpresion . '
                                 
                                     <tr>
                                 
@@ -13225,22 +12460,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -13472,22 +12692,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -13719,22 +12924,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     
@@ -13966,22 +13156,7 @@
                     
                         </tr>
                     
-                        <tr>
-                    
-                            <th style="width:10%;text-align:left;">DIRECCIÓN:</th>
-                            <td colspan="10">' . $respuesta["direccion"] . '</td>
-                    
-                        </tr>
-                    
-                        <tr>
-                    
-                            <th style="width:10%"></th>
-                            <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
-                            <th style="width:6%"></th>
-                            <th style="width:6%"></th>
-                    
-                        </tr>
+                        ' . $filasDireccionImpresion . '
                     
                         <tr>
                     

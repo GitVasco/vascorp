@@ -204,6 +204,30 @@ class AjaxFacturacion
     }
 
     /*=============================================
+    VERIFICAR BLOQUEO POR CONTROL POST-APROBACIÓN (facturación)
+    =============================================*/
+    public $codigoPedidoControl;
+
+    public function ajaxVerificarControlFacturacion()
+    {
+        require_once "../controladores/decisiones-credito.config.php";
+        require_once "../modelos/decisiones-credito.modelo.php";
+
+        $codigo = (int) $this->codigoPedidoControl;
+        $bloqueo = null;
+
+        if ($codigo > 0 && class_exists("ModeloDecisionesCredito")) {
+            $bloqueo = ModeloDecisionesCredito::mdlControlBloqueantePendiente($codigo);
+        }
+
+        echo json_encode(array(
+            "ok" => true,
+            "bloqueado" => $bloqueo !== null,
+            "msg" => $bloqueo ? $bloqueo["mensaje"] : "",
+        ));
+    }
+
+    /*=============================================
     ACTIVAR PEDIDO
     =============================================*/
     public function ajaxActivarPedido()
@@ -211,19 +235,6 @@ class AjaxFacturacion
 
         $valor = $this->activarId;
         $estado = $this->activarEstado;
-
-        if ($estado === "APT") {
-            require_once "../controladores/decisiones-credito.config.php";
-            require_once "../modelos/decisiones-credito.modelo.php";
-
-            if (class_exists("ModeloDecisionesCredito")) {
-                $bloqueo = ModeloDecisionesCredito::mdlControlBloqueantePendiente((int) $valor);
-                if ($bloqueo) {
-                    echo "BLOQUEO_CONTROL|" . $bloqueo["mensaje"];
-                    return;
-                }
-            }
-        }
 
         $usuario = $_SESSION["id"];
         $nom_user = $_SESSION["nombre"];
@@ -565,6 +576,15 @@ if (isset($_POST["jsonCuenta2"])) {
     $editarVenta = new AjaxFacturacion();
     $editarVenta->datosVenta2 = $_POST["jsonCuenta2"];
     $editarVenta->ajaxEditarVentaNota();
+}
+
+/*=============================================
+    VERIFICAR CONTROL ANTES DE FACTURAR
+    =============================================*/
+if (isset($_POST["verificarControlFacturacion"])) {
+    $verificarControl = new AjaxFacturacion();
+    $verificarControl->codigoPedidoControl = isset($_POST["codigoPedido"]) ? $_POST["codigoPedido"] : 0;
+    $verificarControl->ajaxVerificarControlFacturacion();
 }
 
 /*=============================================

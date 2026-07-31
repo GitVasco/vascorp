@@ -83,7 +83,8 @@ if (!function_exists("hcRenderAccionesPedido")) {
                 . ' data-id="' . (int) $ctrl["id"] . '"'
                 . ' data-pedido="' . htmlspecialchars($row["codigo"]) . '"'
                 . ' data-condicion="' . htmlspecialchars(isset($ctrl["condicion_etiqueta"]) ? $ctrl["condicion_etiqueta"] : "") . '"'
-                . ' data-cliente="' . htmlspecialchars($row["cliente"]) . '">'
+                . ' data-cliente="' . htmlspecialchars($row["cliente"]) . '"'
+                . ' data-area="' . htmlspecialchars(!empty($ctrl["area_autoriza_codigo"]) ? $ctrl["area_autoriza_codigo"] : "") . '">'
                 . '<i class="fa fa-unlock"></i></button>';
         }
 

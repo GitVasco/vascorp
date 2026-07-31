@@ -3933,6 +3933,29 @@ class ControladorFacturacion
 
             // Datos
             $codigo = $_POST["codPedido"];
+
+            require_once __DIR__ . "/decisiones-credito.config.php";
+            require_once __DIR__ . "/../modelos/decisiones-credito.modelo.php";
+            if (class_exists("ModeloDecisionesCredito")) {
+                $bloqueoControl = ModeloDecisionesCredito::mdlControlBloqueantePendiente((int) $codigo);
+                if ($bloqueoControl) {
+                    $textoBloqueo = json_encode(
+                        $bloqueoControl["mensaje"],
+                        JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
+                    );
+                    echo '<script>
+                        swal({
+                            type: "warning",
+                            title: "Control pendiente",
+                            text: ' . $textoBloqueo . ',
+                            showConfirmButton: true,
+                            confirmButtonText: "Cerrar"
+                        });
+                    </script>';
+                    return;
+                }
+            }
+
             $tipoDocumento = $_POST["tdoc"];
             $almacen = $_SESSION["almacen"] == "01" ? "stock01" : "stock05";
             $codigoAlmacen = $_SESSION["almacen"] == "01" ? "01" : "05";

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS decision_credito_controljf (
     id_accion_aprobacion INT(11) NULL COMMENT 'decision_credito_accionjf.id de la fila APROBADO',
 
     condicion_codigo VARCHAR(50) NOT NULL COMMENT 'Catálogo controles_post_aprobacion',
-    area_autoriza_codigo VARCHAR(50) NULL COMMENT 'Catálogo areas_autorizacion',
+    area_autoriza_codigo VARCHAR(50) NULL COMMENT 'Catálogo areas_autorizacion; puede completarse al liberar',
     comentario TEXT NULL COMMENT 'Detalle de la condición',
 
     estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE | LIBERADO',
