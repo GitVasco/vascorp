@@ -475,4 +475,19 @@ class ControladorProduccion
     {
         return ModeloProduccion::mdlRptPagosTrusasProduccionDetalle($inicio, $fin);
     }
+
+    static public function ctrRptDetalleProduccionTrabajadorInfo($inicio, $fin, $trabajador)
+    {
+        return ModeloProduccion::mdlRptDetalleProduccionTrabajadorInfo($inicio, $fin, $trabajador);
+    }
+
+    static public function ctrRptDetalleProduccionTrabajadorDetalle($inicio, $fin, $trabajador)
+    {
+        return ModeloProduccion::mdlRptDetalleProduccionTrabajadorDetalle($inicio, $fin, $trabajador);
+    }
+
+    static public function ctrRptDetalleProduccionTrabajadoresIds($inicio, $fin, $sector = null)
+    {
+        return ModeloProduccion::mdlRptDetalleProduccionTrabajadoresIds($inicio, $fin, $sector);
+    }
 }

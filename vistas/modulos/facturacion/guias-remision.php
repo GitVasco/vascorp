@@ -603,232 +603,156 @@ EDITAR GUIA
 ======================================-->
 <div id="modalGremision" class="modal fade" role="dialog">
 
-    <div class="modal-dialog" style="width: 70% !important;">
+    <div class="modal-dialog" style="width: 720px; max-width: 96%;">
 
         <div class="modal-content">
 
             <form role="form" method="post" onsubmit="return checkSubmit();">
 
-                <!--=====================================
-        CABEZA DEL MODAL
-        ======================================-->
-
                 <div class="modal-header" style="background:#3c8dbc; color:white">
 
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
 
-                    <h4 class="modal-title">Pasar Pedido a:</h4>
+                    <h4 class="modal-title">Editar guía de remisión</h4>
 
                 </div>
 
-                <!--=====================================
-        CUERPO DEL MODAL
-        ======================================-->
+                <div class="modal-body" style="padding:15px;">
 
-                <div class="modal-body">
-
-                    <div class="box-body">
-
-                        <div class="box box-primary col-lg-12 ">
-
-                            <div class="box-header">
-
-                                <b>Datos Principales</b>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL CODIGO DEL PEDIDO-->
-
-                            <div class="form-group col-lg-3">
-
-                                <label>Guia de Remision</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="codPedidoC" name="codPedidoC" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL NOMBRE DEL CLIENTE-->
-
-                            <div class="form-group col-lg-9">
-
-                                <label>Cliente</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="nomCliC" name="nomCliC" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL codigo DEL CLIENTE-->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Cod. Cliente</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="codCliC" name="codCliC" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL TIPO DOCUMENTO DEL CLIENTE-->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Tipo Documento</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="tipDocC" name="tipDocC" readonly>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ENTRADA PARA EL NUMERO DOCUMENTO DEL CLIENTE-->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Nro. Documento</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="nroDocC" name="nroDocC" readonly>
-                                    <input type="hidden" class="form-control input-sm" name="codVenC" id="codVenC" readonly>
-                                    <input type="hidden" name="idUsuarioC" id="idUsuarioC" value="<?php echo $_SESSION["id"]; ?>">
-
-                                </div>
-
-                            </div>
-
+                    <div class="box box-primary" style="margin-bottom:12px;">
+                        <div class="box-header with-border">
+                            <b>Datos Principales</b>
                         </div>
-
-                        <div class="box box-warning col-lg-12">
-
-                            <div class="box-header">
-
-                                <b>Datos para la Guia de Remisión</b>
-
+                        <div class="box-body">
+                            <div class="row">
+                                <div class="form-group col-sm-4 col-lg-3">
+                                    <label>Guía de remisión</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-file-text-o"></i></span>
+                                        <input type="text" class="form-control input-sm" id="codPedidoC" name="codPedidoC" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group col-sm-8 col-lg-9">
+                                    <label>Cliente</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-user"></i></span>
+                                        <input type="text" class="form-control input-sm" id="nomCliC" name="nomCliC" readonly>
+                                    </div>
+                                </div>
                             </div>
+                            <div class="row">
+                                <div class="form-group col-sm-4">
+                                    <label>Cod. Cliente</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-hashtag"></i></span>
+                                        <input type="text" class="form-control input-sm" id="codCliC" name="codCliC" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group col-sm-4">
+                                    <label>Tipo documento</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-id-card-o"></i></span>
+                                        <input type="text" class="form-control input-sm" id="tipDocC" name="tipDocC" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group col-sm-4">
+                                    <label>Nro. documento</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-id-card"></i></span>
+                                        <input type="text" class="form-control input-sm" id="nroDocC" name="nroDocC" readonly>
+                                        <input type="hidden" name="codVenC" id="codVenC">
+                                        <input type="hidden" name="idUsuarioC" id="idUsuarioC" value="<?php echo $_SESSION["id"]; ?>">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                            <!-- ENTRADA PARA TIPO DE DOCUMENTO -->
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Chofer</label>
-                                <div class="input-group">
-
-
-                                    <span class="input-group-addon"><i class="fa fa-share-square-o"></i></span>
-                                    <select type="text" class="form-control input-sm" name="chofer" id="chofer">
-                                        <option value="">Seleccionar Chofer</option>
+                    <div class="box box-warning" style="margin-bottom:12px;">
+                        <div class="box-header with-border">
+                            <b>Datos para la Guía de Remisión</b>
+                        </div>
+                        <div class="box-body">
+                            <div class="row">
+                                <div class="form-group col-sm-6">
+                                    <label>Chofer</label>
+                                    <select class="form-control input-sm selectpicker" name="chofer" id="chofer" data-live-search="true" data-size="10" data-container="body" title="Seleccionar chofer">
+                                        <option value="">Seleccionar chofer</option>
                                         <?php
-
                                         $valor = "tcho";
-
                                         $documentos = ModeloPedidos::MostrarDatos($valor);
-
                                         foreach ($documentos as $key => $value) {
                                             echo '<option value="' . $value["Cod_Argumento"] . '">' . $value["Cod_Argumento"] . " - " . $value["Des_Larga"] . '</option>';
                                         }
-
                                         ?>
-
-
                                     </select>
-
                                 </div>
-
-                            </div>
-
-                            <div class="form-group col-lg-4">
-
-                                <label>Movilidad</label>
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-share-square-o"></i></span>
-                                    <select type="text" class="form-control input-sm" name="carro" id="carro">
-                                        <option value="">Seleccionar Movilidad</option>
+                                <div class="form-group col-sm-6">
+                                    <label>Movilidad</label>
+                                    <select class="form-control input-sm selectpicker" name="carro" id="carro" data-live-search="true" data-size="10" data-container="body" title="Seleccionar movilidad">
+                                        <option value="">Seleccionar movilidad</option>
                                         <?php
-
                                         $valor = "tcar";
-
                                         $documentos = ModeloPedidos::MostrarDatos($valor);
-
                                         foreach ($documentos as $key => $value) {
                                             echo '<option value="' . $value["Cod_Argumento"] . '">' . $value["Cod_Argumento"] . " - " . $value["Des_Larga"] . '</option>';
                                         }
-
                                         ?>
-
-
                                     </select>
-
                                 </div>
-
                             </div>
-
-                            <div class="form-group col-lg-2">
-
-                                <label>Peso Bruto Kg.</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="peso" name="peso" placeholder="Peso KG">
-
+                            <div class="row">
+                                <div class="form-group col-sm-4 col-lg-3">
+                                    <label>Peso bruto (kg)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-balance-scale"></i></span>
+                                        <input type="text" class="form-control input-sm" id="peso" name="peso" placeholder="0.00">
+                                    </div>
                                 </div>
-
-                            </div>
-
-                            <div class="form-group col-lg-2">
-
-                                <label>N° Bultos</label>
-
-                                <div class="input-group">
-
-                                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-
-                                    <input type="text" class="form-control input-sm" id="bultos" name="bultos" placeholder="# Bultos">
-
+                                <div class="form-group col-sm-4 col-lg-3">
+                                    <label>N° bultos</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-cubes"></i></span>
+                                        <input type="text" class="form-control input-sm" id="bultos" name="bultos" placeholder="0">
+                                    </div>
                                 </div>
-
                             </div>
-
                         </div>
+                    </div>
 
+                    <div class="box box-default" style="margin-bottom:0;">
+                        <div class="box-header with-border">
+                            <b>Agencia de transporte</b>
+                        </div>
+                        <div class="box-body">
+                            <div class="row">
+                                <div class="form-group col-lg-12" style="margin-bottom:0;">
+                                    <label>Agencia</label>
+                                    <select class="form-control input-sm selectpicker" name="agenciaGuia" id="agenciaGuiaEdit" data-live-search="true" data-size="10" data-container="body" title="Seleccionar agencia">
+                                        <option value="">Seleccionar agencia</option>
+                                        <?php
+                                        $agenciasGuiaEdit = ControladorAgencias::ctrMostrarAgencias(null, null);
+                                        if (is_array($agenciasGuiaEdit)) {
+                                            foreach ($agenciasGuiaEdit as $agenciaItem) {
+                                                echo '<option value="' . htmlspecialchars($agenciaItem["id"], ENT_QUOTES, "UTF-8") . '">'
+                                                    . htmlspecialchars($agenciaItem["id"] . " - " . $agenciaItem["nombre"], ENT_QUOTES, "UTF-8")
+                                                    . '</option>';
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
-
-                <!--=====================================
-        PIE DEL MODAL
-        ======================================-->
 
                 <div class="modal-footer">
 
                     <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
 
-                    <button type="submit" id="btnGenerarDoc" class="btn btn-primary">Actualizar Documento</button>
+                    <button type="submit" class="btn btn-primary">Actualizar documento</button>
 
                 </div>
 
@@ -919,3 +843,11 @@ $eliminarDocumento->ctrEliminarDocumento();
 <script>
     window.document.title = "Guias de Remisión"
 </script>
+<style>
+    #modalGremision .bootstrap-select {
+        width: 100% !important;
+    }
+    #modalGremision .box {
+        box-shadow: none;
+    }
+</style>

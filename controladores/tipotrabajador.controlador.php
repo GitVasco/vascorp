@@ -5,7 +5,7 @@ class ControladorTipoTrabajador{
 	MOSTRAR OPERACIONES
 	=============================================*/
 
-	static public function ctrMostrarTipoTrabajador($item,$valor){
+	static public function ctrMostrarTipoTrabajador($item = null, $valor = null){
         $tabla="tipo_trabajadorjf";
 		$respuesta = ModeloTipoTrabajador::mdlMostrarTipoTrabajador($tabla,$item,$valor);
 
@@ -88,11 +88,13 @@ class ControladorTipoTrabajador{
 			$fecha = new DateTime();
 			$tabla ="tipo_trabajadorjf";
 			$datos = $_GET["idTipoTrabajador"];
-			$tipo=ControladorTipoTrabajador::ctrMostrarTipoTrabajador("cod_tip_tra",$datos);
+			$tipo = ControladorTipoTrabajador::ctrMostrarTipoTrabajador("cod_tip_tra", $datos);
+			$nomTipo = (is_array($tipo) && isset($tipo["nom_tip_trabajador"])) ? $tipo["nom_tip_trabajador"] : (string) $datos;
+			$detTipo = (is_array($tipo) && isset($tipo["detalle"])) ? $tipo["detalle"] : "";
 			$usuario= $_SESSION["nombre"];
 			$para      = 'notificacionesvascorp@gmail.com';
 			$asunto    = 'Se elimino un tipo de trabajador';
-			$descripcion   = 'El usuario '.$usuario.' elimino el tipo de trabajador '.$tipo["nom_tip_trabajador"].' - '.$tipo["detalle"];
+			$descripcion   = 'El usuario '.$usuario.' elimino el tipo de trabajador '.$nomTipo.' - '.$detTipo;
 			$de = 'From: notificacionesvascorp@gmail.com';
 			if($_SESSION["correo"] == 1){
 				mail($para, $asunto, $descripcion, $de);

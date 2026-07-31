@@ -299,3 +299,179 @@
         margin: 10px;
     }
 }
+
+/* =============================================================================
+   Modal editar guía — mismo sistema mf-*
+   ============================================================================= */
+
+#modalGremision .mf-dialog {
+    width: 780px;
+    max-width: 96vw;
+    margin: 30px auto;
+}
+
+#modalGremision .mf-content {
+    border: 0;
+    border-radius: 6px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    overflow: visible;
+}
+
+#modalGremision .mf-body,
+#modalGremision .modal-body {
+    overflow: visible;
+}
+
+#modalGremision .mf-header {
+    background: #2f3b4c;
+    color: #fff;
+    border: 0;
+    border-radius: 6px 6px 0 0;
+    padding: 14px 18px;
+}
+
+#modalGremision .mf-header .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+#modalGremision .mf-header .close {
+    color: #fff;
+    opacity: 0.75;
+    text-shadow: none;
+    margin-top: 2px;
+}
+
+#modalGremision .mf-header .close:hover {
+    opacity: 1;
+}
+
+#modalGremision .mf-body {
+    padding: 16px 18px 8px;
+    background: #f4f6f8;
+}
+
+#modalGremision .mf-section {
+    background: #fff;
+    border: 1px solid #e3e7ec;
+    border-radius: 5px;
+    padding: 12px 14px 4px;
+    margin-bottom: 12px;
+}
+
+#modalGremision .mf-section-title {
+    margin: 0 0 10px;
+    padding: 0 0 8px;
+    border-bottom: 1px solid #eef1f4;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6b7785;
+}
+
+#modalGremision .mf-grid {
+    display: grid;
+    gap: 0 12px;
+    margin: 0;
+}
+
+#modalGremision .mf-section > .mf-grid:not(.mf-grid-transporte):not(.mf-grid-carga) {
+    grid-template-columns: minmax(150px, 1fr) minmax(0, 2fr);
+}
+
+#modalGremision .mf-wrap-guia-edit > .mf-grid-transporte {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#modalGremision .mf-wrap-guia-edit > .mf-grid-carga {
+    grid-template-columns: repeat(2, minmax(120px, 180px));
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px dashed #e3e7ec;
+}
+
+#modalGremision .mf-field {
+    width: auto !important;
+    max-width: none;
+    min-width: 0;
+    padding: 0 0 10px;
+    box-sizing: border-box;
+}
+
+#modalGremision .mf-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7785;
+    margin-bottom: 4px;
+}
+
+#modalGremision .mf-field .form-control {
+    width: 100%;
+    border-radius: 3px;
+    border-color: #d4dbe3;
+    box-shadow: none;
+    height: 34px;
+}
+
+#modalGremision .mf-field .form-control:focus {
+    border-color: #3c8dbc;
+    box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.15);
+}
+
+#modalGremision .mf-field .form-control[readonly] {
+    background: #f7f8fa;
+    color: #333;
+    cursor: default;
+}
+
+#modalGremision .mf-doc-row {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 8px;
+}
+
+#modalGremision .mf-doc-row #tipDocC {
+    width: 100%;
+    text-align: center;
+    font-weight: 700;
+}
+
+#modalGremision .mf-footer {
+    background: #fff;
+    border-top: 1px solid #e3e7ec;
+    border-radius: 0 0 6px 6px;
+    padding: 12px 18px;
+    margin-top: 0;
+}
+
+#modalGremision .bootstrap-select {
+    width: 100% !important;
+}
+
+#modalGremision .bootstrap-select > .btn {
+    height: 34px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+    #modalGremision .mf-section > .mf-grid,
+    #modalGremision .mf-wrap-guia-edit .mf-grid-transporte {
+        grid-template-columns: 1fr;
+    }
+
+    #modalGremision .mf-wrap-guia-edit .mf-grid-carga {
+        grid-template-columns: 1fr 1fr;
+        max-width: none;
+    }
+
+    #modalGremision .mf-dialog {
+        width: auto;
+        margin: 10px;
+    }
+}

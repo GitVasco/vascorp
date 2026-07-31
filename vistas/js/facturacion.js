@@ -3884,6 +3884,20 @@ $(".tablaCuadrarCaja").on("click", ".btnAgregarCobro", function () {
 
 // document.addEventListener("DOMContentLoaded", cargarPagina);
 
+function initSelectpickerGuiaEdit($sel, val) {
+    if (!$sel.length || typeof $sel.selectpicker !== "function") {
+        return;
+    }
+    if (val !== undefined) {
+        $sel.val(val);
+    }
+    if ($sel.data("selectpicker")) {
+        $sel.selectpicker("refresh");
+    } else {
+        $sel.selectpicker({ liveSearch: true, size: 10 });
+    }
+}
+
 $(".tablaGuiasRemision ").on(
     "click",
     ".btnEditarGRemision",
@@ -3915,11 +3929,12 @@ $(".tablaGuiasRemision ").on(
             processData: false,
             dataType: "json",
             success: function (respuesta) {
-                $("#chofer").val(respuesta["cod_chofer"]);
-                $("#chofer").selectpicker("refresh");
-
-                $("#carro").val(respuesta["cod_carro"]);
-                $("#carro").selectpicker("refresh");
+                initSelectpickerGuiaEdit($("#chofer"), respuesta["cod_chofer"]);
+                initSelectpickerGuiaEdit($("#carro"), respuesta["cod_carro"]);
+                initSelectpickerGuiaEdit(
+                    $("#agenciaGuiaEdit"),
+                    respuesta["agencia"] || ""
+                );
 
                 $("#bultos").val(respuesta["bultos"]);
                 $("#peso").val(respuesta["peso"]);
@@ -3989,6 +4004,10 @@ function recargarTablaGuiaRemision(fechaInicial, fechaFinal) {
 }
 
 if ($(".tablaGuiasRemision").length) {
+    initSelectpickerGuiaEdit($("#chofer"));
+    initSelectpickerGuiaEdit($("#carro"));
+    initSelectpickerGuiaEdit($("#agenciaGuiaEdit"));
+
     var filtrosGuiaUrl = leerFiltrosGuiaUrl();
     if (filtrosGuiaUrl.serie) {
         $("#filtroSerieGuia").val(filtrosGuiaUrl.serie);

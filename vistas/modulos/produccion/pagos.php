@@ -29,9 +29,9 @@
 
     <div class="box">
       <div class="box-header with-border">
-          <div class="col-lg-2">
-            
-            <select type="text" class="form-control input-lg " name="selectSectorTra" id="selectSectorTra" >
+        <div class="row">
+          <div class="col-lg-2 col-md-3 col-sm-6">
+            <select type="text" class="form-control input-lg" name="selectSectorTra" id="selectSectorTra">
                 <option value="">Seleccionar sector</option>
                 <?php
                 $item = null;
@@ -45,11 +45,30 @@
                 ?>
             </select>
           </div>
-          <div class="col-lg-2">
-            <button class="btn btn-primary btnLimpiarSectorTra"  name="btnLimpiarSectorTra" inicio="<?php echo $_GET["inicio"]?>" fin="<?php echo $_GET["fin"]?>" quincena="<?php echo $_GET["quincena"]?>" id="<?php echo $_GET["id"]?>"><i class="fa fa-refresh"></i> Limpiar</button>
-          </div> 
-        <button class="btn btn-outline-success btnReportePago" modelo="" style="border:green 1px solid"  inicio=<?php echo $_GET["inicio"]?> fin=<?php echo $_GET["fin"]?> quincena=<?php echo $_GET["nquincena"]?> id=<?php echo $_GET["id"]?>>
-                    <img src="vistas/img/plantilla/excel.png" width="20px" > Reporte Pagos  </button>
+          <div class="col-lg-1 col-md-2 col-sm-3">
+            <button class="btn btn-primary btn-lg btnLimpiarSectorTra" name="btnLimpiarSectorTra" inicio="<?php echo $_GET["inicio"]?>" fin="<?php echo $_GET["fin"]?>" quincena="<?php echo $_GET["quincena"]?>" id="<?php echo $_GET["id"]?>"><i class="fa fa-refresh"></i> Limpiar</button>
+          </div>
+          <div class="col-lg-3 col-md-4 col-sm-6">
+            <select class="form-control input-lg selectpicker" id="selectTrabajadorDetalle" data-live-search="true" data-size="10" title="Detalle por trabajador">
+                <option value="">Detalle por trabajador</option>
+            </select>
+          </div>
+          <div class="col-lg-6 col-md-12 col-sm-12 text-right">
+            <div class="btn-toolbar pull-right" role="toolbar" style="margin-top: 2px;">
+              <div class="btn-group btn-group-lg" role="group" aria-label="Exportar pagos">
+                <button type="button" class="btn btn-default btnReportePagosTrusasProduccion" title="Resumen quincena: producción + bonos por rango" inicio="<?php echo $_GET['inicio'] ?>" fin="<?php echo $_GET['fin'] ?>" id="<?php echo $_GET['id'] ?>" style="border:#337ab7 1px solid">
+                  <img src="vistas/img/plantilla/excel.png" width="20px" alt=""> Pagos trusas
+                </button>
+                <button type="button" class="btn btn-default btnDetalleProduccionTrabajador" title="Detalle día a día del trabajador seleccionado" inicio="<?php echo $_GET['inicio'] ?>" fin="<?php echo $_GET['fin'] ?>" style="border:#666 1px solid">
+                  <img src="vistas/img/plantilla/excel.png" width="20px" alt=""> Detalle trabajador
+                </button>
+                <button type="button" class="btn btn-default btnDetalleProduccionTodos" title="Detalle de producción de todos los trabajadores (una hoja por persona)" inicio="<?php echo $_GET['inicio'] ?>" fin="<?php echo $_GET['fin'] ?>" style="border:#666 1px solid">
+                  <img src="vistas/img/plantilla/excel.png" width="20px" alt=""> Detalle todos
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="box-body">
 

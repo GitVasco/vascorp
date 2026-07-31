@@ -261,11 +261,13 @@ MODAL AGREGAR TRABAJADOR
 
                         $valor = null;
 
-                        $tipotrabajador = ControladorTipoTrabajador::ctrMostrarTipoTrabajador($valor);
+                        $tipotrabajador = ControladorTipoTrabajador::ctrMostrarTipoTrabajador(null, null);
 
+                        if (is_array($tipotrabajador)) {
                         foreach ($tipotrabajador as $key => $value) {
 
                           echo '<option value="' . $value["cod_tip_tra"] . '">' . $value["nom_tip_trabajador"] . '</option>';
+                        }
                         }
 
                         ?>
@@ -510,13 +512,14 @@ MODAL EDITAR TRABAJADOR
                   <!-- <option id="editarTipoTrabajador"></option> -->
                   <?php
                     
-                    $tipoTrabajador = ControladorTipoTrabajador::ctrMostrarTipoTrabajador();
-                    //var_dump("marcas", $marcas);
+                    $tipotrabajador = ControladorTipoTrabajador::ctrMostrarTipoTrabajador(null, null);
 
+                    if (is_array($tipotrabajador)) {
                     foreach ($tipotrabajador as $key => $value) {
 
                       echo '<option value="' . $value["cod_tip_tra"] . '">' . $value["nom_tip_trabajador"] . '</option>';
 
+                    }
                     }
 
                     

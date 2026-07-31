@@ -4350,6 +4350,7 @@ class ControladorFacturacion
                 "carro" => $_POST["carro"],
                 "peso" => $_POST["peso"],
                 "bultos" => $_POST["bultos"],
+                "agencia" => isset($_POST["agenciaGuia"]) ? $_POST["agenciaGuia"] : "",
             );
 
             $respuesta = ModeloFacturacion::mdlActualizarGuiaRemision($datos);

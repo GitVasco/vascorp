@@ -10073,7 +10073,8 @@ class ModeloFacturacion
                     chofer = :chofer,
                     carro = :carro,
                     bultos = :bultos,
-                    peso = :peso 
+                    peso = :peso,
+                    agencia = :agencia
                 WHERE tipo = :tipo 
                     AND documento = :documento ";
 
@@ -10085,6 +10086,7 @@ class ModeloFacturacion
     $stmt->bindParam(":carro", $datos["carro"], PDO::PARAM_STR);
     $stmt->bindParam(":bultos", $datos["bultos"], PDO::PARAM_STR);
     $stmt->bindParam(":peso", $datos["peso"], PDO::PARAM_STR);
+    $stmt->bindParam(":agencia", $datos["agencia"], PDO::PARAM_STR);
 
     if ($stmt->execute()) {
 

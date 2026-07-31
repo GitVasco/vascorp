@@ -1026,7 +1026,7 @@ class ModeloProduccion
   static private function sqlFromWherePagosTrusas($sector)
   {
     $sql = "FROM entallerjf et
-              INNER JOIN trabajadorjf t ON et.trabajador = t.cod_tra AND t.cod_tip_tra = 1
+              INNER JOIN trabajadorjf t ON et.trabajador = t.cod_tra AND t.cod_tip_tra IN (1, 2)
               LEFT JOIN (
                 SELECT DISTINCT a.articulo
                 FROM articulojf a
@@ -2235,5 +2235,124 @@ class ModeloProduccion
     unset($row);
 
     return $filas;
+  }
+
+  /*=============================================
+  REPORTE EXCEL: detalle de producción por trabajador (día a día)
+  =============================================*/
+
+  static public function mdlRptDetalleProduccionTrabajadorInfo($inicio, $fin, $trabajador)
+  {
+    $stmt = Conexion::conectar()->prepare("SELECT 
+        CONCAT(t.nom_tra, ' ', t.ape_pat_tra, ' ', t.ape_mat_tra) AS nombre,
+        t.sector,
+        ROUND(t.sueldo_total / 2, 2) AS sueldo_quincena
+      FROM trabajadorjf t
+      WHERE t.cod_tra = :trabajador
+      LIMIT 1");
+
+    $stmt->bindParam(":trabajador", $trabajador, PDO::PARAM_STR);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+      return null;
+    }
+
+    $detalle = self::mdlRptDetalleProduccionTrabajadorDetalle($inicio, $fin, $trabajador);
+    $prod = 0;
+    foreach ($detalle as $fila) {
+      $prod += (float) $fila['soles'];
+    }
+    $prod = round($prod, 2);
+
+    $row['total_produccion'] = $prod;
+    $row['bono'] = self::mdlCalcularBonoTrusasProduccion($prod);
+    $row['rango'] = self::mdlCalcularRangoTrusasProduccion($prod);
+    $row['pendiente'] = round($prod - (float) $row['sueldo_quincena'], 2);
+
+    return $row;
+  }
+
+  static public function mdlRptDetalleProduccionTrabajadorDetalle($inicio, $fin, $trabajador)
+  {
+    $sql = "SELECT 
+        mes_tbl.descripcion AS mes,
+        DAY(et.fecha_terminado) AS dd,
+        et.trabajador AS cod_trab,
+        t.sector,
+        CONCAT(t.nom_tra, ' ', t.ape_pat_tra, ' ', t.ape_mat_tra) AS trabajador,
+        et.cod_operacion AS op,
+        MAX(od.precio_doc) AS pre,
+        o.nombre,
+        a.modelo AS cod_modelo,
+        a.cod_color AS cc,
+        a.color,
+        a.nombre AS des_modelo,
+        SUM(CASE WHEN a.cod_talla = '1' THEN et.cantidad ELSE 0 END) AS t1,
+        SUM(CASE WHEN a.cod_talla = '2' THEN et.cantidad ELSE 0 END) AS t2,
+        SUM(CASE WHEN a.cod_talla = '3' THEN et.cantidad ELSE 0 END) AS t3,
+        SUM(CASE WHEN a.cod_talla = '4' THEN et.cantidad ELSE 0 END) AS t4,
+        SUM(CASE WHEN a.cod_talla = '5' THEN et.cantidad ELSE 0 END) AS t5,
+        SUM(CASE WHEN a.cod_talla = '6' THEN et.cantidad ELSE 0 END) AS t6,
+        SUM(CASE WHEN a.cod_talla = '7' THEN et.cantidad ELSE 0 END) AS t7,
+        SUM(CASE WHEN a.cod_talla = '8' THEN et.cantidad ELSE 0 END) AS t8,
+        SUM(et.cantidad) AS unidades,
+        ROUND(SUM(et.total_precio), 2) AS soles
+      FROM entallerjf et
+      LEFT JOIN articulojf a ON et.articulo = a.articulo
+      LEFT JOIN operacionesjf o ON et.cod_operacion = o.codigo
+      LEFT JOIN trabajadorjf t ON et.trabajador = t.cod_tra
+      LEFT JOIN operaciones_detallejf od ON et.cod_operacion = od.cod_operacion AND a.modelo = od.modelo
+      LEFT JOIN modelojf modj ON a.modelo = modj.modelo
+      LEFT JOIN (
+        SELECT DISTINCT codigo, descripcion
+        FROM meses
+        WHERE ano = '2020'
+      ) mes_tbl ON MONTH(et.fecha_terminado) = mes_tbl.codigo
+      WHERE et.estado = '3'
+        AND COALESCE(modj.tipo, '') NOT IN ('BRASIER', 'SEAMLESS')
+        AND et.fecha_terminado >= :inicio
+        AND et.fecha_terminado < DATE_ADD(:fin, INTERVAL 1 DAY)
+        AND et.trabajador = :trabajador
+      GROUP BY MONTH(et.fecha_terminado),
+        DAY(et.fecha_terminado),
+        et.trabajador,
+        t.sector,
+        t.nom_tra,
+        t.ape_pat_tra,
+        t.ape_mat_tra,
+        et.cod_operacion,
+        o.nombre,
+        a.modelo,
+        a.cod_color,
+        a.color,
+        a.nombre,
+        mes_tbl.descripcion
+      ORDER BY DATE(et.fecha_terminado) DESC,
+        a.cod_color,
+        et.cod_operacion";
+
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+    $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+    $stmt->bindParam(":trabajador", $trabajador, PDO::PARAM_STR);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  }
+
+  static public function mdlRptDetalleProduccionTrabajadoresIds($inicio, $fin, $sector = null)
+  {
+    $sql = "SELECT DISTINCT et.trabajador AS cod_trab
+      " . self::sqlFromWherePagosTrusas($sector) . "
+      ORDER BY et.trabajador";
+
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+    $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
   }
 }

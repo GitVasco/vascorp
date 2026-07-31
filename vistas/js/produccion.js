@@ -227,7 +227,20 @@ $(function () {
     var sectorPagos = localStorage.getItem("sectorTra");
 
     cargarPagos(inicioPagos, finPagos, nquincenaPagos, idPagos, sectorPagos);
+    refrescarSelectTrabajadorDetalle();
 });
+
+function refrescarSelectTrabajadorDetalle() {
+    var $sel = $("#selectTrabajadorDetalle");
+    if (!$sel.length || typeof $sel.selectpicker !== "function") {
+        return;
+    }
+    if ($sel.data("selectpicker")) {
+        $sel.selectpicker("refresh");
+    } else {
+        $sel.selectpicker({ liveSearch: true, size: 10 });
+    }
+}
 
 function cargarPagos(inicio, fin, nquincena, id, sectorTra) {
     if (!inicio || !fin || !nquincena || !id) {
@@ -242,7 +255,7 @@ function cargarPagos(inicio, fin, nquincena, id, sectorTra) {
         $(".tablaPagos").DataTable().clear().destroy();
     }
 
-    $(".tablaPagos").DataTable({
+    var tablaPagos = $(".tablaPagos").DataTable({
         ajax: {
             url:
                 "ajax/produccion/tabla-pagos.ajax.php?perfil=" +
@@ -319,7 +332,74 @@ function cargarPagos(inicio, fin, nquincena, id, sectorTra) {
             );
         },
     });
+
+    tablaPagos.on("xhr.dt", function (e, settings, json) {
+        var $sel = $("#selectTrabajadorDetalle");
+        $sel.val("");
+        $sel.find("option:not(:first)").remove();
+        if (!json || !json.data) {
+            refrescarSelectTrabajadorDetalle();
+            return;
+        }
+        json.data.forEach(function (row) {
+            var cod = row[0];
+            var nom = String(row[1]).replace(/<[^>]*>/g, "").trim();
+            $sel.append(
+                $("<option></option>").val(cod).text(cod + " - " + nom)
+            );
+        });
+        refrescarSelectTrabajadorDetalle();
+    });
+
+    return tablaPagos;
 }
+
+function abrirDetalleProduccionTrabajador(inicio, fin, trabajador, sectorTra) {
+    if (!trabajador) {
+        alert("Seleccione un trabajador.");
+        return;
+    }
+    var url =
+        "vistas/reportes_excel/rpt_detalle_produccion_trabajador.php?inicio=" +
+        encodeURIComponent(inicio) +
+        "&fin=" +
+        encodeURIComponent(fin) +
+        "&trabajador=" +
+        encodeURIComponent(trabajador);
+    if (sectorTra && sectorTra !== "null") {
+        url += "&sector=" + encodeURIComponent(sectorTra);
+    }
+    window.location = url;
+}
+
+function abrirDetalleProduccionTodos(inicio, fin, sectorTra) {
+    var url =
+        "vistas/reportes_excel/rpt_detalle_produccion_todos.php?inicio=" +
+        encodeURIComponent(inicio) +
+        "&fin=" +
+        encodeURIComponent(fin);
+    if (sectorTra && sectorTra !== "null") {
+        url += "&sector=" + encodeURIComponent(sectorTra);
+    }
+    window.location = url;
+}
+
+$(".box").on("click", ".btnDetalleProduccionTrabajador", function () {
+    abrirDetalleProduccionTrabajador(
+        $(this).attr("inicio"),
+        $(this).attr("fin"),
+        $("#selectTrabajadorDetalle").val(),
+        localStorage.getItem("sectorTra")
+    );
+});
+
+$(".box").on("click", ".btnDetalleProduccionTodos", function () {
+    abrirDetalleProduccionTodos(
+        $(this).attr("inicio"),
+        $(this).attr("fin"),
+        localStorage.getItem("sectorTra")
+    );
+});
 /*
  * BOTON REPORTE DE PAGOS DE TRUSAS
  */
@@ -337,7 +417,7 @@ $(".tablaQuincena").on("click", ".btnReportePagosTrusas", function () {
         id;
 });
 
-$(".tablaQuincena").on("click", ".btnReportePagosTrusasProduccion", function () {
+$(".tablaQuincena, .box").on("click", ".btnReportePagosTrusasProduccion", function () {
     inicio = $(this).attr("inicio");
     fin = $(this).attr("fin");
     id = $(this).attr("id");
@@ -376,23 +456,6 @@ $(".box").on("click", ".btnReporteEficiencia", function () {
     id = $(this).attr("id");
     window.location =
         "vistas/reportes_excel/rpt_eficiencia.php?inicio=" +
-        inicio +
-        "&fin=" +
-        fin +
-        "&quincena=" +
-        quincena +
-        "&id=" +
-        id;
-});
-
-//Reporte de Eficiencias
-$(".box").on("click", ".btnReportePago", function () {
-    inicio = $(this).attr("inicio");
-    fin = $(this).attr("fin");
-    quincena = $(this).attr("quincena");
-    id = $(this).attr("id");
-    window.location =
-        "vistas/reportes_excel/rpt_pago.php?inicio=" +
         inicio +
         "&fin=" +
         fin +
