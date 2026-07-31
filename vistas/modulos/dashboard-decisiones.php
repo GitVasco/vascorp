@@ -200,6 +200,7 @@ $articulosRiesgo = $datos["articulos_riesgo"];
                         placeholder="Observación para la bitácora (opcional)"
                     ></textarea>
                 </div>
+                <?php include __DIR__ . "/dashboard-decisiones/aprobar-pedido-controles.php"; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>

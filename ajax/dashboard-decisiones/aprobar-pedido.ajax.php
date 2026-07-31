@@ -41,11 +41,34 @@ $codigoPedido = isset($_POST["codigo_pedido"]) ? trim((string) $_POST["codigo_pe
 $idCategoria = isset($_POST["id_categoria"]) ? (int) $_POST["id_categoria"] : 0;
 $motivoCodigo = isset($_POST["motivo_codigo"]) ? trim((string) $_POST["motivo_codigo"]) : "";
 $comentario = isset($_POST["comentario"]) ? trim((string) $_POST["comentario"]) : "";
+$controlCondicion = isset($_POST["control_condicion_codigo"])
+    ? trim((string) $_POST["control_condicion_codigo"])
+    : "";
+$controlArea = isset($_POST["control_area_codigo"])
+    ? trim((string) $_POST["control_area_codigo"])
+    : "";
+$controlComentario = isset($_POST["control_comentario"])
+    ? trim((string) $_POST["control_comentario"])
+    : "";
+$requiereControl = isset($_POST["requiere_control"]) && (string) $_POST["requiere_control"] === "1";
+
+if (!$requiereControl) {
+    $controlCondicion = "";
+    $controlArea = "";
+    $controlComentario = "";
+} elseif ($controlCondicion === "") {
+    echo json_encode(array("ok" => false, "msg" => "Indica la condición del control post-aprobación."));
+    exit;
+}
+
 $respuesta = ControladorDashboardDecisiones::ctrAprobarPedidoGenerado(
     $codigoPedido,
     $idCategoria,
     $motivoCodigo,
-    $comentario
+    $comentario,
+    $controlCondicion,
+    $controlArea,
+    $controlComentario
 );
 
 echo json_encode($respuesta);

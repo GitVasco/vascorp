@@ -964,12 +964,12 @@ CUERPO DOCUMENTO
     <script src="vistas/js/dashboard-cxc.js?v=20"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") { ?>
-    <script src="vistas/js/dashboard-decisiones.js?v=23"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=25"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="vistas/js/dashboard-decisiones.js?v=23"></script>
-    <script src="vistas/js/historial-credito.js?v=13"></script>
+    <script src="vistas/js/dashboard-decisiones.js?v=25"></script>
+    <script src="vistas/js/historial-credito.js?v=16"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>

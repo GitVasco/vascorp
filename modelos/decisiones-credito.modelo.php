@@ -599,7 +599,13 @@ class ModeloDecisionesCredito
         $stmt->bindValue(":usuario_id", $usuarioId, PDO::PARAM_INT);
         self::bindAccionNullable($stmt, ":detalle", isset($datos["detalle"]) ? $datos["detalle"] : null, "str");
 
-        return $stmt->execute();
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        $id = (int) Conexion::conectar()->lastInsertId();
+
+        return $id > 0 ? $id : true;
     }
 
     private static function bindAccionNullable($stmt, $param, $valor, $tipo = "str")
@@ -1453,5 +1459,292 @@ class ModeloDecisionesCredito
             "ultimas_gestiones" => $ultimasGestiones,
             "dias_abiertos_min" => $diasMin,
         );
+    }
+
+    /*=============================================
+    Controles post-aprobación
+    =============================================*/
+    static public function mdlRegistrarControlPostAprobacion(array $datos)
+    {
+        $codigoPedido = isset($datos["codigo_pedido"]) ? (int) $datos["codigo_pedido"] : 0;
+        $codigoCliente = isset($datos["codigo_cliente"]) ? trim((string) $datos["codigo_cliente"]) : "";
+        $condicionCodigo = isset($datos["condicion_codigo"])
+            ? strtoupper(trim((string) $datos["condicion_codigo"]))
+            : "";
+        $usuarioId = isset($datos["usuario_id"]) ? (int) $datos["usuario_id"] : 0;
+
+        if ($codigoPedido <= 0 || $codigoCliente === "" || $condicionCodigo === "" || $usuarioId <= 0) {
+            return array("ok" => false, "msg" => "Datos incompletos para registrar el control.");
+        }
+
+        $pendiente = self::mdlControlPendientePorPedido($codigoPedido);
+        if ($pendiente) {
+            return array("ok" => false, "msg" => "El pedido ya tiene un control post-aprobación pendiente.");
+        }
+
+        $areaCodigo = isset($datos["area_autoriza_codigo"])
+            ? strtoupper(trim((string) $datos["area_autoriza_codigo"]))
+            : "";
+        $comentario = isset($datos["comentario"]) ? trim((string) $datos["comentario"]) : "";
+        $bloqueaApt = isset($datos["bloquea_apt"]) ? (int) $datos["bloquea_apt"] : 1;
+        $idAccion = isset($datos["id_accion_aprobacion"]) ? (int) $datos["id_accion_aprobacion"] : 0;
+
+        $sql = "INSERT INTO decision_credito_controljf
+                    (codigo_pedido, codigo_cliente, id_accion_aprobacion,
+                     condicion_codigo, area_autoriza_codigo, comentario,
+                     estado, bloquea_apt, usuario_registra)
+                VALUES
+                    (:codigo_pedido, :codigo_cliente, :id_accion_aprobacion,
+                     :condicion_codigo, :area_autoriza_codigo, :comentario,
+                     'PENDIENTE', :bloquea_apt, :usuario_registra)";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":codigo_pedido", $codigoPedido, PDO::PARAM_INT);
+        $stmt->bindValue(":codigo_cliente", $codigoCliente, PDO::PARAM_STR);
+        if ($idAccion > 0) {
+            $stmt->bindValue(":id_accion_aprobacion", $idAccion, PDO::PARAM_INT);
+        } else {
+            $stmt->bindValue(":id_accion_aprobacion", null, PDO::PARAM_NULL);
+        }
+        $stmt->bindValue(":condicion_codigo", $condicionCodigo, PDO::PARAM_STR);
+        if ($areaCodigo !== "") {
+            $stmt->bindValue(":area_autoriza_codigo", $areaCodigo, PDO::PARAM_STR);
+        } else {
+            $stmt->bindValue(":area_autoriza_codigo", null, PDO::PARAM_NULL);
+        }
+        if ($comentario !== "") {
+            $stmt->bindValue(":comentario", $comentario, PDO::PARAM_STR);
+        } else {
+            $stmt->bindValue(":comentario", null, PDO::PARAM_NULL);
+        }
+        $stmt->bindValue(":bloquea_apt", $bloqueaApt ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(":usuario_registra", $usuarioId, PDO::PARAM_INT);
+
+        if (!$stmt->execute()) {
+            return array("ok" => false, "msg" => "No se pudo registrar el control.");
+        }
+
+        return array(
+            "ok" => true,
+            "id" => (int) Conexion::conectar()->lastInsertId(),
+        );
+    }
+
+    static public function mdlControlPendientePorPedido($codigoPedido)
+    {
+        $codigoPedido = (int) $codigoPedido;
+        if ($codigoPedido <= 0) {
+            return null;
+        }
+
+        try {
+            $sql = "SELECT c.*,
+                        IFNULL(ur.nombre, CONCAT('Usuario #', c.usuario_registra)) AS usuario_registra_nombre,
+                        t.total AS pedido_total,
+                        t.lista AS pedido_lista,
+                        t.estado AS pedido_estado,
+                        IFNULL(cl.nombre, c.codigo_cliente) AS cliente_nombre
+                    FROM decision_credito_controljf c
+                    LEFT JOIN temporaljf t ON t.codigo = c.codigo_pedido
+                    LEFT JOIN clientesjf cl ON cl.codigo = c.codigo_cliente
+                    LEFT JOIN usuariosjf ur ON ur.id = c.usuario_registra
+                    WHERE c.codigo_pedido = :codigo_pedido
+                      AND c.estado = 'PENDIENTE'
+                    ORDER BY c.id DESC
+                    LIMIT 1";
+            $stmt = Conexion::conectar()->prepare($sql);
+            $stmt->bindValue(":codigo_pedido", $codigoPedido, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return null;
+        }
+
+        return $row ? self::mdlEnriquecerControlPostAprobacion($row) : null;
+    }
+
+    static public function mdlControlBloqueantePendiente($codigoPedido)
+    {
+        $control = self::mdlControlPendientePorPedido($codigoPedido);
+        if (!$control || (int) $control["bloquea_apt"] !== 1) {
+            return null;
+        }
+
+        $etiqueta = function_exists("dcEtiquetaControlPostAprobacion")
+            ? dcEtiquetaControlPostAprobacion($control["condicion_codigo"])
+            : $control["condicion_codigo"];
+        $area = !empty($control["area_autoriza_codigo"]) && function_exists("dcEtiquetaAreaAutorizacion")
+            ? dcEtiquetaAreaAutorizacion($control["area_autoriza_codigo"])
+            : "";
+        $msg = "Pedido con control pendiente: " . $etiqueta . ".";
+        if ($area !== "") {
+            $msg .= " Autorizado por: " . $area . ".";
+        }
+        if (!empty($control["comentario"])) {
+            $msg .= " " . $control["comentario"];
+        }
+        $msg .= " Créditos debe liberar el despacho en Historial de crédito.";
+
+        return array(
+            "control" => $control,
+            "mensaje" => $msg,
+        );
+    }
+
+    static public function mdlMapaControlesPendientesPorPedidos(array $codigosPedido)
+    {
+        $codigos = array();
+        foreach ($codigosPedido as $cod) {
+            $n = (int) $cod;
+            if ($n > 0) {
+                $codigos[$n] = $n;
+            }
+        }
+
+        if (empty($codigos)) {
+            return array();
+        }
+
+        try {
+            $placeholders = implode(",", array_fill(0, count($codigos), "?"));
+            $sql = "SELECT c.*
+                    FROM decision_credito_controljf c
+                    WHERE c.estado = 'PENDIENTE'
+                      AND c.codigo_pedido IN ($placeholders)";
+            $stmt = Conexion::conectar()->prepare($sql);
+            $i = 1;
+            foreach ($codigos as $cod) {
+                $stmt->bindValue($i++, $cod, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return array();
+        }
+
+        $mapa = array();
+        foreach ($filas as $fila) {
+            $fila = self::mdlEnriquecerControlPostAprobacion($fila);
+            $mapa[(int) $fila["codigo_pedido"]] = $fila;
+        }
+
+        return $mapa;
+    }
+
+    static public function mdlListarControlesPostAprobacion(array $filtros = array())
+    {
+        $params = array();
+        $where = array("c.estado = 'PENDIENTE'");
+
+        $vendedor = isset($filtros["vendedor"]) ? trim((string) $filtros["vendedor"]) : "";
+        if ($vendedor !== "") {
+            $where[] = "t.vendedor = :vendedor";
+            $params[":vendedor"] = $vendedor;
+        }
+
+        $limite = isset($filtros["limite"]) ? (int) $filtros["limite"] : 100;
+        $limite = max(20, min(300, $limite));
+
+        $sqlWhere = implode(" AND ", $where);
+
+        try {
+            $sql = "SELECT c.*,
+                        t.total AS pedido_total,
+                        t.lista AS pedido_lista,
+                        t.estado AS pedido_estado,
+                        t.vendedor,
+                        t.fecha AS pedido_fecha,
+                        IFNULL(v.descripcion, t.vendedor) AS nom_vendedor,
+                        IFNULL(cl.nombre, c.codigo_cliente) AS cliente_nombre,
+                        IFNULL(ur.nombre, CONCAT('Usuario #', c.usuario_registra)) AS usuario_registra_nombre,
+                        DATEDIFF(CURDATE(), DATE(c.fecha_registro)) AS dias_pendiente
+                    FROM decision_credito_controljf c
+                    INNER JOIN temporaljf t ON t.codigo = c.codigo_pedido
+                    LEFT JOIN clientesjf cl ON cl.codigo = c.codigo_cliente
+                    LEFT JOIN vendedoresjf v ON v.codigo = t.vendedor
+                    LEFT JOIN usuariosjf ur ON ur.id = c.usuario_registra
+                    WHERE {$sqlWhere}
+                    ORDER BY c.fecha_registro ASC
+                    LIMIT {$limite}";
+            $stmt = Conexion::conectar()->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            }
+            $stmt->execute();
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return array();
+        }
+
+        $salida = array();
+        foreach ($filas as $fila) {
+            $salida[] = self::mdlEnriquecerControlPostAprobacion($fila);
+        }
+
+        return $salida;
+    }
+
+    static public function mdlLiberarControlPostAprobacion(array $datos)
+    {
+        $id = isset($datos["id"]) ? (int) $datos["id"] : 0;
+        $usuarioId = isset($datos["usuario_id"]) ? (int) $datos["usuario_id"] : 0;
+        $comentario = isset($datos["comentario_liberacion"])
+            ? trim((string) $datos["comentario_liberacion"])
+            : "";
+
+        if ($id <= 0 || $usuarioId <= 0) {
+            return array("ok" => false, "msg" => "Datos incompletos.");
+        }
+
+        try {
+            $sqlSel = "SELECT * FROM decision_credito_controljf WHERE id = :id AND estado = 'PENDIENTE' LIMIT 1";
+            $stmtSel = Conexion::conectar()->prepare($sqlSel);
+            $stmtSel->bindValue(":id", $id, PDO::PARAM_INT);
+            $stmtSel->execute();
+            $control = $stmtSel->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return array("ok" => false, "msg" => "No se pudo consultar el control.");
+        }
+
+        if (!$control) {
+            return array("ok" => false, "msg" => "Control no encontrado o ya fue liberado.");
+        }
+
+        $sql = "UPDATE decision_credito_controljf
+                SET estado = 'LIBERADO',
+                    usuario_liberacion = :usuario_liberacion,
+                    comentario_liberacion = :comentario_liberacion,
+                    fecha_liberacion = NOW()
+                WHERE id = :id AND estado = 'PENDIENTE'";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":id", $id, PDO::PARAM_INT);
+        $stmt->bindValue(":usuario_liberacion", $usuarioId, PDO::PARAM_INT);
+        if ($comentario !== "") {
+            $stmt->bindValue(":comentario_liberacion", $comentario, PDO::PARAM_STR);
+        } else {
+            $stmt->bindValue(":comentario_liberacion", null, PDO::PARAM_NULL);
+        }
+
+        if (!$stmt->execute() || $stmt->rowCount() <= 0) {
+            return array("ok" => false, "msg" => "No se pudo liberar el control.");
+        }
+
+        return array(
+            "ok" => true,
+            "control" => self::mdlEnriquecerControlPostAprobacion($control),
+        );
+    }
+
+    static public function mdlEnriquecerControlPostAprobacion(array $control)
+    {
+        $control["condicion_etiqueta"] = function_exists("dcEtiquetaControlPostAprobacion")
+            ? dcEtiquetaControlPostAprobacion($control["condicion_codigo"])
+            : $control["condicion_codigo"];
+        $control["area_etiqueta"] = !empty($control["area_autoriza_codigo"]) && function_exists("dcEtiquetaAreaAutorizacion")
+            ? dcEtiquetaAreaAutorizacion($control["area_autoriza_codigo"])
+            : null;
+        $control["bloquea_apt"] = isset($control["bloquea_apt"]) ? (int) $control["bloquea_apt"] : 1;
+
+        return $control;
     }
 }

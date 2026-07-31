@@ -188,6 +188,36 @@
       "descripcion": "Hay aval o solicitud respaldada por ventas/jefatura."
     },
     {
+      "codigo": "APROBADO_GERENCIA_GENERAL",
+      "etiqueta": "Aprobado por Gerencia General",
+      "descripcion": "Excepción o autorización explícita de Gerencia General."
+    },
+    {
+      "codigo": "APROBADO_GERENCIA_COMERCIAL",
+      "etiqueta": "Aprobado por Gerencia Comercial",
+      "descripcion": "Autorización de Gerencia Comercial."
+    },
+    {
+      "codigo": "APROBADO_JEFATURA_COMERCIAL",
+      "etiqueta": "Aprobado por Jefatura Comercial",
+      "descripcion": "Respaldo o autorización de jefatura de ventas."
+    },
+    {
+      "codigo": "APROBADO_FINANZAS",
+      "etiqueta": "Aprobado por Finanzas / Tesorería",
+      "descripcion": "Validación o aval de Finanzas o Tesorería."
+    },
+    {
+      "codigo": "APROBADO_OPERACIONES",
+      "etiqueta": "Aprobado por Operaciones / APT",
+      "descripcion": "Autorización operativa de almacén o APT."
+    },
+    {
+      "codigo": "APROBADO_CON_CONDICION",
+      "etiqueta": "Aprobado con condición operativa",
+      "descripcion": "Se libera el pedido pero queda un control pendiente antes de despachar."
+    },
+    {
       "codigo": "PAGO_CONTADO_CONFIRMADO",
       "etiqueta": "Pago al contado confirmado",
       "descripcion": "El cliente paga de contado; se libera el pedido."
@@ -216,6 +246,110 @@
       "codigo": "OTRO",
       "etiqueta": "Otro motivo",
       "descripcion": "Motivo no cubierto por el catálogo; conviene detallar en la observación."
+    }
+  ],
+  "areas_autorizacion": [
+    { "codigo": "GERENCIA_GENERAL", "etiqueta": "Gerencia General" },
+    { "codigo": "GERENCIA_COMERCIAL", "etiqueta": "Gerencia Comercial" },
+    { "codigo": "JEFATURA_COMERCIAL", "etiqueta": "Jefatura Comercial" },
+    { "codigo": "CREDITOS_COBRANZAS", "etiqueta": "Créditos y Cobranzas" },
+    { "codigo": "FINANZAS", "etiqueta": "Finanzas / Tesorería" },
+    { "codigo": "OPERACIONES_APT", "etiqueta": "Operaciones / APT" },
+    { "codigo": "LOGISTICA", "etiqueta": "Logística / Despacho" },
+    { "codigo": "COBRANZAS", "etiqueta": "Cobranzas" },
+    { "codigo": "OTRO", "etiqueta": "Otra área" }
+  ],
+  "controles_post_aprobacion": [
+    {
+      "codigo": "PAGO_ANTES_DESPACHO",
+      "etiqueta": "Pago antes de despachar",
+      "descripcion": "El cliente debe cancelar su deuda o el pedido antes del despacho.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "ABONO_PARCIAL_ANTES_DESPACHO",
+      "etiqueta": "Abono parcial antes de despachar",
+      "descripcion": "Se requiere un abono mínimo acordado antes de liberar despacho.",
+      "bloquea_apt": true,
+      "requiere_observacion": true
+    },
+    {
+      "codigo": "REGULARIZAR_DEUDA",
+      "etiqueta": "Regularizar deuda pendiente",
+      "descripcion": "El cliente debe regularizar documentos o saldos vencidos.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "AVISAR_APT_ANTES_DESPACHO",
+      "etiqueta": "Avisar a APT antes de despachar",
+      "descripcion": "APT u operaciones deben ser notificados antes de aptear o despachar.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "CONFIRMAR_CON_GERENCIA",
+      "etiqueta": "Confirmar con gerencia antes de despachar",
+      "descripcion": "Requiere confirmación explícita de gerencia antes del despacho.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "COBRANZA_CONFIRMA",
+      "etiqueta": "Cobranzas debe confirmar",
+      "descripcion": "Créditos/cobranzas debe validar el cumplimiento antes de despachar.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "TRANSFERENCIA_PENDIENTE",
+      "etiqueta": "Transferencia / depósito pendiente",
+      "descripcion": "Esperar confirmación de transferencia o voucher.",
+      "bloquea_apt": true,
+      "requiere_observacion": true
+    },
+    {
+      "codigo": "DOCUMENTACION_PENDIENTE",
+      "etiqueta": "Documentación pendiente",
+      "descripcion": "Falta carta, pagaré, garantía u otro documento acordado.",
+      "bloquea_apt": true,
+      "requiere_observacion": true
+    },
+    {
+      "codigo": "CLIENTE_DEBE_LLAMAR",
+      "etiqueta": "Cliente debe confirmar / llamar",
+      "descripcion": "El cliente debe confirmar condiciones antes del despacho.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "SOLO_CONTRA_ENTREGA",
+      "etiqueta": "Despacho solo contra entrega",
+      "descripcion": "Despachar únicamente con pago a la entrega; seguimiento informativo.",
+      "bloquea_apt": false,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "VERIFICAR_LINEA_ACTUALIZADA",
+      "etiqueta": "Verificar línea / cupo actualizado",
+      "descripcion": "Confirmar que la línea o cupo quedó actualizado antes de despachar.",
+      "bloquea_apt": true,
+      "requiere_observacion": false
+    },
+    {
+      "codigo": "AUTORIZACION_AREA_ESPECIFICA",
+      "etiqueta": "Autorización de área específica",
+      "descripcion": "Requiere aval de un área indicada en el detalle.",
+      "bloquea_apt": true,
+      "requiere_observacion": true
+    },
+    {
+      "codigo": "OTRO",
+      "etiqueta": "Otra condición",
+      "descripcion": "Condición no listada; detallar en observación.",
+      "bloquea_apt": true,
+      "requiere_observacion": true
     }
   ]
 }

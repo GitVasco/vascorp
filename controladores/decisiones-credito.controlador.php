@@ -7,6 +7,8 @@ class ControladorDecisionesCredito
         return array(
             "motivos" => dcListarMotivos(),
             "motivos_aprobacion" => dcListarMotivosAprobacion(),
+            "areas_autorizacion" => dcListarAreasAutorizacion(),
+            "controles_post_aprobacion" => dcListarControlesPostAprobacion(),
             "tipos_solicitud" => dcListarTiposSolicitud(),
             "resoluciones" => dcListarResoluciones(),
             "permisos" => array(
@@ -15,6 +17,8 @@ class ControladorDecisionesCredito
                 "resolver" => dcUsuarioPuedeResolver(),
                 "anular" => dcUsuarioPuedeAnularPedido(),
                 "aprobar" => dcUsuarioPuedeAprobarPedido(),
+                "liberar_control" => dcUsuarioPuedeLiberarControlPostAprobacion(),
+                "registrar_control" => dcUsuarioPuedeRegistrarControlPostAprobacion(),
             ),
         );
     }
@@ -447,6 +451,139 @@ class ControladorDecisionesCredito
             "actividad_dow" => $datos["actividad_dow"],
             "ultimas_gestiones" => $datos["ultimas_gestiones"],
             "dias_abiertos_min" => $datos["dias_abiertos_min"],
+        );
+    }
+
+    public static function ctrListarControlesPostAprobacion(array $filtros = array())
+    {
+        if (!dcUsuarioPuedeVerHistorialCredito()) {
+            return array("ok" => false, "msg" => "Sin permiso.", "filas" => array());
+        }
+
+        $filas = ModeloDecisionesCredito::mdlListarControlesPostAprobacion($filtros);
+
+        return array(
+            "ok" => true,
+            "filas" => $filas,
+            "total" => count($filas),
+            "puede_liberar" => dcUsuarioPuedeLiberarControlPostAprobacion(),
+            "puede_registrar" => dcUsuarioPuedeRegistrarControlPostAprobacion(),
+        );
+    }
+
+    public static function ctrRegistrarControlPostAprobacion()
+    {
+        if (!dcUsuarioPuedeRegistrarControlPostAprobacion()) {
+            return array("ok" => false, "msg" => "Sin permiso para registrar controles.");
+        }
+
+        if (!isset($_SESSION["id"]) || !(int) $_SESSION["id"]) {
+            return array("ok" => false, "msg" => "Sesión no válida.");
+        }
+
+        $codigoPedido = isset($_POST["codigo_pedido"]) ? (int) $_POST["codigo_pedido"] : 0;
+        $condicionCodigo = isset($_POST["control_condicion_codigo"])
+            ? strtoupper(trim((string) $_POST["control_condicion_codigo"]))
+            : "";
+        $areaCodigo = isset($_POST["control_area_codigo"])
+            ? strtoupper(trim((string) $_POST["control_area_codigo"]))
+            : "";
+        $comentario = isset($_POST["control_comentario"])
+            ? trim((string) $_POST["control_comentario"])
+            : "";
+
+        if ($codigoPedido <= 0) {
+            return array("ok" => false, "msg" => "Pedido no indicado.");
+        }
+
+        if ($condicionCodigo === "") {
+            return array("ok" => false, "msg" => "Indica la condición del control.");
+        }
+
+        $pedido = ModeloDecisionesCredito::mdlPedidoExiste($codigoPedido);
+        if (!$pedido) {
+            return array("ok" => false, "msg" => "Pedido no encontrado.");
+        }
+
+        $estado = strtoupper(trim((string) $pedido["estado"]));
+        if (!in_array($estado, array("APROBADO", "APT"), true)) {
+            return array(
+                "ok" => false,
+                "msg" => "Solo se puede registrar control en pedidos APROBADOS o en APT. Estado actual: "
+                    . $estado,
+            );
+        }
+
+        $codigoCliente = isset($pedido["cliente"]) ? trim((string) $pedido["cliente"]) : "";
+        if ($codigoCliente === "") {
+            return array("ok" => false, "msg" => "El pedido no tiene cliente asociado.");
+        }
+
+        return dcAplicarControlPostAprobacion(array(
+            "codigo_pedido" => $codigoPedido,
+            "codigo_cliente" => $codigoCliente,
+            "condicion_codigo" => $condicionCodigo,
+            "area_autoriza_codigo" => $areaCodigo !== "" ? $areaCodigo : null,
+            "comentario" => $comentario,
+            "usuario_id" => (int) $_SESSION["id"],
+            "pedido_total" => isset($pedido["total"]) ? $pedido["total"] : null,
+            "pedido_lista" => isset($pedido["lista"]) ? $pedido["lista"] : null,
+            "pedido_estado_resultado" => $estado,
+        ));
+    }
+
+    public static function ctrLiberarControlPostAprobacion()
+    {
+        if (!dcUsuarioPuedeLiberarControlPostAprobacion()) {
+            return array("ok" => false, "msg" => "Sin permiso para liberar controles.");
+        }
+
+        if (!isset($_SESSION["id"]) || !(int) $_SESSION["id"]) {
+            return array("ok" => false, "msg" => "Sesión no válida.");
+        }
+
+        $id = isset($_POST["id"]) ? (int) $_POST["id"] : 0;
+        $comentario = isset($_POST["comentario_liberacion"])
+            ? trim((string) $_POST["comentario_liberacion"])
+            : "";
+
+        $resultado = ModeloDecisionesCredito::mdlLiberarControlPostAprobacion(array(
+            "id" => $id,
+            "usuario_id" => (int) $_SESSION["id"],
+            "comentario_liberacion" => $comentario,
+        ));
+
+        if (empty($resultado["ok"])) {
+            return $resultado;
+        }
+
+        $control = isset($resultado["control"]) ? $resultado["control"] : array();
+        $codigoPedido = isset($control["codigo_pedido"]) ? (int) $control["codigo_pedido"] : 0;
+        $codigoCliente = isset($control["codigo_cliente"]) ? $control["codigo_cliente"] : "";
+
+        if ($codigoPedido > 0 && function_exists("dcRegistrarAccionCredito")) {
+            $detalle = "Control liberado: "
+                . (isset($control["condicion_etiqueta"]) ? $control["condicion_etiqueta"] : $control["condicion_codigo"]);
+            if (!empty($control["area_etiqueta"])) {
+                $detalle .= " · Área: " . $control["area_etiqueta"];
+            }
+
+            dcRegistrarAccionCredito(array(
+                "codigo_pedido" => $codigoPedido,
+                "codigo_cliente" => $codigoCliente,
+                "tipo_accion" => "DESPACHO_AUTORIZADO",
+                "origen" => "centro_decisiones",
+                "motivo_codigo" => isset($control["condicion_codigo"]) ? $control["condicion_codigo"] : null,
+                "comentario" => $comentario !== "" ? $comentario : null,
+                "usuario_id" => (int) $_SESSION["id"],
+                "detalle" => $detalle,
+            ));
+        }
+
+        return array(
+            "ok" => true,
+            "msg" => "Despacho autorizado. El pedido ya puede pasar a APT.",
+            "control" => $control,
         );
     }
 }

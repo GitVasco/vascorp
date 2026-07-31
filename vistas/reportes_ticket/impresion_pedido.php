@@ -10,6 +10,8 @@
 
     require_once "../../controladores/pedidos.controlador.php";
     require_once "../../modelos/pedidos.modelo.php";
+    require_once "../../controladores/decisiones-credito.config.php";
+    require_once "../../modelos/decisiones-credito.modelo.php";
 
     /* 
     * TRAEMOS LOS DATOS DEL PEDIDO
@@ -43,6 +45,10 @@
     $articulos = ControladorPedidos::ctrPedidoImpresionB($codigo, $ini, $fin);
     $cantidadArticulos = count($articulos);
     #var_dump(count($articulos));
+
+    $celdaUbigeo = function_exists("dcCeldaUbigeoImpresionPedido")
+        ? dcCeldaUbigeoImpresionPedido($codigo, isset($respuesta["ubigeo"]) ? $respuesta["ubigeo"] : "")
+        : htmlspecialchars(isset($respuesta["ubigeo"]) ? (string) $respuesta["ubigeo"] : "", ENT_QUOTES, "UTF-8");
 
     ?>
     <div class="zona_impresion">
@@ -95,7 +101,7 @@
                         
                                 <th style="width:10%"></th>
                                 <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                 <th style="width:6%"></th>
                                 <th style="width:6%"></th>
                         
@@ -400,7 +406,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -647,7 +653,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -954,7 +960,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -1201,7 +1207,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -1448,7 +1454,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -1755,7 +1761,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -2002,7 +2008,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -2249,7 +2255,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -2496,7 +2502,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -2803,7 +2809,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -3050,7 +3056,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -3297,7 +3303,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -3544,7 +3550,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -3791,7 +3797,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -4098,7 +4104,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -4345,7 +4351,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -4592,7 +4598,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -4839,7 +4845,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -5086,7 +5092,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -5333,7 +5339,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -5640,7 +5646,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -5887,7 +5893,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -6134,7 +6140,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -6381,7 +6387,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -6628,7 +6634,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -6875,7 +6881,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -7122,7 +7128,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -7429,7 +7435,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -7676,7 +7682,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -7923,7 +7929,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -8170,7 +8176,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -8417,7 +8423,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -8664,7 +8670,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -8911,7 +8917,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -9158,7 +9164,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -9465,7 +9471,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -9712,7 +9718,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -9959,7 +9965,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -10206,7 +10212,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -10453,7 +10459,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -10700,7 +10706,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -10947,7 +10953,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -11194,7 +11200,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -11441,7 +11447,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -11748,7 +11754,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -11995,7 +12001,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -12242,7 +12248,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -12489,7 +12495,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -12736,7 +12742,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -12983,7 +12989,7 @@
                                 
                                         <th style="width:10%"></th>
                                         <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                                        <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                                        <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                                         <th style="width:6%"></th>
                                         <th style="width:6%"></th>
                                 
@@ -13230,7 +13236,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -13477,7 +13483,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -13724,7 +13730,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     
@@ -13971,7 +13977,7 @@
                     
                             <th style="width:10%"></th>
                             <td colspan="6">' . $respuesta["nom_ubi"] . '</td>
-                            <th style="width:10%;text-align:left;" colspan="2">' . $respuesta["ubigeo"] . '</th>
+                            <td class="hc-print-celda-ubigeo" style="width:10%;text-align:left;" colspan="2">' . $celdaUbigeo . '</td>
                             <th style="width:6%"></th>
                             <th style="width:6%"></th>
                     

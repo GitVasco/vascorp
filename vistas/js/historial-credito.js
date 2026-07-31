@@ -239,6 +239,7 @@
         }
 
         var vendedor = hcVendedorActual();
+        hcIgnorarCambioVendedor = true;
         hcSincronizarStubVendedor(vendedor);
 
         $("#hcColaWrap").addClass("hc-cola--loading");
@@ -262,6 +263,11 @@
                 $("#hcColaWrap").html(resp.html);
                 var r = resp.resumen || {};
                 $("#hcTabBadgeCola").text(r.generados || 0);
+                if (r.controles_pendientes !== undefined) {
+                    $("#hcTabBadgeControles, #hcBadgeControles").text(
+                        r.controles_pendientes || 0
+                    );
+                }
                 hcActualizarUrlVendedor(resp.vendedor || vendedor);
             })
             .always(function () {
@@ -271,9 +277,28 @@
                 if ($sel.data("selectpicker")) {
                     $sel.selectpicker("refresh");
                 }
+                hcIgnorarCambioVendedor = false;
                 hcColaXhr = null;
             });
     }
+
+    window.hcRefrescarTrasAccionPedido = function (opciones) {
+        opciones = opciones || {};
+        recargarCola();
+        if ($("#hcTabControles").length) {
+            recargarControles();
+        }
+        if ($("#hcTabMovimientos").hasClass("active")) {
+            cargarHistorial();
+        }
+        if (opciones.mensajeExito && typeof swal === "function") {
+            var msg = String(opciones.mensajeExito)
+                .replace(/El dashboard se actualizó\./gi, "La cola se actualizó.")
+                .replace(/el dashboard fue actualizado\./gi, "la cola se actualizó.")
+                .replace(/y el dashboard fue actualizado\./gi, "y la cola se actualizó.");
+            swal("Listo", msg, "success");
+        }
+    };
 
     function cargarHistorial() {
         var $body = $("#hcTablaBody");
@@ -400,26 +425,21 @@
     $(document).ajaxComplete(function (_e, xhr, settings) {
         var url = urlAccion(settings);
 
+        if (url.indexOf("control-post-aprobacion.ajax.php") !== -1) {
+            return;
+        }
+
         if (
             url.indexOf("aprobar-pedido.ajax.php") !== -1 ||
             url.indexOf("anular-pedido.ajax.php") !== -1
         ) {
-            var respAccion = null;
-            try {
-                respAccion = xhr.responseJSON || JSON.parse(xhr.responseText || "{}");
-            } catch (err) {
-                respAccion = null;
-            }
-            if (respAccion && respAccion.ok) {
-                recargarCola();
-                if ($("#hcTabMovimientos").hasClass("active")) {
-                    cargarHistorial();
-                }
-            }
             return;
         }
 
         if (url.indexOf("refrescar-dashboard.ajax.php") !== -1) {
+            if ($("#hcColaWrap").length) {
+                return;
+            }
             recargarCola();
             if ($("#hcTabMovimientos").hasClass("active")) {
                 cargarHistorial();
@@ -439,6 +459,9 @@
             accion === "resolver_solicitud"
         ) {
             recargarCola();
+            if ($("#hcTabControles").length) {
+                recargarControles();
+            }
             if ($("#hcTabMovimientos").hasClass("active")) {
                 cargarHistorial();
             }
@@ -605,6 +628,8 @@
         }
         if ($("#hcTabDashboard").hasClass("active")) {
             params.push("tab=dashboard");
+        } else if ($("#hcTabControles").hasClass("active")) {
+            params.push("tab=controles");
         } else if ($("#hcTabMovimientos").hasClass("active")) {
             params.push("tab=movimientos");
         }
@@ -1330,6 +1355,264 @@
 
     $("#btnHcDashActualizar").on("click", cargarDashboard);
 
+    var hcControlesXhr = null;
+    var hcLiberarControlCtx = null;
+    var hcRegistrarControlCtx = null;
+    var hcControlCatalogoCache = null;
+
+    function hcInitControlSelect($sel, items, tituloVacio) {
+        if (!$sel.length) {
+            return;
+        }
+        var html =
+            '<option value="">' + escapeHtml(tituloVacio || "…") + "</option>";
+        (items || []).forEach(function (item) {
+            if (!item || !item.codigo) {
+                return;
+            }
+            html +=
+                '<option value="' +
+                escapeHtml(item.codigo) +
+                '" data-descripcion="' +
+                escapeHtml(item.descripcion || "") +
+                '" data-requiere-obs="' +
+                (item.requiere_observacion ? "1" : "0") +
+                '">' +
+                escapeHtml(item.etiqueta || item.codigo) +
+                "</option>";
+        });
+        $sel.html(html);
+        if ($sel.data("selectpicker")) {
+            $sel.selectpicker("destroy");
+        }
+        $sel.addClass("selectpicker").selectpicker({
+            liveSearch: true,
+            noneSelectedText: tituloVacio || "…",
+            width: "100%",
+        });
+    }
+
+    function hcCargarCatalogoControles() {
+        if (hcControlCatalogoCache) {
+            return $.Deferred().resolve(hcControlCatalogoCache).promise();
+        }
+        return $.ajax({
+            url: "ajax/dashboard-decisiones/control-post-aprobacion.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: { accion: "catalogo" },
+        }).then(function (resp) {
+            hcControlCatalogoCache = {
+                controles: (resp && resp.controles_post_aprobacion) || [],
+                areas: (resp && resp.areas_autorizacion) || [],
+            };
+            return hcControlCatalogoCache;
+        });
+    }
+
+    function abrirModalRegistrarControl(ctx) {
+        hcRegistrarControlCtx = ctx || null;
+        if (!hcRegistrarControlCtx || !hcRegistrarControlCtx.pedido) {
+            return;
+        }
+
+        $("#hcRegistrarControlInfo").text(
+            "Pedido " +
+                hcRegistrarControlCtx.pedido +
+                (hcRegistrarControlCtx.cliente ? " · " + hcRegistrarControlCtx.cliente : "")
+        );
+        $("#hcRegistrarControlObs").val("");
+        $("#hcRegistrarControlHelp").text("");
+        hcInitControlSelect($("#hcRegistrarControlCondicion"), [], "Cargando…");
+        hcInitControlSelect($("#hcRegistrarControlArea"), [], "Cargando…");
+        $("#modalHcRegistrarControl").modal("show");
+
+        hcCargarCatalogoControles()
+            .done(function (cat) {
+                hcInitControlSelect(
+                    $("#hcRegistrarControlCondicion"),
+                    cat.controles,
+                    "Selecciona condición…"
+                );
+                hcInitControlSelect(
+                    $("#hcRegistrarControlArea"),
+                    cat.areas,
+                    "Sin área específica…"
+                );
+            })
+            .fail(function () {
+                swal("Error", "No se pudo cargar el catálogo de controles.", "error");
+            });
+    }
+
+    $(document).on("click", ".btnHcRegistrarControl", function () {
+        abrirModalRegistrarControl({
+            pedido: $(this).data("pedido"),
+            cliente: $(this).data("cliente") || "",
+            codCli: $(this).data("codCli") || "",
+        });
+    });
+
+    $(document).on(
+        "changed.bs.select",
+        "#hcRegistrarControlCondicion",
+        function () {
+            var desc = $(this).find("option:selected").data("descripcion") || "";
+            $("#hcRegistrarControlHelp").text(desc || "");
+        }
+    );
+
+    $(document).on("click", "#hcRegistrarControlConfirm", function () {
+        if (!hcRegistrarControlCtx || !hcRegistrarControlCtx.pedido) {
+            return;
+        }
+
+        var condicion = $("#hcRegistrarControlCondicion").val() || "";
+        var area = $("#hcRegistrarControlArea").val() || "";
+        var comentario = $("#hcRegistrarControlObs").val() || "";
+
+        if (!condicion) {
+            swal("Atención", "Selecciona la condición del control.", "warning");
+            return;
+        }
+
+        var $opt = $("#hcRegistrarControlCondicion option:selected");
+        if (String($opt.data("requiereObs") || "") === "1" && !comentario) {
+            swal(
+                "Atención",
+                "Esta condición requiere detalle en la observación.",
+                "warning"
+            );
+            return;
+        }
+
+        $("#modalHcRegistrarControl").modal("hide");
+
+        $.ajax({
+            url: "ajax/dashboard-decisiones/control-post-aprobacion.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: {
+                accion: "registrar",
+                codigo_pedido: hcRegistrarControlCtx.pedido,
+                control_condicion_codigo: condicion,
+                control_area_codigo: area,
+                control_comentario: comentario,
+            },
+        })
+            .done(function (resp) {
+                if (!resp || !resp.ok) {
+                    swal(
+                        "Atención",
+                        (resp && resp.msg) || "No se pudo registrar el control.",
+                        "warning"
+                    );
+                    return;
+                }
+                swal("Listo", resp.msg || "Control registrado.", "success");
+                hcRegistrarControlCtx = null;
+                recargarCola();
+                recargarControles();
+                if ($("#hcTabMovimientos").hasClass("active")) {
+                    cargarHistorial();
+                }
+            })
+            .fail(function () {
+                swal("Error", "No se pudo registrar el control.", "error");
+            });
+    });
+
+    function recargarControles() {
+        if (hcControlesXhr && hcControlesXhr.abort) {
+            hcControlesXhr.abort();
+        }
+
+        var vendedor = hcVendedorActual();
+        hcControlesXhr = $.ajax({
+            url: "ajax/dashboard-decisiones/control-post-aprobacion.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: { accion: "listar", limite: 100, vendedor: vendedor },
+        })
+            .done(function (resp) {
+                if (!resp || !resp.ok) {
+                    return;
+                }
+                $("#hcBodyControles").html(
+                    resp.html ||
+                        '<tr><td colspan="9" class="text-center text-muted">Sin controles pendientes.</td></tr>'
+                );
+                var total = resp.total !== undefined ? resp.total : 0;
+                $("#hcTabBadgeControles, #hcBadgeControles").text(total);
+            })
+            .always(function () {
+                hcControlesXhr = null;
+            });
+    }
+
+    function abrirModalLiberarControl(ctx) {
+        hcLiberarControlCtx = ctx || null;
+        if (!hcLiberarControlCtx || !hcLiberarControlCtx.id) {
+            return;
+        }
+        $("#hcLiberarControlInfo").text(
+            "Pedido " +
+                hcLiberarControlCtx.pedido +
+                (hcLiberarControlCtx.cliente ? " · " + hcLiberarControlCtx.cliente : "") +
+                (hcLiberarControlCtx.condicion ? " · " + hcLiberarControlCtx.condicion : "")
+        );
+        $("#hcLiberarControlObs").val("");
+        $("#modalHcLiberarControl").modal("show");
+    }
+
+    $(document).on("click", ".btnHcLiberarControl", function () {
+        abrirModalLiberarControl({
+            id: $(this).data("id"),
+            pedido: $(this).data("pedido"),
+            cliente: $(this).data("cliente") || "",
+            condicion: $(this).data("condicion") || "",
+        });
+    });
+
+    $(document).on("click", "#hcLiberarControlConfirm", function () {
+        if (!hcLiberarControlCtx || !hcLiberarControlCtx.id) {
+            return;
+        }
+        var comentario = $("#hcLiberarControlObs").val() || "";
+        $("#modalHcLiberarControl").modal("hide");
+
+        $.ajax({
+            url: "ajax/dashboard-decisiones/control-post-aprobacion.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: {
+                accion: "liberar",
+                id: hcLiberarControlCtx.id,
+                comentario_liberacion: comentario,
+            },
+        })
+            .done(function (resp) {
+                if (!resp || !resp.ok) {
+                    swal(
+                        "Atención",
+                        (resp && resp.msg) || "No se pudo liberar el control.",
+                        "warning"
+                    );
+                    return;
+                }
+                swal("Listo", resp.msg || "Despacho autorizado.", "success");
+                hcLiberarControlCtx = null;
+                recargarCola();
+                recargarControles();
+                if ($("#hcTabMovimientos").hasClass("active")) {
+                    cargarHistorial();
+                }
+            })
+            .fail(function () {
+                swal("Error", "No se pudo liberar el control.", "error");
+            });
+    });
+
     $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
         var target = $(e.target).attr("href");
         if (target === "#hcTabDashboard") {
@@ -1343,6 +1626,9 @@
                     }
                 });
             }
+        } else if (target === "#hcTabControles") {
+            hcActualizarUrlTab();
+            recargarControles();
         } else if (target === "#hcTabCola" || target === "#hcTabMovimientos") {
             hcActualizarUrlTab();
         }
@@ -1355,6 +1641,8 @@
         }
         if ($("#hcTabDashboard").hasClass("active")) {
             cargarDashboard();
+        } else if ($("#hcTabControles").hasClass("active")) {
+            recargarControles();
         }
     });
 

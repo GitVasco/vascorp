@@ -96,6 +96,33 @@ class ControladorDashboardDecisiones
             }
         }
 
+        $codigosAprobados = array();
+        foreach ($aprobados as $rowApr) {
+            if (!empty($rowApr["codigo"])) {
+                $codigosAprobados[] = (int) $rowApr["codigo"];
+            }
+        }
+
+        $mapaControles = array();
+        if (!empty($codigosAprobados) && class_exists("ModeloDecisionesCredito")) {
+            try {
+                $mapaControles = ModeloDecisionesCredito::mdlMapaControlesPendientesPorPedidos($codigosAprobados);
+            } catch (Exception $e) {
+                $mapaControles = array();
+            }
+        }
+
+        $controlesPendientes = 0;
+        foreach ($aprobados as $idx => $rowApr) {
+            $cod = (int) $rowApr["codigo"];
+            if (isset($mapaControles[$cod])) {
+                $aprobados[$idx]["control_post_aprobacion"] = $mapaControles[$cod];
+                $controlesPendientes++;
+            } else {
+                $aprobados[$idx]["control_post_aprobacion"] = null;
+            }
+        }
+
         return array(
             "ok" => true,
             "vendedor" => $vendedor,
@@ -104,6 +131,7 @@ class ControladorDashboardDecisiones
             "resumen" => array(
                 "generados" => count($generados),
                 "aprobados" => count($aprobados),
+                "controles_pendientes" => $controlesPendientes,
                 "soles_generados" => round($solesGenerados, 2),
                 "soles_aprobados" => round($solesAprobados, 2),
             ),
@@ -272,12 +300,24 @@ class ControladorDashboardDecisiones
         );
     }
 
-    public static function ctrAprobarPedidoGenerado($codigoPedido, $idCategoria = 0, $motivoCodigo = "", $comentario = "")
+    public static function ctrAprobarPedidoGenerado(
+        $codigoPedido,
+        $idCategoria = 0,
+        $motivoCodigo = "",
+        $comentario = "",
+        $controlCondicion = "",
+        $controlArea = "",
+        $controlComentario = ""
+    )
     {
         $codigoPedido = trim((string) $codigoPedido);
         $idCategoria = (int) $idCategoria;
         $motivoCodigo = strtoupper(trim((string) $motivoCodigo));
         $comentario = trim((string) $comentario);
+        $controlCondicion = strtoupper(trim((string) $controlCondicion));
+        $controlArea = strtoupper(trim((string) $controlArea));
+        $controlComentario = trim((string) $controlComentario);
+        $requiereControl = ($controlCondicion !== "");
 
         if ($codigoPedido === "") {
             return array("ok" => false, "msg" => "Pedido no indicado.");
@@ -289,6 +329,20 @@ class ControladorDashboardDecisiones
 
         if ($motivoCodigo !== "" && function_exists("dcObtenerMotivoAprobacion") && !dcObtenerMotivoAprobacion($motivoCodigo)) {
             return array("ok" => false, "msg" => "Motivo de aprobación no válido.");
+        }
+
+        if ($requiereControl && function_exists("dcValidarDatosControlPostAprobacion")) {
+            $validacionControl = dcValidarDatosControlPostAprobacion(
+                $controlCondicion,
+                $controlComentario !== "" ? $controlComentario : $comentario,
+                $controlArea
+            );
+            if (empty($validacionControl["ok"])) {
+                return array(
+                    "ok" => false,
+                    "msg" => isset($validacionControl["msg"]) ? $validacionControl["msg"] : "Control no válido.",
+                );
+            }
         }
 
         $pedido = ModeloDashboardDecisiones::mdlPedidoParaAnular($codigoPedido);
@@ -439,8 +493,30 @@ class ControladorDashboardDecisiones
                 : $motivoDetalle;
         }
 
+        $idAccionAprobacion = 0;
         if (function_exists("dcRegistrarAccionCredito")) {
-            dcRegistrarAccionCredito($accionDatos);
+            $retAccion = dcRegistrarAccionCredito($accionDatos);
+            if (is_numeric($retAccion)) {
+                $idAccionAprobacion = (int) $retAccion;
+            }
+        }
+
+        $controlRegistrado = null;
+        if ($requiereControl && function_exists("dcAplicarControlPostAprobacion")) {
+            $textoControl = $controlComentario !== "" ? $controlComentario : $comentario;
+
+            $controlRegistrado = dcAplicarControlPostAprobacion(array(
+                "codigo_pedido" => (int) $pedido["codigo"],
+                "codigo_cliente" => $codigoCliente,
+                "id_accion_aprobacion" => $idAccionAprobacion > 0 ? $idAccionAprobacion : null,
+                "condicion_codigo" => $controlCondicion,
+                "area_autoriza_codigo" => $controlArea !== "" ? $controlArea : null,
+                "comentario" => $textoControl,
+                "usuario_id" => (int) $_SESSION["id"],
+                "pedido_total" => isset($pedido["total"]) ? $pedido["total"] : null,
+                "pedido_lista" => isset($pedido["lista"]) ? $pedido["lista"] : null,
+                "pedido_estado_resultado" => "APROBADO",
+            ));
         }
 
         $respuesta = array(
@@ -452,6 +528,18 @@ class ControladorDashboardDecisiones
         if ($categoriaAsignada) {
             $respuesta["categoria_asignada"] = $categoriaAsignada;
             $respuesta["msg"] = "Categoría asignada y pedido aprobado correctamente.";
+        }
+
+        if ($requiereControl && !empty($controlRegistrado["ok"])) {
+            $respuesta["control_registrado"] = true;
+            $respuesta["msg"] = ($categoriaAsignada ? "Categoría asignada, pedido aprobado" : "Pedido aprobado")
+                . " con control pendiente antes de despachar.";
+        } elseif ($requiereControl && empty($controlRegistrado["ok"])) {
+            $respuesta["control_registrado"] = false;
+            $respuesta["msg"] .= " Atención: no se pudo registrar el control post-aprobación.";
+            if (!empty($controlRegistrado["msg"])) {
+                $respuesta["control_error"] = $controlRegistrado["msg"];
+            }
         }
 
         return $respuesta;

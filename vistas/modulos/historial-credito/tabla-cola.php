@@ -11,6 +11,10 @@ if (!function_exists("ddFormatoMonto")) {
 
 $puedeAprobar = function_exists("dcUsuarioPuedeAprobarPedido") && dcUsuarioPuedeAprobarPedido();
 $puedeAnular = function_exists("dcUsuarioPuedeAnularPedido") && dcUsuarioPuedeAnularPedido();
+$puedeLiberarControl = function_exists("dcUsuarioPuedeLiberarControlPostAprobacion")
+    && dcUsuarioPuedeLiberarControlPostAprobacion();
+$puedeRegistrarControl = function_exists("dcUsuarioPuedeRegistrarControlPostAprobacion")
+    && dcUsuarioPuedeRegistrarControlPostAprobacion();
 
 if (!function_exists("hcRenderAccionesPedido")) {
     /**
@@ -18,8 +22,17 @@ if (!function_exists("hcRenderAccionesPedido")) {
      * @param bool  $esGenerado
      * @param bool  $puedeAprobar
      * @param bool  $puedeAnular
+     * @param bool  $puedeLiberarControl
+     * @param bool  $puedeRegistrarControl
      */
-    function hcRenderAccionesPedido($row, $esGenerado, $puedeAprobar, $puedeAnular)
+    function hcRenderAccionesPedido(
+        $row,
+        $esGenerado,
+        $puedeAprobar,
+        $puedeAnular,
+        $puedeLiberarControl = false,
+        $puedeRegistrarControl = false
+    )
     {
         $html = '<div class="dd-acciones-iconos">';
 
@@ -63,6 +76,30 @@ if (!function_exists("hcRenderAccionesPedido")) {
                 . '<i class="fa fa-times"></i></button>';
         }
 
+        if (!$esGenerado && !empty($row["control_post_aprobacion"]) && $puedeLiberarControl) {
+            $ctrl = $row["control_post_aprobacion"];
+            $html .= '<button type="button" class="btn btn-xs btn-success btnHcLiberarControl"'
+                . ' title="Liberar despacho (control pendiente)"'
+                . ' data-id="' . (int) $ctrl["id"] . '"'
+                . ' data-pedido="' . htmlspecialchars($row["codigo"]) . '"'
+                . ' data-condicion="' . htmlspecialchars(isset($ctrl["condicion_etiqueta"]) ? $ctrl["condicion_etiqueta"] : "") . '"'
+                . ' data-cliente="' . htmlspecialchars($row["cliente"]) . '">'
+                . '<i class="fa fa-unlock"></i></button>';
+        }
+
+        if (
+            !$esGenerado
+            && empty($row["control_post_aprobacion"])
+            && $puedeRegistrarControl
+        ) {
+            $html .= '<button type="button" class="btn btn-xs btn-warning btnHcRegistrarControl"'
+                . ' title="Registrar control post-aprobación"'
+                . ' data-pedido="' . htmlspecialchars($row["codigo"]) . '"'
+                . ' data-cliente="' . htmlspecialchars($row["cliente"]) . '"'
+                . ' data-cod-cli="' . htmlspecialchars($row["cod_cli"]) . '">'
+                . '<i class="fa fa-lock"></i></button>';
+        }
+
         $html .= "</div>";
 
         return $html;
@@ -74,9 +111,16 @@ if (!function_exists("hcRenderFilasCola")) {
      * @param array $lista
      * @param bool  $esGenerado
      * @param bool  $puedeAprobar
-     * @param bool  $puedeAnular
+     * @param bool  $puedeRegistrarControl
      */
-    function hcRenderFilasCola($lista, $esGenerado, $puedeAprobar, $puedeAnular)
+    function hcRenderFilasCola(
+        $lista,
+        $esGenerado,
+        $puedeAprobar,
+        $puedeAnular,
+        $puedeLiberarControl = false,
+        $puedeRegistrarControl = false
+    )
     {
         if (empty($lista)) {
             $msg = $esGenerado
@@ -101,6 +145,16 @@ if (!function_exists("hcRenderFilasCola")) {
                     . htmlspecialchars("Objeción — pedido sigue en GENERADO · " . $motivoEtiqueta) . '">'
                     . '<i class="fa fa-exclamation-triangle"></i></span>';
             }
+            if (!$esGenerado && !empty($row["control_post_aprobacion"])) {
+                $ctrl = $row["control_post_aprobacion"];
+                $tituloCtrl = "Control pendiente: "
+                    . (isset($ctrl["condicion_etiqueta"]) ? $ctrl["condicion_etiqueta"] : $ctrl["condicion_codigo"]);
+                if (!empty($ctrl["area_etiqueta"])) {
+                    $tituloCtrl .= " · " . $ctrl["area_etiqueta"];
+                }
+                $html .= ' <span class="label label-danger hc-control-badge" title="'
+                    . htmlspecialchars($tituloCtrl) . '"><i class="fa fa-lock"></i></span>';
+            }
             $html .= "</td>";
             $html .= '<td class="dd-col-cliente"><div class="dd-cell-main dd-cell-cliente" title="'
                 . htmlspecialchars(
@@ -119,7 +173,14 @@ if (!function_exists("hcRenderFilasCola")) {
                 . (((int) $row["dias_pendiente"] >= 2) ? "alto" : "medio") . '">'
                 . (int) $row["dias_pendiente"] . "d</span></td>";
             $html .= '<td class="text-center">'
-                . hcRenderAccionesPedido($row, $esGenerado, $puedeAprobar, $puedeAnular)
+                . hcRenderAccionesPedido(
+                    $row,
+                    $esGenerado,
+                    $puedeAprobar,
+                    $puedeAnular,
+                    $puedeLiberarControl,
+                    $puedeRegistrarControl
+                )
                 . "</td>";
             $html .= "</tr>";
         }
@@ -172,7 +233,7 @@ if (!function_exists("hcRenderFilasCola")) {
                 </tr>
             </thead>
             <tbody id="hcBodyGenerados">
-                <?php echo hcRenderFilasCola($generados, true, $puedeAprobar, $puedeAnular); ?>
+                <?php echo hcRenderFilasCola($generados, true, $puedeAprobar, $puedeAnular, $puedeLiberarControl, $puedeRegistrarControl); ?>
             </tbody>
         </table>
     </div>
@@ -184,6 +245,11 @@ if (!function_exists("hcRenderFilasCola")) {
             <i class="fa fa-check-circle"></i> Aprobados (control)
         </h3>
         <span class="label label-success pull-right" id="hcBadgeApr"><?php echo count($aprobados); ?></span>
+    </div>
+    <div class="box-body" style="padding-bottom:0;">
+        <p class="text-muted hc-controles-intro">
+            <i class="fa fa-lock text-warning"></i> Registra un control si el pedido ya está aprobado y surgió una condición u observación.
+        </p>
     </div>
     <div class="box-body table-responsive dd-table-wrap">
         <table class="table table-hover table-condensed dd-table" id="hcTablaAprobados">
@@ -200,7 +266,7 @@ if (!function_exists("hcRenderFilasCola")) {
                 </tr>
             </thead>
             <tbody id="hcBodyAprobados">
-                <?php echo hcRenderFilasCola($aprobados, false, $puedeAprobar, $puedeAnular); ?>
+                <?php echo hcRenderFilasCola($aprobados, false, $puedeAprobar, $puedeAnular, $puedeLiberarControl, $puedeRegistrarControl); ?>
             </tbody>
         </table>
     </div>

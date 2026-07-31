@@ -1462,6 +1462,25 @@ $(".tablaPedidosAprobados").on("click", ".btnAptear", function () {
         contentType: false,
         processData: false,
         success: function (respuesta) {
+            if (
+                typeof respuesta === "string" &&
+                respuesta.indexOf("BLOQUEO_CONTROL|") === 0
+            ) {
+                swal(
+                    "Control pendiente",
+                    respuesta.replace("BLOQUEO_CONTROL|", ""),
+                    "warning"
+                );
+                return;
+            }
+            if (respuesta !== "ok") {
+                swal(
+                    "Atención",
+                    "No se pudo cambiar el estado del pedido.",
+                    "warning"
+                );
+                return;
+            }
             // console.log(respuesta);
             swal({
                 type: "success",

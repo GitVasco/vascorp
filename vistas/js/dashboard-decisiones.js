@@ -9,6 +9,8 @@
     var ddIncluirGeneradosAvance = false;
     var ddSoloObjecion = false;
     var ddMotivosAprobacionCache = null;
+    var ddControlesPostAprobacionCache = null;
+    var ddAreasAutorizacionCache = null;
 
     function fmtSolesEntero(value) {
         return (
@@ -1094,6 +1096,15 @@
         ddIgnorarCambioFiltro = false;
     }
 
+    function ddRefrescarTrasAccionPedido(opciones) {
+        opciones = opciones || {};
+        if ($("#hcColaWrap").length && typeof window.hcRefrescarTrasAccionPedido === "function") {
+            window.hcRefrescarTrasAccionPedido(opciones);
+            return $.Deferred().resolve().promise();
+        }
+        return refrescarDashboard($("#ddFiltroVendedor").val(), opciones);
+    }
+
     function refrescarDashboard(vendedor, opciones) {
         opciones = opciones || {};
         vendedor = vendedor == null ? "" : String(vendedor);
@@ -1175,6 +1186,9 @@
 
         $("#ddFiltroVendedor").on("change", function () {
             if (ddIgnorarCambioFiltro) {
+                return;
+            }
+            if ($("#hcColaWrap").length) {
                 return;
             }
             refrescarDashboard($(this).val(), { actualizarUrl: true });
@@ -1643,6 +1657,110 @@
         });
     });
 
+    function resetCamposControlAprobacion() {
+        $("#ddAprobarPedidoRequiereControl").prop("checked", false);
+        $("#ddAprobarPedidoControlFields").hide();
+        $("#ddAprobarPedidoControlObs").val("");
+        $("#ddAprobarPedidoControlHelp").text("");
+        initControlSelectpicker($("#ddAprobarPedidoControlCondicion"), [], "Selecciona condición…");
+        initControlSelectpicker($("#ddAprobarPedidoControlArea"), [], "Sin área específica…");
+    }
+
+    function initControlSelectpicker($sel, items, tituloVacio) {
+        if (!$sel.length) {
+            return;
+        }
+        var html = '<option value="">' + escapeHtml(tituloVacio || "…") + "</option>";
+        (items || []).forEach(function (item) {
+            if (!item || !item.codigo) {
+                return;
+            }
+            html +=
+                '<option value="' +
+                escapeHtml(item.codigo) +
+                '" data-descripcion="' +
+                escapeHtml(item.descripcion || "") +
+                '" data-requiere-obs="' +
+                (item.requiere_observacion ? "1" : "0") +
+                '">' +
+                escapeHtml(item.etiqueta || item.codigo) +
+                "</option>";
+        });
+        $sel.html(html);
+        if ($sel.data("selectpicker")) {
+            $sel.selectpicker("destroy");
+        }
+        $sel.addClass("selectpicker").selectpicker({
+            liveSearch: true,
+            noneSelectedText: tituloVacio || "…",
+            width: "100%",
+        });
+    }
+
+    function cargarCatalogoControlesPostAprobacion() {
+        if (ddControlesPostAprobacionCache && ddAreasAutorizacionCache) {
+            return $.Deferred()
+                .resolve({
+                    controles: ddControlesPostAprobacionCache,
+                    areas: ddAreasAutorizacionCache,
+                })
+                .promise();
+        }
+
+        return $.ajax({
+            url: "ajax/dashboard-decisiones/control-post-aprobacion.ajax.php",
+            method: "POST",
+            dataType: "json",
+            data: { accion: "catalogo" },
+        }).then(function (resp) {
+            ddControlesPostAprobacionCache =
+                (resp && resp.controles_post_aprobacion) || [];
+            ddAreasAutorizacionCache = (resp && resp.areas_autorizacion) || [];
+            return {
+                controles: ddControlesPostAprobacionCache,
+                areas: ddAreasAutorizacionCache,
+            };
+        });
+    }
+
+    $(document).on("change", "#ddAprobarPedidoRequiereControl", function () {
+        if ($(this).is(":checked")) {
+            $("#ddAprobarPedidoControlFields").slideDown(150);
+            cargarCatalogoControlesPostAprobacion()
+                .done(function (cat) {
+                    initControlSelectpicker(
+                        $("#ddAprobarPedidoControlCondicion"),
+                        cat.controles,
+                        "Selecciona condición…"
+                    );
+                    initControlSelectpicker(
+                        $("#ddAprobarPedidoControlArea"),
+                        cat.areas,
+                        "Sin área específica…"
+                    );
+                })
+                .fail(function () {
+                    swal(
+                        "Error",
+                        "No se pudo cargar el catálogo de controles.",
+                        "error"
+                    );
+                });
+        } else {
+            $("#ddAprobarPedidoControlFields").slideUp(150);
+        }
+    });
+
+    $(document).on(
+        "changed.bs.select",
+        "#ddAprobarPedidoControlCondicion",
+        function () {
+            var $opt = $(this).find("option:selected");
+            var desc = $opt.data("descripcion") || "";
+            $("#ddAprobarPedidoControlHelp").text(desc || "");
+        }
+    );
+
     function cargarMotivosAprobacion() {
         if (ddMotivosAprobacionCache && ddMotivosAprobacionCache.length) {
             return $.Deferred().resolve(ddMotivosAprobacionCache).promise();
@@ -1706,6 +1824,7 @@
         );
 
         $("#ddAprobarPedidoObs").val("");
+        resetCamposControlAprobacion();
         initMotivoSelectpicker(
             $("#ddAprobarPedidoMotivo"),
             [],
@@ -1738,6 +1857,37 @@
         var ctx = ddAprobarPedidoCtx;
         var motivo = $("#ddAprobarPedidoMotivo").val() || "";
         var comentario = $("#ddAprobarPedidoObs").val() || "";
+        var requiereControl = $("#ddAprobarPedidoRequiereControl").is(":checked");
+        var controlCondicion = requiereControl
+            ? $("#ddAprobarPedidoControlCondicion").val() || ""
+            : "";
+        var controlArea = requiereControl
+            ? $("#ddAprobarPedidoControlArea").val() || ""
+            : "";
+        var controlComentario = requiereControl
+            ? $("#ddAprobarPedidoControlObs").val() || ""
+            : "";
+
+        if (requiereControl && !controlCondicion) {
+            swal("Atención", "Selecciona la condición del control.", "warning");
+            return;
+        }
+
+        if (requiereControl) {
+            var $optCtrl = $("#ddAprobarPedidoControlCondicion option:selected");
+            if (
+                String($optCtrl.data("requiereObs") || "") === "1" &&
+                !controlComentario &&
+                !comentario
+            ) {
+                swal(
+                    "Atención",
+                    "Esta condición requiere detalle en la observación del control.",
+                    "warning"
+                );
+                return;
+            }
+        }
 
         $("#modalDdAprobarPedido").modal("hide");
         ejecutarAprobarPedido(
@@ -1745,11 +1895,25 @@
             ctx.pedido,
             ctx.idCategoria || 0,
             motivo,
-            comentario
+            comentario,
+            requiereControl,
+            controlCondicion,
+            controlArea,
+            controlComentario
         );
     });
 
-    function ejecutarAprobarPedido($btn, pedido, idCategoria, motivoCodigo, comentario) {
+    function ejecutarAprobarPedido(
+        $btn,
+        pedido,
+        idCategoria,
+        motivoCodigo,
+        comentario,
+        requiereControl,
+        controlCondicion,
+        controlArea,
+        controlComentario
+    ) {
         if ($btn && $btn.length) {
             $btn.prop("disabled", true);
         }
@@ -1763,6 +1927,16 @@
         }
         if (comentario) {
             payload.comentario = comentario;
+        }
+        if (requiereControl) {
+            payload.requiere_control = "1";
+            payload.control_condicion_codigo = controlCondicion;
+            if (controlArea) {
+                payload.control_area_codigo = controlArea;
+            }
+            if (controlComentario) {
+                payload.control_comentario = controlComentario;
+            }
         }
 
         $.ajax({
@@ -1804,7 +1978,7 @@
                     ? "Categoría asignada y pedido aprobado. El dashboard se actualizó."
                     : "El pedido fue aprobado y el dashboard fue actualizado.";
 
-                refrescarDashboard($("#ddFiltroVendedor").val(), {
+                ddRefrescarTrasAccionPedido({
                     actualizarUrl: false,
                     mensajeExito: mensaje,
                 }).fail(function (xhr, status) {
@@ -1867,7 +2041,7 @@
                         return;
                     }
 
-                    refrescarDashboard($("#ddFiltroVendedor").val(), {
+                    ddRefrescarTrasAccionPedido({
                         actualizarUrl: false,
                         mensajeExito:
                             "El pedido fue anulado y el dashboard fue actualizado.",

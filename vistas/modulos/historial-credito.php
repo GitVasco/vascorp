@@ -13,7 +13,7 @@ $fechaHasta = isset($_GET["hasta"]) ? trim((string) $_GET["hasta"]) : date("Y-m-
 $tipoAccion = isset($_GET["tipo"]) ? strtoupper(trim((string) $_GET["tipo"])) : "";
 $q = isset($_GET["q"]) ? trim((string) $_GET["q"]) : "";
 $tabInicial = isset($_GET["tab"]) ? strtolower(trim((string) $_GET["tab"])) : "cola";
-if ($tabInicial !== "cola" && $tabInicial !== "movimientos" && $tabInicial !== "dashboard") {
+if ($tabInicial !== "cola" && $tabInicial !== "movimientos" && $tabInicial !== "dashboard" && $tabInicial !== "controles") {
     $tabInicial = "cola";
 }
 
@@ -30,6 +30,15 @@ $cola = ControladorDashboardDecisiones::ctrColaPedidosCredito(80, $vendedorSelec
 $generados = $cola["generados"];
 $aprobados = $cola["aprobados"];
 $resumenCola = $cola["resumen"];
+
+$controlesInicial = ControladorDecisionesCredito::ctrListarControlesPostAprobacion(array(
+    "vendedor" => $vendedorSeleccionado,
+    "limite" => 100,
+));
+$filasControles = (!empty($controlesInicial["ok"]) && isset($controlesInicial["filas"]))
+    ? $controlesInicial["filas"]
+    : array();
+$puedeLiberarControl = !empty($controlesInicial["puede_liberar"]);
 
 $datos = ControladorDecisionesCredito::ctrListarHistorialAcciones(array(
     "fecha_desde" => $fechaDesde,
@@ -95,6 +104,12 @@ function hcDashAyuda($texto)
                     <span class="badge" id="hcTabBadgeCola"><?php echo (int) $resumenCola["generados"]; ?></span>
                 </a>
             </li>
+            <li class="<?php echo $tabInicial === "controles" ? "active" : ""; ?>">
+                <a href="#hcTabControles" data-toggle="tab">
+                    <i class="fa fa-lock"></i> Controles pendientes
+                    <span class="badge bg-red" id="hcTabBadgeControles"><?php echo count($filasControles); ?></span>
+                </a>
+            </li>
             <li class="<?php echo $tabInicial === "dashboard" ? "active" : ""; ?>">
                 <a href="#hcTabDashboard" data-toggle="tab">
                     <i class="fa fa-bar-chart"></i> Dashboard
@@ -138,6 +153,47 @@ function hcDashAyuda($texto)
                 </form>
                 <div id="hcColaWrap">
                     <?php include __DIR__ . "/historial-credito/tabla-cola.php"; ?>
+                </div>
+            </div>
+
+            <div class="tab-pane <?php echo $tabInicial === "controles" ? "active" : ""; ?>" id="hcTabControles">
+                <div class="box box-solid dd-box hc-cola-box">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">
+                            <i class="fa fa-lock"></i> Controles post-aprobación
+                        </h3>
+                        <span class="label label-danger pull-right" id="hcBadgeControles"><?php echo count($filasControles); ?></span>
+                    </div>
+                    <div class="box-body">
+                        <p class="text-muted hc-controles-intro">
+                            Pedidos aprobados con condición pendiente antes de despachar.
+                            Los marcados con <span class="label label-danger">APT</span> bloquean el paso a APT hasta liberarlos.
+                            Si un pedido ya aprobado requiere seguimiento, usa el botón <i class="fa fa-lock"></i> en la cola de aprobados.
+                        </p>
+                    </div>
+                    <div class="box-body table-responsive dd-table-wrap" style="border-top:1px solid #f4f4f4;">
+                        <table class="table table-hover table-condensed dd-table" id="hcTablaControles">
+                            <thead>
+                                <tr>
+                                    <th>Pedido</th>
+                                    <th class="dd-col-cliente">Cliente</th>
+                                    <th>Condición</th>
+                                    <th>Área</th>
+                                    <th>Registró</th>
+                                    <th class="text-right">Total c/IGV</th>
+                                    <th class="text-center">Desde</th>
+                                    <th>Días</th>
+                                    <th class="text-center" width="100px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="hcBodyControles">
+                                <?php
+                                $filas = $filasControles;
+                                include __DIR__ . "/historial-credito/tabla-controles.php";
+                                ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -551,6 +607,8 @@ function hcDashAyuda($texto)
                                         <option value="OBJECION" <?php echo $tipoAccion === "OBJECION" ? "selected" : ""; ?>>Objeciones</option>
                                         <option value="OBJECION_CERRADA" <?php echo $tipoAccion === "OBJECION_CERRADA" ? "selected" : ""; ?>>Obj. cerradas</option>
                                         <option value="ANULADO" <?php echo $tipoAccion === "ANULADO" ? "selected" : ""; ?>>Anulados</option>
+                                        <option value="CONTROL_REGISTRADO" <?php echo $tipoAccion === "CONTROL_REGISTRADO" ? "selected" : ""; ?>>Controles registrados</option>
+                                        <option value="DESPACHO_AUTORIZADO" <?php echo $tipoAccion === "DESPACHO_AUTORIZADO" ? "selected" : ""; ?>>Despachos autorizados</option>
                                     </select>
                                 </div>
                                 <div class="form-group hc-filtro-buscar">
@@ -841,11 +899,72 @@ function hcDashAyuda($texto)
                         placeholder="Observación para la bitácora (opcional)"
                     ></textarea>
                 </div>
+                <?php include __DIR__ . "/dashboard-decisiones/aprobar-pedido-controles.php"; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" id="ddAprobarPedidoConfirm">
                     <i class="fa fa-check"></i> Aprobar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHcRegistrarControl" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">
+                    <i class="fa fa-lock"></i> Registrar control
+                </h4>
+            </div>
+            <div class="modal-body">
+                <p class="dd-aprobar-cat-cliente" id="hcRegistrarControlInfo"></p>
+                <p class="text-muted" id="hcRegistrarControlHint">
+                    Para pedidos ya aprobados: registra una condición u observación operativa antes de despachar.
+                </p>
+                <?php include __DIR__ . "/historial-credito/registrar-control-fields.php"; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="hcRegistrarControlConfirm">
+                    <i class="fa fa-lock"></i> Registrar control
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHcLiberarControl" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">
+                    <i class="fa fa-unlock"></i> Liberar despacho
+                </h4>
+            </div>
+            <div class="modal-body">
+                <p class="dd-aprobar-cat-cliente" id="hcLiberarControlInfo"></p>
+                <p class="text-muted" id="hcLiberarControlHint">
+                    Confirma que se cumplió la condición. El pedido podrá pasar a APT.
+                </p>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="hcLiberarControlObs">Observación de cierre</label>
+                    <textarea
+                        id="hcLiberarControlObs"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Ej.: cliente pagó deuda; APT fue avisado…"
+                    ></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="hcLiberarControlConfirm">
+                    <i class="fa fa-unlock"></i> Liberar despacho
                 </button>
             </div>
         </div>

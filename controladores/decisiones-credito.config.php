@@ -245,6 +245,10 @@ function dcEtiquetaMotivoAccion($codigo)
         return dcEtiquetaMotivoAprobacion($codigo);
     }
 
+    if (function_exists("dcObtenerControlPostAprobacion") && dcObtenerControlPostAprobacion($codigo)) {
+        return dcEtiquetaControlPostAprobacion($codigo);
+    }
+
     return $codigo;
 }
 
@@ -310,6 +314,289 @@ function dcUsuarioPuedeVerHistorialCredito()
 {
     return function_exists("usuarioPuedeModulo")
         && usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "historial");
+}
+
+function dcUsuarioPuedeLiberarControlPostAprobacion()
+{
+    return function_exists("usuarioPuedeModulo")
+        && (
+            usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "resolver")
+            || usuarioPuedeModulo("gestion_comercial", "centro_decisiones", "aprobar")
+        );
+}
+
+function dcUsuarioPuedeRegistrarControlPostAprobacion()
+{
+    return dcUsuarioPuedeLiberarControlPostAprobacion();
+}
+
+/**
+ * Registra control + fila CONTROL_REGISTRADO en bitácora.
+ */
+function dcAplicarControlPostAprobacion(array $datos)
+{
+    $codigoPedido = isset($datos["codigo_pedido"]) ? (int) $datos["codigo_pedido"] : 0;
+    $codigoCliente = isset($datos["codigo_cliente"]) ? trim((string) $datos["codigo_cliente"]) : "";
+    $condicionCodigo = isset($datos["condicion_codigo"])
+        ? strtoupper(trim((string) $datos["condicion_codigo"]))
+        : "";
+    $areaCodigo = isset($datos["area_autoriza_codigo"])
+        ? strtoupper(trim((string) $datos["area_autoriza_codigo"]))
+        : "";
+    $comentario = isset($datos["comentario"]) ? trim((string) $datos["comentario"]) : "";
+    $usuarioId = isset($datos["usuario_id"]) ? (int) $datos["usuario_id"] : 0;
+    $idAccionAprobacion = isset($datos["id_accion_aprobacion"]) ? (int) $datos["id_accion_aprobacion"] : 0;
+    $pedidoTotal = isset($datos["pedido_total"]) ? $datos["pedido_total"] : null;
+    $pedidoLista = isset($datos["pedido_lista"]) ? $datos["pedido_lista"] : null;
+    $pedidoEstado = isset($datos["pedido_estado_resultado"]) ? $datos["pedido_estado_resultado"] : null;
+
+    if ($codigoPedido <= 0 || $codigoCliente === "" || $usuarioId <= 0) {
+        return array("ok" => false, "msg" => "Datos incompletos.");
+    }
+
+    $validacion = dcValidarDatosControlPostAprobacion($condicionCodigo, $comentario, $areaCodigo);
+    if (empty($validacion["ok"])) {
+        return $validacion;
+    }
+
+    $resultado = dcRegistrarControlPostAprobacion(array(
+        "codigo_pedido" => $codigoPedido,
+        "codigo_cliente" => $codigoCliente,
+        "id_accion_aprobacion" => $idAccionAprobacion > 0 ? $idAccionAprobacion : null,
+        "condicion_codigo" => $condicionCodigo,
+        "area_autoriza_codigo" => $areaCodigo !== "" ? $areaCodigo : null,
+        "comentario" => $comentario !== "" ? $comentario : null,
+        "bloquea_apt" => isset($validacion["bloquea_apt"]) ? (int) $validacion["bloquea_apt"] : 1,
+        "usuario_id" => $usuarioId,
+    ));
+
+    if (empty($resultado["ok"])) {
+        return $resultado;
+    }
+
+    $detalleControl = "Control: " . dcEtiquetaControlPostAprobacion($condicionCodigo);
+    if ($areaCodigo !== "") {
+        $detalleControl .= " · Área: " . dcEtiquetaAreaAutorizacion($areaCodigo);
+    }
+
+    if (function_exists("dcRegistrarAccionCredito")) {
+        dcRegistrarAccionCredito(array(
+            "codigo_pedido" => $codigoPedido,
+            "codigo_cliente" => $codigoCliente,
+            "tipo_accion" => "CONTROL_REGISTRADO",
+            "origen" => "centro_decisiones",
+            "pedido_total" => $pedidoTotal,
+            "pedido_lista" => $pedidoLista,
+            "pedido_estado_resultado" => $pedidoEstado,
+            "motivo_codigo" => $condicionCodigo,
+            "comentario" => $comentario !== "" ? $comentario : null,
+            "usuario_id" => $usuarioId,
+            "detalle" => $detalleControl,
+        ));
+    }
+
+    return array(
+        "ok" => true,
+        "msg" => "Control registrado correctamente.",
+        "id" => isset($resultado["id"]) ? (int) $resultado["id"] : 0,
+    );
+}
+
+function dcListarAreasAutorizacion()
+{
+    $catalogo = dcCargarCatalogoMotivos();
+
+    return isset($catalogo["areas_autorizacion"]) && is_array($catalogo["areas_autorizacion"])
+        ? $catalogo["areas_autorizacion"]
+        : array();
+}
+
+function dcObtenerAreaAutorizacion($codigo)
+{
+    $codigo = strtoupper(trim((string) $codigo));
+
+    if ($codigo === "") {
+        return null;
+    }
+
+    foreach (dcListarAreasAutorizacion() as $area) {
+        if (isset($area["codigo"]) && strtoupper($area["codigo"]) === $codigo) {
+            return $area;
+        }
+    }
+
+    return null;
+}
+
+function dcEtiquetaAreaAutorizacion($codigo)
+{
+    $area = dcObtenerAreaAutorizacion($codigo);
+
+    return $area ? $area["etiqueta"] : $codigo;
+}
+
+function dcListarControlesPostAprobacion()
+{
+    $catalogo = dcCargarCatalogoMotivos();
+
+    return isset($catalogo["controles_post_aprobacion"]) && is_array($catalogo["controles_post_aprobacion"])
+        ? $catalogo["controles_post_aprobacion"]
+        : array();
+}
+
+function dcObtenerControlPostAprobacion($codigo)
+{
+    $codigo = strtoupper(trim((string) $codigo));
+
+    if ($codigo === "") {
+        return null;
+    }
+
+    foreach (dcListarControlesPostAprobacion() as $control) {
+        if (isset($control["codigo"]) && strtoupper($control["codigo"]) === $codigo) {
+            return $control;
+        }
+    }
+
+    return null;
+}
+
+function dcEtiquetaControlPostAprobacion($codigo)
+{
+    $control = dcObtenerControlPostAprobacion($codigo);
+
+    return $control ? $control["etiqueta"] : $codigo;
+}
+
+function dcControlPostAprobacionBloqueaApt($codigo)
+{
+    $control = dcObtenerControlPostAprobacion($codigo);
+
+    if (!$control) {
+        return true;
+    }
+
+    return !isset($control["bloquea_apt"]) || (int) $control["bloquea_apt"] === 1;
+}
+
+function dcControlPostAprobacionRequiereObservacion($codigo)
+{
+    $control = dcObtenerControlPostAprobacion($codigo);
+
+    return $control && !empty($control["requiere_observacion"]);
+}
+
+function dcValidarDatosControlPostAprobacion($condicionCodigo, $comentario, $areaCodigo = "")
+{
+    $condicionCodigo = strtoupper(trim((string) $condicionCodigo));
+    $comentario = trim((string) $comentario);
+    $areaCodigo = strtoupper(trim((string) $areaCodigo));
+
+    if ($condicionCodigo === "") {
+        return array("ok" => false, "msg" => "Indica la condición del control post-aprobación.");
+    }
+
+    $control = dcObtenerControlPostAprobacion($condicionCodigo);
+    if (!$control) {
+        return array("ok" => false, "msg" => "Condición de control no válida.");
+    }
+
+    if (dcControlPostAprobacionRequiereObservacion($condicionCodigo) && $comentario === "") {
+        return array("ok" => false, "msg" => "Esta condición requiere detalle en la observación.");
+    }
+
+    if ($areaCodigo !== "" && !dcObtenerAreaAutorizacion($areaCodigo)) {
+        return array("ok" => false, "msg" => "Área de autorización no válida.");
+    }
+
+    return array(
+        "ok" => true,
+        "control" => $control,
+        "bloquea_apt" => dcControlPostAprobacionBloqueaApt($condicionCodigo) ? 1 : 0,
+    );
+}
+
+function dcRegistrarControlPostAprobacion(array $datos)
+{
+    if (!class_exists("ModeloDecisionesCredito")) {
+        return array("ok" => false, "msg" => "Modelo no disponible.");
+    }
+
+    try {
+        return ModeloDecisionesCredito::mdlRegistrarControlPostAprobacion($datos);
+    } catch (Exception $e) {
+        return array("ok" => false, "msg" => "No se pudo registrar el control.");
+    }
+}
+
+/**
+ * Texto del aviso en celda ubigeo (impresión de pedido).
+ */
+function dcTextoSelloControlCreditoImpresion()
+{
+    return "AVISAR ANTES DE FACTURAR";
+}
+
+/**
+ * ¿Mostrar aviso en lugar del ubigeo? (solo si hay control post-aprobación pendiente)
+ */
+function dcPedidoMostrarSelloControlCreditoImpresion($codigoPedido)
+{
+    static $previewEnTodosLosPedidos = false;
+
+    if ($previewEnTodosLosPedidos) {
+        return true;
+    }
+
+    $codigoPedido = (int) $codigoPedido;
+    if ($codigoPedido <= 0 || !class_exists("ModeloDecisionesCredito")) {
+        return false;
+    }
+
+    try {
+        return ModeloDecisionesCredito::mdlControlPendientePorPedido($codigoPedido) !== null;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function dcHtmlSelloControlCreditoImpresionCelda($texto = null)
+{
+    $texto = ($texto !== null && $texto !== "") ? $texto : dcTextoSelloControlCreditoImpresion();
+    $texto = function_exists("mb_strtoupper") ? mb_strtoupper($texto, "UTF-8") : strtoupper($texto);
+
+    return '<span class="hc-print-ubigeo-sello-wrap">'
+        . '<span class="hc-print-sello-ubigeo">'
+        . htmlspecialchars($texto, ENT_QUOTES, "UTF-8")
+        . "</span></span>";
+}
+
+/**
+ * Contenido de la celda ubigeo: aviso con borde o ubigeo normal.
+ */
+function dcCeldaUbigeoImpresionPedido($codigoPedido, $ubigeo = "")
+{
+    if (dcPedidoMostrarSelloControlCreditoImpresion($codigoPedido)) {
+        return dcHtmlSelloControlCreditoImpresionCelda();
+    }
+
+    return htmlspecialchars(trim((string) $ubigeo), ENT_QUOTES, "UTF-8");
+}
+
+/** @deprecated Usar dcCeldaUbigeoImpresionPedido */
+function dcHtmlControlCreditoImpresionPedido($codigoPedido)
+{
+    if (!dcPedidoMostrarSelloControlCreditoImpresion($codigoPedido)) {
+        return "";
+    }
+
+    return dcHtmlSelloControlCreditoImpresionCelda();
+}
+
+/** @deprecated */
+function dcHtmlSelloControlCreditoImpresion($texto = null)
+{
+    return dcHtmlSelloControlCreditoImpresionCelda($texto);
 }
 
 /**
@@ -467,6 +754,8 @@ function dcEtiquetaTipoAccion($tipo)
         "OBJECION_CERRADA" => "Objeción cerrada",
         "ANULADO" => "Anulado",
         "CATEGORIA_ASIGNADA" => "Categoría asignada",
+        "CONTROL_REGISTRADO" => "Control registrado",
+        "DESPACHO_AUTORIZADO" => "Despacho autorizado",
     );
 
     $tipo = strtoupper(trim((string) $tipo));
@@ -482,6 +771,8 @@ function dcClaseTipoAccion($tipo)
         "OBJECION_CERRADA" => "info",
         "ANULADO" => "danger",
         "CATEGORIA_ASIGNADA" => "info",
+        "CONTROL_REGISTRADO" => "warning",
+        "DESPACHO_AUTORIZADO" => "success",
     );
 
     $tipo = strtoupper(trim((string) $tipo));

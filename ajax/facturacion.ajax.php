@@ -212,6 +212,19 @@ class AjaxFacturacion
         $valor = $this->activarId;
         $estado = $this->activarEstado;
 
+        if ($estado === "APT") {
+            require_once "../controladores/decisiones-credito.config.php";
+            require_once "../modelos/decisiones-credito.modelo.php";
+
+            if (class_exists("ModeloDecisionesCredito")) {
+                $bloqueo = ModeloDecisionesCredito::mdlControlBloqueantePendiente((int) $valor);
+                if ($bloqueo) {
+                    echo "BLOQUEO_CONTROL|" . $bloqueo["mensaje"];
+                    return;
+                }
+            }
+        }
+
         $usuario = $_SESSION["id"];
         $nom_user = $_SESSION["nombre"];
         date_default_timezone_set('America/Lima');

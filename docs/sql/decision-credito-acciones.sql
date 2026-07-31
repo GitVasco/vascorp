@@ -10,6 +10,8 @@
 --   OBJECION            → se registró motivo de no aprobación
 --   OBJECION_CERRADA    → se cerró/revirtió una objeción vigente (opcional)
 --   ANULADO             → pedido anulado desde Centro de Decisiones
+--   CONTROL_REGISTRADO  → aprobación condicionada; queda control pendiente
+--   DESPACHO_AUTORIZADO → control cumplido; pedido liberado para APT
 --   CATEGORIA_ASIGNADA  → categoría comercial asignada al aprobar (opcional;
 --                         también puede ir embebida en la fila APROBADO)
 --

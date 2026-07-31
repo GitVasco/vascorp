@@ -684,3 +684,41 @@
 }
 
 .hc-dash-hace--reciente { color: #52a675; }
+
+.dd-aprobar-control-sep {
+    margin: 14px 0 12px;
+    border-color: #eee;
+}
+
+.dd-aprobar-control-toggle-wrap {
+    margin-bottom: 10px;
+}
+
+.dd-aprobar-control-fields {
+    padding: 10px 12px;
+    background: #fffbf0;
+    border: 1px solid #fad7a0;
+    border-radius: 4px;
+}
+
+.hc-control-badge {
+    margin-left: 2px;
+}
+
+.hc-control-detalle {
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.hc-controles-intro {
+    margin-bottom: 0;
+    font-size: 13px;
+}
+
+.hc-row-control--bloquea {
+    background: #fff8f8;
+}
+
+.hc-row-control--bloquea:hover {
+    background: #fff0f0;
+}
