@@ -211,44 +211,63 @@ $(".tablaQuincena").on("click", ".btnPagos", function () {
         "&id=" +
         id;
 });
-// Validamos que venga la variable capturaRango en el localStorage
-if (localStorage.getItem("sectorTra") != null) {
-    cargarPagos(
-        localStorage.getItem("inicio"),
-        localStorage.getItem("fin"),
-        localStorage.getItem("nquincena"),
-        localStorage.getItem("id"),
-        localStorage.getItem("sectorTra")
-    );
-} else {
-    cargarPagos(
-        localStorage.getItem("inicio"),
-        localStorage.getItem("fin"),
-        localStorage.getItem("nquincena"),
-        localStorage.getItem("id"),
-        null
-    );
-}
+// Cargar tabla de pagos (vista /pagos)
+$(function () {
+    if (window.location.href.indexOf("ruta=pagos") === -1) {
+        return;
+    }
+
+    var paramsPagos = new URLSearchParams(window.location.search);
+    var inicioPagos =
+        paramsPagos.get("inicio") || localStorage.getItem("inicio");
+    var finPagos = paramsPagos.get("fin") || localStorage.getItem("fin");
+    var nquincenaPagos =
+        paramsPagos.get("nquincena") || localStorage.getItem("nquincena");
+    var idPagos = paramsPagos.get("id") || localStorage.getItem("id");
+    var sectorPagos = localStorage.getItem("sectorTra");
+
+    cargarPagos(inicioPagos, finPagos, nquincenaPagos, idPagos, sectorPagos);
+});
 
 function cargarPagos(inicio, fin, nquincena, id, sectorTra) {
+    if (!inicio || !fin || !nquincena || !id) {
+        return;
+    }
+
+    if (sectorTra === null || sectorTra === undefined) {
+        sectorTra = "null";
+    }
+
+    if ($.fn.DataTable.isDataTable(".tablaPagos")) {
+        $(".tablaPagos").DataTable().clear().destroy();
+    }
+
     $(".tablaPagos").DataTable({
-        ajax:
-            "ajax/produccion/tabla-pagos.ajax.php?perfil=" +
-            $("#perfilOculto").val() +
-            "&inicio=" +
-            inicio +
-            "&fin=" +
-            fin +
-            "&nquincena=" +
-            nquincena +
-            "&id=" +
-            id +
-            "&sectorTra=" +
-            sectorTra,
+        ajax: {
+            url:
+                "ajax/produccion/tabla-pagos.ajax.php?perfil=" +
+                encodeURIComponent($("#perfilOculto").val() || "") +
+                "&inicio=" +
+                encodeURIComponent(inicio) +
+                "&fin=" +
+                encodeURIComponent(fin) +
+                "&nquincena=" +
+                encodeURIComponent(nquincena) +
+                "&id=" +
+                encodeURIComponent(id) +
+                "&sectorTra=" +
+                encodeURIComponent(sectorTra),
+            error: function (xhr, status) {
+                console.error("Error cargando pagos:", status, xhr.responseText);
+                alert(
+                    "No se pudo cargar la tabla de pagos. Revise la consola o intente de nuevo."
+                );
+            },
+        },
         deferRender: true,
         retrieve: true,
         processing: true,
-        order: [[23, "desc"]],
+        order: [[25, "desc"]],
         pageLength: 20,
         lengthMenu: [
             [20, 40, 60, -1],
@@ -282,74 +301,21 @@ function cargarPagos(inicio, fin, nquincena, id, sectorTra) {
         },
         drawCallback: function () {
             var api = this.api();
-            $(api.column(2).footer()).html(
-                api.column(2, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(3).footer()).html(
-                api.column(3, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(4).footer()).html(
-                api.column(4, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(5).footer()).html(
-                api.column(5, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(6).footer()).html(
-                api.column(6, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(7).footer()).html(
-                api.column(7, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(8).footer()).html(
-                api.column(8, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(9).footer()).html(
-                api.column(9, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(10).footer()).html(
-                api.column(10, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(11).footer()).html(
-                api.column(11, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(12).footer()).html(
-                api.column(12, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(13).footer()).html(
-                api.column(13, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(14).footer()).html(
-                api.column(14, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(15).footer()).html(
-                api.column(15, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(16).footer()).html(
-                api.column(16, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(17).footer()).html(
-                api.column(17, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(18).footer()).html(
-                api.column(18, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(19).footer()).html(
-                api.column(19, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(20).footer()).html(
-                api.column(20, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(21).footer()).html(
-                api.column(21, { page: "current" }).data().sum().toFixed(2)
-            );
-            $(api.column(22).footer()).html(
-                api.column(22, { page: "current" }).data().sum().toFixed(2)
-            );
+            if (api.rows({ page: "all" }).count() === 0) {
+                return;
+            }
+            var colCount = api.columns().count();
+            if (colCount < 26) {
+                return;
+            }
             $(api.column(23).footer()).html(
-                api.column(23, { page: "current" }).data().sum().toFixed(2)
+                api.column(23, { page: "all" }).data().sum().toFixed(2)
             );
             $(api.column(24).footer()).html(
-                api.column(24, { page: "current" }).data().sum().toFixed(2)
+                api.column(24, { page: "all" }).data().sum().toFixed(2)
+            );
+            $(api.column(25).footer()).html(
+                api.column(25, { page: "all" }).data().sum().toFixed(2)
             );
         },
     });

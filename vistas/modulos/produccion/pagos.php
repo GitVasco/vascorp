@@ -91,7 +91,8 @@
                 <th>15</th>
                 <th>16</th>
                 <th>Total S/</th>
-                <th>Pend. S/</th>';
+                <th>Bono S/</th>
+                <th>Total a pagar</th>';
 
          }else{
 
@@ -119,7 +120,8 @@
                 <th>31</th>
                 <th>1</th>
                 <th>Total S/</th>
-                <th>Pend. S/</th>';
+                <th>Bono S/</th>
+                <th>Total a pagar</th>';
 
          }
          
@@ -135,31 +137,14 @@
         <tfoot>
         <tr>
          <th></th>
-         <th>TOTAL: </th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         <th></th>
-         </tr>
+         <th>TOTAL:</th>
+         <?php
+         // 21 columnas de días + 3 totales = 24; con cod+trab = 26 (igual que thead)
+         for ($i = 0; $i < 24; $i++) {
+           echo '<th></th>';
+         }
+         ?>
+        </tr>
         </tfoot>
        </table>
       </div>

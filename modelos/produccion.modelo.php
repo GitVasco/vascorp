@@ -964,792 +964,144 @@ class ModeloProduccion
   }
 
   /*
+	* Bonos trusas por monto producido (misma escala en vista /pagos y Excel)
+	*/
+  static public function mdlCalcularBonoTrusasProduccion($produccion)
+  {
+    $p = (float) $produccion;
+    if ($p >= 631) {
+      return 160;
+    }
+    if ($p >= 581) {
+      return 140;
+    }
+    if ($p >= 566) {
+      return 125;
+    }
+    if ($p >= 500) {
+      return 50;
+    }
+    return 0;
+  }
+
+  static public function mdlCalcularRangoTrusasProduccion($produccion)
+  {
+    $p = (float) $produccion;
+    if ($p >= 631) {
+      return 'A';
+    }
+    if ($p >= 581) {
+      return 'B';
+    }
+    if ($p >= 566) {
+      return 'C';
+    }
+    if ($p >= 500) {
+      return 'D';
+    }
+    return '-';
+  }
+
+  static private function enriquecerFilasPagosTrusas($filas)
+  {
+    foreach ($filas as &$row) {
+      $prod = round((float) $row['total'], 2);
+      $row['total'] = $prod;
+      $row['bono'] = self::mdlCalcularBonoTrusasProduccion($prod);
+      $row['total_pagar'] = $prod + $row['bono'];
+      $row['rango'] = self::mdlCalcularRangoTrusasProduccion($prod);
+    }
+    unset($row);
+    return $filas;
+  }
+
+  static private function diasPagosQuincena($nquincena)
+  {
+    if ($nquincena == "1") {
+      return array(27, 28, 29, 30, 31, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+    }
+    return array(12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 1);
+  }
+
+  static private function sqlFromWherePagosTrusas($sector)
+  {
+    $sql = "FROM entallerjf et
+              INNER JOIN trabajadorjf t ON et.trabajador = t.cod_tra AND t.cod_tip_tra = 1
+              LEFT JOIN (
+                SELECT DISTINCT a.articulo
+                FROM articulojf a
+                INNER JOIN modelojf m ON a.modelo = m.modelo
+                WHERE m.tipo IN ('BRASIER', 'SEAMLESS')
+              ) ex ON ex.articulo = et.articulo
+            WHERE et.fecha_terminado >= :inicio
+              AND et.fecha_terminado < DATE_ADD(:fin, INTERVAL 1 DAY)
+              AND ex.articulo IS NULL";
+
+    if ($sector != "null" && $sector !== null && $sector !== '') {
+      $sql .= " AND t.sector = '" . addslashes($sector) . "'";
+    }
+
+    return $sql;
+  }
+
+  static private function pivotFilasPagosQuincena($filasDia, $nquincena)
+  {
+    $dias = self::diasPagosQuincena($nquincena);
+    $diaSet = array_flip($dias);
+    $filasMap = array();
+
+    foreach ($filasDia as $row) {
+      $cod = $row['trabajador'];
+      if (!isset($filasMap[$cod])) {
+        $base = array(
+          'trabajador' => $cod,
+          'nom_tra' => $row['nom_tra'],
+          'total' => 0,
+        );
+        foreach ($dias as $d) {
+          $base['d' . $d] = 0;
+        }
+        $filasMap[$cod] = $base;
+      }
+
+      $dia = (int) $row['dia'];
+      $monto = (float) $row['monto'];
+      if (isset($diaSet[$dia])) {
+        $filasMap[$cod]['d' . $dia] += $monto;
+      }
+      $filasMap[$cod]['total'] += $monto;
+    }
+
+    foreach ($filasMap as &$fila) {
+      $fila['total'] = round($fila['total'], 2);
+    }
+    unset($fila);
+
+    return array_values($filasMap);
+  }
+
+  /*
 	* Método para los pagos por mes
 	*/
   static public function mdlMostrarPagos($inicio, $fin, $nquincena, $id, $sector)
   {
-    if ($sector != "null") {
-      if ($nquincena == "1") {
-
-        $sql = "SELECT 
+    $sql = "SELECT 
               et.trabajador,
               CONCAT(t.nom_tra, ' ', t.ape_pat_tra) AS nom_tra,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '1' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d1,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '2' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d2,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '3' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d3,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '4' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d4,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '5' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d5,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '6' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d6,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '7' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d7,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '8' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d8,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '9' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d9,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '10' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d10,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '11' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d11,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '12' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d12,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '13' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d13,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '14' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d14,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '15' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d15,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '16' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d16,
-              SUM(
-              CASE
-                WHEN DAY(fecha_terminado) = '27' 
-                THEN et.total_precio 
-                ELSE 0 
-              END
-              ) AS d27,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '28' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d28,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '29' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d29,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '30' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d30,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '31' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d31,
-              SUM(et.total_precio) AS total,
-              (t.sueldo_total/2) as sueldo_total
-            FROM
-              entallerjf et 
-              LEFT JOIN 
-                (SELECT DISTINCT 
-                  et.trabajador,
-                  DATE(a.fecha) AS fecha,
-                  a.minutos 
-                FROM
-                  asistenciasjf a 
-                  LEFT JOIN entallerjf et 
-                    ON a.id_trabajador = et.trabajador 
-                    AND DATE(a.fecha) = DATE(et.fecha_terminado) 
-                WHERE et.trabajador IS NOT NULL 
-                AND (a.fecha BETWEEN :inicio
-                  AND :fin
-                )) AS asi 
-                ON et.trabajador = asi.trabajador 
-                AND DATE(fecha_terminado) = asi.fecha 
-              LEFT JOIN trabajadorjf t 
-                ON et.trabajador = t.cod_tra,
-              (SELECT 
-                inicio,
-                fin 
-              FROM
-                quincenasjf q 
-              WHERE q.id = :id) AS q 
-            WHERE DATE(et.fecha_terminado) BETWEEN :inicio
-              AND :fin
-            AND t.sector = '" . $sector . "'
-            GROUP BY et.trabajador";
+              DAY(et.fecha_terminado) AS dia,
+              SUM(et.total_precio) AS monto
+            " . self::sqlFromWherePagosTrusas($sector) . "
+            GROUP BY et.trabajador, t.nom_tra, t.ape_pat_tra, DAY(et.fecha_terminado)
+            HAVING SUM(et.total_precio) > 0";
 
-        $stmt = Conexion::conectar()->prepare($sql);
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+    $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+    $stmt->execute();
 
-        $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-        $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-        $stmt->bindParam(":id", $id, PDO::PARAM_STR);
+    $filas = self::pivotFilasPagosQuincena($stmt->fetchAll(PDO::FETCH_ASSOC), $nquincena);
 
-        $stmt->execute();
-
-        return $stmt->fetchAll();
-      } else {
-
-        $sql = "SELECT 
-                et.trabajador,
-                CONCAT(t.nom_tra, ' ', t.ape_pat_tra) AS nom_tra,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '1' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d1,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '12' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d12,                
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '13' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d13,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '14' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d14,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '15' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d15,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '16' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d16,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '17' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d17,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '18' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d18,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '19' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d19,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '20' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d20,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '21' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d21,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '22' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d22,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '23' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d23,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '24' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d24,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '25' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d25,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '26' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d26,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '27' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d27,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '28' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d28,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '29' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d29,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '30' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d30,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '31' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d31,
-                SUM(et.total_precio) AS total,
-                (t.sueldo_total/2) as sueldo_total
-              FROM
-                entallerjf et 
-                LEFT JOIN 
-                  (SELECT DISTINCT 
-                    et.trabajador,
-                    DATE(a.fecha) AS fecha,
-                    a.minutos 
-                  FROM
-                    asistenciasjf a 
-                    LEFT JOIN entallerjf et 
-                      ON a.id_trabajador = et.trabajador 
-                      AND DATE(a.fecha) = DATE(et.fecha_terminado) 
-                  WHERE et.trabajador IS NOT NULL
-                  AND (a.fecha BETWEEN :inicio
-                  AND :fin
-                  )) AS asi 
-                  ON et.trabajador = asi.trabajador 
-                  AND DATE(fecha_terminado) = asi.fecha 
-                LEFT JOIN trabajadorjf t 
-                  ON et.trabajador = t.cod_tra,
-                (SELECT 
-                  inicio,
-                  fin 
-                FROM
-                  quincenasjf q 
-                WHERE q.id = :id) AS q 
-              WHERE DATE(et.fecha_terminado) BETWEEN :inicio 
-                AND :fin 
-              AND t.sector = '" . $sector . "'
-              GROUP BY et.trabajador";
-
-        $stmt = Conexion::conectar()->prepare($sql);
-
-        $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-        $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-        $stmt->bindParam(":id", $id, PDO::PARAM_STR);
-
-        $stmt->execute();
-
-        return $stmt->fetchAll();
-      }
-    } else {
-      if ($nquincena == "1") {
-
-        $sql = "SELECT 
-              et.trabajador,
-              CONCAT(t.nom_tra, ' ', t.ape_pat_tra) AS nom_tra,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '1' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d1,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '2' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d2,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '3' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d3,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '4' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d4,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '5' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d5,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '6' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d6,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '7' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d7,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '8' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d8,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '9' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d9,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '10' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d10,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '11' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d11,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '12' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d12,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '13' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d13,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '14' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d14,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '15' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d15,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '16' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d16,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '27' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d27,              
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '28' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d28,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '29' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d29,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '30' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d30,
-              SUM(
-                CASE
-                  WHEN DAY(fecha_terminado) = '31' 
-                  THEN et.total_precio 
-                  ELSE 0 
-                END
-              ) AS d31,
-              SUM(et.total_precio) AS total,
-              (t.sueldo_total/2) as sueldo_total
-            FROM
-              entallerjf et 
-              LEFT JOIN 
-                (SELECT DISTINCT 
-                  et.trabajador,
-                  DATE(a.fecha) AS fecha,
-                  a.minutos 
-                FROM
-                  asistenciasjf a 
-                  LEFT JOIN entallerjf et 
-                    ON a.id_trabajador = et.trabajador 
-                    AND DATE(a.fecha) = DATE(et.fecha_terminado) 
-                WHERE et.trabajador IS NOT NULL
-                AND (a.fecha BETWEEN :inicio
-                  AND :fin
-                )) AS asi 
-                ON et.trabajador = asi.trabajador 
-                AND DATE(fecha_terminado) = asi.fecha 
-              LEFT JOIN trabajadorjf t 
-                ON et.trabajador = t.cod_tra,
-              (SELECT 
-                inicio,
-                fin 
-              FROM
-                quincenasjf q 
-              WHERE q.id = :id) AS q 
-            WHERE DATE(et.fecha_terminado) BETWEEN :inicio
-              AND :fin
-            GROUP BY et.trabajador";
-
-        $stmt = Conexion::conectar()->prepare($sql);
-
-        $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-        $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-        $stmt->bindParam(":id", $id, PDO::PARAM_STR);
-
-        $stmt->execute();
-
-        return $stmt->fetchAll();
-      } else {
-
-        $sql = "SELECT 
-                et.trabajador,
-                CONCAT(t.nom_tra, ' ', t.ape_pat_tra) AS nom_tra,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '1' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d1,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '12' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d12,                
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '13' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d13,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '14' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d14,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '15' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d15,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '16' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d16,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '17' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d17,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '18' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d18,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '19' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d19,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '20' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d20,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '21' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d21,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '22' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d22,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '23' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d23,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '24' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d24,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '25' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d25,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '26' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d26,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '27' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d27,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '28' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d28,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '29' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d29,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '30' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d30,
-                SUM(
-                  CASE
-                    WHEN DAY(fecha_terminado) = '31' 
-                    THEN et.total_precio 
-                    ELSE 0 
-                  END
-                ) AS d31,
-                SUM(et.total_precio) AS total,
-                (t.sueldo_total/2) as sueldo_total
-              FROM
-                entallerjf et 
-                LEFT JOIN 
-                  (SELECT DISTINCT 
-                    et.trabajador,
-                    DATE(a.fecha) AS fecha,
-                    a.minutos 
-                  FROM
-                    asistenciasjf a 
-                    LEFT JOIN entallerjf et 
-                      ON a.id_trabajador = et.trabajador 
-                      AND DATE(a.fecha) = DATE(et.fecha_terminado) 
-                  WHERE et.trabajador IS NOT NULL
-                  AND (a.fecha BETWEEN :inicio
-                  AND :fin
-                  )) AS asi 
-                  ON et.trabajador = asi.trabajador 
-                  AND DATE(fecha_terminado) = asi.fecha 
-                LEFT JOIN trabajadorjf t 
-                  ON et.trabajador = t.cod_tra,
-                (SELECT 
-                  inicio,
-                  fin 
-                FROM
-                  quincenasjf q 
-                WHERE q.id = :id) AS q 
-              WHERE DATE(et.fecha_terminado) BETWEEN :inicio 
-                AND :fin 
-              GROUP BY et.trabajador";
-
-        $stmt = Conexion::conectar()->prepare($sql);
-
-        $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
-        $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
-        $stmt->bindParam(":id", $id, PDO::PARAM_STR);
-
-        $stmt->execute();
-
-        return $stmt->fetchAll();
-      }
-    }
-
-
-    $stmt = null;
+    return self::enriquecerFilasPagosTrusas($filas);
   }
 
   /* 
@@ -2852,9 +2204,9 @@ class ModeloProduccion
     return $stmt->fetch(PDO::FETCH_ASSOC);
   }
 
-  static public function mdlRptPagosTrusasProduccionDetalle($inicio, $fin)
+  static public function mdlRptPagosTrusasProduccionDetalle($inicio, $fin, $sector = null)
   {
-    $stmt = Conexion::conectar()->prepare("SELECT 
+    $sql = "SELECT 
 	et.trabajador AS id_trabajador,
 	CONCAT(
 		t.nom_tra,
@@ -2863,34 +2215,25 @@ class ModeloProduccion
 		' ',
 		t.ape_mat_tra) AS nombre,
 	COUNT(DISTINCT DATE(et.fecha_terminado)) AS dias,
-	ROUND(SUM(et.total_precio), 2) AS produccion,
-	CASE
-		WHEN SUM(et.total_precio) >= 631 THEN 'A'
-		WHEN SUM(et.total_precio) >= 581 AND SUM(et.total_precio) <= 630 THEN 'B'
-		WHEN SUM(et.total_precio) >= 566 AND SUM(et.total_precio) <= 580 THEN 'C'
-		WHEN SUM(et.total_precio) >= 500 AND SUM(et.total_precio) <= 565 THEN 'D'
-		ELSE '-'
-	END AS rango,
-	CASE
-		WHEN SUM(et.total_precio) >= 631 THEN 160
-		WHEN SUM(et.total_precio) >= 581 AND SUM(et.total_precio) <= 630 THEN 140
-		WHEN SUM(et.total_precio) >= 566 AND SUM(et.total_precio) <= 580 THEN 125
-		WHEN SUM(et.total_precio) >= 500 AND SUM(et.total_precio) <= 565 THEN 50
-		ELSE 0
-	END AS bono
-FROM entallerjf et
-LEFT JOIN trabajadorjf t ON et.trabajador = t.cod_tra
-LEFT JOIN articulojf a ON et.articulo = a.articulo
-LEFT JOIN modelojf m ON a.modelo = m.modelo
-WHERE DATE(et.fecha_terminado) BETWEEN :inicio AND :fin
-	AND t.cod_tip_tra = 1
-	AND COALESCE(m.tipo, '') NOT IN ('BRASIER', 'SEAMLESS')
-GROUP BY et.trabajador
-HAVING SUM(et.total_precio) > 0
-ORDER BY produccion DESC");
+	ROUND(SUM(et.total_precio), 2) AS produccion
+  " . self::sqlFromWherePagosTrusas($sector) . "
+  GROUP BY et.trabajador
+  HAVING SUM(et.total_precio) > 0
+  ORDER BY produccion DESC";
+
+    $stmt = Conexion::conectar()->prepare($sql);
     $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
     $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
     $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($filas as &$row) {
+      $prod = (float) $row['produccion'];
+      $row['rango'] = self::mdlCalcularRangoTrusasProduccion($prod);
+      $row['bono'] = self::mdlCalcularBonoTrusasProduccion($prod);
+    }
+    unset($row);
+
+    return $filas;
   }
 }

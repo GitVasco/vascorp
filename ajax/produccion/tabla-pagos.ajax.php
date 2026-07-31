@@ -263,27 +263,16 @@ class TablaPagos
                     /* 
                         *TOTALES
                         */
-                    if ($pagos[$i]["total"] < $pagos[$i]["sueldo_total"]) {
-
-                        $total = "<b class='guinda'>" . number_format($pagos[$i]["total"], 2) . "</b>";
-                    } else {
+                    if ($pagos[$i]["total"] >= 500) {
 
                         $total = "<b class='azul'>" . number_format($pagos[$i]["total"], 2) . "</b>";
-                    }
-
-                    /* 
-                        *TOTALES PENDIENTES
-                        */
-
-                    $pendiente = $pagos[$i]["sueldo_total"] - $pagos[$i]["total"];
-
-                    if ($pagos[$i]["total"] < $pagos[$i]["sueldo_total"]) {
-
-                        $totalPendiente = "<b class='guinda'>" . number_format($pendiente, 2) . "</b>";
                     } else {
 
-                        $totalPendiente = "<b class='azul'>" . number_format($pendiente, 2) . "</b>";
+                        $total = "<b class='guinda'>" . number_format($pagos[$i]["total"], 2) . "</b>";
                     }
+
+                    $bono = number_format($pagos[$i]["bono"], 2);
+                    $totalPagar = "<b class='azul'>" . number_format($pagos[$i]["total_pagar"], 2) . "</b>";
 
                     $datosJson .= '[
                         "' . $pagos[$i]["trabajador"] . '",
@@ -310,7 +299,8 @@ class TablaPagos
                         "<b>' . $d15 . '</b>",
                         "<b>' . $d16 . '</b>",
                         "' . $total . '",
-                        "' . $totalPendiente . '"
+                        "<b>' . $bono . '</b>",
+                        "' . $totalPagar . '"
                         ],';
                 }
 
@@ -563,30 +553,19 @@ class TablaPagos
                         $d31 = '';
                     }
 
-                    /* 
+                    /*
                         * TOTALES                        
                         */
-                    if ($pagos[$i]["total"] < $pagos[$i]["sueldo_total"]) {
-
-                        $total = "<b class='guinda'>" . number_format($pagos[$i]["total"], 2) . "</b>";
-                    } else {
+                    if ($pagos[$i]["total"] >= 500) {
 
                         $total = "<b class='azul'>" . number_format($pagos[$i]["total"], 2) . "</b>";
-                    }
-
-                    /* 
-                        *TOTALES PENDIENTES
-                        */
-
-                    $pendiente = $pagos[$i]["sueldo_total"] - $pagos[$i]["total"];
-
-                    if ($pagos[$i]["total"] < $pagos[$i]["sueldo_total"]) {
-
-                        $totalPendiente = "<b class='guinda'>" . number_format($pendiente, 2) . "</b>";
                     } else {
 
-                        $totalPendiente = "<b class='azul'>" . number_format($pendiente, 2) . "</b>";
+                        $total = "<b class='guinda'>" . number_format($pagos[$i]["total"], 2) . "</b>";
                     }
+
+                    $bono = number_format($pagos[$i]["bono"], 2);
+                    $totalPagar = "<b class='azul'>" . number_format($pagos[$i]["total_pagar"], 2) . "</b>";
 
                     $datosJson .= '[
                         "' . $pagos[$i]["trabajador"] . '",
@@ -613,7 +592,8 @@ class TablaPagos
                         "<b>' . $d31 . '</b>",
                         "<b>' . $d1 . '</b>",
                         "' . $total . '",
-                        "' . $totalPendiente . '"
+                        "<b>' . $bono . '</b>",
+                        "' . $totalPagar . '"
                         ],';
                 }
 
