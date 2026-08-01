@@ -120,8 +120,6 @@ class ControladorCortes
 
                     $cod = $ult_codigo["ult_codigo"];
 
-                    $ticket = $_POST["ticket"];
-
                     if ($ticket == "1" || $_POST["seleccionarSectorServicio"] == 'T1') {
 
                         /* 
@@ -221,6 +219,8 @@ class ControladorCortes
                             $respuestaDetalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", $datosDetalle);
                             if ($respuestaDetalle == "ok") {
                                 ModeloServicios::mdlSumarTotalServicio($codigoServicio, $cantidadUsada);
+                            } else {
+                                $avisoParcial = trim($avisoParcial . " No se pudo guardar el detalle de servicio para $articulo.");
                             }
                         } else {
                             $avisoParcial = trim($avisoParcial . " No se pudo crear/obtener el servicio del día.");

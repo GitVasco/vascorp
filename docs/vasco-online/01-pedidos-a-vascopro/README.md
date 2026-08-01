@@ -13,4 +13,5 @@ Documentos escritos desde **vascorp** para pedir a VascoPro un endpoint, estado 
 
 | Fecha | Pedido | Estado |
 |-------|--------|--------|
+| 2026-07-31 | [Filtro `until` (hasta) en GET cobranzas pendientes](2026-07-31-collections-pending-filtro-hasta.md) | Pendiente |
 | 2026-07-23 | [Anular cobranza desde rendición](2026-07-23-anular-cobranza-rendicion.md) | Respondido — implementado en vascorp |
