@@ -1,3 +1,8 @@
+<?php
+require_once "modelos/linea-credito.modelo.php";
+$usuariosActivosCxc = ModeloLineaCredito::mdlUsuariosActivos();
+$idUsuarioSesionCxc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
+?>
 <div class="content-wrapper">
 
     <section class="content-header">
@@ -70,6 +75,12 @@
                 <div class="pull-right">
                     <button class="btn btn-outline-success btnReporteCuentas" ano="null" style="border:green 1px solid">
                         <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte cuentas </button>
+                </div>
+
+                <div class="pull-right">
+                    <button type="button" class="btn btn-outline-success" id="btnReporteDeudaClientes" style="border:green 1px solid" title="Clientes con deuda (CxC + línea de crédito)">
+                        <img src="vistas/img/plantilla/excel.png" width="20px"> Deuda por cliente
+                    </button>
                 </div>
 
                 <div class="pull-right">
@@ -1745,6 +1756,44 @@ MODAL IMPORTAR CUENTAS DE BANCO
 
     </div>
 
+</div>
+
+<div class="modal fade" id="modalCxcExportDeudaClientes" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-file-excel-o"></i> Exportar deuda por cliente</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Lista <strong>solo clientes con deuda</strong>, con línea de crédito y detalle de cuentas por cobrar.
+                    La responsabilidad queda en la hoja <strong>Metadatos</strong> (solo lectura).
+                </p>
+                <div class="form-group">
+                    <label for="cxcExportSolicitadoPor">Solicitado por <span class="text-danger">*</span></label>
+                    <select class="form-control selectpicker" id="cxcExportSolicitadoPor" data-live-search="true" data-size="8" required>
+                        <option value="">Seleccione responsable…</option>
+                        <?php foreach ($usuariosActivosCxc as $usuarioCxc) : ?>
+                            <option value="<?php echo (int) $usuarioCxc["id"]; ?>"
+                                <?php echo ((int) $usuarioCxc["id"] === $idUsuarioSesionCxc) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($usuarioCxc["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <form id="cxcFormExportDeudaClientes" method="GET" action="vistas/reportes_excel/rpt_cuentas_deuda_clientes.php" target="_blank" style="display:inline;">
+                    <input type="hidden" name="solicitud_por" id="cxcExportSolicitadoPorHidden" value="">
+                    <button type="submit" class="btn btn-success" id="btnCxcConfirmarExportDeuda">
+                        <i class="fa fa-download"></i> Descargar Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php

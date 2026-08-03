@@ -1171,6 +1171,38 @@ class ModeloLineaCredito
         )";
     }
 
+    private static function sqlCategoriaEfectivaClienteColorSubquery($aliasCliente = "c")
+    {
+        return "(
+            CASE
+                WHEN {$aliasCliente}.grupo IS NOT NULL AND TRIM({$aliasCliente}.grupo) <> '' THEN (
+                    SELECT cat.color
+                    FROM categorias_clientes_asignacionesjf a
+                    INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+                    WHERE a.tipo_entidad = 'grupo'
+                      AND a.codigo_entidad = {$aliasCliente}.grupo
+                      AND a.estado = 1
+                      AND a.vigencia_desde <= NOW()
+                      AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+                    ORDER BY a.id DESC
+                    LIMIT 1
+                )
+                ELSE (
+                    SELECT cat.color
+                    FROM categorias_clientes_asignacionesjf a
+                    INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+                    WHERE a.tipo_entidad = 'cliente'
+                      AND a.codigo_entidad = {$aliasCliente}.codigo
+                      AND a.estado = 1
+                      AND a.vigencia_desde <= NOW()
+                      AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+                    ORDER BY a.id DESC
+                    LIMIT 1
+                )
+            END
+        )";
+    }
+
     private static function sqlCategoriaGrupoSubquery($aliasGrupo = "g")
     {
         return "(
@@ -1331,6 +1363,94 @@ class ModeloLineaCredito
                 LEFT JOIN ubigeo u ON u.Codigo = c.ubigeo
                 WHERE 1 = 1 {$filtro}
                 ORDER BY c.nombre ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Export CxC: solo clientes con deuda pendiente > 0.
+     * Incluye columnas de línea de crédito + métricas de cuentas por cobrar.
+     */
+    static public function mdlExportExcelClientesConDeudaCxc()
+    {
+        $ventaAnio = self::sqlVentaAnioSubquery("c");
+        $categoria = self::sqlCategoriaEfectivaClienteSubquery("c");
+        $categoriaColor = self::sqlCategoriaEfectivaClienteColorSubquery("c");
+        $lineaAprobada = self::sqlLineaAprobadaClienteExpr("c", "lc");
+
+        $sql = "SELECT
+                    c.codigo AS codigo_cliente,
+                    c.documento AS ruc,
+                    c.nombre AS razon_social,
+                    c.direccion,
+                    u.Departamento AS departamento,
+                    u.Provincia AS provincia,
+                    u.Distrito AS distrito,
+                    c.email AS correo,
+                    TRIM(CONCAT(IFNULL(c.telefono, ''), CASE
+                        WHEN IFNULL(c.telefono2, '') <> '' AND IFNULL(c.telefono, '') <> ''
+                        THEN CONCAT(' / ', c.telefono2)
+                        WHEN IFNULL(c.telefono2, '') <> '' THEN c.telefono2
+                        ELSE ''
+                    END)) AS telefono,
+                    TRIM(IFNULL(c.vendedor, '')) AS codigo_vendedor,
+                    COALESCE(NULLIF(TRIM(m.descripcion), ''), TRIM(IFNULL(c.vendedor, ''))) AS vendedor,
+                    {$categoria} AS categoria_nombre,
+                    {$categoriaColor} AS categoria_color,
+                    lc.score_riesgo,
+                    IFNULL(lc.linea_recomendada, 0) AS linea_propuesta,
+                    {$lineaAprobada} AS linea_aprobada,
+                    {$ventaAnio} AS venta_anio,
+                    d.deuda_actual,
+                    d.deuda_vencida,
+                    d.deuda_por_vencer,
+                    d.docs_pendientes,
+                    d.docs_vencidos,
+                    d.docs_protestados,
+                    d.dias_mora_max,
+                    d.ultimo_pago,
+                    NULLIF(TRIM(c.grupo), '') AS codigo_grupo,
+                    NULLIF(TRIM(ge.nombre), '') AS nombre_grupo
+                FROM clientesjf c
+                INNER JOIN (
+                    SELECT
+                        ct.cliente,
+                        IFNULL(SUM(IFNULL(ct.saldo, 0)), 0) AS deuda_actual,
+                        IFNULL(SUM(CASE
+                            WHEN ct.fecha_ven < CURDATE() THEN IFNULL(ct.saldo, 0)
+                            ELSE 0
+                        END), 0) AS deuda_vencida,
+                        IFNULL(SUM(CASE
+                            WHEN ct.fecha_ven IS NULL OR ct.fecha_ven >= CURDATE() THEN IFNULL(ct.saldo, 0)
+                            ELSE 0
+                        END), 0) AS deuda_por_vencer,
+                        COUNT(*) AS docs_pendientes,
+                        IFNULL(SUM(CASE WHEN ct.fecha_ven < CURDATE() THEN 1 ELSE 0 END), 0) AS docs_vencidos,
+                        IFNULL(SUM(CASE WHEN IFNULL(ct.protesta, 0) = 1 THEN 1 ELSE 0 END), 0) AS docs_protestados,
+                        MAX(CASE
+                            WHEN ct.fecha_ven < CURDATE() THEN DATEDIFF(CURDATE(), ct.fecha_ven)
+                            ELSE NULL
+                        END) AS dias_mora_max,
+                        MAX(ct.ult_pago) AS ultimo_pago
+                    FROM cuenta_ctejf ct
+                    WHERE ct.tip_mov = '+'
+                      AND UPPER(ct.estado) = 'PENDIENTE'
+                      AND IFNULL(ct.saldo, 0) > 0
+                    GROUP BY ct.cliente
+                ) d ON d.cliente = c.codigo
+                LEFT JOIN linea_credito_clientejf lc ON lc.codigo_cliente = c.codigo
+                LEFT JOIN ubigeo u ON u.Codigo = c.ubigeo
+                LEFT JOIN maestrajf m
+                    ON m.codigo = c.vendedor
+                   AND m.tipo_dato = 'TVEND'
+                LEFT JOIN grupos_empresarialesjf ge
+                    ON TRIM(ge.codigo) = TRIM(c.grupo)
+                   AND ge.estado = 1
+                WHERE d.deuda_actual > 0
+                ORDER BY d.deuda_vencida DESC, d.deuda_actual DESC, c.nombre ASC";
 
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->execute();
