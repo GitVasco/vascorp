@@ -43,66 +43,6 @@
         }
     };
 
-    /** Distrito (sin tildes) → código de zona comercial (misma lógica que seed ubigeo). */
-    var MZ_DISTRITO_A_ZONA = {
-        ANCON: "LIM_NORTE",
-        "SANTA ROSA": "LIM_NORTE",
-        CARABAYLLO: "LIM_NORTE",
-        "PUENTE PIEDRA": "LIM_NORTE",
-        COMAS: "LIM_NORTE",
-        "LOS OLIVOS": "LIM_NORTE",
-        "SAN MARTIN DE PORRES": "LIM_NORTE",
-        INDEPENDENCIA: "LIM_NORTE",
-
-        ATE: "LIM_ESTE",
-        "SANTA ANITA": "LIM_ESTE",
-        "EL AGUSTINO": "LIM_ESTE",
-        "SAN JUAN DE LURIGANCHO": "LIM_ESTE",
-        LURIGANCHO: "LIM_ESTE",
-        CHOSICA: "LIM_ESTE",
-        CHACLACAYO: "LIM_ESTE",
-        CIENEGUILLA: "LIM_ESTE",
-
-        CHORRILLOS: "LIM_SUR",
-        "SAN JUAN DE MIRAFLORES": "LIM_SUR",
-        "VILLA EL SALVADOR": "LIM_SUR",
-        "VILLA MARIA DEL TRIUNFO": "LIM_SUR",
-        LURIN: "LIM_SUR",
-        PACHACAMAC: "LIM_SUR",
-        "PUNTA HERMOSA": "LIM_SUR",
-        "PUNTA NEGRA": "LIM_SUR",
-        "SAN BARTOLO": "LIM_SUR",
-        "SANTA MARIA DEL MAR": "LIM_SUR",
-        PUCUSANA: "LIM_SUR",
-
-        LIMA: "LIM_CENTRO",
-        "LA VICTORIA": "LIM_CENTRO",
-        BRENA: "LIM_CENTRO",
-        RIMAC: "LIM_CENTRO",
-
-        "SAN ISIDRO": "LIM_MODERNA",
-        "SANTIAGO DE SURCO": "LIM_MODERNA",
-        "LA MOLINA": "LIM_MODERNA",
-        "JESUS MARIA": "LIM_MODERNA",
-        LINCE: "LIM_MODERNA",
-        "MAGDALENA DEL MAR": "LIM_MODERNA",
-        SURQUILLO: "LIM_MODERNA",
-        MIRAFLORES: "LIM_MODERNA",
-        BARRANCO: "LIM_MODERNA",
-        "SAN BORJA": "LIM_MODERNA",
-        "SAN MIGUEL": "LIM_MODERNA",
-        "PUEBLO LIBRE": "LIM_MODERNA",
-        "SAN LUIS": "LIM_MODERNA",
-
-        CALLAO: "CALLAO",
-        BELLAVISTA: "CALLAO",
-        "LA PERLA": "CALLAO",
-        "LA PUNTA": "CALLAO",
-        "CARMEN DE LA LEGUA REYNOSO": "CALLAO",
-        VENTANILLA: "CALLAO",
-        "MI PERU": "CALLAO"
-    };
-
     /** Departamento (sin tildes) → zona comercial Perú (excluye Lima/Callao del mapa). */
     var MZ_DEPTO_A_ZONA = {
         TUMBES: "PERU_NORTE",
@@ -133,8 +73,10 @@
 
     // Orden de dibujo overlays; Económica al final
     var MZ_ORDEN_LIMA = [
-        "NORTE_CHICO", "LIM_NORTE", "LIM_ESTE", "CALLAO",
-        "LIM_SUR", "LIM_MODERNA", "LIM_CENTRO", "LIM_ECONOMICA"
+        "NORTE_CHICO",
+        "LIM_ZONA_1", "LIM_ZONA_2", "LIM_ZONA_3",
+        "LIM_VICTORIA", "LIM_CERCADO",
+        "LIM_ECONOMICA"
     ];
     var MZ_ORDEN_PERU = ["PERU_NORTE", "PERU_SUR"];
 
@@ -200,7 +142,7 @@
     }
 
     function mzVentaGeo(tipo, nombre) {
-        var key = mzNormNombre(nombre);
+        var key = tipo === "distritos" ? mzClaveDistritoGeo(nombre) : mzNormNombre(nombre);
         var mapa = mzVentasGeo[tipo] || {};
         if (mapa[key] == null) {
             return 0;
@@ -228,18 +170,26 @@
         return html;
     }
 
-    function mzZonaDeDistrito(nombreDistrito, provincia) {
+    /** GeoJSON IGN → clave en geo_asignacion (ubigeo) */
+    var MZ_ALIAS_DISTRITO_GEO = {
+        LIMA: "LIMA (CERCADO)"
+    };
+
+    function mzClaveDistritoGeo(nombreDistrito) {
         var key = mzNormNombre(nombreDistrito);
-        if (mzGeoAsignacion.distritos[key]) {
-            return mzGeoAsignacion.distritos[key];
+        return MZ_ALIAS_DISTRITO_GEO[key] || key;
+    }
+
+    function mzCodigoZonaActiva(codigo) {
+        if (!codigo || !mzPorCodigo[codigo]) {
+            return null;
         }
-        if (MZ_DISTRITO_A_ZONA[key]) {
-            return MZ_DISTRITO_A_ZONA[key];
-        }
-        if (mzNormNombre(provincia) === "CALLAO") {
-            return "CALLAO";
-        }
-        return null;
+        return codigo;
+    }
+
+    function mzZonaDeDistrito(nombreDistrito) {
+        var key = mzClaveDistritoGeo(nombreDistrito);
+        return mzCodigoZonaActiva(mzGeoAsignacion.distritos[key] || null);
     }
 
     function mzZonaDeDepartamento(nombreDep) {
@@ -247,21 +197,17 @@
         if (key === "LIMA" || key === "CALLAO") {
             return null;
         }
-        if (mzGeoAsignacion.departamentos[key]) {
-            return mzGeoAsignacion.departamentos[key];
-        }
-        return MZ_DEPTO_A_ZONA[key] || null;
+        var codigo = mzGeoAsignacion.departamentos[key] || MZ_DEPTO_A_ZONA[key] || null;
+        return mzCodigoZonaActiva(codigo);
     }
 
     function mzZonaDeProvincia(nombreProv) {
         var key = mzNormNombre(nombreProv);
-        if (mzGeoAsignacion.provincias[key]) {
-            return mzGeoAsignacion.provincias[key];
+        var codigo = mzGeoAsignacion.provincias[key] || null;
+        if (!codigo && (key === "BARRANCA" || key === "HUARAL" || key === "HUAURA")) {
+            codigo = "NORTE_CHICO";
         }
-        if (key === "BARRANCA" || key === "HUARAL" || key === "HUAURA") {
-            return "NORTE_CHICO";
-        }
-        return null;
+        return mzCodigoZonaActiva(codigo);
     }
 
     function mzCargarDistritosLima() {

@@ -20,8 +20,66 @@ class TablaGruposEmpresariales
 			"</span>";
 	}
 
+	private function grupoPasaFiltroCategoria($grupo, $filtroCategoria)
+	{
+
+		if ($filtroCategoria === "") {
+			return true;
+		}
+
+		$codigoCategoria = isset($grupo["categoria_codigo"])
+			? trim((string) $grupo["categoria_codigo"])
+			: "";
+		$nombreCategoria = isset($grupo["categoria_comercial"])
+			? trim((string) $grupo["categoria_comercial"])
+			: "";
+		$esSinCategoria = ($codigoCategoria === "" ||
+			$nombreCategoria === "" ||
+			$nombreCategoria === "Sin categoría / pendiente" ||
+			$nombreCategoria === "Sin categoría");
+
+		if ($filtroCategoria === "sin") {
+			return $esSinCategoria;
+		}
+
+		return strtoupper($codigoCategoria) === strtoupper($filtroCategoria);
+	}
+
+	private function grupoPasaFiltroZona($grupo, $filtroZona)
+	{
+
+		if ($filtroZona === "") {
+			return true;
+		}
+
+		$idZona = isset($grupo["id_zona"]) ? (int) $grupo["id_zona"] : 0;
+
+		if ($filtroZona === "sin") {
+			return $idZona <= 0;
+		}
+
+		return $idZona === (int) $filtroZona;
+	}
+
+	private function grupoPasaFiltros($grupo, $filtroCategoria, $filtroZona)
+	{
+
+		return $this->grupoPasaFiltroCategoria($grupo, $filtroCategoria)
+			&& $this->grupoPasaFiltroZona($grupo, $filtroZona);
+	}
+
 	public function mostrarTablaGrupos()
 	{
+
+		$filtroCategoria = isset($_GET["categoria"]) ? trim($_GET["categoria"]) : "";
+		if ($filtroCategoria === "" && isset($_POST["categoria"])) {
+			$filtroCategoria = trim($_POST["categoria"]);
+		}
+
+		$filtroZona = isset($_GET["zona"]) ? trim($_GET["zona"]) : "";
+		if ($filtroZona === "" && isset($_POST["zona"])) {
+			$filtroZona = trim($_POST["zona"]);
+		}
 
 		$grupos = ControladorGruposEmpresariales::ctrMostrarGrupos(null, null);
 		$data = array();
@@ -32,6 +90,10 @@ class TablaGruposEmpresariales
 			$idsCategoria = array();
 
 			foreach ($grupos as $grupo) {
+				if (!$this->grupoPasaFiltros($grupo, $filtroCategoria, $filtroZona)) {
+					continue;
+				}
+
 				if (!empty($grupo["codigo"])) {
 					$codigosGrupo[] = $grupo["codigo"];
 				}
@@ -45,6 +107,10 @@ class TablaGruposEmpresariales
 			$requisitos = ModeloCategoriasClientes::mdlRequisitosMontoPorCategorias(array_values(array_unique($idsCategoria)));
 
 			foreach ($grupos as $grupo) {
+
+				if (!$this->grupoPasaFiltros($grupo, $filtroCategoria, $filtroZona)) {
+					continue;
+				}
 
 				$estado = $grupo["estado"] == 1
 					? "<span class='label label-success'>Activo</span>"

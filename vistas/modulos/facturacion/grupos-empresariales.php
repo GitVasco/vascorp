@@ -9,6 +9,8 @@ if (!is_array($zonasComercialesActivas)) {
     $zonasComercialesActivas = array();
 }
 $puedeEditarZonaGrupo = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacion();
+$filtroCategoriaUrl = isset($_GET["categoria"]) ? trim($_GET["categoria"]) : "";
+$filtroZonaUrl = isset($_GET["zona"]) ? trim($_GET["zona"]) : "";
 ?>
 <div class="content-wrapper">
 
@@ -31,6 +33,49 @@ $puedeEditarZonaGrupo = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacio
                 <button class="btn btn-primary" data-toggle="modal" data-target="#modalAgregarGrupo">
                     Agregar grupo
                 </button>
+
+                <div class="pull-right" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
+                    <div style="min-width:220px;max-width:280px;">
+                        <label for="filtroCategoriaGrupoEmpresarial" class="control-label" style="margin-bottom:4px;display:block;font-weight:normal;">
+                            Filtrar por categoría
+                        </label>
+                        <select class="form-control selectpicker" id="filtroCategoriaGrupoEmpresarial" data-live-search="true" title="Todas las categorías">
+                            <option value="" <?php echo $filtroCategoriaUrl === "" ? "selected" : ""; ?>>Todas</option>
+                            <option value="sin" <?php echo $filtroCategoriaUrl === "sin" ? "selected" : ""; ?>>Sin categoría</option>
+                            <?php foreach ($categoriasComercialesActivas as $catFiltro) :
+                                $codigoCatFiltro = isset($catFiltro["codigo"]) ? trim((string) $catFiltro["codigo"]) : "";
+                                $selCatFiltro = ($filtroCategoriaUrl !== "" &&
+                                    strtoupper($filtroCategoriaUrl) === strtoupper($codigoCatFiltro));
+                            ?>
+                                <option value="<?php echo htmlspecialchars($codigoCatFiltro, ENT_QUOTES, "UTF-8"); ?>" <?php echo $selCatFiltro ? "selected" : ""; ?>>
+                                    <?php echo htmlspecialchars($catFiltro["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div style="min-width:220px;max-width:280px;">
+                        <label for="filtroZonaGrupoEmpresarial" class="control-label" style="margin-bottom:4px;display:block;font-weight:normal;">
+                            Filtrar por zona
+                        </label>
+                        <select class="form-control selectpicker" id="filtroZonaGrupoEmpresarial" data-live-search="true" title="Todas las zonas">
+                            <option value="" <?php echo $filtroZonaUrl === "" ? "selected" : ""; ?>>Todas</option>
+                            <option value="sin" <?php echo $filtroZonaUrl === "sin" ? "selected" : ""; ?>>Sin zona</option>
+                            <?php foreach ($zonasComercialesActivas as $zonaFiltro) :
+                                $idZonaFiltro = isset($zonaFiltro["id"]) ? (int) $zonaFiltro["id"] : 0;
+                                $selZonaFiltro = ($filtroZonaUrl !== "" &&
+                                    $filtroZonaUrl !== "sin" &&
+                                    (int) $filtroZonaUrl === $idZonaFiltro);
+                            ?>
+                                <option value="<?php echo $idZonaFiltro; ?>" <?php echo $selZonaFiltro ? "selected" : ""; ?>>
+                                    <?php echo htmlspecialchars($zonaFiltro["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="clearfix"></div>
+
                 <p class="help-block" style="margin-top:10px;margin-bottom:0;">
                     Agrupa clientes que compran con distintos nombres o RUC bajo una misma empresa.
                 </p>
@@ -92,7 +137,14 @@ $puedeEditarZonaGrupo = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacio
                         </div>
                         <div class="form-group">
                             <label>Zona comercial</label>
-                            <select class="form-control" name="nuevaIdZonaGrupo" <?php echo $puedeEditarZonaGrupo ? "" : "disabled"; ?>>
+                            <select class="form-control selectpicker"
+                                id="nuevaIdZonaGrupo"
+                                name="nuevaIdZonaGrupo"
+                                data-live-search="true"
+                                data-size="8"
+                                data-container="body"
+                                title="Sin zona (cada cliente usa su ubigeo)"
+                                <?php echo $puedeEditarZonaGrupo ? "" : "disabled"; ?>>
                                 <option value="">Sin zona (cada cliente usa su ubigeo)</option>
                                 <?php foreach ($zonasComercialesActivas as $zonaItem) : ?>
                                     <option value="<?php echo (int) $zonaItem["id"]; ?>">
@@ -147,7 +199,13 @@ $puedeEditarZonaGrupo = ControladorZonasComerciales::ctrPuedeEditarZonaAsignacio
                         </div>
                         <div class="form-group">
                             <label>Zona comercial</label>
-                            <select class="form-control" name="editarIdZonaGrupo" id="editarIdZonaGrupo"
+                            <select class="form-control selectpicker"
+                                name="editarIdZonaGrupo"
+                                id="editarIdZonaGrupo"
+                                data-live-search="true"
+                                data-size="8"
+                                data-container="body"
+                                title="Sin zona (cada cliente usa su ubigeo)"
                                 <?php echo $puedeEditarZonaGrupo ? "" : "disabled"; ?>>
                                 <option value="">Sin zona (cada cliente usa su ubigeo)</option>
                                 <?php foreach ($zonasComercialesActivas as $zonaItem) : ?>
@@ -290,10 +348,14 @@ window.document.title = "Grupos empresariales";
 body .bootstrap-select .dropdown-menu {
     z-index: 2060 !important;
 }
-#modalClientesGrupo .bootstrap-select {
+#modalClientesGrupo .bootstrap-select,
+#modalAgregarGrupo .bootstrap-select,
+#modalEditarGrupo .bootstrap-select {
     width: 100% !important;
 }
-#modalClientesGrupo .bootstrap-select > .dropdown-toggle {
+#modalClientesGrupo .bootstrap-select > .dropdown-toggle,
+#modalAgregarGrupo .bootstrap-select > .dropdown-toggle,
+#modalEditarGrupo .bootstrap-select > .dropdown-toggle {
     width: 100%;
 }
 </style>

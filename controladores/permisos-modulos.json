@@ -32,11 +32,11 @@
       "editar": [6, 105]
     },
     "categorias_por_revisar": {
-      "ver": [6, 105],
-      "editar": [6]
+      "ver": [6, 9, 32, 66, 105, 107],
+      "editar": [6, 9, 32, 66, 105, 107]
     },
     "zonas_comerciales": {
-      "ver": [6, 105],
+      "ver": [6, 9, 32, 66, 105, 107],
       "editar": [6, 105]
     },
     "grupos_marcas": {

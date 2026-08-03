@@ -3,6 +3,28 @@
 class ControladorGruposEmpresariales
 {
 
+	static private function ctrUrlRetornoGruposEmpresariales()
+	{
+
+		$params = array();
+		$categoria = isset($_GET["categoria"]) ? trim($_GET["categoria"]) : "";
+		$zona = isset($_GET["zona"]) ? trim($_GET["zona"]) : "";
+
+		if ($categoria !== "") {
+			$params["categoria"] = $categoria;
+		}
+		if ($zona !== "") {
+			$params["zona"] = $zona;
+		}
+
+		$url = "grupos-empresariales";
+		if (!empty($params)) {
+			$url .= "?" . http_build_query($params);
+		}
+
+		return $url;
+	}
+
 	static public function ctrCrearGrupo()
 	{
 
@@ -34,6 +56,7 @@ class ControladorGruposEmpresariales
 		$respuesta = ModeloGruposEmpresariales::mdlIngresarGrupo($datos);
 
 		if ($respuesta == "ok") {
+			$urlRetorno = self::ctrUrlRetornoGruposEmpresariales();
 			echo '<script>
 				swal({
 					type: "success",
@@ -41,7 +64,7 @@ class ControladorGruposEmpresariales
 					showConfirmButton: true,
 					confirmButtonText: "Cerrar"
 				}).then(function(result) {
-					if (result.value) { window.location = "grupos-empresariales"; }
+					if (result.value) { window.location = "' . $urlRetorno . '"; }
 				});
 			</script>';
 		}
@@ -97,6 +120,7 @@ class ControladorGruposEmpresariales
 		$respuesta = ModeloGruposEmpresariales::mdlEditarGrupo($datos);
 
 		if ($respuesta == "ok") {
+			$urlRetorno = self::ctrUrlRetornoGruposEmpresariales();
 			echo '<script>
 				swal({
 					type: "success",
@@ -104,7 +128,7 @@ class ControladorGruposEmpresariales
 					showConfirmButton: true,
 					confirmButtonText: "Cerrar"
 				}).then(function(result) {
-					if (result.value) { window.location = "grupos-empresariales"; }
+					if (result.value) { window.location = "' . $urlRetorno . '"; }
 				});
 			</script>';
 		}
@@ -125,6 +149,8 @@ class ControladorGruposEmpresariales
 		}
 
 		$totalClientes = ModeloGruposEmpresariales::mdlContarClientesPorGrupo($grupo["codigo"]);
+		$urlRetorno = self::ctrUrlRetornoGruposEmpresariales();
+
 		if ($totalClientes > 0) {
 			echo '<script>
 				swal({
@@ -133,7 +159,7 @@ class ControladorGruposEmpresariales
 					text: "Tiene ' . $totalClientes . ' cliente(s) asignado(s). Quítelos primero o desactívelo.",
 					showConfirmButton: true,
 					confirmButtonText: "Cerrar"
-				}).then(function() { window.location = "grupos-empresariales"; });
+				}).then(function() { window.location = "' . $urlRetorno . '"; });
 			</script>';
 			return;
 		}
@@ -148,7 +174,7 @@ class ControladorGruposEmpresariales
 					showConfirmButton: true,
 					confirmButtonText: "Cerrar"
 				}).then(function(result) {
-					if (result.value) { window.location = "grupos-empresariales"; }
+					if (result.value) { window.location = "' . $urlRetorno . '"; }
 				});
 			</script>';
 		}

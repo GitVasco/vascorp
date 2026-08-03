@@ -1978,11 +1978,13 @@ class ModeloZonasComerciales
 				$inc($contDep, $dep, $zona);
 			}
 
-			// Lima metro / Callao: distrito → zona comercial
-			if ($dist !== "" && in_array($zona, array(
-				"LIM_NORTE", "LIM_ESTE", "LIM_SUR", "LIM_CENTRO", "LIM_MODERNA", "CALLAO"
-			), true)) {
+			// Lima metropolitana / Callao: distrito → zona activa (desde BD)
+			if ($dist !== "" && ($dep === "LIMA" || $dep === "CALLAO")) {
 				$inc($contDist, $dist, $zona);
+				// GeoJSON IGN usa "LIMA"; ubigeo oficial "LIMA (CERCADO)"
+				if ($dist === "LIMA (CERCADO)") {
+					$inc($contDist, "LIMA", $zona);
+				}
 			}
 
 			// Provincias de Lima (Norte Chico, Cañete, etc.)

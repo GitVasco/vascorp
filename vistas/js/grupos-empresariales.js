@@ -1,37 +1,209 @@
-if ($(".tablaGruposEmpresariales").length) {
+var tablaGruposEmpresarialesDt = null;
+var geUrlSyncLock = false;
 
-$(".tablaGruposEmpresariales").DataTable({
-    ajax: "ajax/facturacion/tabla-grupos-empresariales.ajax.php",
-    deferRender: true,
-    retrieve: true,
-    processing: true,
-    order: [[1, "asc"]],
-    pageLength: 20,
-    lengthMenu: [[20, 40, 60, -1], [20, 40, 60, "Todos"]],
-    columnDefs: [
-        { targets: [5, 6, 7], className: "text-right" },
-        { targets: -1, orderable: false, searchable: false }
-    ],
-    language: {
-        sProcessing: "Procesando...",
-        sLengthMenu: "Mostrar _MENU_ registros",
-        sZeroRecords: "No se encontraron resultados",
-        sEmptyTable: "Ningún dato disponible en esta tabla",
-        sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
-        sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
-        sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
-        sSearch: "Buscar:",
-        sLoadingRecords: "Cargando...",
-        oPaginate: {
-            sFirst: "Primero",
-            sLast: "Último",
-            sNext: "Siguiente",
-            sPrevious: "Anterior"
+function geLeerParamUrl(nombre) {
+    try {
+        return String(new URLSearchParams(window.location.search || "").get(nombre) || "").trim();
+    } catch (e) {
+        return "";
+    }
+}
+
+function geActualizarUrlFiltros(opts) {
+    if (geUrlSyncLock || !window.history || !window.history.replaceState) {
+        return;
+    }
+
+    opts = opts || {};
+
+    try {
+        var params = new URLSearchParams(window.location.search || "");
+
+        if (opts.categoria !== undefined) {
+            var categoria = String(opts.categoria || "").trim();
+            if (categoria) {
+                params.set("categoria", categoria);
+            } else {
+                params.delete("categoria");
+            }
+        }
+
+        if (opts.zona !== undefined) {
+            var zona = String(opts.zona || "").trim();
+            if (zona) {
+                params.set("zona", zona);
+            } else {
+                params.delete("zona");
+            }
+        }
+
+        var qs = params.toString();
+        var url = window.location.pathname + (qs ? "?" + qs : "") + (window.location.hash || "");
+        window.history.replaceState(null, "", url);
+    } catch (e) {}
+}
+
+function geSincronizarUrlFiltros() {
+    geActualizarUrlFiltros({
+        categoria: $("#filtroCategoriaGrupoEmpresarial").val() || "",
+        zona: $("#filtroZonaGrupoEmpresarial").val() || ""
+    });
+}
+
+function geUrlGruposEmpresariales(extraParams) {
+    var params = new URLSearchParams();
+    var categoria = $("#filtroCategoriaGrupoEmpresarial").val() || geLeerParamUrl("categoria") || "";
+    var zona = $("#filtroZonaGrupoEmpresarial").val() || geLeerParamUrl("zona") || "";
+
+    if (categoria) {
+        params.set("categoria", categoria);
+    }
+    if (zona) {
+        params.set("zona", zona);
+    }
+
+    if (extraParams) {
+        Object.keys(extraParams).forEach(function (key) {
+            var val = extraParams[key];
+            if (val !== "" && val != null) {
+                params.set(key, val);
+            }
+        });
+    }
+
+    var qs = params.toString();
+    return "grupos-empresariales" + (qs ? "?" + qs : "");
+}
+
+function refrescarSelectZonaGrupo($select) {
+    if (!$select || !$select.length || typeof $select.selectpicker !== "function") {
+        return;
+    }
+    try {
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("refresh");
+        } else {
+            $select.selectpicker({
+                liveSearch: true,
+                size: 8,
+                container: "body"
+            });
+        }
+    } catch (e) {}
+}
+
+function refrescarSelectsZonaGrupoModal() {
+    refrescarSelectZonaGrupo($("#nuevaIdZonaGrupo"));
+    refrescarSelectZonaGrupo($("#editarIdZonaGrupo"));
+}
+
+function refrescarFiltroZonaGrupoEmpresarial() {
+    var $select = $("#filtroZonaGrupoEmpresarial");
+    if (!$select.length) {
+        return;
+    }
+    try {
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("refresh");
+        } else if (typeof $select.selectpicker === "function") {
+            $select.selectpicker({
+                liveSearch: true,
+                size: 8
+            });
+        }
+    } catch (e) {}
+}
+
+function refrescarFiltroCategoriaGrupoEmpresarial() {
+    var $select = $("#filtroCategoriaGrupoEmpresarial");
+    if (!$select.length) {
+        return;
+    }
+    try {
+        if ($select.data("selectpicker")) {
+            $select.selectpicker("refresh");
+        } else if (typeof $select.selectpicker === "function") {
+            $select.selectpicker({
+                liveSearch: true,
+                size: 8
+            });
+        }
+    } catch (e) {}
+}
+
+function geInicializarTablaGruposEmpresariales() {
+    if (!$(".tablaGruposEmpresariales").length || tablaGruposEmpresarialesDt) {
+        return;
+    }
+
+    tablaGruposEmpresarialesDt = $(".tablaGruposEmpresariales").DataTable({
+        ajax: {
+            url: "ajax/facturacion/tabla-grupos-empresariales.ajax.php",
+            data: function (d) {
+                d.categoria = $("#filtroCategoriaGrupoEmpresarial").val() || "";
+                d.zona = $("#filtroZonaGrupoEmpresarial").val() || "";
+            }
+        },
+        deferRender: true,
+        retrieve: true,
+        processing: true,
+        order: [[1, "asc"]],
+        pageLength: 20,
+        lengthMenu: [[20, 40, 60, -1], [20, 40, 60, "Todos"]],
+        columnDefs: [
+            { targets: [5, 6, 7], className: "text-right" },
+            { targets: -1, orderable: false, searchable: false }
+        ],
+        language: {
+            sProcessing: "Procesando...",
+            sLengthMenu: "Mostrar _MENU_ registros",
+            sZeroRecords: "No se encontraron resultados",
+            sEmptyTable: "Ningún dato disponible en esta tabla",
+            sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+            sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+            sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+            sSearch: "Buscar:",
+            sLoadingRecords: "Cargando...",
+            oPaginate: {
+                sFirst: "Primero",
+                sLast: "Último",
+                sNext: "Siguiente",
+                sPrevious: "Anterior"
+            }
+        }
+    });
+}
+
+$(function () {
+    var categoriaUrl = geLeerParamUrl("categoria");
+    var zonaUrl = geLeerParamUrl("zona");
+    var $filtroCategoria = $("#filtroCategoriaGrupoEmpresarial");
+    var $filtroZona = $("#filtroZonaGrupoEmpresarial");
+
+    geUrlSyncLock = true;
+    if (categoriaUrl && $filtroCategoria.length) {
+        $filtroCategoria.val(categoriaUrl);
+    }
+    if (zonaUrl && $filtroZona.length) {
+        $filtroZona.val(zonaUrl);
+    }
+    geUrlSyncLock = false;
+
+    refrescarFiltroCategoriaGrupoEmpresarial();
+    refrescarFiltroZonaGrupoEmpresarial();
+    refrescarSelectsZonaGrupoModal();
+    geInicializarTablaGruposEmpresariales();
+
+    function recargarTablaGruposEmpresariales() {
+        geSincronizarUrlFiltros();
+        if (tablaGruposEmpresarialesDt) {
+            tablaGruposEmpresarialesDt.ajax.reload();
         }
     }
-});
 
-}
+    $filtroCategoria.on("changed.bs.select change", recargarTablaGruposEmpresariales);
+    $filtroZona.on("changed.bs.select change", recargarTablaGruposEmpresariales);
+});
 
 function escapeHtmlGrupo(texto) {
     return String(texto == null ? "" : texto)
@@ -389,8 +561,27 @@ $(".tablaGruposEmpresariales").on("click", ".btnEditarGrupo", function () {
             $("#editarDescripcionGrupo").val(respuesta.descripcion || "");
             $("#editarIdZonaGrupo").val(respuesta.id_zona ? String(respuesta.id_zona) : "");
             $("#editarEstadoGrupo").val(respuesta.estado);
+            refrescarSelectZonaGrupo($("#editarIdZonaGrupo"));
         }
     });
+});
+
+$("#modalAgregarGrupo").on("shown.bs.modal", function () {
+    refrescarSelectZonaGrupo($("#nuevaIdZonaGrupo"));
+});
+
+$("#modalAgregarGrupo").on("hidden.bs.modal", function () {
+    var $select = $("#nuevaIdZonaGrupo");
+    $select.val("");
+    refrescarSelectZonaGrupo($select);
+});
+
+$("#modalEditarGrupo").on("shown.bs.modal", function () {
+    refrescarSelectZonaGrupo($("#editarIdZonaGrupo"));
+});
+
+$(document).on("shown.bs.select", "#nuevaIdZonaGrupo, #editarIdZonaGrupo", function () {
+    $(".bootstrap-select.open .dropdown-menu, .bootstrap-select .dropdown-menu").css("z-index", 2060);
 });
 
 $(".tablaGruposEmpresariales").on("click", ".btnEliminarGrupo", function () {
@@ -408,7 +599,7 @@ $(".tablaGruposEmpresariales").on("click", ".btnEliminarGrupo", function () {
         confirmButtonText: "Sí, borrar grupo"
     }).then(function (result) {
         if (result.value) {
-            window.location = "index.php?ruta=grupos-empresariales&idGrupo=" + idGrupo;
+            window.location = geUrlGruposEmpresariales({ idGrupo: idGrupo });
         }
     });
 });
