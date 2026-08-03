@@ -1519,4 +1519,32 @@
                 });
         });
     });
+
+    $("#btnLcExportarExcel").on("click", function () {
+        var $modal = $("#modalLcExportExcel");
+        $modal.modal("show");
+        if ($modal.find(".selectpicker").length) {
+            $modal.find(".selectpicker").selectpicker("refresh");
+        }
+    });
+
+    $("#lcFormExportExcel").on("submit", function (e) {
+        var idSolicitante = $("#lcExportSolicitadoPor").val();
+
+        if (!idSolicitante) {
+            e.preventDefault();
+            swal("Atención", "Seleccione quién solicita el reporte.", "warning");
+            return;
+        }
+
+        $("#lcExportSolicitadoPorHidden").val(idSolicitante);
+
+        var $btn = $("#btnLcConfirmarExportExcel");
+        $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Generando… (1–2 min)');
+
+        window.setTimeout(function () {
+            $("#modalLcExportExcel").modal("hide");
+            $btn.prop("disabled", false).html('<i class="fa fa-download"></i> Descargar Excel');
+        }, 4000);
+    });
 })();

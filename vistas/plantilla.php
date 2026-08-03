@@ -1013,7 +1013,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/mapas-zonas.js?v=41"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "linea-credito") { ?>
-    <script src="vistas/js/linea-credito.js?v=20"></script>
+    <script src="vistas/js/linea-credito.js?v=22"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") { ?>
     <script src="vistas/js/estado-cuenta.js?v=10"></script>

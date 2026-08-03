@@ -16,6 +16,9 @@ foreach ($gruposActivos as $grupoItem) {
     $gruposPorCodigo[$grupoItem["codigo"]] = $grupoItem["nombre"];
 }
 
+$usuariosActivosLc = ModeloLineaCredito::mdlUsuariosActivos();
+$idUsuarioSesionLc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
+
 $meses = ControladorTalleres::ctrMes();
 $nombreMes = (string) $periodo["mes"];
 
@@ -54,6 +57,9 @@ function lcFmt($valor)
                         Cierre <?php echo (int) $periodo["mes"] . "/" . (int) $periodo["anio"]; ?>:
                         <?php echo (int) $totalCierre; ?> clientes
                     </span>
+                    <button type="button" class="btn btn-success btn-sm" id="btnLcExportarExcel" title="Exportar cartera a Excel">
+                        <i class="fa fa-file-excel-o"></i> Exportar Excel
+                    </button>
                     <button type="button" class="btn btn-warning btn-sm" id="btnLcCierreMensual">
                         <i class="fa fa-refresh"></i> Cierre mensual
                     </button>
@@ -226,6 +232,44 @@ function lcFmt($valor)
             </div>
         </div>
     </section>
+</div>
+
+<div class="modal fade" id="modalLcExportExcel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-file-excel-o"></i> Exportar cartera a Excel</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Los datos van en las hojas <strong>Por cliente</strong> y <strong>Por grupo</strong> (sin bloqueo).
+                    La responsabilidad del reporte queda registrada en la hoja <strong>Metadatos</strong> (solo lectura).
+                </p>
+                <div class="form-group">
+                    <label for="lcExportSolicitadoPor">Solicitado por <span class="text-danger">*</span></label>
+                    <select class="form-control selectpicker" id="lcExportSolicitadoPor" data-live-search="true" data-size="8" required>
+                        <option value="">Seleccione responsable…</option>
+                        <?php foreach ($usuariosActivosLc as $usuarioLc) : ?>
+                            <option value="<?php echo (int) $usuarioLc["id"]; ?>"
+                                <?php echo ((int) $usuarioLc["id"] === $idUsuarioSesionLc) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($usuarioLc["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <form id="lcFormExportExcel" method="GET" action="vistas/reportes_excel/rpt_linea_credito.php" target="_blank" style="display:inline;">
+                    <input type="hidden" name="solicitud_por" id="lcExportSolicitadoPorHidden" value="">
+                    <button type="submit" class="btn btn-success" id="btnLcConfirmarExportExcel">
+                        <i class="fa fa-download"></i> Descargar Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="modalLcDetalle" tabindex="-1">

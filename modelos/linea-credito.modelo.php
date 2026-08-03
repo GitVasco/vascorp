@@ -653,6 +653,7 @@ class ModeloLineaCredito
              ON DUPLICATE KEY UPDATE
                 linea_operativa = VALUES(linea_operativa),
                 linea_recomendada = VALUES(linea_recomendada),
+                linea_aprobada = IF(VALUES(linea_aprobada) IS NOT NULL, VALUES(linea_aprobada), linea_aprobada),
                 deuda_actual = VALUES(deuda_actual),
                 cupo_disponible = VALUES(cupo_disponible),
                 utilizacion_pct = VALUES(utilizacion_pct),
@@ -963,7 +964,7 @@ class ModeloLineaCredito
              ON DUPLICATE KEY UPDATE
                 linea_operativa = VALUES(linea_operativa),
                 linea_recomendada = VALUES(linea_recomendada),
-                linea_aprobada = VALUES(linea_aprobada),
+                linea_aprobada = IF(VALUES(linea_aprobada) IS NOT NULL, VALUES(linea_aprobada), linea_aprobada),
                 deuda_actual = VALUES(deuda_actual),
                 cupo_disponible = VALUES(cupo_disponible),
                 utilizacion_pct = VALUES(utilizacion_pct),
@@ -1048,5 +1049,368 @@ class ModeloLineaCredito
         $stmt->bindParam(":grupo", $codigoGrupo, PDO::PARAM_STR);
 
         return $stmt->execute() ? "ok" : "error";
+    }
+
+    private static function sqlExcluirVendedoresContadoVentas($aliasVenta = "v")
+    {
+        $campo = "TRIM(COALESCE({$aliasVenta}.vendedor, ''))";
+
+        if (function_exists("icMotor2SqlExcluirVendedorPrefijosZona")) {
+            $sqlPrefijos = icMotor2SqlExcluirVendedorPrefijosZona($campo);
+        } else {
+            $sqlPrefijos = "{$campo} NOT LIKE '08%'";
+        }
+
+        $codigosExactos = array("99", "23");
+        if (function_exists("icConfigMotor2")) {
+            $cfg = icConfigMotor2();
+            if (!empty($cfg["ventas_excluir_vendedores"]) && is_array($cfg["ventas_excluir_vendedores"])) {
+                $codigosExactos = $cfg["ventas_excluir_vendedores"];
+            }
+        }
+
+        $partesExactos = array();
+        foreach ($codigosExactos as $codigo) {
+            $codigo = trim((string) $codigo);
+            if ($codigo === "") {
+                continue;
+            }
+            $codigoSql = str_replace(array("'", "\\"), "", $codigo);
+            $partesExactos[] = "'{$codigoSql}'";
+        }
+
+        $sqlExactos = $partesExactos
+            ? " AND {$campo} NOT IN (" . implode(", ", $partesExactos) . ")"
+            : "";
+
+        return " AND ({$sqlPrefijos}){$sqlExactos}";
+    }
+
+    private static function sqlVentaAnioSubquery($aliasCliente = "c")
+    {
+        $tipos = self::sqlTiposVentaIc();
+        $excluirVentas = self::sqlExcluirVendedoresContadoVentas("v");
+
+        return "(
+            SELECT IFNULL(SUM(v.total), 0)
+            FROM ventajf v
+            WHERE v.cliente = {$aliasCliente}.codigo
+              AND YEAR(v.fecha) = YEAR(CURDATE())
+              AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+              AND UPPER(TRIM(v.tipo)) IN ({$tipos})
+              {$excluirVentas}
+        )";
+    }
+
+    private static function sqlVentaAnioGrupoSubquery($aliasGrupo = "g")
+    {
+        $tipos = self::sqlTiposVentaIc();
+        $excluirVentas = self::sqlExcluirVendedoresContadoVentas("v");
+
+        return "(
+            SELECT IFNULL(SUM(v.total), 0)
+            FROM ventajf v
+            INNER JOIN clientesjf cm ON cm.codigo = v.cliente
+            WHERE cm.grupo = {$aliasGrupo}.codigo
+              AND cm.estado = 1
+              AND YEAR(v.fecha) = YEAR(CURDATE())
+              AND UPPER(IFNULL(v.estado, '')) <> 'ANULADO'
+              AND UPPER(TRIM(v.tipo)) IN ({$tipos})
+              {$excluirVentas}
+        )";
+    }
+
+    private static function sqlCategoriaClienteSubquery($aliasCliente = "c")
+    {
+        return "(
+            SELECT cat.nombre
+            FROM categorias_clientes_asignacionesjf a
+            INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+            WHERE a.tipo_entidad = 'cliente'
+              AND a.codigo_entidad = {$aliasCliente}.codigo
+              AND a.estado = 1
+              AND a.vigencia_desde <= NOW()
+              AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+            ORDER BY a.id DESC
+            LIMIT 1
+        )";
+    }
+
+    /**
+     * Categoría comercial efectiva: del grupo si pertenece a uno; si no, del cliente.
+     */
+    private static function sqlCategoriaEfectivaClienteSubquery($aliasCliente = "c")
+    {
+        return "(
+            CASE
+                WHEN {$aliasCliente}.grupo IS NOT NULL AND TRIM({$aliasCliente}.grupo) <> '' THEN (
+                    SELECT cat.nombre
+                    FROM categorias_clientes_asignacionesjf a
+                    INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+                    WHERE a.tipo_entidad = 'grupo'
+                      AND a.codigo_entidad = {$aliasCliente}.grupo
+                      AND a.estado = 1
+                      AND a.vigencia_desde <= NOW()
+                      AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+                    ORDER BY a.id DESC
+                    LIMIT 1
+                )
+                ELSE (
+                    SELECT cat.nombre
+                    FROM categorias_clientes_asignacionesjf a
+                    INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+                    WHERE a.tipo_entidad = 'cliente'
+                      AND a.codigo_entidad = {$aliasCliente}.codigo
+                      AND a.estado = 1
+                      AND a.vigencia_desde <= NOW()
+                      AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+                    ORDER BY a.id DESC
+                    LIMIT 1
+                )
+            END
+        )";
+    }
+
+    private static function sqlCategoriaGrupoSubquery($aliasGrupo = "g")
+    {
+        return "(
+            SELECT cat.nombre
+            FROM categorias_clientes_asignacionesjf a
+            INNER JOIN categorias_clientesjf cat ON cat.id = a.id_categoria
+            WHERE a.tipo_entidad = 'grupo'
+              AND a.codigo_entidad = {$aliasGrupo}.codigo
+              AND a.estado = 1
+              AND a.vigencia_desde <= NOW()
+              AND (a.vigencia_hasta IS NULL OR a.vigencia_hasta >= NOW())
+            ORDER BY a.id DESC
+            LIMIT 1
+        )";
+    }
+
+    private static function sqlDeudaActualGrupoSubquery($aliasGrupo = "g")
+    {
+        return "(
+            SELECT IFNULL(SUM(IFNULL(ct.saldo, 0)), 0)
+            FROM cuenta_ctejf ct
+            INNER JOIN clientesjf cm ON cm.codigo = ct.cliente
+            WHERE cm.grupo = {$aliasGrupo}.codigo
+              AND cm.estado = 1
+              AND ct.tip_mov = '+'
+              AND UPPER(ct.estado) = 'PENDIENTE'
+              AND IFNULL(ct.saldo, 0) > 0
+        )";
+    }
+
+    private static function sqlDeudaVencidaGrupoSubquery($aliasGrupo = "g")
+    {
+        return "(
+            SELECT IFNULL(SUM(IFNULL(ct.saldo, 0)), 0)
+            FROM cuenta_ctejf ct
+            INNER JOIN clientesjf cm ON cm.codigo = ct.cliente
+            WHERE cm.grupo = {$aliasGrupo}.codigo
+              AND cm.estado = 1
+              AND ct.tip_mov = '+'
+              AND UPPER(ct.estado) = 'PENDIENTE'
+              AND IFNULL(ct.saldo, 0) > 0
+              AND ct.fecha_ven < CURDATE()
+        )";
+    }
+
+    private static function sqlLineaAprobadaClienteExpr($aliasCliente = "c", $aliasLc = "lc")
+    {
+        return "COALESCE(
+            NULLIF({$aliasLc}.linea_aprobada, 0),
+            (
+                SELECT h.linea_aprobada
+                FROM linea_credito_historialjf h
+                WHERE h.codigo_cliente = {$aliasCliente}.codigo
+                  AND h.tipo_evento IN ('LINEA_APROBADA', 'LINEA_ACTUALIZADA')
+                  AND h.linea_aprobada IS NOT NULL
+                  AND h.linea_aprobada > 0
+                ORDER BY h.fecha DESC, h.id DESC
+                LIMIT 1
+            )
+        )";
+    }
+
+    private static function sqlLineaAprobadaGrupoExpr($aliasGrupo = "g", $aliasLg = "lg")
+    {
+        return "COALESCE(
+            NULLIF({$aliasLg}.linea_aprobada, 0),
+            (
+                SELECT h.linea_aprobada
+                FROM linea_credito_historial_grupojf h
+                WHERE h.codigo_grupo = {$aliasGrupo}.codigo
+                  AND h.tipo_evento IN ('LINEA_APROBADA', 'LINEA_ACTUALIZADA')
+                  AND h.linea_aprobada IS NOT NULL
+                  AND h.linea_aprobada > 0
+                ORDER BY h.fecha DESC, h.id DESC
+                LIMIT 1
+            )
+        )";
+    }
+
+    /**
+     * Repara linea_aprobada en estado vigente cuando quedó NULL pero sí hay registro manual en historial.
+     */
+    static public function mdlRepararLineasAprobadasDesdeHistorial()
+    {
+        $pdo = Conexion::conectar();
+
+        $pdo->exec(
+            "UPDATE linea_credito_clientejf lc
+             INNER JOIN (
+                 SELECT h.codigo_cliente, h.linea_aprobada
+                 FROM linea_credito_historialjf h
+                 INNER JOIN (
+                     SELECT codigo_cliente, MAX(id) AS ultimo_id
+                     FROM linea_credito_historialjf
+                     WHERE tipo_evento IN ('LINEA_APROBADA', 'LINEA_ACTUALIZADA')
+                       AND linea_aprobada IS NOT NULL
+                       AND linea_aprobada > 0
+                     GROUP BY codigo_cliente
+                 ) u ON u.ultimo_id = h.id
+             ) src ON src.codigo_cliente = lc.codigo_cliente
+             SET lc.linea_aprobada = src.linea_aprobada
+             WHERE lc.linea_aprobada IS NULL OR lc.linea_aprobada <= 0"
+        );
+
+        $pdo->exec(
+            "UPDATE linea_credito_grupojf lg
+             INNER JOIN (
+                 SELECT h.codigo_grupo, h.linea_aprobada
+                 FROM linea_credito_historial_grupojf h
+                 INNER JOIN (
+                     SELECT codigo_grupo, MAX(id) AS ultimo_id
+                     FROM linea_credito_historial_grupojf
+                     WHERE tipo_evento IN ('LINEA_APROBADA', 'LINEA_ACTUALIZADA')
+                       AND linea_aprobada IS NOT NULL
+                       AND linea_aprobada > 0
+                     GROUP BY codigo_grupo
+                 ) u ON u.ultimo_id = h.id
+             ) src ON src.codigo_grupo = lg.codigo_grupo
+             SET lg.linea_aprobada = src.linea_aprobada
+             WHERE lg.linea_aprobada IS NULL OR lg.linea_aprobada <= 0"
+        );
+    }
+
+    /**
+     * Datos para exportación Excel — hoja por cliente (cartera activa).
+     */
+    static public function mdlExportExcelClientes()
+    {
+        $ventaAnio = self::sqlVentaAnioSubquery("c");
+        $categoria = self::sqlCategoriaEfectivaClienteSubquery("c");
+        $lineaAprobada = self::sqlLineaAprobadaClienteExpr("c", "lc");
+        $filtro = self::sqlFiltroCarteraActiva("c");
+
+        $sql = "SELECT
+                    c.documento AS ruc,
+                    c.nombre AS razon_social,
+                    c.direccion,
+                    u.Departamento AS departamento,
+                    u.Provincia AS provincia,
+                    u.Distrito AS distrito,
+                    c.email AS correo,
+                    TRIM(CONCAT(IFNULL(c.telefono, ''), CASE
+                        WHEN IFNULL(c.telefono2, '') <> '' AND IFNULL(c.telefono, '') <> ''
+                        THEN CONCAT(' / ', c.telefono2)
+                        WHEN IFNULL(c.telefono2, '') <> '' THEN c.telefono2
+                        ELSE ''
+                    END)) AS telefono,
+                    {$categoria} AS categoria_nombre,
+                    lc.score_riesgo,
+                    IFNULL(lc.linea_recomendada, 0) AS linea_propuesta,
+                    {$lineaAprobada} AS linea_aprobada,
+                    {$ventaAnio} AS venta_anio,
+                    " . self::sqlDeudaActualLiveSubquery("c") . ",
+                    " . self::sqlDeudaVencidaSubquery("c") . ",
+                    NULLIF(TRIM(c.grupo), '') AS codigo_grupo
+                FROM clientesjf c
+                LEFT JOIN linea_credito_clientejf lc ON lc.codigo_cliente = c.codigo
+                LEFT JOIN ubigeo u ON u.Codigo = c.ubigeo
+                WHERE 1 = 1 {$filtro}
+                ORDER BY c.nombre ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Datos para exportación Excel — hoja por grupo empresarial (cartera activa).
+     */
+    static public function mdlExportExcelGrupos()
+    {
+        $ventaAnio = self::sqlVentaAnioGrupoSubquery("g");
+        $categoria = self::sqlCategoriaGrupoSubquery("g");
+        $lineaAprobada = self::sqlLineaAprobadaGrupoExpr("g", "lg");
+        $deudaActual = self::sqlDeudaActualGrupoSubquery("g");
+        $deudaVencida = self::sqlDeudaVencidaGrupoSubquery("g");
+        $filtro = self::sqlFiltroCarteraActiva("c");
+
+        $sql = "SELECT
+                    g.codigo AS codigo_grupo,
+                    g.nombre AS razon_social,
+                    {$categoria} AS categoria_nombre,
+                    lg.score_riesgo,
+                    IFNULL(lg.linea_recomendada, 0) AS linea_propuesta,
+                    {$lineaAprobada} AS linea_aprobada,
+                    {$ventaAnio} AS venta_anio,
+                    {$deudaActual} AS deuda_actual,
+                    {$deudaVencida} AS deuda_vencida
+                FROM grupos_empresarialesjf g
+                INNER JOIN (
+                    SELECT DISTINCT TRIM(c.grupo) AS codigo
+                    FROM clientesjf c
+                    WHERE c.grupo IS NOT NULL
+                      AND TRIM(c.grupo) <> ''
+                      {$filtro}
+                ) cg ON cg.codigo = g.codigo
+                LEFT JOIN linea_credito_grupojf lg ON lg.codigo_grupo = g.codigo
+                WHERE g.estado = 1
+                ORDER BY g.nombre ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC        );
+    }
+
+    static public function mdlUsuariosActivos()
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT id, nombre
+             FROM usuariosjf
+             WHERE estado = 1
+             ORDER BY nombre ASC"
+        );
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    static public function mdlUsuarioActivoPorId($idUsuario)
+    {
+        $idUsuario = (int) $idUsuario;
+
+        if ($idUsuario <= 0) {
+            return null;
+        }
+
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT id, nombre
+             FROM usuariosjf
+             WHERE id = :id
+               AND estado = 1
+             LIMIT 1"
+        );
+        $stmt->bindParam(":id", $idUsuario, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $fila ? $fila : null;
     }
 }
