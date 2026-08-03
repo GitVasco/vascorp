@@ -940,7 +940,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/urgencias.js"></script>
     <script src="vistas/js/contactos.js"></script>
     <script src="vistas/js/mensajes.js"></script>
-    <script src="vistas/js/pedidoscv.js"></script>
+    <script src="vistas/js/pedidoscv.js?v=<?php echo rand(); ?>"></script>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "escaneo-barcode-pedidocv") : ?>
         <script src="vistas/js/escaneo-barcode-pedidocv-app.js?v=<?php echo rand(); ?>"></script>
         <script src="vistas/js/crear-pedidocv-barcode.js?v=<?php echo rand(); ?>"></script>

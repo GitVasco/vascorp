@@ -970,8 +970,44 @@ MODAL MODIFICAR ARTICULOS
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
 
                     <h4 class="modal-title">Detalle Artículos</h4>
+                    <small style="opacity:.95; display:block; margin-top:4px;">
+                        Stock visual (no bloquea; descuenta pedidos y lo ya cargado aquí):
+                        <span class="label" style="background:#d4edda;color:#155724;">hay</span>
+                        <span class="label" style="background:#fff3cd;color:#856404;">poco (≤5)</span>
+                        <span class="label" style="background:#f8d7da;color:#721c24;">sin stock</span>
+                        <span class="label" style="background:#e2d5f1;color:#4a2c6a;">descontinuado</span>
+                        — pase el mouse sobre la talla para ver el detalle
+                    </small>
 
                 </div>
+
+                <style>
+                    #modalModificarClienteP .tablaColTal input.stock-ok {
+                        background-color: #d4edda;
+                        border-color: #28a745;
+                    }
+                    #modalModificarClienteP .tablaColTal input.stock-bajo {
+                        background-color: #fff3cd;
+                        border-color: #ffc107;
+                    }
+                    #modalModificarClienteP .tablaColTal input.stock-cero {
+                        background-color: #f8d7da;
+                        border-color: #dc3545;
+                    }
+                    #modalModificarClienteP .tablaColTal input.stock-descontinuado {
+                        background-color: #e2d5f1;
+                        border-color: #7b5ea7;
+                        color: #4a2c6a;
+                        font-weight: 600;
+                    }
+                    #modalModificarClienteP .tablaColTal input.stock-ok:focus,
+                    #modalModificarClienteP .tablaColTal input.stock-bajo:focus,
+                    #modalModificarClienteP .tablaColTal input.stock-cero:focus,
+                    #modalModificarClienteP .tablaColTal input.stock-descontinuado:focus {
+                        outline: none;
+                        box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 0 2px rgba(60,141,188,.25);
+                    }
+                </style>
 
                 <!--=====================================
                 CUERPO DEL MODAL

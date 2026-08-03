@@ -2565,10 +2565,71 @@ function updateFormData(datos, key, value) {
     datos.append(key, value);
 }
 
+/* Umbral visual de prueba: 1..STOCK_POCO = amarillo; > STOCK_POCO = verde; <= 0 = danger */
+var STOCK_POCO_PEDIDOCV = 5;
+
+function claseStockTalla(stock) {
+    var n = Number(stock);
+    if (!isFinite(n) || n <= 0) {
+        return "stock-cero";
+    }
+    if (n <= STOCK_POCO_PEDIDOCV) {
+        return "stock-bajo";
+    }
+    return "stock-ok";
+}
+
 function getTallaHtml(tallaIndex, id, isEnabled, value) {
-    return isEnabled
-        ? `<td><input style="width:100%" class="pruebaA" type="text" name="${id.modelo}${id.cod_color}${tallaIndex}" id="${id.modelo}${id.cod_color}${tallaIndex}" value="${value}" min="0" autocomplete="off"></td>`
-        : `<td><input style="width:100%" type="text" name="${id.modelo}${id.cod_color}${tallaIndex}" id="${id.modelo}${id.cod_color}${tallaIndex}" readonly autocomplete="off"></td>`;
+    var stock = id["s" + tallaIndex];
+    if (stock === undefined || stock === null || stock === "") {
+        stock = 0;
+    }
+    var descontinuado =
+        id["d" + tallaIndex] == 1 ||
+        id["d" + tallaIndex] === "1" ||
+        Number(id["d" + tallaIndex]) === 1;
+    var title =
+        "Stock disponible: " +
+        stock +
+        " (descuenta pedidos y lo ya cargado en este pedido)";
+    if (descontinuado) {
+        title = "Descontinuado · " + title;
+    }
+    if (isEnabled) {
+        var cls = descontinuado ? "stock-descontinuado" : claseStockTalla(stock);
+        return (
+            '<td><input style="width:100%" class="pruebaA ' +
+            cls +
+            '" type="text" name="' +
+            id.modelo +
+            id.cod_color +
+            tallaIndex +
+            '" id="' +
+            id.modelo +
+            id.cod_color +
+            tallaIndex +
+            '" value="' +
+            value +
+            '" min="0" autocomplete="off" title="' +
+            title +
+            '" data-stock="' +
+            stock +
+            '" data-descontinuado="' +
+            (descontinuado ? "1" : "0") +
+            '"></td>'
+        );
+    }
+    return (
+        '<td><input style="width:100%" type="text" name="' +
+        id.modelo +
+        id.cod_color +
+        tallaIndex +
+        '" id="' +
+        id.modelo +
+        id.cod_color +
+        tallaIndex +
+        '" readonly autocomplete="off"></td>'
+    );
 }
 
 function createFila(id) {

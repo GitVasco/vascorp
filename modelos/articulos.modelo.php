@@ -2124,7 +2124,143 @@ class ModeloArticulos
 			THEN t.cantidad 
 			ELSE '0' 
 		  END
-		) AS v8 
+		) AS v8,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '1'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s1,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '2'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s2,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '3'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s3,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '4'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s4,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '5'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s5,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '6'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s6,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '7'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s7,
+		SUM(
+		  CASE
+			WHEN a.cod_talla = '8'
+			THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+			  - CASE
+				  WHEN ped.estado IN ('APROBADO', 'APT', 'CONFIRMADO') THEN 0
+				  ELSE COALESCE(t.cantidad, 0)
+				END
+			ELSE 0
+		  END
+		) AS s8,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '1' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d1,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '2' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d2,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '3' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d3,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '4' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d4,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '5' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d5,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '6' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d6,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '7' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d7,
+		MAX(
+		  CASE
+			WHEN a.cod_talla = '8' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+			ELSE 0
+		  END
+		) AS d8
 	  FROM
 		articulojf a 
 		LEFT JOIN 
@@ -2134,15 +2270,23 @@ class ModeloArticulos
 			detalle_temporal t 
 		  WHERE codigo = :pedido) AS t 
 		  ON a.articulo = t.articulo 
+		LEFT JOIN (
+		  SELECT estado
+		  FROM temporaljf
+		  WHERE codigo = :pedido_estado
+		  LIMIT 1
+		) ped ON 1 = 1
 	  WHERE a.modelo LIKE '%" . $modelo . "%'
 		/* AND a.estado = 'activo'  */
 	  GROUP BY a.modelo,
 		a.cod_color,
-		a.color";
+		a.color,
+		ped.estado";
 
 			$stmt = Conexion::conectar()->prepare($sql);
 
 			$stmt->bindParam(":pedido", $pedido, PDO::PARAM_STR);
+			$stmt->bindParam(":pedido_estado", $pedido, PDO::PARAM_STR);
 			//$stmt->bindParam(":modelo",$modelo,PDO::PARAM_STR);
 
 			$stmt->execute();
@@ -2265,7 +2409,111 @@ class ModeloArticulos
 				THEN '0' 
 				ELSE '0' 
 			  END
-			) AS v8 
+			) AS v8,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '1'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s1,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '2'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s2,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '3'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s3,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '4'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s4,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '5'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s5,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '6'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s6,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '7'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s7,
+			SUM(
+			  CASE
+				WHEN a.cod_talla = '8'
+				THEN COALESCE(a.stock, 0) - COALESCE(a.pedidos, 0)
+				ELSE 0
+			  END
+			) AS s8,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '1' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d1,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '2' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d2,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '3' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d3,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '4' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d4,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '5' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d5,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '6' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d6,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '7' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d7,
+			MAX(
+			  CASE
+				WHEN a.cod_talla = '8' AND LOWER(IFNULL(a.estado, '')) = 'descontinuado' THEN 1
+				ELSE 0
+			  END
+			) AS d8
 		  FROM
 			articulojf a 
 		  WHERE a.modelo LIKE '%" . $modelo . "%'
