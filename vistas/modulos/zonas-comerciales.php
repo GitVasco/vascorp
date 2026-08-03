@@ -48,12 +48,36 @@ $puedeEditarZonas = function_exists("usuarioPuedeModulo")
             </div>
         </div>
 
+        <div class="box box-danger">
+            <div class="box-header with-border">
+                <h3 class="box-title">Distritos pendientes de zona activa</h3>
+                <p class="help-block" style="margin:8px 0 0;">
+                    Distritos de Lima/Callao <strong>libres</strong> o aún ligados a una <strong>zona inactiva</strong>.
+                    Asígnelos a Zona 1, 2 o 3 (u otra zona activa). Gamarra y Distribuidores no usan ubigeo.
+                </p>
+            </div>
+            <div class="box-body">
+                <table class="table table-bordered table-striped dt-responsive tablaDistritosZonaPendientes" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Ubigeo</th>
+                            <th>Distrito</th>
+                            <th>Provincia / Depto.</th>
+                            <th>Situación</th>
+                            <th>Clientes activos</th>
+                            <th>Asignar a zona</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="box box-warning">
             <div class="box-header with-border">
                 <h3 class="box-title">Clientes por revisar zona</h3>
                 <p class="help-block" style="margin:8px 0 0;">
-                    Sin zona automática, o distrito La Victoria (candidatos a <strong>Zona Económica / Gamarra</strong>).
-                    Cascada: override cliente → zona del grupo → ubigeo. Edición solo usuarios autorizados.
+                    Sin zona activa, distrito en zona inactiva, override obsoleto, o La Victoria (candidatos a <strong>Gamarra</strong>).
                 </p>
             </div>
             <div class="box-body">

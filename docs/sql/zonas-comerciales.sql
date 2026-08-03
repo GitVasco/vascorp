@@ -81,6 +81,24 @@ SELECT 'LIM_ECONOMICA', 'Zona Económica (Gamarra)', 'lima',
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM zonas_comercialesjf WHERE codigo = 'LIM_ECONOMICA');
 
 INSERT INTO zonas_comercialesjf (codigo, nombre, macrozona, descripcion, color, orden, estado, usureg, fecreg)
+SELECT 'LIM_DISTRIBUIDORES', 'Distribuidores', 'lima',
+       'Clientes distribuidores. No se autoasigna por ubigeo; override manual en cliente/grupo.',
+       '#001f3f', 65, 1, 'sistema', NOW()
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM zonas_comercialesjf WHERE codigo = 'LIM_DISTRIBUIDORES');
+
+INSERT INTO zonas_comercialesjf (codigo, nombre, macrozona, descripcion, color, orden, estado, usureg, fecreg)
+SELECT 'LIM_VICTORIA', 'La Victoria', 'lima',
+       'Clientes en La Victoria (no Gamarra). No se autoasigna por ubigeo; override manual en cliente/grupo.',
+       '#932ab6', 62, 1, 'sistema', NOW()
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM zonas_comercialesjf WHERE codigo = 'LIM_VICTORIA');
+
+INSERT INTO zonas_comercialesjf (codigo, nombre, macrozona, descripcion, color, orden, estado, usureg, fecreg)
+SELECT 'LIM_CERCADO', 'Lima Cercado', 'lima',
+       'Clientes en Lima (Cercado). No se autoasigna por ubigeo; override manual en cliente/grupo.',
+       '#85144b', 63, 1, 'sistema', NOW()
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM zonas_comercialesjf WHERE codigo = 'LIM_CERCADO');
+
+INSERT INTO zonas_comercialesjf (codigo, nombre, macrozona, descripcion, color, orden, estado, usureg, fecreg)
 SELECT 'CALLAO', 'Callao', 'lima', 'Toda la Provincia Constitucional del Callao',
        '#39cccc', 70, 1, 'sistema', NOW()
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM zonas_comercialesjf WHERE codigo = 'CALLAO');

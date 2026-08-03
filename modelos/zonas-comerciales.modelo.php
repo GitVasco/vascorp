@@ -319,10 +319,13 @@ class ModeloZonasComerciales
 		$sql = "SELECT c.codigo, c.nombre, c.ubigeo, c.grupo, c.id_zona AS id_zona_cliente,
 				g.nombre AS nombre_grupo, g.id_zona AS id_zona_grupo,
 				u.Distrito AS distrito, u.Provincia AS provincia, u.Departamento AS departamento,
-				zc.nombre AS zona_cliente_nombre,
-				zg.nombre AS zona_grupo_nombre,
-				zu.nombre AS zona_ubigeo_nombre,
-				zu.codigo AS zona_ubigeo_codigo
+				IF(IFNULL(zc.estado, 0) = 1, zc.nombre, NULL) AS zona_cliente_nombre,
+				IF(IFNULL(zg.estado, 0) = 1, zg.nombre, NULL) AS zona_grupo_nombre,
+				IF(IFNULL(zu.estado, 0) = 1, zu.nombre, NULL) AS zona_ubigeo_nombre,
+				IF(IFNULL(zu.estado, 0) = 1, zu.codigo, NULL) AS zona_ubigeo_codigo,
+				IF(IFNULL(zu.estado, 0) = 0 AND ru.id_zona IS NOT NULL, zu.codigo, NULL) AS zona_ubigeo_inactiva_codigo,
+				IF(IFNULL(zc.estado, 0) = 0 AND c.id_zona IS NOT NULL AND c.id_zona > 0, zc.codigo, NULL) AS zona_cliente_inactiva_codigo,
+				IF(IFNULL(zg.estado, 0) = 0 AND g.id_zona IS NOT NULL AND g.id_zona > 0, zg.codigo, NULL) AS zona_grupo_inactiva_codigo
 			FROM clientesjf c
 			LEFT JOIN grupos_empresarialesjf g ON g.codigo = c.grupo AND g.estado = 1
 			LEFT JOIN ubigeo u ON u.Codigo = c.ubigeo
@@ -338,6 +341,18 @@ class ModeloZonasComerciales
 					AND ru.id_zona IS NULL
 				)
 				OR (
+					(c.id_zona IS NULL OR c.id_zona = 0)
+					AND (g.id_zona IS NULL OR g.id_zona = 0)
+					AND ru.id_zona IS NOT NULL
+					AND IFNULL(zu.estado, 0) = 0
+				)
+				OR (
+					zc.id IS NOT NULL AND IFNULL(zc.estado, 0) = 0
+				)
+				OR (
+					zg.id IS NOT NULL AND IFNULL(zg.estado, 0) = 0
+				)
+				OR (
 					UPPER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(IFNULL(u.Distrito,'')),'Á','A'),'É','E'),'Í','I'),'Ó','O'),'Ú','U'),'Ñ','N')) = 'LA VICTORIA'
 					AND (c.id_zona IS NULL OR c.id_zona = 0)
 				)
@@ -349,6 +364,49 @@ class ModeloZonasComerciales
 			LIMIT $limite";
 
 		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->execute();
+
+		return $stmt->fetchAll();
+	}
+
+	/**
+	 * Distritos Lima/Callao sin zona activa: libres o colgados de zona inactiva.
+	 */
+	static public function mdlDistritosZonaPendientes()
+	{
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT u.Codigo AS cod_ubi,
+				u.Departamento AS departamento,
+				u.Provincia AS provincia,
+				u.Distrito AS distrito,
+				r.id AS id_regla,
+				r.id_zona,
+				z.codigo AS zona_codigo,
+				z.nombre AS zona_nombre,
+				IFNULL(z.estado, 0) AS zona_estado,
+				(SELECT COUNT(*)
+				 FROM clientesjf c
+				 WHERE c.estado = 1
+				   AND TRIM(IFNULL(c.ubigeo, '')) = TRIM(u.Codigo)
+				) AS clientes_activos
+			 FROM ubigeo u
+			 LEFT JOIN zonas_comerciales_ubigeojf r ON r.cod_ubi = u.Codigo
+			 LEFT JOIN zonas_comercialesjf z ON z.id = r.id_zona
+			 WHERE TRIM(IFNULL(u.Distrito, '')) <> ''
+			   AND CHAR_LENGTH(TRIM(u.Codigo)) = 6
+			   AND (
+					(UPPER(TRIM(u.Departamento)) = 'LIMA' AND UPPER(TRIM(u.Provincia)) = 'LIMA')
+					OR UPPER(TRIM(u.Departamento)) = 'CALLAO'
+			   )
+			   AND (
+					r.id_zona IS NULL
+					OR IFNULL(z.estado, 0) = 0
+			   )
+			 ORDER BY
+				CASE WHEN r.id_zona IS NULL THEN 0 ELSE 1 END,
+				u.Departamento, u.Provincia, u.Distrito"
+		);
 		$stmt->execute();
 
 		return $stmt->fetchAll();

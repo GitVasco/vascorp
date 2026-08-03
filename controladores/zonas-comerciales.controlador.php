@@ -67,6 +67,11 @@ class ControladorZonasComerciales
 		return ModeloZonasComerciales::mdlClientesZonaPorRevisar($limite);
 	}
 
+	static public function ctrDistritosZonaPendientes()
+	{
+		return ModeloZonasComerciales::mdlDistritosZonaPendientes();
+	}
+
 	static public function ctrEtiquetaOrigenZona($origen)
 	{
 		$mapa = array(

@@ -57,8 +57,12 @@ if (is_array($zonas)) {
 		$botones .= "</div>";
 
 		$nota = "";
-		if (isset($z["codigo"]) && $z["codigo"] === "LIM_ECONOMICA") {
-			$nota = " <small class='text-muted'>(solo manual / Gamarra)</small>";
+		$zonasSoloManual = array(
+			"LIM_ECONOMICA" => "solo manual / Gamarra",
+			"LIM_DISTRIBUIDORES" => "solo manual / distribuidores"
+		);
+		if (isset($z["codigo"]) && isset($zonasSoloManual[$z["codigo"]])) {
+			$nota = " <small class='text-muted'>(" . $zonasSoloManual[$z["codigo"]] . ")</small>";
 		}
 
 		$data[] = array(

@@ -1,5 +1,6 @@
 var tablaZonasComerciales = null;
 var tablaZonasPorRevisar = null;
+var tablaDistritosZonaPendientes = null;
 
 var idiomaDtZonas = {
     sProcessing: "Procesando...",
@@ -43,6 +44,51 @@ if ($(".tablaZonasPorRevisar").length) {
     });
 }
 
+if ($(".tablaDistritosZonaPendientes").length) {
+    tablaDistritosZonaPendientes = $(".tablaDistritosZonaPendientes").DataTable({
+        ajax: "ajax/tabla-distritos-zona-pendientes.ajax.php",
+        deferRender: true,
+        retrieve: true,
+        processing: true,
+        order: [[1, "asc"]],
+        pageLength: 25,
+        language: idiomaDtZonas
+    });
+}
+
+function recargarBandejasZonaPendiente() {
+    if (tablaDistritosZonaPendientes) {
+        tablaDistritosZonaPendientes.ajax.reload(null, false);
+    }
+    if (tablaZonasPorRevisar) {
+        tablaZonasPorRevisar.ajax.reload(null, false);
+    }
+    if (tablaZonasComerciales) {
+        tablaZonasComerciales.ajax.reload(null, false);
+    }
+}
+
+$(document).on("click", ".btnAsignarDistritoZona", function () {
+    var codUbi = $(this).attr("codUbi");
+    var idZona = $(this).closest("td").find(".selectDistritoZona").val() || "";
+    if (!idZona) {
+        alertaZona("error", "Elija una zona activa");
+        return;
+    }
+    $.post("ajax/zonas-comerciales.ajax.php", {
+        accion: "asignarUbigeo",
+        idZona: idZona,
+        codUbi: codUbi
+    }, function (resp) {
+        if (resp && resp.ok) {
+            recargarBandejasZonaPendiente();
+            alertaZona("success", resp.mensaje || "Distrito asignado");
+        } else {
+            alertaZona("error", (resp && resp.mensaje) ? resp.mensaje : "No se pudo asignar");
+        }
+    }, "json");
+});
+
 $(document).on("click", ".btnGuardarZonaRevisar", function () {
     var codigo = $(this).attr("codigoCliente");
     var idZona = $(this).closest("td").find(".selectZonaRevisar").val() || "";
@@ -52,9 +98,7 @@ $(document).on("click", ".btnGuardarZonaRevisar", function () {
         idZona: idZona
     }, function (resp) {
         if (resp && resp.ok) {
-            if (tablaZonasPorRevisar) {
-                tablaZonasPorRevisar.ajax.reload(null, false);
-            }
+            recargarBandejasZonaPendiente();
             alertaZona("success", resp.mensaje || "Guardado");
         } else {
             alertaZona("error", (resp && resp.mensaje) ? resp.mensaje : "No se pudo guardar");
@@ -229,7 +273,7 @@ $(document).on("click", ".btnAsignarUbigeoZona", function () {
     }, function (resp) {
         if (resp && resp.ok) {
             cargarUbigeosZona(idZona);
-            recargarTablaZonasComerciales();
+            recargarBandejasZonaPendiente();
             buscarUbigeosParaZona();
         } else {
             alertaZona("error", (resp && resp.mensaje) ? resp.mensaje : "No se pudo asignar");
@@ -246,7 +290,7 @@ $(document).on("click", ".btnQuitarUbigeoZona", function () {
     }, function (resp) {
         if (resp && resp.ok) {
             cargarUbigeosZona(idZona);
-            recargarTablaZonasComerciales();
+            recargarBandejasZonaPendiente();
         } else {
             alertaZona("error", (resp && resp.mensaje) ? resp.mensaje : "No se pudo quitar");
         }

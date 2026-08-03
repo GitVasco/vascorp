@@ -30,20 +30,29 @@ if (is_array($filas)) {
 		$distrito = isset($f["distrito"]) ? $f["distrito"] : "";
 		$esVictoria = (stripos($distrito, "VICTORIA") !== false);
 
-		$motivo = "Sin zona resoluble";
+		$motivo = "Sin zona activa resoluble";
 		if ($esVictoria && empty($f["id_zona_cliente"])) {
 			$motivo = "La Victoria — ¿Gamarra? (Zona Económica)";
+		} elseif (!empty($f["zona_cliente_inactiva_codigo"])) {
+			$motivo = "Cliente en zona inactiva (" . $f["zona_cliente_inactiva_codigo"] . ")";
+		} elseif (!empty($f["zona_grupo_inactiva_codigo"])) {
+			$motivo = "Grupo en zona inactiva (" . $f["zona_grupo_inactiva_codigo"] . ")";
+		} elseif (!empty($f["zona_ubigeo_inactiva_codigo"])) {
+			$motivo = "Distrito en zona inactiva (" . $f["zona_ubigeo_inactiva_codigo"] . ")";
 		}
 
-		$zonaAuto = isset($f["zona_ubigeo_nombre"]) ? $f["zona_ubigeo_nombre"] : "—";
-		$zonaGrupo = isset($f["zona_grupo_nombre"]) ? $f["zona_grupo_nombre"] : "—";
+		$zonaAuto = isset($f["zona_ubigeo_nombre"]) && $f["zona_ubigeo_nombre"] !== ""
+			? $f["zona_ubigeo_nombre"]
+			: "—";
+		$zonaGrupo = isset($f["zona_grupo_nombre"]) && $f["zona_grupo_nombre"] !== ""
+			? $f["zona_grupo_nombre"]
+			: "—";
 
 		$acciones = "";
 		if ($puedeEditar) {
 			$opciones = "<option value=''>Auto</option>";
 			foreach ($zonas as $z) {
-				$sel = "";
-				$opciones .= "<option value='" . (int) $z["id"] . "'" . $sel . ">"
+				$opciones .= "<option value='" . (int) $z["id"] . "'>"
 					. htmlspecialchars($z["nombre"], ENT_QUOTES, "UTF-8")
 					. "</option>";
 			}
