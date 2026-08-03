@@ -686,6 +686,37 @@ $(document).on("click", "#btnReporteDeudaClientes", function () {
     }
 });
 
+// Informe estado de cuenta gerencia (Resumen + Cobranza + Metadatos)
+$(document).on("click", "#btnReporteEstadoCuentaGerencia", function () {
+    var $modal = $("#modalEstadoCuentaGerencia");
+    $modal.modal("show");
+    if ($modal.find(".selectpicker").length) {
+        $modal.find(".selectpicker").selectpicker("refresh");
+    }
+});
+
+$(document).on("submit", "#ecgFormExport", function (e) {
+    var idSolicitante = $("#ecgSolicitadoPor").val();
+
+    if (!idSolicitante) {
+        e.preventDefault();
+        swal("Atención", "Seleccione quién solicita el reporte.", "warning");
+        return;
+    }
+
+    $("#ecgSolicitadoPorHidden").val(idSolicitante);
+    $("#ecgMesHidden").val($("#ecgMesCobranza").val());
+    $("#ecgAnioHidden").val($("#ecgAnioCobranza").val());
+
+    var $btn = $("#btnEcgConfirmarExport");
+    $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Generando…');
+
+    window.setTimeout(function () {
+        $("#modalEstadoCuentaGerencia").modal("hide");
+        $btn.prop("disabled", false).html('<i class="fa fa-download"></i> Descargar Excel');
+    }, 3000);
+});
+
 $(document).on("submit", "#cxcFormExportDeudaClientes", function (e) {
     var idSolicitante = $("#cxcExportSolicitadoPor").val();
 

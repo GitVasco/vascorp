@@ -5482,4 +5482,530 @@ class ModeloCuentas
 			"recordsFiltered" => (int)$filteredRecords
 		];
 	}
+
+	/*=============================================
+	RESUMEN CTAS CTES GERENCIA (por tipo de documento)
+	Facturas = 01 + ND 08 | Boletas = 03 | Letras = 85 | Guias Varios = proformas 09
+	=============================================*/
+	static public function mdlResumenCtasCtesGerencia()
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				COALESCE(SUM(CASE WHEN cc.tipo_doc IN ('01', '08') THEN cc.saldo ELSE 0 END), 0) AS facturas,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc = '03' THEN cc.saldo ELSE 0 END), 0) AS boletas,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc = '85' THEN cc.saldo ELSE 0 END), 0) AS letras,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc = '09' THEN cc.saldo ELSE 0 END), 0) AS guias_varios
+			FROM cuenta_ctejf cc
+			WHERE cc.tip_mov = '+'
+				AND cc.estado = 'PENDIENTE'
+				AND cc.saldo > 0"
+		);
+		$stmt->execute();
+		$fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+		if (!$fila) {
+			return array(
+				"facturas" => 0.0,
+				"boletas" => 0.0,
+				"letras" => 0.0,
+				"guias_varios" => 0.0,
+				"total" => 0.0,
+			);
+		}
+
+		$facturas = (float) $fila["facturas"];
+		$boletas = (float) $fila["boletas"];
+		$letras = (float) $fila["letras"];
+		$guias = (float) $fila["guias_varios"];
+
+		return array(
+			"facturas" => $facturas,
+			"boletas" => $boletas,
+			"letras" => $letras,
+			"guias_varios" => $guias,
+			"total" => $facturas + $boletas + $letras + $guias,
+		);
+	}
+
+	/*=============================================
+	CUENTAS POR COBRAR POR VENDEDOR (gerencia)
+	FACTURAS = 01 + 03 + 08 | GUIAS = 09 | LETRAS = 85
+	=============================================*/
+	static public function mdlCxcPorVendedorGerencia()
+	{
+		return self::mdlDocumentosPorVendedorGerencia("todos");
+	}
+
+	/*=============================================
+	DOCUMENTOS VENCIDOS POR VENDEDOR (gerencia)
+	fecha_ven < hoy, excluye vendedores incobrables
+	=============================================*/
+	static public function mdlDocumentosVencidosPorVendedorGerencia()
+	{
+		return self::mdlDocumentosPorVendedorGerencia("vencidos");
+	}
+
+	/*=============================================
+	DOCUMENTOS INCOBRABLES POR VENDEDOR (gerencia)
+	Códigos en dashboard-cxc.config.php, vencidos
+	=============================================*/
+	static public function mdlDocumentosIncobrablesPorVendedorGerencia()
+	{
+		return self::mdlDocumentosPorVendedorGerencia("incobrables");
+	}
+
+	/**
+	 * @param string $modo todos|vencidos|incobrables
+	 */
+	static private function mdlDocumentosPorVendedorGerencia($modo)
+	{
+		require_once dirname(__FILE__) . "/../controladores/dashboard-cxc.config.php";
+
+		$filtroExtra = "";
+		if ($modo === "vencidos") {
+			$filtroExtra = "AND cc.fecha_ven < CURDATE()
+				AND NOT (" . dashboardCxcSqlInIncobrablesLiterals("cc") . ")";
+		} elseif ($modo === "incobrables") {
+			$filtroExtra = "AND cc.fecha_ven < CURDATE()
+				AND " . dashboardCxcSqlInIncobrablesLiterals("cc");
+		}
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				cc.vendedor AS codigo,
+				COALESCE(NULLIF(TRIM(m.descripcion), ''), cc.vendedor) AS nombre,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc IN ('01', '03', '08') THEN cc.saldo ELSE 0 END), 0) AS facturas,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc = '09' THEN cc.saldo ELSE 0 END), 0) AS guias,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc = '85' THEN cc.saldo ELSE 0 END), 0) AS letras
+			FROM cuenta_ctejf cc
+			LEFT JOIN maestrajf m
+				ON m.codigo = cc.vendedor
+				AND m.tipo_dato = 'TVEND'
+			WHERE cc.tip_mov = '+'
+				AND cc.estado = 'PENDIENTE'
+				AND cc.saldo > 0
+				AND cc.tipo_doc IN ('01', '03', '08', '09', '85')
+				{$filtroExtra}
+			GROUP BY cc.vendedor, m.descripcion
+			HAVING (
+				COALESCE(SUM(CASE WHEN cc.tipo_doc IN ('01', '03', '08') THEN cc.saldo ELSE 0 END), 0)
+				+ COALESCE(SUM(CASE WHEN cc.tipo_doc = '09' THEN cc.saldo ELSE 0 END), 0)
+				+ COALESCE(SUM(CASE WHEN cc.tipo_doc = '85' THEN cc.saldo ELSE 0 END), 0)
+			) > 0
+			ORDER BY cc.vendedor ASC"
+		);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$resultado = array();
+		foreach ($filas as $fila) {
+			$facturas = (float) $fila["facturas"];
+			$guias = (float) $fila["guias"];
+			$letras = (float) $fila["letras"];
+			$resultado[] = array(
+				"codigo" => $fila["codigo"],
+				"nombre" => $fila["nombre"],
+				"facturas" => $facturas,
+				"guias" => $guias,
+				"letras" => $letras,
+				"total" => $facturas + $guias + $letras,
+			);
+		}
+
+		return $resultado;
+	}
+
+	/*=============================================
+	ESTADO DE LETRAS POR COBRAR (gerencia)
+	Prioridad excluyente: CARTERA > PROTESTADAS > BANCO CREDITO (02) > POR ACEPTAR
+	=============================================*/
+	static public function mdlEstadoLetrasPorCobrarGerencia()
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				COALESCE(SUM(CASE
+					WHEN UPPER(TRIM(IFNULL(cc.num_unico, ''))) LIKE '%CARTERA%'
+					THEN cc.saldo ELSE 0
+				END), 0) AS cartera,
+				COALESCE(SUM(CASE
+					WHEN UPPER(TRIM(IFNULL(cc.num_unico, ''))) NOT LIKE '%CARTERA%'
+						AND (cc.protesta = 1 OR cc.protesta = '1')
+					THEN cc.saldo ELSE 0
+				END), 0) AS protestadas,
+				COALESCE(SUM(CASE
+					WHEN UPPER(TRIM(IFNULL(cc.num_unico, ''))) NOT LIKE '%CARTERA%'
+						AND NOT (cc.protesta = 1 OR cc.protesta = '1')
+						AND cc.banco = '02'
+					THEN cc.saldo ELSE 0
+				END), 0) AS banco_credito,
+				COALESCE(SUM(CASE
+					WHEN UPPER(TRIM(IFNULL(cc.num_unico, ''))) NOT LIKE '%CARTERA%'
+						AND NOT (cc.protesta = 1 OR cc.protesta = '1')
+						AND (cc.banco IS NULL OR cc.banco = '' OR cc.banco <> '02')
+					THEN cc.saldo ELSE 0
+				END), 0) AS por_aceptar
+			FROM cuenta_ctejf cc
+			WHERE cc.tip_mov = '+'
+				AND cc.estado = 'PENDIENTE'
+				AND cc.saldo > 0
+				AND cc.tipo_doc = '85'"
+		);
+		$stmt->execute();
+		$fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+		if (!$fila) {
+			return array(
+				"banco_credito" => 0.0,
+				"cartera" => 0.0,
+				"protestadas" => 0.0,
+				"por_aceptar" => 0.0,
+				"total" => 0.0,
+			);
+		}
+
+		$banco = (float) $fila["banco_credito"];
+		$cartera = (float) $fila["cartera"];
+		$protestadas = (float) $fila["protestadas"];
+		$porAceptar = (float) $fila["por_aceptar"];
+
+		return array(
+			"banco_credito" => $banco,
+			"cartera" => $cartera,
+			"protestadas" => $protestadas,
+			"por_aceptar" => $porAceptar,
+			"total" => $banco + $cartera + $protestadas + $porAceptar,
+		);
+	}
+
+	/*=============================================
+	LETRAS X COBRAR SEGÚN VENCIMIENTO (por mes)
+	Letras pendientes con fecha_ven >= hoy, agrupadas por mes
+	=============================================*/
+	static public function mdlLetrasPorVencimientoMesGerencia()
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				YEAR(cc.fecha_ven) AS anio,
+				MONTH(cc.fecha_ven) AS mes,
+				COALESCE(SUM(cc.saldo), 0) AS saldo
+			FROM cuenta_ctejf cc
+			WHERE cc.tip_mov = '+'
+				AND cc.estado = 'PENDIENTE'
+				AND cc.saldo > 0
+				AND cc.tipo_doc = '85'
+				AND cc.fecha_ven >= CURDATE()
+			GROUP BY YEAR(cc.fecha_ven), MONTH(cc.fecha_ven)
+			ORDER BY anio ASC, mes ASC"
+		);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$nombresMes = array(
+			1 => "ENERO",
+			2 => "FEBRERO",
+			3 => "MARZO",
+			4 => "ABRIL",
+			5 => "MAYO",
+			6 => "JUNIO",
+			7 => "JULIO",
+			8 => "AGOSTO",
+			9 => "SEPTIEMBRE",
+			10 => "OCTUBRE",
+			11 => "NOVIEMBRE",
+			12 => "DICIEMBRE",
+		);
+
+		$resultado = array();
+		foreach ($filas as $fila) {
+			$mes = (int) $fila["mes"];
+			$resultado[] = array(
+				"anio" => (int) $fila["anio"],
+				"mes" => $mes,
+				"nombre" => isset($nombresMes[$mes]) ? $nombresMes[$mes] : (string) $mes,
+				"saldo" => (float) $fila["saldo"],
+			);
+		}
+
+		return $resultado;
+	}
+
+	/*=============================================
+	FACTURAS X COBRAR SEGÚN VENCIMIENTO (por mes)
+	Facturas = 01 + boletas 03 + ND 08 | Guias = proformas 09
+	Solo documentos con fecha_ven >= hoy
+	=============================================*/
+	static public function mdlFacturasPorVencimientoMesGerencia()
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				YEAR(cc.fecha_ven) AS anio,
+				MONTH(cc.fecha_ven) AS mes,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc IN ('01', '03', '08') THEN cc.saldo ELSE 0 END), 0) AS facturas,
+				COALESCE(SUM(CASE WHEN cc.tipo_doc = '09' THEN cc.saldo ELSE 0 END), 0) AS guias
+			FROM cuenta_ctejf cc
+			WHERE cc.tip_mov = '+'
+				AND cc.estado = 'PENDIENTE'
+				AND cc.saldo > 0
+				AND cc.tipo_doc IN ('01', '03', '08', '09')
+				AND cc.fecha_ven >= CURDATE()
+			GROUP BY YEAR(cc.fecha_ven), MONTH(cc.fecha_ven)
+			HAVING (
+				COALESCE(SUM(CASE WHEN cc.tipo_doc IN ('01', '03', '08') THEN cc.saldo ELSE 0 END), 0)
+				+ COALESCE(SUM(CASE WHEN cc.tipo_doc = '09' THEN cc.saldo ELSE 0 END), 0)
+			) > 0
+			ORDER BY anio ASC, mes ASC"
+		);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$nombresMes = array(
+			1 => "ENERO",
+			2 => "FEBRERO",
+			3 => "MARZO",
+			4 => "ABRIL",
+			5 => "MAYO",
+			6 => "JUNIO",
+			7 => "JULIO",
+			8 => "AGOSTO",
+			9 => "SEPTIEMBRE",
+			10 => "OCTUBRE",
+			11 => "NOVIEMBRE",
+			12 => "DICIEMBRE",
+		);
+
+		$resultado = array();
+		foreach ($filas as $fila) {
+			$mes = (int) $fila["mes"];
+			$facturas = (float) $fila["facturas"];
+			$guias = (float) $fila["guias"];
+			$resultado[] = array(
+				"anio" => (int) $fila["anio"],
+				"mes" => $mes,
+				"nombre" => isset($nombresMes[$mes]) ? $nombresMes[$mes] : (string) $mes,
+				"facturas" => $facturas,
+				"guias" => $guias,
+				"total" => $facturas + $guias,
+			);
+		}
+
+		return $resultado;
+	}
+
+	/*=============================================
+	RESUMEN DE COBRANZA X VENDEDOR (gerencia)
+	tip_mov = '-', pivot por tipo de pago (cod_pago)
+	=============================================*/
+	static public function mdlColumnasCobranzaGerencia()
+	{
+		return array(
+			"LETRAS BANCO",
+			"DEPOSITOS BCP",
+			"YAPE",
+			"EFECTIVO",
+			"DEVOLUCION DE PRENDAS",
+			"DSCTOS FACTURAS",
+			"DSCTOS GUIAS",
+			"REF",
+			"RENOVACIÓN",
+			"AJUSTE",
+		);
+	}
+
+	static public function mdlResumenCobranzaPorVendedorGerencia($anio, $mes)
+	{
+		$anio = (int) $anio;
+		$mes = (int) $mes;
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				c.vendedor AS codigo,
+				COALESCE(NULLIF(TRIM(m.descripcion), ''), IFNULL(c.vendedor, '')) AS nombre,
+				CASE
+					WHEN c.cod_pago IN ('00', 'TR') THEN 'LETRAS BANCO'
+					WHEN c.cod_pago IN ('05', '06', '14', '16', '17', '18') THEN 'DEPOSITOS BCP'
+					WHEN c.cod_pago IN ('15') THEN 'YAPE'
+					WHEN c.cod_pago IN ('80', '82') THEN 'EFECTIVO'
+					WHEN c.cod_pago IN ('13', '96') THEN 'DEVOLUCION DE PRENDAS'
+					WHEN c.cod_pago IN ('97') THEN 'DSCTOS FACTURAS'
+					WHEN c.cod_pago IN ('10') THEN 'DSCTOS GUIAS'
+					WHEN c.cod_pago IN ('RF') THEN 'REF'
+					WHEN c.cod_pago IN ('85') THEN 'RENOVACIÓN'
+					WHEN c.cod_pago IN ('98') THEN 'AJUSTE'
+					ELSE 'REV'
+				END AS nom_pago,
+				COALESCE(SUM(c.monto), 0) AS monto
+			FROM cuenta_ctejf c
+			LEFT JOIN maestrajf m
+				ON m.codigo = c.vendedor
+				AND m.tipo_dato = 'TVEND'
+			WHERE c.tip_mov = '-'
+				AND YEAR(c.fecha) = :anio
+				AND MONTH(c.fecha) = :mes
+			GROUP BY c.vendedor, m.descripcion, nom_pago
+			ORDER BY nombre ASC, nom_pago ASC"
+		);
+		$stmt->bindValue(":anio", $anio, PDO::PARAM_INT);
+		$stmt->bindValue(":mes", $mes, PDO::PARAM_INT);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$columnas = self::mdlColumnasCobranzaGerencia();
+		$porVendedor = array();
+
+		foreach ($filas as $fila) {
+			$codigo = (string) $fila["codigo"];
+			$clave = $codigo !== "" ? $codigo : "__SIN__";
+
+			if (!isset($porVendedor[$clave])) {
+				$montos = array();
+				foreach ($columnas as $col) {
+					$montos[$col] = 0.0;
+				}
+				$porVendedor[$clave] = array(
+					"codigo" => $codigo,
+					"nombre" => $fila["nombre"] !== "" ? $fila["nombre"] : "(SIN VENDEDOR)",
+					"montos" => $montos,
+					"total" => 0.0,
+				);
+			}
+
+			$nomPago = $fila["nom_pago"];
+			$monto = (float) $fila["monto"];
+
+			if ($nomPago === "REV") {
+				continue;
+			}
+
+			if (!isset($porVendedor[$clave]["montos"][$nomPago])) {
+				continue;
+			}
+
+			$porVendedor[$clave]["montos"][$nomPago] += $monto;
+			$porVendedor[$clave]["total"] += $monto;
+		}
+
+		$resultado = array_values($porVendedor);
+		usort($resultado, function ($a, $b) {
+			return strcasecmp($a["nombre"], $b["nombre"]);
+		});
+
+		$totales = array();
+		foreach ($columnas as $col) {
+			$totales[$col] = 0.0;
+		}
+		$totalGeneral = 0.0;
+		foreach ($resultado as $fila) {
+			foreach ($columnas as $col) {
+				$totales[$col] += $fila["montos"][$col];
+			}
+			$totalGeneral += $fila["total"];
+		}
+
+		return array(
+			"columnas" => $columnas,
+			"filas" => $resultado,
+			"totales" => $totales,
+			"total_general" => $totalGeneral,
+		);
+	}
+
+	/*=============================================
+	RESUMEN DE COBRANZA X TIPO DOCUMENTO (gerencia)
+	FACTURAS = 01/03/07/08 | GUIAS = 09 | LETRAS = resto
+	=============================================*/
+	static public function mdlResumenCobranzaPorTipoDocGerencia($anio, $mes)
+	{
+		$anio = (int) $anio;
+		$mes = (int) $mes;
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				CASE
+					WHEN c.tipo_doc IN ('01', '03', '07', '08') THEN 'FACTURAS'
+					WHEN c.tipo_doc = '09' THEN 'GUIAS'
+					ELSE 'LETRAS'
+				END AS nom_doc,
+				CASE
+					WHEN c.cod_pago IN ('00', 'TR') THEN 'LETRAS BANCO'
+					WHEN c.cod_pago IN ('05', '06', '14', '16', '17', '18') THEN 'DEPOSITOS BCP'
+					WHEN c.cod_pago IN ('15') THEN 'YAPE'
+					WHEN c.cod_pago IN ('80', '82') THEN 'EFECTIVO'
+					WHEN c.cod_pago IN ('13', '96') THEN 'DEVOLUCION DE PRENDAS'
+					WHEN c.cod_pago IN ('97') THEN 'DSCTOS FACTURAS'
+					WHEN c.cod_pago IN ('10') THEN 'DSCTOS GUIAS'
+					WHEN c.cod_pago IN ('RF') THEN 'REF'
+					WHEN c.cod_pago IN ('85') THEN 'RENOVACIÓN'
+					WHEN c.cod_pago IN ('98') THEN 'AJUSTE'
+					ELSE 'REV'
+				END AS nom_pago,
+				COALESCE(SUM(c.monto), 0) AS monto
+			FROM cuenta_ctejf c
+			WHERE c.tip_mov = '-'
+				AND YEAR(c.fecha) = :anio
+				AND MONTH(c.fecha) = :mes
+			GROUP BY nom_doc, nom_pago"
+		);
+		$stmt->bindValue(":anio", $anio, PDO::PARAM_INT);
+		$stmt->bindValue(":mes", $mes, PDO::PARAM_INT);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$columnas = self::mdlColumnasCobranzaGerencia();
+		$ordenDocs = array("FACTURAS", "GUIAS", "LETRAS");
+		$porDoc = array();
+
+		foreach ($ordenDocs as $doc) {
+			$montos = array();
+			foreach ($columnas as $col) {
+				$montos[$col] = 0.0;
+			}
+			$porDoc[$doc] = array(
+				"nombre" => $doc,
+				"montos" => $montos,
+				"total" => 0.0,
+			);
+		}
+
+		foreach ($filas as $fila) {
+			$nomDoc = $fila["nom_doc"];
+			$nomPago = $fila["nom_pago"];
+			$monto = (float) $fila["monto"];
+
+			if ($nomPago === "REV" || !isset($porDoc[$nomDoc])) {
+				continue;
+			}
+			if (!isset($porDoc[$nomDoc]["montos"][$nomPago])) {
+				continue;
+			}
+
+			$porDoc[$nomDoc]["montos"][$nomPago] += $monto;
+			$porDoc[$nomDoc]["total"] += $monto;
+		}
+
+		$resultado = array();
+		foreach ($ordenDocs as $doc) {
+			if ($porDoc[$doc]["total"] > 0.005) {
+				$resultado[] = $porDoc[$doc];
+			}
+		}
+
+		$totales = array();
+		foreach ($columnas as $col) {
+			$totales[$col] = 0.0;
+		}
+		$totalGeneral = 0.0;
+		foreach ($resultado as $fila) {
+			foreach ($columnas as $col) {
+				$totales[$col] += $fila["montos"][$col];
+			}
+			$totalGeneral += $fila["total"];
+		}
+
+		return array(
+			"columnas" => $columnas,
+			"filas" => $resultado,
+			"totales" => $totales,
+			"total_general" => $totalGeneral,
+		);
+	}
 }

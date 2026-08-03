@@ -84,6 +84,12 @@ $idUsuarioSesionCxc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
                 </div>
 
                 <div class="pull-right">
+                    <button type="button" class="btn btn-outline-success" id="btnReporteEstadoCuentaGerencia" style="border:green 1px solid" title="Informe de estado de cuenta para gerencia (Resumen + Cobranza)">
+                        <img src="vistas/img/plantilla/excel.png" width="20px"> Estado cuenta gerencia
+                    </button>
+                </div>
+
+                <div class="pull-right">
                     <button class="btn btn-outline-success btnDocContado" ano="null" style="border:green 1px solid">
                         <img src="vistas/img/plantilla/download.png" width="20px"> Reporte Doc. Contado </button>
                 </div>
@@ -1788,6 +1794,81 @@ MODAL IMPORTAR CUENTAS DE BANCO
                 <form id="cxcFormExportDeudaClientes" method="GET" action="vistas/reportes_excel/rpt_cuentas_deuda_clientes.php" target="_blank" style="display:inline;">
                     <input type="hidden" name="solicitud_por" id="cxcExportSolicitadoPorHidden" value="">
                     <button type="submit" class="btn btn-success" id="btnCxcConfirmarExportDeuda">
+                        <i class="fa fa-download"></i> Descargar Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php
+$mesCobranzaDefault = (int) date("n", strtotime("first day of last month"));
+$anioCobranzaDefault = (int) date("Y", strtotime("first day of last month"));
+$nombresMesModalGerencia = array(
+    1 => "Enero", 2 => "Febrero", 3 => "Marzo", 4 => "Abril",
+    5 => "Mayo", 6 => "Junio", 7 => "Julio", 8 => "Agosto",
+    9 => "Septiembre", 10 => "Octubre", 11 => "Noviembre", 12 => "Diciembre",
+);
+?>
+<div class="modal fade" id="modalEstadoCuentaGerencia" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#3c8dbc; color:white">
+                <button type="button" class="close" data-dismiss="modal" style="color:white">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-file-excel-o"></i> Estado de cuenta gerencia</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Genera Excel con hojas <strong>Resumen</strong>, <strong>Cobranza</strong> y <strong>Metadatos</strong> (solo lectura).
+                    Debe indicar quién solicita el archivo.
+                </p>
+                <div class="form-group">
+                    <label for="ecgSolicitadoPor">Solicitado por <span class="text-danger">*</span></label>
+                    <select class="form-control selectpicker" id="ecgSolicitadoPor" data-live-search="true" data-size="8" required>
+                        <option value="">Seleccione responsable…</option>
+                        <?php foreach ($usuariosActivosCxc as $usuarioCxc) : ?>
+                            <option value="<?php echo (int) $usuarioCxc["id"]; ?>"
+                                <?php echo ((int) $usuarioCxc["id"] === $idUsuarioSesionCxc) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($usuarioCxc["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-xs-6">
+                        <div class="form-group">
+                            <label for="ecgMesCobranza">Mes cobranza</label>
+                            <select class="form-control" id="ecgMesCobranza">
+                                <?php foreach ($nombresMesModalGerencia as $numMes => $nomMes) : ?>
+                                    <option value="<?php echo $numMes; ?>" <?php echo $numMes === $mesCobranzaDefault ? "selected" : ""; ?>>
+                                        <?php echo $nomMes; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-6">
+                        <div class="form-group">
+                            <label for="ecgAnioCobranza">Año cobranza</label>
+                            <select class="form-control" id="ecgAnioCobranza">
+                                <?php for ($anioOpt = (int) date("Y"); $anioOpt >= 2020; $anioOpt--) : ?>
+                                    <option value="<?php echo $anioOpt; ?>" <?php echo $anioOpt === $anioCobranzaDefault ? "selected" : ""; ?>>
+                                        <?php echo $anioOpt; ?>
+                                    </option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <form id="ecgFormExport" method="GET" action="vistas/reportes_excel/rpt_estado_cuenta_gerencia.php" target="_blank" style="display:inline;">
+                    <input type="hidden" name="solicitud_por" id="ecgSolicitadoPorHidden" value="">
+                    <input type="hidden" name="mes" id="ecgMesHidden" value="">
+                    <input type="hidden" name="anio" id="ecgAnioHidden" value="">
+                    <button type="submit" class="btn btn-success" id="btnEcgConfirmarExport">
                         <i class="fa fa-download"></i> Descargar Excel
                     </button>
                 </form>
