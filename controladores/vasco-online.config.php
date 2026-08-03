@@ -1,24 +1,29 @@
 <?php
 
 /**
- * Vasco Online — sync vascorp → API.
+ * Vasco Online — sync vascorp → API (trackeado).
  *
- * Ajusta SOLO este archivo al cambiar de entorno.
- * La API key de producción/pruebas va en controladores/config.php.
- * En desarrollo se usa una key distinta (la del .env local de Vasco).
+ * Entorno y API key de producción/pruebas: controladores/config.php (NO trackeado)
+ *   define("VASCO_ONLINE_ENTORNO", "desarrollo"|"pruebas"|"produccion");
+ *   define("VASCO_ONLINE_API_KEY", "...");
  *
  * Entornos:
  *   desarrollo  — vascorp en Docker Mac, API Vasco en otro Docker (puerto 8084 en host)
  *   pruebas     — vascorp en desarrollo, pero contra el API REAL en internet
- *                 (https://api.jackyform.com.pe) para validar antes de producción
  *   produccion  — vascorp en servidor, contra el API REAL en internet
  *
- * Para pasar de pruebas a producción: solo cambia $vasco_online_entorno a "produccion".
- * La URL del API real es la misma; cambia solo el origen desde donde se ejecuta vascorp.
+ * Si VASCO_ONLINE_ENTORNO no está definido, se usa "produccion" (API real) para no
+ * apuntar por error a host.docker.internal en un deploy.
  */
 
-// $vasco_online_entorno = "pruebas";
-$vasco_online_entorno = "pruebas";
+$vasco_online_entorno = defined("VASCO_ONLINE_ENTORNO")
+    ? (string) VASCO_ONLINE_ENTORNO
+    : "produccion";
+
+if (!in_array($vasco_online_entorno, array("desarrollo", "pruebas", "produccion"), true)) {
+    $vasco_online_entorno = "produccion";
+}
+
 $GLOBALS["vasco_online_entorno"] = $vasco_online_entorno;
 
 // URL pública del API real (misma para pruebas y producción).
@@ -63,6 +68,8 @@ define("VASCO_ONLINE_SYNC_TIMEOUT", 120);
 define("VASCO_ONLINE_MAX_POR_LOTE", 500);
 define("VASCO_ONLINE_ENDPOINT_CLIENTES", "/v2/sync/customers-bulk");
 define("VASCO_ONLINE_ENDPOINT_CUENTAS", "/v2/sync/account-statements-bulk");
+define("VASCO_ONLINE_ENDPOINT_GRUPOS", "/v2/sync/business-groups-bulk");
+define("VASCO_ONLINE_ENDPOINT_MIEMBROS_GRUPOS", "/v2/sync/business-group-members-bulk");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING", "/v2/sync/collections-pending-delivery");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER", "/v2/sync/collections-deliver");
 define("VASCO_ONLINE_ENDPOINT_COBRANZAS_CANCEL", "/v2/sync/collections-cancel");
@@ -85,6 +92,8 @@ function obtenerConfigVascoOnline()
         "max_por_lote" => defined("VASCO_ONLINE_MAX_POR_LOTE") ? (int) VASCO_ONLINE_MAX_POR_LOTE : 500,
         "endpoint_clientes" => defined("VASCO_ONLINE_ENDPOINT_CLIENTES") ? VASCO_ONLINE_ENDPOINT_CLIENTES : "/v2/sync/customers-bulk",
         "endpoint_cuentas" => defined("VASCO_ONLINE_ENDPOINT_CUENTAS") ? VASCO_ONLINE_ENDPOINT_CUENTAS : "/v2/sync/account-statements-bulk",
+        "endpoint_grupos" => defined("VASCO_ONLINE_ENDPOINT_GRUPOS") ? VASCO_ONLINE_ENDPOINT_GRUPOS : "/v2/sync/business-groups-bulk",
+        "endpoint_miembros_grupos" => defined("VASCO_ONLINE_ENDPOINT_MIEMBROS_GRUPOS") ? VASCO_ONLINE_ENDPOINT_MIEMBROS_GRUPOS : "/v2/sync/business-group-members-bulk",
         "endpoint_cobranzas_pending" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_PENDING : "/v2/sync/collections-pending-delivery",
         "endpoint_cobranzas_deliver" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_DELIVER : "/v2/sync/collections-deliver",
         "endpoint_cobranzas_cancel" => defined("VASCO_ONLINE_ENDPOINT_COBRANZAS_CANCEL") ? VASCO_ONLINE_ENDPOINT_COBRANZAS_CANCEL : "/v2/sync/collections-cancel",
@@ -125,6 +134,28 @@ function obtenerUrlSyncCuentasVasco()
     }
 
     return $base . $endpoint;
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlSyncGruposVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_grupos"]) ? $config["endpoint_grupos"] : "/v2/sync/business-groups-bulk";
+
+    return obtenerUrlVascoEndpoint($endpoint);
+}
+
+/**
+ * @return string
+ */
+function obtenerUrlSyncMiembrosGruposVasco()
+{
+    $config = obtenerConfigVascoOnline();
+    $endpoint = isset($config["endpoint_miembros_grupos"]) ? $config["endpoint_miembros_grupos"] : "/v2/sync/business-group-members-bulk";
+
+    return obtenerUrlVascoEndpoint($endpoint);
 }
 
 /**

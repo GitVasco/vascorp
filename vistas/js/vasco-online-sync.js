@@ -38,6 +38,26 @@ $(function () {
         sincronizando: false,
     };
 
+    var $btnAnalizarGrupos = $("#btnAnalizarGruposVasco");
+    var $btnSincronizarGrupos = $("#btnSincronizarGruposVasco");
+    var $btnReintentarGrupos = $("#btnReintentarFallidosGruposVasco");
+    var $btnDescargarRechazadosGrupos = $("#btnDescargarRechazadosGruposVasco");
+    var $badgeEstadoSyncGrupos = $("#badgeEstadoSyncGrupos");
+    var $barraProgresoGrupos = $("#barraProgresoSyncGrupos");
+
+    var estadoSyncGrupos = {
+        listosGrupos: 0,
+        listosMiembros: 0,
+        lotesGrupos: 0,
+        lotesMiembros: 0,
+        lotesEstimados: 0,
+        traceIdGrupos: null,
+        traceIdMiembros: null,
+        lotesFallidos: [],
+        rechazados: [],
+        sincronizando: false,
+    };
+
     function escHtml(valor) {
         return $("<div>").text(valor == null ? "" : String(valor)).html();
     }
@@ -1184,8 +1204,578 @@ $(function () {
             });
     });
 
+    function actualizarProgresoGrupos(hechos, total, etiqueta) {
+        var pct = total > 0 ? Math.round((hechos / total) * 100) : 0;
+        $barraProgresoGrupos.css("width", pct + "%");
+        $("#textoProgresoSyncGrupos").text(
+            (etiqueta || "Progreso") +
+                " · " +
+                fmtNum(hechos) +
+                " de " +
+                fmtNum(total) +
+                " lotes"
+        );
+    }
+
+    function renderResumenGrupos(resumen) {
+        $("#statGruposTotal").text(fmtNum(resumen.total_grupos));
+        $("#statGruposActivos").text(fmtNum(resumen.activos));
+        $("#statGruposListos").text(fmtNum(resumen.listos_grupos));
+        $("#statGruposMiembros").text(fmtNum(resumen.listos_miembros));
+        $("#statGruposLotesGrupos").text(fmtNum(resumen.lotes_grupos));
+        $("#statGruposLotesMiembros").text(fmtNum(resumen.lotes_miembros));
+        $("#statGruposMaxLote").text(fmtNum(resumen.max_por_lote));
+        $("#statGruposInexistente").text(fmtNum(resumen.grupo_inexistente));
+        $("#statGruposSinDoc").text(fmtNum(resumen.con_grupo_sin_doc));
+
+        estadoSyncGrupos.listosGrupos = parseInt(resumen.listos_grupos, 10) || 0;
+        estadoSyncGrupos.listosMiembros = parseInt(resumen.listos_miembros, 10) || 0;
+        estadoSyncGrupos.lotesGrupos = parseInt(resumen.lotes_grupos, 10) || 0;
+        estadoSyncGrupos.lotesMiembros = parseInt(resumen.lotes_miembros, 10) || 0;
+        estadoSyncGrupos.lotesEstimados = parseInt(resumen.lotes_estimados, 10) || 0;
+        estadoSyncGrupos.traceIdGrupos = null;
+        estadoSyncGrupos.traceIdMiembros = null;
+        estadoSyncGrupos.lotesFallidos = [];
+
+        var puedeSync =
+            (estadoSyncGrupos.listosGrupos > 0 || estadoSyncGrupos.listosMiembros > 0) &&
+            !estadoSyncGrupos.sincronizando;
+        $btnSincronizarGrupos.prop("disabled", !puedeSync);
+        $btnReintentarGrupos.prop("disabled", true);
+
+        $badgeEstadoSyncGrupos
+            .removeClass("label-warning label-success label-danger label-default")
+            .addClass(puedeSync ? "label-success" : "label-warning")
+            .html(
+                puedeSync
+                    ? '<i class="fa fa-check"></i> Listo'
+                    : '<i class="fa fa-exclamation-triangle"></i> Revisar'
+            );
+
+        $("#badgeCountGruposMuestra").text(fmtNum(resumen.listos_grupos));
+        $("#badgeCountGruposMiembros").text(fmtNum(resumen.listos_miembros));
+        $("#badgeCountGruposBloqueos").text(
+            fmtNum(
+                (parseInt(resumen.grupo_inexistente, 10) || 0) +
+                    (parseInt(resumen.con_grupo_sin_doc, 10) || 0) +
+                    (parseInt(resumen.sin_codigo, 10) || 0) +
+                    (parseInt(resumen.sin_nombre, 10) || 0)
+            )
+        );
+
+        actualizarProgresoGrupos(0, estadoSyncGrupos.lotesEstimados, "Analiza primero");
+    }
+
+    function renderMuestraGrupos(muestra) {
+        var $tbody = $("#tablaMuestraGruposVasco tbody");
+        $tbody.empty();
+
+        if (!muestra || muestra.length === 0) {
+            $tbody.append(
+                '<tr><td colspan="5">' +
+                    '<div class="vasco-empty-state"><i class="fa fa-check-circle"></i>' +
+                    "No hay grupos para enviar.</div></td></tr>"
+            );
+            return;
+        }
+
+        muestra.forEach(function (g) {
+            $tbody.append(
+                "<tr>" +
+                    "<td><code>" +
+                    escHtml(g.codigo) +
+                    "</code></td>" +
+                    "<td>" +
+                    escHtml(g.nombre) +
+                    "</td>" +
+                    "<td>" +
+                    estadoLabel(g.activo) +
+                    "</td>" +
+                    '<td class="text-center"><span class="badge bg-blue">' +
+                    escHtml(g.total_clientes) +
+                    "</span></td>" +
+                    "<td><code>" +
+                    escHtml(g.id) +
+                    "</code></td>" +
+                    "</tr>"
+            );
+        });
+    }
+
+    function renderMuestraMiembrosGrupos(muestra) {
+        var $tbody = $("#tablaMuestraMiembrosGruposVasco tbody");
+        $tbody.empty();
+
+        if (!muestra || muestra.length === 0) {
+            $tbody.append(
+                '<tr><td colspan="3">' +
+                    '<div class="vasco-empty-state"><i class="fa fa-check-circle"></i>' +
+                    "No hay asignaciones listas (cliente consolidado con grupo válido).</div></td></tr>"
+            );
+            return;
+        }
+
+        muestra.forEach(function (m) {
+            $tbody.append(
+                "<tr>" +
+                    "<td><code>" +
+                    escHtml(m.customer_codigo) +
+                    "</code> " +
+                    escHtml(m.customer_nombre) +
+                    " <small class='text-muted'>id " +
+                    escHtml(m.customer_id) +
+                    "</small></td>" +
+                    "<td>" +
+                    escHtml(m.tipo_documento) +
+                    " <code>" +
+                    escHtml(m.documento) +
+                    "</code></td>" +
+                    "<td><code>" +
+                    escHtml(m.grupo_codigo) +
+                    "</code> " +
+                    escHtml(m.grupo_nombre) +
+                    "</td>" +
+                    "</tr>"
+            );
+        });
+    }
+
+    function renderBloqueosGrupos(bloqueos) {
+        var $contenido = $("#contenidoBloqueosGruposVasco");
+        var inexistente = (bloqueos && bloqueos.grupo_inexistente) || [];
+        var sinDoc = (bloqueos && bloqueos.con_grupo_sin_doc) || [];
+
+        if (inexistente.length === 0 && sinDoc.length === 0) {
+            $contenido.html(
+                '<div class="vasco-empty-state"><i class="fa fa-check-circle"></i>' +
+                    "Sin bloqueos detectados.</div>"
+            );
+            return;
+        }
+
+        var html = '<div style="padding:12px 15px;">';
+
+        if (inexistente.length > 0) {
+            html +=
+                '<h5 style="margin-top:0;">Código de grupo inexistente <span class="badge">' +
+                inexistente.length +
+                "</span></h5>";
+            html += "<ul class='list-unstyled' style='margin-bottom:15px;'>";
+            inexistente.slice(0, 20).forEach(function (c) {
+                html +=
+                    "<li style='padding:3px 0;'><code>" +
+                    escHtml(c.codigo) +
+                    "</code> — " +
+                    escHtml(c.nombre) +
+                    " — grupo <code>" +
+                    escHtml(c.grupo) +
+                    "</code></li>";
+            });
+            if (inexistente.length > 20) {
+                html +=
+                    "<li class='text-muted'><em>… y " + (inexistente.length - 20) + " más</em></li>";
+            }
+            html += "</ul>";
+        }
+
+        if (sinDoc.length > 0) {
+            html +=
+                '<h5>Con grupo pero sin documento válido <span class="badge">' +
+                sinDoc.length +
+                "</span></h5>";
+            html += "<ul class='list-unstyled'>";
+            sinDoc.slice(0, 20).forEach(function (c) {
+                html +=
+                    "<li style='padding:3px 0;'><code>" +
+                    escHtml(c.codigo) +
+                    "</code> — " +
+                    escHtml(c.nombre) +
+                    " — grupo <code>" +
+                    escHtml(c.grupo) +
+                    "</code></li>";
+            });
+            if (sinDoc.length > 20) {
+                html += "<li class='text-muted'><em>… y " + (sinDoc.length - 20) + " más</em></li>";
+            }
+            html += "</ul>";
+        }
+
+        html += "</div>";
+        $contenido.html(html);
+    }
+
+    function logFailedGrupos(resp, prefijo) {
+        var failed = resp && resp.failed ? resp.failed : [];
+        var i;
+        for (i = 0; i < failed.length && i < 8; i++) {
+            var f = failed[i];
+            var desc = f.code || f.external_id || f.customer_codigo || f.customer_external_id || "?";
+            agregarLog(prefijo + " [" + desc + "] " + (f.message || "error"));
+        }
+        if (failed.length > 8) {
+            agregarLog(prefijo + " … y " + (failed.length - 8) + " fila(s) más");
+        }
+    }
+
+    function enviarLoteGrupos(numeroLote) {
+        var data = { accion: "sincronizar-lote-grupos", lote: numeroLote };
+        if (estadoSyncGrupos.traceIdGrupos) {
+            data.trace_id = estadoSyncGrupos.traceIdGrupos;
+        }
+        return $.ajax({
+            url: "ajax/vasco-sync.ajax.php",
+            method: "GET",
+            dataType: "json",
+            data: data,
+            timeout: 130000,
+        });
+    }
+
+    function enviarLoteMiembrosGrupos(numeroLote) {
+        var data = { accion: "sincronizar-lote-miembros-grupos", lote: numeroLote };
+        if (estadoSyncGrupos.traceIdMiembros) {
+            data.trace_id = estadoSyncGrupos.traceIdMiembros;
+        }
+        return $.ajax({
+            url: "ajax/vasco-sync.ajax.php",
+            method: "GET",
+            dataType: "json",
+            data: data,
+            timeout: 130000,
+        });
+    }
+
+    /**
+     * cola: [{fase:'grupos'|'miembros', lote:N}, ...]
+     */
+    function ejecutarLotesGrupos(cola, esReintento) {
+        if (!cola || cola.length === 0) {
+            return;
+        }
+
+        estadoSyncGrupos.sincronizando = true;
+        $btnSincronizarGrupos.prop("disabled", true);
+        $btnReintentarGrupos.prop("disabled", true);
+        $btnAnalizarGrupos.prop("disabled", true);
+
+        var indice = 0;
+        var totalLotes = estadoSyncGrupos.lotesEstimados;
+        var nuevosFallidos = [];
+        var totalInsert = 0;
+        var totalUpdate = 0;
+        var totalAdopted = 0;
+        var totalMiembrosUpdated = 0;
+        var totalRechazadas = 0;
+        var lotesParciales = 0;
+        var hechos = 0;
+
+        if (!esReintento) {
+            estadoSyncGrupos.rechazados = [];
+        }
+
+        agregarLog(
+            (esReintento ? "Reintentando " : "Iniciando sync de grupos — ") +
+                fmtNum(cola.length) +
+                " lote(s) (grupos → miembros)…"
+        );
+
+        function siguiente() {
+            if (indice >= cola.length) {
+                finalizar();
+                return;
+            }
+
+            var item = cola[indice];
+            var fase = item.fase;
+            var numeroLote = item.lote;
+            var etiqueta = fase === "grupos" ? "grupos" : "miembros";
+
+            agregarLog("POST " + etiqueta + " lote " + numeroLote + "…");
+
+            var req =
+                fase === "grupos" ? enviarLoteGrupos(numeroLote) : enviarLoteMiembrosGrupos(numeroLote);
+
+            req.done(function (resp) {
+                if (resp && resp.trace_id) {
+                    if (fase === "grupos") {
+                        estadoSyncGrupos.traceIdGrupos = resp.trace_id;
+                    } else {
+                        estadoSyncGrupos.traceIdMiembros = resp.trace_id;
+                    }
+                }
+
+                if (resp && resp.skipped) {
+                    agregarLog("Lote " + etiqueta + " " + numeroLote + " vacío — se omite.");
+                    indice++;
+                    hechos++;
+                    actualizarProgresoGrupos(hechos, totalLotes, "Enviando");
+                    siguiente();
+                    return;
+                }
+
+                if (!resp || !resp.ok) {
+                    nuevosFallidos.push({ fase: fase, lote: numeroLote });
+                    agregarLog(
+                        "Lote " +
+                            etiqueta +
+                            " " +
+                            numeroLote +
+                            " ERROR — " +
+                            (resp && resp.msg ? resp.msg : "respuesta inválida")
+                    );
+                } else {
+                    var rechazadasLote = resp.failed && resp.failed.length ? resp.failed.length : 0;
+                    var detalle =
+                        "Lote " +
+                        etiqueta +
+                        " " +
+                        numeroLote +
+                        (rechazadasLote > 0 ? " PARCIAL" : " OK");
+
+                    if (fase === "grupos") {
+                        totalInsert += parseInt(resp.inserted, 10) || 0;
+                        totalUpdate += parseInt(resp.updated, 10) || 0;
+                        totalAdopted += parseInt(resp.adopted, 10) || 0;
+                        detalle +=
+                            " — insertados " +
+                            (resp.inserted || 0) +
+                            ", actualizados " +
+                            (resp.updated || 0) +
+                            ", adoptados " +
+                            (resp.adopted || 0);
+                    } else {
+                        totalMiembrosUpdated += parseInt(resp.updated, 10) || 0;
+                        detalle += " — asignaciones " + (resp.updated || 0);
+                    }
+
+                    if (rechazadasLote > 0) {
+                        detalle += " (" + rechazadasLote + " rechazadas)";
+                        lotesParciales++;
+                        totalRechazadas += rechazadasLote;
+                        logFailedGrupos(resp, "  " + etiqueta + " " + numeroLote);
+                        resp.failed.forEach(function (f) {
+                            estadoSyncGrupos.rechazados.push({
+                                fase: fase,
+                                lote: numeroLote,
+                                code: f.code || f.grupo_codigo || "",
+                                external_id: f.external_id || f.customer_external_id || "",
+                                nombre: f.name || f.customer_nombre || f.customer_codigo || "",
+                                message: f.message || "error",
+                            });
+                        });
+                    }
+
+                    agregarLog(detalle);
+                }
+
+                indice++;
+                hechos++;
+                actualizarProgresoGrupos(hechos, Math.max(totalLotes, cola.length), "Enviando");
+                siguiente();
+            }).fail(function (xhr) {
+                nuevosFallidos.push({ fase: fase, lote: numeroLote });
+                agregarLog(
+                    "Lote " + etiqueta + " " + numeroLote + " falló — red/servidor (" + xhr.status + ")"
+                );
+                indice++;
+                hechos++;
+                actualizarProgresoGrupos(hechos, Math.max(totalLotes, cola.length), "Enviando");
+                siguiente();
+            });
+        }
+
+        function finalizar() {
+            estadoSyncGrupos.sincronizando = false;
+            estadoSyncGrupos.lotesFallidos = nuevosFallidos;
+
+            $btnAnalizarGrupos.prop("disabled", false);
+            $btnSincronizarGrupos.prop(
+                "disabled",
+                estadoSyncGrupos.listosGrupos <= 0 && estadoSyncGrupos.listosMiembros <= 0
+            );
+            $btnReintentarGrupos.prop("disabled", nuevosFallidos.length === 0);
+            if ($btnDescargarRechazadosGrupos.length) {
+                $btnDescargarRechazadosGrupos.prop("disabled", estadoSyncGrupos.rechazados.length === 0);
+            }
+
+            if (nuevosFallidos.length > 0) {
+                agregarLog(
+                    "Sync grupos terminada con " +
+                        nuevosFallidos.length +
+                        " lote(s) con error" +
+                        (totalRechazadas > 0
+                            ? " · " + fmtNum(totalRechazadas) + " fila(s) rechazadas"
+                            : "")
+                );
+                swal({
+                    type: "warning",
+                    title: "Sync con errores",
+                    text:
+                        nuevosFallidos.length +
+                        " lote(s) fallaron. Usa Reintentar fallidos." +
+                        (totalRechazadas > 0
+                            ? " Además " + fmtNum(totalRechazadas) + " fila(s) rechazadas."
+                            : ""),
+                });
+            } else if (lotesParciales > 0) {
+                agregarLog(
+                    "Sync grupos parcial — grupos +" +
+                        fmtNum(totalInsert) +
+                        "/~" +
+                        fmtNum(totalUpdate) +
+                        "/adop " +
+                        fmtNum(totalAdopted) +
+                        ", miembros " +
+                        fmtNum(totalMiembrosUpdated) +
+                        ", rechazadas " +
+                        fmtNum(totalRechazadas)
+                );
+                swal({
+                    type: "warning",
+                    title: "Sync parcial",
+                    text:
+                        "Lotes enviados. Vasco rechazó " +
+                        fmtNum(totalRechazadas) +
+                        " fila(s). Revisa el log o descarga el CSV.",
+                });
+            } else {
+                agregarLog(
+                    "Sync grupos completa — insertados " +
+                        totalInsert +
+                        ", actualizados " +
+                        totalUpdate +
+                        ", adoptados " +
+                        totalAdopted +
+                        ", miembros " +
+                        totalMiembrosUpdated +
+                        "."
+                );
+                swal({
+                    type: "success",
+                    title: "Sync completa",
+                    text:
+                        "Grupos: +" +
+                        fmtNum(totalInsert) +
+                        " / ~" +
+                        fmtNum(totalUpdate) +
+                        " / adop " +
+                        fmtNum(totalAdopted) +
+                        ". Asignaciones: " +
+                        fmtNum(totalMiembrosUpdated) +
+                        ".",
+                });
+            }
+        }
+
+        siguiente();
+    }
+
+    function construirColaSyncGrupos() {
+        var cola = [];
+        var i;
+        for (i = 1; i <= estadoSyncGrupos.lotesGrupos; i++) {
+            cola.push({ fase: "grupos", lote: i });
+        }
+        for (i = 1; i <= estadoSyncGrupos.lotesMiembros; i++) {
+            cola.push({ fase: "miembros", lote: i });
+        }
+        return cola;
+    }
+
+    $btnAnalizarGrupos.on("click", function () {
+        var $btn = $(this);
+        $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Analizando…');
+        agregarLog("Auditoría de grupos empresariales…");
+
+        $.ajax({
+            url: "ajax/vasco-sync.ajax.php",
+            method: "GET",
+            dataType: "json",
+            data: { accion: "auditar-grupos" },
+        })
+            .done(function (resp) {
+                if (!resp || !resp.ok) {
+                    agregarLog("Error grupos: " + (resp && resp.msg ? resp.msg : "respuesta inválida"));
+                    swal({
+                        type: "error",
+                        title: "No se pudo analizar",
+                        text: resp && resp.msg ? resp.msg : "Error desconocido",
+                    });
+                    return;
+                }
+
+                renderResumenGrupos(resp.resumen);
+                renderMuestraGrupos(resp.muestra_grupos);
+                renderMuestraMiembrosGrupos(resp.muestra_miembros);
+                renderBloqueosGrupos(resp.bloqueos);
+
+                agregarLog(
+                    "Grupos OK — grupos: " +
+                        resp.resumen.listos_grupos +
+                        ", asignaciones: " +
+                        resp.resumen.listos_miembros +
+                        ", bloqueos: " +
+                        resp.resumen.bloqueados_envio
+                );
+            })
+            .fail(function (xhr) {
+                agregarLog("Fallo auditoría grupos (" + xhr.status + ")");
+                swal({
+                    type: "error",
+                    title: "Error de conexión",
+                    text: "No se pudo consultar grupos_empresarialesjf.",
+                });
+            })
+            .always(function () {
+                $btn.prop("disabled", false).html('<i class="fa fa-search"></i> Analizar grupos');
+            });
+    });
+
+    $btnSincronizarGrupos.on("click", function () {
+        var cola = construirColaSyncGrupos();
+        if (cola.length === 0) {
+            swal({
+                type: "warning",
+                title: "Sin datos",
+                text: "Analiza primero para calcular los lotes.",
+            });
+            return;
+        }
+        ejecutarLotesGrupos(cola, false);
+    });
+
+    $btnReintentarGrupos.on("click", function () {
+        if (estadoSyncGrupos.lotesFallidos.length === 0) {
+            return;
+        }
+        ejecutarLotesGrupos(estadoSyncGrupos.lotesFallidos.slice(), true);
+    });
+
+    $btnDescargarRechazadosGrupos.on("click", function () {
+        if (!estadoSyncGrupos.rechazados.length) {
+            swal("Sin datos", "No hay filas rechazadas para exportar.", "info");
+            return;
+        }
+
+        var filas = estadoSyncGrupos.rechazados.map(function (r) {
+            return [r.fase, r.lote, r.code, r.external_id, r.nombre, r.message];
+        });
+
+        descargarCsv(
+            "grupos-rechazados-" +
+                (estadoSyncGrupos.traceIdGrupos || estadoSyncGrupos.traceIdMiembros || "vasco") +
+                ".csv",
+            ["fase", "lote", "codigo", "external_id", "nombre", "motivo"],
+            filas
+        );
+    });
+
     $('a[href="#tab-cuentas"]').on("shown.bs.tab", function () {
         agregarLog("Pestaña Cuentas — estados de cuenta (cuenta_ctejf).");
+    });
+
+    $('a[href="#tab-grupos"]').on("shown.bs.tab", function () {
+        agregarLog("Pestaña Grupos — maestro + asignaciones (grupos_empresarialesjf).");
     });
 
     $('a[href="#tab-clientes"]').on("shown.bs.tab", function () {

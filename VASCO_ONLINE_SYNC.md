@@ -14,9 +14,11 @@ Integración para enviar el maestro de clientes de **vascorp** (`clientesjf`) ha
 | Sí | Aún no |
 |----|--------|
 | Sincronizar **clientes** por lotes de 500 | Productos, vendedores, pedidos |
-| Auditar duplicados y bloqueos antes de enviar | `seller_user_id` (vendedor) |
-| Probar conexión al API (`GET /health`) | `business_group_code` (grupos) |
-| Reintentar lotes fallidos | Sync automática programada |
+| Sincronizar **cuentas** (estados de cuenta) | `seller_user_id` (vendedor) |
+| Sincronizar **grupos empresariales** + asignaciones | Sync automática programada |
+| Auditar duplicados y bloqueos antes de enviar | |
+| Probar conexión al API (`GET /health`) | |
+| Reintentar lotes fallidos | |
 
 ---
 
@@ -87,28 +89,26 @@ Si un lote falló (red, timeout, HTTP error o respuesta 207 con filas rechazadas
 
 ## Configuración
 
-### API key (secreto)
+### API key y entorno (secreto / local)
 
-Archivo: `controladores/config.php`
+Archivo: `controladores/config.php` (**no trackeado**)
 
 ```php
+define("VASCO_ONLINE_ENTORNO", "desarrollo"); // desarrollo | pruebas | produccion
 define("VASCO_ONLINE_API_KEY", "tu-clave-aqui");
 ```
 
-Misma convención que `TOKEN_WHATSAPP` y otros tokens del sistema.
+Misma convención que `TOKEN_WHATSAPP` y otros tokens del sistema.  
+No pongas el entorno en `vasco-online.config.php` (ese sí va a git).
 
-### URLs, entorno, lotes y timeout
+### URLs, lotes y timeout
 
-Archivo: `controladores/vasco-online.config.php`
-
-```php
-$vasco_online_entorno = "desarrollo";  // o "produccion"
-```
+Archivo: `controladores/vasco-online.config.php` (trackeado; lee `VASCO_ONLINE_ENTORNO` de `config.php`)
 
 | Entorno | Cuándo | URL típica |
 |---------|--------|------------|
 | `desarrollo` | vascorp en Docker Mac, API Vasco en otro Docker | `http://host.docker.internal:8084` + header `Host: api.vasco.io` |
-| `produccion` | vascorp en XAMPP / servidor Windows | `http://api.vasco.io:8084` (o URL real accesible desde el servidor) |
+| `pruebas` / `produccion` | contra el API real | `https://api.jackyform.com.pe` |
 
 Otras constantes en el mismo archivo:
 
@@ -116,15 +116,17 @@ Otras constantes en el mismo archivo:
 |-----------|-------|-----|
 | `VASCO_ONLINE_SYNC_TIMEOUT` | 120 | Segundos por request cURL |
 | `VASCO_ONLINE_MAX_POR_LOTE` | 500 | Máximo clientes por POST (límite del API) |
-| `VASCO_ONLINE_ENDPOINT_CLIENTES` | `/v2/sync/customers-bulk` | Endpoint de sync |
+| `VASCO_ONLINE_ENDPOINT_CLIENTES` | `/v2/sync/customers-bulk` | Sync clientes |
+| `VASCO_ONLINE_ENDPOINT_CUENTAS` | `/v2/sync/account-statements-bulk` | Sync cuentas |
+| `VASCO_ONLINE_ENDPOINT_GRUPOS` | `/v2/sync/business-groups-bulk` | Sync grupos |
+| `VASCO_ONLINE_ENDPOINT_MIEMBROS_GRUPOS` | `/v2/sync/business-group-members-bulk` | Sync asignaciones |
 
 ### Checklist producción (XAMPP)
 
-1. `$vasco_online_entorno = "produccion"` en `vasco-online.config.php`.
-2. API key correcta en `config.php`.
-3. El servidor puede resolver y conectar a la URL del API (no uses `host.docker.internal` en producción).
-4. PHP con extensión **cURL** habilitada.
-5. Probar **Probar** en pantalla antes del primer envío masivo.
+1. En `config.php`: `VASCO_ONLINE_ENTORNO` = `"produccion"` (o `"pruebas"`) y API key correcta.
+2. El servidor puede resolver y conectar a la URL del API (no uses `host.docker.internal` en producción).
+3. PHP con extensión **cURL** habilitada.
+4. Probar **Probar** en pantalla antes del primer envío masivo.
 
 ---
 
@@ -174,7 +176,51 @@ Body:
 | `email` | `email` | Opcional |
 | `state` | calculado | `1` activo, `2` inactivo |
 
-**No se envía hoy:** `seller_user_id`, `business_group_code`, `trade_name`.
+**No se envía en customers-bulk:** `seller_user_id`, `business_group_code`, `trade_name`.  
+La agrupación se hace por el endpoint de miembros (pestaña **Grupos**).
+
+---
+
+## Sync de grupos empresariales
+
+Pestaña **Grupos** en Vasco Online. Orden canónico: **clientes** (pestaña Clientes) → **grupos** → **miembros**.
+
+### Uso
+
+1. Sincronizar primero el maestro de **Clientes**.
+2. Abrir pestaña **Grupos** → **Analizar grupos**.
+3. **Sincronizar**: envía lotes de grupos y, enseguida, lotes de asignaciones.
+4. Si falla un lote: **Reintentar fallidos** (solo esos lotes).
+
+### Contrato
+
+```
+POST /v2/sync/business-groups-bulk
+POST /v2/sync/business-group-members-bulk
+Authorization: {API_KEY}
+Content-Type: application/json
+```
+
+Documentación detallada: proyecto Vasco → `postman/VASCORP_SYNC_BUSINESS_GROUPS.md`.
+
+### Campos grupo
+
+| Campo API | Origen vascorp | Notas |
+|-----------|----------------|-------|
+| `external_id` | `grupos_empresarialesjf.id` | Upsert |
+| `code` | `codigo` | Ej. `GE0076` |
+| `name` | `nombre` | Máx. 160 en Vasco |
+| `notes` | `descripcion` | Solo si tiene valor |
+| `state` | `estado` | `1` activo, `2` inactivo |
+
+### Campos miembro
+
+| Campo API | Origen vascorp | Notas |
+|-----------|----------------|-------|
+| `customer_external_id` | `clientesjf.id` consolidado | Mismo id del sync de clientes |
+| `business_group_external_id` | `grupos_empresarialesjf.id` | Vía `clientesjf.grupo = codigo` |
+
+Solo se envían asignaciones actuales (cliente consolidado con documento válido y grupo existente). No hay unassign masivo ni purge de grupos huérfanos en Vasco.
 
 ### Respuestas
 

@@ -30,6 +30,12 @@
         $urlSyncCuentas = function_exists("obtenerUrlSyncCuentasVasco")
             ? obtenerUrlSyncCuentasVasco()
             : "";
+        $urlSyncGrupos = function_exists("obtenerUrlSyncGruposVasco")
+            ? obtenerUrlSyncGruposVasco()
+            : "";
+        $urlSyncMiembrosGrupos = function_exists("obtenerUrlSyncMiembrosGruposVasco")
+            ? obtenerUrlSyncMiembrosGruposVasco()
+            : "";
         $urlHealthVasco = function_exists("obtenerUrlHealthVasco")
             ? obtenerUrlHealthVasco()
             : "";
@@ -71,9 +77,15 @@
                     <?php if ($urlSyncCuentas !== "") { ?>
                     · Sync cuentas: <code><?php echo htmlspecialchars($urlSyncCuentas, ENT_QUOTES, "UTF-8"); ?></code>
                     <?php } ?>
+                    <?php if ($urlSyncGrupos !== "") { ?>
+                    · Sync grupos: <code><?php echo htmlspecialchars($urlSyncGrupos, ENT_QUOTES, "UTF-8"); ?></code>
+                    <?php } ?>
+                    <?php if ($urlSyncMiembrosGrupos !== "") { ?>
+                    · Sync miembros: <code><?php echo htmlspecialchars($urlSyncMiembrosGrupos, ENT_QUOTES, "UTF-8"); ?></code>
+                    <?php } ?>
                     · Timeout <?php echo (int) $configVascoOnline["timeout"]; ?> s
-                    · API key en <code>controladores/config.php</code>
-                    · URLs en <code>controladores/vasco-online.config.php</code>
+                    · Entorno y API key en <code>controladores/config.php</code>
+                    · URLs/endpoints en <code>controladores/vasco-online.config.php</code>
                 </p>
             </div>
         </div>
@@ -83,6 +95,9 @@
             <ul class="nav nav-tabs">
                 <li class="active">
                     <a href="#tab-clientes" data-toggle="tab"><i class="fa fa-users"></i> Clientes</a>
+                </li>
+                <li>
+                    <a href="#tab-grupos" data-toggle="tab"><i class="fa fa-sitemap"></i> Grupos</a>
                 </li>
                 <li>
                     <a href="#tab-cuentas" data-toggle="tab"><i class="fa fa-file-text-o"></i> Cuentas</a>
@@ -204,7 +219,7 @@
                                     </button>
                                     <p class="text-muted" style="margin:12px 0 0;font-size:12px;">
                                         Envía <strong>activos e inactivos</strong> con documento válido.
-                                        Sin vendedor ni grupo por ahora.
+                                        Sin vendedor. Los grupos van en la pestaña <strong>Grupos</strong>.
                                         <code>external_id</code> = <code>clientesjf.id</code>
                                     </p>
                                 </div>
@@ -583,6 +598,249 @@
 
                 </div>
 
+                <!-- ========== PESTAÑA GRUPOS EMPRESARIALES ========== -->
+                <div class="tab-pane" id="tab-grupos">
+
+                    <div class="row">
+
+                        <div class="col-md-4">
+
+                            <div class="box box-primary vasco-panel-accion">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">
+                                        <span class="vasco-step-badge">1</span> Analizar
+                                    </h3>
+                                    <div class="box-tools pull-right">
+                                        <span class="label label-default" id="badgeEstadoSyncGrupos">
+                                            <i class="fa fa-circle-o"></i> Sin analizar
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="box-body">
+                                    <p class="text-muted" style="margin-top:0;">
+                                        Cuenta grupos en <code>grupos_empresarialesjf</code> y
+                                        asignaciones cliente → grupo (cliente consolidado por documento).
+                                    </p>
+                                    <button type="button" class="btn btn-primary btn-block btn-lg" id="btnAnalizarGruposVasco">
+                                        <i class="fa fa-search"></i> Analizar grupos
+                                    </button>
+                                    <p class="text-muted vasco-box-footnote">
+                                        Requiere maestro de <strong>clientes</strong> ya sync en Vasco
+                                        antes de enviar miembros.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="box box-default">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-bar-chart"></i> Resumen</h3>
+                                </div>
+                                <div class="box-body" style="padding-top:8px;">
+                                    <ul class="vasco-resumen-list">
+                                        <li>
+                                            <span>Grupos total</span>
+                                            <span class="valor" id="statGruposTotal">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Activos</span>
+                                            <span class="valor" id="statGruposActivos">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Grupos a enviar</span>
+                                            <span class="valor ok" id="statGruposListos">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Asignaciones a enviar</span>
+                                            <span class="valor ok" id="statGruposMiembros">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Lotes grupos</span>
+                                            <span class="valor" id="statGruposLotesGrupos">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Lotes miembros</span>
+                                            <span class="valor" id="statGruposLotesMiembros">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Máx. por lote</span>
+                                            <span class="valor" id="statGruposMaxLote"><?php echo (int) $configVascoOnline["max_por_lote"]; ?></span>
+                                        </li>
+                                        <li>
+                                            <span>Grupo inexistente</span>
+                                            <span class="valor warn" id="statGruposInexistente">—</span>
+                                        </li>
+                                        <li>
+                                            <span>Con grupo sin doc. válido</span>
+                                            <span class="valor warn" id="statGruposSinDoc">—</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="box box-success">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">
+                                        <span class="vasco-step-badge muted">2</span> Enviar
+                                    </h3>
+                                </div>
+                                <div class="box-body">
+                                    <div class="progress progress-xs active" style="margin-bottom:8px;">
+                                        <div class="progress-bar progress-bar-success" id="barraProgresoSyncGrupos" style="width: 0%"></div>
+                                    </div>
+                                    <p class="text-muted" id="textoProgresoSyncGrupos" style="margin-bottom:12px;">
+                                        Analiza primero para calcular lotes
+                                    </p>
+                                    <button type="button" class="btn btn-success btn-block" id="btnSincronizarGruposVasco" disabled>
+                                        <i class="fa fa-play"></i> Sincronizar
+                                    </button>
+                                    <button type="button" class="btn btn-default btn-block" id="btnReintentarFallidosGruposVasco" disabled style="margin-top:6px;">
+                                        <i class="fa fa-repeat"></i> Reintentar fallidos
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-block" id="btnDescargarRechazadosGruposVasco" disabled style="margin-top:6px;">
+                                        <i class="fa fa-download"></i> Descargar rechazados (CSV)
+                                    </button>
+                                    <p class="text-muted vasco-box-footnote">
+                                        Orden: <strong>grupos</strong> → <strong>miembros</strong>.
+                                        <code>external_id</code> grupo = <code>grupos_empresarialesjf.id</code>.
+                                        Cliente = mismo id consolidado del sync de clientes.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="box box-default vasco-guia-sync">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-question-circle"></i> Reglas</h3>
+                                </div>
+                                <div class="box-body">
+
+                                    <div class="vasco-guia-item">
+                                        <h5><i class="fa fa-check text-green"></i> Qué se envía</h5>
+                                        <ul>
+                                            <li>Maestro de grupos (activos e inactivos)</li>
+                                            <li>Asignaciones actuales: cliente consolidado con <code>grupo</code> válido</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="vasco-guia-item">
+                                        <h5><i class="fa fa-ban text-red"></i> Qué no va</h5>
+                                        <ul>
+                                            <li>Clientes sin documento válido (no están en Vasco)</li>
+                                            <li>Códigos de grupo que no existen en el maestro</li>
+                                            <li>Unassigns masivos ni borrado de grupos huérfanos en Vasco</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="vasco-guia-item vasco-guia-resumen">
+                                        <p class="text-muted" style="margin:0;">
+                                            <i class="fa fa-info-circle"></i>
+                                            Primero sync <strong>Clientes</strong>. Luego esta pestaña.
+                                            Reenvío idempotente por <code>external_id</code>.
+                                        </p>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-8">
+
+                            <div class="box box-default vasco-resultados-panel">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-list-alt"></i> Vista previa de auditoría</h3>
+                                </div>
+                                <div class="box-body">
+
+                                    <div class="nav-tabs-custom vasco-resultados-tabs">
+                                        <ul class="nav nav-tabs">
+                                            <li class="active">
+                                                <a href="#res-grupos-muestra" data-toggle="tab">
+                                                    Grupos
+                                                    <span class="badge bg-blue" id="badgeCountGruposMuestra">0</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="#res-grupos-miembros" data-toggle="tab">
+                                                    Asignaciones
+                                                    <span class="badge bg-blue" id="badgeCountGruposMiembros">0</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="#res-grupos-bloqueos" data-toggle="tab">
+                                                    Bloqueos
+                                                    <span class="badge bg-yellow" id="badgeCountGruposBloqueos">0</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content vasco-resultados-scroll-wrap">
+                                            <div class="tab-pane active" id="res-grupos-muestra">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover table-condensed" id="tablaMuestraGruposVasco" style="margin-bottom:0;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Código</th>
+                                                                <th>Nombre</th>
+                                                                <th>Estado</th>
+                                                                <th class="text-center">Clientes</th>
+                                                                <th>external_id</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td colspan="5">
+                                                                    <div class="vasco-empty-state">
+                                                                        <i class="fa fa-search"></i>
+                                                                        Pulsa <strong>Analizar grupos</strong> para ver el maestro.
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane" id="res-grupos-miembros">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover table-condensed" id="tablaMuestraMiembrosGruposVasco" style="margin-bottom:0;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Cliente</th>
+                                                                <th>Documento</th>
+                                                                <th>Grupo</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td colspan="3">
+                                                                    <div class="vasco-empty-state">
+                                                                        <i class="fa fa-search"></i>
+                                                                        Aquí verás asignaciones cliente → grupo listas para enviar.
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane" id="res-grupos-bloqueos">
+                                                <div id="contenidoBloqueosGruposVasco">
+                                                    <div class="vasco-empty-state">
+                                                        <i class="fa fa-check-circle"></i>
+                                                        Sin bloqueos. Ejecuta el análisis para validar.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
             </div>
         </div>
 
@@ -596,7 +854,7 @@
             </div>
             <div class="box-body">
                 <pre id="vascoSyncLog" class="bg-black" style="color:#aaa;padding:12px;border-radius:4px;max-height:140px;overflow-y:auto;">[--:--:--] Panel Vasco Online listo
-[--:--:--] Pestañas: Clientes (activo) · Cuentas (UI)</pre>
+[--:--:--] Pestañas: Clientes · Grupos · Cuentas</pre>
             </div>
         </div>
 

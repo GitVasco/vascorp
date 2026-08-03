@@ -8,6 +8,8 @@ class ModeloVascoSync
 
     static $TABLA_CUENTAS = "cuenta_ctejf";
 
+    static $TABLA_GRUPOS = "grupos_empresarialesjf";
+
     static $MAX_DOCS_PENDIENTES_CLIENTE = 500;
 
     static $DOC_TYPES_VALIDOS = array("0", "1", "4", "6", "7", "A", "B");
@@ -755,4 +757,283 @@ class ModeloVascoSync
 
         return "error";
     }
+
+    // ============================================
+    // GRUPOS EMPRESARIALES → business-groups-bulk
+    // + miembros → business-group-members-bulk
+    // ============================================
+
+    /**
+     * Subquery: un cliente consolidado por documento (mismo criterio que sync de clientes).
+     *
+     * @return string
+     */
+    private static function sqlSubqueryClientesConsolidados()
+    {
+        return "SELECT
+                    " . self::sqlDocKey() . " AS doc_key,
+                    CAST(SUBSTRING_INDEX(GROUP_CONCAT(
+                        id ORDER BY
+                            CASE WHEN estado = 1 AND fecha IS NOT NULL THEN 0 ELSE 1 END ASC,
+                            IFNULL(fecreg, '1970-01-01') DESC,
+                            id ASC
+                    ), ',', 1) AS UNSIGNED) AS id_elegido
+                FROM " . self::$TABLA_CLIENTES . "
+                WHERE " . self::sqlFiltroDocValido() . "
+                GROUP BY doc_key";
+    }
+
+    public static function mdlResumenGrupos()
+    {
+        $sql = "SELECT
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN estado = 1 THEN 1 ELSE 0 END) AS activos,
+                    SUM(CASE WHEN estado <> 1 THEN 1 ELSE 0 END) AS inactivos,
+                    SUM(CASE WHEN TRIM(IFNULL(codigo, '')) = '' THEN 1 ELSE 0 END) AS sin_codigo,
+                    SUM(CASE WHEN TRIM(IFNULL(nombre, '')) = '' THEN 1 ELSE 0 END) AS sin_nombre
+                FROM " . self::$TABLA_GRUPOS;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $fila ? $fila : array();
+    }
+
+    /**
+     * Grupos con código y nombre (listos para enviar).
+     */
+    public static function mdlContarGruposListos()
+    {
+        $sql = "SELECT COUNT(*) AS listos
+                FROM " . self::$TABLA_GRUPOS . "
+                WHERE TRIM(IFNULL(codigo, '')) <> ''
+                  AND TRIM(IFNULL(nombre, '')) <> ''";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return isset($fila["listos"]) ? (int) $fila["listos"] : 0;
+    }
+
+    /**
+     * @param int $offset
+     * @param int $limite
+     * @return array
+     */
+    public static function mdlGruposParaSyncLote($offset, $limite)
+    {
+        $offset = (int) $offset;
+        $limite = (int) $limite;
+
+        if ($limite <= 0) {
+            return array();
+        }
+
+        $sql = "SELECT
+                    id,
+                    codigo,
+                    nombre,
+                    descripcion,
+                    estado
+                FROM " . self::$TABLA_GRUPOS . "
+                WHERE TRIM(IFNULL(codigo, '')) <> ''
+                  AND TRIM(IFNULL(nombre, '')) <> ''
+                ORDER BY id ASC
+                LIMIT " . $offset . ", " . $limite;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Muestra de grupos para auditoría UI.
+     *
+     * @param int $limite
+     * @return array
+     */
+    public static function mdlMuestraGrupos($limite = 30)
+    {
+        $limite = (int) $limite;
+        if ($limite <= 0) {
+            return array();
+        }
+
+        $sql = "SELECT
+                    g.id,
+                    g.codigo,
+                    g.nombre,
+                    g.estado,
+                    (SELECT COUNT(*)
+                     FROM " . self::$TABLA_CLIENTES . " c
+                     WHERE c.grupo = g.codigo AND c.estado = 1) AS total_clientes
+                FROM " . self::$TABLA_GRUPOS . " g
+                WHERE TRIM(IFNULL(g.codigo, '')) <> ''
+                  AND TRIM(IFNULL(g.nombre, '')) <> ''
+                ORDER BY g.nombre ASC
+                LIMIT " . $limite;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Clientes consolidados (doc válido) con grupo existente en maestro.
+     */
+    public static function mdlContarMiembrosGrupoListos()
+    {
+        $sql = "SELECT COUNT(*) AS listos
+                FROM " . self::$TABLA_CLIENTES . " c
+                INNER JOIN (" . self::sqlSubqueryClientesConsolidados() . ") pick ON c.id = pick.id_elegido
+                INNER JOIN " . self::$TABLA_GRUPOS . " g ON g.codigo = c.grupo
+                WHERE TRIM(IFNULL(c.grupo, '')) <> ''";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return isset($fila["listos"]) ? (int) $fila["listos"] : 0;
+    }
+
+    /**
+     * @param int $offset
+     * @param int $limite
+     * @return array
+     */
+    public static function mdlMiembrosGrupoParaSyncLote($offset, $limite)
+    {
+        $offset = (int) $offset;
+        $limite = (int) $limite;
+
+        if ($limite <= 0) {
+            return array();
+        }
+
+        $sql = "SELECT
+                    c.id AS customer_id,
+                    c.codigo AS customer_codigo,
+                    c.nombre AS customer_nombre,
+                    c.tipo_documento,
+                    c.documento,
+                    c.grupo AS grupo_codigo,
+                    g.id AS grupo_id,
+                    g.nombre AS grupo_nombre
+                FROM " . self::$TABLA_CLIENTES . " c
+                INNER JOIN (" . self::sqlSubqueryClientesConsolidados() . ") pick ON c.id = pick.id_elegido
+                INNER JOIN " . self::$TABLA_GRUPOS . " g ON g.codigo = c.grupo
+                WHERE TRIM(IFNULL(c.grupo, '')) <> ''
+                ORDER BY c.id ASC
+                LIMIT " . $offset . ", " . $limite;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Cliente consolidado con grupo apuntando a código inexistente.
+     *
+     * @param int $limite
+     * @return array
+     */
+    public static function mdlMiembrosGrupoCodigoInexistente($limite = 50)
+    {
+        $limite = (int) $limite;
+
+        $sql = "SELECT
+                    c.id,
+                    c.codigo,
+                    c.nombre,
+                    c.grupo
+                FROM " . self::$TABLA_CLIENTES . " c
+                INNER JOIN (" . self::sqlSubqueryClientesConsolidados() . ") pick ON c.id = pick.id_elegido
+                LEFT JOIN " . self::$TABLA_GRUPOS . " g ON g.codigo = c.grupo
+                WHERE TRIM(IFNULL(c.grupo, '')) <> ''
+                  AND g.id IS NULL
+                ORDER BY c.codigo ASC
+                LIMIT " . $limite;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function mdlContarMiembrosGrupoCodigoInexistente()
+    {
+        $sql = "SELECT COUNT(*) AS total
+                FROM " . self::$TABLA_CLIENTES . " c
+                INNER JOIN (" . self::sqlSubqueryClientesConsolidados() . ") pick ON c.id = pick.id_elegido
+                LEFT JOIN " . self::$TABLA_GRUPOS . " g ON g.codigo = c.grupo
+                WHERE TRIM(IFNULL(c.grupo, '')) <> ''
+                  AND g.id IS NULL";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return isset($fila["total"]) ? (int) $fila["total"] : 0;
+    }
+
+    /**
+     * Clientes con grupo pero sin documento válido (no se envían como miembros).
+     */
+    public static function mdlContarClientesConGrupoSinDocValido()
+    {
+        $sql = "SELECT COUNT(*) AS total
+                FROM " . self::$TABLA_CLIENTES . " c
+                WHERE TRIM(IFNULL(c.grupo, '')) <> ''
+                  AND NOT (" . self::sqlFiltroDocValido("c") . ")";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return isset($fila["total"]) ? (int) $fila["total"] : 0;
+    }
+
+    /**
+     * @param int $limite
+     * @return array
+     */
+    public static function mdlClientesConGrupoSinDocValido($limite = 50)
+    {
+        $limite = (int) $limite;
+
+        $sql = "SELECT
+                    c.id,
+                    c.codigo,
+                    c.nombre,
+                    c.tipo_documento,
+                    c.documento,
+                    c.grupo
+                FROM " . self::$TABLA_CLIENTES . " c
+                WHERE TRIM(IFNULL(c.grupo, '')) <> ''
+                  AND NOT (" . self::sqlFiltroDocValido("c") . ")
+                ORDER BY c.codigo ASC
+                LIMIT " . $limite;
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Muestra de asignaciones listas (cliente consolidado → grupo).
+     *
+     * @param int $limite
+     * @return array
+     */
+    public static function mdlMuestraMiembrosGrupo($limite = 30)
+    {
+        return self::mdlMiembrosGrupoParaSyncLote(0, (int) $limite);
+    }
 }
+

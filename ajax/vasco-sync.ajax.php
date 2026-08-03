@@ -28,6 +28,8 @@ $accionesEjecutar = array(
     "sincronizar-lote",
     "sincronizar-lote-cuentas",
     "finalizar-cuentas",
+    "sincronizar-lote-grupos",
+    "sincronizar-lote-miembros-grupos",
 );
 
 if (in_array($accion, $accionesEjecutar, true) && !usuarioPuedeModulo("vasco_online", "sincronizacion", "ejecutar")) {
@@ -93,6 +95,40 @@ if ($accion === "finalizar-cuentas") {
     $lote = isset($_GET["lote"]) ? (int) $_GET["lote"] : 0;
     $traceId = isset($_GET["trace_id"]) ? trim($_GET["trace_id"]) : "";
     $respuesta = ControladorVascoSync::ctrFinalizarSyncCuentas($traceId, $lote);
+    if (defined("JSON_UNESCAPED_UNICODE")) {
+        echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode($respuesta);
+    }
+    exit;
+}
+
+if ($accion === "auditar-grupos") {
+    $respuesta = ControladorVascoSync::ctrAuditarGrupos();
+    if (defined("JSON_UNESCAPED_UNICODE")) {
+        echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode($respuesta);
+    }
+    exit;
+}
+
+if ($accion === "sincronizar-lote-grupos") {
+    $lote = isset($_GET["lote"]) ? (int) $_GET["lote"] : 0;
+    $traceId = isset($_GET["trace_id"]) ? trim($_GET["trace_id"]) : "";
+    $respuesta = ControladorVascoSync::ctrSincronizarLoteGrupos($lote, $traceId);
+    if (defined("JSON_UNESCAPED_UNICODE")) {
+        echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode($respuesta);
+    }
+    exit;
+}
+
+if ($accion === "sincronizar-lote-miembros-grupos") {
+    $lote = isset($_GET["lote"]) ? (int) $_GET["lote"] : 0;
+    $traceId = isset($_GET["trace_id"]) ? trim($_GET["trace_id"]) : "";
+    $respuesta = ControladorVascoSync::ctrSincronizarLoteMiembrosGrupos($lote, $traceId);
     if (defined("JSON_UNESCAPED_UNICODE")) {
         echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
     } else {

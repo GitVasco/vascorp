@@ -2607,4 +2607,568 @@ class ControladorVascoSync
 
         return $respuesta;
     }
+
+    // ============================================
+    // GRUPOS EMPRESARIALES
+    // ============================================
+
+    static public function generarTraceIdGrupos()
+    {
+        $sufijo = substr(md5(uniqid("grp", true)), 0, 6);
+
+        return "vascorp-groups-" . date("Ymd-His") . "-" . $sufijo;
+    }
+
+    static public function generarTraceIdMiembrosGrupos()
+    {
+        $sufijo = substr(md5(uniqid("gmem", true)), 0, 6);
+
+        return "vascorp-group-members-" . date("Ymd-His") . "-" . $sufijo;
+    }
+
+    static public function ctrAuditarGrupos()
+    {
+        $resumenDb = ModeloVascoSync::mdlResumenGrupos();
+        $listosGrupos = ModeloVascoSync::mdlContarGruposListos();
+        $listosMiembros = ModeloVascoSync::mdlContarMiembrosGrupoListos();
+        $maxPorLote = self::maxClientesPorLote();
+
+        $sinCodigo = isset($resumenDb["sin_codigo"]) ? (int) $resumenDb["sin_codigo"] : 0;
+        $sinNombre = isset($resumenDb["sin_nombre"]) ? (int) $resumenDb["sin_nombre"] : 0;
+        $grupoInexistente = ModeloVascoSync::mdlContarMiembrosGrupoCodigoInexistente();
+        $sinDocValido = ModeloVascoSync::mdlContarClientesConGrupoSinDocValido();
+
+        $lotesGrupos = $listosGrupos > 0 ? (int) ceil($listosGrupos / $maxPorLote) : 0;
+        $lotesMiembros = $listosMiembros > 0 ? (int) ceil($listosMiembros / $maxPorLote) : 0;
+
+        $muestraGrupos = array();
+        foreach (ModeloVascoSync::mdlMuestraGrupos(30) as $fila) {
+            $muestraGrupos[] = array(
+                "id" => (int) $fila["id"],
+                "codigo" => isset($fila["codigo"]) ? (string) $fila["codigo"] : "",
+                "nombre" => isset($fila["nombre"]) ? (string) $fila["nombre"] : "",
+                "estado" => isset($fila["estado"]) ? (int) $fila["estado"] : 0,
+                "activo" => isset($fila["estado"]) && (int) $fila["estado"] === 1,
+                "total_clientes" => isset($fila["total_clientes"]) ? (int) $fila["total_clientes"] : 0,
+            );
+        }
+
+        $muestraMiembros = array();
+        foreach (ModeloVascoSync::mdlMuestraMiembrosGrupo(30) as $fila) {
+            $muestraMiembros[] = array(
+                "customer_id" => (int) $fila["customer_id"],
+                "customer_codigo" => isset($fila["customer_codigo"]) ? (string) $fila["customer_codigo"] : "",
+                "customer_nombre" => isset($fila["customer_nombre"]) ? (string) $fila["customer_nombre"] : "",
+                "tipo_documento" => isset($fila["tipo_documento"]) ? (string) $fila["tipo_documento"] : "",
+                "documento" => ModeloVascoSync::normalizarDocumento(isset($fila["documento"]) ? $fila["documento"] : ""),
+                "grupo_id" => (int) $fila["grupo_id"],
+                "grupo_codigo" => isset($fila["grupo_codigo"]) ? (string) $fila["grupo_codigo"] : "",
+                "grupo_nombre" => isset($fila["grupo_nombre"]) ? (string) $fila["grupo_nombre"] : "",
+            );
+        }
+
+        $grupoInexistenteFilas = array();
+        foreach (ModeloVascoSync::mdlMiembrosGrupoCodigoInexistente(50) as $fila) {
+            $grupoInexistenteFilas[] = array(
+                "id" => (int) $fila["id"],
+                "codigo" => isset($fila["codigo"]) ? (string) $fila["codigo"] : "",
+                "nombre" => isset($fila["nombre"]) ? (string) $fila["nombre"] : "",
+                "grupo" => isset($fila["grupo"]) ? (string) $fila["grupo"] : "",
+            );
+        }
+
+        $sinDocFilas = array();
+        foreach (ModeloVascoSync::mdlClientesConGrupoSinDocValido(50) as $fila) {
+            $sinDocFilas[] = array(
+                "id" => (int) $fila["id"],
+                "codigo" => isset($fila["codigo"]) ? (string) $fila["codigo"] : "",
+                "nombre" => isset($fila["nombre"]) ? (string) $fila["nombre"] : "",
+                "tipo_documento" => isset($fila["tipo_documento"]) ? (string) $fila["tipo_documento"] : "",
+                "documento" => ModeloVascoSync::normalizarDocumento(isset($fila["documento"]) ? $fila["documento"] : ""),
+                "grupo" => isset($fila["grupo"]) ? (string) $fila["grupo"] : "",
+            );
+        }
+
+        return array(
+            "ok" => true,
+            "resumen" => array(
+                "total_grupos" => isset($resumenDb["total"]) ? (int) $resumenDb["total"] : 0,
+                "activos" => isset($resumenDb["activos"]) ? (int) $resumenDb["activos"] : 0,
+                "inactivos" => isset($resumenDb["inactivos"]) ? (int) $resumenDb["inactivos"] : 0,
+                "listos_grupos" => $listosGrupos,
+                "listos_miembros" => $listosMiembros,
+                "lotes_grupos" => $lotesGrupos,
+                "lotes_miembros" => $lotesMiembros,
+                "lotes_estimados" => $lotesGrupos + $lotesMiembros,
+                "max_por_lote" => $maxPorLote,
+                "sin_codigo" => $sinCodigo,
+                "sin_nombre" => $sinNombre,
+                "grupo_inexistente" => $grupoInexistente,
+                "con_grupo_sin_doc" => $sinDocValido,
+                "bloqueados_envio" => $sinCodigo + $sinNombre + $grupoInexistente + $sinDocValido,
+            ),
+            "muestra_grupos" => $muestraGrupos,
+            "muestra_miembros" => $muestraMiembros,
+            "bloqueos" => array(
+                "grupo_inexistente" => $grupoInexistenteFilas,
+                "con_grupo_sin_doc" => $sinDocFilas,
+            ),
+            "external_id_campo" => "id",
+        );
+    }
+
+    static public function mapearGrupoParaApi($fila)
+    {
+        $nombre = trim(isset($fila["nombre"]) ? (string) $fila["nombre"] : "");
+        $codigo = trim(isset($fila["codigo"]) ? (string) $fila["codigo"] : "");
+        if ($nombre === "") {
+            $nombre = $codigo !== "" ? $codigo : "GRUPO " . (int) $fila["id"];
+        }
+
+        $estado = isset($fila["estado"]) ? (int) $fila["estado"] : 0;
+        $grupo = array(
+            "external_id" => (string) (int) $fila["id"],
+            "code" => $codigo,
+            "name" => $nombre,
+            "state" => $estado === 1 ? 1 : 2,
+        );
+
+        $notas = trim(isset($fila["descripcion"]) ? (string) $fila["descripcion"] : "");
+        if ($notas !== "") {
+            $grupo["notes"] = $notas;
+        }
+
+        return $grupo;
+    }
+
+    static public function mapearMiembroGrupoParaApi($fila)
+    {
+        return array(
+            "customer_external_id" => (string) (int) $fila["customer_id"],
+            "business_group_external_id" => (string) (int) $fila["grupo_id"],
+        );
+    }
+
+    /**
+     * @param array $failed
+     * @param array $businessGroups
+     * @return array
+     */
+    static public function enriquecerFailedGrupos($failed, $businessGroups)
+    {
+        if (!is_array($failed) || count($failed) === 0) {
+            return array();
+        }
+
+        $porExternalId = array();
+        foreach ($businessGroups as $pos => $g) {
+            if (!is_array($g)) {
+                continue;
+            }
+            if (isset($g["external_id"]) && $g["external_id"] !== "") {
+                $porExternalId[(string) $g["external_id"]] = $g;
+            }
+        }
+
+        $out = array();
+        foreach ($failed as $idx => $f) {
+            if (!is_array($f)) {
+                $out[] = array("message" => (string) $f);
+                continue;
+            }
+
+            $base = null;
+            if (isset($f["index"]) && isset($businessGroups[(int) $f["index"]]) && is_array($businessGroups[(int) $f["index"]])) {
+                $base = $businessGroups[(int) $f["index"]];
+            } elseif (isset($f["external_id"]) && isset($porExternalId[(string) $f["external_id"]])) {
+                $base = $porExternalId[(string) $f["external_id"]];
+            } elseif (isset($businessGroups[$idx]) && is_array($businessGroups[$idx])) {
+                $base = $businessGroups[$idx];
+            }
+
+            $message = "";
+            if (isset($f["message"])) {
+                $message = (string) $f["message"];
+            } elseif (isset($f["error"])) {
+                $message = (string) $f["error"];
+            }
+
+            $out[] = array(
+                "external_id" => isset($f["external_id"]) ? (string) $f["external_id"] : ($base && isset($base["external_id"]) ? (string) $base["external_id"] : ""),
+                "code" => isset($f["code"]) ? (string) $f["code"] : ($base && isset($base["code"]) ? (string) $base["code"] : ""),
+                "name" => $base && isset($base["name"]) ? (string) $base["name"] : "",
+                "message" => $message !== "" ? $message : "Rechazado por Vasco",
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array $failed
+     * @param array $members
+     * @param array $filasOriginales
+     * @return array
+     */
+    static public function enriquecerFailedMiembros($failed, $members, $filasOriginales = array())
+    {
+        if (!is_array($failed) || count($failed) === 0) {
+            return array();
+        }
+
+        $porCustomerId = array();
+        foreach ($filasOriginales as $fila) {
+            if (!is_array($fila)) {
+                continue;
+            }
+            $cid = isset($fila["customer_id"]) ? (string) (int) $fila["customer_id"] : "";
+            if ($cid !== "") {
+                $porCustomerId[$cid] = $fila;
+            }
+        }
+
+        $out = array();
+        foreach ($failed as $idx => $f) {
+            if (!is_array($f)) {
+                $out[] = array("message" => (string) $f);
+                continue;
+            }
+
+            $customerId = isset($f["customer_external_id"]) ? (string) $f["customer_external_id"] : "";
+            if ($customerId === "" && isset($members[(int) (isset($f["index"]) ? $f["index"] : $idx)]["customer_external_id"])) {
+                $customerId = (string) $members[(int) (isset($f["index"]) ? $f["index"] : $idx)]["customer_external_id"];
+            }
+
+            $base = isset($porCustomerId[$customerId]) ? $porCustomerId[$customerId] : null;
+
+            $message = "";
+            if (isset($f["message"])) {
+                $message = (string) $f["message"];
+            } elseif (isset($f["error"])) {
+                $message = (string) $f["error"];
+            }
+
+            $out[] = array(
+                "customer_external_id" => $customerId,
+                "customer_codigo" => $base && isset($base["customer_codigo"]) ? (string) $base["customer_codigo"] : "",
+                "customer_nombre" => $base && isset($base["customer_nombre"]) ? (string) $base["customer_nombre"] : "",
+                "business_group_external_id" => isset($f["business_group_external_id"])
+                    ? (string) $f["business_group_external_id"]
+                    : ($base && isset($base["grupo_id"]) ? (string) (int) $base["grupo_id"] : ""),
+                "grupo_codigo" => $base && isset($base["grupo_codigo"]) ? (string) $base["grupo_codigo"] : "",
+                "message" => $message !== "" ? $message : "Rechazado por Vasco",
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * POST /v2/sync/business-groups-bulk — un lote.
+     *
+     * @param int $numeroLote
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrSincronizarLoteGrupos($numeroLote, $traceId)
+    {
+        if (!function_exists("obtenerUrlSyncGruposVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $numeroLote = (int) $numeroLote;
+        $traceId = trim((string) $traceId);
+        $maxPorLote = self::maxClientesPorLote();
+
+        if ($numeroLote < 1) {
+            return array("ok" => false, "msg" => "Número de lote inválido");
+        }
+
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdGrupos();
+        }
+
+        $apiKey = function_exists("obtenerApiKeyVascoOnline") ? obtenerApiKeyVascoOnline() : (defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "");
+        if ($apiKey === "") {
+            return array("ok" => false, "msg" => "API key no configurada en config.php");
+        }
+
+        if (!function_exists("curl_init")) {
+            return array("ok" => false, "msg" => "cURL no está disponible en este servidor");
+        }
+
+        $url = obtenerUrlSyncGruposVasco();
+        if ($url === "") {
+            return array("ok" => false, "msg" => "URL de sync de grupos no configurada");
+        }
+
+        $offset = ($numeroLote - 1) * $maxPorLote;
+        $filas = ModeloVascoSync::mdlGruposParaSyncLote($offset, $maxPorLote);
+
+        if (empty($filas)) {
+            return array(
+                "ok" => true,
+                "msg" => "Lote vacío (sin más registros)",
+                "batch" => $numeroLote,
+                "trace_id" => $traceId,
+                "groups_sent" => 0,
+                "skipped" => true,
+            );
+        }
+
+        $businessGroups = array();
+        foreach ($filas as $fila) {
+            $businessGroups[] = self::mapearGrupoParaApi($fila);
+        }
+
+        $payload = array(
+            "trace_id" => $traceId,
+            "batch" => $numeroLote,
+            "business_groups" => $businessGroups,
+        );
+
+        $jsonBody = json_encode($payload);
+        if ($jsonBody === false) {
+            return array("ok" => false, "msg" => "No se pudo serializar el lote a JSON");
+        }
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "Authorization: " . $apiKey;
+
+        $timeout = defined("VASCO_ONLINE_SYNC_TIMEOUT") ? (int) VASCO_ONLINE_SYNC_TIMEOUT : 120;
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "batch" => $numeroLote,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : array();
+
+        $processed = isset($results["processed"]) ? (int) $results["processed"] : count($businessGroups);
+        $inserted = isset($results["inserted"]) ? (int) $results["inserted"] : 0;
+        $updated = isset($results["updated"]) ? (int) $results["updated"] : 0;
+        $adopted = isset($results["adopted"]) ? (int) $results["adopted"] : 0;
+        $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $failed = self::enriquecerFailedGrupos($failed, $businessGroups);
+
+        if ($httpCode === 200 || $httpCode === 207) {
+            $parcial = $httpCode === 207 || count($failed) > 0;
+
+            return array(
+                "ok" => true,
+                "partial" => $parcial,
+                "msg" => $parcial
+                    ? "Lote grupos " . $numeroLote . " con advertencias (" . count($failed) . " fallidos)"
+                    : "Lote grupos " . $numeroLote . " enviado correctamente",
+                "batch" => $numeroLote,
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "groups_sent" => count($businessGroups),
+                "processed" => $processed,
+                "inserted" => $inserted,
+                "updated" => $updated,
+                "adopted" => $adopted,
+                "failed" => $failed,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "batch" => $numeroLote,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "groups_sent" => count($businessGroups),
+            "body" => $body,
+            "url" => $url,
+        );
+    }
+
+    /**
+     * POST /v2/sync/business-group-members-bulk — un lote.
+     *
+     * @param int $numeroLote
+     * @param string $traceId
+     * @return array
+     */
+    static public function ctrSincronizarLoteMiembrosGrupos($numeroLote, $traceId)
+    {
+        if (!function_exists("obtenerUrlSyncMiembrosGruposVasco")) {
+            require_once __DIR__ . "/config.php";
+            require_once __DIR__ . "/vasco-online.config.php";
+        }
+
+        $numeroLote = (int) $numeroLote;
+        $traceId = trim((string) $traceId);
+        $maxPorLote = self::maxClientesPorLote();
+
+        if ($numeroLote < 1) {
+            return array("ok" => false, "msg" => "Número de lote inválido");
+        }
+
+        if ($traceId === "") {
+            $traceId = self::generarTraceIdMiembrosGrupos();
+        }
+
+        $apiKey = function_exists("obtenerApiKeyVascoOnline") ? obtenerApiKeyVascoOnline() : (defined("VASCO_ONLINE_API_KEY") ? VASCO_ONLINE_API_KEY : "");
+        if ($apiKey === "") {
+            return array("ok" => false, "msg" => "API key no configurada en config.php");
+        }
+
+        if (!function_exists("curl_init")) {
+            return array("ok" => false, "msg" => "cURL no está disponible en este servidor");
+        }
+
+        $url = obtenerUrlSyncMiembrosGruposVasco();
+        if ($url === "") {
+            return array("ok" => false, "msg" => "URL de sync de miembros no configurada");
+        }
+
+        $offset = ($numeroLote - 1) * $maxPorLote;
+        $filas = ModeloVascoSync::mdlMiembrosGrupoParaSyncLote($offset, $maxPorLote);
+
+        if (empty($filas)) {
+            return array(
+                "ok" => true,
+                "msg" => "Lote vacío (sin más registros)",
+                "batch" => $numeroLote,
+                "trace_id" => $traceId,
+                "members_sent" => 0,
+                "skipped" => true,
+            );
+        }
+
+        $members = array();
+        foreach ($filas as $fila) {
+            $members[] = self::mapearMiembroGrupoParaApi($fila);
+        }
+
+        $payload = array(
+            "trace_id" => $traceId,
+            "batch" => $numeroLote,
+            "members" => $members,
+        );
+
+        $jsonBody = json_encode($payload);
+        if ($jsonBody === false) {
+            return array("ok" => false, "msg" => "No se pudo serializar el lote a JSON");
+        }
+
+        $headers = function_exists("obtenerHeadersCurlVascoOnline")
+            ? obtenerHeadersCurlVascoOnline($url)
+            : array("Accept: application/json");
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "Authorization: " . $apiKey;
+
+        $timeout = defined("VASCO_ONLINE_SYNC_TIMEOUT") ? (int) VASCO_ONLINE_SYNC_TIMEOUT : 120;
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+
+        $body = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err !== "") {
+            return array(
+                "ok" => false,
+                "msg" => "No se pudo conectar: " . $err,
+                "batch" => $numeroLote,
+                "trace_id" => $traceId,
+                "url" => $url,
+            );
+        }
+
+        $json = json_decode($body, true);
+        $results = is_array($json) && isset($json["results"]) && is_array($json["results"])
+            ? $json["results"]
+            : array();
+
+        $processed = isset($results["processed"]) ? (int) $results["processed"] : count($members);
+        $updated = isset($results["updated"]) ? (int) $results["updated"] : 0;
+        $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
+        $failed = self::enriquecerFailedMiembros($failed, $members, $filas);
+
+        if ($httpCode === 200 || $httpCode === 207) {
+            $parcial = $httpCode === 207 || count($failed) > 0;
+
+            return array(
+                "ok" => true,
+                "partial" => $parcial,
+                "msg" => $parcial
+                    ? "Lote miembros " . $numeroLote . " con advertencias (" . count($failed) . " fallidos)"
+                    : "Lote miembros " . $numeroLote . " enviado correctamente",
+                "batch" => $numeroLote,
+                "trace_id" => isset($results["trace_id"]) ? (string) $results["trace_id"] : $traceId,
+                "http_code" => $httpCode,
+                "members_sent" => count($members),
+                "processed" => $processed,
+                "updated" => $updated,
+                "failed" => $failed,
+                "url" => $url,
+            );
+        }
+
+        $msg = "Respuesta HTTP " . $httpCode;
+        if (is_array($json) && isset($json["message"])) {
+            $msg .= ": " . $json["message"];
+        }
+
+        return array(
+            "ok" => false,
+            "msg" => $msg,
+            "batch" => $numeroLote,
+            "trace_id" => $traceId,
+            "http_code" => $httpCode,
+            "members_sent" => count($members),
+            "body" => $body,
+            "url" => $url,
+        );
+    }
 }
+
