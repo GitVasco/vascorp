@@ -583,6 +583,14 @@ class ControladorVascoSync
         return $valor;
     }
 
+    /**
+     * Monto en soles con 2 decimales estables para JSON.
+     */
+    private static function montoApi($valor)
+    {
+        return (float) number_format((float) $valor, 2, ".", "");
+    }
+
     static public function normalizarTipoDocComercial($tipoDoc)
     {
         $tipo = strtoupper(trim((string) $tipoDoc));
@@ -598,13 +606,80 @@ class ControladorVascoSync
         return $tipo;
     }
 
-    static public function mapearDocumentoPendienteParaApi($fila)
+    /**
+     * Primer texto no vacío (trim) entre candidatos; string vacío si todos vacíos.
+     */
+    static public function primerTextoNoVacio()
+    {
+        $args = func_get_args();
+        foreach ($args as $valor) {
+            $texto = trim((string) $valor);
+            if ($texto !== "") {
+                return $texto;
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * Mapea una fila tip_mov='-' a payments[] del contrato.
+     * Devuelve null si faltan fecha o monto > 0.
+     *
+     * @param array $fila
+     * @return array|null
+     */
+    static public function mapearAbonoParaApi($fila)
+    {
+        $paymentDate = self::fechaApiCuenta(isset($fila["fecha"]) ? $fila["fecha"] : "");
+        $amount = self::montoApi(isset($fila["monto"]) ? $fila["monto"] : 0);
+
+        if ($paymentDate === "" || $amount <= 0) {
+            return null;
+        }
+
+        $paymentCode = trim(isset($fila["cod_pago"]) ? (string) $fila["cod_pago"] : "");
+        $methodLabel = trim(isset($fila["descripcion"]) ? (string) $fila["descripcion"] : "");
+        if ($methodLabel === "" && $paymentCode !== "") {
+            $methodLabel = $paymentCode;
+        }
+
+        $abono = array(
+            "payment_date" => $paymentDate,
+            "amount" => $amount,
+        );
+
+        if ($paymentCode !== "") {
+            $abono["payment_code"] = $paymentCode;
+        }
+
+        if ($methodLabel !== "") {
+            $abono["method_label"] = $methodLabel;
+        }
+
+        $reference = self::primerTextoNoVacio(
+            isset($fila["notas"]) ? $fila["notas"] : "",
+            isset($fila["doc_origen"]) ? $fila["doc_origen"] : "",
+            isset($fila["banco"]) ? $fila["banco"] : ""
+        );
+        if ($reference !== "") {
+            $abono["reference"] = $reference;
+        }
+
+        if (isset($fila["id"]) && $fila["id"] !== "" && $fila["id"] !== null) {
+            $abono["external_id"] = (string) $fila["id"];
+        }
+
+        return $abono;
+    }
+
+    static public function mapearDocumentoPendienteParaApi($fila, array $abonosFilas = null)
     {
         $doc = array(
             "doc_type" => self::normalizarTipoDocComercial(isset($fila["tipo_doc"]) ? $fila["tipo_doc"] : ""),
             "doc_number" => trim(isset($fila["num_cta"]) ? (string) $fila["num_cta"] : ""),
-            "amount" => round((float) (isset($fila["monto"]) ? $fila["monto"] : 0), 2),
-            "balance" => round((float) (isset($fila["saldo"]) ? $fila["saldo"] : 0), 2),
+            "amount" => self::montoApi(isset($fila["monto"]) ? $fila["monto"] : 0),
+            "balance" => self::montoApi(isset($fila["saldo"]) ? $fila["saldo"] : 0),
         );
 
         $issue = self::fechaApiCuenta(isset($fila["fecha"]) ? $fila["fecha"] : "");
@@ -617,13 +692,36 @@ class ControladorVascoSync
             $doc["due_date"] = $due;
         }
 
+        if ($abonosFilas !== null && !empty($abonosFilas)) {
+            $payments = array();
+            $maxPorDoc = (int) ModeloVascoSync::$MAX_ABONOS_POR_DOCUMENTO;
+            foreach ($abonosFilas as $abonoFila) {
+                if (count($payments) >= $maxPorDoc) {
+                    break;
+                }
+                $mapped = self::mapearAbonoParaApi($abonoFila);
+                if ($mapped !== null) {
+                    $payments[] = $mapped;
+                }
+            }
+            if (!empty($payments)) {
+                $doc["payments"] = $payments;
+            }
+        }
+
         return $doc;
     }
 
-    static public function mapearCuentaParaApi($resumen, $documentos)
+    /**
+     * @param array $resumen
+     * @param array $documentos
+     * @param array $abonosPorDoc clave "tipo_doc|num_cta" => filas ERP
+     * @return array
+     */
+    static public function mapearCuentaParaApi($resumen, $documentos, array $abonosPorDoc = array())
     {
-        $deuda = round((float) (isset($resumen["deuda_total"]) ? $resumen["deuda_total"] : 0), 2);
-        $vencido = round((float) (isset($resumen["vencido_total"]) ? $resumen["vencido_total"] : 0), 2);
+        $deuda = self::montoApi(isset($resumen["deuda_total"]) ? $resumen["deuda_total"] : 0);
+        $vencido = self::montoApi(isset($resumen["vencido_total"]) ? $resumen["vencido_total"] : 0);
 
         if ($vencido > $deuda) {
             $vencido = $deuda;
@@ -637,8 +735,27 @@ class ControladorVascoSync
             "pending_documents" => array(),
         );
 
+        $abonosCliente = 0;
+        $maxAbonosCliente = (int) ModeloVascoSync::$MAX_ABONOS_POR_CLIENTE;
+
         foreach ($documentos as $fila) {
-            $cuenta["pending_documents"][] = self::mapearDocumentoPendienteParaApi($fila);
+            $clave = ModeloVascoSync::claveDocumentoCuenta(
+                isset($fila["tipo_doc"]) ? $fila["tipo_doc"] : "",
+                isset($fila["num_cta"]) ? $fila["num_cta"] : ""
+            );
+            $abonosFilas = isset($abonosPorDoc[$clave]) ? $abonosPorDoc[$clave] : array();
+
+            if ($abonosCliente >= $maxAbonosCliente) {
+                $abonosFilas = array();
+            } elseif (!empty($abonosFilas) && ($abonosCliente + count($abonosFilas)) > $maxAbonosCliente) {
+                $abonosFilas = array_slice($abonosFilas, 0, $maxAbonosCliente - $abonosCliente);
+            }
+
+            $doc = self::mapearDocumentoPendienteParaApi($fila, $abonosFilas);
+            if (isset($doc["payments"])) {
+                $abonosCliente += count($doc["payments"]);
+            }
+            $cuenta["pending_documents"][] = $doc;
         }
 
         return $cuenta;
@@ -716,11 +833,26 @@ class ControladorVascoSync
         $filas = $loteComercial["filas"];
         $docsPorDocKey = $loteComercial["docs_por_doc_key"];
 
+        $todosDocs = array();
+        foreach ($docsPorDocKey as $pendientesLote) {
+            foreach ($pendientesLote as $docPendiente) {
+                $todosDocs[] = $docPendiente;
+            }
+        }
+        $abonosPorDoc = ModeloVascoSync::mdlCuentasAbonosPorDocs($todosDocs);
+
+        $paymentsEnviados = 0;
         foreach ($filas as $fila) {
             $docKey = isset($fila["doc_key"]) ? (string) $fila["doc_key"] : "";
             $pendientes = isset($docsPorDocKey[$docKey]) ? $docsPorDocKey[$docKey] : array();
-            $accounts[] = self::mapearCuentaParaApi($fila, $pendientes);
+            $cuenta = self::mapearCuentaParaApi($fila, $pendientes, $abonosPorDoc);
+            $accounts[] = $cuenta;
             $docsEnviados += count($pendientes);
+            foreach ($cuenta["pending_documents"] as $docApi) {
+                if (isset($docApi["payments"]) && is_array($docApi["payments"])) {
+                    $paymentsEnviados += count($docApi["payments"]);
+                }
+            }
         }
 
         $payload = array(
@@ -776,11 +908,19 @@ class ControladorVascoSync
 
         $processed = isset($results["processed"]) ? (int) $results["processed"] : 0;
         $documents = isset($results["documents"]) ? (int) $results["documents"] : 0;
+        $payments = isset($results["payments"]) ? (int) $results["payments"] : 0;
+        $paymentWarnings = isset($results["payment_warnings"]) ? (int) $results["payment_warnings"] : 0;
         $failed = isset($results["failed"]) && is_array($results["failed"]) ? $results["failed"] : array();
 
         if ($httpCode === 200 || $httpCode === 207) {
             $parcial = $httpCode === 207 || count($failed) > 0;
             $msg = "Lote " . $numeroLote . " — guardados en Vasco: " . $processed . " clientes, " . $documents . " docs";
+            if ($payments > 0 || $paymentsEnviados > 0) {
+                $msg .= ", " . ($payments > 0 ? $payments : $paymentsEnviados) . " abonos";
+            }
+            if ($paymentWarnings > 0) {
+                $msg .= " (" . $paymentWarnings . " payment_warnings)";
+            }
 
             if ($processed === 0 && count($accounts) > 0) {
                 $msg = "Lote " . $numeroLote . " — enviado pero 0 guardados en Vasco (revisar failed)";
@@ -798,8 +938,11 @@ class ControladorVascoSync
                 "http_code" => $httpCode,
                 "accounts_sent" => count($accounts),
                 "documents_sent" => $docsEnviados,
+                "payments_sent" => $paymentsEnviados,
                 "processed" => $processed,
                 "documents" => $documents,
+                "payments" => $payments,
+                "payment_warnings" => $paymentWarnings,
                 "failed" => $failed,
                 "url" => $url,
             );

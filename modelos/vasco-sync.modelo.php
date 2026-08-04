@@ -12,7 +12,21 @@ class ModeloVascoSync
 
     static $MAX_DOCS_PENDIENTES_CLIENTE = 500;
 
+    /** Límite contrato Vasco: abonos por documento en payments[]. */
+    static $MAX_ABONOS_POR_DOCUMENTO = 200;
+
+    /** Límite contrato Vasco: abonos por cliente en un request. */
+    static $MAX_ABONOS_POR_CLIENTE = 2000;
+
     static $DOC_TYPES_VALIDOS = array("0", "1", "4", "6", "7", "A", "B");
+
+    /**
+     * Clave alineada a AdaptadorSaldoComercialVasco / payments[].
+     */
+    public static function claveDocumentoCuenta($tipoDoc, $numCta)
+    {
+        return trim((string) $tipoDoc) . "|" . trim((string) $numCta);
+    }
 
     public static function normalizarDocumento($documento)
     {
@@ -557,6 +571,86 @@ class ModeloVascoSync
                 continue;
             }
             $agrupado[$dk][] = $fila;
+        }
+
+        return $agrupado;
+    }
+
+    /**
+     * Abonos (tip_mov='-') de varios documentos pendientes, en una o más consultas.
+     *
+     * @param array $documentos filas con tipo_doc + num_cta (de pending docs)
+     * @return array clave "tipo_doc|num_cta" => listado de filas (máx. MAX_ABONOS_POR_DOCUMENTO c/u)
+     */
+    public static function mdlCuentasAbonosPorDocs(array $documentos)
+    {
+        $claves = array();
+
+        foreach ($documentos as $doc) {
+            if (!is_array($doc)) {
+                continue;
+            }
+            $tipo = trim(isset($doc["tipo_doc"]) ? (string) $doc["tipo_doc"] : "");
+            $num = trim(isset($doc["num_cta"]) ? (string) $doc["num_cta"] : "");
+            if ($tipo === "" || $num === "") {
+                continue;
+            }
+            $claves[self::claveDocumentoCuenta($tipo, $num)] = true;
+        }
+
+        $listaClaves = array_keys($claves);
+        if (empty($listaClaves)) {
+            return array();
+        }
+
+        $agrupado = array();
+        $maxPorDoc = (int) self::$MAX_ABONOS_POR_DOCUMENTO;
+
+        foreach (array_chunk($listaClaves, 400) as $chunk) {
+            $placeholders = array();
+            foreach ($chunk as $i => $clave) {
+                $placeholders[] = ":k" . $i;
+            }
+
+            $sql = "SELECT
+                        c.id,
+                        c.tipo_doc,
+                        c.num_cta,
+                        c.fecha,
+                        c.monto,
+                        c.cod_pago,
+                        tp.descripcion,
+                        c.notas,
+                        c.doc_origen,
+                        c.banco
+                    FROM " . self::$TABLA_CUENTAS . " c
+                    LEFT JOIN tipo_pagosjf tp ON tp.codigo = c.cod_pago
+                    WHERE c.tip_mov = '-'
+                      AND CONCAT(TRIM(c.tipo_doc), '|', TRIM(c.num_cta)) IN (" . implode(", ", $placeholders) . ")
+                    ORDER BY c.fecha ASC, c.id ASC";
+
+            $stmt = Conexion::conectar()->prepare($sql);
+            foreach ($chunk as $i => $clave) {
+                $stmt->bindValue(":k" . $i, $clave, PDO::PARAM_STR);
+            }
+            $stmt->execute();
+
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+                $clave = self::claveDocumentoCuenta(
+                    isset($fila["tipo_doc"]) ? $fila["tipo_doc"] : "",
+                    isset($fila["num_cta"]) ? $fila["num_cta"] : ""
+                );
+                if ($clave === "|") {
+                    continue;
+                }
+                if (!isset($agrupado[$clave])) {
+                    $agrupado[$clave] = array();
+                }
+                if (count($agrupado[$clave]) >= $maxPorDoc) {
+                    continue;
+                }
+                $agrupado[$clave][] = $fila;
+            }
         }
 
         return $agrupado;
