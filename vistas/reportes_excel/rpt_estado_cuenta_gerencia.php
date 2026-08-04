@@ -8,6 +8,7 @@ if (!isset($_SESSION)) {
 }
 
 include "../reportes_excel/Classes/PHPExcel.php";
+require_once "../../controladores/permisos-modulos.config.php";
 require_once "../../modelos/cuentas.modelo.php";
 require_once "../../modelos/linea-credito.modelo.php";
 
@@ -16,7 +17,12 @@ if (!isset($_SESSION["iniciarSesion"]) || $_SESSION["iniciarSesion"] !== "ok") {
     exit;
 }
 
-if (!isset($_SESSION["cuenta"]) || (int) $_SESSION["cuenta"] !== 1) {
+if (
+    !isset($_SESSION["cuenta"]) ||
+    (int) $_SESSION["cuenta"] !== 1 ||
+    !function_exists("usuarioPuedeVerModulo") ||
+    !usuarioPuedeVerModulo("gestion_comercial", "estado_cuenta_gerencia")
+) {
     echo "Acceso no autorizado.";
     exit;
 }

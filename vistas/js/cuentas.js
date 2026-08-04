@@ -31,7 +31,9 @@ $("#selectAnoCuentaC").change(function () {
 // Validamos que venga la variable capturaRango en el localStorage
 if (localStorage.getItem("ano") != null) {
     $("#selectAnoCuenta").val(localStorage.getItem("ano"));
-    $("#selectAnoCuenta").selectpicker("refresh");
+    if ($("#selectAnoCuenta").hasClass("selectpicker") && $.fn.selectpicker) {
+        $("#selectAnoCuenta").selectpicker("refresh");
+    }
     cargarTablaCuentas(localStorage.getItem("ano"));
 } else {
     cargarTablaCuentas(null);

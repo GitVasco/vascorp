@@ -9,6 +9,9 @@
     "dashboard_cxc": {
       "ver": [6, 32, 105]
     },
+    "estado_cuenta_gerencia": {
+      "ver": [6, 32]
+    },
     "centro_decisiones": {
       "ver": [6, 32, 105],
       "registrar": [6, 32],

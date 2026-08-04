@@ -27,26 +27,150 @@ $idUsuarioSesionCxc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
 
         <div class="box">
 
-            <div class="box-header with-border">
+            <style>
+                .box-header.cxc-header-bar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-start;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    text-align: left;
+                    overflow: visible;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+                .cxc-header-bar__left {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    flex-wrap: wrap;
+                    flex: 1 1 auto;
+                    min-width: 0;
+                }
+                .cxc-header-bar__sep {
+                    display: inline-block;
+                    width: 1px;
+                    height: 28px;
+                    background: #ddd;
+                    margin: 0 6px;
+                    flex: 0 0 auto;
+                }
+                .cxc-header-bar__right {
+                    margin-left: auto;
+                    flex: 0 0 auto;
+                    width: 120px;
+                    max-width: 120px;
+                    position: relative;
+                    z-index: 20;
+                }
+                .cxc-header-bar__right #selectAnoCuenta {
+                    width: 100%;
+                    height: 34px;
+                    padding: 6px 10px;
+                }
+                .cxc-header-bar .btn {
+                    margin: 0;
+                }
+                .cxc-header-bar .dropdown-menu {
+                    min-width: 240px;
+                    text-align: left;
+                }
+                .cxc-header-bar .dropdown-menu > li > a {
+                    padding: 8px 14px;
+                }
+                .cxc-header-bar .dropdown-menu img {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 8px;
+                    vertical-align: text-bottom;
+                }
+                .cxc-header-bar .dropdown-header {
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    color: #888;
+                    padding: 8px 14px 4px;
+                }
+            </style>
 
-                <button class="btn btn-primary btnCodigoCuenta" data-toggle="modal" data-target="#modalAgregarCuenta" title="Agregar cuentas">
-                    <i class="fa fa-plus"></i>
-                    <span class="sr-only">Agregar cuentas</span>
-                </button>
+            <div class="box-header with-border cxc-header-bar">
 
-                <button class="btn btn-danger" data-toggle="modal" data-target="#modalImportarBanco" title="Cancelar letras">
-                    <i class="fa fa-ban"></i>
-                    <span class="sr-only">Cancelar letras</span>
-                </button>
+                <div class="cxc-header-bar__left">
+                    <button class="btn btn-primary btnCodigoCuenta" data-toggle="modal" data-target="#modalAgregarCuenta" title="Agregar cuentas">
+                        <i class="fa fa-plus"></i>
+                        <span class="sr-only">Agregar cuentas</span>
+                    </button>
+                    <button class="btn btn-danger" data-toggle="modal" data-target="#modalImportarBanco" title="Cancelar letras">
+                        <i class="fa fa-ban"></i>
+                        <span class="sr-only">Cancelar letras</span>
+                    </button>
+                    <button class="btn btn-warning" data-toggle="modal" data-target="#modalActualizarUnico" title="Actualizar número único">
+                        <i class="fa fa-refresh"></i>
+                        <span class="sr-only">Actualizar número único</span>
+                    </button>
 
-                <button class="btn btn-warning" data-toggle="modal" data-target="#modalActualizarUnico" title="Actualizar número único">
-                    <i class="fa fa-refresh"></i>
-                    <span class="sr-only">Actualizar número único</span>
-                </button>
+                    <span class="cxc-header-bar__sep" aria-hidden="true"></span>
 
-                <div class="col-lg-2 pull-right">
-                    <select class="form-control input-lg selectpicker" name="selectAnoCuenta" id="selectAnoCuenta" data-live-search="true" data-size="10">
-                        <option value="">Seleccionar Año</option>
+                    <button type="button" class="btn btn-default btnImprimirPlantillaLetra" title="Imprimir formato de letra">
+                        <i class="fa fa-file-o"></i> Plantilla
+                    </button>
+                    <button type="button" class="btn btn-default btnAbrirConfigLetra" title="Configurar impresión de letras">
+                        <i class="fa fa-cog"></i> Config. impresión
+                    </button>
+
+                    <span class="cxc-header-bar__sep" aria-hidden="true"></span>
+
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-download"></i> Reportes <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li class="dropdown-header">PDF</li>
+                            <li>
+                                <a href="javascript:void(0)" class="btnProyeccionPagos" ano="null">
+                                    <img src="vistas/img/plantilla/download.png" alt=""> Proyección Pagos
+                                </a>
+                            </li>
+                            <li>
+                                <a href="javascript:void(0)" class="btnPorAceptar" ano="null">
+                                    <img src="vistas/img/plantilla/download.png" alt=""> Letras x Aceptar
+                                </a>
+                            </li>
+                            <li>
+                                <a href="javascript:void(0)" class="btnDocContado" ano="null">
+                                    <img src="vistas/img/plantilla/download.png" alt=""> Doc. Contado
+                                </a>
+                            </li>
+                            <li role="separator" class="divider"></li>
+                            <li class="dropdown-header">Excel</li>
+                            <?php if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("gestion_comercial", "estado_cuenta_gerencia")) : ?>
+                            <li>
+                                <a href="javascript:void(0)" id="btnReporteEstadoCuentaGerencia">
+                                    <img src="vistas/img/plantilla/excel.png" alt=""> Estado cuenta gerencia
+                                </a>
+                            </li>
+                            <?php endif; ?>
+                            <li>
+                                <a href="javascript:void(0)" id="btnReporteDeudaClientes">
+                                    <img src="vistas/img/plantilla/excel.png" alt=""> Deuda por cliente
+                                </a>
+                            </li>
+                            <li>
+                                <a href="javascript:void(0)" class="btnReporteCuentas" ano="null">
+                                    <img src="vistas/img/plantilla/excel.png" alt=""> Reporte cuentas
+                                </a>
+                            </li>
+                            <li>
+                                <a href="javascript:void(0)" data-toggle="modal" data-target="#modalFechasCredipagos">
+                                    <img src="vistas/img/plantilla/excel.png" alt=""> Credipagos
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="cxc-header-bar__right">
+                    <select class="form-control" name="selectAnoCuenta" id="selectAnoCuenta" title="Año">
+                        <option value="">Año</option>
                         <option value="2014">2014</option>
                         <option value="2015">2015</option>
                         <option value="2016">2016</option>
@@ -66,55 +190,6 @@ $idUsuarioSesionCxc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
                         <option value="2030">2030</option>
                     </select>
                 </div>
-
-                <div class="pull-right">
-                    <button class="btn btn-outline-success" style="border:green 1px solid" data-toggle="modal" data-target="#modalFechasCredipagos">
-                        <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte Credipagos </button>
-                </div>
-
-                <div class="pull-right">
-                    <button class="btn btn-outline-success btnReporteCuentas" ano="null" style="border:green 1px solid">
-                        <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte cuentas </button>
-                </div>
-
-                <div class="pull-right">
-                    <button type="button" class="btn btn-outline-success" id="btnReporteDeudaClientes" style="border:green 1px solid" title="Clientes con deuda (CxC + línea de crédito)">
-                        <img src="vistas/img/plantilla/excel.png" width="20px"> Deuda por cliente
-                    </button>
-                </div>
-
-                <div class="pull-right">
-                    <button type="button" class="btn btn-outline-success" id="btnReporteEstadoCuentaGerencia" style="border:green 1px solid" title="Informe de estado de cuenta para gerencia (Resumen + Cobranza)">
-                        <img src="vistas/img/plantilla/excel.png" width="20px"> Estado cuenta gerencia
-                    </button>
-                </div>
-
-                <div class="pull-right">
-                    <button class="btn btn-outline-success btnDocContado" ano="null" style="border:green 1px solid">
-                        <img src="vistas/img/plantilla/download.png" width="20px"> Reporte Doc. Contado </button>
-                </div>
-
-                <div class="pull-right">
-                    <button class="btn btn-outline-success btnPorAceptar" ano="null" style="border:green 1px solid">
-                        <img src="vistas/img/plantilla/download.png" width="20px"> Letras x Aceptar </button>
-                </div>
-
-                <div class="pull-right">
-                    <button class="btn btn-outline-success btnProyeccionPagos" ano="null" style="border:green 1px solid">
-                        <img src="vistas/img/plantilla/download.png" width="20px"> Proyección Pagos </button>
-                </div>
-
-                <div class="pull-right" style="margin-right: 10px;">
-                    <button type="button" class="btn btn-default btnAbrirConfigLetra" title="Configurar impresión de letras">
-                        <i class="fa fa-cog"></i> Configuración impresión
-                    </button>
-                </div>
-                <div class="pull-right" style="margin-right: 10px;">
-                    <button type="button" class="btn btn-default btnImprimirPlantillaLetra" title="Imprimir formato de letra">
-                        <i class="fa fa-file-o"></i> Plantilla
-                    </button>
-                </div>
-
 
             </div>
 
@@ -1802,7 +1877,7 @@ MODAL IMPORTAR CUENTAS DE BANCO
     </div>
 </div>
 
-<?php
+<?php if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("gestion_comercial", "estado_cuenta_gerencia")) :
 $mesCobranzaDefault = (int) date("n", strtotime("first day of last month"));
 $anioCobranzaDefault = (int) date("Y", strtotime("first day of last month"));
 $nombresMesModalGerencia = array(
@@ -1876,6 +1951,7 @@ $nombresMesModalGerencia = array(
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <?php
 
@@ -1896,7 +1972,6 @@ $eliminarCuenta->ctrEliminarCuenta();
         var ano = localStorage.getItem("ano");
         if (ano != null) {
             $("#selectAnoCuenta").val(ano);
-            $("#selectAnoCuenta").selectpicker("refresh");
             cargarTablaCuentasPaginado(ano);
         } else {
             cargarTablaCuentasPaginado(null);
