@@ -1,8 +1,558 @@
-.dg-dashboard .dg-plan-lista {
-    margin: 0;
-    padding-left: 20px;
+.dg-dashboard .content {
+    padding-bottom: 48px;
 }
 
-.dg-dashboard .dg-plan-lista li {
-    margin-bottom: 6px;
+.dg-dashboard .dg-filtros-box {
+    margin-bottom: 10px;
+}
+
+.dg-dashboard .dg-filtros-box > .box-body.dg-filtros-body {
+    padding: 8px 12px;
+}
+
+.dg-dashboard .dg-filtros-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 10px;
+}
+
+.dg-dashboard .dg-filtro-item {
+    min-width: 0;
+}
+
+.dg-dashboard .dg-filtro-item--anio {
+    width: 88px;
+}
+
+.dg-dashboard .dg-filtro-item--mes {
+    width: 132px;
+}
+
+.dg-dashboard .dg-filtro-item--wide {
+    width: 200px;
+    max-width: 240px;
+}
+
+.dg-dashboard .dg-filtro-item--modo {
+    width: 150px;
+}
+
+.dg-dashboard .dg-filtro-item label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    margin: 0 0 2px;
+    line-height: 1.2;
+}
+
+.dg-dashboard .dg-filtro-item .bootstrap-select {
+    width: 100% !important;
+}
+
+.dg-dashboard .dg-filtro-item .bootstrap-select > .btn,
+.dg-dashboard .dg-filtro-item input.form-control {
+    padding: 4px 8px;
+    font-size: 12px;
+    height: 30px;
+    line-height: 1.3;
+}
+
+.dg-dashboard .dg-periodos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    align-items: flex-end;
+}
+
+.dg-dashboard .dg-periodos.is-hidden {
+    display: none;
+}
+
+.dg-dashboard .dg-periodo-label {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #475569;
+}
+
+.dg-dashboard .dg-kpi-row {
+    margin-left: -6px;
+    margin-right: -6px;
+}
+
+.dg-dashboard .dg-kpi-row > [class*="col-"] {
+    padding-left: 6px;
+    padding-right: 6px;
+    margin-bottom: 12px;
+}
+
+.dg-dashboard .dg-kpi-card {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    min-height: 92px;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dg-dashboard .dg-kpi-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    background: #64748b;
+}
+
+.dg-dashboard .dg-kpi-card--green .dg-kpi-icon { background: #16a34a; }
+.dg-dashboard .dg-kpi-card--teal .dg-kpi-icon { background: #0d9488; }
+.dg-dashboard .dg-kpi-card--blue .dg-kpi-icon { background: #2563eb; }
+.dg-dashboard .dg-kpi-card--indigo .dg-kpi-icon { background: #4f46e5; }
+.dg-dashboard .dg-kpi-card--orange .dg-kpi-icon { background: #ea580c; }
+.dg-dashboard .dg-kpi-card--purple .dg-kpi-icon { background: #7c3aed; }
+.dg-dashboard .dg-kpi-card--muted .dg-kpi-icon { background: #94a3b8; }
+
+.dg-dashboard .dg-proy-extra {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #475569;
+}
+
+.dg-dashboard .dg-proy-extra span {
+    display: inline-block;
+    margin-right: 12px;
+    margin-bottom: 4px;
+}
+
+.dg-dashboard .dg-origen-hint {
+    margin: 4px 0 0;
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.dg-dashboard .dg-subtitulo {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.dg-dashboard .dg-origen-vendedores.is-hidden {
+    display: none;
+}
+
+/* Origen cobranza: layout denso */
+.dg-dashboard .dg-bloque-origen-cobranza > .box-body {
+    padding: 8px 10px 10px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-origen-kpis {
+    gap: 6px;
+    margin: 0 0 6px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-origen-kpis .dg-periodos-resumen__item {
+    flex: 1 1 110px;
+    min-width: 110px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-resumen-card {
+    min-height: 0;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-resumen-label {
+    font-size: 9px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-resumen-rango {
+    font-size: 10px;
+    margin: 1px 0 2px;
+    min-height: 0;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-resumen-valor {
+    font-size: 15px;
+    margin-top: 0;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-subtitulo {
+    margin: 10px 0 4px;
+    font-size: 13px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-subtitulo small {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza #dgOrigenFormula {
+    margin: 0 0 2px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-tabla > thead > tr > th,
+.dg-dashboard .dg-bloque-origen-cobranza .dg-tabla > tbody > tr > td,
+.dg-dashboard .dg-bloque-origen-cobranza .dg-tabla > tfoot > tr > th {
+    padding: 3px 6px !important;
+    vertical-align: middle !important;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-origen-tabla-mes {
+    margin-top: 4px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-origen-vendedores {
+    margin-top: 8px;
+}
+
+.dg-dashboard .dg-bloque-origen-cobranza .dg-fila-doble > [class*="col-"],
+.dg-dashboard .dg-bloque-origen-cobranza .dg-origen-aging > [class*="col-"] {
+    margin-bottom: 4px;
+}
+
+.dg-dashboard .dg-chart-wrap--origen-sm {
+    height: 160px;
+    margin-bottom: 2px;
+}
+
+.dg-dashboard .dg-origen-mes-wrap {
+    max-width: none;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.dg-dashboard .dg-origen-fila-3 > [class*="col-"] {
+    margin-bottom: 8px;
+}
+
+.dg-dashboard .dg-origen-mes-wrap .dg-tabla {
+    margin-bottom: 0;
+}
+
+.dg-dashboard .dg-origen-mes-wrap .dg-tabla > thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.dg-dashboard .dg-origen-mes-wrap .dg-tabla > tfoot > tr > th {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+}
+
+.dg-dashboard .dg-tabla-barras .dg-col-barra {
+    min-width: 120px;
+    width: 45%;
+}
+
+.dg-dashboard .dg-barra-track {
+    height: 10px;
+    background: #f1f5f9;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.dg-dashboard .dg-barra-fill {
+    height: 100%;
+    border-radius: 3px;
+    min-width: 0;
+}
+
+.dg-dashboard .dg-fila-otros > td {
+    color: #475569;
+    font-style: italic;
+}
+
+.dg-dashboard .dg-fila-pendiente > th {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    font-weight: 600;
+    border-top: none !important;
+}
+
+.dg-dashboard .dg-origen-fila-espejo > [class*="col-"] {
+    margin-bottom: 8px;
+}
+
+@media (min-width: 992px) {
+    .dg-dashboard .dg-origen-aging {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .dg-dashboard .dg-origen-aging > [class*="col-"] {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 1199px) {
+    .dg-dashboard .dg-bloque-origen-cobranza .dg-origen-kpis .dg-periodos-resumen__item {
+        flex: 1 1 140px;
+        min-width: 130px;
+    }
+}
+
+.dg-dashboard .dg-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+
+.dg-dashboard .dg-kpi-valor {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.dg-dashboard .dg-kpi-trend {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.dg-dashboard .dg-kpi-trend i {
+    margin-right: 3px;
+}
+
+.dg-dashboard .dg-trend-bueno { color: #16a34a; }
+.dg-dashboard .dg-trend-malo { color: #dc2626; }
+.dg-dashboard .dg-trend-neutro { color: #64748b; }
+
+.dg-dashboard .dg-bloque-pendiente {
+    margin-top: 4px;
+}
+
+.dg-dashboard .dg-bloque {
+    margin-bottom: 14px;
+}
+
+.dg-dashboard .dg-fila-doble {
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.dg-dashboard .dg-fila-doble > [class*="col-"] {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.dg-dashboard .dg-bloque--compacto .box-body {
+    padding: 10px 12px 12px;
+}
+
+.dg-dashboard .dg-bloque .box-title small {
+    margin-left: 6px;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.dg-dashboard .dg-chart-wrap {
+    position: relative;
+    height: 280px;
+}
+
+.dg-dashboard .dg-chart-wrap--compact {
+    height: 220px;
+    margin-bottom: 10px;
+}
+
+.dg-dashboard .dg-chart-wrap canvas {
+    max-width: 100%;
+}
+
+.dg-dashboard .dg-chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    background: rgba(248, 250, 252, 0.85);
+}
+
+.dg-dashboard .dg-chart-empty.is-hidden {
+    display: none;
+}
+
+.dg-dashboard .dg-tabla {
+    margin-bottom: 0;
+    font-size: 12px;
+}
+
+.dg-dashboard .dg-tabla > thead > tr > th {
+    color: #334155 !important;
+    font-weight: 700 !important;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    background-color: #e2e8f0 !important;
+    border-bottom: 2px solid #94a3b8 !important;
+    white-space: nowrap;
+    padding: 8px 8px !important;
+}
+
+.dg-dashboard .dg-tabla > tfoot > tr.dg-fila-total > th,
+.dg-dashboard .dg-tabla .dg-fila-total th {
+    background-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    border-top: 2px solid #94a3b8 !important;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.dg-dashboard .dg-delta-pos { color: #16a34a; font-weight: 600; }
+.dg-dashboard .dg-delta-neg { color: #dc2626; font-weight: 600; }
+.dg-dashboard .dg-delta-neu { color: #64748b; }
+
+.dg-dashboard .dg-bloque--destacado {
+    border-top-color: #2563eb;
+}
+
+.dg-dashboard .dg-bloque-hint {
+    float: right;
+    margin-top: 8px;
+    margin-right: 8px;
+    font-size: 11px;
+}
+
+.dg-dashboard .dg-chart-wrap--sm {
+    height: 220px;
+}
+
+.dg-dashboard .dg-periodos-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 12px;
+    align-items: stretch;
+}
+
+.dg-dashboard .dg-periodos-resumen__item {
+    flex: 1 1 0;
+    min-width: 160px;
+    display: flex;
+}
+
+.dg-dashboard .dg-periodos-cuerpo {
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.dg-dashboard .dg-periodos-cuerpo > [class*="col-"] {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.dg-dashboard .dg-periodos-3col > [class*="col-"] {
+    margin-bottom: 8px;
+}
+
+.dg-dashboard .dg-periodos-resumen--stack {
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+}
+
+.dg-dashboard .dg-periodos-resumen--stack .dg-periodos-resumen__item {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.dg-dashboard .dg-periodos-resumen--stack .dg-resumen-card {
+    min-height: 0;
+    padding: 8px 10px;
+}
+
+.dg-dashboard .dg-periodos-resumen--stack .dg-resumen-valor {
+    font-size: 17px;
+}
+
+.dg-dashboard .dg-chart-wrap--periodos {
+    height: 240px;
+}
+
+.dg-dashboard .dg-resumen-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: #fff;
+    width: 100%;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-sizing: border-box;
+}
+
+.dg-dashboard .dg-resumen-card--a { border-left: 3px solid #16a34a; }
+.dg-dashboard .dg-resumen-card--a-blue { border-left: 3px solid #2563eb; }
+.dg-dashboard .dg-resumen-card--b { border-left: 3px solid #64748b; }
+.dg-dashboard .dg-resumen-card--delta { border-left: 3px solid #2563eb; }
+
+.dg-dashboard .dg-resumen-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+.dg-dashboard .dg-resumen-rango {
+    font-size: 11px;
+    color: #94a3b8;
+    margin: 4px 0 6px;
+    min-height: 16px;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.dg-dashboard .dg-resumen-valor {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+    margin-top: auto;
+}
+
+.dg-dashboard .dg-resumen-sub {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    min-height: 16px;
+}
+
+@media (max-width: 767px) {
+    .dg-dashboard .dg-periodos-resumen__item {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 767px) {
+    .dg-dashboard .dg-filtro-item--anio,
+    .dg-dashboard .dg-filtro-item--mes,
+    .dg-dashboard .dg-filtro-item--wide,
+    .dg-dashboard .dg-filtro-item--modo {
+        width: 100%;
+        max-width: none;
+    }
 }

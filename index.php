@@ -140,6 +140,10 @@ require_once "controladores/vendedor.controlador.php";
 
 require_once "controladores/dashboard-cobranzas.controlador.php";
 
+require_once "controladores/dashboard-gerencial.config.php";
+
+require_once "controladores/dashboard-gerencial.controlador.php";
+
 require_once "controladores/dashboard-cxc.config.php";
 
 require_once "controladores/dashboard-cxc.controlador.php";
@@ -278,6 +282,8 @@ require_once "modelos/cuentas.modelo.php";
 require_once "modelos/estado-cuenta.modelo.php";
 
 require_once "modelos/dashboard-cobranzas.modelo.php";
+
+require_once "modelos/dashboard-gerencial.modelo.php";
 
 require_once "modelos/dashboard-cxc.modelo.php";
 

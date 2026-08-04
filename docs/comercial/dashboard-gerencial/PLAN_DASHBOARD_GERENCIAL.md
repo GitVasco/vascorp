@@ -53,12 +53,19 @@ sobre ventas, cobranzas, comparativos, origen de recuperación y proyección.
 
 No pasar al siguiente bloque sin validar totales con datos reales.
 
-### Bloque 0 — Base técnica
+### Bloque 0 — Base técnica ✅
 
-1. Ruta, permiso, menú, shell vacío con filtros.
-2. Endpoint AJAX con parámetros validados (`anio`, `mes`, `vendedor`, `periodo_a`, `periodo_b`).
-3. Definir fuente de ventas y cobranzas (mismas reglas que reportes/dashboards actuales).
-4. Criterio: sin SQL concatenado; anulados/cancelados fuera.
+1. Ruta, permiso, menú, shell con filtros.
+2. Endpoint AJAX `ajax/dashboard-gerencial.ajax.php` (`accion=base|kpis`) con parámetros validados:
+   `anio`, `mes`, `vendedor`, `modo` (`vs_anio_ant`|`periodos`), `periodo_a_*`, `periodo_b_*`.
+3. Fuentes de datos (contrato):
+   - **Venta global:** `ControladorMovimientos::ctrTotalesSolesGerencia` → `vtas_soles`
+   - **Venta por vendedor:** `ModeloMetasVendedor::mdlAvanceVentasDashboard` → `venta_real`
+   - **Cobranza global:** mismos totales → `pagos_soles`
+   - **Cobranza por vendedor:** `ControladorDashboardCobranzas::ctrKpisSuperiores` (efectivo en `cuenta_ctejf`)
+   - **Filtro vendedores:** lista fija `dashboard-cobranzas/vendedores-filtro.php`
+4. Criterio: parámetros validados en `ctrParseFiltros`; sin SQL concatenado con input de usuario.
+5. KPIs cabecera con datos reales (recuperación y proyección quedan en `—` hasta bloques 6–8).
 
 ### Bloque 1 — KPIs superiores
 
@@ -69,45 +76,70 @@ Cajas:
 - % recuperación del período (definición en Bloque 5)
 - Proyección vs real del mes (cuando exista Bloque 7)
 
-### Bloque 2 — Ventas mes a mes (#1)
+### Bloque 2 — Ventas mes a mes (#1) ✅
 
-- Gráfico barras/línea: venta por mes del año seleccionado
-- Tabla resumen: mes | venta | % del total año
+- Gráfico barras: venta por mes del año seleccionado (`ctrVentasMensual`)
+- Tabla: mes | venta | % del total año
+- Fuentes: global `totalesjf`; por vendedor `ventajf` (tipos venta real)
+- Endpoint: incluido en `accion=base` y `accion=ventas_mensual`
+- Año en curso: meses hasta el mes actual; años cerrados: 12 meses
 
-### Bloque 3 — Ventas vs año pasado (#2)
+### Bloque 3 — Ventas vs año pasado (#2) ✅
 
-- Misma serie con N y N-1 superpuestas
+- Barras agrupadas N vs N-1 (`ctrVentasVsAnioPasado`)
 - Tabla: mes | venta N | venta N-1 | Δ abs | Δ %
+- Mismos meses alineados; año en curso hasta mes actual
+- Endpoint: `accion=base` y `accion=ventas_vs_anio`
 
-### Bloque 4 — Ventas períodos específicos (#3)
+### Bloque 4 — Ventas períodos específicos (#3) ✅
 
-- Selectores período A y período B (fecha desde–hasta o mes/año)
-- Gráfico comparativo + tabla totales y, si aplica, por mes dentro del rango
+- Filtros: modo «Períodos A / B» + fechas desde–hasta (ya en barra)
+- Totales A vs B + Δ / Δ%
+- Gráfico totales + barras por mes alineadas por número de mes (Ene A vs Ene B)
+- Tabla mensual detalle
+- Fuente: `ventajf` (tipos venta real); respeta vendedor
+- Endpoint: `accion=base` y `accion=ventas_periodos`
 
-### Bloque 5 — Cobranzas mes a mes / vs N-1 / períodos (#4)
+### Bloque 5 — Cobranzas mes a mes / vs N-1 / períodos (#4) ✅
 
-- Replicar Bloques 2–4 con monto cobrado (misma UX)
-- Alinear definición de “cobranza” con dashboard CxC / rendiciones vigentes
+- Misma UX que ventas (mensual, vs N-1, períodos A/B)
+- **Sin IGV 18%** (`monto / 1.18`) en cobranzas y proyección de este dashboard, para comparar con ventas netas
+- Fuentes:
+  - Global mensual/vs año: `totalesjf.total_pagos_soles`
+  - Por vendedor / períodos: `cuenta_ctejf` tip_mov=`-` + códigos EFECTIVO (`mrSqlInCodigosCobranzaEfectiva`)
+- Endpoints: `cobranzas_mensual`, `cobranzas_vs_anio`, `cobranzas_periodos` (+ `base`)
 
-### Bloque 6 — Origen de la cobranza / tasa de recuperación (#5)
+### Bloque 6 — Origen de la cobranza / tasa de recuperación (#5) ✅
 
 Pregunta tipo: “En julio cobramos 2M; ¿cuánto era de junio, mayo, años anteriores?”
 
-- Filtro: período de cobro (ej. julio 2026)
-- Tabla/gráfico: monto cobrado en ese período **agrupado por mes/año de origen del documento** (fecha factura / emisión)
-- % de cada origen sobre el total cobrado del período
-- KPI: tasa de recuperación (definir y documentar fórmula al implementar; ej. cobrado del período ÷ cartera elegible del mismo origen, o desglose de antigüedad del cobro — confirmar con negocio en este bloque)
+- Período de cobro: año/mes del filtro (o Período A si modo períodos)
+- Origen documento: `fecha_ori` del abono; fallback `MIN(fecha)` del cargo `tip_mov='+'`
+- Solo cobranza EFECTIVO (`mrSqlInCodigosCobranzaEfectiva`)
+- Gráfico horizontal + tabla (mismas filas, mismo orden, altura dinámica): mes origen | monto | %
+- **KPI % cobro mismo mes:**  
+  `(cobro con origen en el mismo mes calendario del pago) / (total cobrado del período) × 100`
+- **Ventas del período vs recuperado hasta hoy:**  
+  ventas del rango / cobranza de docs con origen en ese rango (pagos hasta hoy) → `% recuperado`
+- **Mes a mes del año:** ventas, recuperado hasta hoy, % recup., cobro mismo mes, % mismo mes  
+  (`% mismo mes = cobro mismo mes / ventas del mes`)
+- **Aging del cobro del período:** buckets 0–30 / 31–60 / 61–90 / 91–180 / +180 / sin origen  
+  (días entre fecha origen y fecha de pago)
+- Endpoint: `accion=origen_cobranza` (+ `base`)
 
-### Bloque 7 — Origen global y por vendedor (#6)
+### Bloque 7 — Origen global y por vendedor (#6) ✅
 
-- Mismo Bloque 6 con filtro vendedor = Todos | uno
-- Opcional: tabla pivote vendedor × mes origen
+- Respeta filtro vendedor (Todos | uno)
+- Con vendedor = Todos: tabla top 15 vendedores (cobranza, mismo mes, % cobro mismo mes)
 
-### Bloque 8 — Proyección de cobranzas (#7)
+### Bloque 8 — Proyección de cobranzas (#7) ✅
 
-- Esperado a cobrar (por vencer / vencido / calendario) vs real del mes
-- Gráfico proyección vs real; tabla por vendedor o por tramo
-- Reusar lógica de `dashboard-cxc` (proyección pagos) si aplica; no duplicar reglas contradictorias
+- Reutiliza `ControladorDashboardCxc::ctrProyeccionPagos` (mismas reglas de cartera)
+- Mes de corte = mes del filtro (si año completo → mes actual / dic)
+- Por cada mes del horizonte: proyección (saldo `fecha_ven`) vs real (cobranza efectiva)
+- KPI % cumplimiento = `real_mes / proyeccion_mes × 100`
+- Muestra también vencido pendiente, incobrables, horizonte y cartera total
+- Endpoint: `accion=proyeccion_cobranzas` (+ `base`)
 
 ## Criterios de aceptación globales
 
