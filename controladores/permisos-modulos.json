@@ -1,7 +1,10 @@
 {
   "gestion_comercial": {
     "dashboard_cobranzas": {
-      "ver": [6, 32, 105]
+      "ver": []
+    },
+    "dashboard_gerencial": {
+      "ver": [6]
     },
     "dashboard_cxc": {
       "ver": [6, 32, 105]

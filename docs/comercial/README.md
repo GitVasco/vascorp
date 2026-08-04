@@ -10,5 +10,6 @@ Planes y especificaciones de módulos comerciales de **vascorp** (no son contrat
 | [`recetas-modelos/`](recetas-modelos/) | Recetas, ficha gerencial, costos, categorías |
 | [`regularizaciones/`](regularizaciones/) | Regularizaciones comerciales |
 | [`dashboard-cxc/`](dashboard-cxc/) | Dashboard CxC |
+| [`dashboard-gerencial/`](dashboard-gerencial/) | Dashboard gerencial (ventas + cobranzas) |
 
 SQL de migraciones: [`../sql/`](../sql/).

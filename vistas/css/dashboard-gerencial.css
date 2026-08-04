@@ -1,0 +1,8 @@
+.dg-dashboard .dg-plan-lista {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.dg-dashboard .dg-plan-lista li {
+    margin-bottom: 6px;
+}

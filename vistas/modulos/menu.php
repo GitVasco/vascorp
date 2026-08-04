@@ -78,8 +78,10 @@
 
             <!-- Gestión comercial -->
             <?php
-            $puedeVerDashboardCobranzas = function_exists("usuarioPuedeVerModulo")
-                && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cobranzas");
+            // dashboard-cobranzas oculto (legado); reemplazo: dashboard-gerencial
+            $puedeVerDashboardCobranzas = false;
+            $puedeVerDashboardGerencial = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "dashboard_gerencial");
             $puedeVerDashboardCxc = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "dashboard_cxc");
             $puedeVerCentroDecisiones = function_exists("usuarioPuedeVerModulo")
@@ -107,7 +109,7 @@
             $puedeVerFichaModelos = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
 
-            $mostrarCreditoCobranzas = $puedeVerDashboardCobranzas
+            $mostrarCreditoCobranzas = $puedeVerDashboardGerencial
                 || $puedeVerDashboardCxc
                 || $puedeVerCentroDecisiones
                 || $puedeVerHistorialCredito
@@ -121,8 +123,8 @@
                 || $puedeVerAsignacionGruposMarcas;
 
             $rutasActivasCreditoCobranzas = array();
-            if ($puedeVerDashboardCobranzas) {
-                $rutasActivasCreditoCobranzas[] = "dashboard-cobranzas";
+            if ($puedeVerDashboardGerencial) {
+                $rutasActivasCreditoCobranzas[] = "dashboard-gerencial";
             }
             if ($puedeVerDashboardCxc) {
                 $rutasActivasCreditoCobranzas[] = "dashboard-cxc";
@@ -218,11 +220,11 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <?php if ($puedeVerDashboardCobranzas) { ?>
-                                <li class="<?php if ($_GET["ruta"] == "dashboard-cobranzas") echo 'active'; ?>">
-                                    <a href="index.php?ruta=dashboard-cobranzas">
-                                        <i class="fa fa-dashboard"></i>
-                                        <span>Dashboard cobranzas</span>
+                                <?php if ($puedeVerDashboardGerencial) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "dashboard-gerencial") echo 'active'; ?>">
+                                    <a href="index.php?ruta=dashboard-gerencial">
+                                        <i class="fa fa-line-chart"></i>
+                                        <span>Dashboard gerencial</span>
                                     </a>
                                 </li>
                                 <?php } ?>

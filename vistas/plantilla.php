@@ -29,6 +29,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Crear pedido | Vasco System";
         } elseif ($_GET["ruta"] === "dashboard-cobranzas") {
             $__tituloVentana = "Dashboard de Cobranzas | Vasco System";
+        } elseif ($_GET["ruta"] === "dashboard-gerencial") {
+            $__tituloVentana = "Dashboard Gerencial | Vasco System";
         } elseif ($_GET["ruta"] === "dashboard-cxc") {
             $__tituloVentana = "Centro de Control CxC | Vasco System";
         } elseif ($_GET["ruta"] === "dashboard-decisiones") {
@@ -136,6 +138,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cxc") : ?>
     <link rel="stylesheet" href="vistas/css/dashboard-cxc.css?v=31">
+    <?php endif; ?>
+
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-gerencial") : ?>
+    <link rel="stylesheet" href="vistas/css/dashboard-gerencial.css?v=1">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") : ?>
@@ -410,6 +416,13 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/dashboard-cobranzas.php";
+                }
+            } else if ($_GET["ruta"] == "dashboard-gerencial") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "dashboard_gerencial")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/dashboard-gerencial.php";
                 }
             } else if ($_GET["ruta"] == "dashboard-cxc") {
 
@@ -959,6 +972,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cobranzas") { ?>
     <script src="vistas/js/dashboard-cobranzas.js?v=31"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-gerencial") { ?>
+    <script src="vistas/js/dashboard-gerencial.js?v=1"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cxc") { ?>
     <script src="vistas/js/dashboard-cxc.js?v=20"></script>
