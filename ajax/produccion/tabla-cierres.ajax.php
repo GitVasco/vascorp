@@ -52,7 +52,19 @@ class TablaCierres
         TRAEMOS LAS ACCIONES
         =============================================*/
                 $fecha = substr($cierres[$i]["fecha"], 0, 10);
-                $botones =  "<div class='btn-group'><button class='btn btn-xs btn-info btnVisualizarCierre' title='Visualizar Cierre' data-toggle='modal' data-target='#modalVisualizarCierre' codigoCierre='" . $cierres[$i]["codigo"] . "'><i class='fa fa-eye'></i></button><button class='btn btn-xs btn-danger btnEliminarCierre' title='Eliminar Cierre' idCierre='" . $cierres[$i]["codigo"] . "'><i class='fa fa-times'></i></button><button class='btn btn-xs btn-outline-success pull-right btnDetalleCierre' idCierre='" . $cierres[$i]["codigo"] . "' style='border:green 1px solid'><img src='vistas/img/plantilla/excel.png' width='18px'></button></div>";
+
+                if ($cierres[$i]["estado_pago"] == "PAGADO") {
+                    $btnEditar = "<button class='btn btn-xs btn-warning' disabled title='No se puede editar: cierre pagado'><i class='fa fa-pencil'></i></button>";
+                } else {
+                    $btnEditar = "<button class='btn btn-xs btn-warning btnEditarCierre' title='Editar cierre' idCierre='" . $cierres[$i]["codigo"] . "'><i class='fa fa-pencil'></i></button>";
+                }
+
+                $botones =  "<div class='btn-group'>"
+                    . "<button class='btn btn-xs btn-info btnVisualizarCierre' title='Visualizar Cierre' data-toggle='modal' data-target='#modalVisualizarCierre' codigoCierre='" . $cierres[$i]["codigo"] . "'><i class='fa fa-eye'></i></button>"
+                    . $btnEditar
+                    . "<button class='btn btn-xs btn-danger btnEliminarCierre' title='Eliminar Cierre' idCierre='" . $cierres[$i]["codigo"] . "'><i class='fa fa-times'></i></button>"
+                    . "<button class='btn btn-xs btn-outline-success pull-right btnDetalleCierre' idCierre='" . $cierres[$i]["codigo"] . "' style='border:green 1px solid'><img src='vistas/img/plantilla/excel.png' width='18px'></button>"
+                    . "</div>";
 
                 $datosJson .= '[
             "' . ($i + 1) . '",

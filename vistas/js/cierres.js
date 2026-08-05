@@ -366,12 +366,18 @@ var idQuitarProducto = [];
 localStorage.removeItem("quitarServicio");
 
 $(".formularioCierre").on("click", "button.quitarServicio", function () {
-    /* console.log("boton"); */
-
-    $(this).parent().parent().parent().parent().remove();
-
+    var fila = $(this).closest(".munditoCierre");
     var codigoServicio = $(this).attr("codigoServicio");
-    // console.log(codigoServicio);
+    var cantidadDevuelta = Number(
+        fila.find("input.nuevaCantidadProducto").val()
+    );
+
+    if (isNaN(cantidadDevuelta) || cantidadDevuelta < 0) {
+        cantidadDevuelta = 0;
+    }
+
+    fila.remove();
+
     /*=============================================
     ALMACENAR EN EL LOCALSTORAGE EL ID DEL PRODUCTO A QUITAR
     =============================================*/
@@ -387,24 +393,30 @@ $(".formularioCierre").on("click", "button.quitarServicio", function () {
     });
     localStorage.setItem("quitarServicio", JSON.stringify(idQuitarProducto));
 
-    $(
+    var botonRecuperar = $(
         "button.recuperarBoton[codServicio='" + codigoServicio + "']"
-    ).removeClass("btn-default");
-
-    $("button.recuperarBoton[codServicio='" + codigoServicio + "']").addClass(
-        "btn-primary agregarServicio"
     );
+    var saldoBoton = Number(botonRecuperar.attr("saldoServicio"));
+    if (isNaN(saldoBoton)) {
+        saldoBoton = 0;
+    }
+    botonRecuperar.attr("saldoServicio", saldoBoton + cantidadDevuelta);
+    botonRecuperar.removeClass("btn-default");
+    botonRecuperar.addClass("btn-primary agregarServicio");
 
-    if ($(".nuevoCierres").children().length == 0) {
+    // Actualizar celda de saldo en la tabla si está visible
+    var celdaSaldo = botonRecuperar.closest("tr").find("td").eq(6);
+    if (celdaSaldo.length) {
+        celdaSaldo.text(saldoBoton + cantidadDevuelta);
+    }
+
+    if ($(".nuevoCierres .munditoCierre").length == 0) {
         $("#nuevoTotalVenta").val(0);
         $("#totalVenta").val(0);
         $("#nuevoTotalVenta").attr("total", 0);
+        $("#listaProductos").val("[]");
     } else {
-        // SUMAR TOTAL DE PRECIOS
-
-        // AGRUPAR PRODUCTOS EN FORMATO JSON
         sumarTotalCierre();
-
         listarCierres();
     }
 });
@@ -476,7 +488,6 @@ function listarCierres() {
     }
 
     $("#listaProductos").val(JSON.stringify(listaProductos));
-    console.log(JSON.stringify(listaProductos));
 }
 
 /*
@@ -499,13 +510,16 @@ function sumarTotalCierre() {
         return total + numero;
     }
 
-    var sumarTotal = arraySumarCantidades.reduce(sunaArrayCantidades);
-
-    /* console.log("sumarTotal", sumarTotal); */
+    var sumarTotal = arraySumarCantidades.length
+        ? arraySumarCantidades.reduce(sunaArrayCantidades)
+        : 0;
 
     $("#nuevoTotalVenta").val(sumarTotal);
     $("#totalVenta").val(sumarTotal);
     $("#nuevoTotalVenta").attr("total", sumarTotal);
+    if ($("#cierreSummaryTotal").length) {
+        $("#cierreSummaryTotal").text(sumarTotal);
+    }
 }
 
 /*=============================================
@@ -525,23 +539,15 @@ $("#totalVenta").number(true, 0);
   =============================================*/
 
 function quitarAgregarProducto() {
-    //Capturamos todos los id de productos que fueron elegidos en la venta
+    // Capturamos todos los servicios ya elegidos en el cierre
     var idProductos = $(".quitarServicio");
-    //console.log("idProductos", idProductos);
+    var botonesTabla = $(".tablaArticuloCierre tbody button.recuperarBoton");
 
-    //Capturamos todos los botones de agregar que aparecen en la tabla
-    var botonesTabla = $(".tablaArticuloCierre tbody button.agregarServicio");
-
-    //console.log("botonesTabla", botonesTabla);
-
-    //Recorremos en un ciclo para obtener los diferentes idProductos que fueron agregados a la venta
     for (var i = 0; i < idProductos.length; i++) {
-        //Capturamos los Id de los productos agregados a la venta
         var boton = $(idProductos[i]).attr("codigoServicio");
 
-        //Hacemos un recorrido por la tabla que aparece para desactivar los botones de agregar
         for (var j = 0; j < botonesTabla.length; j++) {
-            if ($(botonesTabla[j]).attr("codigoServicio") == boton) {
+            if ($(botonesTabla[j]).attr("codServicio") == boton) {
                 $(botonesTabla[j]).removeClass("btn-primary agregarServicio");
                 $(botonesTabla[j]).addClass("btn-default");
             }

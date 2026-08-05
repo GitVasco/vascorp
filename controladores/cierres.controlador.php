@@ -170,138 +170,178 @@ class ControladorCierres
 	public function ctrEditarCierres()
 	{
 
-		if (isset($_POST["editarCierre"]) && isset($_POST["idSectorVenta"]) && isset($_POST["listaProductos"])) {
+		if (!(
+			isset($_POST["editarCierre"]) &&
+			isset($_POST["idSectorVenta"]) &&
+			isset($_POST["listaProductos"])
+		)) {
+			return;
+		}
 
-			# Formateamos la tabla de Productos y de Clientes
-			# Traemos los detalles asociados a la venta a editar
+		$codigo = $_POST["editarCierre"];
+		$cierre = ModeloCierres::mdlMostrarCierres("cierresjf", "codigo", $codigo);
 
-			$detaProductos = ModeloCierres::mdlMostraDetallesCierres("cierres_detallejf", "codigo", $_POST["editarCierre"]);
+		if (!$cierre) {
+			echo '<script>
+					swal({
+						type: "error",
+						title: "Error",
+						text: "¡No se encontró el cierre a editar!",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then((result)=>{
+						if(result.value){ window.location="cierres"; }
+					});
+				</script>';
+			return;
+		}
 
-			# Cambiamos los id de la lista por los id de los Productos
-			foreach ($detaProductos as $key => $value) {
+		if ($cierre["estado_pago"] == "PAGADO") {
+			echo '<script>
+					swal({
+						type: "error",
+						title: "Cierre pagado",
+						text: "¡No se puede editar un cierre con estado PAGADO!",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then((result)=>{
+						if(result.value){ window.location="cierres"; }
+					});
+				</script>';
+			return;
+		}
 
-				$infoPro = controladorArticulos::ctrMostrarArticulos($value["articulo"]);
-				$detaProductos[$key]["articulo"] = $infoPro["articulo"];
-			}
+		$listaProductos = json_decode($_POST["listaProductos"], true);
 
-			if ($_POST["listaProductos"] == "") {
+		if (!is_array($listaProductos) || count($listaProductos) == 0) {
+			echo '<script>
+					swal({
+						type: "error",
+						title: "Error",
+						text: "¡Debe dejar al menos un artículo. Si desea quitarlos todos, elimine el cierre!",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then((result)=>{
+						if(result.value){
+							window.location="index.php?ruta=editar-cierre&idCierre=' . $codigo . '";
+						}
+					});
+				</script>';
+			return;
+		}
 
-				$listaProductos = $detaProductos;
-				$validarCambio = false;
-			} else {
-
-				$listaProductos = json_decode($_POST["listaProductos"], true);
-				$validarCambio = true;
-			}
-
-			if ($validarCambio) {
-
-
-				foreach ($listaProductos as $key => $value) {
-					# Traemos los productos por ID en cada interacción
-					$valor = $value["articulo"];
-
-					$respuestaProducto = ModeloArticulos::mdlMostrarArticulos($valor);
-
-
-					# Actualizamos las ventas en la tabla productos
-					$item1 = "servicio";
-					$valor1 = $value["servicio"] - $value["cantidad"];
-
-					ModeloArticulos::mdlActualizarUnDato("articulojf", $item1, $valor1, $valor);
-					$tabla2 = "servicios_detallejf";
-					$item2 = "saldo";
-					$idServicio = $value["codServicio"];
-					$saldoServicio = ModeloCierres::mdlActualizarUnDato($tabla2, $item2, $valor1, $idServicio);
-				}
-
-
-				# Actualizamos ultima_compra en la tabla Clientes
-				date_default_timezone_set('America/Lima');
-				$fecha = new DateTime();
-			}
-
-			/* ==============================================
-			EDITAMOS LOS CAMBIOS DE LA VENTA listaMetodoPago
-			============================================== */
-			$datos = array(
-				"codigo" => $_POST["editarCierre"],
-				"guia" => $_POST["editarGuia"],
-				"usuario" => $_POST["idVendedor"],
-				"taller" => $_POST["idSectorVenta"],
-				"total" => $_POST["totalVenta"],
-				"fecha" => $fecha->format("Y-m-d H:i:s")
-			);
-
-
-			$respuesta = ModeloCierres::mdlEditarCierres("cierresjf", $datos);
-
-
-			/* var_dump("datos", $datos); */
-
-			if ($respuesta == "ok") {
-
-				# Eliminamos los detalles de la venta
-				$eliminarDeta = ModeloCierres::mdlEliminarDato("cierres_detallejf", "codigo", $_POST["editarCierre"]);
-
-				if ($eliminarDeta == "ok") {
-
-					# Guardamos los nuevos detalles de la venta
-					foreach ($listaProductos as $key => $value) {
-
-						$datos = array(
-							"codigo" => $_POST["editarCierre"],
-							"articulo" => $value["articulo"],
-							"cantidad" => $value["cantidad"],
-							"cod_servicio" => $value["codServicio"]
-						);
-
-						ModeloCierres::mdlGuardarDetallesCierres("cierres_detallejf", $datos);
-					}
-					# Mostramos una alerta suave
-					echo '<script>
-							swal({
-								type: "success",
-								title: "Felicitaciones",
-								text: "¡La información fue Actualizada con éxito!",
-								showConfirmButton: true,
-								confirmButtonText: "Cerrar"
-							}).then((result)=>{
-								if(result.value){
-									window.location="cierres";}
-							});
-						</script>';
-				} else {
-					# Mostramos una alerta suave
-					echo '<script>
-							swal({
-								type: "error",
-								title: "Error",
-								text: "¡La información presento problemas al actualizar los Detalles. Por favor, comunicarse con el Administrador de la Base de Datos!",
-								showConfirmButton: true,
-								confirmButtonText: "Cerrar"
-							}).then((result)=>{
-								if(result.value){
-									window.location="cierres";}
-							});
-						</script>';
-				}
-			} else {
-				# Mostramos una alerta suave
+		foreach ($listaProductos as $value) {
+			if ((int)$value["cantidad"] <= 0) {
 				echo '<script>
 						swal({
 							type: "error",
 							title: "Error",
-							text: "¡La información presento problemas y no se actualizó adecuadamente. Por favor, intenteló de nuevo!",
+							text: "¡Todas las cantidades deben ser mayores a cero!",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 						}).then((result)=>{
 							if(result.value){
-								window.location="cierres";}
+								window.location="index.php?ruta=editar-cierre&idCierre=' . $codigo . '";
+							}
 						});
 					</script>';
+				return;
 			}
 		}
+
+		$detaAnterior = ModeloCierres::mdlMostraDetallesCierres("cierres_detallejf", "codigo", $codigo);
+
+		# Devolver saldos de las líneas anteriores
+		foreach ($detaAnterior as $value) {
+			$detaServ = ControladorServicios::ctrMostrarDetallesServicioUnico("id", $value["cod_servicio"]);
+			if ($detaServ) {
+				$nuevoSaldo = (int)$detaServ["saldo"] + (int)$value["cantidad"];
+				ModeloCierres::mdlActualizarUnDato("servicios_detallejf", "saldo", $nuevoSaldo, $value["cod_servicio"]);
+			}
+		}
+
+		$datos = array(
+			"codigo" => $codigo,
+			"guia" => $_POST["editarGuia"],
+			"usuario" => $_POST["idVendedor"],
+			"taller" => $_POST["idSectorVenta"],
+			"total" => $_POST["totalVenta"],
+			"fecha" => $cierre["fecha"]
+		);
+
+		$respuesta = ModeloCierres::mdlEditarCierres("cierresjf", $datos);
+
+		if ($respuesta != "ok") {
+			echo '<script>
+					swal({
+						type: "error",
+						title: "Error",
+						text: "¡No se pudo actualizar la cabecera del cierre. Inténtelo de nuevo!",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then((result)=>{
+						if(result.value){ window.location="cierres"; }
+					});
+				</script>';
+			return;
+		}
+
+		$eliminarDeta = ModeloCierres::mdlEliminarDato("cierres_detallejf", "codigo", $codigo);
+
+		if ($eliminarDeta != "ok") {
+			echo '<script>
+					swal({
+						type: "error",
+						title: "Error",
+						text: "¡Problema al actualizar los detalles. Contacte al administrador!",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then((result)=>{
+						if(result.value){ window.location="cierres"; }
+					});
+				</script>';
+			return;
+		}
+
+		foreach ($listaProductos as $value) {
+			$cantidad = (int)$value["cantidad"];
+			$idServicio = $value["codServicio"];
+
+			$detaServ = ControladorServicios::ctrMostrarDetallesServicioUnico("id", $idServicio);
+			$saldoActual = $detaServ ? (int)$detaServ["saldo"] : 0;
+			$nuevoSaldo = $saldoActual < $cantidad ? 0 : $saldoActual - $cantidad;
+			ModeloCierres::mdlActualizarUnDato("servicios_detallejf", "saldo", $nuevoSaldo, $idServicio);
+
+			$inicio = $cantidad;
+			foreach ($detaAnterior as $old) {
+				if ($old["cod_servicio"] == $idServicio && isset($old["inicio"])) {
+					$inicio = $old["inicio"];
+					break;
+				}
+			}
+
+			ModeloCierres::mdlGuardarDetallesCierres("cierres_detallejf", array(
+				"codigo" => $codigo,
+				"articulo" => $value["articulo"],
+				"cantidad" => $cantidad,
+				"inicio" => $inicio,
+				"cod_servicio" => $idServicio
+			));
+		}
+
+		ModeloCierres::mdlActualizarServicioTotal();
+
+		echo '<script>
+				swal({
+					type: "success",
+					title: "Listo",
+					text: "¡El cierre se actualizó correctamente!",
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then((result)=>{
+					if(result.value){ window.location="cierres"; }
+				});
+			</script>';
 	}
 
 
@@ -312,54 +352,28 @@ class ControladorCierres
 	static public function ctrEliminarCierre($codigo)
 	{
 
-		$item = "codigo";
-		$infoCierre = ModeloCierres::mdlMostrarCierres("cierresjf", $item, $codigo);
-
-
 		$detaCierre = ModeloCierres::mdlMostraDetallesCierres("cierres_detallejf", "codigo", $codigo);
 
-
-		/* 
-        todo: Actualizamos orden de corte en Articulojf
-        */
-		foreach ($detaCierre as $key => $value) {
-
-			$valorA = $value["articulo"];
-
-			$infoA = ModeloArticulos::mdlMostrarArticulos($valorA);
-			// var_dump("infoA", $infoA);
-			#var_dump("infoA", $infoA["ord_corte"]);
-			#var_dump("cantidad", $value["cantidad"]);
-
-			$servicio = $infoA["servicio"] + $value["cantidad"];
-			#var_dump("ord_corte", $ord_corte);
-
-			ModeloArticulos::mdlActualizarUnDato("articulojf", "servicio", $servicio, $value["articulo"]);
-
-			$tabla2 = "servicios_detallejf";
-			$item2 = "saldo";
-			$saldoServicio = ModeloArticulos::mdlActualizarUnDato($tabla2, $item2, $servicio, $value["articulo"]);
+		# Devolver cantidades al saldo del servicio detalle
+		foreach ($detaCierre as $value) {
+			$detaServ = ControladorServicios::ctrMostrarDetallesServicioUnico("id", $value["cod_servicio"]);
+			if ($detaServ) {
+				$nuevoSaldo = (int)$detaServ["saldo"] + (int)$value["cantidad"];
+				ModeloCierres::mdlActualizarUnDato(
+					"servicios_detallejf",
+					"saldo",
+					$nuevoSaldo,
+					$value["cod_servicio"]
+				);
+			}
 		}
 
-		/* 
-        todo: Eliminamos la cabecera de Orden de corte
-        */
-		$tablaCierre = "cierresjf";
-		$itemCierre = "codigo";
-		$valorCierre = $codigo;
-
-		$respuesta = ModeloCierres::mdlEliminarDato($tablaCierre, $itemCierre, $valorCierre);
+		$respuesta = ModeloCierres::mdlEliminarDato("cierresjf", "codigo", $codigo);
 
 		if ($respuesta == "ok") {
-
-			/* 
-            todo: Eliminamos el detalle de Orden de corte
-            */
-			$tablaDSer = "cierres_detallejf";
-			$itemDSer = "codigo";
-			$valorDSer = $codigo;
-
-			ModeloCierres::mdlEliminarDato($tablaDSer, $itemDSer, $valorDSer);
+			ModeloCierres::mdlEliminarDato("cierres_detallejf", "codigo", $codigo);
+			# Recalcula articulojf.servicio = saldos servicio + cantidades en cierres
+			ModeloCierres::mdlActualizarServicioTotal();
 		}
 
 		return $respuesta;

@@ -155,7 +155,7 @@ class ModeloCierres
 	static public function mdlEditarCierres($tabla, $datos)
 	{
 
-		$sql = "UPDATE $tabla SET codigo=:codigo,guia,:guia,usuario=:usuario,taller=:taller,total=:total,fecha=:fecha WHERE codigo=:codigo";
+		$sql = "UPDATE $tabla SET guia=:guia, usuario=:usuario, taller=:taller, total=:total, fecha=:fecha WHERE codigo=:codigo";
 
 		$stmt = Conexion::conectar()->prepare($sql);
 
