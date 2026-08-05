@@ -470,6 +470,7 @@
                                         <ul>
                                             <li><code>deuda_total</code> y <code>vencido_total</code> (fecha vencida &lt; hoy)</li>
                                             <li><code>pending_documents</code> — <strong>PENDIENTE</strong>, <code>tip_mov = '+'</code>, saldo &gt; 0</li>
+                                            <li><code>external_id</code> = <code>cuenta_ctejf.id</code>; <code>unique_number</code> = <code>num_unico</code>; <code>protested</code> = <code>protesta = 1</code></li>
                                             <li>1 registro por documento del cliente (consolida varios códigos vascorp)</li>
                                         </ul>
                                     </div>
@@ -575,10 +576,22 @@
         {
           "doc_type": "09",
           "doc_number": "0030019723",
+          "external_id": "1002001",
           "issue_date": "2026-02-09",
           "due_date": "2026-05-10",
           "amount": 40145.39,
           "balance": 40145.39
+        },
+        {
+          "doc_type": "85",
+          "doc_number": "F00117544-9",
+          "unique_number": "73177392",
+          "external_id": "1002002",
+          "protested": true,
+          "issue_date": "2025-11-25",
+          "due_date": "2026-02-24",
+          "amount": 2593.49,
+          "balance": 2319.10
         }
       ]
     }

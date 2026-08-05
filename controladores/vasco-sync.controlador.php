@@ -682,6 +682,18 @@ class ControladorVascoSync
             "balance" => self::montoApi(isset($fila["saldo"]) ? $fila["saldo"] : 0),
         );
 
+        if (isset($fila["id"]) && $fila["id"] !== "" && $fila["id"] !== null) {
+            $doc["external_id"] = (string) $fila["id"];
+        }
+
+        $uniqueNumber = trim(isset($fila["num_unico"]) ? (string) $fila["num_unico"] : "");
+        if ($uniqueNumber !== "") {
+            $doc["unique_number"] = $uniqueNumber;
+        }
+
+        $protesta = isset($fila["protesta"]) ? $fila["protesta"] : 0;
+        $doc["protested"] = ((string) $protesta === "1" || (int) $protesta === 1);
+
         $issue = self::fechaApiCuenta(isset($fila["fecha"]) ? $fila["fecha"] : "");
         if ($issue !== "") {
             $doc["issue_date"] = $issue;

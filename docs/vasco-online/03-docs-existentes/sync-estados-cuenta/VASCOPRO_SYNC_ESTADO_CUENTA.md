@@ -93,6 +93,9 @@ Cuentas por cobrar del cliente (ej. módulo donde ves TOTAL VENTA, DEUDA TOTAL, 
 |-----------|------------------------------|-------|
 | `doc_type` | `tipo_doc` | `01` factura, `09` proforma, etc. (2 dígitos) |
 | `doc_number` | `num_cta` | Número del documento |
+| `unique_number` | `num_unico` | Opcional; omitir si vacío. Ref. bancaria letra. |
+| `external_id` | `id` (cargo `+`) | Recomendado; estable para cooldown/avisos. |
+| `protested` | `protesta` (cargo `+`) | boolean; `true` si protestada. Sigue en CxC. |
 | `issue_date` | `fecha` (emisión) | `YYYY-MM-DD` o omitir |
 | `due_date` | `fecha_ven` | `YYYY-MM-DD` o omitir |
 | `amount` | `monto` | Monto original del documento |
@@ -103,9 +106,9 @@ Cuentas por cobrar del cliente (ej. módulo donde ves TOTAL VENTA, DEUDA TOTAL, 
 | Dato | Motivo |
 |------|--------|
 | Filas **CANCELADO** / saldo 0 | No son deuda abierta |
-| Movimientos de cancelación (`cod_pago` 80, 10, etc.) | Son abonos internos del ERP |
+| Movimientos de cancelación (`cod_pago` 80, 10, etc.) como docs | Van en `payments[]` del pending doc, no como cargo |
 | `TOTAL VENTA` | Historial; no se usa en Vasco fase 1 |
-| Protestado, banco, nro único, notas de pago | Operación interna vascorp |
+| Protestado, banco, notas de pago | Operación interna vascorp |
 
 ---
 

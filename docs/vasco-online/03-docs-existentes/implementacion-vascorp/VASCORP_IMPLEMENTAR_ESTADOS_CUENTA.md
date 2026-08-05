@@ -105,6 +105,9 @@ Pantalla / query de **cuentas por cobrar** del cliente (DEUDA TOTAL, VENCIDO TOT
 |-----------|---------------------|-------|
 | `doc_type` | `tipo_doc` | `01` factura, `09` proforma, etc. |
 | `doc_number` | `num_cta` | Número del documento |
+| `unique_number` | `num_unico` | Opcional; omitir si vacío. Ref. bancaria letra (máx. 12). |
+| `external_id` | `id` (cargo `+`) | Recomendado; estable para cooldown/avisos. |
+| `protested` | `protesta` (cargo `+`) | boolean; `true` si protestada. Sigue en CxC; Vasco filtra avisos. |
 | `issue_date` | `fecha` | `YYYY-MM-DD` (opcional) |
 | `due_date` | `fecha_ven` | `YYYY-MM-DD` (opcional) |
 | `amount` | `monto` | Monto original |
