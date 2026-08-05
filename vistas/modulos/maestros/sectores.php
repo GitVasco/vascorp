@@ -33,6 +33,9 @@
           <button class="btn btn-outline-success btnReporteSector" style="border:green 1px solid">
           <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte Sectores  </button>
         </div>
+        <p class="help-block" style="margin-top:10px;margin-bottom:0;">
+          Puedes activar o desactivar un sector y asignarle un color. Por ahora esto solo se guarda aquí; aún no cambia otros módulos.
+        </p>
       </div>
 
       <div class="box-body">
@@ -46,6 +49,8 @@
            <th>Codigo</th>
            <th>Sector</th>
            <th>Tipo</th>
+           <th>Color</th>
+           <th>Estado</th>
            <th>Acciones</th>
 
          </tr> 
@@ -137,6 +142,30 @@ MODAL AGREGAR SECTOR
 
               </div>
 
+            </div>
+
+            <div class="form-group">
+              <label>Estado</label>
+              <select class="form-control input-lg" name="nuevoEstado" id="nuevoEstado" required>
+                <option value="1" selected>Activo</option>
+                <option value="0">Inactivo</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Color del taller</label>
+              <div class="input-group">
+                <span class="input-group-addon" id="previewNuevoColorSector" style="width:42px;background:#A8D5E5;"></span>
+                <select class="form-control input-lg selectColorSector" name="nuevoColor" id="nuevoColor" required>
+                  <?php foreach (ModeloSectores::mdlPaletaPasteles() as $hex => $etiqueta) { ?>
+                  <option value="<?php echo htmlspecialchars($hex, ENT_QUOTES, 'UTF-8'); ?>"
+                    data-color="<?php echo htmlspecialchars($hex, ENT_QUOTES, 'UTF-8'); ?>"
+                    <?php echo $hex === '#A8D5E5' ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($etiqueta, ENT_QUOTES, 'UTF-8'); ?>
+                  </option>
+                  <?php } ?>
+                </select>
+              </div>
             </div>
  
           </div>
@@ -249,6 +278,29 @@ MODAL EDITAR SECTOR
 
               </div>
 
+            </div>
+
+            <div class="form-group">
+              <label>Estado</label>
+              <select class="form-control input-lg" name="editarEstado" id="editarEstado" required>
+                <option value="1">Activo</option>
+                <option value="0">Inactivo</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Color del taller</label>
+              <div class="input-group">
+                <span class="input-group-addon" id="previewEditarColorSector" style="width:42px;background:#A8D5E5;"></span>
+                <select class="form-control input-lg selectColorSector" name="editarColor" id="editarColor" required>
+                  <?php foreach (ModeloSectores::mdlPaletaPasteles() as $hex => $etiqueta) { ?>
+                  <option value="<?php echo htmlspecialchars($hex, ENT_QUOTES, 'UTF-8'); ?>"
+                    data-color="<?php echo htmlspecialchars($hex, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php echo htmlspecialchars($etiqueta, ENT_QUOTES, 'UTF-8'); ?>
+                  </option>
+                  <?php } ?>
+                </select>
+              </div>
             </div>
   
           </div>

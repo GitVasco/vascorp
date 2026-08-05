@@ -11,10 +11,14 @@ class ControladorSectores{
 		if(isset($_POST["nuevoSector"])){
 
 			   	$tipo = (isset($_POST["nuevoTipo"]) && (string)$_POST["nuevoTipo"] === "0") ? 0 : 1;
+			   	$estado = (isset($_POST["nuevoEstado"]) && (string)$_POST["nuevoEstado"] === "0") ? 0 : 1;
+			   	$color = isset($_POST["nuevoColor"]) ? $_POST["nuevoColor"] : "";
 
 			   	$datos = array("sector"=>$_POST["nuevoSector"],
 					           "codigo"=>$_POST["nuevoCodigo"],
-					           "tipo"=>$tipo);
+					           "tipo"=>$tipo,
+					           "estado"=>$estado,
+					           "color"=>$color);
 
 			   	$respuesta = ModeloSectores::mdlIngresarSector($datos);
 
@@ -107,11 +111,15 @@ class ControladorSectores{
 			
 
 			   	$tipo = (isset($_POST["editarTipo"]) && (string)$_POST["editarTipo"] === "0") ? 0 : 1;
+			   	$estado = (isset($_POST["editarEstado"]) && (string)$_POST["editarEstado"] === "0") ? 0 : 1;
+			   	$color = isset($_POST["editarColor"]) ? $_POST["editarColor"] : "";
 
 			   	$datos = array("id"=>$_POST["idSector"],
                                "sector"=>$_POST["editarSector"],
 					           "codigo"=>$_POST["editarCodigo"],
-					           "tipo"=>$tipo);
+					           "tipo"=>$tipo,
+					           "estado"=>$estado,
+					           "color"=>$color);
 
 			   	$respuesta = ModeloSectores::mdlEditarSector($datos);
 

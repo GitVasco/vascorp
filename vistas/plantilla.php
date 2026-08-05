@@ -1060,7 +1060,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
     <script src="vistas/js/regularizaciones-comerciales.js?v=2"></script>
     <?php } ?>
-    <script src="vistas/js/sectores.js"></script>
+    <script src="vistas/js/sectores.js?v=2"></script>
     <script src="vistas/js/paras.js"></script>
     <script src="vistas/js/asistencias.js"></script>
     <script src="vistas/js/produccion.js"></script>

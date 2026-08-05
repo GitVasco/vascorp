@@ -53,14 +53,45 @@ function setEditarTipoSector(tipo) {
     $select.find("option[value='" + valor + "']").prop("selected", true);
 }
 
+function setColorSectorSelect($select, color, $preview) {
+    color = (color || "").toUpperCase();
+    if (color && $select.find("option[value='" + color + "']").length === 0) {
+        $select.append($("<option>").val(color).attr("data-color", color).text(color));
+    }
+    if (color) {
+        $select.val(color);
+    }
+    if ($preview && $preview.length) {
+        $preview.css("background", $select.val() || "#A8D5E5");
+    }
+}
+
+$(document).on("change", ".selectColorSector", function () {
+    var id = $(this).attr("id");
+    var color = $(this).val() || "#A8D5E5";
+    if (id === "nuevoColor") {
+        $("#previewNuevoColorSector").css("background", color);
+    } else if (id === "editarColor") {
+        $("#previewEditarColorSector").css("background", color);
+    }
+});
+
 $(".tablaSectores").on("click", ".btnEditarSector", function () {
 
     var idSector = $(this).attr("idSector");
     var tipoSector = $(this).attr("tipoSector");
+    var estadoSector = $(this).attr("estadoSector");
+    var colorSector = $(this).attr("colorSector");
 
     // Mostrar de inmediato el tipo de la fila (sin esperar al ajax)
     if (typeof tipoSector !== "undefined") {
         setEditarTipoSector(tipoSector);
+    }
+    if (typeof estadoSector !== "undefined") {
+        $("#editarEstado").val(String(estadoSector) === "0" ? "0" : "1");
+    }
+    if (typeof colorSector !== "undefined") {
+        setColorSectorSelect($("#editarColor"), colorSector, $("#previewEditarColorSector"));
     }
 
     var datos = new FormData();
@@ -82,6 +113,16 @@ $(".tablaSectores").on("click", ".btnEditarSector", function () {
             $("#editarSector").val(respuesta["nom_sector"]);
             if (respuesta && typeof respuesta["tipo"] !== "undefined" && respuesta["tipo"] !== null) {
                 setEditarTipoSector(respuesta["tipo"]);
+            }
+            if (respuesta && typeof respuesta["estado"] !== "undefined" && respuesta["estado"] !== null) {
+                $("#editarEstado").val(String(respuesta["estado"]) === "0" ? "0" : "1");
+            }
+            if (respuesta) {
+                setColorSectorSelect(
+                    $("#editarColor"),
+                    respuesta["color"] || colorSector || "#A8D5E5",
+                    $("#previewEditarColorSector")
+                );
             }
 
         }

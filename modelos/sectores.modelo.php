@@ -7,6 +7,54 @@ class ModeloSectores{
 	/** Código legado usado en entaller_cabjf para envíos internos sin sector real. */
 	const COD_INTERNO_LEGADO = "VC";
 
+	/** Paleta pastel fija para talleres (UI). hex => etiqueta amigable */
+	static public function mdlPaletaPasteles()
+	{
+		return array(
+			"#A8D5E5" => "Azul suave",
+			"#B8E0D2" => "Menta",
+			"#D4C1EC" => "Lavanda",
+			"#F7C5CC" => "Rosa",
+			"#FFE5B4" => "Durazno",
+			"#C5E1A5" => "Verde claro",
+			"#FFD6A5" => "Albaricoque",
+			"#B5EAD7" => "Agua",
+			"#E2F0CB" => "Lima suave",
+			"#FFDAC1" => "Coral claro",
+			"#C7CEEA" => "Lila",
+			"#F1C0E8" => "Orquídea",
+			"#A0C4FF" => "Celeste",
+			"#FDFFB6" => "Amarillo suave",
+			"#CAFFBF" => "Verde menta",
+			"#9BF6FF" => "Turquesa"
+		);
+	}
+
+	static public function mdlColorPastelPorDefecto($codigo = "")
+	{
+		$hexes = array_keys(self::mdlPaletaPasteles());
+		$codigo = strtoupper(trim((string) $codigo));
+		if ($codigo === "" || empty($hexes)) {
+			return "#A8D5E5";
+		}
+		$idx = abs(crc32($codigo)) % count($hexes);
+		return $hexes[$idx];
+	}
+
+	static public function mdlNormalizarColor($color, $codigoFallback = "")
+	{
+		$color = strtoupper(trim((string) $color));
+		if (preg_match('/^#[0-9A-F]{6}$/', $color)) {
+			return $color;
+		}
+		return self::mdlColorPastelPorDefecto($codigoFallback);
+	}
+
+	static public function mdlNormalizarEstado($estado)
+	{
+		return ((int) $estado === 0) ? 0 : 1;
+	}
+
 	/*=============================================
 	¿SECTOR INTERNO? (tipo = 0 o código legado VC)
 	=============================================*/
@@ -80,14 +128,22 @@ class ModeloSectores{
 	static public function mdlIngresarSector($datos){
 
 		$tipo = (isset($datos["tipo"]) && (int) $datos["tipo"] === 0) ? 0 : 1;
+		$estado = self::mdlNormalizarEstado(isset($datos["estado"]) ? $datos["estado"] : 1);
+		$color = self::mdlNormalizarColor(
+			isset($datos["color"]) ? $datos["color"] : "",
+			isset($datos["codigo"]) ? $datos["codigo"] : ""
+		);
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO sectorjf (cod_sector, nom_sector, tipo) 
-        VALUES
-          (:codigo, :nombre, :tipo) ;");
+		$stmt = Conexion::conectar()->prepare(
+			"INSERT INTO sectorjf (cod_sector, nom_sector, tipo, estado, color)
+			 VALUES (:codigo, :nombre, :tipo, :estado, :color)"
+		);
 
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":nombre", $datos["sector"], PDO::PARAM_STR);
 		$stmt->bindParam(":tipo", $tipo, PDO::PARAM_INT);
+		$stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
+		$stmt->bindParam(":color", $color, PDO::PARAM_STR);
 
 		if($stmt->execute()){
 
@@ -150,18 +206,29 @@ class ModeloSectores{
 
 	static public function mdlEditarSector($datos){
 
-		$stmt = Conexion::conectar()->prepare("UPDATE 
-                                                        sectorjf 
-                                                    SET
-                                                        cod_sector = :codigo,
-                                                        nom_sector = :sector,
-                                                        tipo = :tipo
-                                                    WHERE id = :valor");
+		$tipo = (isset($datos["tipo"]) && (int) $datos["tipo"] === 0) ? 0 : 1;
+		$estado = self::mdlNormalizarEstado(isset($datos["estado"]) ? $datos["estado"] : 1);
+		$color = self::mdlNormalizarColor(
+			isset($datos["color"]) ? $datos["color"] : "",
+			isset($datos["codigo"]) ? $datos["codigo"] : ""
+		);
+
+		$stmt = Conexion::conectar()->prepare(
+			"UPDATE sectorjf
+			 SET cod_sector = :codigo,
+			     nom_sector = :sector,
+			     tipo = :tipo,
+			     estado = :estado,
+			     color = :color
+			 WHERE id = :valor"
+		);
 
 		$stmt->bindParam(":valor", $datos["id"], PDO::PARAM_INT);
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":sector", $datos["sector"], PDO::PARAM_STR);
-		$stmt->bindParam(":tipo", $datos["tipo"], PDO::PARAM_INT);
+		$stmt->bindParam(":tipo", $tipo, PDO::PARAM_INT);
+		$stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
+		$stmt->bindParam(":color", $color, PDO::PARAM_STR);
 
 		if($stmt->execute()){
 
