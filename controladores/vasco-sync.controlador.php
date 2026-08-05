@@ -2,6 +2,12 @@
 
 class ControladorVascoSync
 {
+    /** @var array|null mapa "tipo|serie" => "JF"|"RF" */
+    private static $mapaBrandCodeSerie = null;
+
+    /** @var array num_cta => fila cargo (cadena doc_origen) */
+    private static $cacheCargosPorNumCta = array();
+
     private static function requireAdaptadorSaldoComercial()
     {
         if (!class_exists("AdaptadorSaldoComercialVasco")) {
@@ -673,11 +679,297 @@ class ControladorVascoSync
         return $abono;
     }
 
+    /**
+     * Longitud de serie en num_cta: proformas (09) = 3; resto fiscal = 4.
+     */
+    static public function longitudSerieDocumento($tipoDoc)
+    {
+        $tipo = self::normalizarTipoDocComercial($tipoDoc);
+
+        return ($tipo === "09") ? 3 : 4;
+    }
+
+    /**
+     * Extrae la serie fiscal desde num_cta (o doc_origen).
+     * Si hay guion, usa la parte izquierda (F001-000123 → F001; letras no deben usar este camino).
+     */
+    static public function extraerSerieDocumento($tipoDoc, $numCta)
+    {
+        $num = strtoupper(trim((string) $numCta));
+        $num = preg_replace('/\s+/', '', $num);
+        if ($num === null || $num === "") {
+            return "";
+        }
+
+        $guion = strpos($num, "-");
+        if ($guion !== false) {
+            $num = substr($num, 0, $guion);
+        }
+
+        $len = self::longitudSerieDocumento($tipoDoc);
+        if (strlen($num) < $len) {
+            return "";
+        }
+
+        return substr($num, 0, $len);
+    }
+
+    /**
+     * Grupo X → JF, Y → RF. Solo si el conjunto de grupos es unívoco.
+     *
+     * @param array $grupos
+     * @return string|null
+     */
+    static public function brandCodeDesdeGrupos(array $grupos)
+    {
+        $codigos = array();
+        foreach ($grupos as $g) {
+            $g = strtoupper(trim((string) $g));
+            if ($g === "X") {
+                $codigos["JF"] = true;
+            } elseif ($g === "Y") {
+                $codigos["RF"] = true;
+            }
+        }
+
+        if (count($codigos) === 1) {
+            $keys = array_keys($codigos);
+            return $keys[0];
+        }
+
+        return null;
+    }
+
+    /**
+     * Carga (lazy) mapa tipo|serie → JF|RF desde amarre serie↔marcas↔grupos.
+     */
+    static public function asegurarMapaBrandCodeSerie()
+    {
+        if (self::$mapaBrandCodeSerie !== null) {
+            return;
+        }
+
+        $gruposPorSerie = ModeloVascoSync::mdlGruposPorSerieDocumento();
+        $mapa = array();
+
+        foreach ($gruposPorSerie as $clave => $grupos) {
+            $brand = self::brandCodeDesdeGrupos(is_array($grupos) ? $grupos : array());
+            if ($brand !== null) {
+                $mapa[$clave] = $brand;
+            }
+        }
+
+        self::$mapaBrandCodeSerie = $mapa;
+    }
+
+    /**
+     * Precarga cargos por num_cta para resolver cadenas doc_origen de letras del lote.
+     *
+     * @param array $documentos
+     */
+    static public function prepararBrandCodeParaLote(array $documentos)
+    {
+        self::asegurarMapaBrandCodeSerie();
+
+        $pendientes = array();
+        foreach ($documentos as $doc) {
+            if (!is_array($doc)) {
+                continue;
+            }
+            $tipo = self::normalizarTipoDocComercial(isset($doc["tipo_doc"]) ? $doc["tipo_doc"] : "");
+            if ($tipo !== "85") {
+                continue;
+            }
+            $origen = trim(isset($doc["doc_origen"]) ? (string) $doc["doc_origen"] : "");
+            if ($origen !== "" && !isset(self::$cacheCargosPorNumCta[$origen])) {
+                $pendientes[$origen] = true;
+            }
+        }
+
+        $ronda = 0;
+        while (!empty($pendientes) && $ronda < 10) {
+            $ronda++;
+            $lista = array_keys($pendientes);
+            $pendientes = array();
+            $cargos = ModeloVascoSync::mdlCuentasCargoPorNumCtas($lista);
+
+            foreach ($lista as $num) {
+                if (!isset(self::$cacheCargosPorNumCta[$num])) {
+                    self::$cacheCargosPorNumCta[$num] = isset($cargos[$num]) ? $cargos[$num] : null;
+                }
+            }
+
+            foreach ($cargos as $cargo) {
+                $tipo = self::normalizarTipoDocComercial(isset($cargo["tipo_doc"]) ? $cargo["tipo_doc"] : "");
+                if ($tipo !== "85") {
+                    continue;
+                }
+                $origen = trim(isset($cargo["doc_origen"]) ? (string) $cargo["doc_origen"] : "");
+                if ($origen !== "" && !array_key_exists($origen, self::$cacheCargosPorNumCta)) {
+                    $pendientes[$origen] = true;
+                }
+            }
+        }
+    }
+
+    /**
+     * @param string $tipoDoc
+     * @param string $serie
+     * @return string|null
+     */
+    static public function brandCodePorTipoSerie($tipoDoc, $serie)
+    {
+        self::asegurarMapaBrandCodeSerie();
+        $tipo = self::normalizarTipoDocComercial($tipoDoc);
+        $serie = strtoupper(trim((string) $serie));
+        if ($tipo === "" || $serie === "") {
+            return null;
+        }
+
+        $clave = $tipo . "|" . $serie;
+        return isset(self::$mapaBrandCodeSerie[$clave]) ? self::$mapaBrandCodeSerie[$clave] : null;
+    }
+
+    /**
+     * Cuando solo hay número (cargo fiscal borrado al pasar a letras): probar tipos probables.
+     *
+     * @param string $numCta
+     * @return string|null
+     */
+    static public function brandCodeDesdeNumeroSinTipo($numCta)
+    {
+        $num = strtoupper(trim((string) $numCta));
+        $num = preg_replace('/\s+/', '', $num);
+        if ($num === null || $num === "") {
+            return null;
+        }
+
+        $candidatos = array();
+        $inicial = substr($num, 0, 1);
+
+        $probar = array();
+        if ($inicial === "F") {
+            $probar[] = "01";
+            $probar[] = "07";
+            $probar[] = "08";
+        } elseif ($inicial === "B") {
+            $probar[] = "03";
+            $probar[] = "07";
+            $probar[] = "08";
+        } else {
+            $probar[] = "09";
+            $probar[] = "01";
+            $probar[] = "03";
+            $probar[] = "07";
+            $probar[] = "08";
+            $probar[] = "90";
+        }
+
+        foreach ($probar as $tipo) {
+            $serie = self::extraerSerieDocumento($tipo, $num);
+            $brand = self::brandCodePorTipoSerie($tipo, $serie);
+            if ($brand !== null) {
+                $candidatos[$brand] = true;
+            }
+        }
+
+        if (count($candidatos) === 1) {
+            $keys = array_keys($candidatos);
+            return $keys[0];
+        }
+
+        return null;
+    }
+
+    /**
+     * Resuelve JF/RF. Letras: sube por doc_origen. Sin clasificación → JF.
+     *
+     * @param array $fila
+     * @return string
+     */
+    static public function mapBrandCode(array $fila)
+    {
+        $tipo = self::normalizarTipoDocComercial(isset($fila["tipo_doc"]) ? $fila["tipo_doc"] : "");
+        $num = trim(isset($fila["num_cta"]) ? (string) $fila["num_cta"] : "");
+        $origen = trim(isset($fila["doc_origen"]) ? (string) $fila["doc_origen"] : "");
+        $brand = self::resolverBrandCodeRecursivo($tipo, $num, $origen, array());
+
+        return ($brand === "RF") ? "RF" : "JF";
+    }
+
+    /**
+     * @param string $tipoDoc
+     * @param string $numCta
+     * @param string $docOrigen
+     * @param array $visitados
+     * @return string|null
+     */
+    static public function resolverBrandCodeRecursivo($tipoDoc, $numCta, $docOrigen, array $visitados)
+    {
+        $tipo = self::normalizarTipoDocComercial($tipoDoc);
+        $num = trim((string) $numCta);
+        $origen = trim((string) $docOrigen);
+        $claveVisita = $tipo . "|" . $num;
+
+        if ($claveVisita !== "|" && isset($visitados[$claveVisita])) {
+            return null;
+        }
+        if (count($visitados) >= 10) {
+            return null;
+        }
+        if ($claveVisita !== "|") {
+            $visitados[$claveVisita] = true;
+        }
+
+        if ($tipo === "85") {
+            if ($origen === "") {
+                return null;
+            }
+
+            if (!array_key_exists($origen, self::$cacheCargosPorNumCta)) {
+                $cargos = ModeloVascoSync::mdlCuentasCargoPorNumCtas(array($origen));
+                self::$cacheCargosPorNumCta[$origen] = isset($cargos[$origen]) ? $cargos[$origen] : null;
+            }
+
+            $padre = self::$cacheCargosPorNumCta[$origen];
+            if (is_array($padre)) {
+                return self::resolverBrandCodeRecursivo(
+                    isset($padre["tipo_doc"]) ? $padre["tipo_doc"] : "",
+                    isset($padre["num_cta"]) ? $padre["num_cta"] : $origen,
+                    isset($padre["doc_origen"]) ? $padre["doc_origen"] : "",
+                    $visitados
+                );
+            }
+
+            return self::brandCodeDesdeNumeroSinTipo($origen);
+        }
+
+        if ($tipo === "" || $num === "") {
+            if ($origen !== "") {
+                return self::brandCodeDesdeNumeroSinTipo($origen);
+            }
+            return null;
+        }
+
+        $serie = self::extraerSerieDocumento($tipo, $num);
+        $brand = self::brandCodePorTipoSerie($tipo, $serie);
+        if ($brand !== null) {
+            return $brand;
+        }
+
+        if ($origen !== "") {
+            return self::brandCodeDesdeNumeroSinTipo($origen);
+        }
+
+        return null;
+    }
+
     static public function mapearDocumentoPendienteParaApi($fila, array $abonosFilas = null)
     {
         $doc = array(
             "doc_type" => self::normalizarTipoDocComercial(isset($fila["tipo_doc"]) ? $fila["tipo_doc"] : ""),
             "doc_number" => trim(isset($fila["num_cta"]) ? (string) $fila["num_cta"] : ""),
+            "brand_code" => self::mapBrandCode(is_array($fila) ? $fila : array()),
             "amount" => self::montoApi(isset($fila["monto"]) ? $fila["monto"] : 0),
             "balance" => self::montoApi(isset($fila["saldo"]) ? $fila["saldo"] : 0),
         );
@@ -851,6 +1143,7 @@ class ControladorVascoSync
                 $todosDocs[] = $docPendiente;
             }
         }
+        self::prepararBrandCodeParaLote($todosDocs);
         $abonosPorDoc = ModeloVascoSync::mdlCuentasAbonosPorDocs($todosDocs);
 
         $paymentsEnviados = 0;

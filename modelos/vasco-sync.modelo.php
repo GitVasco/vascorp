@@ -496,6 +496,7 @@ class ModeloVascoSync
                     cc.num_cta,
                     MIN(cc.id) AS id,
                     MAX(NULLIF(TRIM(cc.num_unico), '')) AS num_unico,
+                    MAX(NULLIF(TRIM(cc.doc_origen), '')) AS doc_origen,
                     MAX(IFNULL(cc.protesta, 0)) AS protesta,
                     MIN(cc.fecha) AS fecha,
                     MIN(cc.fecha_ven) AS fecha_ven,
@@ -542,6 +543,7 @@ class ModeloVascoSync
                     cc.num_cta,
                     MIN(cc.id) AS id,
                     MAX(NULLIF(TRIM(cc.num_unico), '')) AS num_unico,
+                    MAX(NULLIF(TRIM(cc.doc_origen), '')) AS doc_origen,
                     MAX(IFNULL(cc.protesta, 0)) AS protesta,
                     MIN(cc.fecha) AS fecha,
                     MIN(cc.fecha_ven) AS fecha_ven,
@@ -580,6 +582,125 @@ class ModeloVascoSync
         }
 
         return $agrupado;
+    }
+
+    /**
+     * Mapa serie fiscal → códigos de grupo comercial (X/Y) vía serie_documento_marcajf.
+     * Clave: "tipo_doc|serie" (ej. "01|F001"). Valor: lista única de códigos de grupo.
+     *
+     * @return array
+     */
+    public static function mdlGruposPorSerieDocumento()
+    {
+        $sql = "SELECT
+                    sdm.tipo_documento,
+                    CASE sdm.tipo_documento
+                        WHEN '01' THEN TRIM(t.serie_factura)
+                        WHEN '03' THEN TRIM(t.serie_boletas)
+                        WHEN '07' THEN TRIM(t.serie_nc)
+                        WHEN '08' THEN TRIM(t.serie_nd)
+                        WHEN '09' THEN TRIM(t.serie_proformas)
+                        WHEN '90' THEN TRIM(t.serie_guias)
+                        ELSE NULL
+                    END AS serie,
+                    UPPER(TRIM(g.codigo)) AS grupo_codigo
+                FROM serie_documento_marcajf sdm
+                INNER JOIN talonariosjf t ON t.id = sdm.id_talonario
+                INNER JOIN grupos_marcas_detallejf gd ON gd.id_marca = sdm.id_marca
+                INNER JOIN grupos_marcas_comercialjf g ON g.id = gd.id_grupo_marca
+                WHERE IFNULL(g.estado, 0) = 1";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $mapa = array();
+
+        foreach ($filas as $fila) {
+            $tipo = strtoupper(trim(isset($fila["tipo_documento"]) ? (string) $fila["tipo_documento"] : ""));
+            $serie = strtoupper(trim(isset($fila["serie"]) ? (string) $fila["serie"] : ""));
+            $grupo = strtoupper(trim(isset($fila["grupo_codigo"]) ? (string) $fila["grupo_codigo"] : ""));
+            if ($tipo === "" || $serie === "" || $grupo === "") {
+                continue;
+            }
+            if (strlen($tipo) < 2) {
+                $tipo = str_pad($tipo, 2, "0", STR_PAD_LEFT);
+            }
+            $clave = $tipo . "|" . $serie;
+            if (!isset($mapa[$clave])) {
+                $mapa[$clave] = array();
+            }
+            $mapa[$clave][$grupo] = true;
+        }
+
+        $resultado = array();
+        foreach ($mapa as $clave => $grupos) {
+            $resultado[$clave] = array_keys($grupos);
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Cargos tip_mov='+' por num_cta (para caminar doc_origen en letras / renovaciones).
+     * Preferencia: documento no-letra si hay varios tipos para el mismo número.
+     *
+     * @param array $numCtas
+     * @return array num_cta => fila (tipo_doc, num_cta, doc_origen)
+     */
+    public static function mdlCuentasCargoPorNumCtas(array $numCtas)
+    {
+        $nums = array();
+        foreach ($numCtas as $num) {
+            $n = trim((string) $num);
+            if ($n !== "") {
+                $nums[$n] = true;
+            }
+        }
+        $lista = array_keys($nums);
+        if (empty($lista)) {
+            return array();
+        }
+
+        $resultado = array();
+
+        foreach (array_chunk($lista, 400) as $chunk) {
+            $placeholders = array();
+            foreach ($chunk as $i => $num) {
+                $placeholders[] = ":n" . $i;
+            }
+
+            $sql = "SELECT
+                        TRIM(cc.num_cta) AS num_cta,
+                        cc.tipo_doc,
+                        MAX(NULLIF(TRIM(cc.doc_origen), '')) AS doc_origen,
+                        MAX(CASE WHEN TRIM(cc.tipo_doc) = '85' THEN 0 ELSE 1 END) AS es_fiscal
+                    FROM " . self::$TABLA_CUENTAS . " cc
+                    WHERE cc.tip_mov = '+'
+                      AND TRIM(cc.num_cta) IN (" . implode(", ", $placeholders) . ")
+                    GROUP BY TRIM(cc.num_cta), cc.tipo_doc
+                    ORDER BY es_fiscal DESC, cc.tipo_doc ASC";
+
+            $stmt = Conexion::conectar()->prepare($sql);
+            foreach ($chunk as $i => $num) {
+                $stmt->bindValue(":n" . $i, $num, PDO::PARAM_STR);
+            }
+            $stmt->execute();
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($filas as $fila) {
+                $num = trim(isset($fila["num_cta"]) ? (string) $fila["num_cta"] : "");
+                if ($num === "" || isset($resultado[$num])) {
+                    continue;
+                }
+                $resultado[$num] = array(
+                    "tipo_doc" => isset($fila["tipo_doc"]) ? $fila["tipo_doc"] : "",
+                    "num_cta" => $num,
+                    "doc_origen" => isset($fila["doc_origen"]) ? $fila["doc_origen"] : "",
+                );
+            }
+        }
+
+        return $resultado;
     }
 
     /**
