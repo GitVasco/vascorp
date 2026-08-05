@@ -674,7 +674,8 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "arreglos" ||
                 $_GET["ruta"] == "crear-arreglos" ||
                 $_GET["ruta"] == "cerrar-arreglos" ||
-                $_GET["ruta"] == "en-talleres"
+                $_GET["ruta"] == "en-talleres" ||
+                $_GET["ruta"] == "modelo-color-taller"
             ) {
 
                 include "modulos/produccion/" . $_GET["ruta"] . ".php";
@@ -1014,6 +1015,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "asignacion-grupos-marcas") { ?>
     <script src="vistas/js/asignacion-grupos-marcas.js?v=1"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "modelo-color-taller") { ?>
+    <script src="vistas/js/modelo-color-taller.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "series-documentos") { ?>
     <script src="vistas/js/series-documentos.js?v=3"></script>

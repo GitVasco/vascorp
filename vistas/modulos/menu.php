@@ -894,7 +894,8 @@
                     "salidas-varios", "crear-salidas-varios", "operacion-taller", "sublimados",
                     "seguimiento", "enviados-taller", "listar-documento", "ajuste-taller",
                     "urgencias-produccion", "urgencias-almacen", "urgencias-corte", "urgencias-plan",
-                    "urgencias-maestro", "transferencias-apt", "crear-transferencias-apt", "estampado", "tampografia", "prehormado", "arreglos", "crear-arreglos", "cerrar-arreglos", "en-talleres"
+                    "urgencias-maestro", "transferencias-apt", "crear-transferencias-apt", "estampado", "tampografia", "prehormado", "arreglos", "crear-arreglos", "cerrar-arreglos", "en-talleres",
+                    "modelo-color-taller"
                 ];
 
                 $isActiveProduccion = in_array($_GET["ruta"], $rutasActivasProduccion) ? 'active' : '';
@@ -910,7 +911,7 @@
                     <ul class="treeview-menu">
 
                         <?php
-                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos"];
+                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "modelo-color-taller"];
                         $isActiveProgramación = in_array($_GET["ruta"], $rutasActivasProgramación) ? 'active' : '';
                         ?>
 
@@ -951,6 +952,10 @@
                                 <!-- INGRESOS -->
                                 <li class="<?= $_GET['ruta'] == 'ingresos' ? 'active' : '' ?>">
                                     <a href="ingresos"><i class="fa fa-circle-o"></i> Ingresos</a>
+                                </li>
+
+                                <li class="<?= $_GET['ruta'] == 'modelo-color-taller' ? 'active' : '' ?>">
+                                    <a href="modelo-color-taller"><i class="fa fa-circle-o"></i> Taller x modelo/color</a>
                                 </li>
 
                             </ul>
