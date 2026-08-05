@@ -121,6 +121,23 @@ MODAL AGREGAR SECTOR
               </div>
 
             </div>
+
+            <!-- TIPO: 0 = Taller (interno), 1 = Servicio (externo) -->
+
+            <div class="form-group">
+
+              <div class="input-group">
+
+                <span class="input-group-addon"><i class="fa fa-wrench"></i></span>
+
+                <select class="form-control input-lg" name="nuevoTipo" id="nuevoTipo" required>
+                  <option value="0">Taller (interno)</option>
+                  <option value="1" selected>Servicio (externo)</option>
+                </select>
+
+              </div>
+
+            </div>
  
           </div>
 
@@ -213,6 +230,23 @@ MODAL EDITAR SECTOR
 
                 <input type="text" class="form-control input-lg" name="editarSector" id="editarSector" required>
                 <input type="hidden" id="idSector" name="idSector">
+              </div>
+
+            </div>
+
+            <!-- TIPO: 0 = Taller (interno), 1 = Servicio (externo) -->
+
+            <div class="form-group">
+
+              <div class="input-group">
+
+                <span class="input-group-addon"><i class="fa fa-wrench"></i></span>
+
+                <select class="form-control input-lg" name="editarTipo" id="editarTipo" required>
+                  <option value="0">Taller (interno)</option>
+                  <option value="1">Servicio (externo)</option>
+                </select>
+
               </div>
 
             </div>

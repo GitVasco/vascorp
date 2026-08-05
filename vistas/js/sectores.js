@@ -38,10 +38,30 @@ $('.tablaSectores').DataTable({
 /*=============================================
 EDITAR SECTOR
 =============================================*/
+function normalizarTipoSector(tipo) {
+    if (tipo === 0 || tipo === "0" || Number(tipo) === 0) {
+        return "0";
+    }
+    return "1";
+}
+
+function setEditarTipoSector(tipo) {
+    var valor = normalizarTipoSector(tipo);
+    var $select = $("#editarTipo");
+    $select.val(valor);
+    $select.find("option").prop("selected", false);
+    $select.find("option[value='" + valor + "']").prop("selected", true);
+}
+
 $(".tablaSectores").on("click", ".btnEditarSector", function () {
 
     var idSector = $(this).attr("idSector");
-    //console.log("idSector", idSector);
+    var tipoSector = $(this).attr("tipoSector");
+
+    // Mostrar de inmediato el tipo de la fila (sin esperar al ajax)
+    if (typeof tipoSector !== "undefined") {
+        setEditarTipoSector(tipoSector);
+    }
 
     var datos = new FormData();
     datos.append("idSector", idSector);
@@ -57,11 +77,12 @@ $(".tablaSectores").on("click", ".btnEditarSector", function () {
         dataType: "json",
         success: function (respuesta) {
 
-            // console.log("respuesta", respuesta);
-
             $("#idSector").val(respuesta["id"]);
             $("#editarCodigo").val(respuesta["cod_sector"]);
             $("#editarSector").val(respuesta["nom_sector"]);
+            if (respuesta && typeof respuesta["tipo"] !== "undefined" && respuesta["tipo"] !== null) {
+                setEditarTipoSector(respuesta["tipo"]);
+            }
 
         }
 

@@ -22,9 +22,10 @@ class TablaSectores{
 
         for($i = 0; $i < count($sector); $i++){  
 
-            if($sector[$i]["tipo"] == 0){
+            // Misma etiqueta vía helper (Fase 0); comportamiento igual a tipo == 0
+            if (ControladorSectores::ctrEsInterno($sector[$i]["cod_sector"])) {
                 $tipo = "TALLER";
-            }else{
+            } else {
                 $tipo = "SERVICIO";
             }
     
@@ -32,7 +33,8 @@ class TablaSectores{
         TRAEMOS LAS ACCIONES
         =============================================*/         
         
-        $botones =  "<div class='btn-group'><button class='btn btn-xs btn-warning btnEditarSector' idSector='".$sector[$i]["cod_sector"]."' data-toggle='modal' data-target='#modalEditarSector'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarSector' idSector='".$sector[$i]["cod_sector"]."'><i class='fa fa-times'></i></button></div>"; 
+        $tipoValor = ($sector[$i]["tipo"] == 0 || $sector[$i]["tipo"] === "0") ? "0" : "1";
+        $botones =  "<div class='btn-group'><button class='btn btn-xs btn-warning btnEditarSector' idSector='".$sector[$i]["cod_sector"]."' tipoSector='".$tipoValor."' data-toggle='modal' data-target='#modalEditarSector'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarSector' idSector='".$sector[$i]["cod_sector"]."'><i class='fa fa-times'></i></button></div>"; 
 
             $datosJson .= '[
             "'.$sector[$i]["cod_sector"].'",

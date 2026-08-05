@@ -601,25 +601,23 @@ $(".tablaQuincena tbody").on("click", "button.btnImprimirAvance", function () {
         finQuincena;
 });
 
+function marcarBotonTallerEG(tallerEG) {
+    $(".btnTallerEG, .btnTotT").removeClass("btn-info").addClass("btn-default");
+    if (tallerEG == null || tallerEG === "null") {
+        $(".btnTotT").removeClass("btn-default").addClass("btn-info");
+    } else {
+        $(".btnTallerEG[value='" + tallerEG + "']")
+            .removeClass("btn-default")
+            .addClass("btn-info");
+    }
+}
+
 if (localStorage.getItem("tallerEG") != null) {
     cargarTablaEficienciaGlobal(localStorage.getItem("tallerEG"));
-
-    if (localStorage.getItem("tallerEG") == "T1") {
-        $(".btnT1").removeClass("btn-default");
-        $(".btnT1").addClass("btn-info");
-    } else if (localStorage.getItem("tallerEG") == "T3") {
-        $(".btnT3").removeClass("btn-default");
-        $(".btnT3").addClass("btn-info");
-    } else {
-        $(".btnTotT").removeClass("btn-default");
-        $(".btnTotT").addClass("btn-info");
-    }
+    marcarBotonTallerEG(localStorage.getItem("tallerEG"));
 } else {
     var tallerEG = "null";
-
-    $(".btnTotT").removeClass("btn-default");
-    $(".btnTotT").addClass("btn-info");
-
+    marcarBotonTallerEG(tallerEG);
     cargarTablaEficienciaGlobal(tallerEG);
 }
 
@@ -953,58 +951,20 @@ function cargarTablaEficienciaGlobal(tallerEG) {
     });
 }
 
-$(".btnT1").click(function () {
-    var tallerEG = document.getElementById("btnT1").value;
-    console.log(tallerEG);
-
+$(document).on("click", ".btnTallerEG", function () {
+    var tallerEG = $(this).val();
     localStorage.setItem("tallerEG", tallerEG);
     $(".tablaEficienciaGlobal").DataTable().destroy();
-    cargarTablaEficienciaGlobal(localStorage.getItem("tallerEG"));
-
-    $(this).removeClass("btn-default");
-    $(this).addClass("btn-info");
-
-    $(".btnT3").removeClass("btn-info");
-    $(".btnT3").addClass("btn-default");
-
-    $(".btnTotT").removeClass("btn-info");
-    $(".btnTotT").addClass("btn-default");
+    cargarTablaEficienciaGlobal(tallerEG);
+    marcarBotonTallerEG(tallerEG);
 });
 
-$(".btnT3").click(function () {
-    var tallerEG = document.getElementById("btnT3").value;
-    console.log(tallerEG);
-
+$(document).on("click", ".btnTotT", function () {
+    var tallerEG = $(this).val();
     localStorage.setItem("tallerEG", tallerEG);
     $(".tablaEficienciaGlobal").DataTable().destroy();
-    cargarTablaEficienciaGlobal(localStorage.getItem("tallerEG"));
-
-    $(this).removeClass("btn-default");
-    $(this).addClass("btn-info");
-
-    $(".btnT1").removeClass("btn-info");
-    $(".btnT1").addClass("btn-default");
-
-    $(".btnTotT").removeClass("btn-info");
-    $(".btnTotT").addClass("btn-default");
-});
-
-$(".btnTotT").click(function () {
-    var tallerEG = document.getElementById("btnTotT").value;
-    console.log(tallerEG);
-
-    localStorage.setItem("tallerEG", tallerEG);
-    $(".tablaEficienciaGlobal").DataTable().destroy();
-    cargarTablaEficienciaGlobal(localStorage.getItem("tallerEG"));
-
-    $(this).removeClass("btn-default");
-    $(this).addClass("btn-info");
-
-    $(".btnT3").removeClass("btn-info");
-    $(".btnT3").addClass("btn-default");
-
-    $(".btnT1").removeClass("btn-info");
-    $(".btnT1").addClass("btn-default");
+    cargarTablaEficienciaGlobal(tallerEG);
+    marcarBotonTallerEG(tallerEG);
 });
 
 // GUARDAR N° GUÍA DEL INGRESO

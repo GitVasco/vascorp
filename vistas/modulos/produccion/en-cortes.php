@@ -130,7 +130,7 @@ MODAL MANDAR A TALLER
 
         <div class="modal-content">
 
-            <form role="form" method="post">
+            <form role="form" method="post" class="formularioAlmacenCorte">
 
                 <!--=====================================
                 CABEZA DEL MODAL
@@ -288,49 +288,50 @@ MODAL MANDAR A TALLER
 
                         </div>
 
-                        <div class="form-group col-lg-6" style="padding-top:15px">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="1" id="imprimirTicket" name="ticket" checked>
-                                <label class="form-check-label" for="imprimirTicket">
-                                    Imprimir Tickets
-                                </label>
-                            </div>
-                        </div>
-
                         <div class="col-lg-12"></div>
                         <!--=====================================
-            
-                        ENTRADA DEL SECTOR
-            
+                        TALLER DESTINO (tipo en sectorjf decide tickets / servicio)
                         ======================================-->
 
-                        <div class="form-group col-lg-12 campoSector hidden ">
+                        <div class="form-group col-lg-12 campoSector">
+
+                            <label>Taller destino</label>
 
                             <div class="input-group">
 
                                 <span class="input-group-addon"><i class="fa fa-users"></i></span>
 
-                                <select class="form-control selectpicker " id="seleccionarSectorServicio" name="seleccionarSectorServicio" data-live-search="true">
+                                <select class="form-control selectpicker" id="seleccionarSectorServicio" name="seleccionarSectorServicio" data-live-search="true" title="Seleccionar taller" required>
 
-                                    <option value="">Seleccionar sector</option>
+                                    <option value="">Seleccionar taller</option>
 
                                     <?php
 
-                                    $item = null;
-                                    $valor = null;
+                                    $sectoresInternos = ControladorSectores::ctrSectoresPorTipo(0);
+                                    $sectoresExternos = ControladorSectores::ctrSectoresPorTipo(1);
 
-                                    $sectores = ControladorSectores::ctrMostrarSectores($item, $valor);
-
-                                    foreach ($sectores as $key => $value) {
-
-                                        echo '<option value="' . $value["cod_sector"] . '">' . $value["cod_sector"] . " - " . $value["nom_sector"] . '</option>';
+                                    echo '<optgroup label="Taller (interno — imprime tickets)">';
+                                    foreach ($sectoresInternos as $value) {
+                                        echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '" data-tipo="0">'
+                                            . htmlspecialchars($value["cod_sector"] . " - " . $value["nom_sector"])
+                                            . '</option>';
                                     }
+                                    echo '</optgroup>';
+
+                                    echo '<optgroup label="Servicio (externo)">';
+                                    foreach ($sectoresExternos as $value) {
+                                        echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '" data-tipo="1">'
+                                            . htmlspecialchars($value["cod_sector"] . " - " . $value["nom_sector"])
+                                            . '</option>';
+                                    }
+                                    echo '</optgroup>';
 
                                     ?>
 
                                 </select>
 
                             </div>
+                            <p class="help-block text-muted" style="margin-top:6px;margin-bottom:0">Interno: tickets. Externo: va a servicio. Un solo taller por envío.</p>
 
                         </div>
                     </div>
@@ -454,47 +455,50 @@ MODAL MANDAR A TALLER TOTAL
                             </div>
                         </div>
 
-                        <div class="form-group col-lg-4" style="padding-top:15px">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="1" id="imprimirTicketTotal" name="ticketTotal" checked>
-                                <label class="form-check-label" for="imprimirTicketTotal">
-                                    Imprimir Tickets
-                                </label>
-                            </div>
-                        </div>
-
                         <div class="col-lg-12"></div>
 
                         <!--=====================================
-                        ENTRADA DEL SECTOR
+                        TALLER DESTINO (tipo en sectorjf decide tickets / servicio)
                         ======================================-->
-                        <div class="form-group col-lg-12 campoSectorTotal hidden">
+                        <div class="form-group col-lg-12 campoSectorTotal">
+
+                            <label>Taller destino</label>
 
                             <div class="input-group">
 
                                 <span class="input-group-addon"><i class="fa fa-users"></i></span>
 
-                                <select class="form-control selectpicker " id="seleccionarSectorServicioTotal" name="seleccionarSectorServicioTotal" data-live-search="true">
+                                <select class="form-control selectpicker" id="seleccionarSectorServicioTotal" name="seleccionarSectorServicioTotal" data-live-search="true" title="Seleccionar taller" required>
 
-                                    <option value="">Seleccionar sector</option>
+                                    <option value="">Seleccionar taller</option>
 
                                     <?php
 
-                                    $item = null;
-                                    $valor = null;
+                                    $sectoresInternosT = ControladorSectores::ctrSectoresPorTipo(0);
+                                    $sectoresExternosT = ControladorSectores::ctrSectoresPorTipo(1);
 
-                                    $sectores = ControladorSectores::ctrMostrarSectores($item, $valor);
-
-                                    foreach ($sectores as $key => $value) {
-
-                                        echo '<option value="' . $value["cod_sector"] . '">' . $value["cod_sector"] . " - " . $value["nom_sector"] . '</option>';
+                                    echo '<optgroup label="Taller (interno — imprime tickets)">';
+                                    foreach ($sectoresInternosT as $value) {
+                                        echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '" data-tipo="0">'
+                                            . htmlspecialchars($value["cod_sector"] . " - " . $value["nom_sector"])
+                                            . '</option>';
                                     }
+                                    echo '</optgroup>';
+
+                                    echo '<optgroup label="Servicio (externo)">';
+                                    foreach ($sectoresExternosT as $value) {
+                                        echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '" data-tipo="1">'
+                                            . htmlspecialchars($value["cod_sector"] . " - " . $value["nom_sector"])
+                                            . '</option>';
+                                    }
+                                    echo '</optgroup>';
 
                                     ?>
 
                                 </select>
 
                             </div>
+                            <p class="help-block text-muted" style="margin-top:6px;margin-bottom:0">Interno: tickets. Externo: va a servicio. Un solo taller por envío.</p>
 
                         </div>
 

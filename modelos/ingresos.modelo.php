@@ -1310,24 +1310,29 @@ class ModeloIngresos
 
 	static public function buscarEnTaller($articulo)
 	{
+		// Compat: cabeceras legado VC + internos reales (sectorjf.tipo = 0)
 		$stmt = Conexion::conectar()->prepare("SELECT
-				*
-			from
+				ec.*
+			FROM
 				entaller_cabjf ec
-			where
-				ec.articulo = '$articulo'
-				and ec.taller = 'VC'
-				and ec.saldo > 0
-				and year(ec.fecha) = year(now())");
+			WHERE
+				ec.articulo = :articulo
+				AND ec.saldo > 0
+				AND YEAR(ec.fecha) = YEAR(NOW())
+				AND (
+					UPPER(ec.taller) = 'VC'
+					OR EXISTS (
+						SELECT 1 FROM sectorjf s
+						WHERE s.cod_sector = ec.taller
+						AND (s.tipo = 0 OR s.tipo IS NULL)
+					)
+				)
+			ORDER BY ec.fecha ASC, ec.id ASC");
 
+		$stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
 		$stmt->execute();
 
 		return $stmt->fetchAll();
-
-
-		$stmt->close();
-
-		$stmt = null;
 	}
 
 	static public function mdlActualizarSaldoEnTaller($id, $cantidad)

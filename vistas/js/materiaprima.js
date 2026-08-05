@@ -163,6 +163,39 @@ $(".tablaUrgenciasAMP").DataTable({
 });
 
 /*
+ * Línea/sublínea desde FamPro (soporta Des_Corta TLIN de longitud variable, ej. MC=2).
+ * Prioridad: CodLin del backend → prefijo más largo del select de líneas → fallback 3 chars.
+ */
+function parseLineaSublineaMp(respuesta, selectLineaId) {
+    if (!respuesta || !respuesta.FamPro) {
+        return { linea: "", sublinea: "" };
+    }
+    var famPro = String(respuesta.FamPro).trim();
+    var linea = String(
+        respuesta.CodLin || respuesta.codlin || ""
+    ).trim();
+
+    if (!linea && selectLineaId) {
+        var best = "";
+        $(selectLineaId + " option").each(function () {
+            var v = String($(this).val() || "").trim();
+            if (v && famPro.indexOf(v) === 0 && v.length > best.length) {
+                best = v;
+            }
+        });
+        linea = best;
+    }
+
+    if (!linea) {
+        linea = famPro.substr(0, 3);
+    }
+
+    var sublinea =
+        famPro.length > linea.length ? famPro.substr(linea.length) : "";
+    return { linea: linea, sublinea: sublinea };
+}
+
+/*
  * EDITAR NOMBRE MATERIA PRIMA
  */
 // Función común para manejar la edición
@@ -179,12 +212,15 @@ function editarMateriaPrima(idMateriaPrima) {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            // console.log(respuesta);
-            var linea = respuesta["FamPro"].substr(0, 3);
-            var sublinea = respuesta["FamPro"].substr(3, 6);
-            var fecha = respuesta["FecReg"].substr(0, 10);
-            // console.log(linea);
-            // console.log(sublinea);
+            if (!respuesta || !respuesta.FamPro) {
+                return;
+            }
+            var partes = parseLineaSublineaMp(respuesta, "#editarLinea");
+            var linea = partes.linea;
+            var sublinea = partes.sublinea;
+            var fecha = respuesta["FecReg"]
+                ? String(respuesta["FecReg"]).substr(0, 10)
+                : "";
 
             var datos2 = new FormData();
             datos2.append("linea2", linea);
@@ -199,12 +235,17 @@ function editarMateriaPrima(idMateriaPrima) {
                 processData: false,
                 dataType: "json",
                 success: function (respuesta2) {
-                    $("#editarSubLinea2").val(
-                        respuesta2["Valor_3"] +
-                            " - " +
-                            respuesta2["Des_Larga"]
-                    );
-                    $("#editarSubLinea").val(respuesta2["Valor_3"]);
+                    if (respuesta2 && respuesta2.Valor_3) {
+                        $("#editarSubLinea2").val(
+                            respuesta2["Valor_3"] +
+                                " - " +
+                                respuesta2["Des_Larga"]
+                        );
+                        $("#editarSubLinea").val(respuesta2["Valor_3"]);
+                    } else {
+                        $("#editarSubLinea2").val(sublinea || "");
+                        $("#editarSubLinea").val(sublinea || "");
+                    }
                 },
             });
             $("#editarCodigoPro").val(respuesta["codpro"]);
@@ -286,7 +327,9 @@ function visualizarArticulos(articuloMP) {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            /* console.log("respuesta", respuesta); */
+            if (!respuesta) {
+                return;
+            }
 
             $("#codpro").val(respuesta["codpro"]);
 
@@ -512,9 +555,9 @@ function editarCostoMateriaPrima(materiaPrima) {
         processData: false,
         dataType: "json",
         success: function (respuestaCostos) {
-            /* console.log("codpro", respuestaCostos["Codpro"]); */
-
-            /* console.log("respuestaCostos", respuestaCostos); */
+            if (!respuestaCostos) {
+                return;
+            }
 
             $("#codigo").val(respuestaCostos["codpro"]);
 
@@ -924,9 +967,12 @@ function duplicarMateriaPrima(idMateriaPrima) {
         processData: false,
         dataType: "json",
         success: function (respuesta) {
-            // console.log(respuesta);
-            var linea = respuesta["FamPro"].substr(0, 3);
-            var sublinea = respuesta["FamPro"].substr(3, 6);
+            if (!respuesta || !respuesta.FamPro) {
+                return;
+            }
+            var partes = parseLineaSublineaMp(respuesta, "#duplicarLinea");
+            var linea = partes.linea;
+            var sublinea = partes.sublinea;
             var datos2 = new FormData();
             datos2.append("linea2", linea);
             datos2.append("sublinea", sublinea);
@@ -940,12 +986,17 @@ function duplicarMateriaPrima(idMateriaPrima) {
                 processData: false,
                 dataType: "json",
                 success: function (respuesta2) {
-                    $("#duplicarSubLinea2").val(
-                        respuesta2["Valor_3"] +
-                            " - " +
-                            respuesta2["Des_Larga"]
-                    );
-                    $("#duplicarSubLinea").val(respuesta2["Valor_3"]);
+                    if (respuesta2 && respuesta2.Valor_3) {
+                        $("#duplicarSubLinea2").val(
+                            respuesta2["Valor_3"] +
+                                " - " +
+                                respuesta2["Des_Larga"]
+                        );
+                        $("#duplicarSubLinea").val(respuesta2["Valor_3"]);
+                    } else {
+                        $("#duplicarSubLinea2").val(sublinea || "");
+                        $("#duplicarSubLinea").val(sublinea || "");
+                    }
                 },
             });
             $("#duplicarCodigoPro").val(respuesta["codpro"]);

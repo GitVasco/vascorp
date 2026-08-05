@@ -445,7 +445,14 @@ class ModeloArticulos
 	*/
 	static public function mdlMostrarArticulosTaller($sectorIngreso)
 	{
-		if ($sectorIngreso == "T4" || $sectorIngreso == "T6" || $sectorIngreso == "T9" || $sectorIngreso == "T2" || $sectorIngreso == "T8" || $sectorIngreso == "T0" || $sectorIngreso == "TA" || $sectorIngreso == "T7" || $sectorIngreso == "T10" || $sectorIngreso == "TB" || $sectorIngreso == "T11" || $sectorIngreso == "T14" || $sectorIngreso == "TD" || $sectorIngreso == "TE" || $sectorIngreso == "T12" || $sectorIngreso == "T13" || $sectorIngreso == "TC") {
+		if (!class_exists("ModeloSectores")) {
+			require_once dirname(__FILE__) . "/sectores.modelo.php";
+		}
+
+		// Externo (servicio) → cierres; interno / VC → articulojf
+		$esInterno = ModeloSectores::mdlEsInterno($sectorIngreso);
+
+		if (!$esInterno) {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
 			a.articulo,
@@ -466,15 +473,17 @@ class ModeloArticulos
 				ON cd.codigo = c.codigo 
 			  LEFT JOIN articulojf a 
 				ON cd.articulo = a.articulo 
-			WHERE c.taller = '" . $sectorIngreso . "' 
+			WHERE c.taller = :taller 
 			AND cd.cantidad > 0 
-			ORDER BY c.guia, a.articulo;");
+			ORDER BY c.guia, a.articulo");
 
+			$stmt->bindParam(":taller", $sectorIngreso, PDO::PARAM_STR);
 			$stmt->execute();
 
 			return $stmt->fetchAll();
-		} else {
-			$stmt = Conexion::conectar()->prepare("SELECT 
+		}
+
+		$stmt = Conexion::conectar()->prepare("SELECT 
 			'' as id,
 			a.articulo, 
 			'' as guia,
@@ -490,22 +499,35 @@ class ModeloArticulos
 			articulojf a 
 			WHERE a.taller > 0");
 
-			$stmt->execute();
+		$stmt->execute();
 
-			return $stmt->fetchAll();
-		}
-
-		$stmt->close();
-		$stmt = null;
+		return $stmt->fetchAll();
 	}
 
 	/**
-	 * Sectores que usan cierres_detallejf + cierresjf (misma lista que mdlMostrarArticulosTaller rama cierres).
-	 * Solo para ingresos multi y nuevas rutas; no altera mdlMostrarArticulosTaller.
+	 * Sectores que liquidan por cierres = externos en sectorjf (tipo ≠ 0).
+	 * Fallback legacy si el helper no está disponible o la lista viene vacía.
 	 */
 	private static function mdlIngresosMultiSectoresDesdeCierres()
 	{
-		return ["T4", "T6", "T9", "T2", "T8", "T0", "TA", "T7", "T10", "TB", "T11", "T14", "TD", "TE", "T12", "T13", "TC"];
+		if (!class_exists("ModeloSectores")) {
+			require_once dirname(__FILE__) . "/sectores.modelo.php";
+		}
+
+		if (class_exists("ModeloSectores")) {
+			$filas = ModeloSectores::mdlSectoresPorTipo(1);
+			$codigos = array();
+			foreach ($filas as $fila) {
+				if (isset($fila["cod_sector"]) && $fila["cod_sector"] !== "") {
+					$codigos[] = $fila["cod_sector"];
+				}
+			}
+			if (count($codigos) > 0) {
+				return $codigos;
+			}
+		}
+
+		return ["T4", "T6", "T9", "T2", "T8", "TA", "T7", "T10", "TB", "T11", "T14", "TE", "T12", "T13", "TC"];
 	}
 
 	/**

@@ -43,6 +43,14 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 
 ---
 
+## Producción (interno vascorp)
+
+| Doc | Tema |
+|-----|------|
+| [`produccion/REFACTOR_SECTORES_TALLER_SERVICIO.md`](produccion/REFACTOR_SECTORES_TALLER_SERVICIO.md) | Refactor `sectorjf`: taller (interno) vs servicio (externo) |
+
+---
+
 ## SQL y tests
 
 | Carpeta | Contenido |

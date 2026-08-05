@@ -2845,8 +2845,15 @@ class ModeloTalleres
                 a.modelo = m.modelo
             where
                 year(ec.fecha) = '2025'
-                and ec.taller = 'VC'
                 and ec.saldo > 0
+                and (
+                    UPPER(ec.taller) = 'VC'
+                    OR EXISTS (
+                        SELECT 1 FROM sectorjf s
+                        WHERE s.cod_sector = ec.taller
+                        AND (s.tipo = 0 OR s.tipo IS NULL)
+                    )
+                )
             order by
                 fecha desc,
                 taller,

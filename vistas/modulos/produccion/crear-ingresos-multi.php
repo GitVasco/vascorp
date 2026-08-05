@@ -23,17 +23,10 @@
         </div>
 
         <?php
-        $sector = ControladorSectores::ctrMostrarSectores(null);
-        $taller = ["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T8", "T9", "TA", "TB", "TC", "TD", "T11", "TE", "T12", "T13"];
-        $talleresInternos = ["T1", "T3"];
-        $tallerRepresentanteInterno = "T1";
-        $primerCodigoExterno = "T0";
-        foreach ($sector as $value) {
-            if (in_array($value["cod_sector"], $taller) && !in_array($value["cod_sector"], $talleresInternos)) {
-                $primerCodigoExterno = $value["cod_sector"];
-                break;
-            }
-        }
+        $codigosInternos = ControladorSectores::ctrCodigosPorTipo(0);
+        $codigosExternos = ControladorSectores::ctrCodigosPorTipo(1);
+        $tallerRepresentanteInterno = count($codigosInternos) > 0 ? $codigosInternos[0] : "T1";
+        $primerCodigoExterno = count($codigosExternos) > 0 ? $codigosExternos[0] : "";
         ?>
 
         <div class="row">

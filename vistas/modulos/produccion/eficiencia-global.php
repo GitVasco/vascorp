@@ -26,13 +26,16 @@
 
             <div class="col-lg-12">
 
-                <button class="btn btn-default  btnT1" id="btnT1" name="btnT1" value="T1">
-                    T1-Brasier
-                </button>
-                <button class="btn btn-default  btnT3" id="btnT3" name="btnT3" value="T3">
-                    T3-Trusas
-                </button>
-                <button class="btn btn-default  btnTotT" id="btnTotT" name="btnTotT" value="null">
+                <?php
+                $internosEG = ControladorSectores::ctrSectoresPorTipo(0);
+                foreach ($internosEG as $sec) {
+                    echo '<button type="button" class="btn btn-default btnTallerEG" value="'
+                        . htmlspecialchars($sec["cod_sector"]) . '">'
+                        . htmlspecialchars($sec["cod_sector"] . "-" . $sec["nom_sector"])
+                        . '</button> ';
+                }
+                ?>
+                <button type="button" class="btn btn-default btnTotT" id="btnTotT" name="btnTotT" value="null">
                     Todo
                 </button>
 

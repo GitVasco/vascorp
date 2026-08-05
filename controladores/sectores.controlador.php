@@ -10,10 +10,11 @@ class ControladorSectores{
 
 		if(isset($_POST["nuevoSector"])){
 
-			
+			   	$tipo = (isset($_POST["nuevoTipo"]) && (string)$_POST["nuevoTipo"] === "0") ? 0 : 1;
 
 			   	$datos = array("sector"=>$_POST["nuevoSector"],
-					           "codigo"=>$_POST["nuevoCodigo"]);
+					           "codigo"=>$_POST["nuevoCodigo"],
+					           "tipo"=>$tipo);
 
 			   	$respuesta = ModeloSectores::mdlIngresarSector($datos);
 
@@ -56,6 +57,44 @@ class ControladorSectores{
 		return $respuesta;
 
     }
+
+	/*=============================================
+	HELPERS TIPO (interno / externo) — Fase 0 refactor sectores
+	=============================================*/
+
+	static public function ctrEsInterno($codSector){
+
+		return ModeloSectores::mdlEsInterno($codSector);
+
+	}
+
+	static public function ctrSectoresPorTipo($tipo){
+
+		return ModeloSectores::mdlSectoresPorTipo($tipo);
+
+	}
+
+	/** Lista de cod_sector por tipo (0 interno, 1 externo). */
+	static public function ctrCodigosPorTipo($tipo){
+
+		$filas = self::ctrSectoresPorTipo($tipo);
+		$codigos = array();
+
+		foreach ($filas as $fila) {
+			if (isset($fila["cod_sector"]) && $fila["cod_sector"] !== "") {
+				$codigos[] = $fila["cod_sector"];
+			}
+		}
+
+		return $codigos;
+
+	}
+
+	static public function ctrDebeImprimirTickets($codSector){
+
+		return ModeloSectores::mdlDebeImprimirTickets($codSector);
+
+	}
     
 	/*=============================================
 	EDITAR SECTORES
@@ -67,9 +106,12 @@ class ControladorSectores{
 
 			
 
+			   	$tipo = (isset($_POST["editarTipo"]) && (string)$_POST["editarTipo"] === "0") ? 0 : 1;
+
 			   	$datos = array("id"=>$_POST["idSector"],
                                "sector"=>$_POST["editarSector"],
-					           "codigo"=>$_POST["editarCodigo"]);
+					           "codigo"=>$_POST["editarCodigo"],
+					           "tipo"=>$tipo);
 
 			   	$respuesta = ModeloSectores::mdlEditarSector($datos);
 

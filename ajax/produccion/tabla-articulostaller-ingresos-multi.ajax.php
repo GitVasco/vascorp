@@ -11,10 +11,6 @@ require_once "../../modelos/sectores.modelo.php";
  */
 class TablaArticulosTallerIngresosMulti
 {
-    private static $listaTaller = ["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T8", "T9", "TA", "TB", "TC", "TD", "T11", "TE", "T12", "T13"];
-
-    private static $talleresInternos = ["T1", "T3", "T5"];
-
     public function mostrar()
     {
         $alcance = isset($_GET["alcance"]) ? $_GET["alcance"] : "todos";
@@ -22,18 +18,8 @@ class TablaArticulosTallerIngresosMulti
             $alcance = "todos";
         }
 
-        $sectores = ControladorSectores::ctrMostrarSectores(null);
-        $codigosEnLista = [];
-
-        foreach ($sectores as $row) {
-            $cod = $row["cod_sector"];
-            if (!in_array($cod, self::$listaTaller, true)) {
-                continue;
-            }
-            $codigosEnLista[] = $cod;
-        }
-
-        $codigosExternos = array_values(array_diff($codigosEnLista, self::$talleresInternos));
+        // Externos = sectorjf.tipo ≠ 0 (ya no hardcode T0…T13 / T1,T3,T5)
+        $codigosExternos = ControladorSectores::ctrCodigosPorTipo(1);
 
         $lotes = [];
 

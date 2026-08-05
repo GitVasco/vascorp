@@ -272,8 +272,7 @@ class ControladorIngresos
 
                 #var_dump("listaArticulos", $listaArticulos);
 
-                $talleresArticulojf = array("T1", "T3", "T5");
-                $usaArticulojf = in_array($_POST["nuevoTalleres"], $talleresArticulojf, true);
+                $usaArticulojf = ControladorSectores::ctrEsInterno($_POST["nuevoTalleres"]);
 
                 if ($usaArticulojf) {
                     foreach ($listaArticulos as $value) {
@@ -789,7 +788,7 @@ class ControladorIngresos
             /* 
         todo: Actualizamos orden de corte en Articulojf
         */
-            if ($cabeceraIngreso["taller"] == "T1" || $cabeceraIngreso["taller"] == "T3" || $cabeceraIngreso["taller"] == "T5") {
+            if (ControladorSectores::ctrEsInterno($cabeceraIngreso["taller"])) {
                 foreach ($detaOC as $value) {
 
                     $tabla = "articulojf";
@@ -890,7 +889,7 @@ class ControladorIngresos
             /* 
         todo: Actualizamos cantidad de taller en articulojf
         */
-            if ($cabeceraIngreso["taller"] == "T1" || $cabeceraIngreso["taller"] == "T3" || $cabeceraIngreso["taller"] == "T5") {
+            if (ControladorSectores::ctrEsInterno($cabeceraIngreso["taller"])) {
                 foreach ($detaOC as $value) {
 
                     $tabla = "articulojf";

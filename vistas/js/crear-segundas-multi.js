@@ -146,7 +146,7 @@
         if (alc === "internos") {
             return $("#segundasMultiRep").attr("data-taller-interno") || "T1";
         }
-        return $("#segundasMultiRep").attr("data-taller-externo") || "T0";
+        return $("#segundasMultiRep").attr("data-taller-externo") || "";
     }
 
     function aplicarCabeceraProcesoSegundaMulti() {

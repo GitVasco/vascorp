@@ -7,17 +7,108 @@ class ModeloMateriaPrima
 
 	/* 
 	* MOSTRAR DATOS DE LA MATERIA PRIMA
+	* Query directo (reemplaza sp_1028_consulta_mp_p): línea TLIN por prefijo más largo.
 	*/
 	static public function mdlMostrarMateriaPrima($valor)
 	{
 
 		if ($valor != null) {
 
-			$stmt = Conexion::conectar()->prepare("CALL sp_1028_consulta_mp_p($valor)");
+			$sql = "SELECT DISTINCT
+				p.codpro,
+				tblin.des_corta AS CodLin,
+				tblin.des_larga AS linea,
+				p.FamPro AS codlinea,
+				p.codfab,
+				p.despro AS despro,
+				p.UndPro,
+				p.PesPro,
+				p.CodAlt,
+				p.FecReg,
+				p.UsuReg,
+				p.ColPro,
+				p.TalPro,
+				p.CodAlm01,
+				p.Stk_Act,
+				p.Stk_Min,
+				p.Stk_Max,
+				p.Por_Seg,
+				p.Por_Adval,
+				p.FamPro,
+				pmp.CodProv1,
+				pmp.PreProv1,
+				pmp.MonProv1,
+				pmp.ObsProv1,
+				pmp.CodProv2,
+				pmp.PreProv2,
+				pmp.MonProv2,
+				pmp.ObsProv2,
+				pmp.CodProv3,
+				pmp.PreProv3,
+				pmp.MonProv3,
+				pmp.ObsProv3,
+				CONCAT(
+					p.FamPro,
+					' - ',
+					p.DesPro,
+					' - ',
+					tbcol.des_larga,
+					' - ',
+					tbund.des_corta
+				) AS descripcion,
+				p.codalm01 AS stock,
+				tbund.des_corta AS unidad,
+				tbcol.des_larga AS color,
+				p.cospro,
+				IFNULL(pmp.proveedores, 'Pendiente') AS proveedor,
+				IFNULL(pmp.precio, 0.000000) AS precio
+			FROM producto p
+			LEFT JOIN (
+				SELECT
+					codpro,
+					CONCAT_WS('   -   ', prov1.razpro) AS proveedores,
+					pmp.CodProv1,
+					pmp.PreProv1,
+					pmp.MonProv1,
+					pmp.ObsProv1,
+					pmp.CodProv2,
+					pmp.PreProv2,
+					pmp.MonProv2,
+					pmp.ObsProv2,
+					pmp.CodProv3,
+					pmp.PreProv3,
+					pmp.MonProv3,
+					pmp.ObsProv3,
+					GREATEST(PreProv1, PreProv2, PreProv3) AS precio
+				FROM preciomp pmp
+				LEFT JOIN proveedor prov1 ON pmp.codprov1 = prov1.codruc
+				GROUP BY pmp.codpro
+			) AS pmp ON pmp.codpro = p.codpro
+			INNER JOIN tabla_m_detalle AS tbund
+				ON p.undpro = tbund.cod_argumento
+				AND tbund.Cod_Tabla = 'TUND'
+			INNER JOIN tabla_m_detalle AS tbcol
+				ON p.ColPro = tbcol.cod_argumento
+				AND tbcol.Cod_Tabla = 'TCOL'
+			LEFT JOIN tabla_m_detalle AS tblin
+				ON tblin.Cod_Tabla = 'TLIN'
+				AND CHAR_LENGTH(TRIM(tblin.des_corta)) > 0
+				AND LEFT(p.codfab, CHAR_LENGTH(TRIM(tblin.des_corta))) = TRIM(tblin.des_corta)
+				AND CHAR_LENGTH(TRIM(tblin.des_corta)) = (
+					SELECT MAX(CHAR_LENGTH(TRIM(t2.des_corta)))
+					FROM tabla_m_detalle t2
+					WHERE t2.Cod_Tabla = 'TLIN'
+						AND CHAR_LENGTH(TRIM(t2.des_corta)) > 0
+						AND LEFT(p.codfab, CHAR_LENGTH(TRIM(t2.des_corta))) = TRIM(t2.des_corta)
+				)
+			WHERE p.codpro = :valor
+				AND p.estpro = '1'";
 
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 			$stmt->execute();
 
-			return $stmt->fetch();
+			return $stmt->fetch(PDO::FETCH_ASSOC);
 		} else {
 
 			$stmt = Conexion::conectar()->prepare("CALL sp_1029_consulta_mp()");
@@ -264,11 +355,7 @@ class ModeloMateriaPrima
 			return $stmt->fetchAll();
 		} else {
 
-			$stmt = Conexion::conectar()->prepare("CALL sp_1028_consulta_mp_p($valor)");
-
-			$stmt->execute();
-
-			return $stmt->fetch();
+			return self::mdlMostrarMateriaPrima($valor);
 		}
 
 		$stmt->close();

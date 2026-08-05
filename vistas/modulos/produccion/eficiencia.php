@@ -34,13 +34,11 @@
             <select type="text" class="form-control input-lg " name="selectSectorEfi" id="selectSectorEfi" >
                 <option value="">Seleccionar sector</option>
                 <?php
-                $item = null;
-                $valor=null;
-                $sectores=ControladorSectores::ctrMostrarSectores($item,$valor);
+                $sectores = ControladorSectores::ctrSectoresPorTipo(0);
                 foreach ($sectores as $key => $value) {
-                  if($value["cod_sector"] == 'T1' || $value["cod_sector"] == 'T3'){
-                    echo"<option value='".$value['cod_sector']."'>".$value["cod_sector"]." - ".$value["nom_sector"]."</option>";
-                  }
+                    echo "<option value='" . htmlspecialchars($value["cod_sector"]) . "'>"
+                        . htmlspecialchars($value["cod_sector"] . " - " . $value["nom_sector"])
+                        . "</option>";
                 }
                 ?>
             </select>

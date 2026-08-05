@@ -180,7 +180,7 @@
                   #var_dump("listaArticuloOC", $listaArticuloOC);
                   foreach($listaArticuloIng as $key=>$value){
 
-                    if($ingreso["taller"]=="T1" || $ingreso["taller"]=="T3" || $ingreso["taller"]=="T5" ){
+                    if (ControladorSectores::ctrEsInterno($ingreso["taller"])) {
 
                       $infoArticulo = ControladorArticulos::ctrMostrarArticulos($value["articulo"]);
                     }else{
@@ -188,7 +188,7 @@
                     }
                     $tallerAntiguo = $infoArticulo["taller"] + $value["cantidad"];
                     $stockG = $infoArticulo["stockG"];
-                    if($ingreso["taller"]=="T1" || $ingreso["taller"]=="T3" || $ingreso["taller"]=="T5"){
+                    if (ControladorSectores::ctrEsInterno($ingreso["taller"])) {
                       echo '<div class="row munditoIngreso" style="padding:5px 15px">
 
                             <div class="col-xs-6" style="padding-right:0px">

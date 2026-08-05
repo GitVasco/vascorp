@@ -1,0 +1,5 @@
+-- Histórico: el modal de materia prima dejó de usar sp_1028_consulta_mp_p.
+-- La consulta vive en Modelos/materiaprima.modelo.php → mdlMostrarMateriaPrima()
+-- (join TLIN por prefijo más largo de Des_Corta; soporta líneas de 2 chars como MC).
+--
+-- Este archivo ya no hace falta aplicarlo. Se conserva solo como referencia.

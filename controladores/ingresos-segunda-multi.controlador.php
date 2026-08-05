@@ -6,10 +6,10 @@
 class ControladorIngresosSegundaMulti
 {
 
-    /** Misma regla que ctrEliminarSegunda: internos usan articulojf, externos cierres. */
+    /** Internos (sectorjf.tipo = 0 o VC legado) usan articulojf; externos cierres. */
     private static function tallerUsaArticulojf($tallerCod)
     {
-        return in_array($tallerCod, array("T1", "T3", "T5"), true);
+        return ControladorSectores::ctrEsInterno($tallerCod);
     }
 
     private static function resolverCantidadIngreso($value)

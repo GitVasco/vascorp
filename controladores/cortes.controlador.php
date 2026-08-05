@@ -63,30 +63,82 @@ class ControladorCortes
     }
 
     /*
+    * Imprimir tickets de una cabecera entaller (solo internos)
+    */
+    static private function imprimirTicketsPorCabecera($codCabecera)
+    {
+        $nombre_impresora = "Star BSC10";
+        $connector = new WindowsPrintConnector($nombre_impresora);
+        $printer = new Printer($connector);
+
+        $lineas = ControladorCortes::ctrMostrarEnTalleres($codCabecera);
+        if (!is_array($lineas)) {
+            $lineas = array();
+        }
+
+        foreach ($lineas as $key => $value) {
+            $printer->setFont(Printer::FONT_B);
+            $printer->setJustification(Printer::JUSTIFY_CENTER);
+            $printer->setTextSize(1, 1);
+            $printer->setPrintLeftMargin(0);
+            $printer->setEmphasis(true);
+            $printer->text(".::Corporación Vasco S.A.C::." . "\n");
+            $printer->text("==================================" . "\n");
+            $printer->setJustification(Printer::JUSTIFY_LEFT);
+            $printer->text("Modelo:" . $value["modelo"] . " - " . $value["nombre"] . "\n");
+            $printer->setEmphasis(false);
+            $printer->text("Color y Talla:  " . $value["color"] . " - T" . $value["talla"] . "\n");
+            $printer->text("Cantidad:  " . $value["cantidad"] . "\n");
+            $printer->setEmphasis(true);
+            $printer->text("Operación:" . $value["cod_operacion"] . " - " . $value["operacion"] . "\n");
+
+            $a = substr($value["codigo"], 0, 2);
+            $b = substr($value["codigo"], 2, 2);
+            $c = substr($value["codigo"], 4, 2);
+            $d = substr($value["codigo"], 6, 2);
+            $e = substr($value["codigo"], 8, 2);
+            $item = "{C" . chr($a) . chr($b) . chr($c) . chr($d) . chr($e);
+
+            $printer->selectPrintMode(Printer::MODE_DOUBLE_HEIGHT | Printer::MODE_DOUBLE_WIDTH);
+            $printer->setJustification(Printer::JUSTIFY_CENTER);
+            $printer->setBarcodeWidth(8);
+            $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
+            $printer->barcode($item, Printer::BARCODE_CODE128);
+            $printer->feed(1);
+            $printer->cut();
+        }
+
+        $printer->close();
+    }
+
+    /*
     *MANDAR A CORTE A TALLER
+    * Fase B: taller obligatorio; interno/externo y tickets según sectorjf.tipo (VC legado solo en lecturas).
     */
     static public function ctrMandarTaller()
     {
 
         if (isset($_POST["nuevoArticulo"])) {
 
-            /* 
-            * registramos en la tabla taller cabecera para el código
-            */
+            $tallerCab = isset($_POST["seleccionarSectorServicio"])
+                ? trim((string) $_POST["seleccionarSectorServicio"])
+                : "";
 
-            if ($_POST["seleccionarSectorServicio"] != "") {
-
-                $tallerCab = $_POST["seleccionarSectorServicio"];
-            } else {
-
-                $tallerCab = "VC";
+            if ($tallerCab === "") {
+                echo '<script>
+                    swal({
+                        type: "error",
+                        title: "Taller requerido",
+                        text: "Debe seleccionar el taller de destino.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    });
+                </script>';
+                return;
             }
 
-            // Determinar si es servicio externo: 
-            // ticket == "1" (checkbox marcado) = taller interno → descontar alm_corte y pasar a taller
-            // ticket != "1" (checkbox NO marcado) = taller externo → descontar alm_corte y pasar a servicio
-            $ticket = isset($_POST["ticket"]) ? $_POST["ticket"] : "0";
-            $es_servicio_externo = ($ticket != "1");
+            $es_servicio_externo = !ControladorSectores::ctrEsInterno($tallerCab);
+            $imprimirTickets = ControladorSectores::ctrDebeImprimirTickets($tallerCab);
 
             $datosCab = array(
                 "usuario"   => $_POST["usuario"],
@@ -120,86 +172,16 @@ class ControladorCortes
 
                     $cod = $ult_codigo["ult_codigo"];
 
-                    if ($ticket == "1" || $_POST["seleccionarSectorServicio"] == 'T1') {
+                    if ($imprimirTickets) {
 
-                        /* 
-                        * NOTA: La actualización de articulojf (alm_corte y taller) ahora se hace dentro de la transacción
-                        * en mdlMandarTallerCabV2 para mantener consistencia. Ya no es necesario actualizarlo aquí.
-                        */
+                        self::imprimirTicketsPorCabecera($cod);
 
-                        /* 
-                        * Mandamos a imprimir con la orden de cut para cortar cada ticket 
-                        */
-
-                        $nombre_impresora = "Star BSC10";
-
-                        $connector = new WindowsPrintConnector($nombre_impresora);
-                        $printer = new Printer($connector);
-
-                        $fecha = date("d-m-Y");
-
-                        if ($_POST["seleccionarSectorServicio"] != 'T1') {
-
-                            $respuesta = ControladorCortes::ctrMostrarEnTalleres($cod);
-                            //Establecemos los datos de la empresa
-                            $empresa = "Corporacion Vasco S.A.C.";
-                            $documento = "20513613939";
-
-                            foreach ($respuesta as $key => $value) {
-
-                                $printer->setFont(Printer::FONT_B);
-                                $printer->setJustification(Printer::JUSTIFY_CENTER);
-                                $printer->setTextSize(1, 1);
-                                //Activamos negrita
-
-                                $printer->setPrintLeftMargin(0); // margen 0
-                                $printer->setEmphasis(true);
-                                $printer->text(".::Corporación Vasco S.A.C::." . "\n"); //Nombre de la empresa
-
-                                $printer->text("==================================" . "\n"); //Dirección de la empresa
-                                //Quitamos negrita
-
-
-                                $printer->setJustification(Printer::JUSTIFY_LEFT);
-
-                                $printer->text("Modelo:" . $value["modelo"] . " - " . $value["nombre"] . "\n"); //Modelo
-
-                                $printer->setEmphasis(false);
-
-                                $printer->text("Color y Talla:  " . $value["color"] . " - T" . $value["talla"] . "\n"); //Color Y tALLA
-
-                                $printer->text("Cantidad:  " . $value["cantidad"] . "\n"); //Cantidad
-                                //Activamos negrita
-                                $printer->setEmphasis(true);
-
-                                $printer->text("Operación:" . $value["cod_operacion"] . " - " . $value["operacion"] . "\n"); //Modelo
-
-                                $cantidad = strlen($value["codigo"]);
-                                $a = substr($value["codigo"], 0, 2);
-                                $b = substr($value["codigo"], 2, 2);
-                                $c = substr($value["codigo"], 4, 2);
-                                $d = substr($value["codigo"], 6, 2);
-                                $e = substr($value["codigo"], 8, 2);
-                                $item = "{C" . chr($a) . chr($b) . chr($c) . chr($d) . chr($e);
-                                //BARCODE
-                                $printer->selectPrintMode(Printer::MODE_DOUBLE_HEIGHT | Printer::MODE_DOUBLE_WIDTH);
-                                $printer->setJustification(Printer::JUSTIFY_CENTER);
-                                $printer->setBarcodeWidth(8);
-                                $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
-                                $printer->barcode($item, Printer::BARCODE_CODE128);
-                                $printer->feed(1);
-
-                                $printer->cut();
-                            }
-
-                            $printer->close();
-                        }
                     } else {
                         $articulo  = $_POST["nuevoArticulo"];
                         $cantidadPedida = (int) $_POST["nuevoAlmCorte"];
-                        $actualizaArticuloServicio = ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);
+                        ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);
 
-                        $sector = $_POST["seleccionarSectorServicio"];
+                        $sector = $tallerCab;
                         $codigoServicio = ModeloServicios::mdlObtenerOCrearServicioDelDia($sector, $_POST["usuario"]);
 
                         $avisoParcial = "";
@@ -309,16 +291,11 @@ class ControladorCortes
             return;
         }
 
-        if ($_POST["seleccionarSectorServicioTotal"] != "") {
-            $tallerCab = $_POST["seleccionarSectorServicioTotal"];
-        } else {
-            $tallerCab = "VC";
-        }
+        $tallerCab = isset($_POST["seleccionarSectorServicioTotal"])
+            ? trim((string) $_POST["seleccionarSectorServicioTotal"])
+            : "";
 
-        $ticket = isset($_POST["ticketTotal"]) ? $_POST["ticketTotal"] : "0";
-        $es_servicio_externo = ($ticket != "1");
-
-        if ($es_servicio_externo && $tallerCab === "VC") {
+        if ($tallerCab === "") {
             echo '<script>
                 swal({
                     type: "error",
@@ -330,6 +307,9 @@ class ControladorCortes
             </script>';
             return;
         }
+
+        $es_servicio_externo = !ControladorSectores::ctrEsInterno($tallerCab);
+        $imprimirTickets = ControladorSectores::ctrDebeImprimirTickets($tallerCab);
 
         $procesados = 0;
         $errores = [];
@@ -381,20 +361,17 @@ class ControladorCortes
                 $errores[] = $value["articulo"] . ": se enviaron $cantidadUsadaT de $cantidadPedida (saldo insuficiente)";
             }
 
-            if ($ticket == "1" || $_POST["seleccionarSectorServicioTotal"] == 'T1') {
-                $nombre_impresora = "Star BSC10";
-
-                $connector = new WindowsPrintConnector($nombre_impresora);
-                $printer = new Printer($connector);
-
-                if ($_POST["seleccionarSectorServicioTotal"] != 'T1') {
-                    $respuesta = ControladorCortes::ctrMostrarEnTalleres($cod);
+            if ($imprimirTickets) {
+                try {
+                    self::imprimirTicketsPorCabecera($cod);
+                } catch (Exception $e) {
+                    $errores[] = $value["articulo"] . ": error al imprimir tickets";
                 }
             } else {
                 $articulo  = $value["articulo"];
                 ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsadaT, false);
 
-                $sector = $_POST["seleccionarSectorServicioTotal"];
+                $sector = $tallerCab;
                 $codigoServicio = ModeloServicios::mdlObtenerOCrearServicioDelDia($sector, $_POST["usuario"]);
 
                 if ($codigoServicio) {

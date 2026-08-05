@@ -24,18 +24,24 @@
                     <select name="selectEnTalleres" id="selectEnTalleres" class="form-control input-lg selectpicker" data-live-search="true" data-size="10">
                         <option value="null">Seleccionar Taller</option>
                         <?php
-                        // creamos un array para configurar los talleres
-                        $taller = ["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T8", "T9", "TA", "TB", "TC", "TD", "T11"];
+                        $sectoresInternos = ControladorSectores::ctrSectoresPorTipo(0);
+                        $sectoresExternos = ControladorSectores::ctrSectoresPorTipo(1);
 
-                        $sector = ControladorSectores::ctrMostrarSectores(null);
-                        foreach ($sector as $key => $value) {
-
-                            // validamos que el sector sea un taller 
-                            if (in_array($value["cod_sector"], $taller)) {
-                                echo '<option value="' . $value["cod_sector"] . '">' . $value["cod_sector"] . "-" . $value["nom_sector"] . '</option>';
-                            }
+                        echo '<optgroup label="Taller (interno)">';
+                        foreach ($sectoresInternos as $value) {
+                            echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '">'
+                                . htmlspecialchars($value["cod_sector"] . "-" . $value["nom_sector"])
+                                . '</option>';
                         }
+                        echo '</optgroup>';
 
+                        echo '<optgroup label="Servicio (externo)">';
+                        foreach ($sectoresExternos as $value) {
+                            echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '">'
+                                . htmlspecialchars($value["cod_sector"] . "-" . $value["nom_sector"])
+                                . '</option>';
+                        }
+                        echo '</optgroup>';
                         ?>
                     </select>
                 </div>

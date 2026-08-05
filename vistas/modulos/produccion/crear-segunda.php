@@ -101,13 +101,24 @@
 
                                             <?php
 
-                                            $sector = ControladorSectores::ctrMostrarSectores(null);
-                                            foreach ($sector as $key => $value) {
+                                            $sectoresInternos = ControladorSectores::ctrSectoresPorTipo(0);
+                                            $sectoresExternos = ControladorSectores::ctrSectoresPorTipo(1);
 
-                                                echo '<option value="' . $value["cod_sector"] . '">' . $value["cod_sector"] . "-" . $value["nom_sector"] . '</option>';
+                                            echo '<optgroup label="Taller (interno)">';
+                                            foreach ($sectoresInternos as $value) {
+                                                echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '">'
+                                                    . htmlspecialchars($value["cod_sector"] . "-" . $value["nom_sector"])
+                                                    . '</option>';
                                             }
+                                            echo '</optgroup>';
 
-
+                                            echo '<optgroup label="Servicio (externo)">';
+                                            foreach ($sectoresExternos as $value) {
+                                                echo '<option value="' . htmlspecialchars($value["cod_sector"]) . '">'
+                                                    . htmlspecialchars($value["cod_sector"] . "-" . $value["nom_sector"])
+                                                    . '</option>';
+                                            }
+                                            echo '</optgroup>';
 
                                             ?>
                                         </select>

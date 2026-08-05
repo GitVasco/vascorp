@@ -218,19 +218,25 @@ $(".tablaCortes tbody").on("click", "button.btnMandarTallerTotal", function () {
     });
 });
 
-$("#imprimirTicketTotal").change(function () {
-    if (this.checked == false) {
-        $(".campoSectorTotal").removeClass("hidden");
-        // EL INPUT nuevaGuia se pone readonly y se quita el required ademas se limpia el valor
-        $("#nuevaGuiaT").attr("readonly", true);
-        $("#nuevaGuiaT").removeAttr("required");
-        $("#nuevaGuiaT").val("");
+/* Fase B: guía según tipo del taller elegido (externo no exige guía) */
+function syncGuiaPorTipoSector($select, $guia) {
+    var tipo = $select.find("option:selected").attr("data-tipo");
+    if (tipo === "1") {
+        $guia.attr("readonly", true);
+        $guia.removeAttr("required");
+        $guia.val("");
     } else {
-        $(".campoSectorTotal").addClass("hidden");
-        $("#nuevaGuiaT").attr("readonly", false);
-        $("#nuevaGuiaT").attr("required", true);
-        $("#nuevaGuiaT").val("");
+        $guia.attr("readonly", false);
+        $guia.attr("required", true);
     }
+}
+
+$("#seleccionarSectorServicio").on("changed.bs.select change", function () {
+    syncGuiaPorTipoSector($(this), $("#nuevaGuia"));
+});
+
+$("#seleccionarSectorServicioTotal").on("changed.bs.select change", function () {
+    syncGuiaPorTipoSector($(this), $("#nuevaGuiaT"));
 });
 
 $(".formularioAlmacenCorteTotal").on(
@@ -272,6 +278,14 @@ function listarTallas() {
     $("#listaTallas").val(JSON.stringify(listaTallas));
 }
 
+$(".formularioAlmacenCorte").on("submit", function (e) {
+    if (!$("#seleccionarSectorServicio").val()) {
+        e.preventDefault();
+        Command: toastr["error"]("Debe seleccionar el taller de destino");
+        return false;
+    }
+});
+
 $(".formularioAlmacenCorteTotal").on("submit", function (e) {
     listarTallas();
 
@@ -283,14 +297,10 @@ $(".formularioAlmacenCorteTotal").on("submit", function (e) {
         return false;
     }
 
-    if (!$("#imprimirTicketTotal").is(":checked")) {
-        if (!$("#seleccionarSectorServicioTotal").val()) {
-            e.preventDefault();
-            Command: toastr["error"](
-                "Debe seleccionar el taller de destino"
-            );
-            return false;
-        }
+    if (!$("#seleccionarSectorServicioTotal").val()) {
+        e.preventDefault();
+        Command: toastr["error"]("Debe seleccionar el taller de destino");
+        return false;
     }
 });
 
@@ -343,20 +353,6 @@ $(".box").on("click", ".btnLimpiarModeloCorte", function () {
     localStorage.removeItem("modeloCorte");
     localStorage.clear();
     window.location = "en-cortes";
-});
-
-$("#imprimirTicket").change(function () {
-    if (this.checked == false) {
-        $(".campoSector").removeClass("hidden");
-        $("#nuevaGuia").attr("readonly", true);
-        $("#nuevaGuia").removeAttr("required");
-        $("#nuevaGuia").val("");
-    } else {
-        $(".campoSector").addClass("hidden");
-        $("#nuevaGuia").attr("readonly", false);
-        $("#nuevaGuia").attr("required", true);
-        $("#nuevaGuia").val("");
-    }
 });
 
 //* Generar la lista de articulos del corte con ajax, se activa al seleccionar el cortes en el select

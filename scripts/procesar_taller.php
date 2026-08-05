@@ -27,7 +27,9 @@ require_once __DIR__ . '/../modelos/cortes.modelo.php';
 define('CSV_PATH', __DIR__ . '/csv/taller.csv');
 define('USUARIO_ID', 6);
 define('CONFIGURACION_DEFAULT', 'INV-TALLER-' . date('Ymd'));
-define('TALLER_INTERNO', 'VC'); // Taller único interno de la empresa
+// Legado: import CSV sigue escribiendo VC (compat lectura con sectorjf internos).
+// No migrar a un T* concreto sin definir taller default del lote.
+define('TALLER_INTERNO', 'VC');
 
 // Colores para output
 define('COLOR_RESET', "\033[0m");
