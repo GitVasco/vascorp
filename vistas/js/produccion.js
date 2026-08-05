@@ -1007,6 +1007,70 @@ $(".btnTotT").click(function () {
     $(".btnT1").addClass("btn-default");
 });
 
+// GUARDAR N° GUÍA DEL INGRESO
+$(document).on("click", "#btnGuardarGuiaIngreso", function () {
+    var documento = $("#codigoIngreso").val();
+    var guia = $.trim($("#editarGuiaIngreso").val());
+
+    if (!documento) {
+        return;
+    }
+
+    var $btn = $(this);
+    $btn.prop("disabled", true);
+
+    var datos = new FormData();
+    datos.append("documentoGuia", documento);
+    datos.append("nuevaGuia", guia);
+
+    $.ajax({
+        url: "ajax/ingresos.ajax.php",
+        type: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function (respuesta) {
+            $btn.prop("disabled", false);
+            if ($.trim(respuesta) === "ok") {
+                if (typeof toastr !== "undefined") {
+                    Command: toastr["success"]("Guía actualizada");
+                } else {
+                    swal({
+                        type: "success",
+                        title: "Listo",
+                        text: "La guía se actualizó correctamente.",
+                        confirmButtonText: "Cerrar",
+                    });
+                }
+            } else {
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: "No se pudo actualizar la guía.",
+                    confirmButtonText: "Cerrar",
+                });
+            }
+        },
+        error: function () {
+            $btn.prop("disabled", false);
+            swal({
+                type: "error",
+                title: "Error",
+                text: "No se pudo actualizar la guía.",
+                confirmButtonText: "Cerrar",
+            });
+        },
+    });
+});
+
+$(document).on("keydown", "#editarGuiaIngreso", function (e) {
+    if (e.key === "Enter" || e.keyCode === 13) {
+        e.preventDefault();
+        $("#btnGuardarGuiaIngreso").click();
+    }
+});
+
 // EDITAR OPERACIÓN
 $(".tablaEditarDetalleIngreso ").on(
     "click",
@@ -1080,31 +1144,27 @@ $(".tablaEditarDetalleIngreso").on(
             contentType: false,
             processData: false,
             success: function (respuesta) {
-                if (respuesta == "ok") {
-                    swal({
-                        type: "success",
-                        title: "¡Ok!",
-                        text: "¡La información fue Eliminada con éxito!",
-                        showConfirmButton: true,
-                        confirmButtonText: "Cerrar",
-                    }).then((result) => {
-                        if (result.value) {
-                            window.location = "ingresos";
-                        }
-                    });
-                } else {
-                    swal({
-                        type: "success",
-                        title: "¡Ok!",
-                        text: "¡La información fue Eliminada con éxito!",
-                        showConfirmButton: true,
-                        confirmButtonText: "Cerrar",
-                    }).then((result) => {
-                        if (result.value) {
-                            window.location = "ingresos";
-                        }
-                    });
+                var params = new URLSearchParams(window.location.search);
+                var idIngreso = params.get("idIngreso") || documento;
+                var sector = params.get("sector");
+                var urlEditar =
+                    "index.php?ruta=editar-ingreso&idIngreso=" +
+                    encodeURIComponent(idIngreso);
+                if (sector) {
+                    urlEditar += "&sector=" + encodeURIComponent(sector);
                 }
+
+                swal({
+                    type: "success",
+                    title: "¡Ok!",
+                    text: "¡La información fue Eliminada con éxito!",
+                    showConfirmButton: true,
+                    confirmButtonText: "Cerrar",
+                }).then((result) => {
+                    if (result.value) {
+                        window.location = urlEditar;
+                    }
+                });
             },
         });
     }

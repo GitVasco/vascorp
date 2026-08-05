@@ -36,6 +36,7 @@ class TablaEditarOrdenCorte
                 $datosJson .= '[
                 "' . ($i + 1) . '",
                 "' . $produccion[$i]["articulo"] . '",
+                "' . $produccion[$i]["modelo"] . '",
                 "' . $produccion[$i]["nombre"] . '",
                 "' . $produccion[$i]["color"] . '",
                 "' . $produccion[$i]["talla"] . '",

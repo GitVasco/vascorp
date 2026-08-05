@@ -3036,43 +3036,81 @@ $("#editarCantidades").keyup(function () {
     }
 });
 
-$(".tablaEditarDetalleIngreso").DataTable({
-    ajax:
-        "ajax/produccion/tabla-editar-ingreso.ajax.php?perfil=" +
-        $("#perfilOculto").val() +
-        "&codigo=" +
-        $("#codigoIngreso").val(),
-    deferRender: true,
-    retrieve: true,
-    processing: true,
-    pageLength: 20,
-    language: {
-        sProcessing: "Procesando...",
-        sLengthMenu: "Mostrar _MENU_ registros",
-        sZeroRecords: "No se encontraron resultados",
-        sEmptyTable: "Ningún dato disponible en esta tabla",
-        sInfo: "Mostrando del _START_ al _END_ de un total de _TOTAL_",
-        sInfoEmpty: "Mostrando del 0 al 0 de un total de 0",
-        sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
-        sInfoPostFix: "",
-        sSearch: "Buscar:",
-        sUrl: "",
-        sInfoThousands: ",",
-        sLoadingRecords: "Cargando...",
-        oPaginate: {
-            sFirst: "Primero",
-            sLast: "Último",
-            sNext: "Siguiente",
-            sPrevious: "Anterior",
+var tablaEditarDetalleIngreso = null;
+
+if ($(".tablaEditarDetalleIngreso").length && $("#codigoIngreso").length) {
+    tablaEditarDetalleIngreso = $(".tablaEditarDetalleIngreso").DataTable({
+        ajax:
+            "ajax/produccion/tabla-editar-ingreso.ajax.php?perfil=" +
+            $("#perfilOculto").val() +
+            "&codigo=" +
+            $("#codigoIngreso").val(),
+        deferRender: true,
+        retrieve: true,
+        processing: true,
+        pageLength: 20,
+        dom: '<"row"<"col-sm-5"l><"col-sm-7 ingreso-dt-toolbar"f>>rtip',
+        language: {
+            sProcessing: "Procesando...",
+            sLengthMenu: "Mostrar _MENU_ registros",
+            sZeroRecords: "No se encontraron resultados",
+            sEmptyTable: "Ningún dato disponible en esta tabla",
+            sInfo: "Mostrando del _START_ al _END_ de un total de _TOTAL_",
+            sInfoEmpty: "Mostrando del 0 al 0 de un total de 0",
+            sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+            sInfoPostFix: "",
+            sSearch: "Buscar:",
+            sUrl: "",
+            sInfoThousands: ",",
+            sLoadingRecords: "Cargando...",
+            oPaginate: {
+                sFirst: "Primero",
+                sLast: "Último",
+                sNext: "Siguiente",
+                sPrevious: "Anterior",
+            },
+            oAria: {
+                sSortAscending:
+                    ": Activar para ordenar la columna de manera ascendente",
+                sSortDescending:
+                    ": Activar para ordenar la columna de manera descendente",
+            },
         },
-        oAria: {
-            sSortAscending:
-                ": Activar para ordenar la columna de manera ascendente",
-            sSortDescending:
-                ": Activar para ordenar la columna de manera descendente",
+        initComplete: function () {
+            var $toolbar = $(this.api().table().container()).find(
+                ".ingreso-dt-toolbar"
+            );
+            var $filtro = $("#filtroModeloIngresoWrap");
+            var $buscar = $toolbar.find(".dataTables_filter");
+
+            if ($toolbar.length && $filtro.length && $buscar.length) {
+                // Buscar primero (posición original), modelo a la derecha
+                $filtro.insertAfter($buscar).show();
+                if ($.fn.selectpicker) {
+                    $("#filtroModeloIngreso").selectpicker("refresh");
+                }
+            }
         },
-    },
-});
+    });
+
+    $(document).on("changed.bs.select change", "#filtroModeloIngreso", function () {
+        if (!tablaEditarDetalleIngreso) {
+            return;
+        }
+
+        var modelo = $(this).val() || "";
+        if (modelo === "") {
+            tablaEditarDetalleIngreso.column(2).search("").draw();
+            return;
+        }
+
+        var modeloEscapado = $.fn.dataTable.util.escapeRegex(modelo);
+        tablaEditarDetalleIngreso
+            .column(2)
+            .search("^" + modeloEscapado + "$", true, false)
+            .draw();
+    });
+}
 
 //
 $("#selectEnTalleres").change(function () {

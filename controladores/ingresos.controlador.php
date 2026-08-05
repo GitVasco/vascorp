@@ -1059,6 +1059,12 @@ class ControladorIngresos
 
             if ($actMov == "ok") {
 
+                $idIngreso = !empty($_GET["idIngreso"]) ? $_GET["idIngreso"] : $codigo;
+                $urlEditar = "index.php?ruta=editar-ingreso&idIngreso=" . urlencode($idIngreso);
+                if (!empty($_GET["sector"])) {
+                    $urlEditar .= "&sector=" . urlencode($_GET["sector"]);
+                }
+
                 echo '<script>
 
                 swal({
@@ -1069,7 +1075,7 @@ class ControladorIngresos
                     }).then(function(result){
                                 if (result.value) {
 
-                                window.location = "ingresos";
+                                window.location = "' . $urlEditar . '";
 
                                 }
                             })

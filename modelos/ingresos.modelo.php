@@ -1116,6 +1116,23 @@ class ModeloIngresos
 		$stmt = null;
 	}
 
+	//* ACTUALIZAR N° GUÍA
+	static public function mdlActualizarGuia($documento, $guia)
+	{
+
+		$sql = "UPDATE movimientos_cabecerajf SET guia = :guia WHERE documento = :documento";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
+		$stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+
+		if ($stmt->execute()) {
+			return "ok";
+		}
+
+		return "error";
+	}
+
 	static public function editarDetalleIngreso($codigo)
 	{
 

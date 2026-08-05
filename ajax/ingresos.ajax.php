@@ -62,6 +62,22 @@ class AjaxIngresos
 			echo json_encode($eliminar);
 		}
 	}
+
+	public $documentoGuia;
+	public $nuevaGuia;
+	public function ajaxActualizarGuiaIngreso()
+	{
+		$documento = trim($this->documentoGuia);
+		$guia = trim($this->nuevaGuia);
+
+		if ($documento === "") {
+			echo "error";
+			return;
+		}
+
+		$respuesta = ModeloIngresos::mdlActualizarGuia($documento, $guia);
+		echo $respuesta;
+	}
 }
 
 // OBJETOS
@@ -81,11 +97,19 @@ if (isset($_POST["codigoDIngreso"])) {
 	$detalleIngreso->ajaxVisualizarDetalleIngreso();
 }
 
-if (isset($_POST["documento"])) {
+if (isset($_POST["documento"]) && isset($_POST["articulo"]) && isset($_POST["cantidad"])) {
 
 	$detalleIngreso = new AjaxIngresos();
 	$detalleIngreso->documento = $_POST["documento"];
 	$detalleIngreso->articulo = $_POST["articulo"];
 	$detalleIngreso->cantidad = $_POST["cantidad"];
 	$detalleIngreso->ajaxEliminarIngreso();
+}
+
+if (isset($_POST["documentoGuia"]) && isset($_POST["nuevaGuia"])) {
+
+	$actualizarGuia = new AjaxIngresos();
+	$actualizarGuia->documentoGuia = $_POST["documentoGuia"];
+	$actualizarGuia->nuevaGuia = $_POST["nuevaGuia"];
+	$actualizarGuia->ajaxActualizarGuiaIngreso();
 }
