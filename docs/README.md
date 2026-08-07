@@ -51,6 +51,14 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 
 ---
 
+## TI (interno)
+
+| Doc | Tema |
+|-----|------|
+| [`ti/PLAN_HELPDESK.md`](ti/PLAN_HELPDESK.md) | Helpdesk interno: tickets, estados e indicadores |
+
+---
+
 ## SQL y tests
 
 | Carpeta | Contenido |

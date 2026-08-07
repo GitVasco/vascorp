@@ -58,6 +58,12 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `solicitudes_atencion` | `ver`, `resolver` | Solicitudes atención |
 | `regularizaciones_comerciales` | `ver`, `registrar`, `anular`, `resolver` | Regularizaciones comerciales (solo efecto VascoPro) |
 
+### ti
+
+| Módulo | Acciones | Uso |
+|--------|----------|-----|
+| `helpdesk` | `ver`, `registrar`, `gestionar` | Helpdesk TI (tickets; `gestionar` = ver todos / asignar / estados) |
+
 ## Roles típicos en Centro de Decisiones
 
 - Créditos/cobranzas: `registrar` (motivo del no), `resolver`, `anular`, `aprobar`, `historial`

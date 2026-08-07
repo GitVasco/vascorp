@@ -77,6 +77,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Editor de receta | Vasco System";
         } elseif ($_GET["ruta"] === "regularizaciones-comerciales") {
             $__tituloVentana = "Regularizaciones comerciales | Vasco System";
+        } elseif ($_GET["ruta"] === "helpdesk") {
+            $__tituloVentana = "Helpdesk | Vasco System";
         } elseif ($_GET["ruta"] === "sync-vasco") {
             $__tituloVentana = "Sincronización Vasco Online | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
@@ -195,6 +197,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") : ?>
+    <link rel="stylesheet" href="vistas/css/helpdesk.css?v=6">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-articulo") : ?>
     <link rel="stylesheet" href="vistas/css/crear-articulo.css?v=1">
@@ -819,6 +824,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/cuentas-corrientes/regularizaciones-comerciales.php";
                 }
+            } else if ($_GET["ruta"] == "helpdesk") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("ti", "helpdesk")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/ti/helpdesk.php";
+                }
             } else if (
                 $_GET["ruta"] == "cuentas" ||
                 $_GET["ruta"] == "cuentas-test" ||
@@ -1063,6 +1075,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
     <script src="vistas/js/regularizaciones-comerciales.js?v=2"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") { ?>
+    <script src="vistas/js/helpdesk.js?v=10"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js?v=2"></script>
     <script src="vistas/js/paras.js"></script>

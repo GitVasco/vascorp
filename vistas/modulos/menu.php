@@ -1995,6 +1995,39 @@
             }
             ?>
 
+            <!-- TI / Helpdesk -->
+            <?php
+            $puedeVerHelpdesk = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("ti", "helpdesk");
+            $mostrarSectorTi = function_exists("usuarioPuedeAlgunaOpcionSector")
+                && usuarioPuedeAlgunaOpcionSector("ti");
+
+            if ($mostrarSectorTi) {
+                $isActiveTi = (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") ? "active" : "";
+            ?>
+                <li class="treeview <?= $isActiveTi; ?>">
+                    <a href="#">
+                        <i class="fa fa-life-ring text-aqua"></i>
+                        <span>TI</span>
+                        <span class="pull-right-container">
+                            <i class="fa fa-angle-left pull-right"></i>
+                        </span>
+                    </a>
+                    <ul class="treeview-menu">
+                        <?php if ($puedeVerHelpdesk) { ?>
+                        <li class="<?= $_GET["ruta"] == "helpdesk" ? "active" : ""; ?>">
+                            <a href="helpdesk">
+                                <i class="fa fa-ticket"></i>
+                                <span>Helpdesk</span>
+                            </a>
+                        </li>
+                        <?php } ?>
+                    </ul>
+                </li>
+            <?php
+            }
+            ?>
+
                 <!--  Costos-->
             <?php
             if ($_SESSION["caja"] == 1) {

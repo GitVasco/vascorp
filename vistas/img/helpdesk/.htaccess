@@ -1,0 +1,13 @@
+# Bloquear ejecución de scripts en carpeta de adjuntos helpdesk
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|phar|cgi|pl|py|sh)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|phar|cgi|pl|py|sh)$">
+        Order deny,allow
+        Deny from all
+    </FilesMatch>
+</IfModule>
+Options -Indexes

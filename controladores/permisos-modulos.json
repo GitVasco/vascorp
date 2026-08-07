@@ -91,5 +91,12 @@
       "anular": [6],
       "resolver": [6]
     }
+  },
+  "ti": {
+    "helpdesk": {
+      "ver": [6, 10],
+      "registrar": [6, 10],
+      "gestionar": [6, 10]
+    }
   }
 }

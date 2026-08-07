@@ -1,0 +1,318 @@
+/* Helpdesk TI — mockup adaptado a AdminLTE */
+
+#panelHelpdesk .hd-subtitle {
+    margin: 4px 0 0;
+    color: #777;
+    font-size: 13px;
+}
+
+#panelHelpdesk .hd-tabs {
+    margin-bottom: 0;
+    background: #fff;
+    border-bottom: 0;
+}
+
+#panelHelpdesk .hd-tab-content {
+    background: transparent;
+    padding-top: 12px;
+}
+
+#panelHelpdesk .hd-section {
+    margin-bottom: 22px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef1f4;
+}
+
+#panelHelpdesk .hd-section:last-of-type {
+    border-bottom: 0;
+}
+
+#panelHelpdesk .hd-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 12px;
+}
+
+#panelHelpdesk .hd-step {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    font-size: 12px;
+    margin-right: 6px;
+}
+
+#panelHelpdesk .hd-tipo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#panelHelpdesk .hd-tipo-grid.hd-tipo-fila {
+    flex-wrap: nowrap;
+}
+
+#panelHelpdesk .hd-tipo-card {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    padding: 10px 6px;
+    border: 1px solid #dce3ea;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+#panelHelpdesk .hd-tipo-help {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 50%;
+    background: #e8eef3;
+    color: #3c8dbc;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    cursor: help;
+    z-index: 2;
+}
+
+#panelHelpdesk .hd-tipo-help:hover {
+    background: #3c8dbc;
+    color: #fff;
+}
+
+#panelHelpdesk .hd-tipo-card i {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+#panelHelpdesk .hd-tipo-card strong {
+    display: block;
+    font-size: 12px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#panelHelpdesk .hd-tipo-card small {
+    display: none;
+}
+
+#panelHelpdesk .hd-tipo-card:hover {
+    border-color: #3c8dbc;
+}
+
+#panelHelpdesk .hd-tipo-card.active {
+    border-color: #3c8dbc;
+    box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.2);
+    background: #f4f9fc;
+}
+
+#panelHelpdesk .hd-pulir-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+#panelHelpdesk .hd-pulir-bar .btn[disabled] {
+    opacity: 0.7;
+}
+    position: relative;
+    border: 2px dashed #c5d0da;
+    border-radius: 4px;
+    padding: 24px 12px;
+    text-align: center;
+    background: #fafbfc;
+    cursor: pointer;
+    min-height: 150px;
+}
+
+#panelHelpdesk .hd-dropzone.hd-dragover {
+    border-color: #3c8dbc;
+    background: #eef6fb;
+}
+
+#panelHelpdesk .hd-dropzone i {
+    font-size: 28px;
+    color: #3c8dbc;
+    display: block;
+    margin-bottom: 6px;
+}
+
+#panelHelpdesk .hd-dropzone p {
+    margin: 0 0 4px;
+    font-size: 13px;
+}
+
+#panelHelpdesk .hd-dropzone small {
+    color: #999;
+}
+
+#panelHelpdesk .hd-dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+#panelHelpdesk .hd-file-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+}
+
+#panelHelpdesk .hd-file-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: #f4f6f8;
+    border-radius: 3px;
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+#panelHelpdesk .hd-file-list .hd-file-remove {
+    border: 0;
+    background: transparent;
+    color: #dd4b39;
+    cursor: pointer;
+}
+
+#panelHelpdesk .hd-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #eef1f4;
+}
+
+#panelHelpdesk .hd-side-box .box-body p {
+    font-size: 13px;
+}
+
+#panelHelpdesk .hd-side-list,
+#panelHelpdesk .hd-tips {
+    padding-left: 18px;
+    margin: 0;
+    font-size: 13px;
+}
+
+#panelHelpdesk .hd-side-list li,
+#panelHelpdesk .hd-tips li {
+    margin-bottom: 8px;
+}
+
+#panelHelpdesk .hd-filtros > * {
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+#panelHelpdesk .hd-tabla-wrap {
+    max-height: 480px;
+    overflow: auto;
+}
+
+#panelHelpdesk .hd-detalle-meta {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: #f7f9fb;
+    border: 1px solid #e6ebf0;
+    border-radius: 3px;
+}
+
+#panelHelpdesk .hd-detalle-meta .hd-meta-line {
+    margin: 2px 0;
+}
+
+#panelHelpdesk .hd-historial {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 14px;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid #e6ebf0;
+    border-radius: 3px;
+}
+
+#panelHelpdesk .hd-historial li {
+    padding: 8px 10px;
+    border-bottom: 1px solid #eef1f4;
+}
+
+#panelHelpdesk .hd-historial li:last-child {
+    border-bottom: 0;
+}
+
+#panelHelpdesk .hd-historial .hd-hist-meta {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+#panelHelpdesk .hd-adjuntos-lista {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px;
+}
+
+#panelHelpdesk .hd-adjuntos-lista li {
+    margin-bottom: 4px;
+}
+
+#panelHelpdesk .hd-gestionar-bar {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e6ebf0;
+}
+
+#panelHelpdesk .hd-gestionar-bar .form-group {
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+#panelHelpdesk tr.hd-row-activa {
+    background: #e8f4fc !important;
+}
+
+#panelHelpdesk .label-prioridad-ALTA { background: #dd4b39; }
+#panelHelpdesk .label-prioridad-MEDIA { background: #f39c12; }
+#panelHelpdesk .label-prioridad-BAJA { background: #00a65a; }
+
+@media (max-width: 991px) {
+    #panelHelpdesk .hd-tipo-grid.hd-tipo-fila {
+        flex-wrap: wrap;
+    }
+    #panelHelpdesk .hd-tipo-card {
+        flex: 1 1 calc(33.33% - 8px);
+        min-width: 100px;
+    }
+}
+
+@media (max-width: 767px) {
+    #panelHelpdesk .hd-tipo-card {
+        flex: 1 1 calc(50% - 8px);
+    }
+    #panelHelpdesk .hd-form-footer {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+}
