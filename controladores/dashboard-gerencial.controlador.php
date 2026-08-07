@@ -130,8 +130,8 @@ class ControladorDashboardGerencial
             'proyeccion_mes' => null,
             'proyeccion_vs_real' => null,
             'fuentes' => array(
-                'venta' => $vendedor === '' ? 'totalesjf/gerencia.vtas_soles' : 'metas avance venta_real',
-                'cobranza' => ($vendedor === '' ? 'totalesjf/gerencia.pagos_soles' : 'cuenta_ctejf efectivo') . ' sin IGV (÷1.18)',
+                'venta' => 'ventajf.neto (tipos venta real)',
+                'cobranza' => 'cuenta_ctejf efectivo sin IGV (÷1.18)',
             ),
         );
     }
@@ -181,7 +181,7 @@ class ControladorDashboardGerencial
             'montos' => $serie['montos'],
             'filas' => $serie['filas'],
             'total' => $serie['total'],
-            'fuente' => $vendedor === '' ? 'totalesjf.total_ventas_soles' : 'ventajf.neto (tipos venta real)',
+            'fuente' => 'ventajf.neto (tipos venta real)',
         );
     }
 
@@ -230,7 +230,7 @@ class ControladorDashboardGerencial
             'total_n1' => $ant['total'],
             'delta_abs' => $totalDelta,
             'delta_pct' => self::variacionPorcentaje($act['total'], $ant['total']),
-            'fuente' => $vendedor === '' ? 'totalesjf.total_ventas_soles' : 'ventajf.neto (tipos venta real)',
+            'fuente' => 'ventajf.neto (tipos venta real)',
         );
     }
 
@@ -264,7 +264,7 @@ class ControladorDashboardGerencial
             'montos' => $serie['montos'],
             'filas' => $serie['filas'],
             'total' => $serie['total'],
-            'fuente' => ($vendedor === '' ? 'totalesjf.total_pagos_soles' : 'cuenta_ctejf efectivo') . ' sin IGV (÷1.18)',
+            'fuente' => 'cuenta_ctejf efectivo sin IGV (÷1.18)',
         );
     }
 
@@ -307,7 +307,7 @@ class ControladorDashboardGerencial
             'total_n1' => $ant['total'],
             'delta_abs' => $act['total'] - $ant['total'],
             'delta_pct' => self::variacionPorcentaje($act['total'], $ant['total']),
-            'fuente' => ($vendedor === '' ? 'totalesjf.total_pagos_soles' : 'cuenta_ctejf efectivo') . ' sin IGV (÷1.18)',
+            'fuente' => 'cuenta_ctejf efectivo sin IGV (÷1.18)',
         );
     }
 
@@ -542,7 +542,58 @@ class ControladorDashboardGerencial
                 'total' => $agingTotal,
             ),
             'formula' => '% cobro mismo mes = cobro con origen en el mes del pago / total cobrado. % recup. ventas = cobrado hasta hoy de docs del período / ventas del período.',
-            'fuente' => 'cuenta_ctejf efectivo sin IGV (÷1.18) + ventajf/totalesjf; origen = fecha_ori o fecha cargo (+)',
+            'fuente' => 'cuenta_ctejf efectivo sin IGV (÷1.18) + ventajf; origen = fecha_ori o fecha cargo (+)',
+        );
+    }
+
+    /**
+     * Listado CxC pendiente de recuperación de las ventas del período (modal).
+     */
+    public static function ctrPendienteRecuperacionDocs(array $filtros, $pagina = 1)
+    {
+        $rango = self::rangoPeriodoCobro($filtros);
+        $vendedor = trim((string) $filtros['vendedor']);
+        $pagina = max(1, (int) $pagina);
+
+        $ventasPeriodo = ModeloDashboardGerencial::mdlVentasRango(
+            $rango['desde'],
+            $rango['hasta'],
+            $vendedor
+        );
+        $ventaPeriodo = (float) $ventasPeriodo['total'];
+        $recuperadoPeriodo = ModeloDashboardGerencial::mdlRecuperadoDeOrigenHasta(
+            $rango['desde'],
+            $rango['hasta'],
+            $vendedor
+        );
+        $pendienteKpi = max(0.0, $ventaPeriodo - $recuperadoPeriodo);
+
+        $raw = ModeloDashboardGerencial::mdlDocsPendienteRecuperacion(
+            $rango['desde'],
+            $rango['hasta'],
+            $vendedor,
+            $pagina,
+            50
+        );
+
+        $saldoCartera = (float) $raw['total_saldo'];
+        $diferencia = round($pendienteKpi - $saldoCartera, 2);
+
+        return array(
+            'periodo' => $rango,
+            'vendedor' => $vendedor,
+            'filas' => $raw['filas'],
+            'venta_periodo' => $ventaPeriodo,
+            'recuperado_periodo' => $recuperadoPeriodo,
+            'pendiente_kpi' => $pendienteKpi,
+            'total_saldo' => $saldoCartera,
+            'diferencia' => $diferencia,
+            'total_docs' => $raw['total_docs'],
+            'pagina' => $raw['pagina'],
+            'por_pagina' => $raw['por_pagina'],
+            'paginas' => $raw['paginas'],
+            'por_vendedor' => isset($raw['por_vendedor']) ? $raw['por_vendedor'] : array(),
+            'nota' => 'El pendiente del cuadro = ventas − recuperado. El listado es cartera abierta (saldo > 0, sin vendedores 06*/08*). Por eso los montos pueden diferir.',
         );
     }
 
@@ -748,7 +799,7 @@ class ControladorDashboardGerencial
             'pct_cumplimiento' => $pctCumplimiento,
             'pct_cobertura' => $pctCumplimiento,
             'nota' => 'Cobertura (no puntualidad): proyección = saldo por vencer (fecha_ven); real = cobranza efectiva del mes; % = real / proyección. Montos sin IGV.',
-            'fuente' => 'dashboard-cxc (cartera) + cuenta_ctejf/totalesjf (real), sin IGV 18%',
+            'fuente' => 'dashboard-cxc (cartera) + cuenta_ctejf (real), sin IGV 18%',
         );
     }
 
@@ -1043,22 +1094,6 @@ class ControladorDashboardGerencial
         return (($actual - $anterior) / abs($anterior)) * 100;
     }
 
-    private static function sumarCampoAvance($filas, $campo)
-    {
-        $total = 0.0;
-        if (!is_array($filas)) {
-            return $total;
-        }
-
-        foreach ($filas as $fila) {
-            if (isset($fila[$campo])) {
-                $total += (float) $fila[$campo];
-            }
-        }
-
-        return $total;
-    }
-
     private static function mesHastaYtd($anio, $mes)
     {
         $anio = (int) $anio;
@@ -1087,15 +1122,11 @@ class ControladorDashboardGerencial
             return self::obtenerVentaYtd($anio, 12, $vendedor);
         }
 
-        if ($vendedor === '') {
-            $totales = ControladorMovimientos::ctrTotalesSolesGerencia($anio, $mes);
-            return is_array($totales) && isset($totales['vtas_soles'])
-                ? (float) $totales['vtas_soles']
-                : 0.0;
-        }
+        $desde = sprintf('%04d-%02d-01', $anio, $mes);
+        $hasta = date('Y-m-t', strtotime($desde));
+        $ventas = ModeloDashboardGerencial::mdlVentasRango($desde, $hasta, $vendedor);
 
-        $filas = ModeloMetasVendedor::mdlAvanceVentasDashboard($anio, $mes, $vendedor);
-        return self::sumarCampoAvance($filas, 'venta_real');
+        return (float) $ventas['total'];
     }
 
     private static function obtenerCobranzaPeriodo($anio, $mes, $vendedor)
@@ -1108,17 +1139,11 @@ class ControladorDashboardGerencial
             return self::obtenerCobranzaYtd($anio, 12, $vendedor);
         }
 
-        if ($vendedor === '') {
-            $totales = ControladorMovimientos::ctrTotalesSolesGerencia($anio, $mes);
-            $bruto = is_array($totales) && isset($totales['pagos_soles'])
-                ? (float) $totales['pagos_soles']
-                : 0.0;
-            return ModeloDashboardGerencial::sinIgv($bruto);
-        }
+        $desde = sprintf('%04d-%02d-01', $anio, $mes);
+        $hasta = date('Y-m-t', strtotime($desde));
+        $cobranzas = ModeloDashboardGerencial::mdlCobranzasRango($desde, $hasta, $vendedor);
 
-        $kpi = ControladorDashboardCobranzas::ctrKpisSuperiores($anio, $mes, $vendedor);
-        $bruto = isset($kpi['cobranza_total']) ? (float) $kpi['cobranza_total'] : 0.0;
-        return ModeloDashboardGerencial::sinIgv($bruto);
+        return (float) $cobranzas['total'];
     }
 
     private static function obtenerVentaYtd($anio, $mesHasta, $vendedor)

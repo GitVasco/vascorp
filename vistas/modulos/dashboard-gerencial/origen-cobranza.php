@@ -73,26 +73,35 @@
                                 <th style="width: 72px;">Mes origen</th>
                                 <th class="dg-col-barra">Dist.</th>
                                 <th class="text-right" style="width: 84px;">Monto</th>
+                                <th class="text-right" style="width: 84px;">Acum.</th>
                                 <th class="text-right" style="width: 44px;">%</th>
+                                <th class="text-right" style="width: 56px;">% acum.</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="4" class="text-muted">Cargando…</td>
+                                <td colspan="6" class="text-muted">Cargando…</td>
                             </tr>
                         </tbody>
                         <tfoot>
                             <tr class="dg-fila-total">
                                 <th colspan="2">Total cobrado</th>
                                 <th class="text-right" id="dgOrigenFootTotal">—</th>
+                                <th class="text-right" id="dgOrigenFootAcum">—</th>
                                 <th class="text-right">100%</th>
+                                <th class="text-right" id="dgOrigenFootPctAcum">100%</th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
             </div>
             <div class="col-md-6 col-sm-12">
-                <h4 class="dg-subtitulo">De lo vendido: mes recuperación <small>≥2% · resto en Otros</small></h4>
+                <h4 class="dg-subtitulo">
+                    De lo vendido: mes recuperación <small>≥2% · resto en Otros</small>
+                    <button type="button" class="btn btn-xs btn-warning dg-btn-pendiente-cxc" id="dgBtnPendienteCxc" title="Ver cuentas por cobrar pendientes">
+                        <i class="fa fa-list"></i> CxC pendientes
+                    </button>
+                </h4>
                 <p class="dg-origen-hint text-muted" id="dgRecupHint">De las ventas del período, ¿en qué mes se cobraron?</p>
                 <div class="table-responsive dg-origen-mes-wrap">
                     <table class="table table-condensed table-hover dg-tabla dg-tabla-barras" id="dgTablaRecuperacionVenta">
@@ -101,24 +110,30 @@
                                 <th style="width: 72px;">Mes pago</th>
                                 <th class="dg-col-barra">Dist.</th>
                                 <th class="text-right" style="width: 84px;">Monto</th>
-                                <th class="text-right" style="width: 44px;">%</th>
+                                <th class="text-right" style="width: 84px;">Acum.</th>
+                                <th class="text-right" style="width: 44px;" title="Sobre ventas del período">%</th>
+                                <th class="text-right" style="width: 56px;" title="Acumulado sobre ventas del período">% acum.</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="4" class="text-muted">Cargando…</td>
+                                <td colspan="6" class="text-muted">Cargando…</td>
                             </tr>
                         </tbody>
                         <tfoot>
                             <tr class="dg-fila-total">
                                 <th colspan="2">Total recuperado</th>
                                 <th class="text-right" id="dgRecupFootTotal">—</th>
+                                <th class="text-right" id="dgRecupFootAcum">—</th>
                                 <th class="text-right" id="dgRecupFootPct">—</th>
+                                <th class="text-right" id="dgRecupFootPctAcum">—</th>
                             </tr>
                             <tr class="dg-fila-pendiente">
                                 <th colspan="2">Pendiente</th>
                                 <th class="text-right" id="dgRecupFootPendiente">—</th>
+                                <th class="text-right">—</th>
                                 <th class="text-right" id="dgRecupFootPendPct">—</th>
+                                <th class="text-right">—</th>
                             </tr>
                         </tfoot>
                     </table>

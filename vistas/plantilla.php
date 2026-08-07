@@ -141,7 +141,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-gerencial") : ?>
-    <link rel="stylesheet" href="vistas/css/dashboard-gerencial.css?v=18">
+    <link rel="stylesheet" href="vistas/css/dashboard-gerencial.css?v=19">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") : ?>
@@ -977,7 +977,7 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-gerencial") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="vistas/js/dashboard-gerencial.js?v=18"></script>
+    <script src="vistas/js/dashboard-gerencial.js?v=23"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-cxc") { ?>
     <script src="vistas/js/dashboard-cxc.js?v=20"></script>

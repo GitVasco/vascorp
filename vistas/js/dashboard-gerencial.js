@@ -12,7 +12,8 @@
         ventasVsRecup: null,
         agingCobranza: null,
         puntualidad: null,
-        proyeccion: null
+        proyeccion: null,
+        pendienteVendedor: null
     };
 
     var PALETTE_ORIGEN = [
@@ -972,23 +973,52 @@
         return vista;
     }
 
-    function renderTablaBarrasMes(tbody, filasVista, emptyMsg) {
+    function colorPctAcum(pct) {
+        var n = Number(pct) || 0;
+        if (n >= 80) {
+            return { fg: "#15803d", bg: "rgba(22, 163, 74, 0.16)" };
+        }
+        if (n >= 50) {
+            return { fg: "#0f766e", bg: "rgba(13, 148, 136, 0.16)" };
+        }
+        if (n >= 25) {
+            return { fg: "#1d4ed8", bg: "rgba(37, 99, 235, 0.14)" };
+        }
+        return { fg: "#64748b", bg: "rgba(100, 116, 139, 0.12)" };
+    }
+
+    function renderTablaBarrasMes(tbody, filasVista, emptyMsg, totalBase, opts) {
         if (!tbody) {
             return;
         }
+        opts = opts || {};
+        var pctDesdeBase = !!opts.pctDesdeBase;
         if (!filasVista.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">' + (emptyMsg || "Sin datos") + "</td></tr>";
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + (emptyMsg || "Sin datos") + "</td></tr>";
             return;
         }
         var maxMonto = 0;
+        var totalN = Number(totalBase) || 0;
+        if (totalN <= 0) {
+            filasVista.forEach(function (f) {
+                totalN += Number(f.monto) || 0;
+            });
+        }
         filasVista.forEach(function (f) {
             var m = Number(f.monto) || 0;
             if (m > maxMonto) {
                 maxMonto = m;
             }
         });
+        var acum = 0;
         tbody.innerHTML = filasVista.map(function (fila, i) {
             var monto = Number(fila.monto) || 0;
+            acum += monto;
+            var pctAcum = totalN > 0 ? Math.round((acum / totalN) * 1000) / 10 : 0;
+            var pctFila = pctDesdeBase
+                ? (totalN > 0 ? Math.round((monto / totalN) * 1000) / 10 : 0)
+                : Number(fila.pct || 0);
+            var tono = colorPctAcum(pctAcum);
             var pctBar = maxMonto > 0 ? Math.round((monto / maxMonto) * 1000) / 10 : 0;
             var color = fila.esOtros
                 ? "rgba(100, 116, 139, 0.7)"
@@ -997,12 +1027,18 @@
             return "<tr" + trCls + ">" +
                 "<td>" + (fila.label || "") + "</td>" +
                 '<td class="dg-col-barra">' +
-                    '<div class="dg-barra-track" title="' + Number(fila.pct || 0).toFixed(1) + '%">' +
+                    '<div class="dg-barra-track" title="' + pctFila.toFixed(1) + '%">' +
                         '<div class="dg-barra-fill" style="width:' + pctBar + "%;background:" + color + '"></div>' +
                     "</div>" +
                 "</td>" +
                 '<td class="text-right">' + formatoMonto(fila.monto) + "</td>" +
-                '<td class="text-right">' + Number(fila.pct || 0).toFixed(1) + "%</td>" +
+                '<td class="text-right">' + formatoMonto(acum) + "</td>" +
+                '<td class="text-right">' + pctFila.toFixed(1) + "%</td>" +
+                '<td class="text-right">' +
+                    '<span class="dg-pct-acum" style="color:' + tono.fg + ";background:" + tono.bg + '">' +
+                        pctAcum.toFixed(1) + "%" +
+                    "</span>" +
+                "</td>" +
                 "</tr>";
         }).join("");
     }
@@ -1046,8 +1082,14 @@
             ? Number(data.pct_recup_periodo).toFixed(1) + "%"
             : "—");
         setText("dgOrigenFootTotal", formatoMonto(data.total), "text-right");
+        setText("dgOrigenFootAcum", formatoMonto(data.total), "text-right");
+        setText("dgOrigenFootPctAcum", "100%", "text-right");
         setText("dgRecupFootTotal", formatoMonto(data.total_recuperacion || data.recuperado_periodo), "text-right");
+        setText("dgRecupFootAcum", formatoMonto(data.total_recuperacion || data.recuperado_periodo), "text-right");
         setText("dgRecupFootPct", (data.pct_recup_periodo !== null && data.pct_recup_periodo !== undefined)
+            ? Number(data.pct_recup_periodo).toFixed(1) + "%"
+            : "—", "text-right");
+        setText("dgRecupFootPctAcum", (data.pct_recup_periodo !== null && data.pct_recup_periodo !== undefined)
             ? Number(data.pct_recup_periodo).toFixed(1) + "%"
             : "—", "text-right");
         setText("dgRecupFootPendiente", formatoMonto(data.pendiente_periodo), "text-right");
@@ -1064,15 +1106,20 @@
         );
 
         var UMBRAL_PCT = 2;
+        var totalRecup = data.total_recuperacion || data.recuperado_periodo;
         renderTablaBarrasMes(
             tbody,
             agruparFilasOtros(filas, data.total, UMBRAL_PCT),
-            "Sin cobranzas en el período"
+            "Sin cobranzas en el período",
+            data.total
         );
+        // % y % acum. sobre ventas del período → misma base; % acum. culmina en el % recuperado
         renderTablaBarrasMes(
             tbodyRecup,
-            agruparFilasOtros(filasRecup, data.total_recuperacion || data.recuperado_periodo, UMBRAL_PCT),
-            "Sin recuperación de esas ventas"
+            agruparFilasOtros(filasRecup, totalRecup, UMBRAL_PCT),
+            "Sin recuperación de esas ventas",
+            data.venta_periodo,
+            { pctDesdeBase: true }
         );
 
         if (tbodyMensual) {
@@ -1280,6 +1327,205 @@
         }
     }
 
+    var pendienteCxcPagina = 1;
+
+    function formatoFechaCorta(valor) {
+        if (!valor || valor === "0000-00-00") {
+            return "—";
+        }
+        var s = String(valor).slice(0, 10);
+        var p = s.split("-");
+        if (p.length !== 3) {
+            return s;
+        }
+        return p[2] + "/" + p[1] + "/" + p[0];
+    }
+
+    function renderPendienteCxc(data) {
+        var tbody = document.querySelector("#dgTablaPendienteCxc tbody");
+        var pager = document.getElementById("dgPendienteCxcPager");
+        var periodo = (data && data.periodo) || {};
+        var filas = (data && data.filas) || [];
+
+        setText(
+            "dgPendienteCxcSubtitulo",
+            (periodo.label || "Período") + " · cartera abierta del período de ventas (sin IGV)"
+        );
+        setText("dgPendienteCxcKpi", formatoMonto(data && data.pendiente_kpi));
+        setText("dgPendienteCxcSaldo", formatoMonto(data && data.total_saldo));
+        setText("dgPendienteCxcDiff", formatoMonto(data && data.diferencia));
+        setText("dgPendienteCxcDocs", data && data.total_docs != null ? String(data.total_docs) : "—");
+        setText("dgPendienteCxcNota", (data && data.nota) || "");
+
+        if (!tbody) {
+            return;
+        }
+
+        if (!filas.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Sin documentos pendientes en el período</td></tr>';
+        } else {
+            tbody.innerHTML = filas.map(function (fila) {
+                var vencido = !!fila.vencido;
+                var dias = Number(fila.dias_vencido) || 0;
+                var clsDias = vencido ? "dg-dias-vencido" : "dg-dias-por-vencer";
+                var trCls = vencido ? ' class="dg-fila-vencida"' : "";
+                var doc = (fila.tipo_doc || "") + " " + (fila.num_cta || "");
+                return "<tr" + trCls + ">" +
+                    "<td>" + (fila.cliente || "") + " — " + (fila.nombre_cliente || "") + "</td>" +
+                    "<td>" + doc.trim() + "</td>" +
+                    "<td>" + formatoFechaCorta(fila.fecha) + "</td>" +
+                    "<td>" + formatoFechaCorta(fila.fecha_ven) + "</td>" +
+                    '<td class="text-right ' + clsDias + '">' + dias + "</td>" +
+                    "<td>" + (fila.vendedor || "") + " — " + (fila.nombre_vendedor || "") + "</td>" +
+                    '<td class="text-right">' + formatoMonto(fila.monto) + "</td>" +
+                    '<td class="text-right">' + formatoMonto(fila.saldo) + "</td>" +
+                    "</tr>";
+            }).join("");
+        }
+
+        if (!pager) {
+            renderGraficoPendienteVendedor((data && data.por_vendedor) || []);
+            return;
+        }
+
+        var pagina = Number(data && data.pagina) || 1;
+        var paginas = Number(data && data.paginas) || 1;
+        pendienteCxcPagina = pagina;
+
+        if (paginas <= 1) {
+            pager.innerHTML = "";
+        } else {
+            pager.innerHTML =
+                '<button type="button" class="btn btn-default btn-xs" id="dgPendienteCxcPrev"' +
+                    (pagina <= 1 ? " disabled" : "") + '><i class="fa fa-chevron-left"></i></button>' +
+                "<span> Página " + pagina + " / " + paginas + " </span>" +
+                '<button type="button" class="btn btn-default btn-xs" id="dgPendienteCxcNext"' +
+                    (pagina >= paginas ? " disabled" : "") + '><i class="fa fa-chevron-right"></i></button>';
+        }
+
+        renderGraficoPendienteVendedor((data && data.por_vendedor) || []);
+    }
+
+    function renderGraficoPendienteVendedor(porVendedor) {
+        var canvas = document.getElementById("dgGraficoPendienteVendedor");
+        var emptyEl = document.getElementById("dgPendienteVendedorEmpty");
+        var filas = porVendedor || [];
+
+        destruirChart(charts.pendienteVendedor);
+        toggleEmpty(emptyEl, filas.length > 0);
+
+        if (!canvas || typeof Chart === "undefined" || !filas.length) {
+            return;
+        }
+
+        // Barras horizontales: mejor para comparar vendedores por saldo.
+        var labels = filas.map(function (f) {
+            return (f.vendedor || "") + " — " + (f.nombre || "");
+        });
+        var montos = filas.map(function (f) {
+            return Number(f.saldo) || 0;
+        });
+        var colores = filas.map(function (_, i) {
+            return PALETTE_ORIGEN[i % PALETTE_ORIGEN.length];
+        });
+
+        var alto = Math.max(220, filas.length * 28);
+        var wrap = canvas.parentNode;
+        if (wrap) {
+            wrap.style.height = alto + "px";
+        }
+
+        charts.pendienteVendedor = new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Saldo",
+                    data: montos,
+                    backgroundColor: colores,
+                    borderWidth: 0,
+                    borderRadius: 3,
+                    maxBarThickness: 22
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                var fila = filas[ctx.dataIndex] || {};
+                                return formatoMonto(ctx.parsed.x) +
+                                    (fila.pct !== undefined ? " (" + Number(fila.pct).toFixed(1) + "%)" : "") +
+                                    (fila.docs ? " · " + fila.docs + " docs" : "");
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: opcionesEjeY(),
+                    y: {
+                        ticks: {
+                            autoSkip: false,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function cargarPendienteCxc(pagina) {
+        var estado = leerEstado();
+        var tbody = document.querySelector("#dgTablaPendienteCxc tbody");
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center"><i class="fa fa-spinner fa-spin"></i> Cargando…</td></tr>';
+        }
+
+        $.ajax({
+            url: "ajax/dashboard-gerencial.ajax.php",
+            method: "GET",
+            dataType: "json",
+            data: paramsAjax(estado, {
+                accion: "pendiente_recuperacion",
+                pagina: pagina || 1
+            })
+        }).done(function (resp) {
+            if (!resp || !resp.ok) {
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-danger text-center">' +
+                        ((resp && resp.msg) || "No se pudo cargar el detalle") + "</td></tr>";
+                }
+                return;
+            }
+            renderPendienteCxc(resp.data || {});
+        }).fail(function () {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-danger text-center">Error de red al cargar CxC pendientes</td></tr>';
+            }
+        });
+    }
+
+    function abrirModalPendienteCxc() {
+        $("#modalDgPendienteCxc").modal("show");
+        cargarPendienteCxc(1);
+    }
+
+    function exportarPendienteCxcExcel() {
+        var estado = leerEstado();
+        var params = paramsAjax(estado, {});
+        var qs = [];
+        Object.keys(params).forEach(function (k) {
+            if (params[k] !== undefined && params[k] !== null && params[k] !== "") {
+                qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(params[k]));
+            }
+        });
+        window.location = "vistas/reportes_excel/rpt_dg_pendiente_recuperacion.php?" + qs.join("&");
+    }
+
     $(function () {
         if (!elData()) {
             return;
@@ -1301,6 +1547,24 @@
 
         $("#anioDg, #mesDg, #vendedorDg").on("changed.bs.select", function () {
             irConEstado(estadoDesdeFormulario());
+        });
+
+        $("#dgBtnPendienteCxc").on("click", function () {
+            abrirModalPendienteCxc();
+        });
+
+        $("#dgBtnExportPendienteCxc").on("click", function () {
+            exportarPendienteCxcExcel();
+        });
+
+        $(document).on("click", "#dgPendienteCxcPrev", function () {
+            if (pendienteCxcPagina > 1) {
+                cargarPendienteCxc(pendienteCxcPagina - 1);
+            }
+        });
+
+        $(document).on("click", "#dgPendienteCxcNext", function () {
+            cargarPendienteCxc(pendienteCxcPagina + 1);
         });
 
         cargarBase(leerEstado());

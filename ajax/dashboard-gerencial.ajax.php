@@ -69,6 +69,10 @@ try {
         case 'origen_cobranza':
             $payload = ControladorDashboardGerencial::ctrOrigenCobranza($filtros);
             break;
+        case 'pendiente_recuperacion':
+            $pagina = isset($_GET['pagina']) ? (int) $_GET['pagina'] : 1;
+            $payload = ControladorDashboardGerencial::ctrPendienteRecuperacionDocs($filtros, $pagina);
+            break;
         case 'proyeccion_cobranzas':
             $payload = ControladorDashboardGerencial::ctrProyeccionCobranzas($filtros);
             break;

@@ -111,3 +111,62 @@ if (!function_exists('usuarioPuedeVerModulo') || !usuarioPuedeVerModulo('gestion
         </div>
     </section>
 </div>
+
+<div class="modal fade dg-dashboard" id="modalDgPendienteCxc" tabindex="-1" role="dialog" aria-labelledby="modalDgPendienteCxcTitulo">
+    <div class="modal-dialog modal-lg" role="document" style="width: 92%; max-width: 1100px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="modalDgPendienteCxcTitulo">
+                    <i class="fa fa-file-text-o"></i> CxC pendientes de recuperación
+                </h4>
+                <p class="dg-origen-hint text-muted" id="dgPendienteCxcSubtitulo" style="margin: 4px 0 0;"></p>
+            </div>
+            <div class="modal-body">
+                <div class="dg-pendiente-cxc-resumen" id="dgPendienteCxcResumen">
+                    <span><strong>Pendiente cuadro:</strong> <span id="dgPendienteCxcKpi">—</span></span>
+                    <span><strong>Cartera listada:</strong> <span id="dgPendienteCxcSaldo">—</span></span>
+                    <span><strong>Diferencia:</strong> <span id="dgPendienteCxcDiff">—</span></span>
+                    <span><strong>Docs:</strong> <span id="dgPendienteCxcDocs">—</span></span>
+                </div>
+                <p class="dg-origen-hint text-muted" id="dgPendienteCxcNota"></p>
+                <div class="table-responsive dg-pendiente-cxc-wrap">
+                    <table class="table table-condensed table-hover dg-tabla" id="dgTablaPendienteCxc">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Documento</th>
+                                <th>Fecha</th>
+                                <th>Vence</th>
+                                <th class="text-right">Días</th>
+                                <th>Vendedor</th>
+                                <th class="text-right">Monto</th>
+                                <th class="text-right">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="text-muted text-center">Cargando…</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="dg-pendiente-cxc-pager" id="dgPendienteCxcPager"></div>
+                <div class="dg-pendiente-cxc-chart-box">
+                    <h5 class="dg-subtitulo" style="margin-top: 14px;">Deuda por vendedor</h5>
+                    <p class="dg-origen-hint text-muted">Saldo abierto de la cartera listada (sin IGV)</p>
+                    <div class="dg-chart-wrap dg-chart-wrap--pendiente-vend">
+                        <canvas id="dgGraficoPendienteVendedor"></canvas>
+                        <p class="dg-chart-empty text-muted is-hidden" id="dgPendienteVendedorEmpty">Sin datos por vendedor</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="dgBtnExportPendienteCxc">
+                    <i class="fa fa-file-excel-o"></i> Exportar Excel
+                </button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>

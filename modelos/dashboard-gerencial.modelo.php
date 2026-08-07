@@ -56,22 +56,29 @@ class ModeloDashboardGerencial
     }
 
     /**
-     * Ventas por mes del año (totalesjf) — global, misma fuente que KPIs gerencia.
+     * Ventas por mes del año (ventajf) — global, misma fuente que Origen / KPIs.
+     * Tipos alineados con ModeloMetasVendedor (venta_real).
      * @return array<int,float> mes => monto
      */
     public static function mdlVentasMensualGlobal($anio)
     {
         $anio = (int) $anio;
+        $inicio = sprintf('%04d-01-01', $anio);
+        $fin = sprintf('%04d-01-01', $anio + 1);
+
         $sql = "SELECT
-                t.mes AS mes,
-                COALESCE(SUM(t.total_ventas_soles), 0) AS venta
-            FROM totalesjf t
-            WHERE t.año = :anio
-            GROUP BY t.mes
-            ORDER BY t.mes ASC";
+                MONTH(v.fecha) AS mes,
+                COALESCE(SUM(v.neto), 0) AS venta
+            FROM ventajf v
+            WHERE v.fecha >= :fecha_ini
+              AND v.fecha < :fecha_fin
+              AND v.tipo IN ('S02', 'S03', 'S70', 'E05', 'S05')
+            GROUP BY MONTH(v.fecha)
+            ORDER BY mes ASC";
 
         $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindValue(':anio', $anio, PDO::PARAM_INT);
+        $stmt->bindValue(':fecha_ini', $inicio, PDO::PARAM_STR);
+        $stmt->bindValue(':fecha_fin', $fin, PDO::PARAM_STR);
         $stmt->execute();
 
         $porMes = array();
@@ -170,22 +177,29 @@ class ModeloDashboardGerencial
     }
 
     /**
-     * Cobranzas por mes del año (totalesjf) — global, misma fuente que KPI gerencia.
+     * Cobranzas por mes del año (cuenta_ctejf efectivo) — global, misma fuente que KPI / Origen.
      * @return array<int,float>
      */
     public static function mdlCobranzasMensualGlobal($anio)
     {
         $anio = (int) $anio;
+        $inicio = sprintf('%04d-01-01', $anio);
+        $fin = sprintf('%04d-01-01', $anio + 1);
+
         $sql = "SELECT
-                t.mes AS mes,
-                COALESCE(SUM(t.total_pagos_soles), 0) AS cobranza
-            FROM totalesjf t
-            WHERE t.año = :anio
-            GROUP BY t.mes
-            ORDER BY t.mes ASC";
+                MONTH(cc.fecha) AS mes,
+                COALESCE(SUM(cc.monto), 0) AS cobranza
+            FROM cuenta_ctejf cc
+            WHERE cc.tip_mov = '-'
+              AND cc.fecha >= :fecha_ini
+              AND cc.fecha < :fecha_fin
+              AND " . self::sqlCobranzaEfectivo('cc') . "
+            GROUP BY MONTH(cc.fecha)
+            ORDER BY mes ASC";
 
         $stmt = Conexion::conectar()->prepare($sql);
-        $stmt->bindValue(':anio', $anio, PDO::PARAM_INT);
+        $stmt->bindValue(':fecha_ini', $inicio, PDO::PARAM_STR);
+        $stmt->bindValue(':fecha_fin', $fin, PDO::PARAM_STR);
         $stmt->execute();
 
         $porMes = array();
@@ -516,7 +530,7 @@ class ModeloDashboardGerencial
               AND {$fechaOri} < :fin_origen
               AND (:vendedor = '' OR pago.vendedor = :vendedor)
             GROUP BY YEAR(pago.fecha), MONTH(pago.fecha)
-            ORDER BY anio_pago DESC, mes_pago DESC";
+            ORDER BY anio_pago ASC, mes_pago ASC";
 
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(':fin_pago', $finPago, PDO::PARAM_STR);
@@ -895,5 +909,163 @@ class ModeloDashboardGerencial
         }
 
         return $out;
+    }
+
+    /**
+     * Documentos CxC pendientes (saldo > 0) con fecha de cargo en el período de ventas.
+     * Montos sin IGV. Paginado.
+     *
+     * @return array{
+     *   filas: array<int,array>,
+     *   total_saldo: float,
+     *   total_docs: int,
+     *   pagina: int,
+     *   por_pagina: int,
+     *   paginas: int
+     * }
+     */
+    public static function mdlDocsPendienteRecuperacion(
+        $desde,
+        $hastaInclusive,
+        $vendedor = '',
+        $pagina = 1,
+        $porPagina = 50
+    ) {
+        $desde = (string) $desde;
+        $hastaInclusive = (string) $hastaInclusive;
+        $vendedor = trim((string) $vendedor);
+        $finExclusivo = date('Y-m-d', strtotime($hastaInclusive . ' +1 day'));
+        $pagina = max(1, (int) $pagina);
+        $porPagina = max(10, min(5000, (int) $porPagina));
+        $offset = ($pagina - 1) * $porPagina;
+
+        $sqlWhere = "cc.tip_mov = '+'
+              AND cc.estado = 'PENDIENTE'
+              AND cc.saldo > 0.009
+              AND cc.fecha >= :fecha_ini
+              AND cc.fecha < :fecha_fin
+              AND (:vendedor = '' OR cc.vendedor = :vendedor)
+              AND cc.vendedor NOT LIKE '08%'
+              AND cc.vendedor NOT LIKE '06%'";
+
+        $sqlCount = "SELECT
+                COUNT(*) AS total_docs,
+                COALESCE(SUM(cc.saldo), 0) AS total_saldo
+            FROM cuenta_ctejf cc
+            WHERE {$sqlWhere}";
+
+        $stmtCount = Conexion::conectar()->prepare($sqlCount);
+        $stmtCount->bindValue(':fecha_ini', $desde, PDO::PARAM_STR);
+        $stmtCount->bindValue(':fecha_fin', $finExclusivo, PDO::PARAM_STR);
+        $stmtCount->bindValue(':vendedor', $vendedor, PDO::PARAM_STR);
+        $stmtCount->execute();
+        $totales = $stmtCount->fetch(PDO::FETCH_ASSOC);
+
+        $totalDocs = $totales ? (int) $totales['total_docs'] : 0;
+        $totalSaldo = $totales ? self::sinIgv($totales['total_saldo']) : 0.0;
+        $paginas = $totalDocs > 0 ? (int) ceil($totalDocs / $porPagina) : 1;
+
+        $sql = "SELECT
+                cc.cliente,
+                COALESCE(cl.nombre, cc.cliente) AS nombre_cliente,
+                cc.vendedor,
+                COALESCE(m.descripcion, cc.vendedor) AS nombre_vendedor,
+                cc.tipo_doc,
+                cc.num_cta,
+                cc.fecha,
+                cc.fecha_ven,
+                cc.ult_pago,
+                cc.monto,
+                cc.saldo,
+                DATEDIFF(CURDATE(), cc.fecha_ven) AS dias_vencido
+            FROM cuenta_ctejf cc
+            LEFT JOIN clientesjf cl ON cl.codigo = cc.cliente
+            LEFT JOIN maestrajf m
+                ON m.codigo = cc.vendedor
+               AND m.tipo_dato = 'TVEND'
+            WHERE {$sqlWhere}
+            ORDER BY
+                CASE WHEN cc.fecha_ven < CURDATE() THEN 0 ELSE 1 END ASC,
+                cc.fecha_ven ASC,
+                cc.saldo DESC
+            LIMIT {$porPagina} OFFSET {$offset}";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(':fecha_ini', $desde, PDO::PARAM_STR);
+        $stmt->bindValue(':fecha_fin', $finExclusivo, PDO::PARAM_STR);
+        $stmt->bindValue(':vendedor', $vendedor, PDO::PARAM_STR);
+        if (!$stmt->execute()) {
+            return array(
+                'filas' => array(),
+                'total_saldo' => $totalSaldo,
+                'total_docs' => $totalDocs,
+                'pagina' => $pagina,
+                'por_pagina' => $porPagina,
+                'paginas' => max(1, $paginas),
+                'por_vendedor' => array(),
+                'error' => 'No se pudo listar los documentos pendientes',
+            );
+        }
+
+        $filas = array();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+            $dias = (int) $fila['dias_vencido'];
+            $filas[] = array(
+                'cliente' => (string) $fila['cliente'],
+                'nombre_cliente' => (string) $fila['nombre_cliente'],
+                'vendedor' => (string) $fila['vendedor'],
+                'nombre_vendedor' => (string) $fila['nombre_vendedor'],
+                'tipo_doc' => (string) $fila['tipo_doc'],
+                'num_cta' => (string) $fila['num_cta'],
+                'fecha' => (string) $fila['fecha'],
+                'fecha_ven' => (string) $fila['fecha_ven'],
+                'ult_pago' => $fila['ult_pago'] ? (string) $fila['ult_pago'] : null,
+                'monto' => self::sinIgv($fila['monto']),
+                'saldo' => self::sinIgv($fila['saldo']),
+                'dias_vencido' => $dias,
+                'vencido' => $dias > 0,
+            );
+        }
+
+        $sqlVend = "SELECT
+                cc.vendedor,
+                COALESCE(MAX(m.descripcion), cc.vendedor) AS nombre_vendedor,
+                COUNT(*) AS docs,
+                COALESCE(SUM(cc.saldo), 0) AS saldo
+            FROM cuenta_ctejf cc
+            LEFT JOIN maestrajf m
+                ON m.codigo = cc.vendedor
+               AND m.tipo_dato = 'TVEND'
+            WHERE {$sqlWhere}
+            GROUP BY cc.vendedor
+            ORDER BY saldo DESC";
+
+        $stmtVend = Conexion::conectar()->prepare($sqlVend);
+        $stmtVend->bindValue(':fecha_ini', $desde, PDO::PARAM_STR);
+        $stmtVend->bindValue(':fecha_fin', $finExclusivo, PDO::PARAM_STR);
+        $stmtVend->bindValue(':vendedor', $vendedor, PDO::PARAM_STR);
+        $porVendedor = array();
+        if ($stmtVend->execute()) {
+            foreach ($stmtVend->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+                $saldo = self::sinIgv($fila['saldo']);
+                $porVendedor[] = array(
+                    'vendedor' => (string) $fila['vendedor'],
+                    'nombre' => (string) $fila['nombre_vendedor'],
+                    'docs' => (int) $fila['docs'],
+                    'saldo' => $saldo,
+                    'pct' => $totalSaldo > 0 ? round(($saldo / $totalSaldo) * 100, 1) : 0.0,
+                );
+            }
+        }
+
+        return array(
+            'filas' => $filas,
+            'total_saldo' => $totalSaldo,
+            'total_docs' => $totalDocs,
+            'pagina' => $pagina,
+            'por_pagina' => $porPagina,
+            'paginas' => max(1, $paginas),
+            'por_vendedor' => $porVendedor,
+        );
     }
 }

@@ -226,7 +226,8 @@
 
 .dg-dashboard .dg-origen-mes-wrap {
     max-width: none;
-    max-height: 220px;
+    height: 300px;
+    max-height: 300px;
     overflow: auto;
     border: 1px solid #e2e8f0;
     border-radius: 4px;
@@ -274,6 +275,74 @@
 .dg-dashboard .dg-fila-otros > td {
     color: #475569;
     font-style: italic;
+}
+
+.dg-dashboard .dg-pct-acum {
+    display: inline-block;
+    min-width: 3.2em;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.dg-dashboard .dg-btn-pendiente-cxc {
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.dg-dashboard .dg-pendiente-cxc-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.dg-dashboard .dg-pendiente-cxc-wrap {
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.dg-dashboard .dg-pendiente-cxc-wrap .dg-tabla {
+    margin-bottom: 0;
+}
+
+.dg-dashboard .dg-pendiente-cxc-wrap .dg-tabla > thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+}
+
+.dg-dashboard .dg-fila-vencida > td {
+    background: rgba(220, 38, 38, 0.06);
+}
+
+.dg-dashboard .dg-dias-vencido {
+    color: #b91c1c;
+    font-weight: 600;
+}
+
+.dg-dashboard .dg-dias-por-vencer {
+    color: #64748b;
+}
+
+.dg-dashboard .dg-pendiente-cxc-pager {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.dg-dashboard .dg-pendiente-cxc-pager .btn {
+    margin: 0 2px;
+}
+
+.dg-dashboard .dg-chart-wrap--pendiente-vend {
+    height: 260px;
+    margin-bottom: 4px;
 }
 
 .dg-dashboard .dg-fila-pendiente > th {
