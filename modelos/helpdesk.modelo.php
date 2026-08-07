@@ -101,6 +101,8 @@ class ModeloHelpdesk
             "SELECT
                 t.*,
                 sol.nombre AS solicitante_nombre,
+                sol.correo AS solicitante_correo,
+                sol.usuario AS solicitante_usuario,
                 asi.nombre AS asignado_nombre,
                 cre.nombre AS creado_por_nombre
              FROM helpdesk_ticketjf t

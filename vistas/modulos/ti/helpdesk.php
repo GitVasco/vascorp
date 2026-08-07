@@ -167,10 +167,10 @@
                                             </div>
                                             <div class="col-sm-6">
                                                 <div class="form-group">
-                                                    <label for="hdAsignadoAlta">Asignar a</label>
+                                                    <label for="hdAsignadoAlta"><i class="fa fa-user"></i> Asignar a</label>
                                                     <select class="form-control selectpicker" id="hdAsignadoAlta"
                                                             data-live-search="true" data-width="100%"
-                                                            title="Sin asignar">
+                                                            title="Elegir responsable…">
                                                         <option value="">Sin asignar</option>
                                                     </select>
                                                 </div>
@@ -182,6 +182,7 @@
                                         <h4 class="hd-section-title"><span class="hd-step">2</span> Descripción del Problema</h4>
                                         <div class="hd-pulir-bar">
                                             <button type="button" class="btn btn-default btn-sm" id="hdBtnPulir"
+                                                    style="display:none;"
                                                     title="Corrige ortografía y redacción con IA">
                                                 <i class="fa fa-magic"></i> Pulir texto (IA)
                                             </button>
@@ -261,69 +262,127 @@
 
             <!-- ========== LISTA / BANDEJA ========== -->
             <div class="tab-pane" id="hdVistaLista">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-list"></i> <span id="hdListaTitulo">Mis tickets</span></h3>
+                        <div class="box-tools pull-right hd-filtros">
+                            <input type="text" class="form-control input-sm" id="hdFiltroQ"
+                                   placeholder="Buscar…" style="width:140px;display:inline-block;">
+                            <select class="form-control input-sm" id="hdFiltroEstado" style="width:auto;display:inline-block;">
+                                <option value="__ACTIVOS__" selected>Activos</option>
+                                <option value="">Todos</option>
+                                <option value="ABIERTO">Abierto</option>
+                                <option value="EN_PROGRESO">En progreso</option>
+                                <option value="ESPERANDO_USUARIO">Esperando usuario</option>
+                                <option value="CERRADO">Cerrado</option>
+                            </select>
+                            <select class="form-control input-sm" id="hdFiltroTipo" style="width:auto;display:inline-block;">
+                                <option value="">Tipo</option>
+                                <option value="INCIDENCIA">Incidencia</option>
+                                <option value="REQUERIMIENTO">Requerimiento</option>
+                                <option value="CONSULTA">Consulta</option>
+                                <option value="OTRO">Otro</option>
+                                <option value="DESARROLLO">Desarrollo</option>
+                                <option value="CORRECCION">Corrección</option>
+                            </select>
+                            <button type="button" class="btn btn-default btn-sm" id="hdBtnRefrescar" title="Actualizar">
+                                <i class="fa fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="box-body table-responsive hd-tabla-wrap">
+                        <table class="table table-striped table-hover table-condensed" id="hdTablaLista">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Asunto</th>
+                                    <th>Tipo</th>
+                                    <th>Pri.</th>
+                                    <th>Estado</th>
+                                    <th>Asignado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="hd-vacio">
+                                    <td colspan="7" class="text-muted text-center">Cargando…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== CONVERSACIÓN / DETALLE ========== -->
+            <div class="tab-pane" id="hdVistaConversacion">
                 <div class="row">
-                    <div class="col-md-7">
-                        <div class="box box-primary">
-                            <div class="box-header with-border">
-                                <h3 class="box-title"><i class="fa fa-list"></i> <span id="hdListaTitulo">Mis tickets</span></h3>
-                                <div class="box-tools pull-right hd-filtros">
-                                    <input type="text" class="form-control input-sm" id="hdFiltroQ"
-                                           placeholder="Buscar…" style="width:110px;display:inline-block;">
-                                    <select class="form-control input-sm" id="hdFiltroEstado" style="width:auto;display:inline-block;">
-                                        <option value="__ACTIVOS__" selected>Activos</option>
-                                        <option value="">Todos</option>
-                                        <option value="ABIERTO">Abierto</option>
-                                        <option value="EN_PROGRESO">En progreso</option>
-                                        <option value="ESPERANDO_USUARIO">Esperando usuario</option>
-                                        <option value="CERRADO">Cerrado</option>
-                                    </select>
-                                    <select class="form-control input-sm" id="hdFiltroTipo" style="width:auto;display:inline-block;">
-                                        <option value="">Tipo</option>
-                                        <option value="INCIDENCIA">Incidencia</option>
-                                        <option value="REQUERIMIENTO">Requerimiento</option>
-                                        <option value="CONSULTA">Consulta</option>
-                                        <option value="OTRO">Otro</option>
-                                        <option value="DESARROLLO">Desarrollo</option>
-                                        <option value="CORRECCION">Corrección</option>
-                                    </select>
-                                    <button type="button" class="btn btn-default btn-sm" id="hdBtnRefrescar" title="Actualizar">
-                                        <i class="fa fa-refresh"></i>
-                                    </button>
+                    <div class="col-md-8">
+                        <div class="box box-primary hd-conv-main">
+                            <div class="box-header with-border" id="hdConvCabecera"></div>
+                            <div class="box-body" style="padding-top:0;">
+                                <ul class="nav nav-tabs hd-conv-tabs">
+                                    <li class="active"><a href="#hdTabConv" data-toggle="tab">Conversación</a></li>
+                                    <li><a href="#hdTabDetalles" data-toggle="tab">Detalles</a></li>
+                                    <li><a href="#hdTabArchivos" data-toggle="tab">Archivos <span class="badge" id="hdBadgeArchivos">0</span></a></li>
+                                    <li><a href="#hdTabHistorial" data-toggle="tab">Historial</a></li>
+                                </ul>
+                                <div class="tab-content hd-conv-tab-content">
+                                    <div class="tab-pane active" id="hdTabConv">
+                                        <div class="hd-hilo" id="hdHilo"></div>
+                                        <div class="hd-responder" id="hdResponderBox">
+                                            <form id="hdFormComentar">
+                                                <div class="hd-pulir-bar">
+                                                    <label style="margin:0;">Responder</label>
+                                                    <button type="button" class="btn btn-default btn-sm" id="hdBtnPulirResp"
+                                                            style="display:none;"
+                                                            title="Corregir ortografía y redacción con IA">
+                                                        <i class="fa fa-magic"></i> Corregir con IA
+                                                    </button>
+                                                </div>
+                                                <textarea class="form-control" id="hdComentario" rows="3"
+                                                          placeholder="Escribe tu respuesta…"></textarea>
+                                                <div class="hd-responder-actions">
+                                                    <div class="hd-responder-opts hd-solo-gestionar" style="display:none;">
+                                                        <label class="text-muted">Al enviar, cambiar estado a</label>
+                                                        <select class="form-control selectpicker" id="hdRespEstado"
+                                                                data-width="180px" data-container="body">
+                                                            <option value="">(sin cambio)</option>
+                                                            <option value="EN_PROGRESO"
+                                                                    data-content="<span class='label label-warning'>En progreso</span>">En progreso</option>
+                                                            <option value="ESPERANDO_USUARIO"
+                                                                    data-content="<span class='label label-info'>Esperando usuario</span>">Esperando usuario</option>
+                                                            <option value="CERRADO"
+                                                                    data-content="<span class='label label-default'>Cerrado</span>">Cerrado</option>
+                                                            <option value="ABIERTO"
+                                                                    data-content="<span class='label label-primary'>Abierto</span>">Abierto</option>
+                                                        </select>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary" id="hdBtnEnviarResp">
+                                                        <i class="fa fa-paper-plane"></i> Enviar respuesta
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane" id="hdTabDetalles"></div>
+                                    <div class="tab-pane" id="hdTabArchivos"></div>
+                                    <div class="tab-pane" id="hdTabHistorial"></div>
                                 </div>
-                            </div>
-                            <div class="box-body table-responsive hd-tabla-wrap">
-                                <table class="table table-striped table-condensed" id="hdTablaLista">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Asunto</th>
-                                            <th>Tipo</th>
-                                            <th>Pri.</th>
-                                            <th>Estado</th>
-                                            <th>Asignado</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr class="hd-vacio">
-                                            <td colspan="7" class="text-muted text-center">Cargando…</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-5">
-                        <div class="box box-info" id="hdBoxDetalle" style="display:none;">
+                    <div class="col-md-4">
+                        <div class="box box-solid" id="hdConvSidebarInfo">
                             <div class="box-header with-border">
-                                <h3 class="box-title"><i class="fa fa-ticket"></i> Detalle <span id="hdDetalleTitulo"></span></h3>
+                                <h3 class="box-title">Información del ticket</h3>
                             </div>
-                            <div class="box-body" id="hdDetalleCuerpo"></div>
+                            <div class="box-body" id="hdConvSidebarBody"></div>
                         </div>
-                        <div class="box box-default" id="hdBoxDetalleVacio">
-                            <div class="box-body text-muted text-center" style="padding:40px 20px;">
-                                Selecciona un ticket para ver el detalle.
+                        <div class="box box-solid">
+                            <div class="box-header with-border">
+                                <h3 class="box-title">Solicitante</h3>
                             </div>
+                            <div class="box-body" id="hdConvSolicitante"></div>
                         </div>
                     </div>
                 </div>

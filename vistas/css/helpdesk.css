@@ -120,6 +120,114 @@
     background: #f4f9fc;
 }
 
+#panelHelpdesk .hd-conv-asunto {
+    margin: 8px 0 4px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+#panelHelpdesk .hd-ticket-id {
+    font-weight: 700;
+    color: #555;
+    margin-right: 6px;
+}
+
+#panelHelpdesk .hd-conv-tabs {
+    margin-bottom: 0;
+}
+
+#panelHelpdesk .hd-conv-tab-content {
+    border: 1px solid #ddd;
+    border-top: 0;
+    padding: 12px;
+    background: #fff;
+}
+
+#panelHelpdesk .hd-hilo {
+    max-height: 420px;
+    overflow: auto;
+    padding: 8px 4px 16px;
+    margin-bottom: 12px;
+    background: #f7f9fb;
+    border-radius: 3px;
+}
+
+#panelHelpdesk .hd-msg {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 0 8px;
+}
+
+#panelHelpdesk .hd-msg-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+#panelHelpdesk .hd-msg-agente .hd-msg-avatar {
+    background: #f39c12;
+}
+
+#panelHelpdesk .hd-msg-body {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e6ebf0;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+#panelHelpdesk .hd-msg-agente .hd-msg-body {
+    background: #fff8ef;
+    border-color: #f0d9b5;
+}
+
+#panelHelpdesk .hd-msg-meta {
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+#panelHelpdesk .hd-msg-text {
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+#panelHelpdesk .hd-msg-sistema {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 12px;
+    color: #777;
+}
+
+#panelHelpdesk .hd-responder {
+    border-top: 1px solid #eef1f4;
+    padding-top: 12px;
+}
+
+#panelHelpdesk .hd-responder-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#panelHelpdesk .hd-solicitante-card {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
 #panelHelpdesk .hd-pulir-bar {
     display: flex;
     align-items: center;
@@ -131,6 +239,8 @@
 #panelHelpdesk .hd-pulir-bar .btn[disabled] {
     opacity: 0.7;
 }
+
+#panelHelpdesk .hd-dropzone {
     position: relative;
     border: 2px dashed #c5d0da;
     border-radius: 4px;
@@ -242,6 +352,160 @@
     margin: 2px 0;
 }
 
+#panelHelpdesk .hd-detalles-view {
+    padding: 4px 0;
+}
+
+#panelHelpdesk .hd-det-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+#panelHelpdesk .hd-det-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 140px;
+    flex: 1 1 140px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #e6ebf0;
+    background: #fff;
+}
+
+#panelHelpdesk .hd-det-chip > i {
+    font-size: 18px;
+    width: 28px;
+    text-align: center;
+}
+
+#panelHelpdesk .hd-det-chip-lbl {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+#panelHelpdesk .hd-det-chip-tipo {
+    border-left: 3px solid #3c8dbc;
+}
+#panelHelpdesk .hd-det-chip-tipo > i { color: #3c8dbc; }
+
+#panelHelpdesk .hd-det-chip-prioridad {
+    border-left: 3px solid #dd4b39;
+}
+#panelHelpdesk .hd-det-chip-prioridad > i { color: #dd4b39; }
+
+#panelHelpdesk .hd-det-chip-estado {
+    border-left: 3px solid #00a65a;
+}
+#panelHelpdesk .hd-det-chip-estado > i { color: #00a65a; }
+
+#panelHelpdesk .hd-det-chip-sistema {
+    border-left: 3px solid #f39c12;
+}
+#panelHelpdesk .hd-det-chip-sistema > i { color: #f39c12; }
+
+#panelHelpdesk .hd-det-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+#panelHelpdesk .hd-det-info-item {
+    flex: 1 1 160px;
+    background: #f7f9fb;
+    border: 1px solid #eef1f4;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+}
+
+#panelHelpdesk .hd-det-info-item span {
+    display: block;
+    color: #888;
+    font-size: 11px;
+}
+
+#panelHelpdesk .hd-det-info-item strong {
+    display: block;
+    margin-top: 2px;
+    font-size: 13px;
+}
+
+#panelHelpdesk .hd-det-block {
+    margin-top: 8px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e6ebf0;
+    border-radius: 4px;
+}
+
+#panelHelpdesk .hd-det-block h4 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3c8dbc;
+}
+
+#panelHelpdesk .hd-det-block-pasos h4 {
+    color: #f39c12;
+}
+
+#panelHelpdesk .hd-det-text {
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+#panelHelpdesk .hd-side-form .help-block {
+    margin: 0 0 6px;
+    font-size: 11px;
+}
+
+#panelHelpdesk .hd-side-badges {
+    margin-bottom: 12px;
+}
+
+#panelHelpdesk .hd-side-asignar {
+    padding: 10px;
+    background: #f4f9fc;
+    border: 1px solid #cde3f0;
+    border-radius: 4px;
+}
+
+#panelHelpdesk .hd-side-meta {
+    margin: 12px 0;
+    font-size: 12px;
+}
+
+#panelHelpdesk .hd-side-meta > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f2f5;
+}
+
+#panelHelpdesk .hd-side-meta > div:last-child {
+    border-bottom: 0;
+}
+
+#panelHelpdesk .hd-side-meta i {
+    width: 16px;
+    color: #3c8dbc;
+    text-align: center;
+}
+
+#panelHelpdesk .hd-side-meta span {
+    color: #888;
+    min-width: 64px;
+}
+
 #panelHelpdesk .hd-historial {
     list-style: none;
     padding: 0;
@@ -265,6 +529,121 @@
     font-size: 11px;
     color: #888;
     margin-bottom: 2px;
+}
+
+#panelHelpdesk .hd-hist-vacio {
+    text-align: center;
+    padding: 28px 12px;
+    color: #999;
+}
+
+#panelHelpdesk .hd-hist-vacio i {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+#panelHelpdesk .hd-timeline {
+    position: relative;
+    padding: 4px 4px 8px 8px;
+    max-height: 520px;
+    overflow: auto;
+}
+
+#panelHelpdesk .hd-timeline::before {
+    content: "";
+    position: absolute;
+    left: 22px;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    background: #e6ebf0;
+}
+
+#panelHelpdesk .hd-timeline-item {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+#panelHelpdesk .hd-timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+#panelHelpdesk .hd-timeline-dot {
+    position: relative;
+    z-index: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+    box-shadow: 0 0 0 3px #fff;
+}
+
+#panelHelpdesk .hd-hist-alta .hd-timeline-dot { background: #00a65a; }
+#panelHelpdesk .hd-hist-comentario .hd-timeline-dot { background: #605ca8; }
+#panelHelpdesk .hd-hist-estado .hd-timeline-dot { background: #00c0ef; }
+#panelHelpdesk .hd-hist-asignacion .hd-timeline-dot { background: #3c8dbc; }
+#panelHelpdesk .hd-hist-otro .hd-timeline-dot { background: #777; }
+
+#panelHelpdesk .hd-timeline-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e6ebf0;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+#panelHelpdesk .hd-timeline-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+#panelHelpdesk .hd-timeline-fecha {
+    font-size: 11px;
+    color: #888;
+}
+
+#panelHelpdesk .hd-timeline-who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+#panelHelpdesk .hd-hist-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+}
+
+#panelHelpdesk .hd-timeline-msg {
+    font-size: 13px;
+    line-height: 1.45;
+    color: #444;
+}
+
+#panelHelpdesk .hd-cerrado-banner {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-left: 3px solid #777;
+    border-radius: 3px;
+    color: #555;
+    font-size: 13px;
 }
 
 #panelHelpdesk .hd-adjuntos-lista {

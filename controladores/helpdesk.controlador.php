@@ -23,6 +23,10 @@ class ControladorHelpdesk
     const ADJUNTO_DIR = "vistas/img/helpdesk";
     /** IDs fijos que pueden figurar en "Asignar a" */
     const AGENTES_ASIGNABLES = array(6, 10);
+    /** Solo este usuario puede usar Corregir / Pulir con IA */
+    const USUARIO_PULIR_IA = 6;
+    /** Solo este usuario puede reabrir tickets cerrados */
+    const USUARIO_REABRIR = 6;
 
     public static function ctrCargarCatalogoJson()
     {
@@ -192,12 +196,24 @@ class ControladorHelpdesk
         return isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
     }
 
+    public static function ctrPuedePulirIa()
+    {
+        return self::ctrUsuarioSesionId() === self::USUARIO_PULIR_IA;
+    }
+
+    public static function ctrPuedeReabrir()
+    {
+        return self::ctrUsuarioSesionId() === self::USUARIO_REABRIR;
+    }
+
     public static function ctrPermisos()
     {
         return array(
             "ver" => self::ctrPuede("ver"),
             "registrar" => self::ctrPuede("registrar"),
             "gestionar" => self::ctrPuede("gestionar"),
+            "pulir_ia" => self::ctrPuedePulirIa(),
+            "reabrir" => self::ctrPuedeReabrir(),
         );
     }
 
@@ -309,19 +325,28 @@ class ControladorHelpdesk
     }
 
     /**
-     * Pule asunto, descripción y pasos con OpenAI (prompt en archivo).
+     * Pule asunto/descripción/pasos (alta) o mensaje de respuesta con OpenAI.
+     * POST modo=respuesta → solo corrige el campo mensaje.
      */
     public static function ctrPulirTexto()
     {
-        if (!self::ctrPuede("registrar") && !self::ctrPuede("gestionar")) {
-            return array("ok" => false, "msg" => "Sin permiso.");
+        if (!self::ctrPuedePulirIa()) {
+            return array("ok" => false, "msg" => "Sin permiso para corregir con IA.");
         }
+
+        $modo = isset($_POST["modo"]) ? trim((string) $_POST["modo"]) : "";
+        $esRespuesta = ($modo === "respuesta");
 
         $titulo = isset($_POST["titulo"]) ? trim((string) $_POST["titulo"]) : "";
         $descripcion = isset($_POST["descripcion"]) ? trim((string) $_POST["descripcion"]) : "";
         $pasos = isset($_POST["pasos_reproducir"]) ? trim((string) $_POST["pasos_reproducir"]) : "";
+        $mensaje = isset($_POST["mensaje"]) ? trim((string) $_POST["mensaje"]) : "";
 
-        if ($titulo === "" && $descripcion === "" && $pasos === "") {
+        if ($esRespuesta) {
+            if ($mensaje === "") {
+                return array("ok" => false, "msg" => "Escriba la respuesta a corregir.");
+            }
+        } elseif ($titulo === "" && $descripcion === "" && $pasos === "") {
             return array("ok" => false, "msg" => "Escriba al menos el asunto o la descripción.");
         }
 
@@ -330,7 +355,9 @@ class ControladorHelpdesk
             return array("ok" => false, "msg" => "Configure OPENAI_API_KEY en controladores/config.php");
         }
 
-        $promptPath = __DIR__ . "/helpdesk-prompt-pulir.txt";
+        $promptPath = $esRespuesta
+            ? (__DIR__ . "/helpdesk-prompt-pulir-respuesta.txt")
+            : (__DIR__ . "/helpdesk-prompt-pulir.txt");
         if (!is_readable($promptPath)) {
             return array("ok" => false, "msg" => "No se encontró el archivo de prompt.");
         }
@@ -339,13 +366,19 @@ class ControladorHelpdesk
             return array("ok" => false, "msg" => "El prompt está vacío.");
         }
 
-        $userPayload = array(
-            "titulo" => $titulo,
-            "descripcion" => $descripcion,
-            "pasos_reproducir" => $pasos,
-        );
-        $userMsg = "Mejora este ticket y responde solo con el JSON pedido:\n"
-            . json_encode($userPayload, JSON_UNESCAPED_UNICODE);
+        if ($esRespuesta) {
+            $userMsg = "Mejora esta respuesta de helpdesk y responde solo con el JSON pedido:\n"
+                . json_encode(array("mensaje" => $mensaje), JSON_UNESCAPED_UNICODE);
+            $maxTokens = 800;
+        } else {
+            $userMsg = "Mejora este ticket y responde solo con el JSON pedido:\n"
+                . json_encode(array(
+                    "titulo" => $titulo,
+                    "descripcion" => $descripcion,
+                    "pasos_reproducir" => $pasos,
+                ), JSON_UNESCAPED_UNICODE);
+            $maxTokens = 1200;
+        }
 
         $modelo = defined("OPENAI_IC_MODELO") && trim((string) OPENAI_IC_MODELO) !== ""
             ? trim((string) OPENAI_IC_MODELO)
@@ -354,7 +387,7 @@ class ControladorHelpdesk
         $payload = json_encode(array(
             "model" => $modelo,
             "temperature" => 0.2,
-            "max_tokens" => 1200,
+            "max_tokens" => $maxTokens,
             "response_format" => array("type" => "json_object"),
             "messages" => array(
                 array("role" => "system", "content" => $systemPrompt),
@@ -398,7 +431,6 @@ class ControladorHelpdesk
             return array("ok" => false, "msg" => "Respuesta vacía de OpenAI.");
         }
 
-        // Por si el modelo envuelve en ```json
         if (preg_match('/\{.*\}/s', $content, $m)) {
             $content = $m[0];
         }
@@ -406,6 +438,19 @@ class ControladorHelpdesk
         $data = json_decode($content, true);
         if (!is_array($data)) {
             return array("ok" => false, "msg" => "No se pudo interpretar la respuesta de la IA.");
+        }
+
+        if ($esRespuesta) {
+            $outMsg = isset($data["mensaje"]) ? trim((string) $data["mensaje"]) : $mensaje;
+            if ($outMsg === "") {
+                $outMsg = $mensaje;
+            }
+            return array(
+                "ok" => true,
+                "msg" => "Respuesta corregida.",
+                "mensaje" => $outMsg,
+                "modelo" => $modelo,
+            );
         }
 
         $outTitulo = isset($data["titulo"]) ? trim((string) $data["titulo"]) : $titulo;
@@ -678,6 +723,12 @@ class ControladorHelpdesk
         if (!$ticket || !self::puedeVerTicket($ticket)) {
             return array("ok" => false, "msg" => "Ticket no encontrado.");
         }
+        if ($ticket["estado"] === "CERRADO") {
+            return array(
+                "ok" => false,
+                "msg" => "Ticket cerrado. Reábralo cambiando el estado para poder responder.",
+            );
+        }
         if ($mensaje === "") {
             return array("ok" => false, "msg" => "Escriba un comentario.");
         }
@@ -695,7 +746,30 @@ class ControladorHelpdesk
             return array("ok" => false, "msg" => "No se pudo guardar el comentario.");
         }
 
-        return array("ok" => true, "msg" => "Comentario agregado.");
+        // Opcional: agente cambia estado al responder
+        if (self::ctrPuede("gestionar") && isset($_POST["cambiar_estado"]) && trim((string) $_POST["cambiar_estado"]) !== "") {
+            $estado = trim((string) $_POST["cambiar_estado"]);
+            if (in_array($estado, self::ESTADOS, true) && $estado !== $ticket["estado"]) {
+                $campos = array("estado" => $estado);
+                if ($estado === "CERRADO") {
+                    $campos["cerrado_en"] = date("Y-m-d H:i:s");
+                } elseif ($ticket["estado"] === "CERRADO") {
+                    $campos["cerrado_en"] = null;
+                }
+                if (ModeloHelpdesk::mdlActualizar($id, $campos)) {
+                    ModeloHelpdesk::mdlAgregarComentario(array(
+                        "ticket_id" => $id,
+                        "usuario_id" => self::ctrUsuarioSesionId(),
+                        "tipo_evento" => "CAMBIO_ESTADO",
+                        "mensaje" => "Estado: " . $ticket["estado"] . " → " . $estado,
+                        "estado_anterior" => $ticket["estado"],
+                        "estado_nuevo" => $estado,
+                    ));
+                }
+            }
+        }
+
+        return array("ok" => true, "msg" => "Respuesta enviada.");
     }
 
     public static function ctrActualizar()
@@ -708,6 +782,39 @@ class ControladorHelpdesk
         $ticket = ModeloHelpdesk::mdlObtener($id);
         if (!$ticket) {
             return array("ok" => false, "msg" => "Ticket no encontrado.");
+        }
+
+        // Cerrado: solo el usuario autorizado puede reabrir (cambiar a otro estado)
+        if ($ticket["estado"] === "CERRADO") {
+            if (!self::ctrPuedeReabrir()) {
+                return array(
+                    "ok" => false,
+                    "msg" => "Ticket cerrado. Solo el responsable autorizado puede reabrirlo.",
+                );
+            }
+            $estadoPost = isset($_POST["estado"]) ? trim((string) $_POST["estado"]) : "";
+            if ($estadoPost === "" || $estadoPost === "CERRADO" || !in_array($estadoPost, self::ESTADOS, true)) {
+                return array(
+                    "ok" => false,
+                    "msg" => "Ticket cerrado. Cambie el estado a otro valor para reabrirlo.",
+                );
+            }
+            $campos = array(
+                "estado" => $estadoPost,
+                "cerrado_en" => null,
+            );
+            if (!ModeloHelpdesk::mdlActualizar($id, $campos)) {
+                return array("ok" => false, "msg" => "No se pudo reabrir el ticket.");
+            }
+            ModeloHelpdesk::mdlAgregarComentario(array(
+                "ticket_id" => $id,
+                "usuario_id" => self::ctrUsuarioSesionId(),
+                "tipo_evento" => "CAMBIO_ESTADO",
+                "mensaje" => "Estado: CERRADO → " . $estadoPost,
+                "estado_anterior" => "CERRADO",
+                "estado_nuevo" => $estadoPost,
+            ));
+            return array("ok" => true, "msg" => "Ticket reabierto.");
         }
 
         $uid = self::ctrUsuarioSesionId();

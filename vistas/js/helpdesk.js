@@ -4,7 +4,7 @@ $(function () {
     }
 
     var API = "ajax/helpdesk.ajax.php";
-    var permisos = { ver: true, registrar: false, gestionar: false };
+    var permisos = { ver: true, registrar: false, gestionar: false, pulir_ia: false, reabrir: false };
     var ticketActual = null;
     var agentes = [];
     var usuarios = [];
@@ -37,6 +37,12 @@ $(function () {
         TI_EMPRESA: "TI / Soporte"
     };
 
+    /** Etiqueta en el hilo según rol del agente asignable */
+    var LABELS_AGENTE = {
+        6: { txt: "Desarrollo", cls: "label-primary" },
+        10: { txt: "Soporte", cls: "label-warning" }
+    };
+
     var EXT_OK = ["jpg", "jpeg", "png", "pdf", "doc", "docx", "xls", "xlsx"];
     var MAX_BYTES = 10 * 1024 * 1024;
     var MAX_FILES = 5;
@@ -60,6 +66,53 @@ $(function () {
 
     function badgePrioridad(p) {
         return '<span class="label label-prioridad-' + esc(p) + '">' + esc(p) + "</span>";
+    }
+
+    function iconoTipo(tipo) {
+        var map = {
+            INCIDENCIA: "fa-exclamation-triangle",
+            REQUERIMIENTO: "fa-cogs",
+            CONSULTA: "fa-question-circle",
+            OTRO: "fa-ellipsis-h",
+            DESARROLLO: "fa-code",
+            CORRECCION: "fa-wrench",
+            SOPORTE: "fa-life-ring"
+        };
+        return map[tipo] || "fa-ticket";
+    }
+
+    function iconoSistema(sis) {
+        var map = {
+            VASCORP: "fa-desktop",
+            SISTEMA_VASCO: "fa-cloud",
+            VASCOPRO: "fa-rocket",
+            TI_EMPRESA: "fa-headphones"
+        };
+        return map[sis] || "fa-cube";
+    }
+
+    function destroyPickers($root) {
+        $($root).find("select.selectpicker").each(function () {
+            var $s = $(this);
+            if ($s.data("selectpicker")) {
+                $s.selectpicker("destroy");
+            }
+        });
+    }
+
+    function initPicker($sel) {
+        var $sel = $($sel);
+        if (!$.fn.selectpicker) {
+            return;
+        }
+        if ($sel.data("selectpicker")) {
+            $sel.selectpicker("refresh");
+        } else {
+            $sel.selectpicker({
+                container: "body",
+                sanitize: false
+            });
+        }
     }
 
     function post(accion, data) {
@@ -89,6 +142,13 @@ $(function () {
         } else {
             $(".hd-solo-gestionar").hide();
             $("#hdTabListaLabel, #hdListaTitulo").text("Mis tickets");
+        }
+        if (permisos.pulir_ia) {
+            $("#hdBtnPulir, #hdBtnPulirResp").show();
+            $("#hdVistaNuevo .hd-pulir-bar").show();
+        } else {
+            $("#hdBtnPulir, #hdBtnPulirResp").hide();
+            $("#hdVistaNuevo .hd-pulir-bar").hide();
         }
     }
 
@@ -304,31 +364,174 @@ $(function () {
             });
     }
 
+    function iniciales(nombre) {
+        var p = String(nombre || "?").trim().split(/\s+/);
+        if (p.length >= 2) {
+            return (p[0].charAt(0) + p[1].charAt(0)).toUpperCase();
+        }
+        return String(nombre || "?").substring(0, 2).toUpperCase();
+    }
+
+    var ignoreHashChange = false;
+    var hdBooting = true;
+
+    function parseHash() {
+        var h = String(location.hash || "").replace(/^#/, "");
+        var m = h.match(/^ticket\/(\d+)$/i);
+        if (m) {
+            return { vista: "ticket", id: Number(m[1]) };
+        }
+        if (h === "nuevo") {
+            return { vista: "nuevo" };
+        }
+        return { vista: "lista" };
+    }
+
+    function setHash(vista, ticketId) {
+        var h = "#lista";
+        if (vista === "nuevo") {
+            h = "#nuevo";
+        } else if (vista === "ticket" && ticketId) {
+            h = "#ticket/" + ticketId;
+        }
+        if (location.hash === h) {
+            return;
+        }
+        ignoreHashChange = true;
+        if (window.history && history.replaceState) {
+            history.replaceState(null, "", location.pathname + location.search + h);
+        } else {
+            location.hash = h.slice(1);
+        }
+        setTimeout(function () {
+            ignoreHashChange = false;
+        }, 80);
+    }
+
+    function mostrarVistaConversacion(ticketId) {
+        $("#hdVistaNuevo, #hdVistaLista").removeClass("active");
+        $("#hdTabNuevoLi, #hdTabListaLi").removeClass("active");
+        $("#hdVistaConversacion").addClass("active");
+        if (permisos.gestionar) {
+            $(".hd-solo-gestionar").show();
+        } else {
+            $(".hd-solo-gestionar").hide();
+        }
+        if (ticketId) {
+            setHash("ticket", ticketId);
+        }
+    }
+
+    function mostrarVistaLista(actualizarHash) {
+        $("#hdVistaConversacion").removeClass("active");
+        $("#hdVistaNuevo").removeClass("active");
+        $("#hdTabNuevoLi").removeClass("active");
+        $("#hdTabListaLi").addClass("active");
+        $("#hdVistaLista").addClass("active");
+        ticketActual = null;
+        if (actualizarHash !== false) {
+            setHash("lista");
+        }
+        cargarLista();
+    }
+
+    function mostrarVistaNuevo(actualizarHash) {
+        if (!permisos.registrar) {
+            mostrarVistaLista(actualizarHash);
+            return;
+        }
+        $("#hdVistaConversacion").removeClass("active");
+        $("#hdVistaLista").removeClass("active");
+        $("#hdTabListaLi").removeClass("active");
+        $("#hdTabNuevoLi").addClass("active");
+        $("#hdVistaNuevo").addClass("active");
+        ticketActual = null;
+        if (actualizarHash !== false) {
+            setHash("nuevo");
+        }
+    }
+
+    function aplicarHashActual() {
+        var estado = parseHash();
+        if (estado.vista === "ticket" && estado.id > 0) {
+            if (ticketActual && Number(ticketActual.id) === estado.id
+                && $("#hdVistaConversacion").hasClass("active")) {
+                return;
+            }
+            verTicket(estado.id);
+            return;
+        }
+        if (estado.vista === "nuevo") {
+            mostrarVistaNuevo(false);
+            return;
+        }
+        mostrarVistaLista(false);
+    }
+
+    function metaEvento(tipo) {
+        var map = {
+            ALTA: { txt: "Creación", icon: "fa-plus-circle", cls: "hd-hist-alta" },
+            COMENTARIO: { txt: "Comentario", icon: "fa-comment", cls: "hd-hist-comentario" },
+            CAMBIO_ESTADO: { txt: "Cambio de estado", icon: "fa-exchange", cls: "hd-hist-estado" },
+            ASIGNACION: { txt: "Asignación", icon: "fa-user", cls: "hd-hist-asignacion" }
+        };
+        return map[tipo] || { txt: tipo || "Evento", icon: "fa-circle", cls: "hd-hist-otro" };
+    }
+
+    function mensajeHistorialAmigable(c) {
+        var msg = String(c.mensaje || "");
+        if (c.tipo_evento === "CAMBIO_ESTADO") {
+            var m = msg.match(/Estado:\s*([A-Z_]+)\s*(?:→|->)\s*([A-Z_]+)/i);
+            if (m) {
+                var de = (LABELS_ESTADO[m[1]] && LABELS_ESTADO[m[1]].txt) || m[1];
+                var a = (LABELS_ESTADO[m[2]] && LABELS_ESTADO[m[2]].txt) || m[2];
+                return "Pasó de <strong>" + esc(de) + "</strong> a <strong>" + esc(a) + "</strong>";
+            }
+        }
+        return esc(msg).replace(/\n/g, "<br>");
+    }
+
     function renderHistorial(comentarios) {
         if (!comentarios || !comentarios.length) {
-            return '<p class="text-muted">Sin historial.</p>';
+            return '<div class="hd-hist-vacio"><i class="fa fa-history"></i><p>Sin historial aún.</p></div>';
         }
-        var html = '<ul class="hd-historial">';
+        var html = '<div class="hd-timeline">';
         comentarios.forEach(function (c) {
+            var meta = metaEvento(c.tipo_evento);
+            var rol = LABELS_AGENTE[c.usuario_id] || LABELS_AGENTE[String(c.usuario_id)];
             html +=
-                "<li>" +
-                    '<div class="hd-hist-meta">' +
-                        esc(c.usuario_nombre || ("#" + c.usuario_id)) +
-                        " · " + esc(c.creado_en) +
-                        " · " + esc(c.tipo_evento) +
+                '<div class="hd-timeline-item ' + meta.cls + '">' +
+                    '<div class="hd-timeline-dot"><i class="fa ' + meta.icon + '"></i></div>' +
+                    '<div class="hd-timeline-card">' +
+                        '<div class="hd-timeline-head">' +
+                            '<span class="label ' + (
+                                c.tipo_evento === "ALTA" ? "label-success" :
+                                c.tipo_evento === "CAMBIO_ESTADO" ? "label-info" :
+                                c.tipo_evento === "ASIGNACION" ? "label-primary" :
+                                "label-default"
+                            ) + '">' + esc(meta.txt) + "</span>" +
+                            '<span class="hd-timeline-fecha"><i class="fa fa-clock-o"></i> ' +
+                                esc(c.creado_en) + "</span>" +
+                        "</div>" +
+                        '<div class="hd-timeline-who">' +
+                            '<span class="hd-msg-avatar hd-hist-avatar">' +
+                                esc(iniciales(c.usuario_nombre)) + "</span>" +
+                            "<strong>" + esc(c.usuario_nombre || ("#" + c.usuario_id)) + "</strong>" +
+                            (rol ? ' <span class="label ' + rol.cls + '">' + esc(rol.txt) + "</span>" : "") +
+                        "</div>" +
+                        '<div class="hd-timeline-msg">' + mensajeHistorialAmigable(c) + "</div>" +
                     "</div>" +
-                    "<div>" + esc(c.mensaje).replace(/\n/g, "<br>") + "</div>" +
-                "</li>";
+                "</div>";
         });
-        html += "</ul>";
+        html += "</div>";
         return html;
     }
 
-    function renderAdjuntos(adjuntos) {
+    function renderAdjuntosTab(adjuntos) {
         if (!adjuntos || !adjuntos.length) {
-            return "";
+            return '<p class="text-muted">Sin archivos adjuntos.</p>';
         }
-        var html = "<h4>Adjuntos</h4><ul class=\"hd-adjuntos-lista\">";
+        var html = '<ul class="hd-adjuntos-lista">';
         adjuntos.forEach(function (a) {
             var url = API + "?accion=adjunto&id=" + encodeURIComponent(a.id);
             html +=
@@ -340,87 +543,294 @@ $(function () {
         return html;
     }
 
-    function renderDetalle(res) {
-        var t = res.ticket;
-        ticketActual = t;
-        $("#hdDetalleTitulo").text("#" + t.id);
-        $("#hdBoxDetalle").show();
-        $("#hdBoxDetalleVacio").hide();
-
-        var meta =
-            '<div class="hd-detalle-meta">' +
-                '<div class="hd-meta-line"><strong>' + esc(t.titulo) + "</strong></div>" +
-                '<div class="hd-meta-line">' + badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) +
-                    " · " + esc(LABELS_TIPO[t.tipo] || t.tipo) +
-                    (t.sistema ? " · " + esc(LABELS_SISTEMA[t.sistema] || t.sistema) : "") +
-                    (t.area ? " · " + esc(t.area) : "") +
+    function renderHilo(t, comentarios, agentesLista) {
+        var html = "";
+        // Mensaje inicial = descripción del ticket
+        html +=
+            '<div class="hd-msg hd-msg-solicitante">' +
+                '<div class="hd-msg-avatar">' + esc(iniciales(t.solicitante_nombre)) + "</div>" +
+                '<div class="hd-msg-body">' +
+                    '<div class="hd-msg-meta"><strong>' + esc(t.solicitante_nombre || "Solicitante") +
+                    '</strong> <span class="text-muted">' + esc(t.creado_en) + "</span></div>" +
+                    '<div class="hd-msg-text">' + esc(t.descripcion).replace(/\n/g, "<br>") + "</div>" +
                 "</div>" +
-                '<div class="hd-meta-line text-muted">Solicitante: ' + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) +
-                    " · Asignado: " + esc(t.asignado_nombre || "—") + "</div>" +
-                '<div class="hd-meta-line text-muted">Creado: ' + esc(t.creado_en) +
-                    (t.cerrado_en ? " · Cerrado: " + esc(t.cerrado_en) : "") + "</div>" +
-                (t.modulo ? '<div class="hd-meta-line">Módulo: ' + esc(t.modulo) + "</div>" : "") +
-                '<div class="hd-meta-line" style="margin-top:8px;white-space:pre-wrap;">' + esc(t.descripcion) + "</div>" +
-                (t.pasos_reproducir
-                    ? '<div class="hd-meta-line" style="margin-top:8px;"><strong>Pasos:</strong><br><span style="white-space:pre-wrap;">' +
-                      esc(t.pasos_reproducir) + "</span></div>"
-                    : "") +
             "</div>";
 
-        var adj = renderAdjuntos(res.adjuntos || []);
-        var hist = "<h4>Historial</h4>" + renderHistorial(res.comentarios || []);
-
-        var formComentario =
-            '<form id="hdFormComentar" style="margin-bottom:12px;">' +
-                '<div class="form-group">' +
-                    '<textarea class="form-control" id="hdComentario" rows="2" ' +
-                    'placeholder="Agregar comentario…"></textarea>' +
-                "</div>" +
-                '<button type="submit" class="btn btn-default btn-sm">' +
-                    '<i class="fa fa-comment"></i> Comentar</button>' +
-            "</form>";
-
-        var gestionar = "";
-        if (permisos.gestionar) {
-            var optsEstado = "";
-            ["ABIERTO", "EN_PROGRESO", "ESPERANDO_USUARIO", "CERRADO"].forEach(function (e) {
-                optsEstado +=
-                    '<option value="' + e + '"' + (e === t.estado ? " selected" : "") + ">" +
-                    esc((LABELS_ESTADO[e] && LABELS_ESTADO[e].txt) || e) +
-                    "</option>";
+        (comentarios || []).forEach(function (c) {
+            if (c.tipo_evento === "ALTA") {
+                return;
+            }
+            if (c.tipo_evento === "CAMBIO_ESTADO" || c.tipo_evento === "ASIGNACION") {
+                html +=
+                    '<div class="hd-msg-sistema">' +
+                        '<span class="label label-default">' + esc(c.tipo_evento) + "</span> " +
+                        esc(c.mensaje) +
+                        ' <small class="text-muted">' + esc(c.creado_en) + "</small>" +
+                    "</div>";
+                return;
+            }
+            var esDelEquipo = false;
+            (agentesLista || []).forEach(function (a) {
+                if (String(a.id) === String(c.usuario_id)) {
+                    esDelEquipo = true;
+                }
             });
-            var optsAsig = '<option value="">Sin asignar</option>';
-            (res.agentes || agentes).forEach(function (u) {
-                optsAsig +=
-                    '<option value="' + esc(u.id) + '"' +
-                    (String(u.id) === String(t.asignado_id || "") ? " selected" : "") +
-                    ">" + esc(u.nombre || ("#" + u.id)) + "</option>";
-            });
-            var optsPri = "";
-            ["BAJA", "MEDIA", "ALTA"].forEach(function (p) {
-                optsPri +=
-                    '<option value="' + p + '"' + (p === t.prioridad ? " selected" : "") + ">" +
-                    esc(p) + "</option>";
-            });
-
-            gestionar =
-                '<div class="hd-gestionar-bar">' +
-                    "<h4>Gestionar</h4>" +
-                    '<form id="hdFormGestionar" class="form-inline">' +
-                        '<div class="form-group"><label>Estado</label> ' +
-                            '<select class="form-control input-sm" id="hdGestEstado">' + optsEstado + "</select></div>" +
-                        '<div class="form-group"><label>Asignado</label> ' +
-                            '<select class="form-control input-sm" id="hdGestAsignado">' + optsAsig + "</select></div>" +
-                        '<div class="form-group"><label>Prioridad</label> ' +
-                            '<select class="form-control input-sm" id="hdGestPrioridad">' + optsPri + "</select></div>" +
-                        '<button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-save"></i> Guardar</button>' +
-                    "</form>" +
+            if (!esDelEquipo && String(c.usuario_id) !== String(t.solicitante_id)) {
+                esDelEquipo = !!LABELS_AGENTE[c.usuario_id] || permisos.gestionar;
+            }
+            var cls = esDelEquipo || String(c.usuario_id) !== String(t.solicitante_id)
+                ? "hd-msg-agente"
+                : "hd-msg-solicitante";
+            var etiqueta = "";
+            if (esDelEquipo || String(c.usuario_id) !== String(t.solicitante_id)) {
+                var rol = LABELS_AGENTE[c.usuario_id] || LABELS_AGENTE[String(c.usuario_id)]
+                    || { txt: "TI", cls: "label-default" };
+                etiqueta = ' <span class="label ' + rol.cls + '">' + esc(rol.txt) + "</span>";
+            }
+            html +=
+                '<div class="hd-msg ' + cls + '">' +
+                    '<div class="hd-msg-avatar">' + esc(iniciales(c.usuario_nombre)) + "</div>" +
+                    '<div class="hd-msg-body">' +
+                        '<div class="hd-msg-meta"><strong>' + esc(c.usuario_nombre || ("#" + c.usuario_id)) +
+                        "</strong> <span class=\"text-muted\">" + esc(c.creado_en) + "</span>" +
+                        etiqueta +
+                        "</div>" +
+                        '<div class="hd-msg-text">' + esc(c.mensaje).replace(/\n/g, "<br>") + "</div>" +
+                    "</div>" +
                 "</div>";
+        });
+        return html;
+    }
+
+    function renderConversacion(res) {
+        var t = res.ticket;
+        ticketActual = t;
+        agentes = res.agentes || agentes;
+
+        $("#hdConvCabecera").html(
+            '<div class="hd-conv-head">' +
+                '<div>' +
+                    '<span class="hd-ticket-id">#' + esc(t.id) + "</span> " +
+                    badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) +
+                    '<h3 class="hd-conv-asunto">' + esc(t.titulo) + "</h3>" +
+                    '<div class="text-muted hd-conv-meta">' +
+                        "Creado por <strong>" + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) + "</strong>" +
+                        (t.area ? " · " + esc(t.area) : "") +
+                        " · " + esc(t.creado_en) +
+                    "</div>" +
+                "</div>" +
+            "</div>"
+        );
+
+        $("#hdHilo").html(renderHilo(t, res.comentarios || [], agentes));
+        $("#hdBadgeArchivos").text((res.adjuntos || []).length);
+
+        $("#hdTabDetalles").html(
+            '<div class="hd-detalles-view">' +
+                '<div class="hd-det-chips">' +
+                    '<div class="hd-det-chip hd-det-chip-tipo">' +
+                        '<i class="fa ' + iconoTipo(t.tipo) + '"></i>' +
+                        '<div><span class="hd-det-chip-lbl">Tipo</span>' +
+                        '<strong>' + esc(LABELS_TIPO[t.tipo] || t.tipo) + "</strong></div>" +
+                    "</div>" +
+                    '<div class="hd-det-chip hd-det-chip-prioridad">' +
+                        '<i class="fa fa-flag"></i>' +
+                        '<div><span class="hd-det-chip-lbl">Prioridad</span>' +
+                        badgePrioridad(t.prioridad) + "</div>" +
+                    "</div>" +
+                    '<div class="hd-det-chip hd-det-chip-estado">' +
+                        '<i class="fa fa-info-circle"></i>' +
+                        '<div><span class="hd-det-chip-lbl">Estado</span>' +
+                        badgeEstado(t.estado) + "</div>" +
+                    "</div>" +
+                    '<div class="hd-det-chip hd-det-chip-sistema">' +
+                        '<i class="fa ' + iconoSistema(t.sistema) + '"></i>' +
+                        '<div><span class="hd-det-chip-lbl">Sistema</span>' +
+                        '<strong>' + esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
+                    "</div>" +
+                "</div>" +
+                '<div class="hd-det-info-row">' +
+                    '<div class="hd-det-info-item"><i class="fa fa-building text-aqua"></i> ' +
+                        '<span>Área</span><strong>' + esc(t.area || "—") + "</strong></div>" +
+                    '<div class="hd-det-info-item"><i class="fa fa-cubes text-green"></i> ' +
+                        '<span>Módulo</span><strong>' + esc(t.modulo || "—") + "</strong></div>" +
+                    '<div class="hd-det-info-item"><i class="fa fa-user text-blue"></i> ' +
+                        '<span>Asignado</span><strong>' + esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
+                    '<div class="hd-det-info-item"><i class="fa fa-clock-o text-muted"></i> ' +
+                        '<span>Creado</span><strong>' + esc(t.creado_en || "—") + "</strong></div>" +
+                "</div>" +
+                '<div class="hd-det-block">' +
+                    '<h4><i class="fa fa-align-left"></i> Descripción</h4>' +
+                    '<div class="hd-det-text">' + esc(t.descripcion).replace(/\n/g, "<br>") + "</div>" +
+                "</div>" +
+                (t.pasos_reproducir
+                    ? '<div class="hd-det-block hd-det-block-pasos">' +
+                        '<h4><i class="fa fa-list-ol"></i> Pasos para reproducir</h4>' +
+                        '<div class="hd-det-text">' + esc(t.pasos_reproducir).replace(/\n/g, "<br>") + "</div>" +
+                      "</div>"
+                    : "") +
+            "</div>"
+        );
+        $("#hdTabArchivos").html(renderAdjuntosTab(res.adjuntos || []));
+        $("#hdTabHistorial").html(renderHistorial(res.comentarios || []));
+
+        // Sidebar gestión
+        var cerrado = t.estado === "CERRADO";
+        var estadoSel = cerrado ? "EN_PROGRESO" : t.estado;
+        var optsEstado = "";
+        ["ABIERTO", "EN_PROGRESO", "ESPERANDO_USUARIO", "CERRADO"].forEach(function (e) {
+            if (cerrado && e === "CERRADO") {
+                return;
+            }
+            var info = LABELS_ESTADO[e] || { cls: "label-default", txt: e };
+            optsEstado +=
+                '<option value="' + e + '"' + (e === estadoSel ? " selected" : "") +
+                " data-content=\"<span class='label " + info.cls + "'>" + esc(info.txt) + "</span>\">" +
+                esc(info.txt) + "</option>";
+        });
+        var optsAsig = '<option value="">Sin asignar</option>';
+        agentes.forEach(function (u) {
+            optsAsig +=
+                '<option value="' + esc(u.id) + '"' +
+                (String(u.id) === String(t.asignado_id || "") ? " selected" : "") +
+                ">" + esc(u.nombre || ("#" + u.id)) + "</option>";
+        });
+        var optsPri = "";
+        ["BAJA", "MEDIA", "ALTA"].forEach(function (p) {
+            optsPri +=
+                '<option value="' + p + '"' + (p === t.prioridad ? " selected" : "") +
+                " data-content=\"<span class='label label-prioridad-" + p + "'>" + p + "</span>\">" +
+                esc(p) + "</option>";
+        });
+
+        destroyPickers("#hdConvSidebarBody");
+
+        if (permisos.gestionar && !cerrado) {
+            $("#hdConvSidebarBody").html(
+                '<form id="hdFormGestionar" class="hd-side-form">' +
+                    '<div class="hd-side-badges">' +
+                        badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) +
+                    "</div>" +
+                    '<div class="form-group">' +
+                        '<label><i class="fa fa-exchange text-aqua"></i> Estado</label>' +
+                        '<select class="form-control selectpicker" id="hdGestEstado" data-width="100%">' +
+                        optsEstado + "</select></div>" +
+                    '<div class="form-group">' +
+                        '<label><i class="fa fa-flag text-red"></i> Prioridad</label>' +
+                        '<select class="form-control selectpicker" id="hdGestPrioridad" data-width="100%">' +
+                        optsPri + "</select></div>" +
+                    '<div class="form-group hd-side-asignar">' +
+                        '<label><i class="fa fa-user text-aqua"></i> Asignar a</label>' +
+                        '<p class="help-block">Responsable de atender el ticket</p>' +
+                        '<select class="form-control selectpicker" id="hdGestAsignado" data-width="100%" ' +
+                        'data-live-search="true" title="Sin asignar">' +
+                        optsAsig + "</select></div>" +
+                    '<div class="hd-side-meta">' +
+                        '<div><i class="fa fa-building"></i> <span>Área</span> <strong>' + esc(t.area || "—") + "</strong></div>" +
+                        '<div><i class="fa fa-desktop"></i> <span>Sistema</span> <strong>' +
+                            esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
+                        '<div><i class="fa fa-cubes"></i> <span>Módulo</span> <strong>' + esc(t.modulo || "—") + "</strong></div>" +
+                    "</div>" +
+                    '<button type="submit" class="btn btn-primary btn-block">' +
+                        '<i class="fa fa-save"></i> Guardar cambios</button>' +
+                "</form>"
+            );
+            initPicker("#hdGestEstado");
+            initPicker("#hdGestPrioridad");
+            initPicker("#hdGestAsignado");
+        } else if (permisos.reabrir && cerrado) {
+            $("#hdConvSidebarBody").html(
+                '<form id="hdFormGestionar" class="hd-side-form">' +
+                    '<div class="hd-side-badges">' +
+                        badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) +
+                    "</div>" +
+                    '<div class="callout callout-warning" style="margin-bottom:12px;padding:8px 12px;">' +
+                        '<p style="margin:0;"><i class="fa fa-lock"></i> Ticket cerrado. ' +
+                        "Cambiá el estado para reabrirlo.</p></div>" +
+                    '<div class="form-group">' +
+                        '<label><i class="fa fa-exchange text-aqua"></i> Reabrir como</label>' +
+                        '<select class="form-control selectpicker" id="hdGestEstado" data-width="100%">' +
+                        optsEstado + "</select></div>" +
+                    '<div class="hd-side-meta">' +
+                        '<div><i class="fa fa-user"></i> <span>Asignado</span> <strong>' +
+                            esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
+                        '<div><i class="fa fa-flag"></i> <span>Prioridad</span> ' + badgePrioridad(t.prioridad) + "</div>" +
+                        '<div><i class="fa fa-building"></i> <span>Área</span> <strong>' + esc(t.area || "—") + "</strong></div>" +
+                        '<div><i class="fa fa-desktop"></i> <span>Sistema</span> <strong>' +
+                            esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
+                        '<div><i class="fa fa-cubes"></i> <span>Módulo</span> <strong>' + esc(t.modulo || "—") + "</strong></div>" +
+                    "</div>" +
+                    '<button type="submit" class="btn btn-warning btn-block">' +
+                        '<i class="fa fa-unlock"></i> Reabrir ticket</button>' +
+                "</form>"
+            );
+            initPicker("#hdGestEstado");
+        } else {
+            $("#hdConvSidebarBody").html(
+                (cerrado
+                    ? '<div class="callout callout-default" style="margin-bottom:12px;padding:8px 12px;">' +
+                      '<p style="margin:0;"><i class="fa fa-lock"></i> Ticket cerrado. Solo lectura.</p></div>'
+                    : "") +
+                '<div class="hd-side-badges">' + badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) + "</div>" +
+                '<div class="hd-side-meta">' +
+                    '<div><i class="fa fa-user"></i> <span>Asignado</span> <strong>' +
+                        esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
+                    '<div><i class="fa fa-building"></i> <span>Área</span> <strong>' + esc(t.area || "—") + "</strong></div>" +
+                    '<div><i class="fa fa-desktop"></i> <span>Sistema</span> <strong>' +
+                        esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
+                    '<div><i class="fa fa-cubes"></i> <span>Módulo</span> <strong>' + esc(t.modulo || "—") + "</strong></div>" +
+                "</div>"
+            );
         }
 
-        $("#hdDetalleCuerpo").html(meta + adj + hist + formComentario + gestionar);
-        $("#hdTablaLista tr.hd-row").removeClass("hd-row-activa");
-        $('#hdTablaLista tr.hd-row[data-id="' + t.id + '"]').addClass("hd-row-activa");
+        function correoVisible(c) {
+            c = String(c || "").trim();
+            return c && c !== "0" && c.indexOf("@") !== -1 ? c : "";
+        }
+        var mailSol = correoVisible(t.solicitante_correo);
+        var mailContacto = correoVisible(t.correo_contacto);
+        $("#hdConvSolicitante").html(
+            '<div class="hd-solicitante-card">' +
+                '<div class="hd-msg-avatar">' + esc(iniciales(t.solicitante_nombre)) + "</div>" +
+                '<div><strong>' + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) + "</strong>" +
+                (t.solicitante_usuario
+                    ? '<br><span class="text-muted">@' + esc(t.solicitante_usuario) + "</span>"
+                    : "") +
+                (t.area ? '<br><span class="text-muted">' + esc(t.area) + "</span>" : "") +
+                (mailSol ? "<br><small>" + esc(mailSol) + "</small>" : "") +
+                (mailContacto && mailContacto !== mailSol
+                    ? "<br><small>" + esc(mailContacto) + "</small>"
+                    : "") +
+                "</div></div>"
+        );
+
+        $("#hdComentario").val("");
+        $("#hdRespEstado").val("");
+        if (cerrado) {
+            $("#hdResponderBox").hide();
+            var msgCerrado = permisos.reabrir
+                ? " Para responder, reabrilo desde el panel derecho."
+                : " No se pueden agregar respuestas.";
+            if ($("#hdCerradoBanner").length === 0) {
+                $("#hdHilo").after(
+                    '<div id="hdCerradoBanner" class="hd-cerrado-banner">' +
+                        '<i class="fa fa-lock"></i> Este ticket está cerrado.' + msgCerrado +
+                    "</div>"
+                );
+            } else {
+                $("#hdCerradoBanner").html(
+                    '<i class="fa fa-lock"></i> Este ticket está cerrado.' + msgCerrado
+                ).show();
+            }
+        } else {
+            $("#hdCerradoBanner").remove();
+            $("#hdResponderBox").show();
+            initPicker("#hdRespEstado");
+            refreshPicker("#hdRespEstado");
+        }
+        mostrarVistaConversacion(t.id);
+        var $hilo = $("#hdHilo");
+        $hilo.scrollTop($hilo[0].scrollHeight);
     }
 
     function verTicket(id) {
@@ -436,7 +846,7 @@ $(function () {
                 if (res.agentes) {
                     agentes = res.agentes;
                 }
-                renderDetalle(res);
+                renderConversacion(res);
             })
             .fail(function () {
                 toast("error", "Error de red al ver ticket.");
@@ -528,8 +938,19 @@ $(function () {
     });
 
     $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
-        if ($(e.target).attr("href") === "#hdVistaLista") {
+        if (hdBooting) {
+            return;
+        }
+        var href = $(e.target).attr("href");
+        if (href === "#hdVistaLista") {
+            ticketActual = null;
+            $("#hdVistaConversacion").removeClass("active");
+            setHash("lista");
             cargarLista();
+        } else if (href === "#hdVistaNuevo") {
+            ticketActual = null;
+            $("#hdVistaConversacion").removeClass("active");
+            setHash("nuevo");
         }
     });
 
@@ -541,6 +962,10 @@ $(function () {
     });
 
     $("#hdBtnPulir").on("click", function () {
+        if (!permisos.pulir_ia) {
+            toast("error", "Sin permiso para corregir con IA.");
+            return;
+        }
         var titulo = $.trim($("#hdTitulo").val());
         var descripcion = $.trim($("#hdDescripcion").val());
         var pasos = $.trim($("#hdPasos").val());
@@ -576,6 +1001,37 @@ $(function () {
             })
             .always(function () {
                 $btn.prop("disabled", false).html('<i class="fa fa-magic"></i> Pulir texto (IA)');
+            });
+    });
+
+    $("#hdBtnPulirResp").on("click", function () {
+        if (!permisos.pulir_ia) {
+            toast("error", "Sin permiso para corregir con IA.");
+            return;
+        }
+        var mensaje = $.trim($("#hdComentario").val());
+        if (!mensaje) {
+            toast("warning", "Escriba la respuesta a corregir.");
+            return;
+        }
+        var $btn = $(this);
+        $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Corrigiendo…');
+        post("pulir", { modo: "respuesta", mensaje: mensaje })
+            .done(function (res) {
+                if (!res || !res.ok) {
+                    toast("error", (res && res.msg) || "No se pudo corregir.");
+                    return;
+                }
+                if (res.mensaje != null) {
+                    $("#hdComentario").val(res.mensaje);
+                }
+                toast("success", res.msg || "Respuesta corregida.");
+            })
+            .fail(function () {
+                toast("error", "Error de red al corregir con IA.");
+            })
+            .always(function () {
+                $btn.prop("disabled", false).html('<i class="fa fa-magic"></i> Corregir con IA');
             });
     });
 
@@ -623,12 +1079,11 @@ $(function () {
                 }
                 toast("success", res.msg || "Creado.");
                 resetFormAlta();
-                $("#hdTabs a[href='#hdVistaLista']").tab("show");
-                cargarLista().done(function () {
-                    if (res.id) {
-                        verTicket(res.id);
-                    }
-                });
+                if (res.id) {
+                    verTicket(res.id);
+                } else {
+                    mostrarVistaLista();
+                }
             })
             .fail(function () {
                 toast("error", "Error de red al crear.");
@@ -638,47 +1093,66 @@ $(function () {
             });
     });
 
-    $("#hdDetalleCuerpo").on("submit", "#hdFormComentar", function (e) {
+    $("#hdFormComentar").on("submit", function (e) {
         e.preventDefault();
         if (!ticketActual) {
             return;
         }
         var mensaje = $.trim($("#hdComentario").val());
         if (!mensaje) {
-            toast("warning", "Escriba un comentario.");
+            toast("warning", "Escriba una respuesta.");
             return;
         }
-        post("comentar", { id: ticketActual.id, mensaje: mensaje })
+        var data = { id: ticketActual.id, mensaje: mensaje };
+        if (permisos.gestionar && $("#hdRespEstado").val()) {
+            data.cambiar_estado = $("#hdRespEstado").val();
+        }
+        $("#hdBtnEnviarResp").prop("disabled", true);
+        post("comentar", data)
             .done(function (res) {
                 if (!res || !res.ok) {
-                    toast("error", (res && res.msg) || "No se pudo comentar.");
+                    toast("error", (res && res.msg) || "No se pudo enviar.");
                     return;
                 }
+                toast("success", res.msg || "Enviado.");
                 verTicket(ticketActual.id);
             })
             .fail(function () {
-                toast("error", "Error de red al comentar.");
+                toast("error", "Error de red al responder.");
+            })
+            .always(function () {
+                $("#hdBtnEnviarResp").prop("disabled", false);
             });
     });
 
-    $("#hdDetalleCuerpo").on("submit", "#hdFormGestionar", function (e) {
+    $("#hdConvSidebarBody").on("submit", "#hdFormGestionar", function (e) {
         e.preventDefault();
-        if (!ticketActual || !permisos.gestionar) {
+        if (!ticketActual) {
             return;
         }
-        post("actualizar", {
+        if (ticketActual.estado === "CERRADO") {
+            if (!permisos.reabrir) {
+                toast("error", "Solo el responsable autorizado puede reabrir el ticket.");
+                return;
+            }
+        } else if (!permisos.gestionar) {
+            return;
+        }
+        var data = {
             id: ticketActual.id,
-            estado: $("#hdGestEstado").val(),
-            asignado_id: $("#hdGestAsignado").val(),
-            prioridad: $("#hdGestPrioridad").val()
-        })
+            estado: $("#hdGestEstado").val()
+        };
+        if (ticketActual.estado !== "CERRADO") {
+            data.asignado_id = $("#hdGestAsignado").val();
+            data.prioridad = $("#hdGestPrioridad").val();
+        }
+        post("actualizar", data)
             .done(function (res) {
                 if (!res || !res.ok) {
                     toast("error", (res && res.msg) || "No se pudo actualizar.");
                     return;
                 }
                 toast("success", res.msg || "Actualizado.");
-                cargarLista();
                 verTicket(ticketActual.id);
             })
             .fail(function () {
@@ -686,9 +1160,15 @@ $(function () {
             });
     });
 
-    cargarBase().always(function () {
-        if (!permisos.registrar) {
-            cargarLista();
+    $(window).on("hashchange", function () {
+        if (ignoreHashChange || hdBooting) {
+            return;
         }
+        aplicarHashActual();
+    });
+
+    cargarBase().always(function () {
+        aplicarHashActual();
+        hdBooting = false;
     });
 });

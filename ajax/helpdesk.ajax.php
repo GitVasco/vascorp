@@ -36,7 +36,8 @@ if ($accion === "" && isset($_POST["accion"])) {
     $accion = trim((string) $_POST["accion"]);
 }
 
-$accionesRegistrar = array("crear", "pulir");
+$accionesRegistrar = array("crear");
+$accionesPulirIa = array("pulir");
 $accionesGestionar = array("actualizar");
 
 if (in_array($accion, $accionesRegistrar, true)
@@ -45,6 +46,14 @@ if (in_array($accion, $accionesRegistrar, true)
 ) {
     http_response_code(403);
     hdJson(array("ok" => false, "msg" => "Sin permiso para registrar."));
+    exit;
+}
+
+if (in_array($accion, $accionesPulirIa, true)
+    && (int) (isset($_SESSION["id"]) ? $_SESSION["id"] : 0) !== ControladorHelpdesk::USUARIO_PULIR_IA
+) {
+    http_response_code(403);
+    hdJson(array("ok" => false, "msg" => "Sin permiso para corregir con IA."));
     exit;
 }
 
