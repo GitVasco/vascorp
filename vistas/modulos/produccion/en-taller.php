@@ -36,6 +36,10 @@
         <i class="fa fa-plus-square"></i> Crear compensacion
         </button>
 
+        <button class="btn btn-info" data-toggle="modal" data-target="#modalCrearFeriado">
+        <i class="fa fa-calendar"></i> Crear feriado
+        </button>
+
         <button class="btn btn-success btnCrearTicketOriginal" data-toggle="modal" data-target="#modalCrearTicketOriginal" > 
         <i class="fa fa-plus-square"></i> Crear ticket
         </button>
@@ -732,6 +736,94 @@ MODAL ELIMINAR ARTICULO
 </div>
 
 
+
+</div>
+
+
+
+<div id="modalCrearFeriado" class="modal fade" role="dialog">
+
+  <div class="modal-dialog modal-lg">
+
+    <div class="modal-content">
+
+        <div class="modal-header" style="background:#3c8dbc; color:white">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Crear compensación feriado (832)</h4>
+        </div>
+
+        <div class="modal-body">
+          <div class="box-body">
+
+            <div class="form-group col-lg-4">
+              <label>Fecha feriado</label>
+              <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                <input type="date" class="form-control input-lg" id="fechaFeriado" required>
+              </div>
+            </div>
+
+            <div class="form-group col-lg-8">
+              <label>Sector</label>
+              <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-building"></i></span>
+                <select class="form-control input-lg selectpicker" id="sectorFeriado" data-live-search="true" title="Seleccionar sector">
+                  <option value="">Seleccionar sector</option>
+                  <?php
+                    $sectoresFeriado = ControladorSectores::ctrMostrarSectores(null);
+                    if (is_array($sectoresFeriado)) {
+                      foreach ($sectoresFeriado as $sectorRow) {
+                        echo "<option value='".$sectorRow["cod_sector"]."'>".$sectorRow["cod_sector"]." - ".$sectorRow["nom_sector"]."</option>";
+                      }
+                    }
+                  ?>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group col-lg-12">
+              <p class="help-block" style="margin-bottom:8px">
+                Monto = ROUND(sueldo total ÷ 30, 2). Operación <b>832 FERIADO</b>. El ticket queda asignado y terminado.
+              </p>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" id="checkTodosFeriado"> Seleccionar todos
+                </label>
+              </div>
+              <div class="table-responsive" style="max-height:360px; overflow-y:auto">
+                <table class="table table-bordered table-striped" id="tablaTrabajadoresFeriado" width="100%">
+                  <thead>
+                    <tr>
+                      <th style="width:40px"></th>
+                      <th>Código</th>
+                      <th>Trabajador</th>
+                      <th>Sueldo</th>
+                      <th>Monto</th>
+                      <th>Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colspan="6" class="text-center text-muted">Seleccione un sector</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger pull-left" data-dismiss="modal">Salir</button>
+          <button type="button" class="btn btn-primary" id="btnGuardarFeriado">Crear feriados</button>
+        </div>
+
+    </div>
+
+  </div>
+
+</div>
 
 <div id="modalCrearCompensacion" class="modal fade" role="dialog">
   

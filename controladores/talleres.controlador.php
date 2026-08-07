@@ -2686,4 +2686,145 @@ class ControladorTalleres
             }
         }
     }
+
+    /*
+     * Compensación global por feriado (op. 832).
+     * Monto = ROUND(sueldo_total / 30, 2); cantidad = ROUND(monto * 12, 2) con precio_doc = 1.
+     * Ticket queda terminado (estado 3) y asignado al trabajador; total_precio = monto.
+     */
+    static public function ctrCrearCompensacionFeriado($codTrabajadores, $fechaFeriado, $usuario)
+    {
+        $articulo = "C001251";
+        $operacion = "832";
+        $creados = array();
+        $errores = array();
+
+        if (!is_array($codTrabajadores) || count($codTrabajadores) === 0) {
+            return array("ok" => false, "mensaje" => "Seleccione al menos un trabajador", "creados" => $creados, "errores" => $errores);
+        }
+
+        $fechaFeriado = trim((string) $fechaFeriado);
+        if ($fechaFeriado === "" || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFeriado)) {
+            return array("ok" => false, "mensaje" => "Fecha de feriado inválida", "creados" => $creados, "errores" => $errores);
+        }
+
+        date_default_timezone_set("America/Lima");
+        $hora = date("G:i:s");
+        $fechaTicket = $fechaFeriado . " " . $hora;
+
+        $pdoCheck = Conexion::conectar()->prepare(
+            "SELECT od.precio_doc
+             FROM operaciones_detallejf od
+             INNER JOIN operacionesjf o ON o.codigo = od.cod_operacion
+             WHERE od.modelo = 'C001' AND od.cod_operacion = :operacion
+             LIMIT 1"
+        );
+        $pdoCheck->bindParam(":operacion", $operacion, PDO::PARAM_STR);
+        $pdoCheck->execute();
+        $opDetalle = $pdoCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$opDetalle) {
+            return array(
+                "ok" => false,
+                "mensaje" => "Falta configurar operación 832 FERIADO en modelo C001. Ejecute docs/sql/operacion-feriado-832.sql",
+                "creados" => $creados,
+                "errores" => $errores
+            );
+        }
+
+        foreach ($codTrabajadores as $codTra) {
+            $codTra = (int) $codTra;
+            if ($codTra <= 0) {
+                continue;
+            }
+
+            $trab = ModeloTrabajador::mdlMostrarTrabajador("trabajadorjf", "cod_tra", $codTra);
+            if (!$trab || !is_array($trab)) {
+                $errores[] = array("cod_tra" => $codTra, "motivo" => "Trabajador no encontrado");
+                continue;
+            }
+
+            $nombre = isset($trab["nombre"]) ? $trab["nombre"] : ("#" . $codTra);
+            if (!isset($trab["estado"]) || $trab["estado"] !== "Activo") {
+                $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "No está activo");
+                continue;
+            }
+
+            $sueldo = isset($trab["sueldo_total"]) ? (float) $trab["sueldo_total"] : 0;
+            if ($sueldo <= 0) {
+                $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Sin sueldo total");
+                continue;
+            }
+
+            $monto = round($sueldo / 30, 2);
+            $cantidad = round($monto * 12, 2);
+            if ($cantidad <= 0) {
+                $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Cantidad calculada inválida");
+                continue;
+            }
+
+            $montoStr = number_format($monto, 2, ".", "");
+            $cantidadStr = number_format($cantidad, 2, ".", "");
+
+            $datosCab = array(
+                "articulo" => $articulo,
+                "usuario" => $usuario,
+                "cantidad" => $cantidadStr,
+                "estado" => "1",
+                "taller" => "TX"
+            );
+            $respuestaCab = ModeloCortes::mdlMandarTallerCab($datosCab);
+            if ($respuestaCab !== "ok") {
+                $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Error al crear cabecera");
+                continue;
+            }
+
+            $ultId = ModeloCortes::mdlUltCodigo();
+            $idCab = $ultId["ult_codigo"];
+            $codigoBarra = $idCab . $operacion;
+
+            $datos = array(
+                "codigo" => $idCab,
+                "usuario" => $usuario,
+                "articulo" => $articulo,
+                "operacion" => $operacion,
+                "cantidad" => $cantidadStr,
+                "monto" => $montoStr,
+                "editarBarra" => $codigoBarra,
+                "trabajador" => $codTra,
+                "fecha_proceso" => $fechaTicket,
+                "fecha_terminado" => $fechaTicket
+            );
+
+            $respuesta = ModeloTalleres::mdlIngresarTallerFeriado($datos);
+            if ($respuesta !== "ok") {
+                $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Error al crear ticket terminado");
+                continue;
+            }
+
+            $creados[] = array(
+                "cod_tra" => $codTra,
+                "nombre" => $nombre,
+                "sueldo_total" => round($sueldo, 2),
+                "monto" => $monto,
+                "cantidad" => $cantidad,
+                "codigo" => $codigoBarra
+            );
+        }
+
+        $ok = count($creados) > 0;
+        $mensaje = $ok
+            ? ("Se crearon " . count($creados) . " ticket(s) de feriado")
+            : "No se creó ningún ticket de feriado";
+
+        if (count($errores) > 0) {
+            $mensaje .= ". Errores: " . count($errores);
+        }
+
+        return array(
+            "ok" => $ok,
+            "mensaje" => $mensaje,
+            "creados" => $creados,
+            "errores" => $errores
+        );
+    }
 }

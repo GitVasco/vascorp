@@ -3162,3 +3162,183 @@ function cargarTablaEnTaller(taller) {
 }
 
 cargarTablaEnTaller(null);
+
+/*=============================================
+COMPENSACIÓN FERIADO GLOBAL (832)
+=============================================*/
+function renderFilasTrabajadoresFeriado(lista) {
+    var tbody = $("#tablaTrabajadoresFeriado tbody");
+    tbody.empty();
+    $("#checkTodosFeriado").prop("checked", false);
+
+    if (!lista || !lista.length) {
+        tbody.append(
+            '<tr><td colspan="6" class="text-center text-muted">No hay trabajadores activos en este sector</td></tr>'
+        );
+        return;
+    }
+
+    lista.forEach(function (t) {
+        var sueldo = parseFloat(t.sueldo_total || 0).toFixed(2);
+        var monto = parseFloat(t.monto_feriado || 0).toFixed(2);
+        var cantidad = parseFloat(t.cantidad || 0).toFixed(2);
+        tbody.append(
+            "<tr>" +
+                '<td class="text-center"><input type="checkbox" class="checkFeriadoTrabajador" value="' +
+                t.cod_tra +
+                '"></td>' +
+                "<td>" +
+                t.cod_tra +
+                "</td>" +
+                "<td>" +
+                (t.nombre || "") +
+                "</td>" +
+                '<td class="text-right">' +
+                sueldo +
+                "</td>" +
+                '<td class="text-right">' +
+                monto +
+                "</td>" +
+                '<td class="text-right">' +
+                cantidad +
+                "</td>" +
+                "</tr>"
+        );
+    });
+}
+
+$("#modalCrearFeriado").on("shown.bs.modal", function () {
+    if (!$("#fechaFeriado").val()) {
+        var hoy = new Date();
+        var yyyy = hoy.getFullYear();
+        var mm = String(hoy.getMonth() + 1).padStart(2, "0");
+        var dd = String(hoy.getDate()).padStart(2, "0");
+        $("#fechaFeriado").val(yyyy + "-" + mm + "-" + dd);
+    }
+    if ($("#sectorFeriado").hasClass("selectpicker")) {
+        $("#sectorFeriado").selectpicker("refresh");
+    }
+});
+
+$(document).on("changed.bs.select change", "#sectorFeriado", function () {
+    var sector = $(this).val();
+    var tbody = $("#tablaTrabajadoresFeriado tbody");
+
+    if (!sector) {
+        tbody.html(
+            '<tr><td colspan="6" class="text-center text-muted">Seleccione un sector</td></tr>'
+        );
+        return;
+    }
+
+    tbody.html(
+        '<tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>'
+    );
+
+    var datos = new FormData();
+    datos.append("sectorFeriado", sector);
+
+    $.ajax({
+        url: "ajax/talleres.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            renderFilasTrabajadoresFeriado(respuesta);
+        },
+        error: function () {
+            tbody.html(
+                '<tr><td colspan="6" class="text-center text-danger">Error al cargar trabajadores</td></tr>'
+            );
+        },
+    });
+});
+
+$(document).on("change", "#checkTodosFeriado", function () {
+    $(".checkFeriadoTrabajador").prop("checked", $(this).prop("checked"));
+});
+
+$(document).on("click", "#btnGuardarFeriado", function () {
+    var fecha = $("#fechaFeriado").val();
+    var seleccionados = [];
+
+    $(".checkFeriadoTrabajador:checked").each(function () {
+        seleccionados.push($(this).val());
+    });
+
+    if (!fecha) {
+        swal({ type: "warning", title: "Indique la fecha del feriado", confirmButtonText: "Cerrar" });
+        return;
+    }
+
+    if (!seleccionados.length) {
+        swal({
+            type: "warning",
+            title: "Seleccione al menos un trabajador",
+            confirmButtonText: "Cerrar",
+        });
+        return;
+    }
+
+    swal({
+        title: "¿Crear feriado a " + seleccionados.length + " trabajador(es)?",
+        text: "Se generarán tickets 832 FERIADO ya asignados y terminados.",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, crear",
+        cancelButtonText: "Cancelar",
+    }).then(function (result) {
+        if (!result.value) {
+            return;
+        }
+
+        var datos = new FormData();
+        datos.append("crearFeriado", "1");
+        datos.append("fechaFeriado", fecha);
+        seleccionados.forEach(function (cod) {
+            datos.append("trabajadoresFeriado[]", cod);
+        });
+
+        $("#btnGuardarFeriado").prop("disabled", true);
+
+        $.ajax({
+            url: "ajax/talleres.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                $("#btnGuardarFeriado").prop("disabled", false);
+                if (respuesta && respuesta.ok) {
+                    swal({
+                        type: "success",
+                        title: respuesta.mensaje || "Feriados creados",
+                        confirmButtonText: "Cerrar",
+                    }).then(function () {
+                        $("#modalCrearFeriado").modal("hide");
+                        window.location = "en-taller";
+                    });
+                } else {
+                    swal({
+                        type: "error",
+                        title: (respuesta && respuesta.mensaje) || "No se pudo crear",
+                        confirmButtonText: "Cerrar",
+                    });
+                }
+            },
+            error: function () {
+                $("#btnGuardarFeriado").prop("disabled", false);
+                swal({
+                    type: "error",
+                    title: "Error de comunicación",
+                    confirmButtonText: "Cerrar",
+                });
+            },
+        });
+    });
+});

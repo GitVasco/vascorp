@@ -450,7 +450,7 @@ class ModeloCortes
           (:articulo, :usuario, :cantidad, :estado, :taller) ");
 
         $stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
-        $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
+        $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_STR);
         $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
         $stmt->bindParam(":estado", $datos["estado"], PDO::PARAM_STR);
         $stmt->bindParam(":taller", $datos["taller"], PDO::PARAM_STR);

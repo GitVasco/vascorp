@@ -7,6 +7,9 @@ require_once "../controladores/operaciones.controlador.php";
 require_once "../modelos/operaciones.modelo.php";
 require_once "../controladores/usuarios.controlador.php";
 require_once "../modelos/usuarios.modelo.php";
+require_once "../controladores/trabajador.controlador.php";
+require_once "../modelos/trabajador.modelo.php";
+require_once "../modelos/cortes.modelo.php";
 class AjaxTalleres{
 /*=============================================
   EDITAR CANTIDAD DE TALLER
@@ -107,6 +110,44 @@ class AjaxTalleres{
 
   }
 
+  public $sectorFeriado;
+
+  public function ajaxTrabajadoresFeriado(){
+
+    $sector = trim((string) $this->sectorFeriado);
+    if ($sector === "") {
+      echo json_encode(array());
+      return;
+    }
+
+    $respuesta = ModeloTrabajador::mdlTrabajadoresActivosPorSector($sector);
+    echo json_encode($respuesta ? $respuesta : array());
+  }
+
+  public $trabajadoresFeriado;
+  public $fechaFeriado;
+
+  public function ajaxCrearCompensacionFeriado(){
+
+    if (!isset($_SESSION["id"])) {
+      echo json_encode(array("ok" => false, "mensaje" => "Sesión no válida"));
+      return;
+    }
+
+    $trabajadores = $this->trabajadoresFeriado;
+    if (!is_array($trabajadores)) {
+      $trabajadores = array();
+    }
+
+    $respuesta = ControladorTalleres::ctrCrearCompensacionFeriado(
+      $trabajadores,
+      $this->fechaFeriado,
+      $_SESSION["id"]
+    );
+
+    echo json_encode($respuesta);
+  }
+
 }
 /*=============================================
 EDITAR CANTIDAD DE TALLER
@@ -177,4 +218,27 @@ if(isset($_POST["actualizarFecha"])){
 	$actualizarAyer = new AjaxTalleres();
   $actualizarAyer -> ajaxActualizarAyer();
     
+}
+
+/*=============================================
+TRABAJADORES ACTIVOS POR SECTOR (FERIADO)
+=============================================*/
+if (isset($_POST["sectorFeriado"])) {
+
+	$listar = new AjaxTalleres();
+	$listar->sectorFeriado = $_POST["sectorFeriado"];
+	$listar->ajaxTrabajadoresFeriado();
+
+}
+
+/*=============================================
+CREAR COMPENSACIÓN FERIADO GLOBAL
+=============================================*/
+if (isset($_POST["crearFeriado"]) && isset($_POST["trabajadoresFeriado"])) {
+
+	$crear = new AjaxTalleres();
+	$crear->trabajadoresFeriado = $_POST["trabajadoresFeriado"];
+	$crear->fechaFeriado = isset($_POST["fechaFeriado"]) ? $_POST["fechaFeriado"] : "";
+	$crear->ajaxCrearCompensacionFeriado();
+
 }

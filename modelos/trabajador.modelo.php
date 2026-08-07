@@ -368,6 +368,33 @@ class ModeloTrabajador{
 
 	}
 	
+	/*
+	* Trabajadores activos por sector (compensación feriado)
+	*/
+	static public function mdlTrabajadoresActivosPorSector($sector){
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				t.cod_tra,
+				CONCAT(TRIM(t.nom_tra), ' ', TRIM(t.ape_pat_tra), ' ', TRIM(t.ape_mat_tra)) AS nombre,
+				t.sueldo_total,
+				t.sector,
+				s.nom_sector,
+				ROUND(t.sueldo_total / 30, 2) AS monto_feriado,
+				ROUND(ROUND(t.sueldo_total / 30, 2) * 12, 2) AS cantidad
+			FROM trabajadorjf t
+			LEFT JOIN sectorjf s ON s.cod_sector = t.sector
+			WHERE t.estado = 'Activo'
+			  AND t.sector = :sector
+			ORDER BY t.ape_pat_tra, t.ape_mat_tra, t.nom_tra"
+		);
+
+		$stmt->bindParam(":sector", $sector, PDO::PARAM_STR);
+		$stmt->execute();
+
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
 	/* 
 	* Método para activar y desactivar un Trabajador
 	*/
