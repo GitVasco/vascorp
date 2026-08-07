@@ -75,6 +75,10 @@ switch ($accion) {
         hdJson(ControladorHelpdesk::ctrListar());
         break;
 
+    case "indicadores":
+        hdJson(ControladorHelpdesk::ctrIndicadores());
+        break;
+
     case "ver":
         hdJson(ControladorHelpdesk::ctrVer());
         break;

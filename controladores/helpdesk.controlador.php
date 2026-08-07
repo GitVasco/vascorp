@@ -27,6 +27,12 @@ class ControladorHelpdesk
     const USUARIO_PULIR_IA = 6;
     /** Solo este usuario puede reabrir tickets cerrados */
     const USUARIO_REABRIR = 6;
+    /** Horas límite SLA por prioridad (desde creación hasta cierre) */
+    const SLA_HORAS = array(
+        "ALTA" => 4,
+        "MEDIA" => 24,
+        "BAJA" => 72,
+    );
 
     public static function ctrCargarCatalogoJson()
     {
@@ -206,6 +212,106 @@ class ControladorHelpdesk
         return self::ctrUsuarioSesionId() === self::USUARIO_REABRIR;
     }
 
+    /**
+     * Calcula estado SLA de un ticket.
+     * @return array{codigo:string,label:string,cls:string,horas_limite:int,deadline:string|null,segundos:int}
+     */
+    public static function ctrSlaDeTicket($ticket)
+    {
+        $prioridad = isset($ticket["prioridad"]) ? $ticket["prioridad"] : "MEDIA";
+        $slaMap = self::SLA_HORAS;
+        $horas = isset($slaMap[$prioridad]) ? (int) $slaMap[$prioridad] : 24;
+        $creado = !empty($ticket["creado_en"]) ? strtotime($ticket["creado_en"]) : false;
+        if ($creado === false) {
+            return array(
+                "codigo" => "N/A",
+                "label" => "Sin fecha",
+                "cls" => "hd-sla-na",
+                "horas_limite" => $horas,
+                "deadline" => null,
+                "segundos" => 0,
+            );
+        }
+
+        $deadline = $creado + ($horas * 3600);
+        $cerrado = isset($ticket["estado"]) && $ticket["estado"] === "CERRADO";
+        $fin = $cerrado && !empty($ticket["cerrado_en"])
+            ? strtotime($ticket["cerrado_en"])
+            : time();
+        if ($fin === false) {
+            $fin = time();
+        }
+
+        $diff = $deadline - $fin;
+        $fmtDur = function ($seg) {
+            $seg = (int) abs($seg);
+            $d = (int) floor($seg / 86400);
+            $h = (int) floor(($seg % 86400) / 3600);
+            $m = (int) floor(($seg % 3600) / 60);
+            if ($d > 0) {
+                return $d . "d " . $h . "h";
+            }
+            if ($h > 0) {
+                return $h . "h " . $m . "m";
+            }
+            return max(1, $m) . "m";
+        };
+
+        if ($cerrado) {
+            if ($diff >= 0) {
+                return array(
+                    "codigo" => "CUMPLIDO",
+                    "label" => "Cumplido",
+                    "cls" => "hd-sla-ok",
+                    "horas_limite" => $horas,
+                    "deadline" => date("Y-m-d H:i:s", $deadline),
+                    "segundos" => $diff,
+                );
+            }
+            return array(
+                "codigo" => "FUERA",
+                "label" => "Fuera de SLA · " . $fmtDur($diff),
+                "cls" => "hd-sla-fuera",
+                "horas_limite" => $horas,
+                "deadline" => date("Y-m-d H:i:s", $deadline),
+                "segundos" => abs($diff),
+            );
+        }
+
+        if ($diff >= 0) {
+            $urgente = ($diff <= ($horas * 3600 * 0.25));
+            return array(
+                "codigo" => "RESTANTE",
+                "label" => $fmtDur($diff) . " restante",
+                "cls" => $urgente ? "hd-sla-aviso" : "hd-sla-restante",
+                "horas_limite" => $horas,
+                "deadline" => date("Y-m-d H:i:s", $deadline),
+                "segundos" => $diff,
+            );
+        }
+
+        return array(
+            "codigo" => "VENCIDO",
+            "label" => "Vencido · " . $fmtDur($diff),
+            "cls" => "hd-sla-vencido",
+            "horas_limite" => $horas,
+            "deadline" => date("Y-m-d H:i:s", $deadline),
+            "segundos" => abs($diff),
+        );
+    }
+
+    public static function ctrEnriquecerSla($items)
+    {
+        if (!is_array($items)) {
+            return array();
+        }
+        foreach ($items as &$t) {
+            $t["sla"] = self::ctrSlaDeTicket($t);
+        }
+        unset($t);
+        return $items;
+    }
+
     public static function ctrPermisos()
     {
         return array(
@@ -270,6 +376,7 @@ class ControladorHelpdesk
             "asignado_id" => isset($_POST["asignado_id"]) ? (int) $_POST["asignado_id"] : 0,
             "q" => isset($_POST["q"]) ? trim((string) $_POST["q"]) : "",
             "solo_abiertos" => !empty($_POST["solo_abiertos"]),
+            "solo_vencidos" => !empty($_POST["solo_vencidos"]),
         );
 
         if (!self::ctrPuede("gestionar")) {
@@ -294,9 +401,34 @@ class ControladorHelpdesk
             }
         }
 
+        $filtrosResumen = $filtros;
+        unset($filtrosResumen["estado"], $filtrosResumen["solo_abiertos"], $filtrosResumen["solo_vencidos"]);
+
+        if (!empty($filtros["solo_vencidos"])) {
+            $filtros["solo_abiertos"] = true;
+            $filtros["estado"] = "";
+        }
+
+        $items = ModeloHelpdesk::mdlListar($filtros);
+        $items = self::ctrEnriquecerSla($items);
+
+        if (!empty($filtros["solo_vencidos"])) {
+            $items = array_values(array_filter($items, function ($t) {
+                return isset($t["sla"]["codigo"]) && $t["sla"]["codigo"] === "VENCIDO";
+            }));
+        }
+
+        $resumen = ModeloHelpdesk::mdlResumen($filtrosResumen);
+        $resumen["vencidos"] = ModeloHelpdesk::mdlContarVencidosSla(
+            $filtrosResumen,
+            self::SLA_HORAS
+        );
+
         return array(
             "ok" => true,
-            "items" => ModeloHelpdesk::mdlListar($filtros),
+            "items" => $items,
+            "resumen" => $resumen,
+            "sla_horas" => self::SLA_HORAS,
             "permisos" => self::ctrPermisos(),
         );
     }
@@ -316,11 +448,399 @@ class ControladorHelpdesk
         return array(
             "ok" => true,
             "ticket" => $ticket,
+            "sla" => self::ctrSlaDeTicket($ticket),
+            "sla_horas" => self::SLA_HORAS,
             "comentarios" => ModeloHelpdesk::mdlListarComentarios($id),
             "adjuntos" => ModeloHelpdesk::mdlListarAdjuntos($id),
             "permisos" => self::ctrPermisos(),
             "catalogos" => self::ctrCatalogos(),
             "agentes" => self::ctrPuede("gestionar") ? self::agentes() : array(),
+        );
+    }
+
+    /**
+     * Dashboard de indicadores (gráficos + tablas) para el período.
+     */
+    public static function ctrIndicadores()
+    {
+        if (!self::ctrPuede("ver")) {
+            return array("ok" => false, "msg" => "Sin permiso.");
+        }
+
+        $hoy = date("Y-m-d");
+        $desde = isset($_POST["desde"]) ? trim((string) $_POST["desde"]) : date("Y-m-01");
+        $hasta = isset($_POST["hasta"]) ? trim((string) $_POST["hasta"]) : $hoy;
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) {
+            $desde = date("Y-m-01");
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) {
+            $hasta = $hoy;
+        }
+        if ($desde > $hasta) {
+            $tmp = $desde;
+            $desde = $hasta;
+            $hasta = $tmp;
+        }
+
+        // hasta exclusivo al día siguiente
+        $hastaExcl = date("Y-m-d", strtotime($hasta . " +1 day"));
+
+        $filtros = array();
+        if (!self::ctrPuede("gestionar")) {
+            $filtros["solicitante_id"] = self::ctrUsuarioSesionId();
+        } elseif (!empty($_POST["asignado_id"])) {
+            $filtros["asignado_id"] = (int) $_POST["asignado_id"];
+        }
+
+        $tickets = ModeloHelpdesk::mdlListarParaIndicadores($desde, $hastaExcl, $filtros);
+
+        $labelsTipo = array(
+            "INCIDENCIA" => "Incidencia",
+            "REQUERIMIENTO" => "Requerimiento",
+            "CONSULTA" => "Consulta",
+            "OTRO" => "Otro",
+            "DESARROLLO" => "Desarrollo",
+            "CORRECCION" => "Corrección",
+        );
+        $labelsEstado = array(
+            "ABIERTO" => "Abierto",
+            "EN_PROGRESO" => "En progreso",
+            "ESPERANDO_USUARIO" => "Esperando usuario",
+            "CERRADO" => "Cerrado",
+        );
+        $labelsSistema = array(
+            "VASCORP" => "Vascorp",
+            "SISTEMA_VASCO" => "Sistema Vasco",
+            "VASCOPRO" => "VascoPro",
+            "TI_EMPRESA" => "TI / Soporte",
+        );
+
+        $creados = 0;
+        $cerradosPeriodo = 0;
+        $abiertosAhora = 0;
+        $slaOk = 0;
+        $slaFuera = 0;
+        $sumaHorasResolucion = 0;
+        $nResolucion = 0;
+        $resPorPri = array();
+        $backlogEdad = array(
+            "0-2 días" => 0,
+            "3-7 días" => 0,
+            "8-15 días" => 0,
+            "Más de 15 días" => 0,
+        );
+
+        $porDia = array();
+        $porTipo = array();
+        $porPrioridad = array();
+        $porSistema = array();
+        $porEstado = array();
+        $porArea = array();
+        $porModulo = array();
+        $porAsignado = array();
+        $vencidos = array();
+        $cerradosDetalle = array();
+
+        $iniTs = strtotime($desde . " 00:00:00");
+        $finTs = strtotime($hastaExcl . " 00:00:00");
+
+        foreach ($tickets as $t) {
+            $creadoTs = !empty($t["creado_en"]) ? strtotime($t["creado_en"]) : false;
+            $cerradoTs = !empty($t["cerrado_en"]) ? strtotime($t["cerrado_en"]) : false;
+            $enPeriodoCreado = ($creadoTs !== false && $creadoTs >= $iniTs && $creadoTs < $finTs);
+            $enPeriodoCerrado = ($cerradoTs !== false && $cerradoTs >= $iniTs && $cerradoTs < $finTs);
+            $estaAbierto = ($t["estado"] !== "CERRADO");
+            $sla = self::ctrSlaDeTicket($t);
+
+            if ($enPeriodoCreado) {
+                $creados++;
+                $dia = date("Y-m-d", $creadoTs);
+                if (!isset($porDia[$dia])) {
+                    $porDia[$dia] = 0;
+                }
+                $porDia[$dia]++;
+
+                $tipo = isset($t["tipo"]) ? $t["tipo"] : "OTRO";
+                $porTipo[$tipo] = isset($porTipo[$tipo]) ? $porTipo[$tipo] + 1 : 1;
+
+                $pri = isset($t["prioridad"]) ? $t["prioridad"] : "MEDIA";
+                $porPrioridad[$pri] = isset($porPrioridad[$pri]) ? $porPrioridad[$pri] + 1 : 1;
+
+                $sis = !empty($t["sistema"]) ? $t["sistema"] : "SIN_SISTEMA";
+                $porSistema[$sis] = isset($porSistema[$sis]) ? $porSistema[$sis] + 1 : 1;
+
+                $area = !empty($t["area"]) ? $t["area"] : "Sin área";
+                $porArea[$area] = isset($porArea[$area]) ? $porArea[$area] + 1 : 1;
+
+                $mod = !empty($t["modulo"]) ? $t["modulo"] : "Sin módulo";
+                $porModulo[$mod] = isset($porModulo[$mod]) ? $porModulo[$mod] + 1 : 1;
+            }
+
+            if ($estaAbierto) {
+                $abiertosAhora++;
+                $est = $t["estado"];
+                $porEstado[$est] = isset($porEstado[$est]) ? $porEstado[$est] + 1 : 1;
+
+                if ($sla["codigo"] === "VENCIDO") {
+                    $vencidos[] = array(
+                        "id" => (int) $t["id"],
+                        "titulo" => $t["titulo"],
+                        "prioridad" => $t["prioridad"],
+                        "estado" => $t["estado"],
+                        "asignado_nombre" => $t["asignado_nombre"],
+                        "solicitante_nombre" => $t["solicitante_nombre"],
+                        "creado_en" => $t["creado_en"],
+                        "sla" => $sla,
+                    );
+                }
+            }
+
+            if ($enPeriodoCerrado) {
+                $cerradosPeriodo++;
+                if ($sla["codigo"] === "CUMPLIDO") {
+                    $slaOk++;
+                } else {
+                    $slaFuera++;
+                }
+                if ($creadoTs !== false && $cerradoTs !== false && $cerradoTs >= $creadoTs) {
+                    $horas = ($cerradoTs - $creadoTs) / 3600;
+                    $sumaHorasResolucion += $horas;
+                    $nResolucion++;
+                    $pri = isset($t["prioridad"]) ? $t["prioridad"] : "MEDIA";
+                    if (!isset($resPorPri[$pri])) {
+                        $resPorPri[$pri] = array("suma" => 0, "n" => 0);
+                    }
+                    $resPorPri[$pri]["suma"] += $horas;
+                    $resPorPri[$pri]["n"]++;
+                }
+                $cerradosDetalle[] = array(
+                    "id" => (int) $t["id"],
+                    "titulo" => $t["titulo"],
+                    "prioridad" => $t["prioridad"],
+                    "asignado_nombre" => $t["asignado_nombre"],
+                    "cerrado_en" => $t["cerrado_en"],
+                    "sla" => $sla,
+                );
+            }
+
+            if ($estaAbierto && $creadoTs !== false) {
+                $diasAbiertos = (int) floor((time() - $creadoTs) / 86400);
+                if ($diasAbiertos <= 2) {
+                    $backlogEdad["0-2 días"]++;
+                } elseif ($diasAbiertos <= 7) {
+                    $backlogEdad["3-7 días"]++;
+                } elseif ($diasAbiertos <= 15) {
+                    $backlogEdad["8-15 días"]++;
+                } else {
+                    $backlogEdad["Más de 15 días"]++;
+                }
+            }
+
+            // carga por asignado (creados en período o abiertos)
+            if ($enPeriodoCreado || $estaAbierto) {
+                $aid = $t["asignado_id"] === null || $t["asignado_id"] === "" ? 0 : (int) $t["asignado_id"];
+                $anombre = $aid > 0
+                    ? ($t["asignado_nombre"] ? $t["asignado_nombre"] : ("#" . $aid))
+                    : "Sin asignar";
+                if (!isset($porAsignado[$aid])) {
+                    $porAsignado[$aid] = array(
+                        "id" => $aid,
+                        "nombre" => $anombre,
+                        "creados" => 0,
+                        "abiertos" => 0,
+                        "cerrados" => 0,
+                        "vencidos" => 0,
+                        "sla_ok" => 0,
+                        "sla_fuera" => 0,
+                    );
+                }
+                if ($enPeriodoCreado) {
+                    $porAsignado[$aid]["creados"]++;
+                }
+                if ($estaAbierto) {
+                    $porAsignado[$aid]["abiertos"]++;
+                    if ($sla["codigo"] === "VENCIDO") {
+                        $porAsignado[$aid]["vencidos"]++;
+                    }
+                }
+                if ($enPeriodoCerrado) {
+                    $porAsignado[$aid]["cerrados"]++;
+                    if ($sla["codigo"] === "CUMPLIDO") {
+                        $porAsignado[$aid]["sla_ok"]++;
+                    } else {
+                        $porAsignado[$aid]["sla_fuera"]++;
+                    }
+                }
+            }
+        }
+
+        ksort($porDia);
+        arsort($porModulo);
+        $topModulos = array();
+        $i = 0;
+        foreach ($porModulo as $nombre => $n) {
+            $topModulos[] = array("nombre" => $nombre, "total" => $n);
+            $i++;
+            if ($i >= 10) {
+                break;
+            }
+        }
+
+        $mapSerie = function ($arr, $labelMap = null) {
+            $labels = array();
+            $data = array();
+            foreach ($arr as $k => $v) {
+                $labels[] = ($labelMap && isset($labelMap[$k])) ? $labelMap[$k] : $k;
+                $data[] = (int) $v;
+            }
+            return array("labels" => $labels, "data" => $data);
+        };
+
+        $pctSla = ($slaOk + $slaFuera) > 0
+            ? round(($slaOk * 100) / ($slaOk + $slaFuera), 1)
+            : null;
+        $promedioHoras = $nResolucion > 0
+            ? round($sumaHorasResolucion / $nResolucion, 1)
+            : null;
+
+        $resolucionPrioridad = array();
+        foreach (array("ALTA", "MEDIA", "BAJA") as $pri) {
+            if (!empty($resPorPri[$pri]["n"])) {
+                $resolucionPrioridad[] = array(
+                    "prioridad" => $pri,
+                    "horas" => round($resPorPri[$pri]["suma"] / $resPorPri[$pri]["n"], 1),
+                    "n" => (int) $resPorPri[$pri]["n"],
+                );
+            } else {
+                $resolucionPrioridad[] = array(
+                    "prioridad" => $pri,
+                    "horas" => null,
+                    "n" => 0,
+                );
+            }
+        }
+
+        // Comparar con período anterior de igual duración
+        $diasPeriodo = (int) max(1, round(($finTs - $iniTs) / 86400));
+        $prevHasta = date("Y-m-d", strtotime($desde . " -1 day"));
+        $prevDesde = date("Y-m-d", strtotime($prevHasta . " -" . ($diasPeriodo - 1) . " days"));
+        $prevHastaExcl = date("Y-m-d", strtotime($prevHasta . " +1 day"));
+        $ticketsPrev = ModeloHelpdesk::mdlListarParaIndicadores($prevDesde, $prevHastaExcl, $filtros);
+        $prevIni = strtotime($prevDesde . " 00:00:00");
+        $prevFin = strtotime($prevHastaExcl . " 00:00:00");
+        $pCreados = 0;
+        $pCerrados = 0;
+        $pSlaOk = 0;
+        $pSlaFuera = 0;
+        $pSumaH = 0;
+        $pN = 0;
+        foreach ($ticketsPrev as $t) {
+            $cTs = !empty($t["creado_en"]) ? strtotime($t["creado_en"]) : false;
+            $xTs = !empty($t["cerrado_en"]) ? strtotime($t["cerrado_en"]) : false;
+            if ($cTs !== false && $cTs >= $prevIni && $cTs < $prevFin) {
+                $pCreados++;
+            }
+            if ($xTs !== false && $xTs >= $prevIni && $xTs < $prevFin) {
+                $pCerrados++;
+                $slaP = self::ctrSlaDeTicket($t);
+                if ($slaP["codigo"] === "CUMPLIDO") {
+                    $pSlaOk++;
+                } else {
+                    $pSlaFuera++;
+                }
+                if ($cTs !== false && $xTs >= $cTs) {
+                    $pSumaH += ($xTs - $cTs) / 3600;
+                    $pN++;
+                }
+            }
+        }
+        $pSlaPct = ($pSlaOk + $pSlaFuera) > 0
+            ? round(($pSlaOk * 100) / ($pSlaOk + $pSlaFuera), 1)
+            : null;
+        $pProm = $pN > 0 ? round($pSumaH / $pN, 1) : null;
+
+        $deltaPct = function ($actual, $anterior) {
+            if ($anterior === null || $anterior === 0) {
+                return null;
+            }
+            return round((($actual - $anterior) * 100) / $anterior, 1);
+        };
+
+        usort($vencidos, function ($a, $b) {
+            return $b["sla"]["segundos"] - $a["sla"]["segundos"];
+        });
+        usort($cerradosDetalle, function ($a, $b) {
+            return strcmp($b["cerrado_en"], $a["cerrado_en"]);
+        });
+
+        foreach ($porAsignado as &$asigRow) {
+            $totSla = $asigRow["sla_ok"] + $asigRow["sla_fuera"];
+            $asigRow["sla_pct"] = $totSla > 0
+                ? round(($asigRow["sla_ok"] * 100) / $totSla, 1)
+                : null;
+        }
+        unset($asigRow);
+
+        $actividad = ModeloHelpdesk::mdlActividadReciente(12, $filtros);
+
+        return array(
+            "ok" => true,
+            "periodo" => array(
+                "desde" => $desde,
+                "hasta" => $hasta,
+                "prev_desde" => $prevDesde,
+                "prev_hasta" => $prevHasta,
+            ),
+            "sla_horas" => self::SLA_HORAS,
+            "kpis" => array(
+                "creados" => $creados,
+                "cerrados" => $cerradosPeriodo,
+                "abiertos" => $abiertosAhora,
+                "vencidos" => count($vencidos),
+                "sla_ok" => $slaOk,
+                "sla_fuera" => $slaFuera,
+                "sla_pct" => $pctSla,
+                "promedio_horas" => $promedioHoras,
+                "delta" => array(
+                    "creados" => $deltaPct($creados, $pCreados),
+                    "cerrados" => $deltaPct($cerradosPeriodo, $pCerrados),
+                    "sla_pct" => ($pctSla !== null && $pSlaPct !== null)
+                        ? round($pctSla - $pSlaPct, 1)
+                        : null,
+                    "promedio_horas" => ($promedioHoras !== null && $pProm !== null)
+                        ? round($promedioHoras - $pProm, 1)
+                        : null,
+                ),
+            ),
+            "charts" => array(
+                "por_dia" => array(
+                    "labels" => array_keys($porDia),
+                    "data" => array_values($porDia),
+                ),
+                "por_tipo" => $mapSerie($porTipo, $labelsTipo),
+                "por_prioridad" => $mapSerie($porPrioridad),
+                "por_sistema" => $mapSerie($porSistema, $labelsSistema + array("SIN_SISTEMA" => "Sin sistema")),
+                "por_estado" => $mapSerie($porEstado, $labelsEstado),
+                "por_area" => $mapSerie($porArea),
+                "backlog_edad" => array(
+                    "labels" => array_keys($backlogEdad),
+                    "data" => array_values($backlogEdad),
+                ),
+                "sla" => array(
+                    "labels" => array("Dentro de SLA", "Fuera de SLA"),
+                    "data" => array($slaOk, $slaFuera),
+                ),
+            ),
+            "tablas" => array(
+                "asignados" => array_values($porAsignado),
+                "top_modulos" => $topModulos,
+                "resolucion_prioridad" => $resolucionPrioridad,
+                "vencidos" => array_slice($vencidos, 0, 15),
+                "cerrados" => array_slice($cerradosDetalle, 0, 12),
+                "actividad" => $actividad,
+            ),
+            "permisos" => self::ctrPermisos(),
         );
     }
 

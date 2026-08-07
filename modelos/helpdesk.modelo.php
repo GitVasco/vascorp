@@ -80,10 +80,241 @@ class ModeloHelpdesk
             $sql .= " AND t.estado <> 'CERRADO'";
         }
 
-        $sql .= " ORDER BY
-                    FIELD(t.prioridad, 'ALTA', 'MEDIA', 'BAJA'),
-                    t.creado_en DESC
+        $sql .= " ORDER BY t.id DESC
                   LIMIT 200";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Conteos por estado (sin filtrar por estado/solo_abiertos).
+     */
+    public static function mdlResumen($filtros)
+    {
+        $sql = "SELECT t.estado, COUNT(*) AS total
+                FROM helpdesk_ticketjf t
+                WHERE 1 = 1";
+        $params = array();
+
+        if (!empty($filtros["tipo"])) {
+            $sql .= " AND t.tipo = :tipo";
+            $params[":tipo"] = $filtros["tipo"];
+        }
+        if (!empty($filtros["sistema"])) {
+            $sql .= " AND t.sistema = :sistema";
+            $params[":sistema"] = $filtros["sistema"];
+        }
+        if (!empty($filtros["prioridad"])) {
+            $sql .= " AND t.prioridad = :prioridad";
+            $params[":prioridad"] = $filtros["prioridad"];
+        }
+        if (!empty($filtros["area"])) {
+            $sql .= " AND t.area = :area";
+            $params[":area"] = $filtros["area"];
+        }
+        if (!empty($filtros["asignado_id"])) {
+            $sql .= " AND t.asignado_id = :asignado_id";
+            $params[":asignado_id"] = (int) $filtros["asignado_id"];
+        }
+        if (!empty($filtros["solicitante_id"])) {
+            $sql .= " AND t.solicitante_id = :solicitante_id";
+            $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
+        }
+        if (!empty($filtros["q"])) {
+            $sql .= " AND (
+                t.titulo LIKE :q
+                OR t.descripcion LIKE :q
+                OR IFNULL(t.modulo, '') LIKE :q
+                OR IFNULL(t.area, '') LIKE :q
+                OR CAST(t.id AS CHAR) = :q_exact
+            )";
+            $params[":q"] = "%" . $filtros["q"] . "%";
+            $params[":q_exact"] = $filtros["q"];
+        }
+
+        $sql .= " GROUP BY t.estado";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $out = array(
+            "total" => 0,
+            "activos" => 0,
+            "ABIERTO" => 0,
+            "EN_PROGRESO" => 0,
+            "ESPERANDO_USUARIO" => 0,
+            "CERRADO" => 0,
+        );
+        foreach ($rows as $r) {
+            $est = isset($r["estado"]) ? $r["estado"] : "";
+            $n = (int) $r["total"];
+            $out["total"] += $n;
+            if (isset($out[$est])) {
+                $out[$est] = $n;
+            }
+            if ($est !== "CERRADO") {
+                $out["activos"] += $n;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Cuenta tickets abiertos fuera de plazo SLA según horas por prioridad.
+     */
+    public static function mdlContarVencidosSla($filtros, $slaHoras)
+    {
+        $alta = isset($slaHoras["ALTA"]) ? (int) $slaHoras["ALTA"] : 4;
+        $media = isset($slaHoras["MEDIA"]) ? (int) $slaHoras["MEDIA"] : 24;
+        $baja = isset($slaHoras["BAJA"]) ? (int) $slaHoras["BAJA"] : 72;
+
+        $sql = "SELECT COUNT(*) AS total
+                FROM helpdesk_ticketjf t
+                WHERE t.estado <> 'CERRADO'
+                  AND (
+                    (t.prioridad = 'ALTA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$alta} HOUR))
+                    OR (t.prioridad = 'MEDIA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$media} HOUR))
+                    OR (t.prioridad = 'BAJA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$baja} HOUR))
+                    OR (t.prioridad NOT IN ('ALTA','MEDIA','BAJA') AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$media} HOUR))
+                  )";
+        $params = array();
+
+        if (!empty($filtros["tipo"])) {
+            $sql .= " AND t.tipo = :tipo";
+            $params[":tipo"] = $filtros["tipo"];
+        }
+        if (!empty($filtros["sistema"])) {
+            $sql .= " AND t.sistema = :sistema";
+            $params[":sistema"] = $filtros["sistema"];
+        }
+        if (!empty($filtros["prioridad"])) {
+            $sql .= " AND t.prioridad = :prioridad";
+            $params[":prioridad"] = $filtros["prioridad"];
+        }
+        if (!empty($filtros["area"])) {
+            $sql .= " AND t.area = :area";
+            $params[":area"] = $filtros["area"];
+        }
+        if (!empty($filtros["asignado_id"])) {
+            $sql .= " AND t.asignado_id = :asignado_id";
+            $params[":asignado_id"] = (int) $filtros["asignado_id"];
+        }
+        if (!empty($filtros["solicitante_id"])) {
+            $sql .= " AND t.solicitante_id = :solicitante_id";
+            $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
+        }
+        if (!empty($filtros["q"])) {
+            $sql .= " AND (
+                t.titulo LIKE :q
+                OR t.descripcion LIKE :q
+                OR IFNULL(t.modulo, '') LIKE :q
+                OR IFNULL(t.area, '') LIKE :q
+                OR CAST(t.id AS CHAR) = :q_exact
+            )";
+            $params[":q"] = "%" . $filtros["q"] . "%";
+            $params[":q_exact"] = $filtros["q"];
+        }
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ? (int) $row["total"] : 0;
+    }
+
+    /**
+     * Tickets relevantes para indicadores (creados/cerrados en rango + abiertos actuales).
+     */
+    public static function mdlListarParaIndicadores($desde, $hasta, $filtros = array())
+    {
+        $sql = "SELECT
+                    t.id,
+                    t.titulo,
+                    t.tipo,
+                    t.prioridad,
+                    t.estado,
+                    t.modulo,
+                    t.sistema,
+                    t.area,
+                    t.solicitante_id,
+                    t.asignado_id,
+                    t.creado_en,
+                    t.cerrado_en,
+                    sol.nombre AS solicitante_nombre,
+                    asi.nombre AS asignado_nombre
+                FROM helpdesk_ticketjf t
+                LEFT JOIN usuariosjf sol ON sol.id = t.solicitante_id
+                LEFT JOIN usuariosjf asi ON asi.id = t.asignado_id
+                WHERE (
+                    (t.creado_en >= :desde AND t.creado_en < :hasta)
+                    OR (t.cerrado_en IS NOT NULL AND t.cerrado_en >= :desde2 AND t.cerrado_en < :hasta2)
+                    OR t.estado <> 'CERRADO'
+                )";
+        $params = array(
+            ":desde" => $desde,
+            ":hasta" => $hasta,
+            ":desde2" => $desde,
+            ":hasta2" => $hasta,
+        );
+
+        if (!empty($filtros["solicitante_id"])) {
+            $sql .= " AND t.solicitante_id = :solicitante_id";
+            $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
+        }
+        if (!empty($filtros["asignado_id"])) {
+            $sql .= " AND t.asignado_id = :asignado_id";
+            $params[":asignado_id"] = (int) $filtros["asignado_id"];
+        }
+
+        $sql .= " ORDER BY t.creado_en DESC LIMIT 5000";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function mdlActividadReciente($limite = 12, $filtros = array())
+    {
+        $limite = (int) $limite;
+        if ($limite < 1) {
+            $limite = 12;
+        }
+        $sql = "SELECT
+                    c.id,
+                    c.ticket_id,
+                    c.tipo_evento,
+                    c.mensaje,
+                    c.creado_en,
+                    u.nombre AS usuario_nombre,
+                    t.titulo AS ticket_titulo
+                FROM helpdesk_comentariojf c
+                LEFT JOIN usuariosjf u ON u.id = c.usuario_id
+                LEFT JOIN helpdesk_ticketjf t ON t.id = c.ticket_id
+                WHERE 1 = 1";
+        $params = array();
+        if (!empty($filtros["solicitante_id"])) {
+            $sql .= " AND t.solicitante_id = :solicitante_id";
+            $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
+        }
+        $sql .= " ORDER BY c.creado_en DESC LIMIT " . $limite;
 
         $stmt = Conexion::conectar()->prepare($sql);
         foreach ($params as $key => $value) {

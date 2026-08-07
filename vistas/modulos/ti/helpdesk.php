@@ -25,6 +25,11 @@
                     <i class="fa fa-list"></i> <span id="hdTabListaLabel">Mis tickets</span>
                 </a>
             </li>
+            <li id="hdTabIndicadoresLi">
+                <a href="#hdVistaIndicadores" data-toggle="tab" id="hdTabIndicadores">
+                    <i class="fa fa-bar-chart"></i> Indicadores
+                </a>
+            </li>
         </ul>
 
         <div class="tab-content hd-tab-content">
@@ -262,6 +267,36 @@
 
             <!-- ========== LISTA / BANDEJA ========== -->
             <div class="tab-pane" id="hdVistaLista">
+                <div class="hd-kpis" id="hdKpis">
+                    <button type="button" class="hd-kpi hd-kpi-total active" data-filtro="">
+                        <span class="hd-kpi-n" id="hdKpiTotal">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-inbox"></i> Todos</span>
+                    </button>
+                    <button type="button" class="hd-kpi hd-kpi-activos" data-filtro="__ACTIVOS__">
+                        <span class="hd-kpi-n" id="hdKpiActivos">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-bolt"></i> Activos</span>
+                    </button>
+                    <button type="button" class="hd-kpi hd-kpi-abierto" data-filtro="ABIERTO">
+                        <span class="hd-kpi-n" id="hdKpiAbierto">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-folder-open"></i> Abiertos</span>
+                    </button>
+                    <button type="button" class="hd-kpi hd-kpi-progreso" data-filtro="EN_PROGRESO">
+                        <span class="hd-kpi-n" id="hdKpiProgreso">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-spinner"></i> En progreso</span>
+                    </button>
+                    <button type="button" class="hd-kpi hd-kpi-espera" data-filtro="ESPERANDO_USUARIO">
+                        <span class="hd-kpi-n" id="hdKpiEspera">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-hourglass-half"></i> Esperando</span>
+                    </button>
+                    <button type="button" class="hd-kpi hd-kpi-vencido" data-filtro="__VENCIDOS__">
+                        <span class="hd-kpi-n" id="hdKpiVencidos">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-exclamation-triangle"></i> Vencidos SLA</span>
+                    </button>
+                    <button type="button" class="hd-kpi hd-kpi-cerrado" data-filtro="CERRADO">
+                        <span class="hd-kpi-n" id="hdKpiCerrado">0</span>
+                        <span class="hd-kpi-lbl"><i class="fa fa-check"></i> Cerrados</span>
+                    </button>
+                </div>
                 <div class="box box-primary">
                     <div class="box-header with-border">
                         <h3 class="box-title"><i class="fa fa-list"></i> <span id="hdListaTitulo">Mis tickets</span></h3>
@@ -269,12 +304,13 @@
                             <input type="text" class="form-control input-sm" id="hdFiltroQ"
                                    placeholder="Buscar…" style="width:140px;display:inline-block;">
                             <select class="form-control input-sm" id="hdFiltroEstado" style="width:auto;display:inline-block;">
-                                <option value="__ACTIVOS__" selected>Activos</option>
-                                <option value="">Todos</option>
+                                <option value="" selected>Todos</option>
+                                <option value="__ACTIVOS__">Activos</option>
                                 <option value="ABIERTO">Abierto</option>
                                 <option value="EN_PROGRESO">En progreso</option>
                                 <option value="ESPERANDO_USUARIO">Esperando usuario</option>
                                 <option value="CERRADO">Cerrado</option>
+                                <option value="__VENCIDOS__">Vencidos SLA</option>
                             </select>
                             <select class="form-control input-sm" id="hdFiltroTipo" style="width:auto;display:inline-block;">
                                 <option value="">Tipo</option>
@@ -291,24 +327,200 @@
                         </div>
                     </div>
                     <div class="box-body table-responsive hd-tabla-wrap">
-                        <table class="table table-striped table-hover table-condensed" id="hdTablaLista">
+                        <table class="table table-hover table-condensed" id="hdTablaLista">
                             <thead>
                                 <tr>
                                     <th>#</th>
                                     <th>Asunto</th>
+                                    <th>Solicitante</th>
                                     <th>Tipo</th>
                                     <th>Pri.</th>
                                     <th>Estado</th>
                                     <th>Asignado</th>
+                                    <th>SLA</th>
+                                    <th>Antigüedad</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr class="hd-vacio">
-                                    <td colspan="7" class="text-muted text-center">Cargando…</td>
+                                    <td colspan="10" class="text-muted text-center">Cargando…</td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== INDICADORES / DASHBOARD ========== -->
+            <div class="tab-pane" id="hdVistaIndicadores">
+                <div class="box box-solid hd-ind-filtros">
+                    <div class="box-body" style="padding:10px 15px;">
+                        <div class="form-inline hd-ind-filtros-row">
+                            <label>Desde</label>
+                            <input type="date" class="form-control input-sm" id="hdIndDesde">
+                            <label>Hasta</label>
+                            <input type="date" class="form-control input-sm" id="hdIndHasta">
+                            <button type="button" class="btn btn-primary btn-sm" id="hdIndAplicar">
+                                <i class="fa fa-filter"></i> Aplicar
+                            </button>
+                            <button type="button" class="btn btn-default btn-sm" id="hdIndMes">Mes</button>
+                            <button type="button" class="btn btn-default btn-sm" id="hdInd30">30 días</button>
+                            <button type="button" class="btn btn-default btn-sm" id="hdInd7">7 días</button>
+                            <small class="text-muted" id="hdIndSlaHint"></small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hd-ind-kpis" id="hdIndKpis">
+                    <div class="hd-ind-kpi hd-ind-kpi-blue">
+                        <div class="hd-ind-kpi-icon"><i class="fa fa-inbox"></i></div>
+                        <div>
+                            <span class="n" id="hdIndCreado">0</span>
+                            <span class="l">Recibidos</span>
+                            <span class="d" id="hdIndDeltaCreado"></span>
+                        </div>
+                    </div>
+                    <div class="hd-ind-kpi hd-ind-kpi-green">
+                        <div class="hd-ind-kpi-icon"><i class="fa fa-check-circle"></i></div>
+                        <div>
+                            <span class="n" id="hdIndCerrado">0</span>
+                            <span class="l">Resueltos</span>
+                            <span class="d" id="hdIndDeltaCerrado"></span>
+                        </div>
+                    </div>
+                    <div class="hd-ind-kpi hd-ind-kpi-amber">
+                        <div class="hd-ind-kpi-icon"><i class="fa fa-folder-open"></i></div>
+                        <div>
+                            <span class="n" id="hdIndAbierto">0</span>
+                            <span class="l">Pendientes</span>
+                        </div>
+                    </div>
+                    <div class="hd-ind-kpi hd-ind-kpi-rose">
+                        <div class="hd-ind-kpi-icon"><i class="fa fa-exclamation-triangle"></i></div>
+                        <div>
+                            <span class="n" id="hdIndVencido">0</span>
+                            <span class="l">Vencidos SLA</span>
+                        </div>
+                    </div>
+                    <div class="hd-ind-kpi hd-ind-kpi-teal">
+                        <div class="hd-ind-kpi-icon"><i class="fa fa-clock-o"></i></div>
+                        <div>
+                            <span class="n" id="hdIndPromedio">—</span>
+                            <span class="l">Tiempo prom.</span>
+                            <span class="d" id="hdIndDeltaPromedio"></span>
+                        </div>
+                    </div>
+                    <div class="hd-ind-kpi hd-ind-kpi-lilac">
+                        <div class="hd-ind-kpi-icon"><i class="fa fa-crosshairs"></i></div>
+                        <div>
+                            <span class="n" id="hdIndSlaPct">—</span>
+                            <span class="l">SLA cumplimiento</span>
+                            <span class="d" id="hdIndDeltaSla"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row hd-ind-charts-row">
+                    <div class="col-md-5">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Creados por día</h3></div>
+                            <div class="box-body hd-chart-sm"><canvas id="hdChartDia"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">SLA cerrados</h3></div>
+                            <div class="box-body hd-chart-sm"><canvas id="hdChartSla"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Backlog por antigüedad</h3></div>
+                            <div class="box-body hd-chart-sm"><canvas id="hdChartBacklog"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row hd-ind-charts-row">
+                    <div class="col-md-3">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Por tipo</h3></div>
+                            <div class="box-body hd-chart-xs"><canvas id="hdChartTipo"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Por prioridad</h3></div>
+                            <div class="box-body hd-chart-xs"><canvas id="hdChartPrioridad"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Por sistema</h3></div>
+                            <div class="box-body hd-chart-xs"><canvas id="hdChartSistema"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Por área</h3></div>
+                            <div class="box-body hd-chart-xs"><canvas id="hdChartArea"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Resolución por prioridad</h3></div>
+                            <div class="box-body" id="hdIndResolucionPri"></div>
+                        </div>
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Temas recurrentes</h3></div>
+                            <div class="box-body table-responsive" style="max-height:220px;overflow:auto;">
+                                <table class="table table-condensed" id="hdIndTablaModulos">
+                                    <thead><tr><th>#</th><th>Módulo / tema</th><th>N°</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Técnicos — resumen</h3></div>
+                            <div class="box-body table-responsive">
+                                <table class="table table-condensed table-hover" id="hdIndTablaAsignados">
+                                    <thead>
+                                        <tr>
+                                            <th>Asignado</th>
+                                            <th>Asig.</th>
+                                            <th>Pend.</th>
+                                            <th>Resueltos</th>
+                                            <th>Venc.</th>
+                                            <th>SLA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Vencidos SLA</h3></div>
+                            <div class="box-body table-responsive" style="max-height:200px;overflow:auto;">
+                                <table class="table table-condensed" id="hdIndTablaVencidos">
+                                    <thead>
+                                        <tr><th>#</th><th>Asunto</th><th>Pri.</th><th>SLA</th></tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="box box-solid hd-ind-box">
+                            <div class="box-header with-border"><h3 class="box-title">Actividad reciente</h3></div>
+                            <div class="box-body" id="hdIndActividad" style="max-height:420px;overflow:auto;"></div>
+                        </div>
                     </div>
                 </div>
             </div>

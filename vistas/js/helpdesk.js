@@ -302,10 +302,63 @@ $(function () {
         });
     }
 
+    function antiguedadTxt(fecha) {
+        if (!fecha) {
+            return "—";
+        }
+        var d = new Date(String(fecha).replace(" ", "T"));
+        if (isNaN(d.getTime())) {
+            return "—";
+        }
+        var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+        if (days <= 0) {
+            return "Hoy";
+        }
+        if (days === 1) {
+            return "1 día";
+        }
+        if (days < 30) {
+            return days + " días";
+        }
+        var meses = Math.floor(days / 30);
+        return meses === 1 ? "1 mes" : meses + " meses";
+    }
+
+    function badgeSla(sla) {
+        if (!sla || !sla.label) {
+            return '<span class="hd-sla hd-sla-na">—</span>';
+        }
+        var icon = "fa-clock-o";
+        if (sla.codigo === "CUMPLIDO") {
+            icon = "fa-check-circle";
+        } else if (sla.codigo === "VENCIDO" || sla.codigo === "FUERA") {
+            icon = "fa-exclamation-triangle";
+        }
+        var title = sla.horas_limite
+            ? ("Límite: " + sla.horas_limite + "h" + (sla.deadline ? " · vence " + sla.deadline : ""))
+            : "";
+        return '<span class="hd-sla ' + esc(sla.cls || "hd-sla-na") + '" title="' + esc(title) + '">' +
+            '<i class="fa ' + icon + '"></i> ' + esc(sla.label) + "</span>";
+    }
+
+    function renderKpis(resumen) {
+        var r = resumen || {};
+        $("#hdKpiTotal").text(r.total || 0);
+        $("#hdKpiActivos").text(r.activos || 0);
+        $("#hdKpiAbierto").text(r.ABIERTO || 0);
+        $("#hdKpiProgreso").text(r.EN_PROGRESO || 0);
+        $("#hdKpiEspera").text(r.ESPERANDO_USUARIO || 0);
+        $("#hdKpiVencidos").text(r.vencidos || 0);
+        $("#hdKpiCerrado").text(r.CERRADO || 0);
+        var filtro = $("#hdFiltroEstado").val();
+        $("#hdKpis .hd-kpi").removeClass("active");
+        $('#hdKpis .hd-kpi[data-filtro="' + filtro + '"]').addClass("active");
+    }
+
     function renderLista(items) {
         var $tb = $("#hdTablaLista tbody").empty();
         if (!items || !items.length) {
-            $tb.append('<tr class="hd-vacio"><td colspan="7" class="text-muted text-center">Sin tickets.</td></tr>');
+            $tb.append('<tr class="hd-vacio"><td colspan="10" class="text-muted text-center">Sin tickets.</td></tr>');
             return;
         }
         items.forEach(function (t) {
@@ -320,17 +373,33 @@ $(function () {
             if (t.modulo) {
                 sub.push(esc(t.modulo));
             }
+            var antCls = "";
+            if (t.creado_en && t.estado !== "CERRADO") {
+                var d = new Date(String(t.creado_en).replace(" ", "T"));
+                if (!isNaN(d.getTime())) {
+                    var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+                    if (days >= 7) {
+                        antCls = " hd-ant-alerta";
+                    } else if (days >= 3) {
+                        antCls = " hd-ant-aviso";
+                    }
+                }
+            }
+            var rowSla = (t.sla && t.sla.codigo === "VENCIDO") ? " hd-row-vencido" : "";
             $tb.append(
-                '<tr class="hd-row' + activa + '" data-id="' + esc(t.id) + '">' +
-                    "<td>#" + esc(t.id) + "</td>" +
+                '<tr class="hd-row' + activa + (t.estado === "CERRADO" ? " hd-row-cerrado" : "") + rowSla + '" data-id="' + esc(t.id) + '">' +
+                    "<td><strong>#" + esc(t.id) + "</strong></td>" +
                     "<td>" + esc(t.titulo) +
                         (sub.length ? "<br><small class=\"text-muted\">" + sub.join(" · ") + "</small>" : "") +
                     "</td>" +
+                    "<td>" + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) + "</td>" +
                     "<td>" + esc(LABELS_TIPO[t.tipo] || t.tipo) + "</td>" +
                     "<td>" + badgePrioridad(t.prioridad) + "</td>" +
                     "<td>" + badgeEstado(t.estado) + "</td>" +
                     "<td>" + esc(t.asignado_nombre || "—") + "</td>" +
-                    '<td><button type="button" class="btn btn-xs btn-info hd-btn-ver">Ver</button></td>' +
+                    "<td>" + badgeSla(t.sla) + "</td>" +
+                    '<td class="hd-antiguedad' + antCls + '">' + esc(antiguedadTxt(t.creado_en)) + "</td>" +
+                    '<td><button type="button" class="btn btn-xs btn-info hd-btn-ver"><i class="fa fa-eye"></i></button></td>' +
                 "</tr>"
             );
         });
@@ -344,6 +413,8 @@ $(function () {
         };
         if (estado === "__ACTIVOS__") {
             data.solo_abiertos = 1;
+        } else if (estado === "__VENCIDOS__") {
+            data.solo_vencidos = 1;
         } else {
             data.estado = estado;
         }
@@ -357,6 +428,7 @@ $(function () {
                     permisos = res.permisos;
                     aplicarPermisosUi();
                 }
+                renderKpis(res.resumen || {});
                 renderLista(res.items || []);
             })
             .fail(function () {
@@ -384,6 +456,9 @@ $(function () {
         if (h === "nuevo") {
             return { vista: "nuevo" };
         }
+        if (h === "indicadores") {
+            return { vista: "indicadores" };
+        }
         return { vista: "lista" };
     }
 
@@ -391,6 +466,8 @@ $(function () {
         var h = "#lista";
         if (vista === "nuevo") {
             h = "#nuevo";
+        } else if (vista === "indicadores") {
+            h = "#indicadores";
         } else if (vista === "ticket" && ticketId) {
             h = "#ticket/" + ticketId;
         }
@@ -409,8 +486,8 @@ $(function () {
     }
 
     function mostrarVistaConversacion(ticketId) {
-        $("#hdVistaNuevo, #hdVistaLista").removeClass("active");
-        $("#hdTabNuevoLi, #hdTabListaLi").removeClass("active");
+        $("#hdVistaNuevo, #hdVistaLista, #hdVistaIndicadores").removeClass("active");
+        $("#hdTabNuevoLi, #hdTabListaLi, #hdTabIndicadoresLi").removeClass("active");
         $("#hdVistaConversacion").addClass("active");
         if (permisos.gestionar) {
             $(".hd-solo-gestionar").show();
@@ -423,9 +500,9 @@ $(function () {
     }
 
     function mostrarVistaLista(actualizarHash) {
-        $("#hdVistaConversacion").removeClass("active");
+        $("#hdVistaConversacion, #hdVistaIndicadores").removeClass("active");
         $("#hdVistaNuevo").removeClass("active");
-        $("#hdTabNuevoLi").removeClass("active");
+        $("#hdTabNuevoLi, #hdTabIndicadoresLi").removeClass("active");
         $("#hdTabListaLi").addClass("active");
         $("#hdVistaLista").addClass("active");
         ticketActual = null;
@@ -440,14 +517,27 @@ $(function () {
             mostrarVistaLista(actualizarHash);
             return;
         }
-        $("#hdVistaConversacion").removeClass("active");
-        $("#hdVistaLista").removeClass("active");
-        $("#hdTabListaLi").removeClass("active");
+        $("#hdVistaConversacion, #hdVistaIndicadores, #hdVistaLista").removeClass("active");
+        $("#hdTabListaLi, #hdTabIndicadoresLi").removeClass("active");
         $("#hdTabNuevoLi").addClass("active");
         $("#hdVistaNuevo").addClass("active");
         ticketActual = null;
         if (actualizarHash !== false) {
             setHash("nuevo");
+        }
+    }
+
+    function mostrarVistaIndicadores(actualizarHash) {
+        $("#hdVistaConversacion, #hdVistaNuevo, #hdVistaLista").removeClass("active");
+        $("#hdTabNuevoLi, #hdTabListaLi").removeClass("active");
+        $("#hdTabIndicadoresLi").addClass("active");
+        $("#hdVistaIndicadores").addClass("active");
+        ticketActual = null;
+        if (actualizarHash !== false) {
+            setHash("indicadores");
+        }
+        if (typeof window.hdCargarIndicadores === "function") {
+            window.hdCargarIndicadores(true);
         }
     }
 
@@ -463,6 +553,10 @@ $(function () {
         }
         if (estado.vista === "nuevo") {
             mostrarVistaNuevo(false);
+            return;
+        }
+        if (estado.vista === "indicadores") {
+            mostrarVistaIndicadores(false);
             return;
         }
         mostrarVistaLista(false);
@@ -606,17 +700,22 @@ $(function () {
         var t = res.ticket;
         ticketActual = t;
         agentes = res.agentes || agentes;
+        var sla = res.sla || (t && t.sla) || null;
 
         $("#hdConvCabecera").html(
             '<div class="hd-conv-head">' +
                 '<div>' +
                     '<span class="hd-ticket-id">#' + esc(t.id) + "</span> " +
-                    badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) +
+                    badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) + " " +
+                    badgeSla(sla) +
                     '<h3 class="hd-conv-asunto">' + esc(t.titulo) + "</h3>" +
                     '<div class="text-muted hd-conv-meta">' +
                         "Creado por <strong>" + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) + "</strong>" +
                         (t.area ? " · " + esc(t.area) : "") +
                         " · " + esc(t.creado_en) +
+                        (sla && sla.horas_limite
+                            ? " · SLA " + esc(String(sla.horas_limite)) + "h"
+                            : "") +
                     "</div>" +
                 "</div>" +
             "</div>"
@@ -643,13 +742,20 @@ $(function () {
                         '<div><span class="hd-det-chip-lbl">Estado</span>' +
                         badgeEstado(t.estado) + "</div>" +
                     "</div>" +
-                    '<div class="hd-det-chip hd-det-chip-sistema">' +
-                        '<i class="fa ' + iconoSistema(t.sistema) + '"></i>' +
-                        '<div><span class="hd-det-chip-lbl">Sistema</span>' +
-                        '<strong>' + esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
+                    '<div class="hd-det-chip hd-det-chip-sla">' +
+                        '<i class="fa fa-clock-o"></i>' +
+                        '<div><span class="hd-det-chip-lbl">SLA</span>' +
+                        badgeSla(sla) +
+                        (sla && sla.horas_limite
+                            ? '<br><small class="text-muted">Límite ' + esc(String(sla.horas_limite)) + "h" +
+                              (sla.deadline ? " · " + esc(sla.deadline) : "") + "</small>"
+                            : "") +
+                        "</div>" +
                     "</div>" +
                 "</div>" +
                 '<div class="hd-det-info-row">' +
+                    '<div class="hd-det-info-item"><i class="fa fa-desktop text-orange"></i> ' +
+                        '<span>Sistema</span><strong>' + esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
                     '<div class="hd-det-info-item"><i class="fa fa-building text-aqua"></i> ' +
                         '<span>Área</span><strong>' + esc(t.area || "—") + "</strong></div>" +
                     '<div class="hd-det-info-item"><i class="fa fa-cubes text-green"></i> ' +
@@ -931,6 +1037,15 @@ $(function () {
         cargarLista();
     });
 
+    $("#hdKpis").on("click", ".hd-kpi", function () {
+        var filtro = $(this).attr("data-filtro");
+        if (filtro === undefined) {
+            filtro = "";
+        }
+        $("#hdFiltroEstado").val(filtro);
+        cargarLista();
+    });
+
     var qTimer = null;
     $("#hdFiltroQ").on("keyup", function () {
         clearTimeout(qTimer);
@@ -951,8 +1066,17 @@ $(function () {
             ticketActual = null;
             $("#hdVistaConversacion").removeClass("active");
             setHash("nuevo");
+        } else if (href === "#hdVistaIndicadores") {
+            ticketActual = null;
+            $("#hdVistaConversacion").removeClass("active");
+            setHash("indicadores");
+            if (typeof window.hdCargarIndicadores === "function") {
+                window.hdCargarIndicadores(true);
+            }
         }
     });
+
+    window.hdAbrirTicket = verTicket;
 
     $("#hdTablaLista").on("click", ".hd-btn-ver, tr.hd-row td:not(:last-child)", function () {
         var id = $(this).closest("tr").data("id");

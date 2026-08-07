@@ -1,376 +1,414 @@
 {
-  "areas": [
-    "Ventas",
-    "Cobranzas",
-    "Contabilidad",
-    "Almacén",
-    "Producción",
-    "TI",
-    "Gerencia",
-    "Otro"
-  ],
-  "sistemas": [
-    {
-      "id": "VASCORP",
-      "nombre": "Vascorp",
-      "ayuda": "ERP actual de la empresa. Sigue en uso y creciendo con nuevos módulos.",
-      "modulos": [
+    "areas": [
+        "Ventas",
+        "Cuentas corrientes",
+        "Cobranzas",
+        "Contabilidad",
+        "Almacén",
+        "Producción",
+        "TI",
+        "Gerencia",
+        "Otro"
+    ],
+    "sistemas": [
         {
-          "seccion": "Gestión comercial",
-          "items": [
-            "Dashboard gerencial",
-            "Dashboard CxC",
-            "Centro de decisiones",
-            "Historial de crédito",
-            "Línea de crédito",
-            "Inteligencia comercial",
-            "Metas vendedor",
-            "Metas / retos",
-            "Costos mensuales",
-            "Ficha gerencial de modelos",
-            "Resumen gerencial de modelos",
-            "Comparación gerencial de modelos",
-            "Categorías comerciales",
-            "Categorías por revisar",
-            "Zonas comerciales",
-            "Mapas de zonas",
-            "Grupos de marcas",
-            "Asignación de grupos de marcas"
-          ]
+            "id": "VASCORP",
+            "nombre": "Vascorp",
+            "ayuda": "ERP actual de la empresa. Sigue en uso y creciendo con nuevos módulos.",
+            "modulos": [
+                {
+                    "seccion": "Gestión comercial",
+                    "items": [
+                        "Dashboard gerencial",
+                        "Dashboard CxC",
+                        "Centro de decisiones",
+                        "Historial de crédito",
+                        "Línea de crédito",
+                        "Inteligencia comercial",
+                        "Metas vendedor",
+                        "Metas / retos",
+                        "Costos mensuales",
+                        "Ficha gerencial de modelos",
+                        "Resumen gerencial de modelos",
+                        "Comparación gerencial de modelos",
+                        "Categorías comerciales",
+                        "Categorías por revisar",
+                        "Zonas comerciales",
+                        "Mapas de zonas",
+                        "Grupos de marcas",
+                        "Asignación de grupos de marcas"
+                    ]
+                },
+                {
+                    "seccion": "Facturación",
+                    "items": [
+                        "Clientes",
+                        "Grupos empresariales",
+                        "Pedidos",
+                        "Escaneo pedido CV",
+                        "Reportes Ventas",
+                        "Procesar CE",
+                        "Documentos"
+                    ]
+                },
+                {
+                    "seccion": "Cuentas corrientes",
+                    "items": [
+                        "Cuentas",
+                        "Notificaciones",
+                        "Letras a informar hoy",
+                        "Abonos",
+                        "Cancelar abonos",
+                        "Consultar cuentas",
+                        "Estado de cuenta",
+                        "Envio letras",
+                        "Credipagos",
+                        "Reportes Generales"
+                    ]
+                },
+                {
+                    "seccion": "Vasco Online (puente)",
+                    "items": [
+                        "Sincronización",
+                        "Rendición cobranzas",
+                        "Gestión clientes",
+                        "Solicitudes atención",
+                        "Regularizaciones comerciales"
+                    ]
+                },
+                {
+                    "seccion": "Maestros",
+                    "items": [
+                        "Artículos",
+                        "Agencias",
+                        "Bancos",
+                        "Colores",
+                        "Condiciones Venta",
+                        "Documentos",
+                        "Marcas",
+                        "Series de documentos",
+                        "Modelos",
+                        "Categorías / subcategorías",
+                        "Clasificación de modelos",
+                        "Operaciones",
+                        "Paras",
+                        "Sector",
+                        "Taller modelo",
+                        "Tipo Movimientos",
+                        "Tipo Pagos",
+                        "Tipo Trabajador",
+                        "Trabajador",
+                        "Unidades Medida",
+                        "Vendedor"
+                    ]
+                },
+                {
+                    "seccion": "Movimientos",
+                    "items": [
+                        "Produccion",
+                        "Ventas",
+                        "Ingresos MP",
+                        "Salidas MP"
+                    ]
+                },
+                {
+                    "seccion": "Materia Prima",
+                    "items": [
+                        "Maestras Mp",
+                        "Materia Prima",
+                        "Produccion Cuadros",
+                        "Orden Servicio",
+                        "Ingresos x OS",
+                        "Orden Compra",
+                        "Ingresos x OC",
+                        "Mp Pendiente - OC",
+                        "Mp Pendiente - OS",
+                        "Notas Salidas",
+                        "Kardex MP",
+                        "Proveedor"
+                    ]
+                },
+                {
+                    "seccion": "Producción",
+                    "items": [
+                        "Ord. Corte",
+                        "Cortes",
+                        "Servicios",
+                        "Cierres",
+                        "Arreglos",
+                        "Ingresos",
+                        "Prog. semana",
+                        "Taller Gral",
+                        "Registrar (taller)",
+                        "Generados",
+                        "Terminados",
+                        "Quincenas",
+                        "Precios (gastos)",
+                        "Pagos (gastos)",
+                        "Alm. Corte",
+                        "Env. Taller",
+                        "Estampados",
+                        "Tampografia",
+                        "Prehormado",
+                        "Movimientos / Registros",
+                        "Documentos (movimientos)",
+                        "Transferencias APT",
+                        "Seguimiento",
+                        "En Talleres",
+                        "Urgencia APT",
+                        "Urg. Maestro",
+                        "Urg. Prod.",
+                        "Urg. A. Corte",
+                        "Urg. Corte",
+                        "Urg. Plan",
+                        "Recetas por modelo",
+                        "Operaciones Modelos",
+                        "Otro (Producción)"
+                    ]
+                },
+                {
+                    "seccion": "Costos",
+                    "items": [
+                        "Centro de Costos",
+                        "Kardex Costos",
+                        "Gastos Caja",
+                        "Solicitud Gasto",
+                        "Ingresos Caja",
+                        "Resumen CC",
+                        "Diario",
+                        "Diario-Alerta",
+                        "Compras",
+                        "Validar",
+                        "Costos Por Modelo",
+                        "Comparación de Costos"
+                    ]
+                },
+                {
+                    "seccion": "Backend",
+                    "items": [
+                        "Movimientos",
+                        "Datos Diarios",
+                        "Backup",
+                        "Backup - Listos",
+                        "Cargas automaticas",
+                        "Conexiones"
+                    ]
+                },
+                {
+                    "seccion": "TI / Ticket / Mantenimiento",
+                    "items": [
+                        "Helpdesk",
+                        "Contactos",
+                        "Mailbox",
+                        "Equipos",
+                        "Calendario",
+                        "Mantenimiento"
+                    ]
+                },
+                {
+                    "seccion": "Otros",
+                    "items": ["Inicio", "Usuarios", "Otro"]
+                }
+            ]
         },
         {
-          "seccion": "Facturación",
-          "items": [
-            "Clientes",
-            "Grupos empresariales",
-            "Pedidos",
-            "Escaneo pedido CV",
-            "Reportes Ventas",
-            "Procesar CE",
-            "Documentos"
-          ]
+            "id": "SISTEMA_VASCO",
+            "nombre": "Sistema Vasco",
+            "ayuda": "Nuestra conexión hacia internet: visita, portal, cobranzas y campañas en la nube.",
+            "modulos": [
+                {
+                    "seccion": "Operación",
+                    "items": [
+                        "Inicio",
+                        "Clientes",
+                        "Grupos empresariales",
+                        "Estados de cuenta"
+                    ]
+                },
+                {
+                    "seccion": "Visita vendedor",
+                    "items": [
+                        "Atender cliente",
+                        "Letras vencidas",
+                        "Ficha cliente",
+                        "Estados de cuenta (visita)",
+                        "Cobrar / Registrar cobranza",
+                        "Cobranzas",
+                        "Detalle de cobranza",
+                        "Gestionar cliente",
+                        "Grupo empresarial (visita)",
+                        "Terminar visita",
+                        "Pedidos (próximamente)",
+                        "Facturas (próximamente)",
+                        "Soporte técnico (próximamente)"
+                    ]
+                },
+                {
+                    "seccion": "Mi gestión",
+                    "items": [
+                        "Mi gestión / Resumen",
+                        "Mis cobranzas",
+                        "Por rendir",
+                        "Mis atenciones",
+                        "Mi cartera"
+                    ]
+                },
+                {
+                    "seccion": "Supervisión",
+                    "items": [
+                        "Supervisión ventas",
+                        "Detalle vendedor",
+                        "Ubicación en campo"
+                    ]
+                },
+                {
+                    "seccion": "Portal cliente",
+                    "items": [
+                        "Mi cuenta",
+                        "Estado de cuenta",
+                        "Cobranzas (portal)",
+                        "Detalle de cobranza (portal)",
+                        "Grupo empresarial (portal)",
+                        "Cambiar contraseña",
+                        "Solicitar visita"
+                    ]
+                },
+                {
+                    "seccion": "Campañas",
+                    "items": [
+                        "Embajadores",
+                        "Banco de preguntas",
+                        "Campañas",
+                        "Códigos de etiqueta",
+                        "Analítica encuestas",
+                        "Encuesta pública (QR)"
+                    ]
+                },
+                {
+                    "seccion": "Administración",
+                    "items": [
+                        "Usuarios",
+                        "Roles",
+                        "Módulos",
+                        "WhatsApp",
+                        "Configuración",
+                        "API / sync"
+                    ]
+                }
+            ]
         },
         {
-          "seccion": "Cuentas corrientes",
-          "items": [
-            "Cuentas",
-            "Notificaciones",
-            "Letras a informar hoy",
-            "Abonos",
-            "Cancelar abonos",
-            "Consultar cuentas",
-            "Estado de cuenta",
-            "Envio letras",
-            "Credipagos",
-            "Reportes Generales"
-          ]
+            "id": "VASCOPRO",
+            "nombre": "VascoPro",
+            "ayuda": "Será la nueva versión del ERP. Está en proceso de migración (hoy RRHH).",
+            "modulos": [
+                {
+                    "seccion": "General",
+                    "items": ["Dashboard", "Mi equipo"]
+                },
+                {
+                    "seccion": "RRHH — Contratos",
+                    "items": ["Contratos", "Plantillas de contrato"]
+                },
+                {
+                    "seccion": "RRHH — Talento",
+                    "items": ["Empleados", "Jefaturas", "Panel RRHH"]
+                },
+                {
+                    "seccion": "RRHH — Control de asistencia",
+                    "items": ["Asistencias", "Calendario laboral", "Turnos"]
+                },
+                {
+                    "seccion": "RRHH — Planilla",
+                    "items": ["Periodos de planilla"]
+                },
+                {
+                    "seccion": "RRHH — Incidencias y permisos",
+                    "items": [
+                        "Tardanzas",
+                        "Análisis semanal de tardanzas",
+                        "Faltas",
+                        "Permisos laborales",
+                        "Licencias laborales",
+                        "Vacaciones"
+                    ]
+                },
+                {
+                    "seccion": "Sistema",
+                    "items": [
+                        "Usuarios",
+                        "Roles",
+                        "Módulos",
+                        "Configuración",
+                        "Otro VascoPro"
+                    ]
+                }
+            ]
         },
         {
-          "seccion": "Vasco Online (puente)",
-          "items": [
-            "Sincronización",
-            "Rendición cobranzas",
-            "Gestión clientes",
-            "Solicitudes atención",
-            "Regularizaciones comerciales"
-          ]
-        },
-        {
-          "seccion": "Maestros",
-          "items": [
-            "Artículos",
-            "Agencias",
-            "Bancos",
-            "Colores",
-            "Condiciones Venta",
-            "Documentos",
-            "Marcas",
-            "Series de documentos",
-            "Modelos",
-            "Categorías / subcategorías",
-            "Clasificación de modelos",
-            "Operaciones",
-            "Paras",
-            "Sector",
-            "Taller modelo",
-            "Tipo Movimientos",
-            "Tipo Pagos",
-            "Tipo Trabajador",
-            "Trabajador",
-            "Unidades Medida",
-            "Vendedor"
-          ]
-        },
-        {
-          "seccion": "Movimientos",
-          "items": ["Produccion", "Ventas", "Ingresos MP", "Salidas MP"]
-        },
-        {
-          "seccion": "Materia Prima",
-          "items": [
-            "Maestras Mp",
-            "Materia Prima",
-            "Produccion Cuadros",
-            "Orden Servicio",
-            "Ingresos x OS",
-            "Orden Compra",
-            "Ingresos x OC",
-            "Mp Pendiente - OC",
-            "Mp Pendiente - OS",
-            "Notas Salidas",
-            "Kardex MP",
-            "Proveedor"
-          ]
-        },
-        {
-          "seccion": "Producción",
-          "items": [
-            "Programación",
-            "Taller Vasco",
-            "Gastos",
-            "Resumen",
-            "Controles",
-            "Reportes",
-            "Recetas por modelo",
-            "Operaciones Modelos"
-          ]
-        },
-        {
-          "seccion": "Costos",
-          "items": [
-            "Centro de Costos",
-            "Kardex Costos",
-            "Gastos Caja",
-            "Solicitud Gasto",
-            "Ingresos Caja",
-            "Resumen CC",
-            "Diario",
-            "Diario-Alerta",
-            "Compras",
-            "Validar",
-            "Costos Por Modelo",
-            "Comparación de Costos"
-          ]
-        },
-        {
-          "seccion": "Backend",
-          "items": [
-            "Movimientos",
-            "Datos Diarios",
-            "Backup",
-            "Backup - Listos",
-            "Cargas automaticas",
-            "Conexiones"
-          ]
-        },
-        {
-          "seccion": "TI / Ticket / Mantenimiento",
-          "items": ["Helpdesk", "Contactos", "Mailbox", "Equipos", "Calendario", "Mantenimiento"]
-        },
-        {
-          "seccion": "Otros",
-          "items": ["Inicio", "Usuarios", "Otro"]
+            "id": "TI_EMPRESA",
+            "nombre": "TI / Soporte empresa",
+            "ayuda": "PCs, correos, programas, red, impresoras y todo el soporte interno de la empresa.",
+            "modulos": [
+                {
+                    "seccion": "Equipos",
+                    "items": [
+                        "PC de escritorio",
+                        "Laptop",
+                        "Monitor",
+                        "Teclado / mouse / periféricos",
+                        "Impresora / escáner",
+                        "Proyector / sala",
+                        "Otro hardware"
+                    ]
+                },
+                {
+                    "seccion": "Red y conectividad",
+                    "items": [
+                        "Internet / WiFi",
+                        "Cableado de red",
+                        "VPN / acceso remoto",
+                        "Teléfono / anexo"
+                    ]
+                },
+                {
+                    "seccion": "Cuentas y acceso",
+                    "items": [
+                        "Correo electrónico (alta / baja / cuota)",
+                        "Contraseña / desbloqueo",
+                        "Usuario de sistema / dominio",
+                        "Permisos de carpetas / archivos"
+                    ]
+                },
+                {
+                    "seccion": "Software",
+                    "items": [
+                        "Instalación de programas",
+                        "Office / Excel / Word",
+                        "Licencias",
+                        "Antivirus",
+                        "Actualización de Windows",
+                        "Otro software"
+                    ]
+                },
+                {
+                    "seccion": "Datos y respaldo",
+                    "items": [
+                        "Backup de archivos",
+                        "Recuperación de datos",
+                        "Pendrive / disco externo"
+                    ]
+                },
+                {
+                    "seccion": "Otros",
+                    "items": [
+                        "Nueva estación de trabajo",
+                        "Traslado de equipo",
+                        "Capacitación / apoyo",
+                        "Otro soporte TI"
+                    ]
+                }
+            ]
         }
-      ]
-    },
-    {
-      "id": "SISTEMA_VASCO",
-      "nombre": "Sistema Vasco",
-      "ayuda": "Nuestra conexión hacia internet: visita, portal, cobranzas y campañas en la nube.",
-      "modulos": [
-        {
-          "seccion": "Operación",
-          "items": ["Inicio", "Clientes", "Grupos empresariales", "Estados de cuenta"]
-        },
-        {
-          "seccion": "Visita vendedor",
-          "items": [
-            "Atender cliente",
-            "Letras vencidas",
-            "Ficha cliente",
-            "Estados de cuenta (visita)",
-            "Cobrar / Registrar cobranza",
-            "Cobranzas",
-            "Detalle de cobranza",
-            "Gestionar cliente",
-            "Grupo empresarial (visita)",
-            "Terminar visita",
-            "Pedidos (próximamente)",
-            "Facturas (próximamente)",
-            "Soporte técnico (próximamente)"
-          ]
-        },
-        {
-          "seccion": "Mi gestión",
-          "items": [
-            "Mi gestión / Resumen",
-            "Mis cobranzas",
-            "Por rendir",
-            "Mis atenciones",
-            "Mi cartera"
-          ]
-        },
-        {
-          "seccion": "Supervisión",
-          "items": ["Supervisión ventas", "Detalle vendedor", "Ubicación en campo"]
-        },
-        {
-          "seccion": "Portal cliente",
-          "items": [
-            "Mi cuenta",
-            "Estado de cuenta",
-            "Cobranzas (portal)",
-            "Detalle de cobranza (portal)",
-            "Grupo empresarial (portal)",
-            "Cambiar contraseña",
-            "Solicitar visita"
-          ]
-        },
-        {
-          "seccion": "Campañas",
-          "items": [
-            "Embajadores",
-            "Banco de preguntas",
-            "Campañas",
-            "Códigos de etiqueta",
-            "Analítica encuestas",
-            "Encuesta pública (QR)"
-          ]
-        },
-        {
-          "seccion": "Administración",
-          "items": ["Usuarios", "Roles", "Módulos", "WhatsApp", "Configuración", "API / sync"]
-        }
-      ]
-    },
-    {
-      "id": "VASCOPRO",
-      "nombre": "VascoPro",
-      "ayuda": "Será la nueva versión del ERP. Está en proceso de migración (hoy RRHH).",
-      "modulos": [
-        {
-          "seccion": "General",
-          "items": [
-            "Dashboard",
-            "Mi equipo"
-          ]
-        },
-        {
-          "seccion": "RRHH — Contratos",
-          "items": [
-            "Contratos",
-            "Plantillas de contrato"
-          ]
-        },
-        {
-          "seccion": "RRHH — Talento",
-          "items": [
-            "Empleados",
-            "Jefaturas",
-            "Panel RRHH"
-          ]
-        },
-        {
-          "seccion": "RRHH — Control de asistencia",
-          "items": [
-            "Asistencias",
-            "Calendario laboral",
-            "Turnos"
-          ]
-        },
-        {
-          "seccion": "RRHH — Planilla",
-          "items": [
-            "Periodos de planilla"
-          ]
-        },
-        {
-          "seccion": "RRHH — Incidencias y permisos",
-          "items": [
-            "Tardanzas",
-            "Análisis semanal de tardanzas",
-            "Faltas",
-            "Permisos laborales",
-            "Licencias laborales",
-            "Vacaciones"
-          ]
-        },
-        {
-          "seccion": "Sistema",
-          "items": [
-            "Usuarios",
-            "Roles",
-            "Módulos",
-            "Configuración",
-            "Otro VascoPro"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "TI_EMPRESA",
-      "nombre": "TI / Soporte empresa",
-      "ayuda": "PCs, correos, programas, red, impresoras y todo el soporte interno de la empresa.",
-      "modulos": [
-        {
-          "seccion": "Equipos",
-          "items": [
-            "PC de escritorio",
-            "Laptop",
-            "Monitor",
-            "Teclado / mouse / periféricos",
-            "Impresora / escáner",
-            "Proyector / sala",
-            "Otro hardware"
-          ]
-        },
-        {
-          "seccion": "Red y conectividad",
-          "items": [
-            "Internet / WiFi",
-            "Cableado de red",
-            "VPN / acceso remoto",
-            "Teléfono / anexo"
-          ]
-        },
-        {
-          "seccion": "Cuentas y acceso",
-          "items": [
-            "Correo electrónico (alta / baja / cuota)",
-            "Contraseña / desbloqueo",
-            "Usuario de sistema / dominio",
-            "Permisos de carpetas / archivos"
-          ]
-        },
-        {
-          "seccion": "Software",
-          "items": [
-            "Instalación de programas",
-            "Office / Excel / Word",
-            "Licencias",
-            "Antivirus",
-            "Actualización de Windows",
-            "Otro software"
-          ]
-        },
-        {
-          "seccion": "Datos y respaldo",
-          "items": [
-            "Backup de archivos",
-            "Recuperación de datos",
-            "Pendrive / disco externo"
-          ]
-        },
-        {
-          "seccion": "Otros",
-          "items": [
-            "Nueva estación de trabajo",
-            "Traslado de equipo",
-            "Capacitación / apoyo",
-            "Otro soporte TI"
-          ]
-        }
-      ]
-    }
-  ]
+    ]
 }
