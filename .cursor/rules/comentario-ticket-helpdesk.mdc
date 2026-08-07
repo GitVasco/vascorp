@@ -1,0 +1,36 @@
+---
+description: Al cerrar un requerimiento ligado a ticket, entregar comentario listo para pegar (solo lenguaje de usuario)
+alwaysApply: true
+---
+
+# Comentario para ticket (helpdesk)
+
+Cuando el usuario indique que el trabajo responde a un **ticket**, al terminar (o si lo pide) entregar un **comentario listo para pegar**.
+
+## Contenido (solo para el usuario final)
+
+El comentario debe ayudar a **entender qué se hizo y cómo usarlo**.  
+**Prohibido** en el texto pegable: rutas de archivos, scripts SQL, códigos de operación, nombres de tablas/campos, commits, APIs, detalles de implementación.
+
+Sí incluir:
+
+1. **Qué se resolvió** (en lenguaje de negocio).
+2. **Dónde lo encuentra** (pantalla / menú que el usuario conoce).
+3. **Cómo funciona** (pasos simples: qué elige, qué calcula, qué obtiene).
+4. **Qué debe tener en cuenta** solo si afecta el uso (ej. “solo trabajadores activos”, “elige fecha y sector”).
+
+## Formato
+
+Texto plano, breve, en español, listo para copiar. Sin jerga técnica.
+
+## Ejemplo (estilo)
+
+```
+En En Taller ahora pueden crear una compensación por feriado para varios trabajadores a la vez.
+Eligen la fecha del feriado, filtran por sector, marcan a quiénes aplica y el sistema calcula el monto (sueldo mensual ÷ 30) y deja el pago listo sin marcar ticket a mano.
+```
+
+## Comportamiento
+
+- Entregar el comentario **destacado y listo para copiar**.
+- Si hace falta un pendiente técnico (SQL, deploy), decírselo al usuario **aparte**, fuera del texto del ticket.
