@@ -14,14 +14,19 @@ require_once "../modelos/sectores.modelo.php";
 header("Content-Type: application/json; charset=utf-8");
 
 if (!ControladorModeloColorTaller::ctrPuedeProduccion()) {
-	echo json_encode(array("ok" => false, "mensaje" => "Sin permiso de producción"));
+	echo json_encode(array("ok" => false, "mensaje" => "Sin permiso"));
 	return;
 }
 
 $accion = isset($_POST["accion"]) ? $_POST["accion"] : "";
 
 if ($accion === "listarModelos") {
-	$lista = ControladorModelos::ctrMostrarModelosActivos();
+	$soloPendientes = !empty($_POST["solo_pendientes"]);
+	if ($soloPendientes) {
+		$lista = ControladorModeloColorTaller::ctrListarModelosPendientes();
+	} else {
+		$lista = ControladorModelos::ctrMostrarModelosActivos();
+	}
 	echo json_encode(array("ok" => true, "data" => $lista ? $lista : array()));
 	return;
 }

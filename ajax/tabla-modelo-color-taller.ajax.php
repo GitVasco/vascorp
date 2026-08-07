@@ -27,10 +27,14 @@ $data = array();
 if (is_array($lista)) {
 	foreach ($lista as $a) {
 		$id = (int) $a["id"];
-		$modeloTxt = htmlspecialchars($a["modelo"], ENT_QUOTES, "UTF-8");
+		$modeloRaw = isset($a["modelo"]) ? (string) $a["modelo"] : "";
+		$modeloTxt = htmlspecialchars($modeloRaw, ENT_QUOTES, "UTF-8");
 		if (!empty($a["nombre_modelo"])) {
 			$modeloTxt .= " — " . htmlspecialchars($a["nombre_modelo"], ENT_QUOTES, "UTF-8");
 		}
+		$modeloHtml = '<span class="mct-modelo" data-modelo="'
+			. htmlspecialchars($modeloRaw, ENT_QUOTES, "UTF-8") . '">'
+			. $modeloTxt . "</span>";
 
 		if ($a["cod_color"] === "" || $a["cod_color"] === null) {
 			$colorTxt = "<span class='label label-info'>Todo el modelo</span>";
@@ -46,6 +50,15 @@ if (is_array($lista)) {
 			$tallerTxt .= " — " . htmlspecialchars($a["nom_sector"], ENT_QUOTES, "UTF-8");
 		}
 
+		$colorTaller = isset($a["color_taller"]) ? trim((string) $a["color_taller"]) : "";
+		if ($colorTaller !== "" && preg_match('/^#[0-9A-Fa-f]{6}$/', $colorTaller)) {
+			$tallerHtml = '<span class="mct-taller-label" data-bg="'
+				. htmlspecialchars($colorTaller, ENT_QUOTES, "UTF-8") . '">'
+				. $tallerTxt . "</span>";
+		} else {
+			$tallerHtml = '<span class="mct-taller-label">' . $tallerTxt . "</span>";
+		}
+
 		$estadoHtml = ((int) $a["estado"] === 1)
 			? "<span class='label label-success'>Activo</span>"
 			: "<span class='label label-default'>Inactivo</span>";
@@ -58,15 +71,15 @@ if (is_array($lista)) {
 			. "<button class='btn btn-xs btn-warning btnEditarModeloColorTaller' data-id='" . $id
 			. "' title='Editar'><i class='fa fa-pencil'></i></button>"
 			. "<button class='btn btn-xs btn-danger btnEliminarModeloColorTaller' data-id='" . $id
-			. "' data-modelo='" . htmlspecialchars($a["modelo"], ENT_QUOTES, "UTF-8")
+			. "' data-modelo='" . htmlspecialchars($modeloRaw, ENT_QUOTES, "UTF-8")
 			. "' data-color='" . htmlspecialchars((string) $a["cod_color"], ENT_QUOTES, "UTF-8")
 			. "' title='Eliminar'><i class='fa fa-trash'></i></button>"
 			. "</div>";
 
 		$data[] = array(
-			$modeloTxt,
+			$modeloHtml,
 			$colorTxt,
-			$tallerTxt,
+			$tallerHtml,
 			$estadoHtml,
 			$obs,
 			$botones

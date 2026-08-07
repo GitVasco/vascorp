@@ -1,6 +1,8 @@
 <?php
-if (!isset($_SESSION["produccion"]) || (int) $_SESSION["produccion"] !== 1) {
-    echo '<div class="content-wrapper"><section class="content"><div class="alert alert-danger">Sin permiso de producción.</div></section></div>';
+$puedeMct = (isset($_SESSION["maestros"]) && (int) $_SESSION["maestros"] === 1)
+    || (isset($_SESSION["produccion"]) && (int) $_SESSION["produccion"] === 1);
+if (!$puedeMct) {
+    echo '<div class="content-wrapper"><section class="content"><div class="alert alert-danger">Sin permiso.</div></section></div>';
     return;
 }
 ?>
@@ -8,13 +10,13 @@ if (!isset($_SESSION["produccion"]) || (int) $_SESSION["produccion"] !== 1) {
 
     <section class="content-header">
         <h1>
-            Taller por modelo / color
-            <small>Configuración</small>
+            Taller modelo
+            <small>Por modelo / color</small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li>Producción</li>
-            <li class="active">Taller por modelo / color</li>
+            <li>Maestros</li>
+            <li class="active">Taller modelo</li>
         </ol>
     </section>
 
@@ -120,8 +122,8 @@ if (!isset($_SESSION["produccion"]) || (int) $_SESSION["produccion"] !== 1) {
                                 <label>Modelo</label>
                                 <select class="form-control selectpicker" name="modelo" id="nuevoModeloMct"
                                     data-live-search="true" data-size="10" data-container="body"
-                                    title="— Seleccionar —" required>
-                                    <option value="">— Seleccionar —</option>
+                                    title="— Solo modelos con colores pendientes —" required>
+                                    <option value="">— Solo modelos con colores pendientes —</option>
                                 </select>
                             </div>
                         </div>
@@ -322,6 +324,17 @@ body .bootstrap-select .dropdown-menu {
 }
 #tablaColoresNuevoMct td {
     vertical-align: middle;
+}
+.tablaModeloColorTaller tr.mct-sep-modelo > td {
+    border-top: 3px solid #444 !important;
+}
+.tablaModeloColorTaller td.mct-td-taller {
+    font-weight: 600;
+    white-space: nowrap;
+}
+.tablaModeloColorTaller .mct-taller-label {
+    display: inline-block;
+    padding: 1px 0;
 }
 </style>
 <script>

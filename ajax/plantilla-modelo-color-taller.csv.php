@@ -8,7 +8,7 @@ require_once "../controladores/modelo-color-taller.controlador.php";
 
 if (!ControladorModeloColorTaller::ctrPuedeProduccion()) {
 	http_response_code(403);
-	exit("Sin permiso de producción");
+	exit("Sin permiso");
 }
 
 header("Content-Type: text/csv; charset=utf-8");

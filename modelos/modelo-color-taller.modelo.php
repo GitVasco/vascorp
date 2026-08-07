@@ -11,7 +11,8 @@ class ModeloModeloColorTaller
 	{
 		$sql = "SELECT mct.*,
 				mo.nombre AS nombre_modelo,
-				s.nom_sector
+				s.nom_sector,
+				s.color AS color_taller
 			FROM modelo_color_tallerjf mct
 			LEFT JOIN modelojf mo ON TRIM(mo.modelo) = TRIM(mct.modelo)
 			LEFT JOIN sectorjf s ON s.cod_sector = mct.cod_sector
@@ -59,7 +60,8 @@ class ModeloModeloColorTaller
 		$stmt = Conexion::conectar()->prepare(
 			"SELECT mct.*,
 				mo.nombre AS nombre_modelo,
-				s.nom_sector
+				s.nom_sector,
+				s.color AS color_taller
 			 FROM modelo_color_tallerjf mct
 			 LEFT JOIN modelojf mo ON TRIM(mo.modelo) = TRIM(mct.modelo)
 			 LEFT JOIN sectorjf s ON s.cod_sector = mct.cod_sector

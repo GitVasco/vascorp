@@ -628,6 +628,7 @@
                                         $_GET["ruta"] == "operaciones" ||
                                         $_GET["ruta"] == "paras" ||
                                         $_GET["ruta"] == "sectores" ||
+                                        $_GET["ruta"] == "modelo-color-taller" ||
                                         $_GET["ruta"] == "marcas" ||
                                         $_GET["ruta"] == "tipomovimientos" ||
                                         $_GET["ruta"] == "tipopagos" ||
@@ -801,6 +802,16 @@
 
                         </li>
 
+                        <li class="<?php if ($_GET["ruta"] == "modelo-color-taller") echo 'active'; ?>">
+                            <a href="modelo-color-taller">
+
+                                <i class="fa fa-circle-o"></i>
+                                <span>Taller modelo</span>
+
+                            </a>
+
+                        </li>
+
                         <li class="<?php if ($_GET["ruta"] == "tipomovimientos") echo 'active'; ?>">
                             <a href="tipomovimientos">
 
@@ -895,7 +906,7 @@
                     "seguimiento", "enviados-taller", "listar-documento", "ajuste-taller",
                     "urgencias-produccion", "urgencias-almacen", "urgencias-corte", "urgencias-plan",
                     "urgencias-maestro", "transferencias-apt", "crear-transferencias-apt", "estampado", "tampografia", "prehormado", "arreglos", "crear-arreglos", "cerrar-arreglos", "en-talleres",
-                    "modelo-color-taller", "programacion-taller-semana"
+                    "programacion-taller-semana"
                 ];
 
                 $isActiveProduccion = in_array($_GET["ruta"], $rutasActivasProduccion) ? 'active' : '';
@@ -911,7 +922,7 @@
                     <ul class="treeview-menu">
 
                         <?php
-                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "modelo-color-taller", "programacion-taller-semana"];
+                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "programacion-taller-semana"];
                         $isActiveProgramación = in_array($_GET["ruta"], $rutasActivasProgramación) ? 'active' : '';
                         ?>
 
@@ -954,12 +965,8 @@
                                     <a href="ingresos"><i class="fa fa-circle-o"></i> Ingresos</a>
                                 </li>
 
-                                <li class="<?= $_GET['ruta'] == 'modelo-color-taller' ? 'active' : '' ?>">
-                                    <a href="modelo-color-taller"><i class="fa fa-circle-o"></i> Taller x modelo/color</a>
-                                </li>
-
                                 <li class="<?= $_GET['ruta'] == 'programacion-taller-semana' ? 'active' : '' ?>">
-                                    <a href="programacion-taller-semana"><i class="fa fa-circle-o"></i> Prog. semanal taller</a>
+                                    <a href="programacion-taller-semana"><i class="fa fa-circle-o"></i> Prog. semana</a>
                                 </li>
 
                             </ul>

@@ -16,7 +16,9 @@ class ControladorModeloColorTaller
 
 	static public function ctrPuedeProduccion()
 	{
-		return isset($_SESSION["produccion"]) && (int) $_SESSION["produccion"] === 1;
+		$maestros = isset($_SESSION["maestros"]) && (int) $_SESSION["maestros"] === 1;
+		$produccion = isset($_SESSION["produccion"]) && (int) $_SESSION["produccion"] === 1;
+		return $maestros || $produccion;
 	}
 
 	static public function ctrListar($filtros = array())
@@ -32,6 +34,37 @@ class ControladorModeloColorTaller
 	static public function ctrListarColoresCatalogo()
 	{
 		return ModeloModeloColorTaller::mdlListarColoresCatalogo();
+	}
+
+	/**
+	 * Modelos activos que aún tienen al menos un color sin taller asignado.
+	 */
+	static public function ctrListarModelosPendientes()
+	{
+		$modelos = ControladorModelos::ctrMostrarModelosActivos();
+		$out = array();
+		if (!is_array($modelos)) {
+			return $out;
+		}
+		foreach ($modelos as $m) {
+			$modelo = isset($m["modelo"]) ? trim((string) $m["modelo"]) : "";
+			if ($modelo === "") {
+				continue;
+			}
+			$det = self::ctrColoresModeloDetalle($modelo, true);
+			$colores = isset($det["data"]) && is_array($det["data"]) ? $det["data"] : array();
+			$hayPendiente = false;
+			foreach ($colores as $c) {
+				if (empty($c["asignado"])) {
+					$hayPendiente = true;
+					break;
+				}
+			}
+			if ($hayPendiente) {
+				$out[] = $m;
+			}
+		}
+		return $out;
 	}
 
 	static public function ctrResumenArticulosPorTaller()
@@ -127,7 +160,7 @@ class ControladorModeloColorTaller
 	static public function ctrCrearMasivoAjax($post)
 	{
 		if (!self::ctrPuedeProduccion()) {
-			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+			return array("ok" => false, "mensaje" => "Sin permiso");
 		}
 
 		$modelo = strtoupper(trim(isset($post["modelo"]) ? $post["modelo"] : ""));
@@ -283,7 +316,7 @@ class ControladorModeloColorTaller
 	static public function ctrCrearAjax($post)
 	{
 		if (!self::ctrPuedeProduccion()) {
-			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+			return array("ok" => false, "mensaje" => "Sin permiso");
 		}
 
 		$norm = self::ctrNormalizarDatos($post, false);
@@ -303,7 +336,7 @@ class ControladorModeloColorTaller
 	static public function ctrEditarAjax($post)
 	{
 		if (!self::ctrPuedeProduccion()) {
-			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+			return array("ok" => false, "mensaje" => "Sin permiso");
 		}
 
 		$norm = self::ctrNormalizarDatos($post, true);
@@ -327,7 +360,7 @@ class ControladorModeloColorTaller
 	static public function ctrEliminarAjax($post)
 	{
 		if (!self::ctrPuedeProduccion()) {
-			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+			return array("ok" => false, "mensaje" => "Sin permiso");
 		}
 
 		$id = isset($post["id"]) ? (int) $post["id"] : 0;
@@ -624,7 +657,7 @@ class ControladorModeloColorTaller
 	static public function ctrImportarArchivo($post, $files)
 	{
 		if (!self::ctrPuedeProduccion()) {
-			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+			return array("ok" => false, "mensaje" => "Sin permiso");
 		}
 
 		$confirmar = isset($post["confirmar"]) && (string) $post["confirmar"] === "1";

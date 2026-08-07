@@ -131,8 +131,9 @@ function resetSelectColorMct($select, deshabilitar) {
     refrescarSelectMct($select);
 }
 
-function cargarColoresModeloMct($select, modelo, colorSeleccionado) {
+function cargarColoresModeloMct($select, modelo, colorSeleccionado, opts) {
     colorSeleccionado = colorSeleccionado == null ? "" : String(colorSeleccionado);
+    opts = opts || {};
     if (!modelo) {
         resetSelectColorMct($select, true);
         return $.Deferred().resolve().promise();
@@ -141,13 +142,21 @@ function cargarColoresModeloMct($select, modelo, colorSeleccionado) {
     $select.prop("disabled", true);
     refrescarSelectMct($select);
 
-    return $.post("ajax/modelo-color-taller.ajax.php", {
+    var post = {
         accion: "coloresModelo",
         modelo: modelo
-    }, function (resp) {
+    };
+    if (opts.soloPendientes) {
+        post.con_asignacion = 1;
+    }
+
+    return $.post("ajax/modelo-color-taller.ajax.php", post, function (resp) {
         $select.empty().append($("<option>").val("").text("— Todo el modelo —"));
         if (resp && resp.ok && resp.data && resp.data.length) {
             resp.data.forEach(function (item) {
+                if (opts.soloPendientes && item.asignado && String(item.cod_color) !== colorSeleccionado) {
+                    return;
+                }
                 var txt = item.cod_color + " — " + (item.nom_color || "");
                 $select.append($("<option>").val(String(item.cod_color)).text(txt));
             });
@@ -156,7 +165,7 @@ function cargarColoresModeloMct($select, modelo, colorSeleccionado) {
             return String($(this).val()) === colorSeleccionado;
         }).length === 0) {
             $select.append(
-                $("<option>").val(colorSeleccionado).text(colorSeleccionado + " (histórico)")
+                $("<option>").val(colorSeleccionado).text(colorSeleccionado + " (actual)")
             );
         }
         $select.prop("disabled", false);
@@ -166,15 +175,28 @@ function cargarColoresModeloMct($select, modelo, colorSeleccionado) {
     });
 }
 
-function llenarSelectModelos($selects) {
-    return $.post("ajax/modelo-color-taller.ajax.php", { accion: "listarModelos" }, function (resp) {
+function llenarSelectModelos($selects, opts) {
+    opts = opts || {};
+    var post = { accion: "listarModelos" };
+    if (opts.soloPendientes) {
+        post.solo_pendientes = 1;
+    }
+    return $.post("ajax/modelo-color-taller.ajax.php", post, function (resp) {
         $selects.each(function () {
             var $s = $(this);
+            var valorActual = $s.val() || "";
             $s.find("option:not(:first)").remove();
             if (resp && resp.ok && resp.data) {
                 resp.data.forEach(function (item) {
                     $s.append($("<option>").val(item.modelo).text(item.nombre || item.modelo));
                 });
+            }
+            if (valorActual && $s.find("option").filter(function () {
+                return String($(this).val()) === String(valorActual);
+            }).length) {
+                setSelectMct($s, valorActual);
+            } else {
+                setSelectMct($s, "");
             }
             refrescarSelectMct($s);
         });
@@ -256,7 +278,7 @@ function escaparAttrMct(texto) {
 
 function limpiarDetalleColoresNuevoMct() {
     $("#bloqueReglaGeneralMct").hide();
-    $("#nuevoSectorGeneralMct").val("");
+    $("#nuevoSectorGeneralMct").prop("disabled", false).val("");
     refrescarSelectMct($("#nuevoSectorGeneralMct"));
     $("#estadoReglaGeneralMct").text("—");
     $("#ayudaColoresModeloMct").text("Elige un modelo para ver sus colores uno por uno y asignar taller a cada color.");
@@ -292,15 +314,19 @@ function cargarDetalleColoresNuevoMct(modelo) {
         var colores = resp.data || [];
         $("#bloqueReglaGeneralMct").show();
         var rg = resp.regla_general || {};
-        $("#nuevoSectorGeneralMct").val(rg.cod_sector || "");
-        refrescarSelectMct($("#nuevoSectorGeneralMct"));
         if (rg.asignado) {
+            $("#nuevoSectorGeneralMct").val(rg.cod_sector || "");
+            $("#nuevoSectorGeneralMct").prop("disabled", true);
+            refrescarSelectMct($("#nuevoSectorGeneralMct"));
             $("#estadoReglaGeneralMct").html(
                 '<span class="label label-warning">Ya tiene: '
                 + escaparMct(rg.cod_sector + (rg.nom_sector ? " — " + rg.nom_sector : ""))
                 + "</span>"
             );
         } else {
+            $("#nuevoSectorGeneralMct").prop("disabled", false);
+            $("#nuevoSectorGeneralMct").val("");
+            refrescarSelectMct($("#nuevoSectorGeneralMct"));
             $("#estadoReglaGeneralMct").html('<span class="label label-default">Sin regla general</span>');
         }
 
@@ -314,19 +340,25 @@ function cargarDetalleColoresNuevoMct(modelo) {
         }
 
         $("#ayudaColoresModeloMct").text(
-            "Asigna taller color por color (" + colores.length + "). Solo se guardan las filas con taller."
+            "Pendientes con select de taller. Los ya asignados se muestran solo para consulta."
         );
 
         var filas = colores.map(function (item) {
             var estado = item.asignado
                 ? '<span class="label label-warning">Ya: ' + escaparMct(item.cod_sector || "") + "</span>"
                 : '<span class="label label-default">Pendiente</span>';
-            return "<tr data-cod-color=\"" + escaparAttrMct(item.cod_color) + "\">"
+            var tallerCell = item.asignado
+                ? "<td><strong>" + escaparMct(
+                    (item.cod_sector || "") + (item.nom_sector ? " — " + item.nom_sector : "")
+                ) + "</strong></td>"
+                : '<td><select class="form-control input-sm selectTallerColorMct">'
+                    + htmlOpcionesTallerMct("")
+                    + "</select></td>";
+            return "<tr data-cod-color=\"" + escaparAttrMct(item.cod_color) + "\""
+                + (item.asignado ? ' data-asignado="1"' : "") + ">"
                 + "<td><strong>" + escaparMct(item.cod_color) + "</strong></td>"
                 + "<td>" + escaparMct(item.nom_color || "") + "</td>"
-                + '<td><select class="form-control input-sm selectTallerColorMct">'
-                + htmlOpcionesTallerMct(item.cod_sector || "")
-                + "</select></td>"
+                + tallerCell
                 + "<td>" + estado + "</td>"
                 + "</tr>";
         });
@@ -341,11 +373,12 @@ function cargarDetalleColoresNuevoMct(modelo) {
 
 function filasNuevoMctParaGuardar() {
     var filas = [];
-    var sectorGeneral = $("#nuevoSectorGeneralMct").val() || "";
+    var $sectorGeneral = $("#nuevoSectorGeneralMct");
+    var sectorGeneral = (!$sectorGeneral.prop("disabled") && $sectorGeneral.val()) || "";
     if (sectorGeneral) {
         filas.push({ cod_color: "", cod_sector: sectorGeneral });
     }
-    $("#bodyColoresNuevoMct tr[data-cod-color]").each(function () {
+    $("#bodyColoresNuevoMct tr[data-cod-color]:not([data-asignado])").each(function () {
         var cod = $(this).attr("data-cod-color") || "";
         var sector = $(this).find(".selectTallerColorMct").val() || "";
         if (sector) {
@@ -361,7 +394,8 @@ function actualizarEstadoBotonNuevoMct() {
 
 function cargarCatalogosMct() {
     return $.when(
-        llenarSelectModelos($("#filtroModeloMct, #nuevoModeloMct, #editarModeloMct")),
+        llenarSelectModelos($("#filtroModeloMct, #editarModeloMct")),
+        llenarSelectModelos($("#nuevoModeloMct"), { soloPendientes: true }),
         llenarSelectColoresFiltro($("#filtroColorMct"), ""),
         llenarSelectSectores($(
             "#filtroSectorMct, #editarSectorMct, #nuevoSectorDefaultMct, #nuevoSectorGeneralMct"
@@ -388,7 +422,28 @@ if ($(".tablaModeloColorTaller").length) {
         processing: true,
         order: [[0, "asc"]],
         pageLength: 25,
-        language: idiomaDtMct
+        language: idiomaDtMct,
+        createdRow: function (row) {
+            var $bg = $("td:eq(2)", row).find("[data-bg]");
+            if ($bg.length) {
+                $("td:eq(2)", row)
+                    .css("background-color", $bg.attr("data-bg"))
+                    .addClass("mct-td-taller");
+            }
+        },
+        drawCallback: function () {
+            var api = this.api();
+            var prevModelo = null;
+            api.rows({ page: "current" }).every(function () {
+                var $tr = $(this.node());
+                $tr.removeClass("mct-sep-modelo");
+                var modelo = $tr.find(".mct-modelo").attr("data-modelo") || "";
+                if (prevModelo !== null && String(modelo) !== String(prevModelo)) {
+                    $tr.addClass("mct-sep-modelo");
+                }
+                prevModelo = modelo;
+            });
+        }
     });
 
     cargarCatalogosMct();
@@ -419,7 +474,7 @@ $(document).on("changed.bs.select change", "#editarModeloMct", function () {
     if (cargandoEdicionMct) {
         return;
     }
-    cargarColoresModeloMct($("#editarColorMct"), $(this).val() || "", "");
+    cargarColoresModeloMct($("#editarColorMct"), $(this).val() || "", "", { soloPendientes: true });
 });
 
 $(document).on("changed.bs.select change", "#nuevoSectorGeneralMct", function () {
@@ -493,6 +548,7 @@ $("#formAgregarModeloColorTaller").on("submit", function (e) {
     }, function (resp) {
         if (resp && resp.ok) {
             $("#modalAgregarModeloColorTaller").modal("hide");
+            llenarSelectModelos($("#nuevoModeloMct"), { soloPendientes: true });
             recargarTablaMct();
             alertaMct("success", resp.mensaje || "Guardado");
         } else {
@@ -533,7 +589,7 @@ $(document).on("click", ".btnEditarModeloColorTaller", function () {
             : colorEditar + (d.nom_color ? " — " + d.nom_color : "");
         $("#editarColorActualMct").text(textoColor);
 
-        cargarColoresModeloMct($("#editarColorMct"), d.modelo || "", colorEditar).always(function () {
+        cargarColoresModeloMct($("#editarColorMct"), d.modelo || "", colorEditar, { soloPendientes: true }).always(function () {
             setSelectMct($("#editarColorMct"), colorEditar);
             $("#modalEditarModeloColorTaller").modal("show");
             // Tras mostrar el modal, reaplicar por si selectpicker redibuja
@@ -555,6 +611,7 @@ $("#formEditarModeloColorTaller").on("submit", function (e) {
     $.post("ajax/modelo-color-taller.ajax.php", $.param(data), function (resp) {
         if (resp && resp.ok) {
             $("#modalEditarModeloColorTaller").modal("hide");
+            llenarSelectModelos($("#nuevoModeloMct"), { soloPendientes: true });
             recargarTablaMct();
             alertaMct("success", resp.mensaje || "Actualizado");
         } else {
@@ -568,6 +625,7 @@ $("#formEditarModeloColorTaller").on("submit", function (e) {
 function eliminarModeloColorTaller(id) {
     $.post("ajax/modelo-color-taller.ajax.php", { accion: "eliminar", id: id }, function (resp) {
         if (resp && resp.ok) {
+            llenarSelectModelos($("#nuevoModeloMct"), { soloPendientes: true });
             recargarTablaMct();
             alertaMct("success", resp.mensaje || "Eliminado");
         } else {

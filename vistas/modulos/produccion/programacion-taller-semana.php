@@ -40,7 +40,7 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
             <li>Producción</li>
-            <li class="active">Programación semanal</li>
+            <li class="active">Prog. semana</li>
         </ol>
     </section>
 
