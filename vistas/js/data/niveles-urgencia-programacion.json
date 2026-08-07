@@ -1,0 +1,47 @@
+{
+  "niveles": [
+    {
+      "id": "critico",
+      "nombre": "Crítico",
+      "color": "#F4A6A6",
+      "orden": 1,
+      "urg_max": 0.5,
+      "descripcion": "Cobertura muy baja; atender primero"
+    },
+    {
+      "id": "urgente",
+      "nombre": "Urgente",
+      "color": "#FFB380",
+      "orden": 2,
+      "urg_max": 0.85,
+      "descripcion": "Requiere acción esta semana"
+    },
+    {
+      "id": "avanzar",
+      "nombre": "Avanzar",
+      "color": "#FFE08A",
+      "orden": 3,
+      "urg_max": 1.5,
+      "descripcion": "Conviene adelantar producción"
+    },
+    {
+      "id": "prioridad",
+      "nombre": "Prioridad",
+      "color": "#A8D5A2",
+      "orden": 4,
+      "urg_max": 2.5,
+      "descripcion": "Prioritario dentro del plan"
+    },
+    {
+      "id": "campana",
+      "nombre": "Campaña",
+      "color": "#C9B1FF",
+      "orden": 5,
+      "urg_max": null,
+      "por_estado_articulo": ["CampañaD", "CAMPANA", "campaña", "Campana"],
+      "descripcion": "Artículo de campaña comercial"
+    }
+  ],
+  "nivel_default": "prioridad",
+  "nota": "urg_max = meses de cobertura (urg_plan). Campaña se asigna por estado del artículo."
+}

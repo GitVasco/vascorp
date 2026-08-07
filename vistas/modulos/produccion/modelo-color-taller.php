@@ -324,3 +324,6 @@ body .bootstrap-select .dropdown-menu {
     vertical-align: middle;
 }
 </style>
+<script>
+window.document.title = "Taller x modelo/color";
+</script>
