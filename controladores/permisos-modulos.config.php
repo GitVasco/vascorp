@@ -81,7 +81,15 @@ function usuarioPuedeModulo($sector, $modulo, $accion = "ver")
         return false;
     }
 
-    $permitidos = array_map("intval", $config[$sector][$modulo][$accion]);
+    $lista = $config[$sector][$modulo][$accion];
+    foreach ($lista as $item) {
+        // "*" = cualquier usuario autenticado (p. ej. helpdesk ver/registrar)
+        if ($item === "*" || $item === "all") {
+            return true;
+        }
+    }
+
+    $permitidos = array_map("intval", $lista);
 
     return in_array($idUsuario, $permitidos, true);
 }

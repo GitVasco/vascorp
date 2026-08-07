@@ -94,8 +94,8 @@
   },
   "ti": {
     "helpdesk": {
-      "ver": [6, 10],
-      "registrar": [6, 10],
+      "ver": ["*"],
+      "registrar": ["*"],
       "gestionar": [6, 10]
     }
   }

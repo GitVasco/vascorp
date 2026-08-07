@@ -23,6 +23,8 @@ class ControladorHelpdesk
     const ADJUNTO_DIR = "vistas/img/helpdesk";
     /** IDs fijos que pueden figurar en "Asignar a" */
     const AGENTES_ASIGNABLES = array(6, 10);
+    /** Control total: ve todos los tickets, reabre, IA, etc. */
+    const USUARIO_CONTROL_TOTAL = 6;
     /** Solo este usuario puede usar Corregir / Pulir con IA */
     const USUARIO_PULIR_IA = 6;
     /** Solo este usuario puede reabrir tickets cerrados */
@@ -212,6 +214,21 @@ class ControladorHelpdesk
         return self::ctrUsuarioSesionId() === self::USUARIO_REABRIR;
     }
 
+    /** Joel: ve y gestiona todos los tickets. */
+    public static function ctrEsControlTotal()
+    {
+        return self::ctrUsuarioSesionId() === self::USUARIO_CONTROL_TOTAL;
+    }
+
+    /**
+     * Agente con gestionar pero sin control total (p. ej. Kennedy):
+     * bandeja = asignados a él + sin asignar.
+     */
+    public static function ctrEsAgenteBandeja()
+    {
+        return self::ctrPuede("gestionar") && !self::ctrEsControlTotal();
+    }
+
     /**
      * Calcula estado SLA de un ticket.
      * @return array{codigo:string,label:string,cls:string,horas_limite:int,deadline:string|null,segundos:int}
@@ -318,6 +335,8 @@ class ControladorHelpdesk
             "ver" => self::ctrPuede("ver"),
             "registrar" => self::ctrPuede("registrar"),
             "gestionar" => self::ctrPuede("gestionar"),
+            "control_total" => self::ctrEsControlTotal(),
+            "agente_bandeja" => self::ctrEsAgenteBandeja(),
             "pulir_ia" => self::ctrPuedePulirIa(),
             "reabrir" => self::ctrPuedeReabrir(),
         );
@@ -353,13 +372,34 @@ class ControladorHelpdesk
         if (!$ticket) {
             return false;
         }
-        if (self::ctrPuede("gestionar")) {
+        if (self::ctrEsControlTotal()) {
             return true;
+        }
+        if (self::ctrPuede("gestionar")) {
+            $aid = isset($ticket["asignado_id"]) ? $ticket["asignado_id"] : null;
+            if ($aid === null || $aid === "" || (int) $aid === 0) {
+                return true;
+            }
+
+            return (int) $aid === self::ctrUsuarioSesionId();
         }
         $uid = self::ctrUsuarioSesionId();
 
         return ((int) $ticket["solicitante_id"] === $uid)
             || ((int) $ticket["creado_por_id"] === $uid);
+    }
+
+    /** Alcance de listado/KPIs de bandeja (no aplica a indicadores globales). */
+    private static function aplicarAlcanceBandeja(&$filtros)
+    {
+        if (self::ctrEsControlTotal()) {
+            return;
+        }
+        if (self::ctrPuede("gestionar")) {
+            $filtros["asignado_mio_o_libre"] = self::ctrUsuarioSesionId();
+            return;
+        }
+        $filtros["solicitante_id"] = self::ctrUsuarioSesionId();
     }
 
     public static function ctrListar()
@@ -379,11 +419,11 @@ class ControladorHelpdesk
             "solo_vencidos" => !empty($_POST["solo_vencidos"]),
         );
 
-        if (!self::ctrPuede("gestionar")) {
-            $filtros["solicitante_id"] = self::ctrUsuarioSesionId();
-        } elseif (!empty($_POST["solicitante_id"])) {
+        if (self::ctrEsControlTotal() && !empty($_POST["solicitante_id"])) {
             $filtros["solicitante_id"] = (int) $_POST["solicitante_id"];
         }
+
+        self::aplicarAlcanceBandeja($filtros);
 
         if ($filtros["estado"] !== "" && !in_array($filtros["estado"], self::ESTADOS, true)) {
             $filtros["estado"] = "";
@@ -463,7 +503,7 @@ class ControladorHelpdesk
      */
     public static function ctrIndicadores()
     {
-        if (!self::ctrPuede("ver")) {
+        if (!self::ctrPuede("gestionar")) {
             return array("ok" => false, "msg" => "Sin permiso.");
         }
 
@@ -486,10 +526,9 @@ class ControladorHelpdesk
         // hasta exclusivo al día siguiente
         $hastaExcl = date("Y-m-d", strtotime($hasta . " +1 day"));
 
+        // Dashboard global del área (Joel y Kennedy)
         $filtros = array();
-        if (!self::ctrPuede("gestionar")) {
-            $filtros["solicitante_id"] = self::ctrUsuarioSesionId();
-        } elseif (!empty($_POST["asignado_id"])) {
+        if (self::ctrEsControlTotal() && !empty($_POST["asignado_id"])) {
             $filtros["asignado_id"] = (int) $_POST["asignado_id"];
         }
 
@@ -1302,6 +1341,9 @@ class ControladorHelpdesk
         $ticket = ModeloHelpdesk::mdlObtener($id);
         if (!$ticket) {
             return array("ok" => false, "msg" => "Ticket no encontrado.");
+        }
+        if (!self::puedeVerTicket($ticket)) {
+            return array("ok" => false, "msg" => "Sin acceso a este ticket.");
         }
 
         // Cerrado: solo el usuario autorizado puede reabrir (cambiar a otro estado)

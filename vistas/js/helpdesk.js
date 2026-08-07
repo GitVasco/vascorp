@@ -4,7 +4,15 @@ $(function () {
     }
 
     var API = "ajax/helpdesk.ajax.php";
-    var permisos = { ver: true, registrar: false, gestionar: false, pulir_ia: false, reabrir: false };
+    var permisos = {
+        ver: true,
+        registrar: false,
+        gestionar: false,
+        control_total: false,
+        agente_bandeja: false,
+        pulir_ia: false,
+        reabrir: false
+    };
     var ticketActual = null;
     var agentes = [];
     var usuarios = [];
@@ -138,9 +146,15 @@ $(function () {
         }
         if (permisos.gestionar) {
             $(".hd-solo-gestionar").show();
-            $("#hdTabListaLabel, #hdListaTitulo").text("Bandeja");
+            $("#hdTabIndicadoresLi").show();
+            if (permisos.control_total) {
+                $("#hdTabListaLabel, #hdListaTitulo").text("Bandeja");
+            } else {
+                $("#hdTabListaLabel, #hdListaTitulo").text("Mi bandeja");
+            }
         } else {
             $(".hd-solo-gestionar").hide();
+            $("#hdTabIndicadoresLi").hide();
             $("#hdTabListaLabel, #hdListaTitulo").text("Mis tickets");
         }
         if (permisos.pulir_ia) {
@@ -282,7 +296,7 @@ $(function () {
                 return;
             }
             if (res.permisos) {
-                permisos = res.permisos;
+                permisos = $.extend({}, permisos, res.permisos);
             }
             agentes = res.agentes || [];
             usuarios = res.usuarios || [];
@@ -425,7 +439,7 @@ $(function () {
                     return;
                 }
                 if (res.permisos) {
-                    permisos = res.permisos;
+                    permisos = $.extend({}, permisos, res.permisos);
                     aplicarPermisosUi();
                 }
                 renderKpis(res.resumen || {});
@@ -466,7 +480,7 @@ $(function () {
         var h = "#lista";
         if (vista === "nuevo") {
             h = "#nuevo";
-        } else if (vista === "indicadores") {
+        } else if (vista === "indicadores" && permisos.gestionar) {
             h = "#indicadores";
         } else if (vista === "ticket" && ticketId) {
             h = "#ticket/" + ticketId;
@@ -528,6 +542,10 @@ $(function () {
     }
 
     function mostrarVistaIndicadores(actualizarHash) {
+        if (!permisos.gestionar) {
+            mostrarVistaLista(actualizarHash);
+            return;
+        }
         $("#hdVistaConversacion, #hdVistaNuevo, #hdVistaLista").removeClass("active");
         $("#hdTabNuevoLi, #hdTabListaLi").removeClass("active");
         $("#hdTabIndicadoresLi").addClass("active");
@@ -947,7 +965,7 @@ $(function () {
                     return;
                 }
                 if (res.permisos) {
-                    permisos = res.permisos;
+                    permisos = $.extend({}, permisos, res.permisos);
                 }
                 if (res.agentes) {
                     agentes = res.agentes;

@@ -64,6 +64,11 @@ class ModeloHelpdesk
             $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
         }
 
+        if (!empty($filtros["asignado_mio_o_libre"])) {
+            $sql .= " AND (t.asignado_id = :amid_libre OR t.asignado_id IS NULL)";
+            $params[":amid_libre"] = (int) $filtros["asignado_mio_o_libre"];
+        }
+
         if (!empty($filtros["q"])) {
             $sql .= " AND (
                 t.titulo LIKE :q
@@ -125,6 +130,10 @@ class ModeloHelpdesk
         if (!empty($filtros["solicitante_id"])) {
             $sql .= " AND t.solicitante_id = :solicitante_id";
             $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
+        }
+        if (!empty($filtros["asignado_mio_o_libre"])) {
+            $sql .= " AND (t.asignado_id = :amid_libre OR t.asignado_id IS NULL)";
+            $params[":amid_libre"] = (int) $filtros["asignado_mio_o_libre"];
         }
         if (!empty($filtros["q"])) {
             $sql .= " AND (
@@ -213,6 +222,10 @@ class ModeloHelpdesk
         if (!empty($filtros["solicitante_id"])) {
             $sql .= " AND t.solicitante_id = :solicitante_id";
             $params[":solicitante_id"] = (int) $filtros["solicitante_id"];
+        }
+        if (!empty($filtros["asignado_mio_o_libre"])) {
+            $sql .= " AND (t.asignado_id = :amid_libre OR t.asignado_id IS NULL)";
+            $params[":amid_libre"] = (int) $filtros["asignado_mio_o_libre"];
         }
         if (!empty($filtros["q"])) {
             $sql .= " AND (

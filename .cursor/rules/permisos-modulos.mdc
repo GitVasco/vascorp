@@ -62,7 +62,7 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 
 | Módulo | Acciones | Uso |
 |--------|----------|-----|
-| `helpdesk` | `ver`, `registrar`, `gestionar` | Helpdesk TI (tickets; `gestionar` = ver todos / asignar / estados) |
+| `helpdesk` | `ver`, `registrar`, `gestionar` | Helpdesk TI (`*` en ver/registrar = todos; `gestionar` 6+10; bandeja Kennedy = suyos+libres; indicadores globales con gestionar) |
 
 ## Roles típicos en Centro de Decisiones
 
