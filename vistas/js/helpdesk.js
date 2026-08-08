@@ -288,11 +288,11 @@ $(function () {
             $("#hdTabListaLabel, #hdListaTitulo").text("Mis tickets");
         }
         if (permisos.pulir_ia) {
+            $("#hdPulirBar").removeClass("hd-pulir-hidden");
             $("#hdBtnPulir, #hdBtnPulirResp").show();
-            $("#hdVistaNuevo .hd-pulir-bar, #hdPulirBar").show();
         } else {
+            $("#hdPulirBar").addClass("hd-pulir-hidden");
             $("#hdBtnPulir, #hdBtnPulirResp").hide();
-            $("#hdVistaNuevo .hd-pulir-bar, #hdPulirBar").hide();
         }
     }
 
@@ -1445,13 +1445,13 @@ $(function () {
                 if (res.pasos_reproducir != null) {
                     $("#hdPasos").val(res.pasos_reproducir);
                 }
-                toast("success", res.msg || "Texto pulido.");
+                toast("success", res.msg || "Asunto, descripción y pasos pulidos.");
             })
             .fail(function () {
                 toast("error", "Error de red al pulir con IA.");
             })
             .always(function () {
-                $btn.prop("disabled", false).html('<i class="fa fa-magic"></i> Pulir texto (IA)');
+                $btn.prop("disabled", false).html('<i class="fa fa-magic"></i> Pulir asunto y texto (IA)');
             });
     });
 

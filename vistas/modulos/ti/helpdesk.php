@@ -60,42 +60,42 @@
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-exclamation-triangle text-orange"></i>
                                                 <strong>Incidencia</strong>
-                                                <small>Se rompió · SLA</small>
+                                                <small>Se rompió / no avanzo</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="REQUERIMIENTO"
-                                                    data-ayuda="Pides que TI haga un ajuste sobre datos o configuración que ya existen (tú o el proceso se equivocaron, o necesitas un permiso). Ej.: mover tickets a otra fecha, dar acceso a un módulo, activar un usuario. No es programar algo nuevo. Tiene SLA.">
+                                                    data-ayuda="Pides que TI haga un ajuste sobre datos o configuración que ya existen (tú o el proceso se equivocaron, o necesitas un permiso). Ej.: mover tickets a otra fecha, dar acceso a un módulo, activar un usuario. No es programar algo nuevo.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-cog text-green"></i>
                                                 <strong>Requerimiento</strong>
-                                                <small>Ajuste · SLA</small>
+                                                <small>Ajuste / permiso / dato</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="CONSULTA"
-                                                    data-ayuda="Solo quieres que te expliquen cómo hacer algo. No pides que cambien datos ni arreglen el sistema. Ej.: ¿dónde veo el estado de cuenta? ¿cómo anulo una factura? Tiene SLA.">
+                                                    data-ayuda="Solo quieres que te expliquen cómo hacer algo. No pides que cambien datos ni arreglen el sistema. Ej.: ¿dónde veo el estado de cuenta? ¿cómo anulo una factura?">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-question-circle text-blue"></i>
                                                 <strong>Consulta</strong>
-                                                <small>Pregunta · SLA</small>
+                                                <small>Solo una pregunta</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="DESARROLLO"
-                                                    data-ayuda="Quieres que construyan o mejoren el sistema: pantalla nueva, función nueva o automatización. Suele llevar días o semanas. Sin SLA de horas; TI pone fecha estimada. Ej.: pedidos por tablet, nuevo reporte automático.">
+                                                    data-ayuda="Quieres que construyan o mejoren el sistema: pantalla nueva, función nueva o automatización. Suele llevar días o semanas. Ej.: pedidos por tablet, nuevo reporte automático.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-code text-aqua"></i>
                                                 <strong>Desarrollo</strong>
-                                                <small>Nuevo · sin SLA</small>
+                                                <small>Algo nuevo en el sistema</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="CORRECCION"
-                                                    data-ayuda="El sistema sí abre y trabaja, pero se equivoca: calcula mal, muestra un dato incorrecto o un botón hace otra cosa. Ej.: el IGV sale mal. Si no carga o sale error y no puedes avanzar → usa Incidencia. Tiene SLA.">
+                                                    data-ayuda="El sistema sí abre y trabaja, pero se equivoca: calcula mal, muestra un dato incorrecto o un botón hace otra cosa. Ej.: el IGV sale mal. Si no carga o sale error y no puedes avanzar → usa Incidencia.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-wrench text-red"></i>
                                                 <strong>Corrección</strong>
-                                                <small>Se equivoca · SLA</small>
+                                                <small>Abre, pero se equivoca</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="OTRO"
-                                                    data-ayuda="Úsalo solo si revisaste los demás y ninguno encaja. Casi siempre sí hay un tipo correcto. Tiene SLA.">
+                                                    data-ayuda="Úsalo solo si revisaste los demás y ninguno encaja. Casi siempre sí hay un tipo correcto.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-ellipsis-h text-muted"></i>
                                                 <strong>Otro</strong>
-                                                <small>Ninguno · SLA</small>
+                                                <small>Ninguno encaja</small>
                                             </button>
                                         </div>
 
@@ -175,6 +175,17 @@
                                             </div>
                                         </div>
 
+                                        <?php
+                                        $hdPuedePulirIa = isset($_SESSION["id"]) && (int) $_SESSION["id"] === 6;
+                                        ?>
+                                        <div class="hd-pulir-bar<?= $hdPuedePulirIa ? "" : " hd-pulir-hidden"; ?>" id="hdPulirBar">
+                                            <button type="button" class="btn btn-info btn-sm" id="hdBtnPulir"
+                                                    title="Mejora asunto, descripción y pasos con IA">
+                                                <i class="fa fa-magic"></i> Pulir asunto y texto (IA)
+                                            </button>
+                                            <small class="text-muted">Mejora asunto, descripción y pasos.</small>
+                                        </div>
+
                                         <div class="row hd-solo-gestionar" style="display:none;">
                                             <div class="col-sm-6">
                                                 <div class="form-group">
@@ -201,13 +212,6 @@
 
                                     <div class="hd-section">
                                         <h4 class="hd-section-title"><span class="hd-step">2</span> Descripción del Problema</h4>
-                                        <div class="hd-pulir-bar" id="hdPulirBar" style="display:none;">
-                                            <button type="button" class="btn btn-default btn-sm" id="hdBtnPulir"
-                                                    title="Corrige ortografía y redacción con IA">
-                                                <i class="fa fa-magic"></i> Pulir texto (IA)
-                                            </button>
-                                            <small class="text-muted">Solo uso interno autorizado.</small>
-                                        </div>
                                         <div class="form-group">
                                             <label for="hdDescripcion">Descripción detallada <span class="text-danger">*</span></label>
                                             <textarea class="form-control" id="hdDescripcion" rows="5" required
@@ -279,13 +283,18 @@
                             <div class="box-body">
                                 <p class="hd-tips-titulo">¿Qué tipo elijo?</p>
                                 <ul class="hd-tips hd-tips-tipos" id="hdTipsTipos">
-                                    <li><strong>Incidencia:</strong> no puedes avanzar (error, no carga) · con SLA</li>
-                                    <li><strong>Corrección:</strong> sí entra, pero hace mal (dato/cálculo) · con SLA</li>
-                                    <li><strong>Requerimiento:</strong> ajustar algo existente (fecha, acceso, permiso) · con SLA</li>
-                                    <li><strong>Consulta:</strong> solo una duda de uso · con SLA</li>
-                                    <li><strong>Desarrollo:</strong> función/pantalla nueva · sin SLA (fecha estimada)</li>
-                                    <li><strong>Otro:</strong> solo si no encaja arriba · con SLA</li>
+                                    <li><strong>Incidencia:</strong> no puedes avanzar (error, no carga)</li>
+                                    <li><strong>Corrección:</strong> sí entra, pero hace mal (dato/cálculo)</li>
+                                    <li><strong>Requerimiento:</strong> ajustar algo existente (fecha, acceso, permiso)</li>
+                                    <li><strong>Consulta:</strong> solo una duda de uso</li>
+                                    <li><strong>Desarrollo:</strong> función o pantalla nueva</li>
+                                    <li><strong>Otro:</strong> solo si no encaja arriba</li>
                                 </ul>
+                                <p class="hd-tips-sla">
+                                    <strong>SLA:</strong> tiempo objetivo para atender/cerrar según la prioridad
+                                    (Alta ~4 h, Media ~24 h, Baja ~72 h). En Desarrollo no aplica:
+                                    TI define una fecha estimada.
+                                </p>
                                 <p class="hd-tips-titulo">Para este tipo</p>
                                 <ul class="hd-tips" id="hdConsejosLista">
                                     <li>Sé específico: indica módulo, pantalla y qué esperabas</li>

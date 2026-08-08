@@ -1068,7 +1068,7 @@ class ControladorHelpdesk
 
         return array(
             "ok" => true,
-            "msg" => "Texto pulido.",
+            "msg" => "Asunto, descripción y pasos pulidos.",
             "titulo" => $outTitulo,
             "descripcion" => $outDesc,
             "pasos_reproducir" => $outPasos,

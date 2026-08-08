@@ -246,8 +246,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
+    margin: 0 0 14px;
     flex-wrap: wrap;
+    padding: 8px 10px;
+    background: #f4f9fc;
+    border: 1px solid #d6e8f3;
+    border-radius: 4px;
+}
+
+#panelHelpdesk .hd-pulir-bar.hd-pulir-hidden {
+    display: none !important;
 }
 
 #panelHelpdesk .hd-pulir-bar .btn[disabled] {
@@ -346,7 +354,7 @@
     margin: 0 0 6px;
 }
 #panelHelpdesk .hd-tips-tipos {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     padding-bottom: 8px;
     border-bottom: 1px solid #eef1f4;
 }
@@ -356,6 +364,16 @@
 }
 #panelHelpdesk .hd-tips-tipos strong {
     color: #333;
+}
+#panelHelpdesk .hd-tips-sla {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    background: #f7fafc;
+    border-radius: 4px;
+    border-left: 3px solid #3c8dbc;
 }
 
 #panelHelpdesk .hd-ejemplo-box {

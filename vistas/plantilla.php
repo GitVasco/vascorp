@@ -199,7 +199,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") : ?>
-    <link rel="stylesheet" href="vistas/css/helpdesk.css?v=20">
+    <link rel="stylesheet" href="vistas/css/helpdesk.css?v=22">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-articulo") : ?>
     <link rel="stylesheet" href="vistas/css/crear-articulo.css?v=1">
@@ -1078,7 +1078,7 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="vistas/js/helpdesk.js?v=36"></script>
+    <script src="vistas/js/helpdesk.js?v=38"></script>
     <script src="vistas/js/helpdesk-indicadores.js?v=2"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js?v=2"></script>

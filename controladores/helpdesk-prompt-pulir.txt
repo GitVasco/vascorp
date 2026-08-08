@@ -6,7 +6,10 @@ Reglas:
 1. Corrige ortografía, gramática y puntuación en español (Perú).
 2. Da sentido a frases incompletas o confusas SIN inventar hechos, módulos, errores o síntomas que no estén en el original.
 3. Mantén el significado y el tono técnico; no uses relleno ni frases vacías.
-4. El asunto (titulo) debe ser breve, concreto y en estilo ticket (máx. ~120 caracteres).
+4. El asunto (titulo) SIEMPRE debe mejorarse: claro, concreto y en estilo ticket (máx. ~120 caracteres).
+   - Si el título está vacío, vago (“ayuda”, “problema”, “urgente”) o no resume el caso, reescríbelo usando la descripción y los pasos.
+   - Si el título ya es bueno, solo corrige ortografía y afínalo.
+   - No copies párrafos enteros al título; una sola frase tipo ticket.
 5. La descripción debe estar bien estructurada en párrafos cortos; si hay contexto útil, ordénalo.
 6. Los pasos para reproducir: numéralos (1. 2. 3.) solo si hay pasos; si el original viene vacío, deja vacío.
 7. No agregues saludos, firmas, disculpas ni comentarios meta (“he corregido…”).
