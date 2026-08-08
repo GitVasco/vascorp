@@ -22,6 +22,8 @@ class ModeloHelpdesk
                     t.actualizado_en,
                     t.cerrado_en,
                     t.fecha_estimada,
+                    t.sla_exento,
+                    t.sla_exento_motivo,
                     sol.nombre AS solicitante_nombre,
                     asi.nombre AS asignado_nombre
                 FROM helpdesk_ticketjf t
@@ -193,6 +195,7 @@ class ModeloHelpdesk
                 FROM helpdesk_ticketjf t
                 WHERE t.estado <> 'CERRADO'
                   AND t.tipo NOT IN ('DESARROLLO')
+                  AND IFNULL(t.sla_exento, 0) = 0
                   AND (
                     (t.prioridad = 'ALTA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$alta} HOUR))
                     OR (t.prioridad = 'MEDIA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$media} HOUR))
@@ -269,6 +272,8 @@ class ModeloHelpdesk
                     t.asignado_id,
                     t.creado_en,
                     t.cerrado_en,
+                    t.sla_exento,
+                    t.sla_exento_motivo,
                     sol.nombre AS solicitante_nombre,
                     asi.nombre AS asignado_nombre
                 FROM helpdesk_ticketjf t
@@ -428,6 +433,7 @@ class ModeloHelpdesk
             "titulo", "descripcion", "pasos_reproducir", "tipo", "prioridad", "estado",
             "modulo", "area", "correo_contacto", "telefono_contacto", "canal_preferido",
             "asignado_id", "cerrado_en", "fecha_estimada",
+            "sla_exento", "sla_exento_motivo", "sla_exento_en", "sla_exento_por",
         );
         $sets = array();
         $params = array(":id" => $id);

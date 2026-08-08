@@ -186,6 +186,10 @@ require_once "controladores/permisos-modulos.config.php";
 
 require_once "controladores/vasco-online.config.php";
 
+require_once "modelos/helpdesk.modelo.php";
+
+require_once "controladores/helpdesk.controlador.php";
+
 /* 
 * MODELOS
 */

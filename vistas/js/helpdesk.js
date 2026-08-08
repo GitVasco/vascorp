@@ -17,11 +17,12 @@ $(function () {
     var agentes = [];
     var usuarios = [];
     var archivosSeleccionados = [];
+    var archivosRespuesta = [];
 
     var LABELS_ESTADO = {
         ABIERTO: { cls: "label-primary", txt: "Abierto" },
         EN_PROGRESO: { cls: "label-warning", txt: "En progreso" },
-        ESPERANDO_USUARIO: { cls: "label-info", txt: "Esperando usuario" },
+        ESPERANDO_USUARIO: { cls: "label-info", txt: "Esperando" },
         CERRADO: { cls: "label-default", txt: "Cerrado" }
     };
 
@@ -54,9 +55,9 @@ $(function () {
             pasosLabel: 'Pasos para reproducir <span class="text-muted">(opcional)</span>',
             intro: "No puedes avanzar: error, no carga o se bloquea. Tiene SLA. Si sí abre pero calcula/muestra mal → Corrección.",
             prioridadNota: {
-                ALTA: "Alta · respuesta objetivo ~4 h (horario laboral)",
-                MEDIA: "Media · respuesta objetivo ~24 h",
-                BAJA: "Baja · respuesta objetivo ~72 h"
+                ALTA: "Alta · ~4 h laborales",
+                MEDIA: "Media · ~24 h laborales",
+                BAJA: "Baja · ~72 h laborales"
             },
             tips: [
                 "Indica módulo, pantalla y el mensaje exacto del error",
@@ -75,9 +76,9 @@ $(function () {
             pasosLabel: 'Detalle del pedido <span class="text-muted">(opcional)</span>',
             intro: "Pedido operativo sobre algo que ya existe: mover fechas, accesos, permisos o ajustes de datos. Sí tiene SLA. No es programar una función nueva.",
             prioridadNota: {
-                ALTA: "Alta · respuesta objetivo ~4 h (horario laboral)",
-                MEDIA: "Media · respuesta objetivo ~24 h",
-                BAJA: "Baja · respuesta objetivo ~72 h"
+                ALTA: "Alta · ~4 h laborales",
+                MEDIA: "Media · ~24 h laborales",
+                BAJA: "Baja · ~72 h laborales"
             },
             tips: [
                 "Di qué hay que cambiar y a qué valor (ej. fecha origen → fecha destino)",
@@ -159,9 +160,9 @@ $(function () {
             pasosLabel: 'Pasos para reproducir <span class="text-muted">(opcional)</span>',
             intro: "Sí abre, pero hace mal (cálculo, dato o botón). Tiene SLA. Si no puedes entrar o sale error/bloqueo → Incidencia.",
             prioridadNota: {
-                ALTA: "Alta · afecta operaciones o cifras críticas (~4 h)",
-                MEDIA: "Media · molesta pero hay alternativa (~24 h)",
-                BAJA: "Baja · detalle menor (~72 h)"
+                ALTA: "Alta · afecta operaciones o cifras críticas (~4 h laborales)",
+                MEDIA: "Media · molesta pero hay alternativa (~24 h laborales)",
+                BAJA: "Baja · detalle menor (~72 h laborales)"
             },
             tips: [
                 "Di resultado actual vs esperado (con un ejemplo)",
@@ -217,6 +218,29 @@ $(function () {
             SOPORTE: "fa-life-ring"
         };
         return map[tipo] || "fa-ticket";
+    }
+
+    function colorTipo(tipo) {
+        var map = {
+            INCIDENCIA: "text-orange",
+            REQUERIMIENTO: "text-green",
+            CONSULTA: "text-blue",
+            OTRO: "text-muted",
+            DESARROLLO: "text-aqua",
+            CORRECCION: "text-red",
+            SOPORTE: "text-orange"
+        };
+        return map[tipo] || "text-muted";
+    }
+
+    function celdaTipo(tipo) {
+        var label = LABELS_TIPO[tipo] || tipo || "—";
+        return (
+            '<span class="hd-lista-tipo" title="' + esc(label) + '">' +
+                '<i class="fa ' + iconoTipo(tipo) + " " + colorTipo(tipo) + '"></i> ' +
+                esc(label) +
+            "</span>"
+        );
     }
 
     function iconoSistema(sis) {
@@ -325,10 +349,22 @@ $(function () {
         });
     }
 
-    function agregarArchivos(fileList) {
+    function renderFileListResp() {
+        var $ul = $("#hdFileListResp").empty();
+        archivosRespuesta.forEach(function (f, idx) {
+            $ul.append(
+                "<li>" +
+                    "<span>" + esc(f.name) + " <small class=\"text-muted\">(" + Math.round(f.size / 1024) + " KB)</small></span>" +
+                    '<button type="button" class="hd-file-remove" data-idx="' + idx + '">&times;</button>' +
+                "</li>"
+            );
+        });
+    }
+
+    function agregarArchivosA(lista, fileList, onDone) {
         var files = Array.prototype.slice.call(fileList || []);
         files.forEach(function (f) {
-            if (archivosSeleccionados.length >= MAX_FILES) {
+            if (lista.length >= MAX_FILES) {
                 toast("warning", "Máximo " + MAX_FILES + " archivos.");
                 return;
             }
@@ -341,14 +377,30 @@ $(function () {
                 toast("error", "Máximo 10 MB por archivo: " + f.name);
                 return;
             }
-            var dup = archivosSeleccionados.some(function (x) {
+            var dup = lista.some(function (x) {
                 return x.name === f.name && x.size === f.size;
             });
             if (!dup) {
-                archivosSeleccionados.push(f);
+                lista.push(f);
             }
         });
-        renderFileList();
+        if (typeof onDone === "function") {
+            onDone();
+        }
+    }
+
+    function agregarArchivos(fileList) {
+        agregarArchivosA(archivosSeleccionados, fileList, renderFileList);
+    }
+
+    function agregarArchivosResp(fileList) {
+        agregarArchivosA(archivosRespuesta, fileList, renderFileListResp);
+    }
+
+    function limpiarArchivosResp() {
+        archivosRespuesta = [];
+        $("#hdAdjuntosResp").val("");
+        renderFileListResp();
     }
 
     function refreshPicker($sel) {
@@ -584,12 +636,21 @@ $(function () {
             icon = "fa-exclamation-triangle";
         } else if (sla.codigo === "N/A") {
             icon = "fa-minus";
+        } else if (sla.codigo === "EXENTO") {
+            icon = "fa-ban";
         }
-        var title = sla.codigo === "N/A"
-            ? "Trabajo planificado · sin reloj SLA de cierre"
-            : (sla.horas_limite
-                ? ("Límite: " + sla.horas_limite + "h" + (sla.deadline ? " · vence " + sla.deadline : ""))
-                : "");
+        var title = "";
+        if (sla.codigo === "N/A") {
+            title = "Trabajo planificado · sin reloj SLA de cierre";
+        } else if (sla.codigo === "EXENTO") {
+            title = sla.motivo
+                ? ("SLA cancelado · " + sla.motivo)
+                : "SLA cancelado por un agente";
+        } else if (sla.horas_limite) {
+            title = "Límite: " + sla.horas_limite + "h laborales" +
+                (sla.deadline ? " · vence " + sla.deadline : "") +
+                " (lun–vie 8:00–17:30 · sáb 8:00–12:15)";
+        }
         return '<span class="hd-sla ' + esc(sla.cls || "hd-sla-na") + '" title="' + esc(title) + '">' +
             '<i class="fa ' + icon + '"></i> ' + esc(sla.label) + "</span>";
     }
@@ -646,7 +707,7 @@ $(function () {
                         (sub.length ? "<br><small class=\"text-muted\">" + sub.join(" · ") + "</small>" : "") +
                     "</td>" +
                     "<td>" + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) + "</td>" +
-                    "<td>" + esc(LABELS_TIPO[t.tipo] || t.tipo) + "</td>" +
+                    "<td>" + celdaTipo(t.tipo) + "</td>" +
                     "<td>" + badgePrioridad(t.prioridad) + "</td>" +
                     "<td>" + badgeEstado(t.estado) + "</td>" +
                     "<td>" + esc(t.asignado_nombre || "—") + "</td>" +
@@ -1011,12 +1072,15 @@ $(function () {
                         '<i class="fa fa-clock-o"></i>' +
                         '<div><span class="hd-det-chip-lbl">SLA</span>' +
                         badgeSla(sla) +
-                        (sla && sla.codigo === "N/A"
-                            ? '<br><small class="text-muted">Planificado</small>'
-                            : (sla && sla.horas_limite
-                                ? '<br><small class="text-muted">Límite ' + esc(String(sla.horas_limite)) + "h" +
-                                  (sla.deadline ? " · " + esc(sla.deadline) : "") + "</small>"
-                                : "")) +
+                        (sla && sla.codigo === "EXENTO"
+                            ? '<br><small class="text-muted">' +
+                              esc(sla.motivo || "Exento de medición") + "</small>"
+                            : (sla && sla.codigo === "N/A"
+                                ? '<br><small class="text-muted">Planificado</small>'
+                                : (sla && sla.horas_limite
+                                    ? '<br><small class="text-muted">Límite ' + esc(String(sla.horas_limite)) + "h" +
+                                      (sla.deadline ? " · " + esc(sla.deadline) : "") + "</small>"
+                                    : ""))) +
                         "</div>" +
                     "</div>" +
                     (tipoUsaFechaEstimada(t.tipo) || t.fecha_estimada
@@ -1064,10 +1128,11 @@ $(function () {
                 return;
             }
             var info = LABELS_ESTADO[e] || { cls: "label-default", txt: e };
+            var txtOpt = e === "ESPERANDO_USUARIO" ? "Esperando (usuario/área)" : info.txt;
             optsEstado +=
                 '<option value="' + e + '"' + (e === estadoSel ? " selected" : "") +
                 " data-content=\"<span class='label " + info.cls + "'>" + esc(info.txt) + "</span>\">" +
-                esc(info.txt) + "</option>";
+                esc(txtOpt) + "</option>";
         });
         var optsAsig = '<option value="">Sin asignar</option>';
         agentes.forEach(function (u) {
@@ -1096,6 +1161,9 @@ $(function () {
         if (permisos.gestionar && !cerrado) {
             var fechaEst = fechaEstimadaSoloDia(t.fecha_estimada);
             var showFecha = tipoUsaFechaEstimada(t.tipo);
+            var exento = String(t.sla_exento) === "1" || t.sla_exento === 1 || t.sla_exento === true;
+            var motivoEx = t.sla_exento_motivo || "";
+            var tipoSinSla = t.tipo === "DESARROLLO";
             $("#hdConvSidebarBody").html(
                 '<form id="hdFormGestionar" class="hd-side-form">' +
                     '<div class="hd-side-badges">' +
@@ -1113,7 +1181,11 @@ $(function () {
                     '<div class="form-group">' +
                         '<label><i class="fa fa-exchange text-aqua"></i> Estado</label>' +
                         '<select class="form-control selectpicker" id="hdGestEstado" data-width="100%">' +
-                        optsEstado + "</select></div>" +
+                        optsEstado + "</select>" +
+                        '<p class="help-block hd-hint-espera" id="hdHintEspera"' +
+                        (t.estado === "ESPERANDO_USUARIO" ? "" : ' style="display:none;"') + ">" +
+                        "Deja un comentario: qué autorización falta y a quién se pidió. " +
+                        "Si no bloquea operación, considera bajar prioridad.</p></div>" +
                     '<div class="form-group">' +
                         '<label><i class="fa fa-flag text-red"></i> Prioridad</label>' +
                         '<select class="form-control selectpicker" id="hdGestPrioridad" data-width="100%">' +
@@ -1124,6 +1196,18 @@ $(function () {
                         '<select class="form-control selectpicker" id="hdGestAsignado" data-width="100%" ' +
                         'data-live-search="true" title="Sin asignar">' +
                         optsAsig + "</select></div>" +
+                    (tipoSinSla
+                        ? ""
+                        : '<div class="form-group hd-sla-exento-box">' +
+                            '<label class="hd-check-exento">' +
+                              '<input type="checkbox" id="hdGestSlaExento"' + (exento ? " checked" : "") + "> " +
+                              "<strong>Cancelar SLA</strong></label>" +
+                            '<p class="help-block" style="margin:4px 0 6px;">Exime este ticket de la medición (cualquier motivo válido).</p>' +
+                            '<div id="hdGestSlaMotivoWrap"' + (exento ? "" : ' style="display:none;"') + ">" +
+                              '<label for="hdGestSlaMotivo">Motivo <span class="text-danger">*</span></label>' +
+                              '<textarea class="form-control" id="hdGestSlaMotivo" rows="2" maxlength="255" ' +
+                              'placeholder="Ej.: pendiente autorización Gerencia / Seguridad">' +
+                              esc(motivoEx) + "</textarea></div></div>") +
                     '<div class="hd-side-meta">' +
                         '<div><i class="fa fa-building"></i> <span>Área</span> <strong>' + esc(t.area || "—") + "</strong></div>" +
                         '<div><i class="fa fa-desktop"></i> <span>Sistema</span> <strong>' +
@@ -1144,6 +1228,14 @@ $(function () {
                 if (!show) {
                     $("#hdGestFechaEstimada").val("");
                 }
+                var sinSlaTipo = $(this).val() === "DESARROLLO";
+                $(".hd-sla-exento-box").toggle(!sinSlaTipo);
+            });
+            $("#hdGestEstado").on("changed.bs.select change", function () {
+                $("#hdHintEspera").toggle($(this).val() === "ESPERANDO_USUARIO");
+            });
+            $("#hdGestSlaExento").on("change", function () {
+                $("#hdGestSlaMotivoWrap").toggle(!!$(this).is(":checked"));
             });
         } else if (permisos.reabrir && cerrado) {
             $("#hdConvSidebarBody").html(
@@ -1217,6 +1309,7 @@ $(function () {
 
         $("#hdComentario").val("");
         $("#hdRespEstado").val("");
+        limpiarArchivosResp();
         if (cerrado) {
             $("#hdResponderBox").hide();
             var msgCerrado = permisos.reabrir
@@ -1350,6 +1443,33 @@ $(function () {
         var idx = Number($(this).data("idx"));
         archivosSeleccionados.splice(idx, 1);
         renderFileList();
+    });
+
+    var $dzResp = $("#hdDropzoneResp");
+    $dzResp.on("dragover dragenter", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $dzResp.addClass("hd-dragover");
+    });
+    $dzResp.on("dragleave drop", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $dzResp.removeClass("hd-dragover");
+    });
+    $dzResp.on("drop", function (e) {
+        var dt = e.originalEvent.dataTransfer;
+        if (dt && dt.files) {
+            agregarArchivosResp(dt.files);
+        }
+    });
+    $("#hdAdjuntosResp").on("change", function () {
+        agregarArchivosResp(this.files);
+        $(this).val("");
+    });
+    $("#hdFileListResp").on("click", ".hd-file-remove", function () {
+        var idx = Number($(this).data("idx"));
+        archivosRespuesta.splice(idx, 1);
+        renderFileListResp();
     });
 
     $("#hdBtnCancelar").on("click", function () {
@@ -1550,22 +1670,36 @@ $(function () {
             return;
         }
         var mensaje = $.trim($("#hdComentario").val());
-        if (!mensaje) {
-            toast("warning", "Escriba una respuesta.");
+        if (!mensaje && archivosRespuesta.length === 0) {
+            toast("warning", "Escriba una respuesta o adjunte un archivo.");
             return;
         }
-        var data = { id: ticketActual.id, mensaje: mensaje };
+        var fd = new FormData();
+        fd.append("accion", "comentar");
+        fd.append("id", ticketActual.id);
+        fd.append("mensaje", mensaje);
         if (permisos.gestionar && $("#hdRespEstado").val()) {
-            data.cambiar_estado = $("#hdRespEstado").val();
+            fd.append("cambiar_estado", $("#hdRespEstado").val());
         }
+        archivosRespuesta.forEach(function (f) {
+            fd.append("adjuntos[]", f);
+        });
         $("#hdBtnEnviarResp").prop("disabled", true);
-        post("comentar", data)
+        $.ajax({
+            url: API + "?accion=comentar",
+            method: "POST",
+            dataType: "json",
+            data: fd,
+            processData: false,
+            contentType: false
+        })
             .done(function (res) {
                 if (!res || !res.ok) {
                     toast("error", (res && res.msg) || "No se pudo enviar.");
                     return;
                 }
                 toast("success", res.msg || "Enviado.");
+                limpiarArchivosResp();
                 verTicket(ticketActual.id);
             })
             .fail(function () {
@@ -1600,6 +1734,17 @@ $(function () {
             data.fecha_estimada = tipoUsaFechaEstimada(data.tipo)
                 ? ($("#hdGestFechaEstimada").val() || "")
                 : "";
+            if ($("#hdGestSlaExento").length) {
+                var eximir = $("#hdGestSlaExento").is(":checked");
+                data.sla_exento = eximir ? 1 : 0;
+                data.sla_exento_motivo = eximir
+                    ? $.trim($("#hdGestSlaMotivo").val() || "")
+                    : "";
+                if (eximir && data.sla_exento_motivo.length < 5) {
+                    toast("error", "Indique el motivo para cancelar el SLA (mín. 5 caracteres).");
+                    return;
+                }
+            }
         }
         post("actualizar", data)
             .done(function (res) {

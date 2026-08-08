@@ -27,7 +27,14 @@ CREATE TABLE IF NOT EXISTS helpdesk_ticketjf (
     actualizado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     cerrado_en          DATETIME NULL,
     fecha_estimada      DATE NULL
-        COMMENT 'Fecha estimada de entrega (DESARROLLO/REQUERIMIENTO)',
+        COMMENT 'Fecha estimada de entrega (DESARROLLO)',
+    sla_exento          TINYINT(1) NOT NULL DEFAULT 0
+        COMMENT '1 = ticket exento de SLA de cierre',
+    sla_exento_motivo   VARCHAR(255) NULL
+        COMMENT 'Motivo de la exención',
+    sla_exento_en       DATETIME NULL,
+    sla_exento_por      INT(11) NULL
+        COMMENT 'usuariosjf.id quien eximió',
     PRIMARY KEY (id),
     KEY idx_hd_estado (estado),
     KEY idx_hd_tipo (tipo),

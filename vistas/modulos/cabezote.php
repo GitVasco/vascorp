@@ -50,93 +50,25 @@
 
                 </li>
 
-                <li class="dropdown messages-menu">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                        <i class="fa fa-envelope-o"></i>
-
-                        <?php
-                                
-                        $para = $_SESSION["id"];
-
-                        $sinLeer = ModeloMensajes::mdlSinLeer("mailboxjf", $para);
-                        #var_dump("sinLeer", $sinLeer);
-
-                            echo '<span class="label label-success">'.$sinLeer["sinLeer"].'</span>';
-
-                        ?>
-    
+                <?php
+                if (class_exists("ControladorHelpdesk") && ControladorHelpdesk::ctrPuede("gestionar")) {
+                    $hdNav = ControladorHelpdesk::ctrContarAbiertosNavbar();
+                    $hdAbiertos = isset($hdNav["abiertos"]) ? (int) $hdNav["abiertos"] : 0;
+                    $hdNavTitulo = !empty($hdNav["control_total"])
+                        ? "Helpdesk · tickets abiertos (todos)"
+                        : "Helpdesk · tickets abiertos (míos y sin asignar)";
+                    $hdBadgeCls = $hdAbiertos > 0 ? "label-warning" : "label-default";
+                    $hdBadgeTxt = $hdAbiertos > 99 ? "99+" : (string) $hdAbiertos;
+                ?>
+                <li class="dropdown notifications-menu">
+                    <a href="helpdesk" title="<?php echo htmlspecialchars($hdNavTitulo, ENT_QUOTES, 'UTF-8'); ?>">
+                        <i class="fa fa-ticket"></i>
+                        <span class="label <?php echo $hdBadgeCls; ?>"><?php echo htmlspecialchars($hdBadgeTxt, ENT_QUOTES, 'UTF-8'); ?></span>
                     </a>
-
-                    <ul class="dropdown-menu">
-
-                        <?php
-                                
-                        $para = $_SESSION["id"];
-
-                        $sinLeer = ModeloMensajes::mdlSinLeer("detalles_mailboxjf", $para);
-                        #var_dump("sinLeer", $sinLeer);
-
-                            echo '<li class="header">Tienes '.$sinLeer["sinLeer"].' mensajes</li>';
-
-                        ?>
-
-                        <li>
-
-                            <ul class="menu">
-
-                                <?php
-
-                                $valor = $_SESSION["id"];
-                                $estado= '0';
-
-                                $bandeja = ControladorMensajes::ctrBandeja($valor, $estado);
-                                #var_dump("bandeja", $bandeja);
-
-                                foreach($bandeja as $key => $value){
-
-                                    echo '<li>
-
-                                            <a href="index.php?ruta=mensajes&idUsuario='.$value["de"].'">
-
-                                                <div class="pull-left">';
-
-                                                echo '<img src="'.$value["foto"].'" class="img-circle" alt="User Image">';
-
-                                        echo    '</div>';
-
-                                        echo    '<h4>
-
-                                                    '.$value{"nombre"}.'
-                                                    <small><i class="fa fa-clock-o"></i> '.$value["fecha"].'</small>
-
-                                                </h4>';
-
-                                        echo    '<p>'.$value["mensaje"].'</p>
-
-                                            </a>
-
-                                        </li>';
-
-
-                                }
-                                
-                                ?>
-
-
-
-                            </ul>
-
-                        </li>
-
-                        <li class="footer">
-
-                            <a href="mailbox">Ver todos los mensajes</a>
-
-                        </li>
-
-                    </ul>
-
                 </li>
+                <?php
+                }
+                ?>
 
                 <li class="dropdown user user-menu">
 

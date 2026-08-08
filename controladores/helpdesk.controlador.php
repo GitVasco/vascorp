@@ -29,11 +29,24 @@ class ControladorHelpdesk
     const USUARIO_PULIR_IA = 6;
     /** Solo este usuario puede reabrir tickets cerrados */
     const USUARIO_REABRIR = 6;
-    /** Horas límite SLA por prioridad (desde creación hasta cierre) */
+    /** Horas límite SLA por prioridad (horas laborales hasta el cierre) */
     const SLA_HORAS = array(
         "ALTA" => 4,
         "MEDIA" => 24,
         "BAJA" => 72,
+    );
+    /**
+     * Horario laboral para el reloj SLA (segundos desde medianoche).
+     * Lun–Vie 08:00–17:30 · Sáb 08:00–12:15 · Dom sin atención.
+     */
+    const SLA_HORARIO = array(
+        1 => array(28800, 63000),  // lun 08:00–17:30
+        2 => array(28800, 63000),
+        3 => array(28800, 63000),
+        4 => array(28800, 63000),
+        5 => array(28800, 63000),
+        6 => array(28800, 44100),  // sáb 08:00–12:15
+        // 7 domingo: sin ventana
     );
     /** Solo desarrollo largo: sin reloj SLA de cierre */
     const TIPOS_SIN_SLA = array("DESARROLLO");
@@ -257,12 +270,155 @@ class ControladorHelpdesk
     }
 
     /**
-     * Calcula estado SLA de un ticket.
-     * Desarrollo/Requerimiento no aplican SLA de cierre (trabajo planificado).
+     * Ventana laboral del día ISO (1=lun … 7=dom): [inicio, fin) en segundos desde medianoche.
+     * @return array{0:int,1:int}|null
+     */
+    private static function ventanaLaboralDia($isoDia)
+    {
+        $isoDia = (int) $isoDia;
+        $horario = self::SLA_HORARIO;
+        return array_key_exists($isoDia, $horario) ? $horario[$isoDia] : null;
+    }
+
+    /**
+     * Si $ts está fuera de horario, lo mueve al próximo instante laboral.
+     */
+    private static function alinearAHorarioLaboral($ts)
+    {
+        $ts = (int) $ts;
+        for ($i = 0; $i < 16; $i++) {
+            $day = strtotime(date("Y-m-d", $ts) . " 00:00:00");
+            if ($day === false) {
+                return $ts;
+            }
+            $win = self::ventanaLaboralDia((int) date("N", $day));
+            if ($win !== null) {
+                $open = $day + (int) $win[0];
+                $close = $day + (int) $win[1];
+                if ($ts < $open) {
+                    return $open;
+                }
+                if ($ts < $close) {
+                    return $ts;
+                }
+            }
+            $next = strtotime("+1 day", $day);
+            if ($next === false) {
+                return $ts;
+            }
+            $ts = $next;
+        }
+
+        return $ts;
+    }
+
+    /**
+     * Segundos laborales entre dos timestamps (noches / domingos / fuera de turno no cuentan).
+     */
+    private static function segundosLaboralesEntre($from, $to)
+    {
+        $from = (int) $from;
+        $to = (int) $to;
+        if ($to <= $from) {
+            return 0;
+        }
+
+        $total = 0;
+        $day = strtotime(date("Y-m-d", $from) . " 00:00:00");
+        $endDay = strtotime(date("Y-m-d", $to) . " 00:00:00");
+        if ($day === false || $endDay === false) {
+            return 0;
+        }
+
+        for ($guard = 0; $day <= $endDay && $guard < 800; $guard++) {
+            $win = self::ventanaLaboralDia((int) date("N", $day));
+            if ($win !== null) {
+                $open = $day + (int) $win[0];
+                $close = $day + (int) $win[1];
+                $a = max($from, $open);
+                $b = min($to, $close);
+                if ($b > $a) {
+                    $total += ($b - $a);
+                }
+            }
+            $next = strtotime("+1 day", $day);
+            if ($next === false) {
+                break;
+            }
+            $day = $next;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Avanza $segundos laborales desde $from y devuelve el timestamp resultante.
+     */
+    private static function agregarSegundosLaborales($from, $segundos)
+    {
+        $left = (int) $segundos;
+        if ($left <= 0) {
+            return (int) $from;
+        }
+
+        $t = self::alinearAHorarioLaboral((int) $from);
+        for ($guard = 0; $left > 0 && $guard < 800; $guard++) {
+            $day = strtotime(date("Y-m-d", $t) . " 00:00:00");
+            if ($day === false) {
+                break;
+            }
+            $win = self::ventanaLaboralDia((int) date("N", $day));
+            if ($win === null) {
+                $t = self::alinearAHorarioLaboral(strtotime("+1 day", $day));
+                continue;
+            }
+            $close = $day + (int) $win[1];
+            $avail = $close - $t;
+            if ($avail <= 0) {
+                $t = self::alinearAHorarioLaboral($close);
+                continue;
+            }
+            if ($left <= $avail) {
+                return $t + $left;
+            }
+            $left -= $avail;
+            $t = self::alinearAHorarioLaboral($close);
+        }
+
+        return $t;
+    }
+
+    private static function formatearDuracionSla($seg)
+    {
+        $seg = (int) abs($seg);
+        $h = (int) floor($seg / 3600);
+        $m = (int) floor(($seg % 3600) / 60);
+        if ($h > 0) {
+            return $h . "h " . $m . "m";
+        }
+        return max(1, $m) . "m";
+    }
+
+    /**
+     * Calcula estado SLA de un ticket (reloj en horario laboral).
+     * Desarrollo y tickets exentos no aplican SLA de cierre.
      * @return array{codigo:string,label:string,cls:string,horas_limite:int,deadline:string|null,segundos:int}
      */
     public static function ctrSlaDeTicket($ticket)
     {
+        if (!empty($ticket["sla_exento"]) && (int) $ticket["sla_exento"] === 1) {
+            $motivo = isset($ticket["sla_exento_motivo"]) ? trim((string) $ticket["sla_exento_motivo"]) : "";
+            return array(
+                "codigo" => "EXENTO",
+                "label" => "SLA cancelado",
+                "cls" => "hd-sla-exento",
+                "horas_limite" => 0,
+                "deadline" => null,
+                "segundos" => 0,
+                "motivo" => $motivo,
+            );
+        }
+
         $tipo = isset($ticket["tipo"]) ? $ticket["tipo"] : "";
         if (in_array($tipo, self::TIPOS_SIN_SLA, true)) {
             return array(
@@ -290,7 +446,7 @@ class ControladorHelpdesk
             );
         }
 
-        $deadline = $creado + ($horas * 3600);
+        $limiteSeg = $horas * 3600;
         $cerrado = isset($ticket["estado"]) && $ticket["estado"] === "CERRADO";
         $fin = $cerrado && !empty($ticket["cerrado_en"])
             ? strtotime($ticket["cerrado_en"])
@@ -299,20 +455,10 @@ class ControladorHelpdesk
             $fin = time();
         }
 
-        $diff = $deadline - $fin;
-        $fmtDur = function ($seg) {
-            $seg = (int) abs($seg);
-            $d = (int) floor($seg / 86400);
-            $h = (int) floor(($seg % 86400) / 3600);
-            $m = (int) floor(($seg % 3600) / 60);
-            if ($d > 0) {
-                return $d . "d " . $h . "h";
-            }
-            if ($h > 0) {
-                return $h . "h " . $m . "m";
-            }
-            return max(1, $m) . "m";
-        };
+        $usado = self::segundosLaboralesEntre($creado, $fin);
+        $diff = $limiteSeg - $usado;
+        $deadline = self::agregarSegundosLaborales($creado, $limiteSeg);
+        $deadlineStr = date("Y-m-d H:i:s", $deadline);
 
         if ($cerrado) {
             if ($diff >= 0) {
@@ -321,38 +467,38 @@ class ControladorHelpdesk
                     "label" => "Cumplido",
                     "cls" => "hd-sla-ok",
                     "horas_limite" => $horas,
-                    "deadline" => date("Y-m-d H:i:s", $deadline),
+                    "deadline" => $deadlineStr,
                     "segundos" => $diff,
                 );
             }
             return array(
                 "codigo" => "FUERA",
-                "label" => "Fuera de SLA · " . $fmtDur($diff),
+                "label" => "Fuera de SLA · " . self::formatearDuracionSla($diff),
                 "cls" => "hd-sla-fuera",
                 "horas_limite" => $horas,
-                "deadline" => date("Y-m-d H:i:s", $deadline),
+                "deadline" => $deadlineStr,
                 "segundos" => abs($diff),
             );
         }
 
         if ($diff >= 0) {
-            $urgente = ($diff <= ($horas * 3600 * 0.25));
+            $urgente = ($diff <= (int) floor($limiteSeg * 0.25));
             return array(
                 "codigo" => "RESTANTE",
-                "label" => $fmtDur($diff) . " restante",
+                "label" => self::formatearDuracionSla($diff) . " restante",
                 "cls" => $urgente ? "hd-sla-aviso" : "hd-sla-restante",
                 "horas_limite" => $horas,
-                "deadline" => date("Y-m-d H:i:s", $deadline),
+                "deadline" => $deadlineStr,
                 "segundos" => $diff,
             );
         }
 
         return array(
             "codigo" => "VENCIDO",
-            "label" => "Vencido · " . $fmtDur($diff),
+            "label" => "Vencido · " . self::formatearDuracionSla($diff),
             "cls" => "hd-sla-vencido",
             "horas_limite" => $horas,
-            "deadline" => date("Y-m-d H:i:s", $deadline),
+            "deadline" => $deadlineStr,
             "segundos" => abs($diff),
         );
     }
@@ -440,6 +586,27 @@ class ControladorHelpdesk
             return;
         }
         $filtros["solicitante_id"] = self::ctrUsuarioSesionId();
+    }
+
+    /**
+     * Tickets no cerrados para badge del navbar (solo agentes con gestionar).
+     * Control total: todos. Agente bandeja: asignados a él + sin asignar.
+     */
+    public static function ctrContarAbiertosNavbar()
+    {
+        if (!self::ctrPuede("gestionar")) {
+            return array("ok" => false, "abiertos" => 0);
+        }
+
+        $filtros = array();
+        self::aplicarAlcanceBandeja($filtros);
+        $resumen = ModeloHelpdesk::mdlResumen($filtros);
+
+        return array(
+            "ok" => true,
+            "abiertos" => isset($resumen["activos"]) ? (int) $resumen["activos"] : 0,
+            "control_total" => self::ctrEsControlTotal(),
+        );
     }
 
     public static function ctrListar()
@@ -585,7 +752,7 @@ class ControladorHelpdesk
         $labelsEstado = array(
             "ABIERTO" => "Abierto",
             "EN_PROGRESO" => "En progreso",
-            "ESPERANDO_USUARIO" => "Esperando usuario",
+            "ESPERANDO_USUARIO" => "Esperando",
             "CERRADO" => "Cerrado",
         );
         $labelsSistema = array(
@@ -1332,13 +1499,27 @@ class ControladorHelpdesk
                 "msg" => "Ticket cerrado. Reábralo cambiando el estado para poder responder.",
             );
         }
+
+        $valAdj = self::validarArchivosEntrada();
+        if ($valAdj["error"] !== "") {
+            return array("ok" => false, "msg" => $valAdj["error"]);
+        }
+        $files = $valAdj["files"];
+
+        if ($mensaje === "" && empty($files)) {
+            return array("ok" => false, "msg" => "Escriba un comentario o adjunte un archivo.");
+        }
         if ($mensaje === "") {
-            return array("ok" => false, "msg" => "Escriba un comentario.");
+            $n = count($files);
+            $mensaje = $n === 1
+                ? "(Se adjuntó 1 archivo.)"
+                : "(Se adjuntaron " . $n . " archivos.)";
         }
 
+        $uid = self::ctrUsuarioSesionId();
         $ok = ModeloHelpdesk::mdlAgregarComentario(array(
             "ticket_id" => $id,
-            "usuario_id" => self::ctrUsuarioSesionId(),
+            "usuario_id" => $uid,
             "tipo_evento" => "COMENTARIO",
             "mensaje" => $mensaje,
             "estado_anterior" => null,
@@ -1347,6 +1528,13 @@ class ControladorHelpdesk
 
         if (!$ok) {
             return array("ok" => false, "msg" => "No se pudo guardar el comentario.");
+        }
+
+        $adjuntosOk = 0;
+        foreach ($files as $file) {
+            if (self::guardarAdjunto($id, $uid, $file)) {
+                $adjuntosOk++;
+            }
         }
 
         // Opcional: agente cambia estado al responder
@@ -1362,7 +1550,7 @@ class ControladorHelpdesk
                 if (ModeloHelpdesk::mdlActualizar($id, $campos)) {
                     ModeloHelpdesk::mdlAgregarComentario(array(
                         "ticket_id" => $id,
-                        "usuario_id" => self::ctrUsuarioSesionId(),
+                        "usuario_id" => $uid,
                         "tipo_evento" => "CAMBIO_ESTADO",
                         "mensaje" => "Estado: " . $ticket["estado"] . " → " . $estado,
                         "estado_anterior" => $ticket["estado"],
@@ -1372,7 +1560,12 @@ class ControladorHelpdesk
             }
         }
 
-        return array("ok" => true, "msg" => "Respuesta enviada.");
+        $msg = "Respuesta enviada.";
+        if ($adjuntosOk > 0) {
+            $msg .= " Adjuntos: " . $adjuntosOk . ".";
+        }
+
+        return array("ok" => true, "msg" => $msg);
     }
 
     public static function ctrActualizar()
@@ -1527,6 +1720,69 @@ class ControladorHelpdesk
                     "estado_anterior" => null,
                     "estado_nuevo" => null,
                 );
+            }
+        }
+
+        if (array_key_exists("sla_exento", $_POST)) {
+            $quiereExento = !empty($_POST["sla_exento"]) && (string) $_POST["sla_exento"] !== "0";
+            $actualExento = !empty($ticket["sla_exento"]) && (int) $ticket["sla_exento"] === 1;
+            $motivo = isset($_POST["sla_exento_motivo"])
+                ? trim((string) $_POST["sla_exento_motivo"])
+                : "";
+
+            if ($quiereExento && !$actualExento) {
+                if ($motivo === "" || strlen($motivo) < 5) {
+                    return array(
+                        "ok" => false,
+                        "msg" => "Para cancelar el SLA indique un motivo (mín. 5 caracteres).",
+                    );
+                }
+                if (strlen($motivo) > 255) {
+                    $motivo = substr($motivo, 0, 255);
+                }
+                $campos["sla_exento"] = 1;
+                $campos["sla_exento_motivo"] = $motivo;
+                $campos["sla_exento_en"] = date("Y-m-d H:i:s");
+                $campos["sla_exento_por"] = $uid;
+                $eventos[] = array(
+                    "tipo_evento" => "COMENTARIO",
+                    "mensaje" => "SLA cancelado. Motivo: " . $motivo,
+                    "estado_anterior" => null,
+                    "estado_nuevo" => null,
+                );
+            } elseif (!$quiereExento && $actualExento) {
+                $campos["sla_exento"] = 0;
+                $campos["sla_exento_motivo"] = null;
+                $campos["sla_exento_en"] = null;
+                $campos["sla_exento_por"] = null;
+                $eventos[] = array(
+                    "tipo_evento" => "COMENTARIO",
+                    "mensaje" => "SLA reactivado.",
+                    "estado_anterior" => null,
+                    "estado_nuevo" => null,
+                );
+            } elseif ($quiereExento && $actualExento && $motivo !== "") {
+                $motivoActual = isset($ticket["sla_exento_motivo"])
+                    ? trim((string) $ticket["sla_exento_motivo"])
+                    : "";
+                if ($motivo !== $motivoActual) {
+                    if (strlen($motivo) < 5) {
+                        return array(
+                            "ok" => false,
+                            "msg" => "Motivo de SLA cancelado inválido (mín. 5 caracteres).",
+                        );
+                    }
+                    if (strlen($motivo) > 255) {
+                        $motivo = substr($motivo, 0, 255);
+                    }
+                    $campos["sla_exento_motivo"] = $motivo;
+                    $eventos[] = array(
+                        "tipo_evento" => "COMENTARIO",
+                        "mensaje" => "Motivo SLA cancelado actualizado: " . $motivo,
+                        "estado_anterior" => null,
+                        "estado_nuevo" => null,
+                    );
+                }
             }
         }
 

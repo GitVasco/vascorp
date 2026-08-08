@@ -291,9 +291,17 @@
                                     <li><strong>Otro:</strong> solo si no encaja arriba</li>
                                 </ul>
                                 <p class="hd-tips-sla">
-                                    <strong>SLA:</strong> tiempo objetivo para atender/cerrar según la prioridad
-                                    (Alta ~4 h, Media ~24 h, Baja ~72 h). En Desarrollo no aplica:
-                                    TI define una fecha estimada.
+                                    <strong>SLA:</strong> tiempo objetivo en <em>horario laboral</em>
+                                    (lun–vie 8:00–17:30 · sáb 8:00–12:15; noches y domingos no cuentan).
+                                    Alta ~4 h, Media ~24 h, Baja ~72 h. En Desarrollo no aplica:
+                                    TI define una fecha estimada. Un agente puede
+                                    <strong>cancelar el SLA</strong> de un ticket con motivo (queda en historial).
+                                </p>
+                                <p class="hd-tips-dep">
+                                    <strong>Si depende de otra área:</strong> gestiona lo de TI, deja comentario
+                                    (qué se pidió y a quién), pasa a <em>Esperando</em> y baja la prioridad
+                                    si no bloquea la operación. El reloj SLA sigue en horario laboral;
+                                    si el caso deja de aplicar, <strong>cancela el SLA</strong> con motivo.
                                 </p>
                                 <p class="hd-tips-titulo">Para este tipo</p>
                                 <ul class="hd-tips" id="hdConsejosLista">
@@ -348,7 +356,7 @@
                                 <option value="__ACTIVOS__">Activos</option>
                                 <option value="ABIERTO">Abierto</option>
                                 <option value="EN_PROGRESO">En progreso</option>
-                                <option value="ESPERANDO_USUARIO">Esperando usuario</option>
+                                <option value="ESPERANDO_USUARIO">Esperando (usuario/área)</option>
                                 <option value="CERRADO">Cerrado</option>
                                 <option value="__VENCIDOS__">Vencidos SLA</option>
                             </select>
@@ -593,6 +601,14 @@
                                                 </div>
                                                 <textarea class="form-control" id="hdComentario" rows="3"
                                                           placeholder="Escribe tu respuesta…"></textarea>
+                                                <div class="hd-dropzone hd-dropzone-resp" id="hdDropzoneResp">
+                                                    <i class="fa fa-paperclip"></i>
+                                                    <p><strong>Adjuntar archivos</strong> · arrastra o haz clic</p>
+                                                    <small>JPG, PNG, PDF, DOC, XLS · Máx. 10 MB · Hasta 5</small>
+                                                    <input type="file" id="hdAdjuntosResp" name="adjuntos[]" multiple
+                                                           accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx">
+                                                </div>
+                                                <ul class="hd-file-list" id="hdFileListResp"></ul>
                                                 <div class="hd-responder-actions">
                                                     <div class="hd-responder-opts hd-solo-gestionar" style="display:none;">
                                                         <label class="text-muted">Al enviar, cambiar estado a</label>
@@ -602,7 +618,7 @@
                                                             <option value="EN_PROGRESO"
                                                                     data-content="<span class='label label-warning'>En progreso</span>">En progreso</option>
                                                             <option value="ESPERANDO_USUARIO"
-                                                                    data-content="<span class='label label-info'>Esperando usuario</span>">Esperando usuario</option>
+                                                                    data-content="<span class='label label-info'>Esperando</span>">Esperando (usuario/área)</option>
                                                             <option value="CERRADO"
                                                                     data-content="<span class='label label-default'>Cerrado</span>">Cerrado</option>
                                                             <option value="ABIERTO"

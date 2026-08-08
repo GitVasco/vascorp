@@ -382,8 +382,9 @@
                 cargado = true;
                 if (res.sla_horas) {
                     $("#hdIndSlaHint").text(
-                        "SLA Alta " + res.sla_horas.ALTA + "h · Media " +
-                        res.sla_horas.MEDIA + "h · Baja " + res.sla_horas.BAJA + "h"
+                        "SLA en horario laboral · Alta " + res.sla_horas.ALTA + "h · Media " +
+                        res.sla_horas.MEDIA + "h · Baja " + res.sla_horas.BAJA + "h" +
+                        " (lun–vie 8:00–17:30 · sáb 8:00–12:15)"
                     );
                 }
                 renderKpis(res.kpis);

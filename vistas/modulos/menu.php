@@ -2109,7 +2109,6 @@
 
                 </li>
 
-                <!--  Ticket-->
             <?php
             }
             if ($_SESSION["costos"] == 1) {
@@ -2211,58 +2210,6 @@
 
                                 <i class="fa fa-star text-white"></i>
                                 <span>Comparación de Costos</span>
-
-                            </a>
-
-                        </li>
-
-                    </ul>
-
-                </li>
-
-                <!--  Ticket-->
-            <?php
-            }
-            if ($_SESSION["ticket"] == 1) {
-            ?>
-                <li class="treeview <?php if (
-                                        $_GET["ruta"] == "contactos" ||
-                                        $_GET["ruta"] == "mailbox"
-                                    ) echo 'active'; ?>">
-
-                    <a href="#">
-
-                        <i class="fa fa-inbox text-blue"></i>
-
-                        <span>Ticket</span>
-
-                        <span class="pull-right-container">
-
-                            <i class="fa fa-angle-left pull-right"></i>
-
-                        </span>
-
-                    </a>
-
-                    <ul class="treeview-menu">
-
-                        <li class="<?php if ($_GET["ruta"] == "contactos") echo 'active'; ?>">
-
-                            <a href="contactos">
-
-                                <i class="fa fa-users"></i>
-                                <span>Contactos</span>
-
-                            </a>
-
-                        </li>
-
-                        <li class="<?php if ($_GET["ruta"] == "mailbox") echo 'active'; ?>">
-
-                            <a href="mailbox">
-
-                                <i class="fa fa-envelope-o"></i>
-                                <span>Mailbox</span>
 
                             </a>
 

@@ -273,6 +273,30 @@
     min-height: 150px;
 }
 
+#panelHelpdesk .hd-dropzone-resp {
+    margin-top: 10px;
+    min-height: 0;
+    padding: 12px 10px;
+}
+
+#panelHelpdesk .hd-dropzone-resp i {
+    font-size: 18px;
+    display: inline;
+    margin: 0 4px 0 0;
+    vertical-align: middle;
+}
+
+#panelHelpdesk .hd-dropzone-resp p {
+    display: inline;
+    margin: 0;
+    font-size: 12px;
+}
+
+#panelHelpdesk .hd-dropzone-resp small {
+    display: block;
+    margin-top: 2px;
+}
+
 #panelHelpdesk .hd-dropzone.hd-dragover {
     border-color: #3c8dbc;
     background: #eef6fb;
@@ -369,11 +393,26 @@
     font-size: 12px;
     color: #555;
     line-height: 1.4;
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     padding: 8px 10px;
     background: #f7fafc;
     border-radius: 4px;
     border-left: 3px solid #3c8dbc;
+}
+#panelHelpdesk .hd-tips-dep {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    background: #fff8ef;
+    border-radius: 4px;
+    border-left: 3px solid #f39c12;
+}
+#panelHelpdesk .hd-hint-espera {
+    margin-top: 6px;
+    color: #8a6d3b;
+    font-size: 12px;
 }
 
 #panelHelpdesk .hd-ejemplo-box {
@@ -678,6 +717,15 @@
     background: #fff5f5;
 }
 
+#panelHelpdesk .hd-lista-tipo {
+    white-space: nowrap;
+}
+
+#panelHelpdesk .hd-lista-tipo > i {
+    width: 1.1em;
+    text-align: center;
+}
+
 #panelHelpdesk .hd-sla {
     display: inline-block;
     font-size: 11px;
@@ -708,8 +756,25 @@
     background: #eef9f2;
 }
 
-#panelHelpdesk .hd-sla-na {
-    color: #999;
+#panelHelpdesk .hd-sla-exento {
+    color: #8a6d3b;
+    background: #fcf8e3;
+}
+#panelHelpdesk .hd-sla-exento-box {
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    background: #fcf8e3;
+    border: 1px solid #faebcc;
+    border-radius: 4px;
+}
+#panelHelpdesk .hd-check-exento {
+    font-weight: 600;
+    margin: 0;
+    cursor: pointer;
+}
+#panelHelpdesk .hd-check-exento input {
+    margin-right: 4px;
+    vertical-align: middle;
 }
 
 #panelHelpdesk .hd-est {
