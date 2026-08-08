@@ -1079,7 +1079,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="vistas/js/helpdesk.js?v=43"></script>
-    <script src="vistas/js/helpdesk-indicadores.js?v=3"></script>
+    <script src="vistas/js/helpdesk-indicadores.js?v=4"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js?v=2"></script>
     <script src="vistas/js/paras.js"></script>

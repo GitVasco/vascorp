@@ -504,6 +504,15 @@ class ControladorHelpdesk
         );
     }
 
+    /**
+     * Códigos que entran al % / gráfico de cumplimiento SLA.
+     * N/A (sin SLA) y EXENTO (cancelado) no cuentan.
+     */
+    private static function slaCuentaCumplimiento($codigo)
+    {
+        return $codigo === "CUMPLIDO" || $codigo === "FUERA";
+    }
+
     public static function ctrEnriquecerSla($items)
     {
         if (!is_array($items)) {
@@ -845,10 +854,13 @@ class ControladorHelpdesk
 
             if ($enPeriodoCerrado) {
                 $cerradosPeriodo++;
-                if ($sla["codigo"] === "CUMPLIDO") {
-                    $slaOk++;
-                } else {
-                    $slaFuera++;
+                // Solo CUMPLIDO / FUERA; Sin SLA y cancelado no bajan el %.
+                if (self::slaCuentaCumplimiento($sla["codigo"])) {
+                    if ($sla["codigo"] === "CUMPLIDO") {
+                        $slaOk++;
+                    } else {
+                        $slaFuera++;
+                    }
                 }
                 if ($creadoTs !== false && $cerradoTs !== false && $cerradoTs >= $creadoTs) {
                     $horas = ($cerradoTs - $creadoTs) / 3600;
@@ -884,8 +896,8 @@ class ControladorHelpdesk
                 }
             }
 
-            // carga por asignado (creados en período o abiertos)
-            if ($enPeriodoCreado || $estaAbierto) {
+            // Carga por asignado: creados, abiertos o cerrados del período
+            if ($enPeriodoCreado || $estaAbierto || $enPeriodoCerrado) {
                 $aid = $t["asignado_id"] === null || $t["asignado_id"] === "" ? 0 : (int) $t["asignado_id"];
                 $anombre = $aid > 0
                     ? ($t["asignado_nombre"] ? $t["asignado_nombre"] : ("#" . $aid))
@@ -913,10 +925,12 @@ class ControladorHelpdesk
                 }
                 if ($enPeriodoCerrado) {
                     $porAsignado[$aid]["cerrados"]++;
-                    if ($sla["codigo"] === "CUMPLIDO") {
-                        $porAsignado[$aid]["sla_ok"]++;
-                    } else {
-                        $porAsignado[$aid]["sla_fuera"]++;
+                    if (self::slaCuentaCumplimiento($sla["codigo"])) {
+                        if ($sla["codigo"] === "CUMPLIDO") {
+                            $porAsignado[$aid]["sla_ok"]++;
+                        } else {
+                            $porAsignado[$aid]["sla_fuera"]++;
+                        }
                     }
                 }
             }
@@ -991,10 +1005,12 @@ class ControladorHelpdesk
             if ($xTs !== false && $xTs >= $prevIni && $xTs < $prevFin) {
                 $pCerrados++;
                 $slaP = self::ctrSlaDeTicket($t);
-                if ($slaP["codigo"] === "CUMPLIDO") {
-                    $pSlaOk++;
-                } else {
-                    $pSlaFuera++;
+                if (self::slaCuentaCumplimiento($slaP["codigo"])) {
+                    if ($slaP["codigo"] === "CUMPLIDO") {
+                        $pSlaOk++;
+                    } else {
+                        $pSlaFuera++;
+                    }
                 }
                 if ($cTs !== false && $xTs >= $cTs) {
                     $pSumaH += ($xTs - $cTs) / 3600;
