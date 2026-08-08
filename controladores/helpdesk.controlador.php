@@ -20,6 +20,7 @@ class ControladorHelpdesk
 
     const ADJUNTO_MAX_BYTES = 10485760;
     const ADJUNTO_MAX_CANTIDAD = 5;
+    /** Relativo al proyecto; se usa si HELPDESK_ADJUNTOS_DIR no está definido o vacío */
     const ADJUNTO_DIR = "vistas/img/helpdesk";
     /** IDs fijos que pueden figurar en "Asignar a" */
     const AGENTES_ASIGNABLES = array(6, 10);
@@ -1417,18 +1418,41 @@ class ControladorHelpdesk
         return $out;
     }
 
+    /**
+     * Carpeta absoluta de adjuntos.
+     * Prioridad: HELPDESK_ADJUNTOS_DIR (config.php) → vistas/img/helpdesk del proyecto.
+     */
+    private static function dirAdjuntosAbs()
+    {
+        if (defined("HELPDESK_ADJUNTOS_DIR")) {
+            $custom = trim((string) constant("HELPDESK_ADJUNTOS_DIR"));
+            if ($custom !== "") {
+                return rtrim(str_replace("\\", "/", $custom), "/");
+            }
+        }
+
+        return str_replace("\\", "/", dirname(__DIR__) . "/" . self::ADJUNTO_DIR);
+    }
+
+    private static function pathAdjuntoAbs($nombreGuardado)
+    {
+        $nombre = basename((string) $nombreGuardado);
+        return self::dirAdjuntosAbs() . "/" . $nombre;
+    }
+
     private static function guardarAdjunto($ticketId, $usuarioId, $file)
     {
         $ext = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
         $nombreGuardado = $ticketId . "_" . uniqid("", true) . "." . $ext;
-        $dirRel = self::ADJUNTO_DIR;
-        $dirAbs = dirname(__DIR__) . "/" . $dirRel;
+        $dirAbs = self::dirAdjuntosAbs();
 
         if (!is_dir($dirAbs)) {
-            @mkdir($dirAbs, 0755, true);
+            if (!@mkdir($dirAbs, 0755, true) && !is_dir($dirAbs)) {
+                return false;
+            }
         }
 
-        $destino = $dirAbs . "/" . $nombreGuardado;
+        $destino = self::pathAdjuntoAbs($nombreGuardado);
         if (!move_uploaded_file($file["tmp_name"], $destino)) {
             return false;
         }
@@ -1467,7 +1491,7 @@ class ControladorHelpdesk
             return array("ok" => false, "msg" => "Sin permiso para este adjunto.");
         }
 
-        $path = dirname(__DIR__) . "/" . self::ADJUNTO_DIR . "/" . $adj["nombre_guardado"];
+        $path = self::pathAdjuntoAbs($adj["nombre_guardado"]);
         if (!is_file($path)) {
             return array("ok" => false, "msg" => "Archivo no encontrado en disco.");
         }

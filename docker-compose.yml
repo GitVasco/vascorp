@@ -1,9 +1,10 @@
-version: "3.8"
 services:
     app:
         build: .
         ports:
             - "8090:80"
+        # Al abrir Docker Desktop / reiniciar la Mac, el contenedor vuelve solo.
+        restart: unless-stopped
         extra_hosts:
             - "host.docker.internal:host-gateway"
             - "api.vasco.io:host-gateway"
@@ -14,3 +15,8 @@ services:
             - DB_NAME=tu_base_de_datos
         volumes:
             - /Users/joel/Proyectos/vascorp:/var/www/html
+            # Adjuntos helpdesk → share \\SISTEMAS-2\datos (Mac: /Volumes/datos)
+            # Subcarpeta helpdesk se crea en el share con permiso de escritura.
+            # Si al bootear Docker el share aún no está montado, el contenedor puede fallar:
+            # montá datos y luego: docker compose up -d
+            - /Volumes/datos:/var/datos/helpdesk-share
