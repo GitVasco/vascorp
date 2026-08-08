@@ -11,9 +11,9 @@ class ControladorHelpdesk
         "INCIDENCIA",
         "REQUERIMIENTO",
         "CONSULTA",
-        "OTRO",
         "DESARROLLO",
         "CORRECCION",
+        "OTRO",
     );
     const PRIORIDADES = array("BAJA", "MEDIA", "ALTA");
     const ESTADOS = array("ABIERTO", "EN_PROGRESO", "ESPERANDO_USUARIO", "CERRADO");
@@ -35,6 +35,33 @@ class ControladorHelpdesk
         "MEDIA" => 24,
         "BAJA" => 72,
     );
+    /** Solo desarrollo largo: sin reloj SLA de cierre */
+    const TIPOS_SIN_SLA = array("DESARROLLO");
+    /** Tipos que admiten fecha estimada de entrega (compromiso, no SLA) */
+    const TIPOS_FECHA_ESTIMADA = array("DESARROLLO");
+
+    /**
+     * Normaliza fecha estimada (Y-m-d) o null. Solo aplica a tipos planificados.
+     */
+    private static function normalizarFechaEstimada($raw, $tipo)
+    {
+        if (!in_array($tipo, self::TIPOS_FECHA_ESTIMADA, true)) {
+            return null;
+        }
+        $raw = trim((string) $raw);
+        if ($raw === "") {
+            return null;
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            return false;
+        }
+        $parts = explode("-", $raw);
+        if (!checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0])) {
+            return false;
+        }
+
+        return $raw;
+    }
 
     public static function ctrCargarCatalogoJson()
     {
@@ -231,10 +258,23 @@ class ControladorHelpdesk
 
     /**
      * Calcula estado SLA de un ticket.
+     * Desarrollo/Requerimiento no aplican SLA de cierre (trabajo planificado).
      * @return array{codigo:string,label:string,cls:string,horas_limite:int,deadline:string|null,segundos:int}
      */
     public static function ctrSlaDeTicket($ticket)
     {
+        $tipo = isset($ticket["tipo"]) ? $ticket["tipo"] : "";
+        if (in_array($tipo, self::TIPOS_SIN_SLA, true)) {
+            return array(
+                "codigo" => "N/A",
+                "label" => "Sin SLA",
+                "cls" => "hd-sla-na",
+                "horas_limite" => 0,
+                "deadline" => null,
+                "segundos" => 0,
+            );
+        }
+
         $prioridad = isset($ticket["prioridad"]) ? $ticket["prioridad"] : "MEDIA";
         $slaMap = self::SLA_HORAS;
         $horas = isset($slaMap[$prioridad]) ? (int) $slaMap[$prioridad] : 24;
@@ -1096,6 +1136,9 @@ class ControladorHelpdesk
             return array("ok" => false, "msg" => "Módulo inválido para el sistema elegido.");
         }
 
+        // Fecha estimada la define TI al gestionar, no al crear.
+        $fechaEstimada = null;
+
         $archivosValidados = self::validarArchivosEntrada();
         if (!empty($archivosValidados["error"])) {
             return array("ok" => false, "msg" => $archivosValidados["error"]);
@@ -1116,6 +1159,7 @@ class ControladorHelpdesk
             "solicitante_id" => $solicitanteId,
             "asignado_id" => $asignadoId,
             "creado_por_id" => $uid,
+            "fecha_estimada" => $fechaEstimada,
         ));
 
         if ($id < 1) {
@@ -1448,6 +1492,41 @@ class ControladorHelpdesk
             }
             if ($tipo !== $ticket["tipo"]) {
                 $campos["tipo"] = $tipo;
+                $eventos[] = array(
+                    "tipo_evento" => "COMENTARIO",
+                    "mensaje" => "Tipo: " . $ticket["tipo"] . " → " . $tipo,
+                    "estado_anterior" => null,
+                    "estado_nuevo" => null,
+                );
+            }
+        }
+
+        $tipoFinal = isset($campos["tipo"]) ? $campos["tipo"] : $ticket["tipo"];
+        if (array_key_exists("fecha_estimada", $_POST) || isset($campos["tipo"])) {
+            $fechaRaw = array_key_exists("fecha_estimada", $_POST)
+                ? $_POST["fecha_estimada"]
+                : (isset($ticket["fecha_estimada"]) ? $ticket["fecha_estimada"] : "");
+            if (!in_array($tipoFinal, self::TIPOS_FECHA_ESTIMADA, true)) {
+                $fechaEstimada = null;
+            } else {
+                $fechaEstimada = self::normalizarFechaEstimada($fechaRaw, $tipoFinal);
+                if ($fechaEstimada === false) {
+                    return array("ok" => false, "msg" => "Fecha estimada inválida.");
+                }
+            }
+            $actualFecha = !empty($ticket["fecha_estimada"])
+                ? substr((string) $ticket["fecha_estimada"], 0, 10)
+                : null;
+            if ($fechaEstimada !== $actualFecha) {
+                $campos["fecha_estimada"] = $fechaEstimada;
+                $eventos[] = array(
+                    "tipo_evento" => "COMENTARIO",
+                    "mensaje" => $fechaEstimada
+                        ? ("Fecha estimada: " . ($actualFecha ? $actualFecha . " → " : "") . $fechaEstimada)
+                        : "Fecha estimada eliminada",
+                    "estado_anterior" => null,
+                    "estado_nuevo" => null,
+                );
             }
         }
 

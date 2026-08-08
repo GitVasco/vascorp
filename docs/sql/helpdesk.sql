@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS helpdesk_ticketjf (
     creado_en           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     cerrado_en          DATETIME NULL,
+    fecha_estimada      DATE NULL
+        COMMENT 'Fecha estimada de entrega (DESARROLLO/REQUERIMIENTO)',
     PRIMARY KEY (id),
     KEY idx_hd_estado (estado),
     KEY idx_hd_tipo (tipo),

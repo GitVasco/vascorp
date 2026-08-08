@@ -51,42 +51,51 @@
                                         <h4 class="hd-section-title"><span class="hd-step">1</span> Información de la Solicitud</h4>
 
                                         <label>Tipo de Solicitud <span class="text-danger">*</span></label>
+                                        <p class="help-block" style="margin-top:0;">
+                                            Haz clic en un tipo para ver qué significa (aparece arriba).
+                                        </p>
                                         <div class="hd-tipo-grid hd-tipo-fila" id="hdTipoCards">
                                             <button type="button" class="hd-tipo-card active" data-tipo="INCIDENCIA"
-                                                    data-ayuda="Problemas o errores que impiden realizar una tarea.">
+                                                    data-ayuda="Algo se rompió y no puedes trabajar: sale error, no carga, se cae o se bloquea. Ej.: no guarda la factura, pantalla en blanco. Si el sistema sí abre pero calcula o muestra mal → usa Corrección.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-exclamation-triangle text-orange"></i>
                                                 <strong>Incidencia</strong>
+                                                <small>Se rompió · SLA</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="REQUERIMIENTO"
-                                                    data-ayuda="Solicitudes de acceso, configuración o recursos.">
+                                                    data-ayuda="Pides que TI haga un ajuste sobre datos o configuración que ya existen (tú o el proceso se equivocaron, o necesitas un permiso). Ej.: mover tickets a otra fecha, dar acceso a un módulo, activar un usuario. No es programar algo nuevo. Tiene SLA.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-cog text-green"></i>
                                                 <strong>Requerimiento</strong>
+                                                <small>Ajuste · SLA</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="CONSULTA"
-                                                    data-ayuda="Dudas sobre el uso del sistema o procesos.">
+                                                    data-ayuda="Solo quieres que te expliquen cómo hacer algo. No pides que cambien datos ni arreglen el sistema. Ej.: ¿dónde veo el estado de cuenta? ¿cómo anulo una factura? Tiene SLA.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-question-circle text-blue"></i>
                                                 <strong>Consulta</strong>
-                                            </button>
-                                            <button type="button" class="hd-tipo-card" data-tipo="OTRO"
-                                                    data-ayuda="Otras solicitudes que no encajan en las categorías anteriores.">
-                                                <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
-                                                <i class="fa fa-ellipsis-h text-muted"></i>
-                                                <strong>Otro</strong>
+                                                <small>Pregunta · SLA</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="DESARROLLO"
-                                                    data-ayuda="Nuevas funciones o mejoras del sistema.">
+                                                    data-ayuda="Quieres que construyan o mejoren el sistema: pantalla nueva, función nueva o automatización. Suele llevar días o semanas. Sin SLA de horas; TI pone fecha estimada. Ej.: pedidos por tablet, nuevo reporte automático.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-code text-aqua"></i>
                                                 <strong>Desarrollo</strong>
+                                                <small>Nuevo · sin SLA</small>
                                             </button>
                                             <button type="button" class="hd-tipo-card" data-tipo="CORRECCION"
-                                                    data-ayuda="Bugs o comportamientos incorrectos que hay que corregir.">
+                                                    data-ayuda="El sistema sí abre y trabaja, pero se equivoca: calcula mal, muestra un dato incorrecto o un botón hace otra cosa. Ej.: el IGV sale mal. Si no carga o sale error y no puedes avanzar → usa Incidencia. Tiene SLA.">
                                                 <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
                                                 <i class="fa fa-wrench text-red"></i>
                                                 <strong>Corrección</strong>
+                                                <small>Se equivoca · SLA</small>
+                                            </button>
+                                            <button type="button" class="hd-tipo-card" data-tipo="OTRO"
+                                                    data-ayuda="Úsalo solo si revisaste los demás y ninguno encaja. Casi siempre sí hay un tipo correcto. Tiene SLA.">
+                                                <span class="hd-tipo-help" title="¿Qué es?" aria-label="Ayuda">?</span>
+                                                <i class="fa fa-ellipsis-h text-muted"></i>
+                                                <strong>Otro</strong>
+                                                <small>Ninguno · SLA</small>
                                             </button>
                                         </div>
 
@@ -120,7 +129,7 @@
                                         </div>
 
                                         <div class="row" style="margin-top:14px;">
-                                            <div class="col-sm-3">
+                                            <div class="col-sm-4">
                                                 <div class="form-group">
                                                     <label for="hdArea">Área <span class="text-danger">*</span></label>
                                                     <select class="form-control selectpicker" id="hdArea" required
@@ -130,7 +139,7 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="col-sm-3">
+                                            <div class="col-sm-5">
                                                 <div class="form-group">
                                                     <label for="hdModulo">Módulo / tema</label>
                                                     <select class="form-control selectpicker" id="hdModulo"
@@ -140,21 +149,28 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="col-sm-4">
+                                            <div class="col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="hdPrioridad">Prioridad <span class="text-danger">*</span></label>
+                                                    <select class="form-control selectpicker" id="hdPrioridad"
+                                                            data-width="100%" data-show-content="true">
+                                                        <option value="BAJA"
+                                                            data-content="<span class='label label-prioridad-BAJA'><i class='fa fa-flag'></i> Baja</span>">Baja</option>
+                                                        <option value="MEDIA" selected
+                                                            data-content="<span class='label label-prioridad-MEDIA'><i class='fa fa-flag'></i> Media</span>">Media</option>
+                                                        <option value="ALTA"
+                                                            data-content="<span class='label label-prioridad-ALTA'><i class='fa fa-flag'></i> Alta</span>">Alta</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-sm-12">
                                                 <div class="form-group">
                                                     <label for="hdTitulo">Asunto <span class="text-danger">*</span></label>
                                                     <input type="text" class="form-control" id="hdTitulo" maxlength="200" required
                                                            placeholder="Ej: No puedo emitir factura - Error al guardar">
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-2">
-                                                <div class="form-group">
-                                                    <label for="hdPrioridad">Prioridad <span class="text-danger">*</span></label>
-                                                    <select class="form-control" id="hdPrioridad">
-                                                        <option value="BAJA">Baja</option>
-                                                        <option value="MEDIA" selected>Media</option>
-                                                        <option value="ALTA">Alta</option>
-                                                    </select>
                                                 </div>
                                             </div>
                                         </div>
@@ -185,13 +201,12 @@
 
                                     <div class="hd-section">
                                         <h4 class="hd-section-title"><span class="hd-step">2</span> Descripción del Problema</h4>
-                                        <div class="hd-pulir-bar">
+                                        <div class="hd-pulir-bar" id="hdPulirBar" style="display:none;">
                                             <button type="button" class="btn btn-default btn-sm" id="hdBtnPulir"
-                                                    style="display:none;"
                                                     title="Corrige ortografía y redacción con IA">
                                                 <i class="fa fa-magic"></i> Pulir texto (IA)
                                             </button>
-                                            <small class="text-muted">Corrige sintaxis y da sentido profesional al asunto, descripción y pasos.</small>
+                                            <small class="text-muted">Solo uso interno autorizado.</small>
                                         </div>
                                         <div class="form-group">
                                             <label for="hdDescripcion">Descripción detallada <span class="text-danger">*</span></label>
@@ -201,7 +216,7 @@
                                         <div class="row">
                                             <div class="col-sm-6">
                                                 <div class="form-group">
-                                                    <label for="hdPasos">Pasos para reproducir <span class="text-muted">(opcional)</span></label>
+                                                    <label for="hdPasos" id="hdPasosLabel">Pasos para reproducir <span class="text-muted">(opcional)</span></label>
                                                     <textarea class="form-control" id="hdPasos" rows="5"
                                                               placeholder="1. Ir a…&#10;2. Hacer clic en…&#10;3. Observar que…"></textarea>
                                                 </div>
@@ -239,12 +254,21 @@
                             <div class="box-header with-border">
                                 <h3 class="box-title"><i class="fa fa-info-circle text-blue"></i> Información importante</h3>
                             </div>
-                            <div class="box-body">
-                                <p>Nuestro equipo revisará tu solicitud y te contactará según la prioridad indicada.</p>
-                                <ul class="hd-side-list">
-                                    <li><strong>Horario de atención:</strong><br>Lun–Vie, 8:00 am – 5:30 pm<br>Sábados, 8:00 am – 12:15 pm</li>
-                                    <li><strong>Tiempo de respuesta:</strong><br>Según prioridad del ticket</li>
-                                    <li><strong>Notificaciones:</strong><br>Actualizaciones por el canal elegido (próximamente)</li>
+                            <div class="box-body" id="hdInfoImportante">
+                                <div class="hd-ejemplo-box" id="hdEjemploBox">
+                                    <strong id="hdEjemploTipoTitulo"><i class="fa fa-tag"></i> Tipo seleccionado</strong>
+                                    <p class="hd-tipo-explicacion" id="hdInfoIntro">Elige un tipo para ver la explicación y un ejemplo.</p>
+                                    <hr class="hd-ejemplo-sep">
+                                    <strong><i class="fa fa-file-text-o"></i> Ejemplo</strong>
+                                    <p class="hd-ejemplo-asunto" id="hdEjemploAsunto"></p>
+                                    <p class="hd-ejemplo-desc" id="hdEjemploDesc"></p>
+                                    <button type="button" class="btn btn-default btn-xs" id="hdBtnUsarEjemplo"
+                                            title="Rellena asunto, descripción y pasos si están vacíos">
+                                        <i class="fa fa-clipboard"></i> Usar este ejemplo
+                                    </button>
+                                </div>
+                                <ul class="hd-side-list" id="hdInfoLista" style="margin-top:12px;">
+                                    <li id="hdInfoPrioridad"><strong>Prioridad elegida:</strong><br>Según prioridad del ticket</li>
                                 </ul>
                             </div>
                         </div>
@@ -253,11 +277,18 @@
                                 <h3 class="box-title"><i class="fa fa-lightbulb-o text-yellow"></i> Consejos para un mejor soporte</h3>
                             </div>
                             <div class="box-body">
-                                <ul class="hd-tips">
+                                <p class="hd-tips-titulo">¿Qué tipo elijo?</p>
+                                <ul class="hd-tips hd-tips-tipos" id="hdTipsTipos">
+                                    <li><strong>Incidencia:</strong> no puedes avanzar (error, no carga) · con SLA</li>
+                                    <li><strong>Corrección:</strong> sí entra, pero hace mal (dato/cálculo) · con SLA</li>
+                                    <li><strong>Requerimiento:</strong> ajustar algo existente (fecha, acceso, permiso) · con SLA</li>
+                                    <li><strong>Consulta:</strong> solo una duda de uso · con SLA</li>
+                                    <li><strong>Desarrollo:</strong> función/pantalla nueva · sin SLA (fecha estimada)</li>
+                                    <li><strong>Otro:</strong> solo si no encaja arriba · con SLA</li>
+                                </ul>
+                                <p class="hd-tips-titulo">Para este tipo</p>
+                                <ul class="hd-tips" id="hdConsejosLista">
                                     <li>Sé específico: indica módulo, pantalla y qué esperabas</li>
-                                    <li>Incluye pasos para reproducir el problema</li>
-                                    <li>Adjunta capturas de pantalla si es posible</li>
-                                    <li>Menciona si el error es de todos o solo tuyo</li>
                                 </ul>
                             </div>
                         </div>
@@ -317,9 +348,9 @@
                                 <option value="INCIDENCIA">Incidencia</option>
                                 <option value="REQUERIMIENTO">Requerimiento</option>
                                 <option value="CONSULTA">Consulta</option>
-                                <option value="OTRO">Otro</option>
                                 <option value="DESARROLLO">Desarrollo</option>
                                 <option value="CORRECCION">Corrección</option>
+                                <option value="OTRO">Otro</option>
                             </select>
                             <button type="button" class="btn btn-default btn-sm" id="hdBtnRefrescar" title="Actualizar">
                                 <i class="fa fa-refresh"></i>

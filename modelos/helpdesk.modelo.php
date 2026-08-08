@@ -21,6 +21,7 @@ class ModeloHelpdesk
                     t.creado_en,
                     t.actualizado_en,
                     t.cerrado_en,
+                    t.fecha_estimada,
                     sol.nombre AS solicitante_nombre,
                     asi.nombre AS asignado_nombre
                 FROM helpdesk_ticketjf t
@@ -191,6 +192,7 @@ class ModeloHelpdesk
         $sql = "SELECT COUNT(*) AS total
                 FROM helpdesk_ticketjf t
                 WHERE t.estado <> 'CERRADO'
+                  AND t.tipo NOT IN ('DESARROLLO')
                   AND (
                     (t.prioridad = 'ALTA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$alta} HOUR))
                     OR (t.prioridad = 'MEDIA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$media} HOUR))
@@ -369,11 +371,11 @@ class ModeloHelpdesk
             "INSERT INTO helpdesk_ticketjf
                 (titulo, descripcion, pasos_reproducir, tipo, prioridad, estado, modulo, sistema, area,
                  correo_contacto, telefono_contacto, canal_preferido,
-                 solicitante_id, asignado_id, creado_por_id)
+                 solicitante_id, asignado_id, creado_por_id, fecha_estimada)
              VALUES
                 (:titulo, :descripcion, :pasos_reproducir, :tipo, :prioridad, 'ABIERTO', :modulo, :sistema, :area,
                  :correo_contacto, :telefono_contacto, :canal_preferido,
-                 :solicitante_id, :asignado_id, :creado_por_id)"
+                 :solicitante_id, :asignado_id, :creado_por_id, :fecha_estimada)"
         );
         $stmt->bindValue(":titulo", $datos["titulo"], PDO::PARAM_STR);
         $stmt->bindValue(":descripcion", $datos["descripcion"], PDO::PARAM_STR);
@@ -393,6 +395,11 @@ class ModeloHelpdesk
             $stmt->bindValue(":asignado_id", (int) $datos["asignado_id"], PDO::PARAM_INT);
         }
         $stmt->bindValue(":creado_por_id", (int) $datos["creado_por_id"], PDO::PARAM_INT);
+        self::bindNullable(
+            $stmt,
+            ":fecha_estimada",
+            isset($datos["fecha_estimada"]) ? $datos["fecha_estimada"] : null
+        );
 
         if (!$stmt->execute()) {
             return 0;
@@ -420,7 +427,7 @@ class ModeloHelpdesk
         $permitidos = array(
             "titulo", "descripcion", "pasos_reproducir", "tipo", "prioridad", "estado",
             "modulo", "area", "correo_contacto", "telefono_contacto", "canal_preferido",
-            "asignado_id", "cerrado_en",
+            "asignado_id", "cerrado_en", "fecha_estimada",
         );
         $sets = array();
         $params = array(":id" => $id);

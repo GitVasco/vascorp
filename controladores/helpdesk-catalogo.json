@@ -8,7 +8,12 @@
         "Producción",
         "TI",
         "Gerencia",
-        "Otro"
+        "Otro",
+        "Showroom",
+        "Tesoreria",
+        "RRHH",
+        "Gerencia General",
+        "Coordinacion de Procesos"
     ],
     "sistemas": [
         {

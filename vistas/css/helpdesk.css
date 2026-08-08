@@ -110,6 +110,20 @@
     display: none;
 }
 
+#panelHelpdesk #hdTipoCards .hd-tipo-card {
+    padding: 10px 6px 8px;
+    min-height: 78px;
+}
+
+#panelHelpdesk #hdTipoCards .hd-tipo-card small {
+    display: block;
+    font-size: 10px;
+    color: #777;
+    line-height: 1.25;
+    margin-top: 3px;
+    white-space: normal;
+}
+
 #panelHelpdesk .hd-tipo-card:hover {
     border-color: #3c8dbc;
 }
@@ -325,9 +339,63 @@
     font-size: 13px;
 }
 
-#panelHelpdesk .hd-side-list li,
-#panelHelpdesk .hd-tips li {
-    margin-bottom: 8px;
+#panelHelpdesk .hd-tips-titulo {
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+    margin: 0 0 6px;
+}
+#panelHelpdesk .hd-tips-tipos {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef1f4;
+}
+#panelHelpdesk .hd-tips-tipos li {
+    margin-bottom: 5px;
+    line-height: 1.35;
+}
+#panelHelpdesk .hd-tips-tipos strong {
+    color: #333;
+}
+
+#panelHelpdesk .hd-ejemplo-box {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #f7fafc;
+    border: 1px dashed #c5d4e0;
+    border-radius: 4px;
+}
+#panelHelpdesk .hd-ejemplo-box > strong {
+    display: block;
+    font-size: 12px;
+    color: #3c8dbc;
+    margin-bottom: 6px;
+}
+#panelHelpdesk .hd-tipo-explicacion {
+    font-size: 12px;
+    color: #444;
+    margin: 0 0 8px;
+    line-height: 1.4;
+}
+#panelHelpdesk .hd-ejemplo-sep {
+    margin: 8px 0;
+    border-top: 1px solid #dce3ea;
+}
+#panelHelpdesk .hd-ejemplo-asunto {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 4px;
+}
+#panelHelpdesk .hd-ejemplo-desc {
+    font-size: 11px;
+    color: #666;
+    margin: 0 0 8px;
+    white-space: pre-line;
+    line-height: 1.35;
+}
+#panelHelpdesk .hd-ejemplo-box .btn {
+    margin-top: 2px;
 }
 
 #panelHelpdesk .hd-ind-filtros {
@@ -624,6 +692,23 @@
 
 #panelHelpdesk .hd-sla-na {
     color: #999;
+}
+
+#panelHelpdesk .hd-est {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+#panelHelpdesk .hd-est-ok {
+    color: #3c8dbc;
+    background: #eef6fb;
+}
+#panelHelpdesk .hd-est-atrasado {
+    color: #dd4b39;
+    background: #fdeeee;
 }
 
 #panelHelpdesk .hd-det-chip-sla {

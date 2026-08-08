@@ -45,6 +45,136 @@ $(function () {
         TI_EMPRESA: "TI / Soporte"
     };
 
+    /** Guías / ejemplos al crear ticket según tipo */
+    var GUIA_ALTA = {
+        INCIDENCIA: {
+            tituloPh: "Ej: No puedo emitir factura — Error al guardar",
+            descPh: "Qué intentabas hacer, qué pasó, mensaje de error (si hubo) y desde cuándo ocurre…",
+            pasosPh: "1. Ir a Ventas → Facturas\n2. Completar datos y guardar\n3. Aparece el error “…”",
+            pasosLabel: 'Pasos para reproducir <span class="text-muted">(opcional)</span>',
+            intro: "No puedes avanzar: error, no carga o se bloquea. Tiene SLA. Si sí abre pero calcula/muestra mal → Corrección.",
+            prioridadNota: {
+                ALTA: "Alta · respuesta objetivo ~4 h (horario laboral)",
+                MEDIA: "Media · respuesta objetivo ~24 h",
+                BAJA: "Baja · respuesta objetivo ~72 h"
+            },
+            tips: [
+                "Indica módulo, pantalla y el mensaje exacto del error",
+                "¿Le pasa a todos o solo a ti?",
+                "Adjunta captura del error",
+                "Si el sistema abre pero calcula mal → usa Corrección"
+            ],
+            ejemploAsunto: "No puedo emitir factura — Error al guardar",
+            ejemploDesc: "Al guardar una factura en Vascorp aparece “Error de conexión”. Pasa desde hoy en la mañana, con distintos clientes. Antes funcionaba normal.",
+            ejemploPasos: "1. Ir a Ventas → Facturas\n2. Elegir cliente y agregar ítems\n3. Clic en Guardar\n4. Sale el mensaje de error"
+        },
+        REQUERIMIENTO: {
+            tituloPh: "Ej: Mover tickets creados por error a otra fecha",
+            descPh: "Qué hay que ajustar (dato, acceso, permiso, fecha) y para quién…",
+            pasosPh: "1. Situación actual: …\n2. Lo que necesitas: …\n3. Códigos / usuarios afectados: …",
+            pasosLabel: 'Detalle del pedido <span class="text-muted">(opcional)</span>',
+            intro: "Pedido operativo sobre algo que ya existe: mover fechas, accesos, permisos o ajustes de datos. Sí tiene SLA. No es programar una función nueva.",
+            prioridadNota: {
+                ALTA: "Alta · respuesta objetivo ~4 h (horario laboral)",
+                MEDIA: "Media · respuesta objetivo ~24 h",
+                BAJA: "Baja · respuesta objetivo ~72 h"
+            },
+            tips: [
+                "Di qué hay que cambiar y a qué valor (ej. fecha origen → fecha destino)",
+                "Indica códigos, usuarios o documentos afectados",
+                "Si es permiso: qué puede hacer hoy y qué debería poder",
+                "Si pides una función nueva → usa Desarrollo"
+            ],
+            ejemploAsunto: "Mover tickets creados por error a otra fecha",
+            ejemploDesc: "Por error registré varios tickets con fecha 05/08. Necesito que se muevan a la fecha 07/08. Lista de IDs o rango: …",
+            ejemploPasos: "1. Fecha actual incorrecta: 05/08\n2. Fecha correcta: 07/08\n3. Tickets afectados: #… / rango …"
+        },
+        CONSULTA: {
+            tituloPh: "Ej: ¿Dónde veo el estado de cuenta del cliente?",
+            descPh: "Qué quieres saber o lograr, y qué ya intentaste…",
+            pasosPh: "1. Lo que busco: …\n2. Dónde ya busqué: …\n3. Duda concreta: …",
+            pasosLabel: 'Contexto de la duda <span class="text-muted">(opcional)</span>',
+            intro: "Solo una duda de uso o proceso. Tiene SLA. No pidas aquí cambios de datos ni arreglos.",
+            prioridadNota: {
+                ALTA: "Alta · bloquea una tarea urgente",
+                MEDIA: "Media · consulta normal de trabajo",
+                BAJA: "Baja · curiosidad o mejora de conocimiento"
+            },
+            tips: [
+                "Formula la pregunta en una frase clara",
+                "Indica el sistema y la pantalla donde estás",
+                "Cuenta qué ya revisaste",
+                "Si descubres un error, cambia el tipo a Incidencia o Corrección"
+            ],
+            ejemploAsunto: "¿Dónde veo el estado de cuenta del cliente?",
+            ejemploDesc: "Necesito saber en qué menú de Vascorp puedo ver la deuda y los abonos de un cliente. Ya revisé Ventas pero no lo encuentro.",
+            ejemploPasos: "1. Objetivo: ver deuda del cliente\n2. Revisado: menú Ventas\n3. Duda: ¿está en Cobranzas u otro módulo?"
+        },
+        OTRO: {
+            tituloPh: "Ej: Solicitud que no encaja en las otras categorías",
+            descPh: "Explica con claridad qué necesitas y por qué no es incidencia, requerimiento o desarrollo…",
+            pasosPh: "1. Contexto: …\n2. Pedido: …\n3. Resultado esperado: …",
+            pasosLabel: 'Detalle adicional <span class="text-muted">(opcional)</span>',
+            intro: "Úsalo solo si no encaja en incidencia, requerimiento, consulta, desarrollo o corrección.",
+            prioridadNota: {
+                ALTA: "Alta · urgente",
+                MEDIA: "Media · normal",
+                BAJA: "Baja · sin apuro"
+            },
+            tips: [
+                "Primero revisa si encaja en otro tipo (casi siempre sí)",
+                "Sé concreto: qué pedís y para cuándo",
+                "Adjunta archivos si ayudan a entender",
+                "Si es función nueva, mejor elige Desarrollo"
+            ],
+            ejemploAsunto: "Coordinar revisión de equipo / tema especial",
+            ejemploDesc: "Necesito coordinar con TI un tema que no es un error ni un desarrollo: …",
+            ejemploPasos: "1. Contexto: …\n2. Pedido: …\n3. Fecha tentativa: …"
+        },
+        DESARROLLO: {
+            tituloPh: "Ej: Pedidos por tablet en locales del cliente",
+            descPh: "Qué función o mejora necesitas, para quién es, y qué problema resuelve…",
+            pasosPh: "1. Situación actual: …\n2. Lo que debería poder hacer: …\n3. Usuarios / áreas: …\n4. Fecha deseada (si hay): …",
+            pasosLabel: 'Alcance / criterios <span class="text-muted">(opcional)</span>',
+            intro: "Construir o mejorar el sistema (pantallas, funciones, automatizaciones). No usa SLA de horas; TI puede poner una fecha estimada al atenderlo.",
+            prioridadNota: {
+                ALTA: "Alta · priorizar en la cola de desarrollos (sin SLA de horas)",
+                MEDIA: "Media · trabajo planificado normal (sin SLA de horas)",
+                BAJA: "Baja · backlog / cuando haya cupo (sin SLA de horas)"
+            },
+            tips: [
+                "Describe el resultado de negocio, no solo “hacer un módulo”",
+                "Indica usuarios o área que lo usarán",
+                "Si tienes una fecha deseada, menciónala en la descripción",
+                "Adjunta boceto, Excel o captura de referencia si tienes"
+            ],
+            ejemploAsunto: "Pedidos por tablet en locales del cliente",
+            ejemploDesc: "Se necesita registrar pedidos desde tablets en los locales, para agilizar revisión, aprobación y preparación. Hoy se hace a mano / por otro canal. Fecha deseada aproximada: 3 semanas.",
+            ejemploPasos: "1. Hoy: el pedido se anota fuera del sistema\n2. Debe: crear pedido desde tablet en Sistema Vasco\n3. Usuarios: vendedores de local\n4. Deseado: ~3 semanas"
+        },
+        CORRECCION: {
+            tituloPh: "Ej: El total de la factura calcula mal el IGV",
+            descPh: "Qué hace mal el sistema, qué debería hacer, y un ejemplo con datos…",
+            pasosPh: "1. Ir a …\n2. Usar este ejemplo: …\n3. Resultado actual (incorrecto): …\n4. Resultado esperado: …",
+            pasosLabel: 'Pasos para reproducir <span class="text-muted">(opcional)</span>',
+            intro: "Sí abre, pero hace mal (cálculo, dato o botón). Tiene SLA. Si no puedes entrar o sale error/bloqueo → Incidencia.",
+            prioridadNota: {
+                ALTA: "Alta · afecta operaciones o cifras críticas (~4 h)",
+                MEDIA: "Media · molesta pero hay alternativa (~24 h)",
+                BAJA: "Baja · detalle menor (~72 h)"
+            },
+            tips: [
+                "Di resultado actual vs esperado (con un ejemplo)",
+                "Indica si siempre falla o solo a veces",
+                "Adjunta captura del valor incorrecto",
+                "Si no carga / error / se bloquea → usa Incidencia"
+            ],
+            ejemploAsunto: "El total de la factura calcula mal el IGV",
+            ejemploDesc: "En facturas con descuento, el IGV queda distinto al Excel. Ejemplo: subtotal 100, descuento 10 → el sistema muestra IGV X y debería ser Y.",
+            ejemploPasos: "1. Crear factura con ítem S/ 100\n2. Aplicar descuento 10%\n3. Ver IGV calculado\n4. Comparar con el valor esperado"
+        }
+    };
+
     /** Etiqueta en el hilo según rol del agente asignable */
     var LABELS_AGENTE = {
         6: { txt: "Desarrollo", cls: "label-primary" },
@@ -159,10 +289,10 @@ $(function () {
         }
         if (permisos.pulir_ia) {
             $("#hdBtnPulir, #hdBtnPulirResp").show();
-            $("#hdVistaNuevo .hd-pulir-bar").show();
+            $("#hdVistaNuevo .hd-pulir-bar, #hdPulirBar").show();
         } else {
             $("#hdBtnPulir, #hdBtnPulirResp").hide();
-            $("#hdVistaNuevo .hd-pulir-bar").hide();
+            $("#hdVistaNuevo .hd-pulir-bar, #hdPulirBar").hide();
         }
     }
 
@@ -269,6 +399,104 @@ $(function () {
         return [];
     }
 
+    function tipoUsaFechaEstimada(tipo) {
+        return tipo === "DESARROLLO";
+    }
+
+    function fechaEstimadaSoloDia(val) {
+        if (!val) {
+            return "";
+        }
+        return String(val).substring(0, 10);
+    }
+
+    /** Compromiso suave: aviso visual si se pasó la fecha (no es SLA). */
+    function infoFechaEstimada(ticket) {
+        var f = fechaEstimadaSoloDia(ticket && ticket.fecha_estimada);
+        if (!f) {
+            return null;
+        }
+        var cerrado = ticket.estado === "CERRADO";
+        var hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        var d = new Date(f + "T00:00:00");
+        var atrasado = !cerrado && !isNaN(d.getTime()) && d < hoy;
+        return {
+            fecha: f,
+            atrasado: atrasado,
+            label: atrasado ? ("Atrasado · " + f) : ("Est. " + f),
+            cls: atrasado ? "hd-est-atrasado" : "hd-est-ok"
+        };
+    }
+
+    function badgeFechaEstimada(ticket) {
+        var info = infoFechaEstimada(ticket);
+        if (!info) {
+            return "";
+        }
+        var icon = info.atrasado ? "fa-exclamation-circle" : "fa-calendar";
+        var title = info.atrasado
+            ? "Se pasó la fecha estimada · no afecta SLA"
+            : "Fecha estimada de entrega · no es SLA";
+        return '<span class="hd-est ' + info.cls + '" title="' + esc(title) + '">' +
+            '<i class="fa ' + icon + '"></i> ' + esc(info.label) + "</span>";
+    }
+
+    function toggleFechaEstimadaAlta() {
+        // Fecha estimada solo la define TI al gestionar el ticket, no al crear.
+        $("#hdFechaEstimadaWrap").hide();
+        $("#hdFechaEstimada").val("");
+    }
+
+    function guiaAltaActual() {
+        var tipo = $("#hdTipo").val() || "INCIDENCIA";
+        return GUIA_ALTA[tipo] || GUIA_ALTA.INCIDENCIA;
+    }
+
+    function aplicarGuiaAlta() {
+        var g = guiaAltaActual();
+        var pri = $("#hdPrioridad").val() || "MEDIA";
+        var notaPri = (g.prioridadNota && g.prioridadNota[pri]) || g.prioridadNota.MEDIA;
+        var tipoLabel = LABELS_TIPO[$("#hdTipo").val()] || "Tipo";
+
+        $("#hdTitulo").attr("placeholder", g.tituloPh);
+        $("#hdDescripcion").attr("placeholder", g.descPh);
+        $("#hdPasos").attr("placeholder", g.pasosPh);
+        $("#hdPasosLabel").html(g.pasosLabel);
+        $("#hdEjemploTipoTitulo").html('<i class="fa fa-tag"></i> ' + esc(tipoLabel));
+        $("#hdInfoIntro").text(g.intro);
+        $("#hdInfoPrioridad").html("<strong>Prioridad elegida:</strong><br>" + esc(notaPri));
+        $("#hdEjemploAsunto").text(g.ejemploAsunto);
+        $("#hdEjemploDesc").text(g.ejemploDesc);
+
+        var $tips = $("#hdConsejosLista").empty();
+        (g.tips || []).forEach(function (t) {
+            $tips.append("<li>" + esc(t) + "</li>");
+        });
+    }
+
+    function usarEjemploAlta() {
+        var g = guiaAltaActual();
+        var llenados = 0;
+        if (!$.trim($("#hdTitulo").val())) {
+            $("#hdTitulo").val(g.ejemploAsunto);
+            llenados++;
+        }
+        if (!$.trim($("#hdDescripcion").val())) {
+            $("#hdDescripcion").val(g.ejemploDesc);
+            llenados++;
+        }
+        if (!$.trim($("#hdPasos").val())) {
+            $("#hdPasos").val(g.ejemploPasos);
+            llenados++;
+        }
+        if (llenados === 0) {
+            toast("info", "Los campos ya tienen texto. Bórralos si quieres pegar el ejemplo.");
+            return;
+        }
+        toast("success", "Ejemplo cargado en los campos vacíos. Ajústalo a tu caso.");
+    }
+
     function aplicarSistema(sistemaId) {
         sistemaActual = sistemaId || "VASCORP";
         $("#hdSistema").val(sistemaActual);
@@ -283,6 +511,12 @@ $(function () {
         $("#hdTipoCards .hd-tipo-card").removeClass("active");
         $('#hdTipoCards .hd-tipo-card[data-tipo="INCIDENCIA"]').addClass("active");
         $("#hdPrioridad").val("MEDIA");
+        if ($.fn.selectpicker && $("#hdPrioridad").data("selectpicker")) {
+            $("#hdPrioridad").selectpicker("refresh");
+        }
+        $("#hdFechaEstimada").val("");
+        toggleFechaEstimadaAlta();
+        aplicarGuiaAlta();
         archivosSeleccionados = [];
         renderFileList();
         $("#hdAdjuntos").val("");
@@ -307,6 +541,7 @@ $(function () {
             aplicarPermisosUi();
             fillOptions($("#hdArea"), catalogos.areas, "Seleccionar área");
             aplicarSistema(sistemaActual);
+            initPicker("#hdPrioridad");
             fillSelect($("#hdAsignadoAlta"), agentes, "Sin asignar", "id", function (u) {
                 return u.nombre || ("#" + u.id);
             });
@@ -347,10 +582,14 @@ $(function () {
             icon = "fa-check-circle";
         } else if (sla.codigo === "VENCIDO" || sla.codigo === "FUERA") {
             icon = "fa-exclamation-triangle";
+        } else if (sla.codigo === "N/A") {
+            icon = "fa-minus";
         }
-        var title = sla.horas_limite
-            ? ("Límite: " + sla.horas_limite + "h" + (sla.deadline ? " · vence " + sla.deadline : ""))
-            : "";
+        var title = sla.codigo === "N/A"
+            ? "Trabajo planificado · sin reloj SLA de cierre"
+            : (sla.horas_limite
+                ? ("Límite: " + sla.horas_limite + "h" + (sla.deadline ? " · vence " + sla.deadline : ""))
+                : "");
         return '<span class="hd-sla ' + esc(sla.cls || "hd-sla-na") + '" title="' + esc(title) + '">' +
             '<i class="fa ' + icon + '"></i> ' + esc(sla.label) + "</span>";
     }
@@ -411,7 +650,12 @@ $(function () {
                     "<td>" + badgePrioridad(t.prioridad) + "</td>" +
                     "<td>" + badgeEstado(t.estado) + "</td>" +
                     "<td>" + esc(t.asignado_nombre || "—") + "</td>" +
-                    "<td>" + badgeSla(t.sla) + "</td>" +
+                                                    "<td>" + badgeSla(t.sla) +
+                        (function () {
+                            var fe = badgeFechaEstimada(t);
+                            return fe ? "<br>" + fe : "";
+                        })() +
+                    "</td>" +
                     '<td class="hd-antiguedad' + antCls + '">' + esc(antiguedadTxt(t.creado_en)) + "</td>" +
                     '<td><button type="button" class="btn btn-xs btn-info hd-btn-ver"><i class="fa fa-eye"></i></button></td>' +
                 "</tr>"
@@ -734,6 +978,9 @@ $(function () {
                         (sla && sla.horas_limite
                             ? " · SLA " + esc(String(sla.horas_limite)) + "h"
                             : "") +
+                        (infoFechaEstimada(t)
+                            ? " · " + esc(infoFechaEstimada(t).label)
+                            : "") +
                     "</div>" +
                 "</div>" +
             "</div>"
@@ -764,12 +1011,22 @@ $(function () {
                         '<i class="fa fa-clock-o"></i>' +
                         '<div><span class="hd-det-chip-lbl">SLA</span>' +
                         badgeSla(sla) +
-                        (sla && sla.horas_limite
-                            ? '<br><small class="text-muted">Límite ' + esc(String(sla.horas_limite)) + "h" +
-                              (sla.deadline ? " · " + esc(sla.deadline) : "") + "</small>"
-                            : "") +
+                        (sla && sla.codigo === "N/A"
+                            ? '<br><small class="text-muted">Planificado</small>'
+                            : (sla && sla.horas_limite
+                                ? '<br><small class="text-muted">Límite ' + esc(String(sla.horas_limite)) + "h" +
+                                  (sla.deadline ? " · " + esc(sla.deadline) : "") + "</small>"
+                                : "")) +
                         "</div>" +
                     "</div>" +
+                    (tipoUsaFechaEstimada(t.tipo) || t.fecha_estimada
+                        ? '<div class="hd-det-chip">' +
+                            '<i class="fa fa-calendar"></i>' +
+                            '<div><span class="hd-det-chip-lbl">Fecha estimada</span>' +
+                            (badgeFechaEstimada(t) ||
+                                "<strong>Sin definir</strong>") +
+                            "</div></div>"
+                        : "") +
                 "</div>" +
                 '<div class="hd-det-info-row">' +
                     '<div class="hd-det-info-item"><i class="fa fa-desktop text-orange"></i> ' +
@@ -823,18 +1080,36 @@ $(function () {
         ["BAJA", "MEDIA", "ALTA"].forEach(function (p) {
             optsPri +=
                 '<option value="' + p + '"' + (p === t.prioridad ? " selected" : "") +
-                " data-content=\"<span class='label label-prioridad-" + p + "'>" + p + "</span>\">" +
+                " data-content=\"<span class='label label-prioridad-" + p + "'><i class='fa fa-flag'></i> " +
+                esc(p) + "</span>\">" +
                 esc(p) + "</option>";
+        });
+        var optsTipo = "";
+        ["INCIDENCIA", "REQUERIMIENTO", "CONSULTA", "DESARROLLO", "CORRECCION", "OTRO"].forEach(function (tp) {
+            optsTipo +=
+                '<option value="' + tp + '"' + (tp === t.tipo ? " selected" : "") + ">" +
+                esc(LABELS_TIPO[tp] || tp) + "</option>";
         });
 
         destroyPickers("#hdConvSidebarBody");
 
         if (permisos.gestionar && !cerrado) {
+            var fechaEst = fechaEstimadaSoloDia(t.fecha_estimada);
+            var showFecha = tipoUsaFechaEstimada(t.tipo);
             $("#hdConvSidebarBody").html(
                 '<form id="hdFormGestionar" class="hd-side-form">' +
                     '<div class="hd-side-badges">' +
                         badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) +
                     "</div>" +
+                    '<div class="form-group">' +
+                        '<label><i class="fa fa-tag text-blue"></i> Tipo</label>' +
+                        '<select class="form-control selectpicker" id="hdGestTipo" data-width="100%">' +
+                        optsTipo + "</select></div>" +
+                    '<div class="form-group" id="hdGestFechaWrap"' + (showFecha ? "" : ' style="display:none;"') + ">" +
+                        '<label><i class="fa fa-calendar text-green"></i> Fecha estimada</label>' +
+                        '<input type="date" class="form-control" id="hdGestFechaEstimada" value="' +
+                            esc(fechaEst) + '">' +
+                        '<p class="help-block" style="margin-bottom:0;">Compromiso · no es SLA</p></div>' +
                     '<div class="form-group">' +
                         '<label><i class="fa fa-exchange text-aqua"></i> Estado</label>' +
                         '<select class="form-control selectpicker" id="hdGestEstado" data-width="100%">' +
@@ -859,9 +1134,17 @@ $(function () {
                         '<i class="fa fa-save"></i> Guardar cambios</button>' +
                 "</form>"
             );
+            initPicker("#hdGestTipo");
             initPicker("#hdGestEstado");
             initPicker("#hdGestPrioridad");
             initPicker("#hdGestAsignado");
+            $("#hdGestTipo").on("changed.bs.select change", function () {
+                var show = tipoUsaFechaEstimada($(this).val());
+                $("#hdGestFechaWrap").toggle(!!show);
+                if (!show) {
+                    $("#hdGestFechaEstimada").val("");
+                }
+            });
         } else if (permisos.reabrir && cerrado) {
             $("#hdConvSidebarBody").html(
                 '<form id="hdFormGestionar" class="hd-side-form">' +
@@ -899,6 +1182,10 @@ $(function () {
                 '<div class="hd-side-meta">' +
                     '<div><i class="fa fa-user"></i> <span>Asignado</span> <strong>' +
                         esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
+                    (tipoUsaFechaEstimada(t.tipo) || t.fecha_estimada
+                        ? '<div><i class="fa fa-calendar"></i> <span>Est.</span> <strong>' +
+                          esc(fechaEstimadaSoloDia(t.fecha_estimada) || "Sin definir") + "</strong></div>"
+                        : "") +
                     '<div><i class="fa fa-building"></i> <span>Área</span> <strong>' + esc(t.area || "—") + "</strong></div>" +
                     '<div><i class="fa fa-desktop"></i> <span>Sistema</span> <strong>' +
                         esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
@@ -983,7 +1270,19 @@ $(function () {
         var ayuda = $card.attr("data-ayuda") || "Sin descripción.";
         if (window.toastr) {
             toastr.clear();
-            toastr.info(ayuda, titulo, { timeOut: 7000, closeButton: true, progressBar: true });
+            toastr.options = $.extend({}, toastr.options, {
+                closeButton: true,
+                progressBar: true,
+                positionClass: "toast-top-right",
+                timeOut: 9000,
+                extendedTimeOut: 4000,
+                newestOnTop: true
+            });
+            toastr.info(ayuda, titulo);
+            return;
+        }
+        if (typeof toast === "function") {
+            toast("info", titulo + ": " + ayuda);
             return;
         }
         alert(titulo + "\n\n" + ayuda);
@@ -1000,7 +1299,17 @@ $(function () {
         $("#hdTipoCards .hd-tipo-card").removeClass("active");
         $(this).addClass("active");
         $("#hdTipo").val($(this).data("tipo"));
+        toggleFechaEstimadaAlta();
+        aplicarGuiaAlta();
         mostrarAyudaCard(this, "Tipo");
+    });
+
+    $("#hdPrioridad").on("change changed.bs.select", function () {
+        aplicarGuiaAlta();
+    });
+
+    $("#hdBtnUsarEjemplo").on("click", function () {
+        usarEjemploAlta();
     });
 
     // --- Sistema cards ---
@@ -1287,6 +1596,10 @@ $(function () {
         if (ticketActual.estado !== "CERRADO") {
             data.asignado_id = $("#hdGestAsignado").val();
             data.prioridad = $("#hdGestPrioridad").val();
+            data.tipo = $("#hdGestTipo").val();
+            data.fecha_estimada = tipoUsaFechaEstimada(data.tipo)
+                ? ($("#hdGestFechaEstimada").val() || "")
+                : "";
         }
         post("actualizar", data)
             .done(function (res) {
@@ -1310,6 +1623,7 @@ $(function () {
     });
 
     cargarBase().always(function () {
+        aplicarGuiaAlta();
         aplicarHashActual();
         hdBooting = false;
     });
