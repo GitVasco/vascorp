@@ -1,0 +1,484 @@
+.mpr-page .mpr-box {
+    border-top: 3px solid #3c8dbc;
+}
+
+.mpr-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mpr-toolbar-left {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.mpr-toolbar-left .box-title {
+    display: inline-block;
+    margin: 0 0 10px;
+}
+
+.mpr-toolbar-left .badge {
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.mpr-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.mpr-filter-search {
+    width: 280px;
+    max-width: 100%;
+}
+
+.mpr-filter-proceso,
+.mpr-filters .bootstrap-select {
+    width: 180px !important;
+    max-width: 100%;
+}
+
+.mpr-proceso-box .bootstrap-select {
+    width: 100% !important;
+}
+
+.mpr-toolbar-right {
+    flex: 0 0 auto;
+    padding-top: 2px;
+}
+
+.mpr-list-wrap {
+    padding-top: 8px;
+}
+
+.mpr-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mpr-grupo {
+    border: 1px solid #dce3ea;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.mpr-grupo-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    padding: 8px 12px;
+    background: #f4f7fa;
+    border-bottom: 1px solid #e4e9ef;
+}
+
+.mpr-grupo-origen {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    min-width: 0;
+}
+
+.mpr-grupo-fab {
+    font-weight: 700;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    color: #1f2d3d;
+}
+
+.mpr-grupo-des {
+    color: #52606d;
+    font-size: 12px;
+}
+
+.mpr-grupo-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.mpr-grupo-count {
+    font-size: 11px;
+    color: #6b7785;
+    white-space: nowrap;
+}
+
+.mpr-grupo-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mpr-row {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    align-items: center;
+    padding: 7px 12px;
+    border-top: 1px solid #edf1f5;
+}
+
+.mpr-row:first-child {
+    border-top: 0;
+}
+
+.mpr-row:hover {
+    background: #f7fbff;
+}
+
+.mpr-row-proceso {
+    justify-self: start;
+}
+
+.mpr-row-destino {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+}
+
+.mpr-row-fab {
+    font-weight: 700;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: #1f2d3d;
+}
+
+.mpr-row-des {
+    font-size: 12px;
+    color: #52606d;
+}
+
+.mpr-row-side {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-self: end;
+}
+
+.mpr-row-obs {
+    font-size: 11px;
+    color: #7a8694;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mpr-chip {
+    display: inline-block;
+    padding: 0 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    line-height: 1.55;
+    background: #eef2f6;
+    color: #4a5568;
+    border: 1px solid #dce3ea;
+}
+
+.mpr-chip-color {
+    background: #fff8e8;
+    border-color: #f0d9a0;
+    color: #7a5a10;
+}
+
+.mpr-chip-cod {
+    background: #eef6fb;
+    border-color: #c9dfee;
+    color: #2c6a92;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+.mpr-proceso-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #c8e6c9;
+    font-weight: 600;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.mpr-empty,
+.mpr-no-match {
+    text-align: center;
+    padding: 40px 16px;
+    color: #7a8694;
+}
+
+.mpr-empty .fa {
+    font-size: 42px;
+    color: #c5ced8;
+    margin-bottom: 10px;
+}
+
+.mpr-empty p {
+    margin-bottom: 14px;
+}
+
+/* Modal / flujo */
+.mpr-modal .modal-header {
+    background: #f7f9fb;
+    border-bottom: 1px solid #e4e9ef;
+}
+
+.mpr-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.mpr-flow-col {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.mpr-flow-mid {
+    flex: 0 0 150px;
+    display: flex;
+    flex-direction: column;
+}
+
+.mpr-slot-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #5a6a7a;
+    margin-bottom: 8px;
+}
+
+.mpr-step {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 50%;
+    background: #3c8dbc;
+    color: #fff;
+    font-size: 11px;
+    margin-right: 4px;
+}
+
+.mpr-slot {
+    border: 1px solid #dce3ea;
+    border-radius: 6px;
+    background: #fff;
+    padding: 10px;
+    min-height: 168px;
+}
+
+.mpr-slot.is-ok {
+    border-color: #8bc34a;
+    box-shadow: inset 0 0 0 1px rgba(139, 195, 74, 0.25);
+}
+
+.mpr-slot-destino {
+    min-height: 168px;
+}
+
+.mpr-destinos-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.mpr-destino-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid #e4e9ef;
+    border-radius: 4px;
+    background: #f7f9fb;
+    margin-bottom: 6px;
+}
+
+.mpr-destino-item:last-child {
+    margin-bottom: 0;
+}
+
+.mpr-destino-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    min-width: 0;
+}
+
+.mpr-slot-label .text-muted {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.mpr-slot-search {
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.mpr-opciones {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 20;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    box-shadow: 0 6px 16px rgba(31, 45, 61, 0.12);
+    margin-top: 2px;
+}
+
+.mpr-opcion {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #f0f3f6;
+    background: #fff;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.mpr-opcion:hover,
+.mpr-opcion:focus {
+    background: #f0f7fc;
+    outline: none;
+}
+
+.mpr-opcion-fab {
+    font-weight: 700;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: #1f2d3d;
+}
+
+.mpr-opcion-des {
+    font-size: 11px;
+    color: #5a6a7a;
+    margin-top: 1px;
+}
+
+.mpr-card {
+    border-radius: 4px;
+    background: #f7f9fb;
+    padding: 10px;
+    min-height: 78px;
+}
+
+.mpr-card-empty {
+    color: #9aa5b1;
+    font-size: 12px;
+    text-align: center;
+    padding: 18px 6px;
+}
+
+.mpr-card-fab {
+    font-weight: 700;
+    font-family: Consolas, "Courier New", monospace;
+    color: #1f2d3d;
+}
+
+.mpr-card-des {
+    font-size: 12px;
+    color: #52606d;
+    margin-top: 3px;
+    line-height: 1.35;
+}
+
+.mpr-card-meta {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.mpr-proceso-box {
+    border: 1px solid #dce3ea;
+    border-radius: 6px;
+    background: #fff;
+    padding: 10px;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    min-height: 168px;
+}
+
+.mpr-arrow {
+    text-align: center;
+    color: #3c8dbc;
+    font-size: 22px;
+    line-height: 1;
+}
+
+@media (max-width: 767px) {
+    .mpr-filter-search,
+    .mpr-filter-proceso {
+        width: 100%;
+    }
+
+    .mpr-toolbar-right {
+        width: 100%;
+    }
+
+    .mpr-toolbar-right .btn {
+        width: 100%;
+    }
+
+    .mpr-row {
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "proceso actions"
+            "destino destino";
+    }
+
+    .mpr-row-proceso {
+        grid-area: proceso;
+    }
+
+    .mpr-row-destino {
+        grid-area: destino;
+    }
+
+    .mpr-row-side {
+        grid-area: actions;
+    }
+
+    .mpr-flow-mid {
+        flex: 1 1 100%;
+    }
+
+    .mpr-arrow .fa-long-arrow-right:before {
+        content: "\f175";
+    }
+
+    .mpr-proceso-box {
+        min-height: 0;
+        flex-direction: row;
+        align-items: center;
+    }
+}

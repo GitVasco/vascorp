@@ -81,6 +81,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Helpdesk | Vasco System";
         } elseif ($_GET["ruta"] === "sync-vasco") {
             $__tituloVentana = "Sincronización Vasco Online | Vasco System";
+        } elseif ($_GET["ruta"] === "mp-reprocesos") {
+            $__tituloVentana = "Reprocesos MP | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
             $__tituloVentana = "NC / ND | Vasco System";
         } elseif ($_GET["ruta"] === "notas-credito") {
@@ -203,6 +205,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-articulo") : ?>
     <link rel="stylesheet" href="vistas/css/crear-articulo.css?v=1">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mp-reprocesos") : ?>
+    <link rel="stylesheet" href="vistas/css/mp-reprocesos.css?v=4">
     <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
@@ -591,7 +596,8 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "almacen-01" ||
                 $_GET["ruta"] == "crear-cuadros-prod" ||
                 $_GET["ruta"] == "crear-copas-prod" ||
-                $_GET["ruta"] == "tabla-produccion"
+                $_GET["ruta"] == "tabla-produccion" ||
+                $_GET["ruta"] == "mp-reprocesos"
             ) {
                 // Manejar rutas según la configuración
                 $tipoPaginacionMP = (defined('TIPO_PAGINACION_MATERIAPRIMA')) ? TIPO_PAGINACION_MATERIAPRIMA : "cliente";
@@ -1109,6 +1115,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/orden-compra.js"></script>
     <script src="vistas/js/notas-ingresos-os.js"></script>
     <script src="vistas/js/orden-servicio.js"></script>
+    <script src="vistas/js/mp-reprocesos.js?v=6"></script>
     <script src="vistas/js/kardex.js"></script>
     <script src="vistas/js/produccion-mp.js"></script>
     <script src="vistas/js/costos.js"></script>

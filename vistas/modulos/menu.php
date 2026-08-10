@@ -1246,7 +1246,8 @@
                                         $_GET["ruta"] == "mp-oc-pendiente" ||
                                         $_GET["ruta"] == "mp-os-pendiente" ||
                                         $_GET["ruta"] == "almacen-01" ||
-                                        $_GET["ruta"] == "crear-cuadros-prod"
+                                        $_GET["ruta"] == "crear-cuadros-prod" ||
+                                        $_GET["ruta"] == "mp-reprocesos"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1343,6 +1344,17 @@
                             <a href="tabla-produccion">
 
                                 <i class="fa fa-cogs text-yellow"></i> Produccion Cuadros
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "mp-reprocesos") echo 'active'; ?>">
+
+                            <a href="mp-reprocesos">
+
+                                <i class="fa fa-retweet text-aqua"></i>
+                                <span> Reprocesos MP</span>
+
                             </a>
 
                         </li>

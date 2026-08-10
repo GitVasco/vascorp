@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "descripcion": "Tipos de reproceso aplicables a materia prima (catálogo). Editable sin tocar código.",
+  "procesos": [
+    {
+      "codigo": "SUBLIMAR",
+      "etiqueta": "Sublimar",
+      "descripcion": "Sublimación sobre la MP base (ej. elásticos).",
+      "activo": true
+    },
+    {
+      "codigo": "TENIR",
+      "etiqueta": "Teñir",
+      "descripcion": "Teñido de la MP base.",
+      "activo": true
+    },
+    {
+      "codigo": "ESTAMPAR",
+      "etiqueta": "Estampar",
+      "descripcion": "Estampado sobre la MP base.",
+      "activo": true
+    },
+    {
+      "codigo": "LAMINAR",
+      "etiqueta": "Laminar",
+      "descripcion": "Laminado o unión de capas.",
+      "activo": true
+    },
+    {
+      "codigo": "RECUBRIR",
+      "etiqueta": "Recubrir",
+      "descripcion": "Recubrimiento o acabado superficial.",
+      "activo": true
+    },
+    {
+      "codigo": "CORTAR",
+      "etiqueta": "Cortar / troquelar",
+      "descripcion": "Corte o troquelado que genera otra MP.",
+      "activo": true
+    },
+    {
+      "codigo": "OTRO",
+      "etiqueta": "Otro",
+      "descripcion": "Reproceso no listado; conviene detallar en observación.",
+      "activo": true
+    }
+  ]
+}
