@@ -16,9 +16,12 @@ if (!$infoActual) {
 if (!$infoActual) {
     $infoActual = array("anio" => (int) date("o"), "semana" => (int) date("W"), "fecha_inicio" => date("Y-m-d"), "fecha_fin" => date("Y-m-d"));
 }
-$tabUrl = isset($_GET["tab"]) ? trim((string) $_GET["tab"]) : "programar";
-if ($tabUrl !== "programado") {
-    $tabUrl = "programar";
+$tabUrl = isset($_GET["tab"]) ? trim((string) $_GET["tab"]) : "priorizar";
+if ($tabUrl === "programar") {
+    $tabUrl = "priorizar";
+}
+if (!in_array($tabUrl, array("priorizar", "destinar", "programado", "no_ejecutado"), true)) {
+    $tabUrl = "priorizar";
 }
 $modeloUrl = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : "";
 $tallerUrl = isset($_GET["taller"]) ? trim((string) $_GET["taller"]) : "";
@@ -35,7 +38,7 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
     <section class="content-header" style="padding:8px 10px 0;">
         <h1 style="margin:0 0 4px;font-size:22px;">
             Programación semanal por taller
-            <small>Por modelo/color · corte + OC</small>
+            <small>Priorizar · Destinar · seguimiento</small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
@@ -49,30 +52,6 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
         <div class="box pts-box-filtros" style="margin-bottom:8px;">
             <div class="box-body">
                 <div class="pts-filtros">
-                    <div class="pts-filtro pts-filtro-anio">
-                        <label>Año</label>
-                        <input type="number" class="form-control input-sm" id="filtroAnioPts"
-                            value="<?php echo (int) $infoActual['anio']; ?>" min="2000" max="2100">
-                    </div>
-                    <div class="pts-filtro pts-filtro-semana">
-                        <label>Semana</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-btn">
-                                <button type="button" class="btn btn-default" id="btnSemanaAntPts" title="Semana anterior">&laquo;</button>
-                            </span>
-                            <input type="number" class="form-control" id="filtroSemanaPts"
-                                value="<?php echo (int) $infoActual['semana']; ?>" min="1" max="53">
-                            <span class="input-group-btn">
-                                <button type="button" class="btn btn-default" id="btnSemanaSigPts" title="Semana siguiente">&raquo;</button>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="pts-filtro pts-filtro-rango">
-                        <label>Rango</label>
-                        <p class="pts-rango-txt" id="textoRangoSemanaPts">
-                            <?php echo htmlspecialchars($infoActual['fecha_inicio'] . ' → ' . $infoActual['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
-                        </p>
-                    </div>
                     <div class="pts-filtro pts-filtro-grow">
                         <label>Modelo</label>
                         <select class="form-control selectpicker" id="filtroModeloPts" data-live-search="true" data-size="8" data-width="100%" title="Todos">
@@ -87,17 +66,20 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                     </div>
                     <div class="pts-filtro pts-filtro-nivel">
                         <label>Nivel</label>
-                        <select class="form-control input-sm" id="filtroNivelPts" title="Solo en programado">
+                        <select class="form-control input-sm" id="filtroNivelPts" title="Filtra listados">
                             <option value="">Todos</option>
                         </select>
                     </div>
                     <div class="pts-filtro pts-filtro-acciones">
                         <label>&nbsp;</label>
                         <div class="pts-acciones-btns">
+                            <button type="button" class="btn btn-default btn-sm" id="btnLimpiarFiltrosPts" title="Limpiar filtros (ver todos)">
+                                <i class="fa fa-eraser"></i>
+                            </button>
                             <button type="button" class="btn btn-default btn-sm" id="btnActualizarPts" title="Actualizar">
                                 <i class="fa fa-refresh"></i>
                             </button>
-                            <a href="#" class="btn btn-success btn-sm" id="btnExcelPts" title="Exportar Excel de la semana">
+                            <a href="#" class="btn btn-success btn-sm" id="btnExcelPts" title="Exportar Excel de la semana del resumen">
                                 <i class="fa fa-file-excel-o"></i> Excel
                             </a>
                         </div>
@@ -110,8 +92,38 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                     </div>
                 </div>
                 <div id="estadisticasSemanaPts" class="pts-stats-box">
-                    <div class="pts-stats-title">Estadísticas de la semana</div>
-                    <div class="text-muted">Cargando…</div>
+                    <div class="pts-stats-toolbar">
+                        <div class="pts-stats-toolbar-title">Resumen de semana</div>
+                        <div class="pts-stats-semana">
+                            <div class="pts-filtro pts-filtro-anio">
+                                <label>Año</label>
+                                <input type="number" class="form-control input-sm" id="filtroAnioPts"
+                                    value="<?php echo (int) $infoActual['anio']; ?>" min="2000" max="2100">
+                            </div>
+                            <div class="pts-filtro pts-filtro-semana">
+                                <label>Semana</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-default" id="btnSemanaAntPts" title="Semana anterior">&laquo;</button>
+                                    </span>
+                                    <input type="number" class="form-control" id="filtroSemanaPts"
+                                        value="<?php echo (int) $infoActual['semana']; ?>" min="1" max="53">
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-default" id="btnSemanaSigPts" title="Semana siguiente">&raquo;</button>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="pts-filtro pts-filtro-rango">
+                                <label>Rango</label>
+                                <p class="pts-rango-txt" id="textoRangoSemanaPts">
+                                    <?php echo htmlspecialchars($infoActual['fecha_inicio'] . ' → ' . $infoActual['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="estadisticasSemanaBodyPts">
+                        <div class="text-muted">Cargando…</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,34 +131,43 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
         <div class="box">
             <div class="box-body" style="padding-top:10px;">
                 <ul class="nav nav-tabs" id="tabsPts">
-                    <li class="<?php echo $tabUrl === 'programar' ? 'active' : ''; ?>">
-                        <a href="#tabDisponiblesPts" data-toggle="tab" data-tab-pts="programar"><i class="fa fa-bolt"></i> Programar</a>
+                    <li class="<?php echo $tabUrl === 'priorizar' ? 'active' : ''; ?>">
+                        <a href="#tabDisponiblesPts" data-toggle="tab" data-tab-pts="priorizar"><i class="fa fa-flag"></i> 1. Priorizar</a>
+                    </li>
+                    <li class="<?php echo $tabUrl === 'destinar' ? 'active' : ''; ?>">
+                        <a href="#tabDestinarPts" data-toggle="tab" data-tab-pts="destinar"><i class="fa fa-calendar"></i> 2. Destinar semana</a>
                     </li>
                     <li class="<?php echo $tabUrl === 'programado' ? 'active' : ''; ?>">
                         <a href="#tabProgramadoPts" data-toggle="tab" data-tab-pts="programado"><i class="fa fa-list"></i> Ya programado</a>
                     </li>
+                    <li class="<?php echo $tabUrl === 'no_ejecutado' ? 'active' : ''; ?>">
+                        <a href="#tabNoEjecutadoPts" data-toggle="tab" data-tab-pts="no_ejecutado">
+                            <i class="fa fa-exclamation-triangle"></i> No ejecutados
+                            <span class="badge" id="badgeNoEjecPts" style="display:none;background:#dd4b39;margin-left:4px;">0</span>
+                        </a>
+                    </li>
                 </ul>
 
                 <div class="tab-content" style="padding-top:12px;">
-                    <div class="tab-pane <?php echo $tabUrl === 'programar' ? 'active' : ''; ?>" id="tabDisponiblesPts">
+                    <div class="tab-pane <?php echo $tabUrl === 'priorizar' ? 'active' : ''; ?>" id="tabDisponiblesPts">
                         <div id="barraRapidaPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
                             <div class="row" style="display:flex;flex-wrap:wrap;align-items:flex-end;">
-                                <div class="col-sm-3">
-                                    <label style="margin-bottom:2px;">Nivel para el lote</label>
-                                    <select class="form-control input-sm" id="nivelLotePts">
-                                        <option value="">— Elegir nivel —</option>
-                                    </select>
+                                <div class="col-sm-8">
+                                    <label style="margin-bottom:4px;">Nivel para el lote</label>
+                                    <div id="chkNivelesLotePts" class="pts-chk-niveles-lote" style="border-top:none;padding-top:0;">
+                                        <span class="text-muted">Cargando niveles…</span>
+                                    </div>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="col-sm-4">
                                     <label style="margin-bottom:2px;">&nbsp;</label>
                                     <button type="button" class="btn btn-primary btn-sm btn-block" id="btnProgramarLotePts" disabled>
-                                        Programar seleccionados (<span id="nSelPts">0</span>)
+                                        Priorizar seleccionados (<span id="nSelPts">0</span>)
                                     </button>
                                 </div>
-                                <div class="col-sm-6">
-                                    <p class="help-block" style="margin:18px 0 0;font-size:12px;">
-                                        <strong>Rápido:</strong> la cantidad es siempre el Total. Haz clic en el nivel de la fila,
-                                        o marca varias, elige nivel arriba y programa el lote.
+                                <div class="col-sm-12">
+                                    <p class="help-block" style="margin:10px 0 0;font-size:12px;">
+                                        <strong>Paso 1:</strong> marca filas, elige un nivel con el checkbox y prioriza el lote.
+                                        Queda en bandeja <em>sin semana</em>.
                                     </p>
                                 </div>
                             </div>
@@ -164,9 +185,77 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                         <th>Color</th>
                                         <th title="Almacén de corte">Alm. corte</th>
                                         <th title="Órdenes de corte">Ord. corte</th>
-                                        <th title="Cantidad a programar = Alm. + Ord.">Total</th>
+                                        <th title="Cantidad = Alm. + Ord.">Total</th>
                                         <th>Cob.</th>
-                                        <th style="min-width:220px;">Programar (elige nivel)</th>
+                                        <th style="min-width:220px;">Priorizar (elige nivel)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane <?php echo $tabUrl === 'destinar' ? 'active' : ''; ?>" id="tabDestinarPts">
+                        <div id="barraDestinarPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
+                            <div class="row" style="display:flex;flex-wrap:wrap;align-items:flex-end;">
+                                <div class="col-sm-2">
+                                    <label style="margin-bottom:2px;">Año destino</label>
+                                    <input type="number" class="form-control input-sm" id="destAnioPts"
+                                        value="<?php echo (int) $semanaActual['anio']; ?>" min="2000" max="2100">
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">Semana destino</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnDestSemAntPts" title="Semana anterior">&laquo;</button>
+                                        </span>
+                                        <input type="number" class="form-control" id="destSemanaPts"
+                                            value="<?php echo (int) $semanaActual['semana']; ?>" min="1" max="53">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnDestSemSigPts" title="Semana siguiente">&raquo;</button>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">Rango</label>
+                                    <p class="pts-rango-txt" id="textoRangoDestPts" style="margin:6px 0 0;">—</p>
+                                    <p class="text-danger" id="avisoDestPasadaPts" style="margin:4px 0 0;font-size:12px;display:none;">
+                                        Esa semana ya pasó; elige la actual o una futura.
+                                    </p>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">&nbsp;</label>
+                                    <button type="button" class="btn btn-success btn-sm btn-block" id="btnDestinarLotePts" disabled>
+                                        Destinar seleccionados <span id="nSelDestPts">(0)</span>
+                                    </button>
+                                </div>
+                                <div class="col-sm-12">
+                                    <p class="help-block" style="margin:10px 0 0;font-size:12px;">
+                                        <strong>Paso 2:</strong> elige aquí a qué semana van (no se permiten semanas ya pasadas).
+                                        Marca varios o usa Destinar en cada fila.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive pts-tabla-scroll">
+                            <table class="table table-bordered table-striped table-condensed table-hover" id="tablaPriorizadosPts" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px;">
+                                            <input type="checkbox" id="chkTodosPriPts" title="Seleccionar todos">
+                                        </th>
+                                        <th>Nivel</th>
+                                        <th>Taller</th>
+                                        <th>Modelo</th>
+                                        <th>Color</th>
+                                        <th>Cant.</th>
+                                        <th>Alm.</th>
+                                        <th>OC</th>
+                                        <th>Cob.</th>
+                                        <th style="min-width:200px;">Cambiar nivel</th>
+                                        <th style="width:110px;">Destinar</th>
+                                        <th style="width:70px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -175,13 +264,41 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                     </div>
 
                     <div class="tab-pane <?php echo $tabUrl === 'programado' ? 'active' : ''; ?>" id="tabProgramadoPts">
-                        <div style="margin-bottom:10px;">
-                            <label class="checkbox-inline" style="font-weight:normal;">
-                                <input type="checkbox" id="chkOcultarConsumidosPts" <?php echo $ocultarConsumidosUrl ? 'checked' : ''; ?>>
-                                Ocultar consumidos
-                                <span class="text-muted">(sin saldo en corte ni OC)</span>
-                            </label>
-                            <span id="conteoConsumidosPts" class="text-muted" style="margin-left:12px;"></span>
+                        <div id="barraProgramadoPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
+                            <div class="row" style="display:flex;flex-wrap:wrap;align-items:flex-end;">
+                                <div class="col-sm-2">
+                                    <label style="margin-bottom:2px;">Año</label>
+                                    <input type="number" class="form-control input-sm" id="progAnioPts"
+                                        value="<?php echo (int) $infoActual['anio']; ?>" min="2000" max="2100">
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">Semana a consultar</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnProgSemAntPts" title="Semana anterior">&laquo;</button>
+                                        </span>
+                                        <input type="number" class="form-control" id="progSemanaPts"
+                                            value="<?php echo (int) $infoActual['semana']; ?>" min="1" max="53">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnProgSemSigPts" title="Semana siguiente">&raquo;</button>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">Rango</label>
+                                    <p class="pts-rango-txt" id="textoRangoProgPts" style="margin:6px 0 0;">
+                                        <?php echo htmlspecialchars($infoActual['fecha_inicio'] . ' → ' . $infoActual['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </p>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="checkbox-inline" style="font-weight:normal;margin-top:22px;">
+                                        <input type="checkbox" id="chkOcultarConsumidosPts" <?php echo $ocultarConsumidosUrl ? 'checked' : ''; ?>>
+                                        Ocultar consumidos
+                                        <span class="text-muted">(sin saldo en corte ni OC)</span>
+                                    </label>
+                                    <span id="conteoConsumidosPts" class="text-muted" style="margin-left:8px;"></span>
+                                </div>
+                            </div>
                         </div>
                         <div class="table-responsive pts-tabla-scroll">
                             <table class="table table-bordered table-striped table-condensed" id="tablaProgramadoPts" width="100%">
@@ -203,6 +320,78 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                             </table>
                         </div>
                     </div>
+
+                    <div class="tab-pane <?php echo $tabUrl === 'no_ejecutado' ? 'active' : ''; ?>" id="tabNoEjecutadoPts">
+                        <div id="barraNoEjecPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
+                            <div class="row" style="display:flex;flex-wrap:wrap;align-items:flex-end;">
+                                <div class="col-sm-2">
+                                    <label style="margin-bottom:2px;">Año destino</label>
+                                    <input type="number" class="form-control input-sm" id="neAnioPts"
+                                        value="<?php echo (int) $semanaActual['anio']; ?>" min="2000" max="2100">
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">Semana destino</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnNeSemAntPts" title="Semana anterior">&laquo;</button>
+                                        </span>
+                                        <input type="number" class="form-control" id="neSemanaPts"
+                                            value="<?php echo (int) $semanaActual['semana']; ?>" min="1" max="53">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnNeSemSigPts" title="Semana siguiente">&raquo;</button>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">Rango</label>
+                                    <p class="pts-rango-txt" id="textoRangoNePts" style="margin:6px 0 0;">—</p>
+                                    <p class="text-danger" id="avisoNePasadaPts" style="margin:4px 0 0;font-size:12px;display:none;">
+                                        Esa semana ya pasó; elige la actual o una futura.
+                                    </p>
+                                </div>
+                                <div class="col-sm-2">
+                                    <label style="margin-bottom:2px;">&nbsp;</label>
+                                    <button type="button" class="btn btn-success btn-sm btn-block" id="btnMoverNeLotePts" disabled>
+                                        Mover a sem. <span id="nSelNePts">(0)</span>
+                                    </button>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label style="margin-bottom:2px;">&nbsp;</label>
+                                    <button type="button" class="btn btn-warning btn-sm btn-block" id="btnDevolverNeLotePts" disabled>
+                                        Devolver a prioridad
+                                    </button>
+                                </div>
+                                <div class="col-sm-12">
+                                    <p class="help-block" style="margin:10px 0 0;font-size:12px;">
+                                        Programados en <strong>semanas ya pasadas</strong> que aún tienen corte/OC
+                                        (no se ejecutaron). Puedes moverlos a otra semana o devolverlos a la bandeja de prioridad.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive pts-tabla-scroll">
+                            <table class="table table-bordered table-striped table-condensed table-hover" id="tablaNoEjecPts" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px;">
+                                            <input type="checkbox" id="chkTodosNePts" title="Seleccionar todos">
+                                        </th>
+                                        <th>Semana origen</th>
+                                        <th>Nivel</th>
+                                        <th>Taller</th>
+                                        <th>Modelo</th>
+                                        <th>Color</th>
+                                        <th>Cant.</th>
+                                        <th>Alm.</th>
+                                        <th>OC</th>
+                                        <th>Saldo</th>
+                                        <th style="width:160px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -210,6 +399,74 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
 </div>
 
 <div id="toastPts" class="pts-toast" style="display:none;" role="status" aria-live="polite"></div>
+
+<div id="modalDestinarPts" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <form id="formDestinarPts">
+                <div class="modal-header" style="background:#00a65a;color:white">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Destinar a semana</h4>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="destModalIdPri" value="">
+                    <p><strong id="destModalArticulo">—</strong></p>
+                    <p class="text-muted" id="destModalNivel" style="margin-bottom:12px;">—</p>
+                    <div class="form-group">
+                        <label>Año</label>
+                        <input type="number" class="form-control" id="destModalAnio" min="2000" max="2100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Semana</label>
+                        <input type="number" class="form-control" id="destModalSemana" min="1" max="53" required>
+                    </div>
+                    <p class="help-block" id="destModalRango" style="margin:0;">—</p>
+                    <p class="text-danger" id="destModalAvisoPasada" style="margin:6px 0 0;font-size:12px;display:none;">
+                        Esa semana ya pasó; elige la actual o una futura.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Destinar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="modalMoverNePts" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <form id="formMoverNePts">
+                <div class="modal-header" style="background:#f39c12;color:white">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Mover a semana</h4>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="neModalId" value="">
+                    <p><strong id="neModalArticulo">—</strong></p>
+                    <p class="text-muted" id="neModalOrigen" style="margin-bottom:12px;">—</p>
+                    <div class="form-group">
+                        <label>Año destino</label>
+                        <input type="number" class="form-control" id="neModalAnio" min="2000" max="2100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Semana destino</label>
+                        <input type="number" class="form-control" id="neModalSemana" min="1" max="53" required>
+                    </div>
+                    <p class="help-block" id="neModalRango" style="margin:0;">—</p>
+                    <p class="text-danger" id="neModalAvisoPasada" style="margin:6px 0 0;font-size:12px;display:none;">
+                        Esa semana ya pasó; elige la actual o una futura.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Mover</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div id="modalProgramarPts" class="modal fade" role="dialog">
     <div class="modal-dialog">
@@ -422,6 +679,84 @@ body .bootstrap-select .dropdown-menu { z-index: 2060 !important; }
 }
 .pts-leyenda strong { margin-right: 2px; color: #555; }
 
+.pts-chk-niveles-lote {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #ddd;
+}
+.pts-chk-niveles-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-right: 4px;
+}
+.pts-chk-nivel-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 4px 10px 4px 7px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
+    cursor: pointer;
+    font-weight: normal;
+    user-select: none;
+    opacity: 0.48;
+    filter: grayscale(0.35);
+    transition: opacity .15s, filter .15s, background .15s, box-shadow .15s, border-color .15s;
+}
+.pts-chk-nivel-item:hover {
+    opacity: 0.75;
+    filter: grayscale(0.1);
+}
+.pts-chk-nivel-item input {
+    margin: 0;
+    vertical-align: middle;
+}
+.pts-chk-nivel-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 3px;
+    color: #333;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    background: #eee;
+}
+.pts-chk-nivel-item.activo {
+    opacity: 1;
+    filter: none;
+    background: var(--pts-nivel-color, #e8f0fe);
+    border-color: var(--pts-nivel-color, #3c8dbc);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.12);
+}
+.pts-chk-nivel-item.activo .pts-chk-nivel-badge {
+    background: rgba(255,255,255,0.55);
+    color: #222;
+}
+.pts-chk-nivel-item:has(input:checked) {
+    opacity: 1;
+    filter: none;
+    background: var(--pts-nivel-color, #e8f0fe);
+    border-color: var(--pts-nivel-color, #3c8dbc);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.12);
+}
+.pts-chk-nivel-item:has(input:checked) .pts-chk-nivel-badge {
+    background: rgba(255,255,255,0.55);
+    color: #222;
+}
+
+#barraProgramadoPts.pts-cargando {
+    opacity: 0.85;
+}
+#tablaProgramadoPts tbody tr.pts-row-cargando td {
+    background: #fafafa;
+}
+
 /* —— Estadísticas —— */
 .pts-stats-box {
     background: #f4f6f8;
@@ -429,13 +764,41 @@ body .bootstrap-select .dropdown-menu { z-index: 2060 !important; }
     border-radius: 4px;
     padding: 8px 10px;
 }
-.pts-stats-head {
+.pts-stats-toolbar {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dde3ea;
+}
+.pts-stats-toolbar-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: #333;
+    margin: 0 0 2px;
+}
+.pts-stats-semana {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px;
+}
+.pts-stats-semana .pts-filtro {
+    margin: 0;
+}
+.pts-stats-semana .pts-filtro label {
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+.pts-stats-semana .pts-rango-txt {
+    margin: 4px 0 0;
+    font-size: 12px;
+}
+#estadisticasSemanaBodyPts .pts-stats-head {
+    display: none;
 }
 .pts-stats-title {
     font-weight: 700;

@@ -55,9 +55,50 @@ if ($accion === "candidatos") {
 		"cod_sector" => isset($_POST["cod_sector"]) ? $_POST["cod_sector"] : "",
 		"modelo" => isset($_POST["modelo"]) ? $_POST["modelo"] : ""
 	);
-	// En esta etapa el nivel lo define quien programa; la cola no clasifica sola
+	// En esta etapa el nivel lo define quien prioriza; la cola no clasifica sola
 	$lista = ControladorProgramacionTallerSemana::ctrListarCandidatos($filtros);
 	echo json_encode(array("ok" => true, "data" => $lista));
+	return;
+}
+
+if ($accion === "priorizados") {
+	$filtros = array(
+		"cod_sector" => isset($_POST["cod_sector"]) ? $_POST["cod_sector"] : "",
+		"nivel" => isset($_POST["nivel"]) ? $_POST["nivel"] : "",
+		"modelo" => isset($_POST["modelo"]) ? $_POST["modelo"] : ""
+	);
+	$lista = ControladorProgramacionTallerSemana::ctrListarPriorizados($filtros);
+	echo json_encode(array("ok" => true, "data" => $lista));
+	return;
+}
+
+if ($accion === "priorizar") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrPriorizarAjax($_POST));
+	return;
+}
+
+if ($accion === "priorizarLote") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrPriorizarLoteAjax($_POST));
+	return;
+}
+
+if ($accion === "editarPrioridad") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrEditarPrioridadAjax($_POST));
+	return;
+}
+
+if ($accion === "eliminarPrioridad") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrEliminarPrioridadAjax($_POST));
+	return;
+}
+
+if ($accion === "destinarSemana") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrDestinarSemanaAjax($_POST));
+	return;
+}
+
+if ($accion === "destinarLote") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrDestinarLoteAjax($_POST));
 	return;
 }
 
@@ -113,6 +154,49 @@ if ($accion === "editar") {
 
 if ($accion === "eliminar") {
 	echo json_encode(ControladorProgramacionTallerSemana::ctrEliminarAjax($_POST));
+	return;
+}
+
+if ($accion === "noEjecutados") {
+	$filtros = array(
+		"cod_sector" => isset($_POST["cod_sector"]) ? $_POST["cod_sector"] : "",
+		"nivel" => isset($_POST["nivel"]) ? $_POST["nivel"] : "",
+		"modelo" => isset($_POST["modelo"]) ? $_POST["modelo"] : ""
+	);
+	$lista = ControladorProgramacionTallerSemana::ctrListarNoEjecutados($filtros);
+	echo json_encode(array(
+		"ok" => true,
+		"data" => $lista,
+		"total" => count($lista)
+	));
+	return;
+}
+
+if ($accion === "contarNoEjecutados") {
+	echo json_encode(array(
+		"ok" => true,
+		"total" => ControladorProgramacionTallerSemana::ctrContarNoEjecutados()
+	));
+	return;
+}
+
+if ($accion === "moverNoEjecutado") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrMoverNoEjecutadoAjax($_POST));
+	return;
+}
+
+if ($accion === "moverNoEjecutadoLote") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrMoverNoEjecutadoLoteAjax($_POST));
+	return;
+}
+
+if ($accion === "devolverPrioridad") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrDevolverPrioridadAjax($_POST));
+	return;
+}
+
+if ($accion === "devolverPrioridadLote") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrDevolverPrioridadLoteAjax($_POST));
 	return;
 }
 

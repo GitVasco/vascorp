@@ -118,7 +118,8 @@
     /**
      * Parte ítems en páginas reales (nunca crea hoja vacía con cabecera).
      * - Si cabe en una hoja de detalle → una sola página (ítems + pie).
-     * - Si hay más → cabecera en cada hoja de ítems; pie solo al final.
+     * - Si hay más → reserva espacio al pie en la última hoja y reparte
+     *   el resto de forma pareja (evita hojas con 1–2 modelos).
      */
     function particionarItems($items, $porPagina, $itemsConPie)
     {
@@ -133,26 +134,20 @@
             return [$items];
         }
 
+        $enUltima = min($itemsConPie, $total);
+        $antes = $total - $enUltima;
+        $numAntes = (int) ceil($antes / $porPagina);
+        $base = (int) floor($antes / $numAntes);
+        $extra = $antes % $numAntes;
+
         $paginas = [];
         $offset = 0;
-
-        while ($offset < $total) {
-            $quedan = $total - $offset;
-
-            if ($quedan <= $porPagina) {
-                // Último tramo: si no deja espacio al pie, partir el excedente
-                if ($quedan > $itemsConPie) {
-                    $exceso = $quedan - $itemsConPie;
-                    $paginas[] = array_slice($items, $offset, $exceso);
-                    $offset += $exceso;
-                }
-                $paginas[] = array_slice($items, $offset);
-                break;
-            }
-
-            $paginas[] = array_slice($items, $offset, $porPagina);
-            $offset += $porPagina;
+        for ($i = 0; $i < $numAntes; $i++) {
+            $size = $base + ($i < $extra ? 1 : 0);
+            $paginas[] = array_slice($items, $offset, $size);
+            $offset += $size;
         }
+        $paginas[] = array_slice($items, $offset);
 
         return $paginas;
     }

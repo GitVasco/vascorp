@@ -1141,6 +1141,21 @@ $(function () {
                 (String(u.id) === String(t.asignado_id || "") ? " selected" : "") +
                 ">" + esc(u.nombre || ("#" + u.id)) + "</option>";
         });
+        var optsSol = "";
+        var solIds = {};
+        (usuarios || []).forEach(function (u) {
+            solIds[String(u.id)] = true;
+            optsSol +=
+                '<option value="' + esc(u.id) + '"' +
+                (String(u.id) === String(t.solicitante_id || "") ? " selected" : "") +
+                ">" + esc(u.nombre || ("#" + u.id)) + "</option>";
+        });
+        if (t.solicitante_id && !solIds[String(t.solicitante_id)]) {
+            optsSol =
+                '<option value="' + esc(t.solicitante_id) + '" selected>' +
+                esc(t.solicitante_nombre || ("#" + t.solicitante_id)) +
+                "</option>" + optsSol;
+        }
         var optsPri = "";
         ["BAJA", "MEDIA", "ALTA"].forEach(function (p) {
             optsPri +=
@@ -1190,6 +1205,12 @@ $(function () {
                         '<label><i class="fa fa-flag text-red"></i> Prioridad</label>' +
                         '<select class="form-control selectpicker" id="hdGestPrioridad" data-width="100%">' +
                         optsPri + "</select></div>" +
+                    '<div class="form-group">' +
+                        '<label><i class="fa fa-user-circle text-blue"></i> Solicitante</label>' +
+                        '<p class="help-block">Quién pidió el soporte (si lo creaste vos por error)</p>' +
+                        '<select class="form-control selectpicker" id="hdGestSolicitante" data-width="100%" ' +
+                        'data-live-search="true" title="Elegir solicitante">' +
+                        optsSol + "</select></div>" +
                     '<div class="form-group hd-side-asignar">' +
                         '<label><i class="fa fa-user text-aqua"></i> Asignar a</label>' +
                         '<p class="help-block">Responsable de atender el ticket</p>' +
@@ -1221,6 +1242,7 @@ $(function () {
             initPicker("#hdGestTipo");
             initPicker("#hdGestEstado");
             initPicker("#hdGestPrioridad");
+            initPicker("#hdGestSolicitante");
             initPicker("#hdGestAsignado");
             $("#hdGestTipo").on("changed.bs.select change", function () {
                 var show = tipoUsaFechaEstimada($(this).val());
@@ -1729,6 +1751,7 @@ $(function () {
         };
         if (ticketActual.estado !== "CERRADO") {
             data.asignado_id = $("#hdGestAsignado").val();
+            data.solicitante_id = $("#hdGestSolicitante").val();
             data.prioridad = $("#hdGestPrioridad").val();
             data.tipo = $("#hdGestTipo").val();
             data.fecha_estimada = tipoUsaFechaEstimada(data.tipo)
@@ -1744,6 +1767,10 @@ $(function () {
                     toast("error", "Indique el motivo para cancelar el SLA (mín. 5 caracteres).");
                     return;
                 }
+            }
+            if (!data.solicitante_id) {
+                toast("error", "Elegí un solicitante.");
+                return;
             }
         }
         post("actualizar", data)

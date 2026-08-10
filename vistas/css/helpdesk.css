@@ -820,9 +820,56 @@
     vertical-align: middle;
 }
 
+/* Bandeja: ocupar el alto útil del viewport (sin DataTable) */
+#panelHelpdesk #hdVistaLista.active {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 210px);
+    min-height: 320px;
+}
+
+#panelHelpdesk #hdVistaLista > .hd-kpis {
+    flex: 0 0 auto;
+}
+
+#panelHelpdesk #hdVistaLista > .box {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-bottom: 0;
+}
+
+#panelHelpdesk #hdVistaLista > .box > .box-header {
+    flex: 0 0 auto;
+}
+
 #panelHelpdesk .hd-tabla-wrap {
-    max-height: 480px;
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
     overflow: auto;
+}
+
+#panelHelpdesk #hdTablaLista thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #3c8dbc;
+    color: #fff;
+    border-bottom: 0;
+    box-shadow: 0 1px 0 #2e6b8a;
+}
+
+@media (max-width: 767px) {
+    #panelHelpdesk #hdVistaLista.active {
+        height: auto;
+        min-height: 0;
+    }
+
+    #panelHelpdesk .hd-tabla-wrap {
+        max-height: min(70vh, 520px);
+    }
 }
 
 #panelHelpdesk .hd-detalle-meta {

@@ -51,3 +51,31 @@ CREATE TABLE IF NOT EXISTS programacion_taller_semanajf (
 --
 -- ALTER TABLE programacion_taller_semanajf
 --   ADD UNIQUE KEY uk_pts_semana_modelo_color_taller (anio, semana, modelo, cod_color, cod_sector);
+
+-- =============================================================================
+-- Bandeja de prioridad (sin semana): priorizar primero, destinar a semana después
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS programacion_taller_prioridadjf (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    modelo              VARCHAR(50)  NOT NULL,
+    cod_color           VARCHAR(10)  NOT NULL DEFAULT '',
+    color               VARCHAR(100) NULL,
+    nombre              VARCHAR(255) NULL,
+    cod_sector          VARCHAR(10)  NOT NULL COMMENT 'sectorjf.cod_sector',
+    cantidad            INT          NOT NULL DEFAULT 0,
+    saldo_alm_corte     INT          NULL,
+    saldo_ord_corte     INT          NULL,
+    nivel               VARCHAR(30)  NOT NULL COMMENT 'critico|urgente|avanzar|prioridad|campana',
+    urg_plan            DECIMAL(10,2) NULL,
+    observacion         VARCHAR(255) NULL,
+    estado              TINYINT(1)   NOT NULL DEFAULT 1,
+    usureg              VARCHAR(50)  NULL,
+    fecreg              DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usumod              VARCHAR(50)  NULL,
+    fecmod              DATETIME     NULL,
+    UNIQUE KEY uk_ptp_modelo_color_taller (modelo, cod_color, cod_sector),
+    KEY idx_ptp_nivel (nivel),
+    KEY idx_ptp_taller (cod_sector),
+    KEY idx_ptp_estado (estado)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+  COMMENT='Prioridad de programación sin semana asignada';

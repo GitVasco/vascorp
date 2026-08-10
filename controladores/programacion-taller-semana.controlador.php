@@ -101,8 +101,16 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
+		$enPrioridad = array();
+		foreach (ModeloProgramacionTallerSemana::mdlClavesPrioridadActivas() as $clave) {
+			$enPrioridad[(string) $clave] = true;
+		}
 		foreach ($lista as $fila) {
-			// Nivel lo elige quien programa; no se asigna automáticamente
+			$clave = trim((string) $fila["modelo"]) . "|" . trim((string) $fila["cod_color"]);
+			if (isset($enPrioridad[$clave])) {
+				continue;
+			}
+			// Nivel lo elige quien prioriza; no se asigna automáticamente
 			$fila["nivel"] = "";
 			$fila["nivel_nombre"] = "";
 			$fila["nivel_color"] = "";
@@ -122,6 +130,389 @@ class ControladorProgramacionTallerSemana
 			return ($ua < $ub) ? -1 : (($ua > $ub) ? 1 : 0);
 		});
 		return $out;
+	}
+
+	static public function ctrEnriquecerPriorizado($fila)
+	{
+		if (!is_array($fila)) {
+			return null;
+		}
+		$map = self::ctrMapaNiveles();
+		$nid = isset($fila["nivel"]) ? $fila["nivel"] : "";
+		$fila["nivel_nombre"] = isset($map[$nid]["nombre"]) ? $map[$nid]["nombre"] : $nid;
+		$fila["nivel_color"] = isset($map[$nid]["color"]) ? $map[$nid]["color"] : "#CCCCCC";
+		$fila["nivel_orden"] = isset($map[$nid]["orden"]) ? (int) $map[$nid]["orden"] : 99;
+		$fila["alm_corte_vivo"] = isset($fila["alm_corte_vivo"]) ? (int) $fila["alm_corte_vivo"] : 0;
+		$fila["ord_corte_vivo"] = isset($fila["ord_corte_vivo"]) ? (int) $fila["ord_corte_vivo"] : 0;
+		$fila["saldo_vivo"] = isset($fila["saldo_vivo"]) ? (int) $fila["saldo_vivo"] : 0;
+		$fila["cod_sector_resuelto"] = isset($fila["cod_sector"]) ? $fila["cod_sector"] : "";
+		return $fila;
+	}
+
+	static public function ctrFilaPriorizadoPorId($id)
+	{
+		$row = ModeloProgramacionTallerSemana::mdlMostrarPrioridad($id);
+		if (!$row || (int) $row["estado"] !== 1) {
+			return null;
+		}
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+		$row["alm_corte_vivo"] = $art ? (int) $art["alm_corte"] : 0;
+		$row["ord_corte_vivo"] = $art ? (int) $art["ord_corte"] : 0;
+		$row["saldo_vivo"] = $art ? (int) $art["saldo_disponible"] : 0;
+		if (empty($row["nom_sector"]) && !empty($row["cod_sector"]) && class_exists("ControladorSectores")) {
+			$sec = ControladorSectores::ctrMostrarSectores($row["cod_sector"]);
+			if (is_array($sec)) {
+				$row["nom_sector"] = isset($sec["nom_sector"]) ? $sec["nom_sector"] : "";
+				$row["color_taller"] = isset($sec["color"]) ? $sec["color"] : null;
+			}
+		}
+		return self::ctrEnriquecerPriorizado($row);
+	}
+
+	static public function ctrListarPriorizados($filtros = array())
+	{
+		$lista = ModeloProgramacionTallerSemana::mdlListarPriorizados($filtros);
+		$out = array();
+		if (!is_array($lista)) {
+			return $out;
+		}
+		foreach ($lista as $fila) {
+			$out[] = self::ctrEnriquecerPriorizado($fila);
+		}
+		usort($out, function ($a, $b) {
+			$oa = isset($a["nivel_orden"]) ? (int) $a["nivel_orden"] : 99;
+			$ob = isset($b["nivel_orden"]) ? (int) $b["nivel_orden"] : 99;
+			if ($oa !== $ob) {
+				return $oa - $ob;
+			}
+			$sa = self::ctrClaveOrdenSector(isset($a["cod_sector"]) ? $a["cod_sector"] : "");
+			$sb = self::ctrClaveOrdenSector(isset($b["cod_sector"]) ? $b["cod_sector"] : "");
+			$cmp = strnatcasecmp($sa, $sb);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["modelo"], (string) $b["modelo"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			return strcmp((string) $a["cod_color"], (string) $b["cod_color"]);
+		});
+		return $out;
+	}
+
+	static public function ctrPriorizarAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+
+		$modelo = trim(isset($post["modelo"]) ? $post["modelo"] : "");
+		$codColor = trim(isset($post["cod_color"]) ? $post["cod_color"] : "");
+		$codSector = trim(isset($post["cod_sector"]) ? $post["cod_sector"] : "");
+		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : 0;
+		$nivel = trim(isset($post["nivel"]) ? $post["nivel"] : "");
+		$observacion = trim(isset($post["observacion"]) ? $post["observacion"] : "");
+
+		if ($modelo === "") {
+			return array("ok" => false, "mensaje" => "Modelo obligatorio");
+		}
+		if ($codSector === "") {
+			return array("ok" => false, "mensaje" => "Taller obligatorio");
+		}
+		if ($cantidad < 1) {
+			return array("ok" => false, "mensaje" => "La cantidad debe ser mayor a 0");
+		}
+		$map = self::ctrMapaNiveles();
+		if ($nivel === "" || !isset($map[$nivel])) {
+			return array("ok" => false, "mensaje" => "Nivel de urgencia no válido");
+		}
+
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($modelo, $codColor);
+		if (!$art) {
+			return array("ok" => false, "mensaje" => "Modelo/color no encontrado");
+		}
+		$disponible = (int) $art["saldo_disponible"];
+		if ($disponible < 1) {
+			return array("ok" => false, "mensaje" => "Sin saldo en almacén de corte ni en órdenes de corte");
+		}
+		if ($cantidad > $disponible) {
+			return array("ok" => false, "mensaje" => "La cantidad supera el saldo disponible ({$disponible})");
+		}
+
+		$datosBase = array(
+			"cantidad" => $cantidad,
+			"cod_sector" => $codSector,
+			"nivel" => $nivel,
+			"observacion" => $observacion !== "" ? $observacion : null,
+			"saldo_alm_corte" => (int) $art["alm_corte"],
+			"saldo_ord_corte" => (int) $art["ord_corte"],
+			"urg_plan" => $art["urg_plan"],
+			"color" => $art["color"],
+			"nombre" => $art["nombre"],
+			"usumod" => self::ctrUsuarioSesion()
+		);
+
+		$idExiste = ModeloProgramacionTallerSemana::mdlIdPrioridadExistente(
+			$art["modelo"],
+			$art["cod_color"],
+			$codSector,
+			false
+		);
+		if ($idExiste > 0) {
+			$existente = ModeloProgramacionTallerSemana::mdlMostrarPrioridad($idExiste);
+			$datosBase["id"] = $idExiste;
+			if ($existente && (int) $existente["estado"] === 0) {
+				if (ModeloProgramacionTallerSemana::mdlReactivarPrioridad($datosBase) === "ok") {
+					return array(
+						"ok" => true,
+						"mensaje" => "Priorizado",
+						"id" => $idExiste,
+						"row" => self::ctrFilaPriorizadoPorId($idExiste)
+					);
+				}
+				return array("ok" => false, "mensaje" => "No se pudo guardar la prioridad");
+			}
+			if (ModeloProgramacionTallerSemana::mdlEditarPrioridad($datosBase) === "ok") {
+				return array(
+					"ok" => true,
+					"mensaje" => "Prioridad actualizada",
+					"id" => $idExiste,
+					"row" => self::ctrFilaPriorizadoPorId($idExiste)
+				);
+			}
+			return array("ok" => false, "mensaje" => "No se pudo actualizar la prioridad");
+		}
+
+		$datos = array_merge($datosBase, array(
+			"modelo" => $art["modelo"],
+			"cod_color" => $art["cod_color"],
+			"usureg" => self::ctrUsuarioSesion()
+		));
+		if (ModeloProgramacionTallerSemana::mdlCrearPrioridad($datos) === "ok") {
+			$idNuevo = ModeloProgramacionTallerSemana::mdlIdPrioridadExistente(
+				$art["modelo"],
+				$art["cod_color"],
+				$codSector,
+				true
+			);
+			return array(
+				"ok" => true,
+				"mensaje" => "Priorizado (sin semana aún)",
+				"id" => $idNuevo,
+				"row" => self::ctrFilaPriorizadoPorId($idNuevo)
+			);
+		}
+		return array("ok" => false, "mensaje" => "No se pudo priorizar (¿tabla creada?)");
+	}
+
+	static public function ctrPriorizarLoteAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$raw = isset($post["items"]) ? $post["items"] : "[]";
+		$items = is_string($raw) ? json_decode($raw, true) : $raw;
+		if (!is_array($items) || !count($items)) {
+			return array("ok" => false, "mensaje" => "No hay ítems para priorizar");
+		}
+		$ok = 0;
+		$errores = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$resp = self::ctrPriorizarAjax(array(
+				"modelo" => isset($item["modelo"]) ? $item["modelo"] : "",
+				"cod_color" => isset($item["cod_color"]) ? $item["cod_color"] : "",
+				"cod_sector" => isset($item["cod_sector"]) ? $item["cod_sector"] : "",
+				"cantidad" => isset($item["cantidad"]) ? $item["cantidad"] : 0,
+				"nivel" => isset($item["nivel"]) ? $item["nivel"] : "",
+				"observacion" => isset($item["observacion"]) ? $item["observacion"] : ""
+			));
+			if (!empty($resp["ok"])) {
+				$ok++;
+			} else {
+				$modelo = isset($item["modelo"]) ? $item["modelo"] : "?";
+				$color = isset($item["cod_color"]) ? $item["cod_color"] : "";
+				$msg = isset($resp["mensaje"]) ? $resp["mensaje"] : "Error";
+				$errores[] = $modelo . "/" . $color . ": " . $msg;
+			}
+		}
+		if ($ok < 1) {
+			return array("ok" => false, "mensaje" => "No se pudo priorizar ninguno", "errores" => $errores, "ok_count" => 0);
+		}
+		$mensaje = $ok . " priorizado(s)";
+		if (count($errores)) {
+			$mensaje .= "; " . count($errores) . " con error";
+		}
+		return array("ok" => true, "mensaje" => $mensaje, "ok_count" => $ok, "errores" => $errores);
+	}
+
+	static public function ctrEditarPrioridadAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$id = isset($post["id"]) ? (int) $post["id"] : 0;
+		$row = ModeloProgramacionTallerSemana::mdlMostrarPrioridad($id);
+		if (!$row || (int) $row["estado"] !== 1) {
+			return array("ok" => false, "mensaje" => "Prioridad no encontrada");
+		}
+		$nivel = trim(isset($post["nivel"]) ? $post["nivel"] : $row["nivel"]);
+		$map = self::ctrMapaNiveles();
+		if (!isset($map[$nivel])) {
+			return array("ok" => false, "mensaje" => "Nivel no válido");
+		}
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : (int) $row["cantidad"];
+		if ($art) {
+			$disp = (int) $art["saldo_disponible"];
+			if ($disp > 0 && $cantidad > $disp) {
+				$cantidad = $disp;
+			}
+			if ($disp < 1) {
+				return array("ok" => false, "mensaje" => "Sin saldo vivo; quítalo de la prioridad");
+			}
+		}
+		$datos = array(
+			"id" => $id,
+			"cantidad" => $cantidad > 0 ? $cantidad : (int) $row["cantidad"],
+			"cod_sector" => $row["cod_sector"],
+			"nivel" => $nivel,
+			"observacion" => isset($post["observacion"]) ? trim($post["observacion"]) : $row["observacion"],
+			"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
+			"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+			"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
+			"usumod" => self::ctrUsuarioSesion()
+		);
+		if (ModeloProgramacionTallerSemana::mdlEditarPrioridad($datos) === "ok") {
+			return array(
+				"ok" => true,
+				"mensaje" => "Nivel actualizado",
+				"id" => $id,
+				"row" => self::ctrFilaPriorizadoPorId($id)
+			);
+		}
+		return array("ok" => false, "mensaje" => "No se pudo actualizar");
+	}
+
+	static public function ctrEliminarPrioridadAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$id = isset($post["id"]) ? (int) $post["id"] : 0;
+		$prev = self::ctrFilaPriorizadoPorId($id);
+		if ($id < 1 || !$prev) {
+			return array("ok" => false, "mensaje" => "Prioridad no encontrada");
+		}
+		if (ModeloProgramacionTallerSemana::mdlEliminarPrioridad($id, self::ctrUsuarioSesion()) === "ok") {
+			$candidato = ModeloProgramacionTallerSemana::mdlColorParaProgramar($prev["modelo"], $prev["cod_color"]);
+			if (is_array($candidato)) {
+				$candidato["nivel"] = "";
+				$candidato["nivel_nombre"] = "";
+				$candidato["nivel_color"] = "";
+				$candidato["cod_sector_resuelto"] = isset($candidato["cod_sector_resuelto"])
+					? $candidato["cod_sector_resuelto"]
+					: (isset($prev["cod_sector"]) ? $prev["cod_sector"] : "");
+				if (empty($candidato["nom_sector"]) && !empty($prev["nom_sector"])) {
+					$candidato["nom_sector"] = $prev["nom_sector"];
+				}
+				if (empty($candidato["color_taller"]) && !empty($prev["color_taller"])) {
+					$candidato["color_taller"] = $prev["color_taller"];
+				}
+			}
+			return array(
+				"ok" => true,
+				"mensaje" => "Quitado de prioridad",
+				"id" => $id,
+				"candidato" => $candidato
+			);
+		}
+		return array("ok" => false, "mensaje" => "No se pudo quitar");
+	}
+
+	/** Destina una prioridad a una semana (programa + saca de la bandeja). */
+	static public function ctrDestinarSemanaAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$idPri = isset($post["id_prioridad"]) ? (int) $post["id_prioridad"] : 0;
+		$pri = ModeloProgramacionTallerSemana::mdlMostrarPrioridad($idPri);
+		if (!$pri || (int) $pri["estado"] !== 1) {
+			return array("ok" => false, "mensaje" => "Prioridad no encontrada");
+		}
+		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
+		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($pri["modelo"], $pri["cod_color"]);
+		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : (int) $pri["cantidad"];
+		if ($art) {
+			$disp = (int) $art["saldo_disponible"];
+			if ($disp < 1) {
+				return array("ok" => false, "mensaje" => "Sin saldo vivo; no se puede destinar");
+			}
+			if ($cantidad > $disp) {
+				$cantidad = $disp;
+			}
+		}
+		$resp = self::ctrProgramarAjax(array(
+			"anio" => $anio,
+			"semana" => $semana,
+			"modelo" => $pri["modelo"],
+			"cod_color" => $pri["cod_color"],
+			"cod_sector" => $pri["cod_sector"],
+			"cantidad" => $cantidad,
+			"nivel" => $pri["nivel"],
+			"observacion" => isset($pri["observacion"]) ? $pri["observacion"] : ""
+		));
+		if (empty($resp["ok"])) {
+			return $resp;
+		}
+		ModeloProgramacionTallerSemana::mdlEliminarPrioridad($idPri, self::ctrUsuarioSesion());
+		$resp["mensaje"] = "Destinado a semana {$semana}";
+		$resp["id_prioridad"] = $idPri;
+		return $resp;
+	}
+
+	static public function ctrDestinarLoteAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$raw = isset($post["ids"]) ? $post["ids"] : "[]";
+		$ids = is_string($raw) ? json_decode($raw, true) : $raw;
+		if (!is_array($ids) || !count($ids)) {
+			return array("ok" => false, "mensaje" => "No hay ítems seleccionados");
+		}
+		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
+		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
+		$ok = 0;
+		$errores = array();
+		$rows = array();
+		foreach ($ids as $id) {
+			$resp = self::ctrDestinarSemanaAjax(array(
+				"id_prioridad" => (int) $id,
+				"anio" => $anio,
+				"semana" => $semana
+			));
+			if (!empty($resp["ok"])) {
+				$ok++;
+				if (!empty($resp["row"])) {
+					$rows[] = $resp["row"];
+				}
+			} else {
+				$errores[] = "id " . (int) $id . ": " . (isset($resp["mensaje"]) ? $resp["mensaje"] : "Error");
+			}
+		}
+		if ($ok < 1) {
+			return array("ok" => false, "mensaje" => "No se pudo destinar ninguno", "errores" => $errores);
+		}
+		$mensaje = $ok . " destinado(s) a semana " . $semana;
+		if (count($errores)) {
+			$mensaje .= "; " . count($errores) . " con error";
+		}
+		return array("ok" => true, "mensaje" => $mensaje, "ok_count" => $ok, "errores" => $errores, "rows" => $rows);
 	}
 
 	/** Enriquece una fila de programación para la UI (nivel, saldos, consumido). */
@@ -233,6 +624,12 @@ class ControladorProgramacionTallerSemana
 			$act = ModeloProgramacionTallerSemana::mdlSemanaActual();
 			$rango = ModeloProgramacionTallerSemana::mdlRangoSemana($act["anio"], $act["semana"]);
 		}
+		if ($rango) {
+			$rango["pasada"] = ModeloProgramacionTallerSemana::mdlSemanaYaPasada(
+				(int) $rango["anio"],
+				(int) $rango["semana"]
+			) ? 1 : 0;
+		}
 		return $rango;
 	}
 
@@ -254,6 +651,9 @@ class ControladorProgramacionTallerSemana
 		$rango = ModeloProgramacionTallerSemana::mdlRangoSemana($anio, $semana);
 		if (!$rango) {
 			return array("ok" => false, "mensaje" => "Semana no válida");
+		}
+		if (ModeloProgramacionTallerSemana::mdlSemanaYaPasada($anio, $semana)) {
+			return array("ok" => false, "mensaje" => "No se puede programar en una semana que ya pasó");
 		}
 		if ($modelo === "") {
 			return array("ok" => false, "mensaje" => "Modelo obligatorio");
@@ -470,6 +870,233 @@ class ControladorProgramacionTallerSemana
 			);
 		}
 		return array("ok" => false, "mensaje" => "No se pudo eliminar");
+	}
+
+	static public function ctrListarNoEjecutados($filtros = array())
+	{
+		$lista = ModeloProgramacionTallerSemana::mdlListarNoEjecutados($filtros);
+		$out = array();
+		if (!is_array($lista)) {
+			return $out;
+		}
+		foreach ($lista as $fila) {
+			$out[] = self::ctrEnriquecerProgramado($fila);
+		}
+		return $out;
+	}
+
+	static public function ctrContarNoEjecutados()
+	{
+		return ModeloProgramacionTallerSemana::mdlContarNoEjecutados();
+	}
+
+	/**
+	 * Mueve una programación de semana pasada (no ejecutada) a una semana actual/futura.
+	 */
+	static public function ctrMoverNoEjecutadoAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$id = isset($post["id"]) ? (int) $post["id"] : 0;
+		$row = ModeloProgramacionTallerSemana::mdlMostrar($id);
+		if (!$row || (int) $row["estado"] !== 1) {
+			return array("ok" => false, "mensaje" => "Registro no encontrado");
+		}
+		if (!ModeloProgramacionTallerSemana::mdlSemanaYaPasada((int) $row["anio"], (int) $row["semana"])) {
+			return array("ok" => false, "mensaje" => "Solo aplica a semanas ya pasadas");
+		}
+
+		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
+		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
+		$rango = ModeloProgramacionTallerSemana::mdlRangoSemana($anio, $semana);
+		if (!$rango) {
+			return array("ok" => false, "mensaje" => "Semana destino no válida");
+		}
+		if (ModeloProgramacionTallerSemana::mdlSemanaYaPasada($anio, $semana)) {
+			return array("ok" => false, "mensaje" => "No se puede mover a una semana que ya pasó");
+		}
+
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+		$disp = $art ? (int) $art["saldo_disponible"] : 0;
+		if ($disp < 1) {
+			return array("ok" => false, "mensaje" => "Ya no hay saldo vivo; no se puede mover");
+		}
+		$cantidad = min((int) $row["cantidad"], $disp);
+
+		// Si ya existe en destino: actualizar destino y quitar origen
+		$idDest = ModeloProgramacionTallerSemana::mdlIdExistente(
+			$anio,
+			$semana,
+			$row["modelo"],
+			$row["cod_color"],
+			$row["cod_sector"],
+			false
+		);
+		$usuario = self::ctrUsuarioSesion();
+		if ($idDest > 0 && $idDest !== $id) {
+			$exist = ModeloProgramacionTallerSemana::mdlMostrar($idDest);
+			$datosDest = array(
+				"id" => $idDest,
+				"cantidad" => $cantidad,
+				"cod_sector" => $row["cod_sector"],
+				"nivel" => $row["nivel"],
+				"observacion" => isset($row["observacion"]) ? $row["observacion"] : null,
+				"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
+				"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+				"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
+				"usumod" => $usuario
+			);
+			if ($exist && (int) $exist["estado"] === 0) {
+				$datosReac = array_merge($datosDest, array(
+					"modelo" => $row["modelo"],
+					"cod_color" => $row["cod_color"],
+					"color" => $row["color"],
+					"nombre" => $row["nombre"],
+					"fecha_inicio" => $rango["fecha_inicio"],
+					"fecha_fin" => $rango["fecha_fin"]
+				));
+				if (ModeloProgramacionTallerSemana::mdlReactivar($datosReac) !== "ok") {
+					return array("ok" => false, "mensaje" => "No se pudo mover");
+				}
+			} elseif (ModeloProgramacionTallerSemana::mdlEditar($datosDest) !== "ok") {
+				return array("ok" => false, "mensaje" => "No se pudo actualizar destino");
+			}
+			ModeloProgramacionTallerSemana::mdlEliminar($id, $usuario);
+			return array(
+				"ok" => true,
+				"mensaje" => "Movido a semana {$semana} (fusionado)",
+				"id" => $idDest,
+				"row" => self::ctrFilaProgramadoPorId($idDest)
+			);
+		}
+
+		if (ModeloProgramacionTallerSemana::mdlMoverSemana(array(
+			"id" => $id,
+			"anio" => $rango["anio"],
+			"semana" => $rango["semana"],
+			"fecha_inicio" => $rango["fecha_inicio"],
+			"fecha_fin" => $rango["fecha_fin"],
+			"cantidad" => $cantidad,
+			"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
+			"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+			"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
+			"usumod" => $usuario
+		)) === "ok") {
+			return array(
+				"ok" => true,
+				"mensaje" => "Movido a semana {$semana}",
+				"id" => $id,
+				"row" => self::ctrFilaProgramadoPorId($id)
+			);
+		}
+		return array("ok" => false, "mensaje" => "No se pudo mover");
+	}
+
+	static public function ctrMoverNoEjecutadoLoteAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$raw = isset($post["ids"]) ? $post["ids"] : "[]";
+		$ids = is_string($raw) ? json_decode($raw, true) : $raw;
+		if (!is_array($ids) || !count($ids)) {
+			return array("ok" => false, "mensaje" => "No hay ítems seleccionados");
+		}
+		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
+		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
+		$ok = 0;
+		$errores = array();
+		foreach ($ids as $id) {
+			$resp = self::ctrMoverNoEjecutadoAjax(array(
+				"id" => (int) $id,
+				"anio" => $anio,
+				"semana" => $semana
+			));
+			if (!empty($resp["ok"])) {
+				$ok++;
+			} else {
+				$errores[] = "id " . (int) $id . ": " . (isset($resp["mensaje"]) ? $resp["mensaje"] : "Error");
+			}
+		}
+		if ($ok < 1) {
+			return array("ok" => false, "mensaje" => "No se pudo mover ninguno", "errores" => $errores);
+		}
+		$mensaje = $ok . " movido(s) a semana " . $semana;
+		if (count($errores)) {
+			$mensaje .= "; " . count($errores) . " con error";
+		}
+		return array("ok" => true, "mensaje" => $mensaje, "ok_count" => $ok, "errores" => $errores);
+	}
+
+	/** Saca de la semana pasada y vuelve a la bandeja de prioridad. */
+	static public function ctrDevolverPrioridadAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$id = isset($post["id"]) ? (int) $post["id"] : 0;
+		$row = ModeloProgramacionTallerSemana::mdlMostrar($id);
+		if (!$row || (int) $row["estado"] !== 1) {
+			return array("ok" => false, "mensaje" => "Registro no encontrado");
+		}
+		if (!ModeloProgramacionTallerSemana::mdlSemanaYaPasada((int) $row["anio"], (int) $row["semana"])) {
+			return array("ok" => false, "mensaje" => "Solo aplica a semanas ya pasadas");
+		}
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+		$disp = $art ? (int) $art["saldo_disponible"] : 0;
+		if ($disp < 1) {
+			return array("ok" => false, "mensaje" => "Sin saldo vivo; quítalo de la programación");
+		}
+		$cantidad = min((int) $row["cantidad"], $disp);
+		$pri = self::ctrPriorizarAjax(array(
+			"modelo" => $row["modelo"],
+			"cod_color" => $row["cod_color"],
+			"cod_sector" => $row["cod_sector"],
+			"cantidad" => $cantidad,
+			"nivel" => $row["nivel"],
+			"observacion" => isset($row["observacion"]) ? $row["observacion"] : ""
+		));
+		if (empty($pri["ok"])) {
+			return $pri;
+		}
+		ModeloProgramacionTallerSemana::mdlEliminar($id, self::ctrUsuarioSesion());
+		return array(
+			"ok" => true,
+			"mensaje" => "Devuelto a prioridad",
+			"id" => $id,
+			"prioridad" => isset($pri["row"]) ? $pri["row"] : null
+		);
+	}
+
+	static public function ctrDevolverPrioridadLoteAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+		$raw = isset($post["ids"]) ? $post["ids"] : "[]";
+		$ids = is_string($raw) ? json_decode($raw, true) : $raw;
+		if (!is_array($ids) || !count($ids)) {
+			return array("ok" => false, "mensaje" => "No hay ítems seleccionados");
+		}
+		$ok = 0;
+		$errores = array();
+		foreach ($ids as $id) {
+			$resp = self::ctrDevolverPrioridadAjax(array("id" => (int) $id));
+			if (!empty($resp["ok"])) {
+				$ok++;
+			} else {
+				$errores[] = "id " . (int) $id . ": " . (isset($resp["mensaje"]) ? $resp["mensaje"] : "Error");
+			}
+		}
+		if ($ok < 1) {
+			return array("ok" => false, "mensaje" => "No se pudo devolver ninguno", "errores" => $errores);
+		}
+		$mensaje = $ok . " devuelto(s) a prioridad";
+		if (count($errores)) {
+			$mensaje .= "; " . count($errores) . " con error";
+		}
+		return array("ok" => true, "mensaje" => $mensaje, "ok_count" => $ok, "errores" => $errores);
 	}
 
 	/**

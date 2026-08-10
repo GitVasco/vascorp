@@ -88,6 +88,10 @@
     $ITEMS_POR_PAGINA = 20;
     $ITEMS_CON_PIE = 14;
 
+    /**
+     * Varias hojas: reserva pie en la última y reparte el resto de forma pareja
+     * (evita hojas con 1–2 modelos, p. ej. 20+20+2+14).
+     */
     function particionarItemsProforma($items, $porPagina, $itemsConPie)
     {
         $total = count($items);
@@ -100,25 +104,20 @@
             return array($items);
         }
 
+        $enUltima = min($itemsConPie, $total);
+        $antes = $total - $enUltima;
+        $numAntes = (int) ceil($antes / $porPagina);
+        $base = (int) floor($antes / $numAntes);
+        $extra = $antes % $numAntes;
+
         $paginas = array();
         $offset = 0;
-
-        while ($offset < $total) {
-            $quedan = $total - $offset;
-
-            if ($quedan <= $porPagina) {
-                if ($quedan > $itemsConPie) {
-                    $exceso = $quedan - $itemsConPie;
-                    $paginas[] = array_slice($items, $offset, $exceso);
-                    $offset += $exceso;
-                }
-                $paginas[] = array_slice($items, $offset);
-                break;
-            }
-
-            $paginas[] = array_slice($items, $offset, $porPagina);
-            $offset += $porPagina;
+        for ($i = 0; $i < $numAntes; $i++) {
+            $size = $base + ($i < $extra ? 1 : 0);
+            $paginas[] = array_slice($items, $offset, $size);
+            $offset += $size;
         }
+        $paginas[] = array_slice($items, $offset);
 
         return $paginas;
     }

@@ -432,7 +432,7 @@ class ModeloHelpdesk
         $permitidos = array(
             "titulo", "descripcion", "pasos_reproducir", "tipo", "prioridad", "estado",
             "modulo", "area", "correo_contacto", "telefono_contacto", "canal_preferido",
-            "asignado_id", "cerrado_en", "fecha_estimada",
+            "solicitante_id", "asignado_id", "cerrado_en", "fecha_estimada",
             "sla_exento", "sla_exento_motivo", "sla_exento_en", "sla_exento_por",
         );
         $sets = array();

@@ -60,6 +60,20 @@ class ModeloProgramacionTallerSemana
 		);
 	}
 
+	/**
+	 * True si el domingo de esa semana ya pasó (no se puede destinar/programar).
+	 * La semana en curso sigue permitida.
+	 */
+	static public function mdlSemanaYaPasada($anio, $semana)
+	{
+		$rango = self::mdlRangoSemana($anio, $semana);
+		if (!$rango) {
+			return true;
+		}
+		$hoy = (new DateTime("now"))->format("Y-m-d");
+		return strcmp($rango["fecha_fin"], $hoy) < 0;
+	}
+
 	static public function mdlListarProgramados($filtros = array())
 	{
 		$sql = "SELECT p.*,
@@ -118,6 +132,126 @@ class ModeloProgramacionTallerSemana
 		}
 		$stmt->execute();
 		return $stmt->fetchAll();
+	}
+
+	/**
+	 * Programados en semanas ya cerradas (fecha_fin < hoy) con saldo vivo > 0.
+	 */
+	static public function mdlListarNoEjecutados($filtros = array())
+	{
+		$hoy = (new DateTime("now"))->format("Y-m-d");
+		$sql = "SELECT p.*,
+				s.nom_sector,
+				s.color AS color_taller,
+				IFNULL(sal.alm_corte, 0) AS alm_corte_vivo,
+				IFNULL(sal.ord_corte, 0) AS ord_corte_vivo,
+				IFNULL(sal.saldo_disponible, 0) AS saldo_vivo
+			FROM programacion_taller_semanajf p
+			LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
+			LEFT JOIN (
+				SELECT
+					TRIM(a.modelo) AS modelo,
+					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
+					SUM(IFNULL(a.alm_corte, 0)) AS alm_corte,
+					SUM(IFNULL(a.ord_corte, 0)) AS ord_corte,
+					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
+				FROM articulojf a
+				WHERE (
+						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
+						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
+					)
+				  AND TRIM(IFNULL(a.modelo, '')) <> ''
+				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
+			) sal ON sal.modelo = TRIM(p.modelo)
+				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
+			WHERE p.estado = 1
+			  AND p.fecha_fin < :hoy
+			  AND IFNULL(sal.saldo_disponible, 0) > 0";
+		$params = array(":hoy" => $hoy);
+
+		if (!empty($filtros["cod_sector"])) {
+			$sql .= " AND p.cod_sector = :cod_sector";
+			$params[":cod_sector"] = trim((string) $filtros["cod_sector"]);
+		}
+		if (!empty($filtros["nivel"])) {
+			$sql .= " AND p.nivel = :nivel";
+			$params[":nivel"] = trim((string) $filtros["nivel"]);
+		}
+		if (!empty($filtros["modelo"])) {
+			$sql .= " AND TRIM(p.modelo) = :modelo";
+			$params[":modelo"] = trim((string) $filtros["modelo"]);
+		}
+
+		$sql .= " ORDER BY p.anio ASC, p.semana ASC, p.cod_sector ASC, p.modelo ASC, p.cod_color ASC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($params as $k => $v) {
+			$stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+		}
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
+	static public function mdlContarNoEjecutados()
+	{
+		$hoy = (new DateTime("now"))->format("Y-m-d");
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT COUNT(*) FROM programacion_taller_semanajf p
+			 LEFT JOIN (
+				SELECT
+					TRIM(a.modelo) AS modelo,
+					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
+					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
+				FROM articulojf a
+				WHERE (
+						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
+						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
+					)
+				  AND TRIM(IFNULL(a.modelo, '')) <> ''
+				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
+			 ) sal ON sal.modelo = TRIM(p.modelo)
+				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
+			 WHERE p.estado = 1
+			   AND p.fecha_fin < :hoy
+			   AND IFNULL(sal.saldo_disponible, 0) > 0"
+		);
+		$stmt->bindValue(":hoy", $hoy, PDO::PARAM_STR);
+		$stmt->execute();
+		return (int) $stmt->fetchColumn();
+	}
+
+	/** Cambia año/semana de una programación activa. */
+	static public function mdlMoverSemana($datos)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"UPDATE programacion_taller_semanajf SET
+				anio = :anio,
+				semana = :semana,
+				fecha_inicio = :fecha_inicio,
+				fecha_fin = :fecha_fin,
+				cantidad = :cantidad,
+				saldo_alm_corte = :saldo_alm_corte,
+				saldo_ord_corte = :saldo_ord_corte,
+				urg_plan = :urg_plan,
+				usumod = :usumod,
+				fecmod = NOW()
+			 WHERE id = :id AND estado = 1"
+		);
+		$stmt->bindValue(":id", (int) $datos["id"], PDO::PARAM_INT);
+		$stmt->bindValue(":anio", (int) $datos["anio"], PDO::PARAM_INT);
+		$stmt->bindValue(":semana", (int) $datos["semana"], PDO::PARAM_INT);
+		$stmt->bindValue(":fecha_inicio", $datos["fecha_inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fecha_fin", $datos["fecha_fin"], PDO::PARAM_STR);
+		$stmt->bindValue(":cantidad", (int) $datos["cantidad"], PDO::PARAM_INT);
+		$stmt->bindValue(":saldo_alm_corte", (int) $datos["saldo_alm_corte"], PDO::PARAM_INT);
+		$stmt->bindValue(":saldo_ord_corte", (int) $datos["saldo_ord_corte"], PDO::PARAM_INT);
+		if ($datos["urg_plan"] === null || $datos["urg_plan"] === "") {
+			$stmt->bindValue(":urg_plan", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":urg_plan", $datos["urg_plan"]);
+		}
+		$stmt->bindValue(":usumod", $datos["usumod"], PDO::PARAM_STR);
+		return $stmt->execute() ? "ok" : "error";
 	}
 
 	static public function mdlMostrar($id)
@@ -730,5 +864,246 @@ class ModeloProgramacionTallerSemana
 		}
 		$stmt->execute();
 		return $stmt->fetchAll();
+	}
+
+	/** Claves modelo|color activas en bandeja de prioridad. */
+	static public function mdlClavesPrioridadActivas()
+	{
+		try {
+			$stmt = Conexion::conectar()->prepare(
+				"SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave
+				 FROM programacion_taller_prioridadjf
+				 WHERE estado = 1"
+			);
+			$stmt->execute();
+			$rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+			return is_array($rows) ? $rows : array();
+		} catch (Exception $e) {
+			return array();
+		}
+	}
+
+	static public function mdlListarPriorizados($filtros = array())
+	{
+		$sql = "SELECT p.*,
+				s.nom_sector,
+				s.color AS color_taller,
+				IFNULL(sal.alm_corte, 0) AS alm_corte_vivo,
+				IFNULL(sal.ord_corte, 0) AS ord_corte_vivo,
+				IFNULL(sal.saldo_disponible, 0) AS saldo_vivo
+			FROM programacion_taller_prioridadjf p
+			LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
+			LEFT JOIN (
+				SELECT
+					TRIM(a.modelo) AS modelo,
+					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
+					SUM(IFNULL(a.alm_corte, 0)) AS alm_corte,
+					SUM(IFNULL(a.ord_corte, 0)) AS ord_corte,
+					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
+				FROM articulojf a
+				WHERE (
+						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
+						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
+					)
+				  AND TRIM(IFNULL(a.modelo, '')) <> ''
+				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
+			) sal ON sal.modelo = TRIM(p.modelo)
+				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
+			WHERE p.estado = 1";
+		$params = array();
+		if (!empty($filtros["cod_sector"])) {
+			$sql .= " AND p.cod_sector = :cod_sector";
+			$params[":cod_sector"] = trim((string) $filtros["cod_sector"]);
+		}
+		if (!empty($filtros["nivel"])) {
+			$sql .= " AND p.nivel = :nivel";
+			$params[":nivel"] = trim((string) $filtros["nivel"]);
+		}
+		if (!empty($filtros["modelo"])) {
+			$sql .= " AND TRIM(p.modelo) = :modelo";
+			$params[":modelo"] = trim((string) $filtros["modelo"]);
+		}
+		$sql .= " ORDER BY p.nivel ASC, p.modelo ASC, p.cod_color ASC";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $k => $v) {
+				$stmt->bindValue($k, $v, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			return $stmt->fetchAll();
+		} catch (Exception $e) {
+			return array();
+		}
+	}
+
+	static public function mdlMostrarPrioridad($id)
+	{
+		$id = (int) $id;
+		if ($id < 1) {
+			return null;
+		}
+		try {
+			$stmt = Conexion::conectar()->prepare(
+				"SELECT p.*, s.nom_sector, s.color AS color_taller
+				 FROM programacion_taller_prioridadjf p
+				 LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
+				 WHERE p.id = :id LIMIT 1"
+			);
+			$stmt->bindValue(":id", $id, PDO::PARAM_INT);
+			$stmt->execute();
+			$row = $stmt->fetch();
+			return $row ? $row : null;
+		} catch (Exception $e) {
+			return null;
+		}
+	}
+
+	static public function mdlIdPrioridadExistente($modelo, $codColor, $codSector, $soloActivos = false)
+	{
+		$sql = "SELECT id FROM programacion_taller_prioridadjf
+			 WHERE TRIM(modelo) = :modelo
+			   AND TRIM(IFNULL(cod_color, '')) = :cod_color
+			   AND cod_sector = :cod_sector";
+		if ($soloActivos) {
+			$sql .= " AND estado = 1";
+		}
+		$sql .= " LIMIT 1";
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+			$stmt->bindValue(":cod_color", trim((string) $codColor), PDO::PARAM_STR);
+			$stmt->bindValue(":cod_sector", trim((string) $codSector), PDO::PARAM_STR);
+			$stmt->execute();
+			$id = $stmt->fetchColumn();
+			return $id !== false ? (int) $id : 0;
+		} catch (Exception $e) {
+			return 0;
+		}
+	}
+
+	static public function mdlCrearPrioridad($datos)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"INSERT INTO programacion_taller_prioridadjf
+				(modelo, cod_color, color, nombre, cod_sector, cantidad, saldo_alm_corte, saldo_ord_corte,
+				 nivel, urg_plan, observacion, estado, usureg)
+			 VALUES
+				(:modelo, :cod_color, :color, :nombre, :cod_sector, :cantidad, :saldo_alm_corte, :saldo_ord_corte,
+				 :nivel, :urg_plan, :observacion, 1, :usureg)"
+		);
+		$stmt->bindValue(":modelo", $datos["modelo"], PDO::PARAM_STR);
+		$stmt->bindValue(":cod_color", $datos["cod_color"], PDO::PARAM_STR);
+		$stmt->bindValue(":color", $datos["color"], PDO::PARAM_STR);
+		$stmt->bindValue(":nombre", $datos["nombre"], PDO::PARAM_STR);
+		$stmt->bindValue(":cod_sector", $datos["cod_sector"], PDO::PARAM_STR);
+		$stmt->bindValue(":cantidad", (int) $datos["cantidad"], PDO::PARAM_INT);
+		$stmt->bindValue(":saldo_alm_corte", (int) $datos["saldo_alm_corte"], PDO::PARAM_INT);
+		$stmt->bindValue(":saldo_ord_corte", (int) $datos["saldo_ord_corte"], PDO::PARAM_INT);
+		$stmt->bindValue(":nivel", $datos["nivel"], PDO::PARAM_STR);
+		if ($datos["urg_plan"] === null || $datos["urg_plan"] === "") {
+			$stmt->bindValue(":urg_plan", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":urg_plan", $datos["urg_plan"]);
+		}
+		$obs = isset($datos["observacion"]) ? $datos["observacion"] : null;
+		if ($obs === null || $obs === "") {
+			$stmt->bindValue(":observacion", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":observacion", $obs, PDO::PARAM_STR);
+		}
+		$stmt->bindValue(":usureg", $datos["usureg"], PDO::PARAM_STR);
+		return $stmt->execute() ? "ok" : "error";
+	}
+
+	static public function mdlEditarPrioridad($datos)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"UPDATE programacion_taller_prioridadjf SET
+				cantidad = :cantidad,
+				cod_sector = :cod_sector,
+				nivel = :nivel,
+				observacion = :observacion,
+				saldo_alm_corte = :saldo_alm_corte,
+				saldo_ord_corte = :saldo_ord_corte,
+				urg_plan = :urg_plan,
+				usumod = :usumod,
+				fecmod = NOW()
+			 WHERE id = :id AND estado = 1"
+		);
+		$stmt->bindValue(":id", (int) $datos["id"], PDO::PARAM_INT);
+		$stmt->bindValue(":cantidad", (int) $datos["cantidad"], PDO::PARAM_INT);
+		$stmt->bindValue(":cod_sector", $datos["cod_sector"], PDO::PARAM_STR);
+		$stmt->bindValue(":nivel", $datos["nivel"], PDO::PARAM_STR);
+		$obs = isset($datos["observacion"]) ? $datos["observacion"] : null;
+		if ($obs === null || $obs === "") {
+			$stmt->bindValue(":observacion", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":observacion", $obs, PDO::PARAM_STR);
+		}
+		$stmt->bindValue(":saldo_alm_corte", (int) $datos["saldo_alm_corte"], PDO::PARAM_INT);
+		$stmt->bindValue(":saldo_ord_corte", (int) $datos["saldo_ord_corte"], PDO::PARAM_INT);
+		if ($datos["urg_plan"] === null || $datos["urg_plan"] === "") {
+			$stmt->bindValue(":urg_plan", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":urg_plan", $datos["urg_plan"]);
+		}
+		$stmt->bindValue(":usumod", $datos["usumod"], PDO::PARAM_STR);
+		return $stmt->execute() ? "ok" : "error";
+	}
+
+	static public function mdlReactivarPrioridad($datos)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"UPDATE programacion_taller_prioridadjf SET
+				cantidad = :cantidad,
+				nivel = :nivel,
+				observacion = :observacion,
+				saldo_alm_corte = :saldo_alm_corte,
+				saldo_ord_corte = :saldo_ord_corte,
+				urg_plan = :urg_plan,
+				color = :color,
+				nombre = :nombre,
+				estado = 1,
+				usumod = :usumod,
+				fecmod = NOW()
+			 WHERE id = :id"
+		);
+		$stmt->bindValue(":id", (int) $datos["id"], PDO::PARAM_INT);
+		$stmt->bindValue(":cantidad", (int) $datos["cantidad"], PDO::PARAM_INT);
+		$stmt->bindValue(":nivel", $datos["nivel"], PDO::PARAM_STR);
+		$obs = isset($datos["observacion"]) ? $datos["observacion"] : null;
+		if ($obs === null || $obs === "") {
+			$stmt->bindValue(":observacion", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":observacion", $obs, PDO::PARAM_STR);
+		}
+		$stmt->bindValue(":saldo_alm_corte", (int) $datos["saldo_alm_corte"], PDO::PARAM_INT);
+		$stmt->bindValue(":saldo_ord_corte", (int) $datos["saldo_ord_corte"], PDO::PARAM_INT);
+		if ($datos["urg_plan"] === null || $datos["urg_plan"] === "") {
+			$stmt->bindValue(":urg_plan", null, PDO::PARAM_NULL);
+		} else {
+			$stmt->bindValue(":urg_plan", $datos["urg_plan"]);
+		}
+		$stmt->bindValue(":color", $datos["color"], PDO::PARAM_STR);
+		$stmt->bindValue(":nombre", $datos["nombre"], PDO::PARAM_STR);
+		$stmt->bindValue(":usumod", $datos["usumod"], PDO::PARAM_STR);
+		return $stmt->execute() ? "ok" : "error";
+	}
+
+	static public function mdlEliminarPrioridad($id, $usumod = "sistema")
+	{
+		$id = (int) $id;
+		if ($id < 1) {
+			return "error";
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"UPDATE programacion_taller_prioridadjf
+			 SET estado = 0, usumod = :usumod, fecmod = NOW()
+			 WHERE id = :id"
+		);
+		$stmt->bindValue(":id", $id, PDO::PARAM_INT);
+		$stmt->bindValue(":usumod", (string) $usumod, PDO::PARAM_STR);
+		return $stmt->execute() ? "ok" : "error";
 	}
 }

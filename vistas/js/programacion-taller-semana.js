@@ -3,6 +3,8 @@ var ptsMapaNiveles = {};
 var ptsSectores = [];
 var ptsProgramadosCache = [];
 var ptsDisponiblesCache = [];
+var ptsPriorizadosCache = [];
+var ptsNoEjecCache = [];
 var ptsStatsCache = null;
 var ptsToastTimer = null;
 var ptsUrlSyncLock = false;
@@ -45,9 +47,41 @@ function semanaPts() {
     return parseInt($("#filtroSemanaPts").val(), 10) || 0;
 }
 
+/** Semana elegida para destinar (independiente del filtro de cabecera). */
+function anioDestPts() {
+    return parseInt($("#destAnioPts").val(), 10) || 0;
+}
+
+function semanaDestPts() {
+    return parseInt($("#destSemanaPts").val(), 10) || 0;
+}
+
+/** Semana a consultar en Ya programado. */
+function anioProgPts() {
+    return parseInt($("#progAnioPts").val(), 10) || anioPts();
+}
+
+function semanaProgPts() {
+    return parseInt($("#progSemanaPts").val(), 10) || semanaPts();
+}
+
+function sincronizarCabeceraConProgPts() {
+    var anio = anioProgPts();
+    var semana = semanaProgPts();
+    if (!anio || !semana) return;
+    $("#filtroAnioPts").val(anio);
+    $("#filtroSemanaPts").val(semana);
+}
+
 function tabActivaPts() {
     var tab = $("#tabsPts li.active a").attr("data-tab-pts");
-    return tab === "programado" ? "programado" : "programar";
+    if (tab === "programado" || tab === "destinar" || tab === "priorizar" || tab === "no_ejecutado") {
+        return tab;
+    }
+    if (tab === "programar") {
+        return "priorizar";
+    }
+    return "priorizar";
 }
 
 function leerParamPts(nombre) {
@@ -129,17 +163,6 @@ function refrescarSelectPts($select) {
     } catch (e) {}
 }
 
-function opcionesNivelHtmlPts(incluirVacio, vacioTexto) {
-    var html = "";
-    if (incluirVacio) {
-        html += '<option value="">' + escaparPts(vacioTexto || "— Seleccionar —") + "</option>";
-    }
-    ptsNiveles.forEach(function (n) {
-        html += '<option value="' + escaparPts(n.id) + '">' + escaparPts(n.nombre) + "</option>";
-    });
-    return html;
-}
-
 function botonesNivelHtmlPts() {
     if (!ptsNiveles.length) {
         return '<span class="text-muted">Sin niveles</span>';
@@ -159,10 +182,8 @@ function cargarNivelesPts() {
         var $leyenda = $("#leyendaNivelesPts");
         var $filtro = $("#filtroNivelPts");
         var $modalNivel = $("#ptsNivel");
-        var $lote = $("#nivelLotePts");
         $filtro.find("option:not(:first)").remove();
         $modalNivel.find("option:not(:first)").remove();
-        $lote.html(opcionesNivelHtmlPts(true, "— Elegir nivel —"));
         var chips = ['<strong style="margin-right:4px;">Niveles:</strong>'];
         ptsNiveles.forEach(function (n) {
             ptsMapaNiveles[n.id] = n;
@@ -171,7 +192,50 @@ function cargarNivelesPts() {
             $modalNivel.append($("<option>").val(n.id).text(n.nombre));
         });
         $leyenda.html(chips.join(" "));
+        pintarChkNivelesLotePts();
     }, "json");
+}
+
+function pintarChkNivelesLotePts() {
+    var $box = $("#chkNivelesLotePts");
+    if (!$box.length) return;
+    if (!ptsNiveles.length) {
+        $box.html('<span class="text-muted">Sin niveles</span>');
+        return;
+    }
+    var actual = nivelLoteSeleccionadoPts();
+    var html = [];
+    ptsNiveles.forEach(function (n) {
+        var bg = n.color || "#ddd";
+        var checked = String(actual) === String(n.id) ? " checked" : "";
+        var activo = checked ? " activo" : "";
+        html.push(
+            '<label class="pts-chk-nivel-item' + activo + '" style="--pts-nivel-color:'
+            + escaparPts(bg) + ';border-color:' + escaparPts(bg) + '">'
+            + '<input type="checkbox" class="chkNivelLotePts" name="chkNivelLotePts" value="'
+            + escaparPts(n.id) + '"' + checked + '>'
+            + '<span class="pts-chk-nivel-badge" style="background:' + escaparPts(bg) + '">'
+            + escaparPts(n.nombre) + "</span>"
+            + "</label>"
+        );
+    });
+    $box.html(html.join(""));
+}
+
+/** Marca un solo nivel en los checkboxes del lote. */
+function setNivelLotePts(nivelId) {
+    nivelId = nivelId || "";
+    $("#chkNivelesLotePts .chkNivelLotePts").each(function () {
+        var on = String($(this).val()) === String(nivelId) && nivelId !== "";
+        $(this).prop("checked", on);
+        $(this).closest(".pts-chk-nivel-item").toggleClass("activo", on);
+    });
+    actualizarContadorSelPts();
+}
+
+function nivelLoteSeleccionadoPts() {
+    var desdeChk = $("#chkNivelesLotePts .chkNivelLotePts:checked").first().val();
+    return desdeChk ? String(desdeChk) : "";
 }
 
 function cargarModelosPts() {
@@ -220,6 +284,124 @@ function actualizarRangoPts() {
     }, "json");
 }
 
+function actualizarRangoDestPts() {
+    var anio = anioDestPts();
+    var semana = semanaDestPts();
+    if (!anio || !semana) {
+        $("#textoRangoDestPts").text("—");
+        $("#avisoDestPasadaPts").hide();
+        actualizarContadorSelDestPts();
+        return $.Deferred().resolve().promise();
+    }
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#destAnioPts").val(resp.data.anio);
+            $("#destSemanaPts").val(resp.data.semana);
+            $("#textoRangoDestPts").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+            var pasada = parseInt(resp.data.pasada, 10) === 1;
+            $("#avisoDestPasadaPts").toggle(pasada);
+            $("#destAnioPts, #destSemanaPts").data("pasada", pasada ? 1 : 0);
+        } else {
+            $("#textoRangoDestPts").text("Semana no válida");
+            $("#avisoDestPasadaPts").show();
+            $("#destAnioPts, #destSemanaPts").data("pasada", 1);
+        }
+        actualizarContadorSelDestPts();
+    }, "json");
+}
+
+function actualizarRangoProgPts() {
+    var anio = anioProgPts();
+    var semana = semanaProgPts();
+    if (!anio || !semana) {
+        $("#textoRangoProgPts").text("—");
+        return $.Deferred().resolve().promise();
+    }
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#progAnioPts").val(resp.data.anio);
+            $("#progSemanaPts").val(resp.data.semana);
+            $("#textoRangoProgPts").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+            sincronizarCabeceraConProgPts();
+            $("#textoRangoSemanaPts").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+        } else {
+            $("#textoRangoProgPts").text("Semana no válida");
+        }
+    }, "json");
+}
+
+function moverSemanaProgPts(delta) {
+    var anio = anioProgPts();
+    var semana = semanaProgPts() + delta;
+    if (semana < 1) {
+        anio -= 1;
+        semana = 52;
+    } else if (semana > 53) {
+        anio += 1;
+        semana = 1;
+    }
+    $("#progAnioPts").val(anio);
+    $("#progSemanaPts").val(semana);
+    mostrarCargandoProgramadosPts();
+    actualizarRangoProgPts().always(function () {
+        sincronizarCabeceraConProgPts();
+        actualizarRangoPts();
+        cargarProgramadosPts({ stats: false });
+        programarRefreshStatsPts();
+        sincronizarUrlPts();
+    });
+}
+
+function semanaDestPasadaPts() {
+    return parseInt($("#destAnioPts").data("pasada"), 10) === 1;
+}
+
+function moverSemanaDestPts(delta) {
+    var anio = anioDestPts();
+    var semana = semanaDestPts() + delta;
+    if (semana < 1) {
+        anio -= 1;
+        semana = 52;
+    } else if (semana > 53) {
+        anio += 1;
+        semana = 1;
+    }
+    $("#destAnioPts").val(anio);
+    $("#destSemanaPts").val(semana);
+    actualizarRangoDestPts();
+}
+
+function moverSemanaNePts(delta) {
+    var anio = anioNePts();
+    var semana = semanaNePts() + delta;
+    if (semana < 1) {
+        anio -= 1;
+        semana = 52;
+    } else if (semana > 53) {
+        anio += 1;
+        semana = 1;
+    }
+    $("#neAnioPts").val(anio);
+    $("#neSemanaPts").val(semana);
+    actualizarRangoNePts();
+}
+
+function sincronizarProgConCabeceraPts() {
+    var anio = anioPts();
+    var semana = semanaPts();
+    if (!anio || !semana) return;
+    $("#progAnioPts").val(anio);
+    $("#progSemanaPts").val(semana);
+}
+
 function moverSemanaPts(delta) {
     var anio = anioPts();
     var semana = semanaPts() + delta;
@@ -233,7 +415,14 @@ function moverSemanaPts(delta) {
     $("#filtroAnioPts").val(anio);
     $("#filtroSemanaPts").val(semana);
     actualizarRangoPts().always(function () {
-        recargarPts();
+        sincronizarProgConCabeceraPts();
+        actualizarRangoProgPts();
+        cargarEstadisticasPts();
+        if (tabActivaPts() === "programado") {
+            mostrarCargandoProgramadosPts();
+            cargarProgramadosPts({ stats: false });
+        }
+        sincronizarUrlPts();
     });
 }
 
@@ -267,7 +456,10 @@ function chipTallerPts(r, opts) {
 }
 
 function pintarEstadisticasPts(stats) {
-    var $box = $("#estadisticasSemanaPts");
+    var $box = $("#estadisticasSemanaBodyPts");
+    if (!$box.length) {
+        $box = $("#estadisticasSemanaPts");
+    }
     if (!$box.length) return;
 
     var t = (stats && stats.totales) ? stats.totales : null;
@@ -280,9 +472,6 @@ function pintarEstadisticasPts(stats) {
     var ppTaller = (pp && pp.por_taller) ? pp.por_taller : [];
 
     var html = "";
-    html += '<div class="pts-stats-head">'
-        + '<h4 class="pts-stats-title">Semana ' + escaparPts(semanaPts()) + ' · ' + escaparPts(anioPts()) + '</h4>'
-        + '</div>';
     html += '<div class="pts-stats-grid">';
 
     // Panel pendiente de programar
@@ -304,9 +493,10 @@ function pintarEstadisticasPts(stats) {
     }
     html += '</div>';
 
-    // Panel ya programado
+    // Panel ya programado (resumen de la semana elegida arriba)
     html += '<div class="pts-stats-panel">';
-    html += '<div class="pts-stats-subtitle">Ya programado</div>';
+    html += '<div class="pts-stats-subtitle">Ya programado <small class="text-muted">(sem. '
+        + escaparPts(semanaPts()) + ' · ' + escaparPts(anioPts()) + ')</small></div>';
     if (!t || totalLineas < 1) {
         html += '<p class="pts-stats-empty">Sin programación en esta semana.</p>';
     } else {
@@ -395,7 +585,15 @@ function badgeEstadoPts(r) {
 function actualizarContadorSelPts() {
     var n = $("#tablaDisponiblesPts tbody .chkDispPts:checked").length;
     $("#nSelPts").text(n);
-    $("#btnProgramarLotePts").prop("disabled", n < 1 || !$("#nivelLotePts").val());
+    var nivel = nivelLoteSeleccionadoPts();
+    $("#btnProgramarLotePts").prop("disabled", n < 1 || !nivel);
+}
+
+function actualizarContadorSelDestPts() {
+    var n = $("#tablaPriorizadosPts tbody .chkPriPts:checked").length;
+    $("#nSelDestPts").text("(" + n + ")");
+    var okDest = anioDestPts() > 0 && semanaDestPts() > 0 && !semanaDestPasadaPts();
+    $("#btnDestinarLotePts").prop("disabled", n < 1 || !okDest);
 }
 
 function pintarTablaProgramadosPts() {
@@ -540,18 +738,379 @@ function programarRefreshStatsPts() {
     }, 400);
 }
 
+function anioNePts() {
+    return parseInt($("#neAnioPts").val(), 10) || 0;
+}
+
+function semanaNePts() {
+    return parseInt($("#neSemanaPts").val(), 10) || 0;
+}
+
+function semanaNePasadaPts() {
+    return parseInt($("#neAnioPts").data("pasada"), 10) === 1;
+}
+
+function actualizarRangoNePts() {
+    var anio = anioNePts();
+    var semana = semanaNePts();
+    if (!anio || !semana) {
+        $("#textoRangoNePts").text("—");
+        $("#avisoNePasadaPts").hide();
+        actualizarContadorSelNePts();
+        return $.Deferred().resolve().promise();
+    }
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#neAnioPts").val(resp.data.anio);
+            $("#neSemanaPts").val(resp.data.semana);
+            $("#textoRangoNePts").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+            var pasada = parseInt(resp.data.pasada, 10) === 1;
+            $("#avisoNePasadaPts").toggle(pasada);
+            $("#neAnioPts, #neSemanaPts").data("pasada", pasada ? 1 : 0);
+        } else {
+            $("#textoRangoNePts").text("Semana no válida");
+            $("#avisoNePasadaPts").show();
+            $("#neAnioPts, #neSemanaPts").data("pasada", 1);
+        }
+        actualizarContadorSelNePts();
+    }, "json");
+}
+
+function actualizarContadorSelNePts() {
+    var n = $("#tablaNoEjecPts tbody .chkNePts:checked").length;
+    $("#nSelNePts").text("(" + n + ")");
+    var okDest = anioNePts() > 0 && semanaNePts() > 0 && !semanaNePasadaPts();
+    $("#btnMoverNeLotePts").prop("disabled", n < 1 || !okDest);
+    $("#btnDevolverNeLotePts").prop("disabled", n < 1);
+}
+
+function actualizarBadgeNoEjecPts(total) {
+    var $b = $("#badgeNoEjecPts");
+    if (!$b.length) return;
+    total = parseInt(total, 10) || 0;
+    if (total > 0) {
+        $b.text(total > 99 ? "99+" : String(total)).show();
+    } else {
+        $b.hide().text("0");
+    }
+}
+
+function mostrarCargandoNoEjecPts() {
+    $("#tablaNoEjecPts tbody").html(
+        '<tr><td colspan="11" class="text-center" style="padding:28px 12px;">'
+        + '<i class="fa fa-spinner fa-spin fa-lg" style="margin-right:8px;"></i>'
+        + '<span class="text-muted">Cargando no ejecutados…</span></td></tr>'
+    );
+}
+
+function pintarTablaNoEjecPts() {
+    var $tb = $("#tablaNoEjecPts tbody").empty();
+    $("#chkTodosNePts").prop("checked", false);
+    var data = ptsNoEjecCache || [];
+    actualizarBadgeNoEjecPts(data.length);
+    if (!data.length) {
+        $tb.html('<tr><td colspan="11" class="text-center text-muted">No hay programados pendientes en semanas pasadas</td></tr>');
+        actualizarContadorSelNePts();
+        return;
+    }
+    data.forEach(function (r) {
+        var taller = (r.cod_sector || "") + (r.nom_sector ? " — " + r.nom_sector : "");
+        var alm = r.alm_corte_vivo != null ? r.alm_corte_vivo : r.saldo_alm_corte;
+        var ord = r.ord_corte_vivo != null ? r.ord_corte_vivo : r.saldo_ord_corte;
+        var saldo = r.saldo_vivo != null ? r.saldo_vivo : ((parseInt(alm, 10) || 0) + (parseInt(ord, 10) || 0));
+        var origen = "Sem. " + (r.semana || "?") + " · " + (r.anio || "");
+        if (r.fecha_inicio && r.fecha_fin) {
+            origen += "<br><small class=\"text-muted\">" + escaparPts(r.fecha_inicio) + " → " + escaparPts(r.fecha_fin) + "</small>";
+        }
+        var $tr = $("<tr>");
+        var estiloFila = estiloFilaTallerPts(r);
+        if (estiloFila) $tr.attr("style", estiloFila);
+        $tr.append(
+            '<td><input type="checkbox" class="chkNePts"></td>'
+            + "<td>" + origen + "</td>"
+            + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
+            + celdaTallerHtmlPts(r, taller)
+            + "<td>" + escaparPts(r.modelo) + "</td>"
+            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+            + "<td><strong>" + escaparPts(r.cantidad) + "</strong></td>"
+            + "<td>" + escaparPts(alm) + "</td>"
+            + "<td>" + escaparPts(ord) + "</td>"
+            + "<td><strong>" + escaparPts(saldo) + "</strong></td>"
+            + '<td>'
+            + '<button type="button" class="btn btn-xs btn-success btnMoverNePts" title="Mover a semana"><i class="fa fa-calendar"></i></button> '
+            + '<button type="button" class="btn btn-xs btn-warning btnDevolverNePts" title="Devolver a prioridad"><i class="fa fa-flag"></i></button>'
+            + "</td>"
+        );
+        $tr.data("row", r);
+        $tb.append($tr);
+    });
+    actualizarContadorSelNePts();
+}
+
+function cargarNoEjecutadosPts() {
+    mostrarCargandoNoEjecPts();
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "noEjecutados",
+        cod_sector: $("#filtroTallerPts").val() || "",
+        nivel: $("#filtroNivelPts").val() || "",
+        modelo: $("#filtroModeloPts").val() || ""
+    }, function (resp) {
+        if (!resp || !resp.ok) {
+            ptsNoEjecCache = [];
+            $("#tablaNoEjecPts tbody").html(
+                '<tr><td colspan="11" class="text-center text-muted">No se pudo cargar</td></tr>'
+            );
+            actualizarBadgeNoEjecPts(0);
+            actualizarContadorSelNePts();
+            return;
+        }
+        ptsNoEjecCache = resp.data || [];
+        pintarTablaNoEjecPts();
+    }, "json").fail(function () {
+        ptsNoEjecCache = [];
+        $("#tablaNoEjecPts tbody").html(
+            '<tr><td colspan="11" class="text-center text-muted">Error de comunicación</td></tr>'
+        );
+        actualizarBadgeNoEjecPts(0);
+        actualizarContadorSelNePts();
+    });
+}
+
+function refrescarBadgeNoEjecPts() {
+    return $.post("ajax/programacion-taller-semana.ajax.php", { accion: "contarNoEjecutados" }, function (resp) {
+        if (resp && resp.ok) {
+            actualizarBadgeNoEjecPts(resp.total);
+        }
+    }, "json");
+}
+
+function abrirModalMoverNePts(row) {
+    if (!row || !row.id) return;
+    $("#neModalId").val(row.id);
+    $("#neModalArticulo").text((row.modelo || "") + " / " + etiquetaColorPts(row));
+    $("#neModalOrigen").html(
+        "Origen: sem. " + escaparPts(row.semana) + " · " + escaparPts(row.anio)
+        + " · " + badgeNivelPts(row.nivel, row.nivel_nombre, row.nivel_color)
+    );
+    $("#neModalAnio").val(anioNePts() || anioPts());
+    $("#neModalSemana").val(semanaNePts() || semanaPts());
+    actualizarRangoModalNePts();
+    $("#modalMoverNePts").modal("show");
+}
+
+function actualizarRangoModalNePts() {
+    var anio = parseInt($("#neModalAnio").val(), 10) || 0;
+    var semana = parseInt($("#neModalSemana").val(), 10) || 0;
+    if (!anio || !semana) {
+        $("#neModalRango").text("—");
+        $("#neModalAvisoPasada").hide();
+        return;
+    }
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#neModalRango").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+            var pasada = parseInt(resp.data.pasada, 10) === 1;
+            $("#neModalAvisoPasada").toggle(pasada);
+            $("#formMoverNePts").data("pasada", pasada ? 1 : 0);
+        } else {
+            $("#neModalRango").text("Semana no válida");
+            $("#neModalAvisoPasada").show();
+            $("#formMoverNePts").data("pasada", 1);
+        }
+    }, "json");
+}
+
+function moverNoEjecutadoPts(id, anio, semana, $tr) {
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "moverNoEjecutado",
+        id: id,
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok) {
+            $("#modalMoverNePts").modal("hide");
+            toastPts(resp.mensaje || "Movido", "success");
+            ptsNoEjecCache = ptsNoEjecCache.filter(function (r) { return String(r.id) !== String(id); });
+            pintarTablaNoEjecPts();
+            if (anio === anioProgPts() && semana === semanaProgPts() && resp.row) {
+                upsertProgramadoCachePts(resp.row);
+                programarRefreshStatsPts();
+            }
+        } else {
+            if ($tr) $tr.removeClass("programando-pts");
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo mover", "danger");
+        }
+    }, "json").fail(function () {
+        if ($tr) $tr.removeClass("programando-pts");
+        toastPts("Error de comunicación", "danger");
+    });
+}
+
+function devolverNoEjecutadoPts(id, $tr) {
+    if ($tr) $tr.addClass("programando-pts");
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "devolverPrioridad",
+        id: id
+    }, function (resp) {
+        if (resp && resp.ok) {
+            toastPts(resp.mensaje || "Devuelto", "success");
+            ptsNoEjecCache = ptsNoEjecCache.filter(function (r) { return String(r.id) !== String(id); });
+            pintarTablaNoEjecPts();
+            if (resp.prioridad) {
+                upsertPriorizadoCachePts(resp.prioridad);
+            } else {
+                cargarPriorizadosPts();
+            }
+        } else {
+            if ($tr) $tr.removeClass("programando-pts");
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo devolver", "danger");
+        }
+    }, "json").fail(function () {
+        if ($tr) $tr.removeClass("programando-pts");
+        toastPts("Error de comunicación", "danger");
+    });
+}
+
+function idsSeleccionadosNePts() {
+    var ids = [];
+    $("#tablaNoEjecPts tbody tr").each(function () {
+        var $tr = $(this);
+        if (!$tr.find(".chkNePts").is(":checked")) return;
+        var row = $tr.data("row");
+        if (row && row.id) ids.push(row.id);
+    });
+    return ids;
+}
+
+function moverNoEjecutadoLotePts() {
+    var anio = anioNePts();
+    var semana = semanaNePts();
+    if (!anio || !semana || semanaNePasadaPts()) {
+        toastPts("Elige una semana destino válida", "warning");
+        return;
+    }
+    var ids = idsSeleccionadosNePts();
+    if (!ids.length) {
+        toastPts("Selecciona al menos uno", "warning");
+        return;
+    }
+    $("#btnMoverNeLotePts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Moviendo…');
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "moverNoEjecutadoLote",
+        anio: anio,
+        semana: semana,
+        ids: JSON.stringify(ids)
+    }, function (resp) {
+        $("#btnMoverNeLotePts").html('Mover a sem. <span id="nSelNePts">(0)</span>');
+        if (resp && resp.ok) {
+            toastPts(resp.mensaje || "Movidos", "success");
+            $.when(cargarNoEjecutadosPts()).always(function () {
+                if (anio === anioProgPts() && semana === semanaProgPts()) {
+                    cargarProgramadosPts({ stats: false });
+                    programarRefreshStatsPts();
+                }
+            });
+        } else {
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo mover el lote", "danger");
+            actualizarContadorSelNePts();
+        }
+    }, "json").fail(function () {
+        $("#btnMoverNeLotePts").html('Mover a sem. <span id="nSelNePts">(0)</span>');
+        toastPts("Error de comunicación", "danger");
+        actualizarContadorSelNePts();
+    });
+}
+
+function devolverNoEjecutadoLotePts() {
+    var ids = idsSeleccionadosNePts();
+    if (!ids.length) {
+        toastPts("Selecciona al menos uno", "warning");
+        return;
+    }
+    var go = function () {
+        $("#btnDevolverNeLotePts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i>…');
+        $.post("ajax/programacion-taller-semana.ajax.php", {
+            accion: "devolverPrioridadLote",
+            ids: JSON.stringify(ids)
+        }, function (resp) {
+            $("#btnDevolverNeLotePts").html("Devolver a prioridad");
+            if (resp && resp.ok) {
+                toastPts(resp.mensaje || "Devueltos", "success");
+                $.when(cargarNoEjecutadosPts(), cargarPriorizadosPts()).always(actualizarContadorSelNePts);
+            } else {
+                toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo devolver el lote", "danger");
+                actualizarContadorSelNePts();
+            }
+        }, "json").fail(function () {
+            $("#btnDevolverNeLotePts").html("Devolver a prioridad");
+            toastPts("Error de comunicación", "danger");
+            actualizarContadorSelNePts();
+        });
+    };
+    if (typeof swal === "function") {
+        swal({
+            title: "¿Devolver a prioridad?",
+            text: ids.length + " ítem(s) saldrán de la semana pasada y volverán a la bandeja.",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#f39c12",
+            confirmButtonText: "Sí, devolver",
+            cancelButtonText: "Cancelar"
+        }).then(function (result) {
+            if (result && result.value) go();
+        });
+        return;
+    }
+    if (window.confirm("¿Devolver a prioridad?")) go();
+}
+
+function mostrarCargandoProgramadosPts() {
+    $("#conteoConsumidosPts").html('<i class="fa fa-spinner fa-spin"></i> Cargando…');
+    $("#tablaProgramadoPts tbody").html(
+        '<tr class="pts-row-cargando">'
+        + '<td colspan="10" class="text-center" style="padding:28px 12px;">'
+        + '<i class="fa fa-spinner fa-spin fa-lg" style="margin-right:8px;"></i>'
+        + '<span class="text-muted">Cargando programación de la semana…</span>'
+        + "</td></tr>"
+    );
+    $("#barraProgramadoPts").addClass("pts-cargando");
+    $("#progAnioPts, #progSemanaPts, #btnProgSemAntPts, #btnProgSemSigPts").prop("disabled", true);
+}
+
+function ocultarCargandoProgramadosPts() {
+    $("#barraProgramadoPts").removeClass("pts-cargando");
+    $("#progAnioPts, #progSemanaPts, #btnProgSemAntPts, #btnProgSemSigPts").prop("disabled", false);
+}
+
+var ptsReqProgramados = 0;
+
 function cargarProgramadosPts(opts) {
     opts = opts || {};
     var incluirStats = opts.stats !== false;
+    var anio = anioProgPts();
+    var semana = semanaProgPts();
+    sincronizarCabeceraConProgPts();
+    var reqId = ++ptsReqProgramados;
+    mostrarCargandoProgramadosPts();
     return $.post("ajax/programacion-taller-semana.ajax.php", {
         accion: "programados",
-        anio: anioPts(),
-        semana: semanaPts(),
+        anio: anio,
+        semana: semana,
         cod_sector: $("#filtroTallerPts").val() || "",
         nivel: $("#filtroNivelPts").val() || "",
         modelo: $("#filtroModeloPts").val() || "",
         incluir_stats: incluirStats ? "1" : "0"
     }, function (resp) {
+        if (reqId !== ptsReqProgramados) return;
+        ocultarCargandoProgramadosPts();
         if (!resp || !resp.ok) {
             ptsProgramadosCache = [];
             $("#tablaProgramadoPts tbody").html(
@@ -566,11 +1125,139 @@ function cargarProgramadosPts(opts) {
         }
         ptsProgramadosCache = resp.data || [];
         pintarTablaProgramadosPts();
-    }, "json");
+    }, "json").fail(function () {
+        if (reqId !== ptsReqProgramados) return;
+        ocultarCargandoProgramadosPts();
+        ptsProgramadosCache = [];
+        $("#tablaProgramadoPts tbody").html(
+            '<tr><td colspan="10" class="text-center text-muted">Error de comunicación</td></tr>'
+        );
+        $("#conteoConsumidosPts").text("");
+    });
 }
 
 function claveDispPts(r) {
     return String(r.modelo || "") + "|" + String(r.cod_color || "");
+}
+
+function pintarTablaPriorizadosPts() {
+    var $tb = $("#tablaPriorizadosPts tbody").empty();
+    $("#chkTodosPriPts").prop("checked", false);
+    var data = ptsPriorizadosCache || [];
+    if (!data.length) {
+        $tb.html('<tr><td colspan="12" class="text-center text-muted">Nada priorizado. Ve a la pestaña Priorizar.</td></tr>');
+        actualizarContadorSelDestPts();
+        return;
+    }
+    var botones = botonesNivelHtmlPts();
+    var prevModelo = null;
+    data.forEach(function (r) {
+        var tallerTxt = (r.cod_sector || "—") + (r.nom_sector ? " — " + r.nom_sector : "");
+        var alm = r.alm_corte_vivo != null ? r.alm_corte_vivo : r.saldo_alm_corte;
+        var ord = r.ord_corte_vivo != null ? r.ord_corte_vivo : r.saldo_ord_corte;
+        var cant = r.cantidad != null ? r.cantidad : ((parseInt(alm, 10) || 0) + (parseInt(ord, 10) || 0));
+        var sinSaldo = (parseInt(r.saldo_vivo, 10) || 0) < 1;
+        var $tr = $("<tr>");
+        if (sinSaldo) {
+            $tr.addClass("warning");
+        }
+        if (prevModelo !== null && String(r.modelo || "") !== String(prevModelo)) {
+            $tr.addClass("pts-sep-modelo");
+        }
+        prevModelo = r.modelo || "";
+        var estiloFila = estiloFilaTallerPts(r);
+        if (estiloFila) {
+            $tr.attr("style", estiloFila);
+        }
+        $tr.append(
+            '<td><input type="checkbox" class="chkPriPts"' + (sinSaldo ? " disabled" : "") + "></td>"
+            + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
+            + celdaTallerHtmlPts(r, tallerTxt)
+            + "<td>" + escaparPts(r.modelo) + "</td>"
+            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+            + "<td><strong>" + escaparPts(cant) + "</strong></td>"
+            + "<td>" + escaparPts(alm) + "</td>"
+            + "<td>" + escaparPts(ord) + "</td>"
+            + "<td>" + escaparPts(r.urg_plan == null ? "—" : r.urg_plan) + "</td>"
+            + '<td class="celda-niveles-pts">'
+            + (sinSaldo ? '<span class="text-muted">Sin saldo</span>' : botones)
+            + "</td>"
+            + "<td>"
+            + (sinSaldo
+                ? ""
+                : '<button type="button" class="btn btn-xs btn-success btnDestinarFilaPts" title="Elegir semana y destinar">'
+                    + '<i class="fa fa-calendar"></i> Destinar…</button>')
+            + "</td>"
+            + '<td><button type="button" class="btn btn-xs btn-danger btnQuitarPriPts" title="Quitar de prioridad"><i class="fa fa-trash"></i></button></td>'
+        );
+        $tr.data("row", r);
+        $tb.append($tr);
+    });
+    actualizarContadorSelDestPts();
+}
+
+function ordenarPriorizadosCachePts() {
+    ptsPriorizadosCache.sort(function (a, b) {
+        var oa = a.nivel_orden != null ? parseInt(a.nivel_orden, 10) : 99;
+        var ob = b.nivel_orden != null ? parseInt(b.nivel_orden, 10) : 99;
+        if (oa !== ob) return oa - ob;
+        var sa = String(a.cod_sector || "");
+        var sb = String(b.cod_sector || "");
+        if (sa.charAt(0) === "T" || sa.charAt(0) === "t") sa = sa.slice(1);
+        if (sb.charAt(0) === "T" || sb.charAt(0) === "t") sb = sb.slice(1);
+        var cmp = sa.localeCompare(sb, undefined, { numeric: true, sensitivity: "base" });
+        if (cmp !== 0) return cmp;
+        cmp = String(a.modelo || "").localeCompare(String(b.modelo || ""));
+        if (cmp !== 0) return cmp;
+        return String(a.cod_color || "").localeCompare(String(b.cod_color || ""));
+    });
+}
+
+function upsertPriorizadoCachePts(row) {
+    if (!row || !row.id) return;
+    var id = String(row.id);
+    var idx = -1;
+    for (var i = 0; i < ptsPriorizadosCache.length; i++) {
+        if (String(ptsPriorizadosCache[i].id) === id) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx >= 0) {
+        ptsPriorizadosCache[idx] = row;
+    } else {
+        ptsPriorizadosCache.push(row);
+    }
+    ordenarPriorizadosCachePts();
+    pintarTablaPriorizadosPts();
+}
+
+function quitarPriorizadoCachePts(id) {
+    id = String(id);
+    ptsPriorizadosCache = ptsPriorizadosCache.filter(function (r) {
+        return String(r.id) !== id;
+    });
+    pintarTablaPriorizadosPts();
+}
+
+function cargarPriorizadosPts() {
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "priorizados",
+        cod_sector: $("#filtroTallerPts").val() || "",
+        nivel: $("#filtroNivelPts").val() || "",
+        modelo: $("#filtroModeloPts").val() || ""
+    }, function (resp) {
+        if (!resp || !resp.ok) {
+            ptsPriorizadosCache = [];
+            $("#tablaPriorizadosPts tbody").html(
+                '<tr><td colspan="12" class="text-center text-muted">No se pudo cargar</td></tr>'
+            );
+            actualizarContadorSelDestPts();
+            return;
+        }
+        ptsPriorizadosCache = resp.data || [];
+        pintarTablaPriorizadosPts();
+    }, "json");
 }
 
 function pintarTablaDisponiblesPts() {
@@ -648,24 +1335,26 @@ function cargarDisponiblesPts() {
 
 function recargarPts(opts) {
     opts = opts || {};
-    // Carga listados sin stats pesadas; las stats van aparte (o se omiten si opts.stats === false)
     var pProg = cargarProgramadosPts({ stats: false });
     var pDisp = cargarDisponiblesPts();
+    var pPri = cargarPriorizadosPts();
+    var pNe = (tabActivaPts() === "no_ejecutado")
+        ? cargarNoEjecutadosPts()
+        : refrescarBadgeNoEjecPts();
     var pStats = opts.stats === false
         ? $.Deferred().resolve().promise()
         : cargarEstadisticasPts();
-    return $.when(pProg, pDisp, pStats).always(function () {
+    return $.when(pProg, pDisp, pPri, pNe, pStats).always(function () {
         if (ptsInicializado) {
             sincronizarUrlPts();
         }
+        actualizarContadorSelDestPts();
     });
 }
 
-function payloadProgramarPts(row, nivel, cantidad) {
+function payloadPriorizarPts(row, nivel, cantidad) {
     return {
-        accion: "programar",
-        anio: anioPts(),
-        semana: semanaPts(),
+        accion: "priorizar",
         modelo: row.modelo || "",
         cod_color: row.cod_color || "",
         cod_sector: row.cod_sector_resuelto || row.cod_sector || "",
@@ -675,7 +1364,7 @@ function payloadProgramarPts(row, nivel, cantidad) {
     };
 }
 
-function programarFilaPts($tr, nivel) {
+function priorizarFilaPts($tr, nivel) {
     var row = $tr.data("row");
     if (!row || !nivel) return;
     if (!row.cod_sector_resuelto) {
@@ -684,17 +1373,17 @@ function programarFilaPts($tr, nivel) {
     }
     var cant = parseInt(row.saldo_disponible, 10) || 0;
     if (cant < 1) {
-        toastPts("Sin total disponible para programar", "warning");
+        toastPts("Sin total disponible para priorizar", "warning");
         return;
     }
 
     $tr.addClass("programando-pts");
     $tr.find(".btnNivelRapidoPts, .chkDispPts").prop("disabled", true);
 
-    $.post("ajax/programacion-taller-semana.ajax.php", payloadProgramarPts(row, nivel, cant), function (resp) {
+    $.post("ajax/programacion-taller-semana.ajax.php", payloadPriorizarPts(row, nivel, cant), function (resp) {
         if (resp && resp.ok) {
             $tr.removeClass("programando-pts").addClass("ok-pts");
-            toastPts((row.modelo || "") + " / " + (row.cod_color || "") + " → programado", "success");
+            toastPts((row.modelo || "") + " / " + (row.cod_color || "") + " → priorizado", "success");
             var clave = claveDispPts(row);
             ptsDisponiblesCache = ptsDisponiblesCache.filter(function (x) {
                 return claveDispPts(x) !== clave;
@@ -707,15 +1396,14 @@ function programarFilaPts($tr, nivel) {
                 }
             });
             if (resp.row) {
-                upsertProgramadoCachePts(resp.row);
+                upsertPriorizadoCachePts(resp.row);
             } else {
-                cargarProgramadosPts({ stats: false });
+                cargarPriorizadosPts();
             }
-            programarRefreshStatsPts();
         } else {
             $tr.removeClass("programando-pts");
             $tr.find(".btnNivelRapidoPts, .chkDispPts").prop("disabled", false);
-            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo programar", "danger");
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo priorizar", "danger");
         }
     }, "json").fail(function () {
         $tr.removeClass("programando-pts");
@@ -724,8 +1412,8 @@ function programarFilaPts($tr, nivel) {
     });
 }
 
-function programarLotePts() {
-    var nivel = $("#nivelLotePts").val();
+function priorizarLotePts() {
+    var nivel = nivelLoteSeleccionadoPts();
     if (!nivel) {
         toastPts("Elige un nivel para el lote", "warning");
         return;
@@ -753,39 +1441,199 @@ function programarLotePts() {
         return;
     }
 
-    $("#btnProgramarLotePts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Programando…');
+    $("#btnProgramarLotePts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Priorizando…');
     $filas.forEach(function ($tr) { $tr.addClass("programando-pts"); });
 
     $.post("ajax/programacion-taller-semana.ajax.php", {
-        accion: "programarLote",
-        anio: anioPts(),
-        semana: semanaPts(),
+        accion: "priorizarLote",
         items: JSON.stringify(items)
     }, function (resp) {
-        $("#btnProgramarLotePts").html('Programar seleccionados (<span id="nSelPts">0</span>)');
+        $("#btnProgramarLotePts").html('Priorizar seleccionados (<span id="nSelPts">0</span>)');
         if (resp && resp.ok) {
-            toastPts(resp.mensaje || "Lote programado", "success");
+            toastPts(resp.mensaje || "Lote priorizado", "success");
             if (resp.errores && resp.errores.length) {
-                console.warn("Errores lote PTS", resp.errores);
+                console.warn("Errores lote prioridad PTS", resp.errores);
             }
-            // Listados sin esperar stats; stats en background
-            $.when(
-                cargarDisponiblesPts(),
-                cargarProgramadosPts({ stats: false })
-            ).always(function () {
+            $.when(cargarDisponiblesPts(), cargarPriorizadosPts()).always(function () {
                 actualizarContadorSelPts();
-                programarRefreshStatsPts();
             });
         } else {
-            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo programar el lote", "danger");
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo priorizar el lote", "danger");
             $filas.forEach(function ($tr) { $tr.removeClass("programando-pts"); });
             actualizarContadorSelPts();
         }
     }, "json").fail(function () {
-        $("#btnProgramarLotePts").html('Programar seleccionados (<span id="nSelPts">0</span>)');
+        $("#btnProgramarLotePts").html('Priorizar seleccionados (<span id="nSelPts">0</span>)');
         toastPts("Error de comunicación", "danger");
         $filas.forEach(function ($tr) { $tr.removeClass("programando-pts"); });
         actualizarContadorSelPts();
+    });
+}
+
+function cambiarNivelPrioridadPts($tr, nivel) {
+    var row = $tr.data("row");
+    if (!row || !row.id || !nivel) return;
+    if (String(row.nivel) === String(nivel)) return;
+    $tr.addClass("programando-pts");
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "editarPrioridad",
+        id: row.id,
+        nivel: nivel
+    }, function (resp) {
+        $tr.removeClass("programando-pts");
+        if (resp && resp.ok && resp.row) {
+            toastPts("Nivel actualizado", "success");
+            upsertPriorizadoCachePts(resp.row);
+        } else {
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo cambiar nivel", "danger");
+        }
+    }, "json").fail(function () {
+        $tr.removeClass("programando-pts");
+        toastPts("Error de comunicación", "danger");
+    });
+}
+
+function destinarConSemanaPts(idPri, anio, semana, $tr) {
+    anio = parseInt(anio, 10) || 0;
+    semana = parseInt(semana, 10) || 0;
+    if (!idPri || !anio || !semana) {
+        toastPts("Elige año y semana destino", "warning");
+        return;
+    }
+    if ($tr) {
+        $tr.addClass("programando-pts");
+        $tr.find("button, .chkPriPts").prop("disabled", true);
+    }
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "destinarSemana",
+        id_prioridad: idPri,
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok) {
+            $("#modalDestinarPts").modal("hide");
+            toastPts(resp.mensaje || "Destinado", "success");
+            quitarPriorizadoCachePts(idPri);
+            // Si Ya programado está en esa semana, refrescar listado/stats
+            if (anio === anioProgPts() && semana === semanaProgPts()) {
+                if (resp.row) {
+                    upsertProgramadoCachePts(resp.row);
+                } else {
+                    cargarProgramadosPts({ stats: false });
+                }
+                programarRefreshStatsPts();
+            }
+        } else {
+            if ($tr) {
+                $tr.removeClass("programando-pts");
+                $tr.find("button, .chkPriPts").prop("disabled", false);
+            }
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo destinar", "danger");
+        }
+    }, "json").fail(function () {
+        if ($tr) {
+            $tr.removeClass("programando-pts");
+            $tr.find("button, .chkPriPts").prop("disabled", false);
+        }
+        toastPts("Error de comunicación", "danger");
+    });
+}
+
+function abrirModalDestinarPts(row) {
+    if (!row || !row.id) return;
+    $("#destModalIdPri").val(row.id);
+    $("#destModalArticulo").text(
+        (row.modelo || "") + " / " + etiquetaColorPts(row)
+    );
+    $("#destModalNivel").html(
+        "Nivel: " + badgeNivelPts(row.nivel, row.nivel_nombre, row.nivel_color)
+    );
+    $("#destModalAnio").val(anioDestPts() || anioPts());
+    $("#destModalSemana").val(semanaDestPts() || semanaPts());
+    actualizarRangoModalDestPts();
+    $("#modalDestinarPts").modal("show");
+}
+
+function actualizarRangoModalDestPts() {
+    var anio = parseInt($("#destModalAnio").val(), 10) || 0;
+    var semana = parseInt($("#destModalSemana").val(), 10) || 0;
+    if (!anio || !semana) {
+        $("#destModalRango").text("—");
+        $("#destModalAvisoPasada").hide();
+        return;
+    }
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#destModalRango").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+            var pasada = parseInt(resp.data.pasada, 10) === 1;
+            $("#destModalAvisoPasada").toggle(pasada);
+            $("#formDestinarPts").data("pasada", pasada ? 1 : 0);
+        } else {
+            $("#destModalRango").text("Semana no válida");
+            $("#destModalAvisoPasada").show();
+            $("#formDestinarPts").data("pasada", 1);
+        }
+    }, "json");
+}
+
+function destinarLotePts() {
+    var anio = anioDestPts();
+    var semana = semanaDestPts();
+    if (!anio || !semana) {
+        toastPts("Elige año y semana destino en la barra", "warning");
+        return;
+    }
+    if (semanaDestPasadaPts()) {
+        toastPts("No se puede destinar a una semana que ya pasó", "warning");
+        return;
+    }
+    var ids = [];
+    var $filas = [];
+    $("#tablaPriorizadosPts tbody tr").each(function () {
+        var $tr = $(this);
+        if (!$tr.find(".chkPriPts").is(":checked")) return;
+        var row = $tr.data("row");
+        if (!row || !row.id) return;
+        ids.push(row.id);
+        $filas.push($tr);
+    });
+    if (!ids.length) {
+        toastPts("Selecciona al menos uno", "warning");
+        return;
+    }
+    var htmlBtn = 'Destinar seleccionados <span id="nSelDestPts">(0)</span>';
+    $("#btnDestinarLotePts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Destinando…');
+    $filas.forEach(function ($tr) { $tr.addClass("programando-pts"); });
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "destinarLote",
+        anio: anio,
+        semana: semana,
+        ids: JSON.stringify(ids)
+    }, function (resp) {
+        $("#btnDestinarLotePts").html(htmlBtn);
+        if (resp && resp.ok) {
+            toastPts(resp.mensaje || "Lote destinado", "success");
+            $.when(cargarPriorizadosPts()).always(function () {
+                actualizarContadorSelDestPts();
+                if (anio === anioProgPts() && semana === semanaProgPts()) {
+                    cargarProgramadosPts({ stats: false });
+                    programarRefreshStatsPts();
+                }
+            });
+        } else {
+            toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo destinar el lote", "danger");
+            $filas.forEach(function ($tr) { $tr.removeClass("programando-pts"); });
+            actualizarContadorSelDestPts();
+        }
+    }, "json").fail(function () {
+        $("#btnDestinarLotePts").html(htmlBtn);
+        toastPts("Error de comunicación", "danger");
+        $filas.forEach(function ($tr) { $tr.removeClass("programando-pts"); });
+        actualizarContadorSelDestPts();
     });
 }
 
@@ -830,13 +1678,50 @@ function abrirModalProgramarPts(row, esEdicion) {
 if ($("#filtroAnioPts").length) {
     $.when(cargarNivelesPts(), cargarSectoresPts(), cargarModelosPts()).always(function () {
         aplicarEstadoInicialPts();
-        actualizarRangoPts().always(function () {
+        // Alinear selector de Ya programado con cabecera al iniciar
+        $("#progAnioPts").val(anioPts());
+        $("#progSemanaPts").val(semanaPts());
+        $.when(
+            actualizarRangoPts(),
+            actualizarRangoDestPts(),
+            actualizarRangoProgPts(),
+            actualizarRangoNePts(),
+            refrescarBadgeNoEjecPts()
+        ).always(function () {
             recargarPts().always(function () {
                 ptsInicializado = true;
                 sincronizarUrlPts();
             });
         });
     });
+}
+
+function limpiarFiltrosPts() {
+    ptsUrlSyncLock = true;
+    var $modelo = $("#filtroModeloPts");
+    var $taller = $("#filtroTallerPts");
+    var $nivel = $("#filtroNivelPts");
+    $modelo.val("");
+    $taller.val("");
+    $nivel.val("");
+    try {
+        if ($modelo.data("selectpicker")) {
+            $modelo.selectpicker("val", "");
+        } else {
+            refrescarSelectPts($modelo);
+        }
+        if ($taller.data("selectpicker")) {
+            $taller.selectpicker("val", "");
+        } else {
+            refrescarSelectPts($taller);
+        }
+    } catch (e) {
+        refrescarSelectPts($modelo);
+        refrescarSelectPts($taller);
+    }
+    ptsUrlSyncLock = false;
+    recargarPts();
+    toastPts("Filtros limpiados", "success");
 }
 
 function urlExcelPts() {
@@ -857,13 +1742,45 @@ $("#btnSemanaSigPts").on("click", function () { moverSemanaPts(1); });
 $("#btnActualizarPts").on("click", function () {
     actualizarRangoPts().always(function () { recargarPts(); });
 });
+$("#btnLimpiarFiltrosPts").on("click", limpiarFiltrosPts);
 $("#btnExcelPts").on("click", function (e) {
     e.preventDefault();
     window.location.href = urlExcelPts();
 });
 $("#filtroAnioPts, #filtroSemanaPts").on("change", function () {
-    actualizarRangoPts().always(function () { recargarPts(); });
+    // Semana del resumen: stats + Excel; alinea Ya programado
+    sincronizarProgConCabeceraPts();
+    $.when(actualizarRangoPts(), actualizarRangoProgPts()).always(function () {
+        cargarEstadisticasPts();
+        if (tabActivaPts() === "programado") {
+            mostrarCargandoProgramadosPts();
+            cargarProgramadosPts({ stats: false });
+        }
+        sincronizarUrlPts();
+    });
 });
+$("#destAnioPts, #destSemanaPts").on("change", function () {
+    actualizarRangoDestPts();
+});
+$("#btnDestSemAntPts").on("click", function () { moverSemanaDestPts(-1); });
+$("#btnDestSemSigPts").on("click", function () { moverSemanaDestPts(1); });
+$("#neAnioPts, #neSemanaPts").on("change", function () {
+    actualizarRangoNePts();
+});
+$("#btnNeSemAntPts").on("click", function () { moverSemanaNePts(-1); });
+$("#btnNeSemSigPts").on("click", function () { moverSemanaNePts(1); });
+$("#progAnioPts, #progSemanaPts").on("change", function () {
+    mostrarCargandoProgramadosPts();
+    actualizarRangoProgPts().always(function () {
+        sincronizarCabeceraConProgPts();
+        actualizarRangoPts();
+        cargarProgramadosPts({ stats: false });
+        programarRefreshStatsPts();
+        sincronizarUrlPts();
+    });
+});
+$("#btnProgSemAntPts").on("click", function () { moverSemanaProgPts(-1); });
+$("#btnProgSemSigPts").on("click", function () { moverSemanaProgPts(1); });
 $("#filtroTallerPts, #filtroModeloPts, #filtroNivelPts").on("changed.bs.select change", function () {
     if (ptsUrlSyncLock) return;
     recargarPts();
@@ -875,10 +1792,22 @@ $("#chkOcultarConsumidosPts").on("change", function () {
 
 $("#tabsPts a[data-toggle='tab']").on("shown.bs.tab", function () {
     sincronizarUrlPts();
-    // Al abrir "Ya programado", refrescar listado (stats en background)
-    if (tabActivaPts() === "programado") {
+    var tab = tabActivaPts();
+    if (tab === "programado") {
+        // Feedback inmediato; rango y listado en paralelo
+        mostrarCargandoProgramadosPts();
+        actualizarRangoProgPts();
         cargarProgramadosPts({ stats: false });
         programarRefreshStatsPts();
+    } else if (tab === "no_ejecutado") {
+        actualizarRangoNePts();
+        cargarNoEjecutadosPts();
+    } else if (tab === "destinar") {
+        cargarPriorizadosPts();
+        actualizarRangoDestPts();
+        actualizarContadorSelDestPts();
+    } else if (tab === "priorizar") {
+        cargarDisponiblesPts();
     }
 });
 
@@ -888,13 +1817,104 @@ $("#chkTodosDispPts").on("change", function () {
     actualizarContadorSelPts();
 });
 $(document).on("change", ".chkDispPts", actualizarContadorSelPts);
-$("#nivelLotePts").on("change", actualizarContadorSelPts);
-$("#btnProgramarLotePts").on("click", programarLotePts);
+$(document).on("change", ".chkNivelLotePts", function () {
+    var $chk = $(this);
+    if ($chk.is(":checked")) {
+        $("#chkNivelesLotePts .chkNivelLotePts").not($chk).prop("checked", false);
+        setNivelLotePts($chk.val());
+    } else {
+        setNivelLotePts("");
+    }
+});
+$("#btnProgramarLotePts").on("click", priorizarLotePts);
 
-$(document).on("click", ".btnNivelRapidoPts", function () {
+$("#chkTodosPriPts").on("change", function () {
+    var on = $(this).is(":checked");
+    $("#tablaPriorizadosPts tbody .chkPriPts:not(:disabled)").prop("checked", on);
+    actualizarContadorSelDestPts();
+});
+$(document).on("change", ".chkPriPts", actualizarContadorSelDestPts);
+$("#btnDestinarLotePts").on("click", destinarLotePts);
+
+$(document).on("click", "#tablaDisponiblesPts .btnNivelRapidoPts", function () {
     var nivel = $(this).attr("data-nivel");
     var $tr = $(this).closest("tr");
-    programarFilaPts($tr, nivel);
+    priorizarFilaPts($tr, nivel);
+});
+
+$(document).on("click", "#tablaPriorizadosPts .btnNivelRapidoPts", function () {
+    var nivel = $(this).attr("data-nivel");
+    var $tr = $(this).closest("tr");
+    cambiarNivelPrioridadPts($tr, nivel);
+});
+
+$(document).on("click", ".btnDestinarFilaPts", function () {
+    var row = $(this).closest("tr").data("row");
+    abrirModalDestinarPts(row);
+});
+
+$("#destModalAnio, #destModalSemana").on("change", actualizarRangoModalDestPts);
+
+$("#formDestinarPts").on("submit", function (e) {
+    e.preventDefault();
+    if (parseInt($("#formDestinarPts").data("pasada"), 10) === 1) {
+        toastPts("No se puede destinar a una semana que ya pasó", "warning");
+        return;
+    }
+    var idPri = parseInt($("#destModalIdPri").val(), 10) || 0;
+    var anio = parseInt($("#destModalAnio").val(), 10) || 0;
+    var semana = parseInt($("#destModalSemana").val(), 10) || 0;
+    var $tr = null;
+    $("#tablaPriorizadosPts tbody tr").each(function () {
+        var row = $(this).data("row");
+        if (row && String(row.id) === String(idPri)) {
+            $tr = $(this);
+            return false;
+        }
+    });
+    destinarConSemanaPts(idPri, anio, semana, $tr);
+});
+
+$(document).on("click", ".btnQuitarPriPts", function () {
+    var $btn = $(this);
+    var $tr = $btn.closest("tr");
+    var row = $tr.data("row");
+    if (!row || !row.id || $tr.hasClass("programando-pts")) return;
+    var go = function () {
+        $tr.addClass("programando-pts");
+        $.post("ajax/programacion-taller-semana.ajax.php", {
+            accion: "eliminarPrioridad",
+            id: row.id
+        }, function (resp) {
+            if (resp && resp.ok) {
+                toastPts(resp.mensaje || "Quitado", "success");
+                quitarPriorizadoCachePts(row.id);
+                if (resp.candidato) {
+                    upsertDisponibleCachePts(resp.candidato);
+                }
+            } else {
+                $tr.removeClass("programando-pts");
+                toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo quitar", "danger");
+            }
+        }, "json").fail(function () {
+            $tr.removeClass("programando-pts");
+            toastPts("Error de comunicación", "danger");
+        });
+    };
+    if (typeof swal === "function") {
+        swal({
+            title: "¿Quitar de la prioridad?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dd4b39",
+            confirmButtonText: "Sí, quitar",
+            cancelButtonText: "Cancelar"
+        }).then(function (result) {
+            if (result && result.value) go();
+        });
+        return;
+    }
+    if (window.confirm("¿Quitar de la prioridad?")) go();
 });
 
 $(document).on("click", ".btnEditarPts", function () {
@@ -997,4 +2017,60 @@ $("#formProgramarPts").on("submit", function (e) {
 
 $("#modalProgramarPts").on("shown.bs.modal", function () {
     refrescarSelectPts($("#ptsTaller"));
+});
+
+$("#chkTodosNePts").on("change", function () {
+    var on = $(this).is(":checked");
+    $("#tablaNoEjecPts tbody .chkNePts").prop("checked", on);
+    actualizarContadorSelNePts();
+});
+$(document).on("change", ".chkNePts", actualizarContadorSelNePts);
+$("#btnMoverNeLotePts").on("click", moverNoEjecutadoLotePts);
+$("#btnDevolverNeLotePts").on("click", devolverNoEjecutadoLotePts);
+
+$(document).on("click", ".btnMoverNePts", function () {
+    var row = $(this).closest("tr").data("row");
+    abrirModalMoverNePts(row);
+});
+$(document).on("click", ".btnDevolverNePts", function () {
+    var $tr = $(this).closest("tr");
+    var row = $tr.data("row");
+    if (!row || !row.id) return;
+    var go = function () { devolverNoEjecutadoPts(row.id, $tr); };
+    if (typeof swal === "function") {
+        swal({
+            title: "¿Devolver a prioridad?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#f39c12",
+            confirmButtonText: "Sí, devolver",
+            cancelButtonText: "Cancelar"
+        }).then(function (result) {
+            if (result && result.value) go();
+        });
+        return;
+    }
+    if (window.confirm("¿Devolver a prioridad?")) go();
+});
+
+$("#neModalAnio, #neModalSemana").on("change", actualizarRangoModalNePts);
+$("#formMoverNePts").on("submit", function (e) {
+    e.preventDefault();
+    if (parseInt($("#formMoverNePts").data("pasada"), 10) === 1) {
+        toastPts("No se puede mover a una semana que ya pasó", "warning");
+        return;
+    }
+    var id = parseInt($("#neModalId").val(), 10) || 0;
+    var anio = parseInt($("#neModalAnio").val(), 10) || 0;
+    var semana = parseInt($("#neModalSemana").val(), 10) || 0;
+    var $tr = null;
+    $("#tablaNoEjecPts tbody tr").each(function () {
+        var row = $(this).data("row");
+        if (row && String(row.id) === String(id)) {
+            $tr = $(this);
+            return false;
+        }
+    });
+    if ($tr) $tr.addClass("programando-pts");
+    moverNoEjecutadoPts(id, anio, semana, $tr);
 });

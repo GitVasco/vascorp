@@ -1702,6 +1702,37 @@ class ControladorHelpdesk
             }
         }
 
+        if (isset($_POST["solicitante_id"]) && $_POST["solicitante_id"] !== "") {
+            $nuevoSol = (int) $_POST["solicitante_id"];
+            $actualSol = (int) $ticket["solicitante_id"];
+            if ($nuevoSol < 1) {
+                return array("ok" => false, "msg" => "Solicitante inválido.");
+            }
+            if ($nuevoSol !== $actualSol) {
+                $usuariosSol = ModeloHelpdesk::mdlUsuariosPorIds(array($nuevoSol, $actualSol));
+                $mapaSol = array();
+                foreach ($usuariosSol as $uSol) {
+                    $mapaSol[(int) $uSol["id"]] = $uSol["nombre"];
+                }
+                if (!isset($mapaSol[$nuevoSol])) {
+                    return array("ok" => false, "msg" => "Solicitante no encontrado o inactivo.");
+                }
+                $nombreAnt = isset($mapaSol[$actualSol])
+                    ? $mapaSol[$actualSol]
+                    : (isset($ticket["solicitante_nombre"]) && $ticket["solicitante_nombre"] !== ""
+                        ? $ticket["solicitante_nombre"]
+                        : ("#" . $actualSol));
+                $nombreNuevo = $mapaSol[$nuevoSol];
+                $campos["solicitante_id"] = $nuevoSol;
+                $eventos[] = array(
+                    "tipo_evento" => "COMENTARIO",
+                    "mensaje" => "Solicitante: " . $nombreAnt . " → " . $nombreNuevo,
+                    "estado_anterior" => null,
+                    "estado_nuevo" => null,
+                );
+            }
+        }
+
         if (isset($_POST["prioridad"]) && $_POST["prioridad"] !== "") {
             $prioridad = trim((string) $_POST["prioridad"]);
             if (!in_array($prioridad, self::PRIORIDADES, true)) {
