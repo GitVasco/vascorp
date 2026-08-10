@@ -4,6 +4,284 @@ class ControladorAbonos
 {
 
 	/*=============================================
+	CATÁLOGO MOTIVOS PENDIENTE DE APLICAR
+	=============================================*/
+
+	static public function ctrMotivosPendiente()
+	{
+		return array(
+			"no_identificado" => "No identificado",
+			"referencia_incompleta" => "Referencia incompleta",
+			"monto_no_coincide" => "Monto no coincide",
+			"duplicado" => "Duplicado / ya aplicado",
+			"pendiente_confirmacion" => "Pendiente de confirmación",
+			"otro" => "Otro",
+		);
+	}
+
+	static public function ctrEtiquetaMotivoPendiente($codigo)
+	{
+		if ($codigo === null || $codigo === "") {
+			return "";
+		}
+		$motivos = self::ctrMotivosPendiente();
+		return isset($motivos[$codigo]) ? $motivos[$codigo] : $codigo;
+	}
+
+	/*=============================================
+	CATÁLOGO AGENCIAS / CANALES BCP
+	=============================================*/
+
+	static public function ctrCatalogoAgenciasBcp()
+	{
+		static $indice = null;
+		if ($indice !== null) {
+			return $indice;
+		}
+
+		$indice = array(
+			"por_codigo" => array(),
+			"por_numerico" => array(),
+		);
+
+		$ruta = __DIR__ . "/bcp-agencias.json";
+		if (!is_readable($ruta)) {
+			return $indice;
+		}
+
+		$raw = file_get_contents($ruta);
+		$data = json_decode($raw, true);
+		if (!is_array($data) || empty($data["codigos"]) || !is_array($data["codigos"])) {
+			return $indice;
+		}
+
+		foreach ($data["codigos"] as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$codigo = isset($item["codigo"]) ? trim((string) $item["codigo"]) : "";
+			$numerico = isset($item["codigo_numerico"])
+				? preg_replace('/\D+/', '', (string) $item["codigo_numerico"])
+				: "";
+			if ($numerico === "" && $codigo !== "") {
+				$numerico = preg_replace('/\D+/', '', $codigo);
+			}
+
+			$tipo = isset($item["tipo"]) ? strtoupper((string) $item["tipo"]) : "";
+			if ($tipo === "AGENCIA") {
+				$nombre = isset($item["agencia"]) ? trim((string) $item["agencia"]) : "";
+			} else {
+				$nombre = isset($item["descripcion"]) ? trim((string) $item["descripcion"]) : "";
+			}
+			if ($nombre === "") {
+				continue;
+			}
+
+			$entrada = array(
+				"codigo" => $codigo,
+				"codigo_numerico" => $numerico,
+				"tipo" => $tipo,
+				"nombre" => $nombre,
+			);
+
+			if ($codigo !== "") {
+				$indice["por_codigo"][strtoupper($codigo)] = $entrada;
+			}
+			if ($numerico !== "") {
+				$indice["por_numerico"][$numerico] = $entrada;
+			}
+		}
+
+		return $indice;
+	}
+
+	/**
+	 * Resuelve el código de agencia del abono contra el catálogo BCP.
+	 * @return array|null {codigo, codigo_numerico, tipo, nombre} o null
+	 */
+	static public function ctrResolverAgenciaBcp($agenciaRaw)
+	{
+		$agenciaRaw = is_string($agenciaRaw) ? trim($agenciaRaw) : "";
+		if ($agenciaRaw === "") {
+			return null;
+		}
+
+		$indice = self::ctrCatalogoAgenciasBcp();
+		$claveExacta = strtoupper($agenciaRaw);
+		if (isset($indice["por_codigo"][$claveExacta])) {
+			return $indice["por_codigo"][$claveExacta];
+		}
+
+		$numerico = preg_replace('/\D+/', '', $agenciaRaw);
+		if ($numerico !== "" && isset($indice["por_numerico"][$numerico])) {
+			return $indice["por_numerico"][$numerico];
+		}
+
+		return null;
+	}
+
+	/** HTML para columna Agencia: código + nombre si hay match. */
+	static public function ctrHtmlAgenciaAbono($agenciaRaw)
+	{
+		$agenciaRaw = is_string($agenciaRaw) ? trim($agenciaRaw) : "";
+		if ($agenciaRaw === "") {
+			return "<span class='text-muted'>—</span>";
+		}
+
+		$seguro = htmlspecialchars($agenciaRaw, ENT_QUOTES, "UTF-8");
+		$match = self::ctrResolverAgenciaBcp($agenciaRaw);
+		if ($match === null) {
+			return $seguro;
+		}
+
+		$nombre = htmlspecialchars($match["nombre"], ENT_QUOTES, "UTF-8");
+		return $seguro . " <small class='text-muted'>— " . $nombre . "</small>";
+	}
+
+	/*=============================================
+	ESTADÍSTICAS MENSUALES: PENDIENTES VS APLICADOS
+	=============================================*/
+
+	static public function ctrAnioMinimoAbonos()
+	{
+		return 2026;
+	}
+
+	static public function ctrEstadisticasMensuales($anio = null, $mes = null)
+	{
+		date_default_timezone_set("America/Lima");
+		$anioMin = self::ctrAnioMinimoAbonos();
+		$anioHoy = (int) date("Y");
+		$mesHoy = (int) date("n");
+
+		$anio = $anio === null || $anio === "" ? max($anioHoy, $anioMin) : (int) $anio;
+		if ($anio < $anioMin) {
+			$anio = $anioMin;
+		}
+		if ($anio > $anioHoy) {
+			$anio = $anioHoy;
+		}
+
+		$mesRaw = is_string($mes) ? trim($mes) : $mes;
+		$periodoAnioCompleto = (
+			$mesRaw === null
+			|| $mesRaw === ""
+			|| $mesRaw === "todos"
+			|| (string) $mesRaw === "0"
+		);
+
+		$mesNum = null;
+		if (!$periodoAnioCompleto) {
+			$mesNum = (int) $mesRaw;
+			if ($mesNum < 1 || $mesNum > 12) {
+				$mesNum = $anio === $anioHoy ? $mesHoy : 1;
+				$periodoAnioCompleto = false;
+			}
+		}
+
+		$mesesNombre = array(
+			1 => "Enero", 2 => "Febrero", 3 => "Marzo", 4 => "Abril",
+			5 => "Mayo", 6 => "Junio", 7 => "Julio", 8 => "Agosto",
+			9 => "Septiembre", 10 => "Octubre", 11 => "Noviembre", 12 => "Diciembre",
+		);
+
+		$vacio = function ($m, $nombre) {
+			return array(
+				"mes" => $m,
+				"mes_nombre" => $nombre,
+				"pendientes_cant" => 0,
+				"pendientes_monto" => 0.0,
+				"aplicados_cant" => 0,
+				"aplicados_monto" => 0.0,
+				"total_cant" => 0,
+				"pct_pendiente" => null,
+			);
+		};
+
+		$porMes = array();
+		for ($m = 1; $m <= 12; $m++) {
+			$porMes[$m] = $vacio($m, $mesesNombre[$m]);
+		}
+
+		$pendientes = ModeloAbonos::mdlPendientesPorMes($anio);
+		if (is_array($pendientes)) {
+			foreach ($pendientes as $fila) {
+				$m = (int) $fila["mes"];
+				if (!isset($porMes[$m])) {
+					continue;
+				}
+				$porMes[$m]["pendientes_cant"] = (int) $fila["cantidad"];
+				$porMes[$m]["pendientes_monto"] = (float) $fila["monto"];
+			}
+		}
+
+		$aplicados = ModeloAbonos::mdlAplicadosPorMes($anio);
+		if (is_array($aplicados)) {
+			foreach ($aplicados as $fila) {
+				$m = (int) $fila["mes"];
+				if (!isset($porMes[$m])) {
+					continue;
+				}
+				$porMes[$m]["aplicados_cant"] = (int) $fila["cantidad"];
+				$porMes[$m]["aplicados_monto"] = (float) $fila["monto"];
+			}
+		}
+
+		$totPendCant = 0;
+		$totPendMonto = 0.0;
+		$totAplCant = 0;
+		$totAplMonto = 0.0;
+
+		foreach ($porMes as $m => $fila) {
+			$totalCant = $fila["pendientes_cant"] + $fila["aplicados_cant"];
+			$porMes[$m]["total_cant"] = $totalCant;
+			$porMes[$m]["pct_pendiente"] = $totalCant > 0
+				? round(($fila["pendientes_cant"] * 100.0) / $totalCant, 1)
+				: null;
+
+			$totPendCant += $fila["pendientes_cant"];
+			$totPendMonto += $fila["pendientes_monto"];
+			$totAplCant += $fila["aplicados_cant"];
+			$totAplMonto += $fila["aplicados_monto"];
+		}
+
+		$totalAnio = $totPendCant + $totAplCant;
+		$acumulado = array(
+			"pendientes_cant" => $totPendCant,
+			"pendientes_monto" => $totPendMonto,
+			"aplicados_cant" => $totAplCant,
+			"aplicados_monto" => $totAplMonto,
+			"total_cant" => $totalAnio,
+			"pct_pendiente" => $totalAnio > 0
+				? round(($totPendCant * 100.0) / $totalAnio, 1)
+				: null,
+		);
+
+		if ($periodoAnioCompleto) {
+			$mesStats = $acumulado;
+			$mesStats["mes"] = null;
+			$mesStats["mes_nombre"] = "Todo el año";
+			$mesNombrePeriodo = "Todo el año";
+			$mesRespuesta = "todos";
+		} else {
+			$mesStats = $porMes[$mesNum];
+			$mesNombrePeriodo = $mesesNombre[$mesNum];
+			$mesRespuesta = $mesNum;
+		}
+
+		return array(
+			"anio" => $anio,
+			"mes" => $mesRespuesta,
+			"mes_nombre" => $mesNombrePeriodo,
+			"periodo_anio_completo" => $periodoAnioCompleto,
+			"anio_minimo" => $anioMin,
+			"del_mes" => $mesStats,
+			"acumulado_anio" => $acumulado,
+			"nota" => "Aplicados: tip_mov '-', códigos 05/15 y notas OP-. Aproximación operativa.",
+		);
+	}
+
+	/*=============================================
 	CREAR TIPO DE PAGO
 	=============================================*/
 
@@ -50,12 +328,60 @@ class ControladorAbonos
 	MOSTRAR TIPO DE PAGO
 	=============================================*/
 
-	static public function ctrMostrarAbonos($item, $valor)
+	static public function ctrMostrarAbonos($item, $valor, $filtroMotivo = null, $anio = null, $mes = null)
 	{
 		$tabla = "abonosjf";
-		$respuesta = ModeloAbonos::mdlMostrarAbonos($tabla, $item, $valor);
+		$anioDesde = self::ctrAnioMinimoAbonos();
+		$respuesta = ModeloAbonos::mdlMostrarAbonos($tabla, $item, $valor, $filtroMotivo, $anio, $mes, $anioDesde);
 
 		return $respuesta;
+	}
+
+	/*=============================================
+	EDITAR MOTIVO / OBSERVACIÓN PENDIENTE
+	=============================================*/
+
+	static public function ctrGuardarMotivoPendiente($idAbono, $motivo, $observacion)
+	{
+		$idAbono = (int) $idAbono;
+		if ($idAbono <= 0) {
+			return array("ok" => false, "mensaje" => "Abono inválido");
+		}
+
+		$motivos = self::ctrMotivosPendiente();
+		$motivo = is_string($motivo) ? trim($motivo) : "";
+		if ($motivo !== "" && !isset($motivos[$motivo])) {
+			return array("ok" => false, "mensaje" => "Motivo no válido");
+		}
+
+		$observacion = is_string($observacion) ? trim($observacion) : "";
+		if (strlen($observacion) > 500) {
+			return array("ok" => false, "mensaje" => "La observación no puede superar 500 caracteres");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$usuario = isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "";
+
+		$datos = array(
+			"id" => $idAbono,
+			"motivo_pendiente" => $motivo === "" ? null : $motivo,
+			"observacion_pendiente" => $observacion === "" ? null : $observacion,
+			"motivo_usuario" => $usuario !== "" ? $usuario : null,
+			"motivo_fecha" => date("Y-m-d H:i:s"),
+		);
+
+		$respuesta = ModeloAbonos::mdlEditarMotivoPendiente("abonosjf", $datos);
+		if ($respuesta !== "ok") {
+			return array("ok" => false, "mensaje" => "No se pudo guardar el motivo");
+		}
+
+		return array(
+			"ok" => true,
+			"mensaje" => "Motivo guardado",
+			"motivo" => $datos["motivo_pendiente"],
+			"motivo_etiqueta" => self::ctrEtiquetaMotivoPendiente($datos["motivo_pendiente"]),
+			"observacion" => $datos["observacion_pendiente"],
+		);
 	}
 
 	/*=============================================

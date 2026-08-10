@@ -55,6 +55,21 @@
           <h3 class="text-center text-green">Abonos</h3>
           <div class="box-header">
             <button class="btn btn-success" id="btnRecargar"><i class="fa fa-refresh"></i> Actualizar</button>
+            <div class="form-inline pull-right" style="margin-top:5px;">
+              <label for="filtroMotivoCancelar" style="margin-right:6px;">Motivo</label>
+              <select class="form-control input-sm" id="filtroMotivoCancelar">
+                <option value="">Todos</option>
+                <option value="sin">Sin motivo</option>
+                <?php
+                $motivosCancelar = ControladorAbonos::ctrMotivosPendiente();
+                foreach ($motivosCancelar as $codigo => $etiqueta) {
+                  echo '<option value="' . htmlspecialchars($codigo, ENT_QUOTES, "UTF-8") . '">'
+                    . htmlspecialchars($etiqueta, ENT_QUOTES, "UTF-8")
+                    . '</option>';
+                }
+                ?>
+              </select>
+            </div>
           </div>
           <div class="box-body" style="padding:5px;">
             <div style="overflow-x:auto;">
@@ -63,9 +78,10 @@
                   <tr>
                     <th>Fecha</th>
                     <th>Descripción</th>
-                    <th>Monto</th>
+                    <th style="text-align:right">Monto</th>
                     <th>Agencia</th>
                     <th>Operación</th>
+                    <th>Motivo</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>

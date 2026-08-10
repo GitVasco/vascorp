@@ -1,0 +1,1015 @@
+{
+  "banco": "BCP",
+  "pais": "Perú",
+  "descripcion": "Códigos BCP identificados durante la investigación. La lista es una base de trabajo y no debe considerarse un catálogo oficial vigente completo.",
+  "total_registros": 154,
+  "codigos": [
+    {
+      "codigo": "111-008",
+      "tipo": "CANAL",
+      "medio": "TLC",
+      "descripcion": "Telecrédito",
+      "codigo_numerico": "111008"
+    },
+    {
+      "codigo": "111-017",
+      "tipo": "CANAL",
+      "medio": "CAJ",
+      "descripcion": "Cajero automático",
+      "codigo_numerico": "111017"
+    },
+    {
+      "codigo": "111-023",
+      "tipo": "CANAL",
+      "medio": "BPI",
+      "descripcion": "Banca por Internet",
+      "codigo_numerico": "111023"
+    },
+    {
+      "codigo": "111-034",
+      "tipo": "CANAL",
+      "medio": "BPI",
+      "descripcion": "Pago de detracciones",
+      "codigo_numerico": "111034"
+    },
+    {
+      "codigo": "111-041",
+      "tipo": "CANAL",
+      "medio": "BPI",
+      "descripcion": "Pagos AFP",
+      "codigo_numerico": "111041"
+    },
+    {
+      "codigo": "111-054",
+      "tipo": "CANAL",
+      "medio": "VEN",
+      "descripcion": "Ventanilla",
+      "codigo_numerico": "111054"
+    },
+    {
+      "codigo": "111-014",
+      "tipo": "CANAL",
+      "medio": "POS",
+      "descripcion": "Punto de venta",
+      "codigo_numerico": "111014"
+    },
+    {
+      "codigo": "191-017",
+      "tipo": "AGENCIA",
+      "agencia": "San Juan de Lurigancho",
+      "codigo_numerico": "191017"
+    },
+    {
+      "codigo": "191-020",
+      "tipo": "AGENCIA",
+      "agencia": "Puruchuco",
+      "codigo_numerico": "191020"
+    },
+    {
+      "codigo": "191-021",
+      "tipo": "AGENCIA",
+      "agencia": "San Martín de Porres",
+      "codigo_numerico": "191021"
+    },
+    {
+      "codigo": "191-023",
+      "tipo": "AGENCIA",
+      "agencia": "Habich",
+      "codigo_numerico": "191023"
+    },
+    {
+      "codigo": "191-028",
+      "tipo": "AGENCIA",
+      "agencia": "Antúnez de Mayolo",
+      "codigo_numerico": "191028"
+    },
+    {
+      "codigo": "191-030",
+      "tipo": "AGENCIA",
+      "agencia": "Tarapacá",
+      "codigo_numerico": "191030"
+    },
+    {
+      "codigo": "191-035",
+      "tipo": "AGENCIA",
+      "agencia": "Puente Piedra",
+      "codigo_numerico": "191035"
+    },
+    {
+      "codigo": "191-036",
+      "tipo": "AGENCIA",
+      "agencia": "Santo Domingo",
+      "codigo_numerico": "191036"
+    },
+    {
+      "codigo": "191-038",
+      "tipo": "AGENCIA",
+      "agencia": "Túpac Amaru",
+      "codigo_numerico": "191038"
+    },
+    {
+      "codigo": "191-041",
+      "tipo": "AGENCIA",
+      "agencia": "El Agustino",
+      "codigo_numerico": "191041"
+    },
+    {
+      "codigo": "191-043",
+      "tipo": "AGENCIA",
+      "agencia": "Vitarte",
+      "codigo_numerico": "191043"
+    },
+    {
+      "codigo": "191-052",
+      "tipo": "AGENCIA",
+      "agencia": "Santa Anita",
+      "codigo_numerico": "191052"
+    },
+    {
+      "codigo": "191-053",
+      "tipo": "AGENCIA",
+      "agencia": "Urb. San Felipe",
+      "codigo_numerico": "191053"
+    },
+    {
+      "codigo": "191-054",
+      "tipo": "AGENCIA",
+      "agencia": "Emancipación",
+      "codigo_numerico": "191054"
+    },
+    {
+      "codigo": "191-055",
+      "tipo": "AGENCIA",
+      "agencia": "Las Lomas",
+      "codigo_numerico": "191055"
+    },
+    {
+      "codigo": "191-057",
+      "tipo": "AGENCIA",
+      "agencia": "Angélica Gamarra",
+      "codigo_numerico": "191057"
+    },
+    {
+      "codigo": "191-058",
+      "tipo": "AGENCIA",
+      "agencia": "Plaza Lima Norte",
+      "codigo_numerico": "191058"
+    },
+    {
+      "codigo": "191-061",
+      "tipo": "AGENCIA",
+      "agencia": "Mercado de Productores",
+      "codigo_numerico": "191061"
+    },
+    {
+      "codigo": "191-062",
+      "tipo": "AGENCIA",
+      "agencia": "Plaza Unión",
+      "codigo_numerico": "191062"
+    },
+    {
+      "codigo": "191-069",
+      "tipo": "AGENCIA",
+      "agencia": "Mesa Redonda",
+      "codigo_numerico": "191069"
+    },
+    {
+      "codigo": "191-074",
+      "tipo": "AGENCIA",
+      "agencia": "Chaclacayo",
+      "codigo_numerico": "191074"
+    },
+    {
+      "codigo": "191-075",
+      "tipo": "AGENCIA",
+      "agencia": "Chosica",
+      "codigo_numerico": "191075"
+    },
+    {
+      "codigo": "191-076",
+      "tipo": "AGENCIA",
+      "agencia": "Las Malvinas",
+      "codigo_numerico": "191076"
+    },
+    {
+      "codigo": "191-077",
+      "tipo": "AGENCIA",
+      "agencia": "Multiplaza",
+      "codigo_numerico": "191077"
+    },
+    {
+      "codigo": "191-078",
+      "tipo": "AGENCIA",
+      "agencia": "Mendiola",
+      "codigo_numerico": "191078"
+    },
+    {
+      "codigo": "191-084",
+      "tipo": "AGENCIA",
+      "agencia": "Naciones Unidas",
+      "codigo_numerico": "191084"
+    },
+    {
+      "codigo": "191-087",
+      "tipo": "AGENCIA",
+      "agencia": "El Pino",
+      "codigo_numerico": "191087"
+    },
+    {
+      "codigo": "191-088",
+      "tipo": "AGENCIA",
+      "agencia": "Fiori",
+      "codigo_numerico": "191088"
+    },
+    {
+      "codigo": "191-091",
+      "tipo": "AGENCIA",
+      "agencia": "Caquetá",
+      "codigo_numerico": "191091"
+    },
+    {
+      "codigo": "191-095",
+      "tipo": "AGENCIA",
+      "agencia": "Capón",
+      "codigo_numerico": "191095"
+    },
+    {
+      "codigo": "191-098",
+      "tipo": "AGENCIA",
+      "agencia": "Cailloma",
+      "codigo_numerico": "191098"
+    },
+    {
+      "codigo": "191-105",
+      "tipo": "AGENCIA",
+      "agencia": "Centro Cívico",
+      "codigo_numerico": "191105"
+    },
+    {
+      "codigo": "192-008",
+      "tipo": "AGENCIA",
+      "agencia": "Faucett",
+      "codigo_numerico": "192008"
+    },
+    {
+      "codigo": "192-009",
+      "tipo": "AGENCIA",
+      "agencia": "Plaza San Miguel",
+      "codigo_numerico": "192009"
+    },
+    {
+      "codigo": "192-012",
+      "tipo": "AGENCIA",
+      "agencia": "La Pampilla",
+      "codigo_numerico": "192012"
+    },
+    {
+      "codigo": "192-016",
+      "tipo": "AGENCIA",
+      "agencia": "Minka",
+      "codigo_numerico": "192016"
+    },
+    {
+      "codigo": "192-022",
+      "tipo": "AGENCIA",
+      "agencia": "Cantolao",
+      "codigo_numerico": "192022"
+    },
+    {
+      "codigo": "192-029",
+      "tipo": "AGENCIA",
+      "agencia": "Canta Callao",
+      "codigo_numerico": "192029"
+    },
+    {
+      "codigo": "193-001",
+      "tipo": "AGENCIA",
+      "agencia": "San Borja",
+      "codigo_numerico": "193001"
+    },
+    {
+      "codigo": "193-011",
+      "tipo": "AGENCIA",
+      "agencia": "Jockey Plaza",
+      "codigo_numerico": "193011"
+    },
+    {
+      "codigo": "193-012",
+      "tipo": "AGENCIA",
+      "agencia": "Raúl Ferrero",
+      "codigo_numerico": "193012"
+    },
+    {
+      "codigo": "193-020",
+      "tipo": "AGENCIA",
+      "agencia": "Angamos",
+      "codigo_numerico": "193020"
+    },
+    {
+      "codigo": "193-022",
+      "tipo": "AGENCIA",
+      "agencia": "Rosa Toro",
+      "codigo_numerico": "193022"
+    },
+    {
+      "codigo": "193-038",
+      "tipo": "AGENCIA",
+      "agencia": "Los Damascos",
+      "codigo_numerico": "193038"
+    },
+    {
+      "codigo": "193-040",
+      "tipo": "AGENCIA",
+      "agencia": "La Marina Open",
+      "codigo_numerico": "193040"
+    },
+    {
+      "codigo": "194-000",
+      "tipo": "AGENCIA",
+      "agencia": "Miraflores",
+      "codigo_numerico": "194000"
+    },
+    {
+      "codigo": "194-001",
+      "tipo": "AGENCIA",
+      "agencia": "Chorrillos",
+      "codigo_numerico": "194001"
+    },
+    {
+      "codigo": "194-006",
+      "tipo": "AGENCIA",
+      "agencia": "San Antonio",
+      "codigo_numerico": "194006"
+    },
+    {
+      "codigo": "194-009",
+      "tipo": "AGENCIA",
+      "agencia": "San Juan de Miraflores",
+      "codigo_numerico": "194009"
+    },
+    {
+      "codigo": "194-011",
+      "tipo": "AGENCIA",
+      "agencia": "Las Gardenias",
+      "codigo_numerico": "194011"
+    },
+    {
+      "codigo": "194-013",
+      "tipo": "AGENCIA",
+      "agencia": "Larco",
+      "codigo_numerico": "194013"
+    },
+    {
+      "codigo": "194-015",
+      "tipo": "AGENCIA",
+      "agencia": "Ricardo Palma",
+      "codigo_numerico": "194015"
+    },
+    {
+      "codigo": "194-019",
+      "tipo": "AGENCIA",
+      "agencia": "Chacarilla",
+      "codigo_numerico": "194019"
+    },
+    {
+      "codigo": "194-020",
+      "tipo": "AGENCIA",
+      "agencia": "Plaza Lima Sur",
+      "codigo_numerico": "194020"
+    },
+    {
+      "codigo": "194-024",
+      "tipo": "AGENCIA",
+      "agencia": "Villa El Salvador",
+      "codigo_numerico": "194024"
+    },
+    {
+      "codigo": "194-030",
+      "tipo": "AGENCIA",
+      "agencia": "Parque Industrial",
+      "codigo_numerico": "194030"
+    },
+    {
+      "codigo": "194-038",
+      "tipo": "AGENCIA",
+      "agencia": "Asia",
+      "codigo_numerico": "194038"
+    },
+    {
+      "codigo": "194-039",
+      "tipo": "AGENCIA",
+      "agencia": "Diagonal Miraflores",
+      "codigo_numerico": "194039"
+    },
+    {
+      "codigo": "194-040",
+      "tipo": "AGENCIA",
+      "agencia": "Vargas Machuca",
+      "codigo_numerico": "194040"
+    },
+    {
+      "codigo": "194-051",
+      "tipo": "AGENCIA",
+      "agencia": "Atocongo Open Plaza",
+      "codigo_numerico": "194051"
+    },
+    {
+      "codigo": "194-053",
+      "tipo": "AGENCIA",
+      "agencia": "Huertos del Sur",
+      "codigo_numerico": "194053"
+    },
+    {
+      "codigo": "194-055",
+      "tipo": "AGENCIA",
+      "agencia": "El Polo",
+      "codigo_numerico": "194055"
+    },
+    {
+      "codigo": "194-058",
+      "tipo": "AGENCIA",
+      "agencia": "Strip Center Alameda Sur",
+      "codigo_numerico": "194058"
+    },
+    {
+      "codigo": "194-061",
+      "tipo": "AGENCIA",
+      "agencia": "Open Plaza Angamos",
+      "codigo_numerico": "194061"
+    },
+    {
+      "codigo": "194-063",
+      "tipo": "AGENCIA",
+      "agencia": "Castro Iglesias",
+      "codigo_numerico": "194063"
+    },
+    {
+      "codigo": "194-064",
+      "tipo": "AGENCIA",
+      "agencia": "Los Viñedos",
+      "codigo_numerico": "194064"
+    },
+    {
+      "codigo": "194-066",
+      "tipo": "AGENCIA",
+      "agencia": "Mega Express",
+      "codigo_numerico": "194066"
+    },
+    {
+      "codigo": "194-073",
+      "tipo": "AGENCIA",
+      "agencia": "Óvalo Higuereta",
+      "codigo_numerico": "194073"
+    },
+    {
+      "codigo": "194-086",
+      "tipo": "AGENCIA",
+      "agencia": "Monterrico",
+      "codigo_numerico": "194086"
+    },
+    {
+      "codigo": "194-094",
+      "tipo": "AGENCIA",
+      "agencia": "Salvador Allende",
+      "codigo_numerico": "194094"
+    },
+    {
+      "codigo": "194-097",
+      "tipo": "AGENCIA",
+      "agencia": "Matellini",
+      "codigo_numerico": "194097"
+    },
+    {
+      "codigo": "200-000",
+      "tipo": "AGENCIA",
+      "agencia": "Abancay",
+      "departamento": "Apurímac",
+      "codigo_numerico": "200000"
+    },
+    {
+      "codigo": "205-000",
+      "tipo": "AGENCIA",
+      "agencia": "Andahuaylas",
+      "departamento": "Apurímac",
+      "codigo_numerico": "205000"
+    },
+    {
+      "codigo": "215-000",
+      "tipo": "AGENCIA",
+      "agencia": "Arequipa",
+      "departamento": "Arequipa",
+      "codigo_numerico": "215000"
+    },
+    {
+      "codigo": "215-010",
+      "tipo": "AGENCIA",
+      "agencia": "Bustamante y Rivero",
+      "departamento": "Arequipa",
+      "codigo_numerico": "215010"
+    },
+    {
+      "codigo": "220-000",
+      "tipo": "AGENCIA",
+      "agencia": "Ayacucho",
+      "departamento": "Ayacucho",
+      "codigo_numerico": "220000"
+    },
+    {
+      "codigo": "235-000",
+      "tipo": "AGENCIA",
+      "agencia": "Barranca",
+      "departamento": "Lima",
+      "codigo_numerico": "235000"
+    },
+    {
+      "codigo": "245-000",
+      "tipo": "AGENCIA",
+      "agencia": "Cajamarca",
+      "departamento": "Cajamarca",
+      "codigo_numerico": "245000"
+    },
+    {
+      "codigo": "250-000",
+      "tipo": "AGENCIA",
+      "agencia": "Camaná",
+      "departamento": "Arequipa",
+      "codigo_numerico": "250000"
+    },
+    {
+      "codigo": "255-000",
+      "tipo": "AGENCIA",
+      "agencia": "Cañete",
+      "departamento": "Lima",
+      "codigo_numerico": "255000"
+    },
+    {
+      "codigo": "285-000",
+      "tipo": "AGENCIA",
+      "agencia": "Cusco",
+      "departamento": "Cusco",
+      "codigo_numerico": "285000"
+    },
+    {
+      "codigo": "285-003",
+      "tipo": "AGENCIA",
+      "agencia": "Diagonal Cusco",
+      "departamento": "Cusco",
+      "codigo_numerico": "285003"
+    },
+    {
+      "codigo": "285-004",
+      "tipo": "AGENCIA",
+      "agencia": "Machupicchu",
+      "departamento": "Cusco",
+      "codigo_numerico": "285004"
+    },
+    {
+      "codigo": "285-005",
+      "tipo": "AGENCIA",
+      "agencia": "Larapa",
+      "departamento": "Cusco",
+      "codigo_numerico": "285005"
+    },
+    {
+      "codigo": "285-006",
+      "tipo": "AGENCIA",
+      "agencia": "La Cultura",
+      "departamento": "Cusco",
+      "codigo_numerico": "285006"
+    },
+    {
+      "codigo": "285-007",
+      "tipo": "AGENCIA",
+      "agencia": "Money and Tourist Service",
+      "departamento": "Cusco",
+      "codigo_numerico": "285007"
+    },
+    {
+      "codigo": "285-008",
+      "tipo": "AGENCIA",
+      "agencia": "Huayruropata",
+      "departamento": "Cusco",
+      "codigo_numerico": "285008"
+    },
+    {
+      "codigo": "285-009",
+      "tipo": "AGENCIA",
+      "agencia": "Urubamba",
+      "departamento": "Cusco",
+      "codigo_numerico": "285009"
+    },
+    {
+      "codigo": "285-011",
+      "tipo": "AGENCIA",
+      "agencia": "Real Plaza Cusco",
+      "departamento": "Cusco",
+      "codigo_numerico": "285011"
+    },
+    {
+      "codigo": "305-000",
+      "tipo": "AGENCIA",
+      "agencia": "Chiclayo",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305000"
+    },
+    {
+      "codigo": "305-001",
+      "tipo": "AGENCIA",
+      "agencia": "Pedro Ruiz",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305001"
+    },
+    {
+      "codigo": "305-003",
+      "tipo": "AGENCIA",
+      "agencia": "Santa Victoria",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305003"
+    },
+    {
+      "codigo": "305-004",
+      "tipo": "AGENCIA",
+      "agencia": "Real Plaza Chiclayo",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305004"
+    },
+    {
+      "codigo": "305-006",
+      "tipo": "AGENCIA",
+      "agencia": "Leonardo Ortiz",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305006"
+    },
+    {
+      "codigo": "305-007",
+      "tipo": "AGENCIA",
+      "agencia": "Mercado Modelo",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305007"
+    },
+    {
+      "codigo": "305-008",
+      "tipo": "AGENCIA",
+      "agencia": "Quiñones",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "305008"
+    },
+    {
+      "codigo": "310-000",
+      "tipo": "AGENCIA",
+      "agencia": "Chimbote",
+      "departamento": "Áncash",
+      "codigo_numerico": "310000"
+    },
+    {
+      "codigo": "315-000",
+      "tipo": "AGENCIA",
+      "agencia": "Chincha",
+      "departamento": "Ica",
+      "codigo_numerico": "315000"
+    },
+    {
+      "codigo": "335-000",
+      "tipo": "AGENCIA",
+      "agencia": "Huacho",
+      "departamento": "Lima",
+      "codigo_numerico": "335000"
+    },
+    {
+      "codigo": "350-000",
+      "tipo": "AGENCIA",
+      "agencia": "Huancavelica",
+      "departamento": "Huancavelica",
+      "codigo_numerico": "350000"
+    },
+    {
+      "codigo": "355-000",
+      "tipo": "AGENCIA",
+      "agencia": "Huancayo",
+      "departamento": "Junín",
+      "codigo_numerico": "355000"
+    },
+    {
+      "codigo": "355-004",
+      "tipo": "AGENCIA",
+      "agencia": "San Carlos",
+      "departamento": "Junín",
+      "codigo_numerico": "355004"
+    },
+    {
+      "codigo": "355-006",
+      "tipo": "AGENCIA",
+      "agencia": "Real Plaza Huancayo",
+      "departamento": "Junín",
+      "codigo_numerico": "355006"
+    },
+    {
+      "codigo": "365-000",
+      "tipo": "AGENCIA",
+      "agencia": "Huánuco",
+      "departamento": "Huánuco",
+      "codigo_numerico": "365000"
+    },
+    {
+      "codigo": "365-002",
+      "tipo": "AGENCIA",
+      "agencia": "Real Plaza Huánuco",
+      "departamento": "Huánuco",
+      "codigo_numerico": "365002"
+    },
+    {
+      "codigo": "375-000",
+      "tipo": "AGENCIA",
+      "agencia": "Huaraz",
+      "departamento": "Áncash",
+      "codigo_numerico": "375000"
+    },
+    {
+      "codigo": "380-000",
+      "tipo": "AGENCIA",
+      "agencia": "Ica",
+      "departamento": "Ica",
+      "codigo_numerico": "380000"
+    },
+    {
+      "codigo": "385-000",
+      "tipo": "AGENCIA",
+      "agencia": "Ilo",
+      "departamento": "Moquegua",
+      "codigo_numerico": "385000"
+    },
+    {
+      "codigo": "390-000",
+      "tipo": "AGENCIA",
+      "agencia": "Iquitos",
+      "departamento": "Loreto",
+      "codigo_numerico": "390000"
+    },
+    {
+      "codigo": "395-000",
+      "tipo": "AGENCIA",
+      "agencia": "Jaén",
+      "departamento": "Cajamarca",
+      "codigo_numerico": "395000"
+    },
+    {
+      "codigo": "400-000",
+      "tipo": "AGENCIA",
+      "agencia": "Jauja",
+      "departamento": "Junín",
+      "codigo_numerico": "400000"
+    },
+    {
+      "codigo": "403-000",
+      "tipo": "AGENCIA",
+      "agencia": "Juanjuí",
+      "departamento": "San Martín",
+      "codigo_numerico": "403000"
+    },
+    {
+      "codigo": "405-000",
+      "tipo": "AGENCIA",
+      "agencia": "Juliaca",
+      "departamento": "Puno",
+      "codigo_numerico": "405000"
+    },
+    {
+      "codigo": "405-003",
+      "tipo": "AGENCIA",
+      "agencia": "San Román",
+      "departamento": "Puno",
+      "codigo_numerico": "405003"
+    },
+    {
+      "codigo": "405-005",
+      "tipo": "AGENCIA",
+      "agencia": "Jauregui",
+      "departamento": "Puno",
+      "codigo_numerico": "405005"
+    },
+    {
+      "codigo": "415-000",
+      "tipo": "AGENCIA",
+      "agencia": "Lambayeque",
+      "departamento": "Lambayeque",
+      "codigo_numerico": "415000"
+    },
+    {
+      "codigo": "425-000",
+      "tipo": "AGENCIA",
+      "agencia": "Mollendo",
+      "departamento": "Arequipa",
+      "codigo_numerico": "425000"
+    },
+    {
+      "codigo": "430-000",
+      "tipo": "AGENCIA",
+      "agencia": "Moquegua",
+      "departamento": "Moquegua",
+      "codigo_numerico": "430000"
+    },
+    {
+      "codigo": "430-001",
+      "tipo": "AGENCIA",
+      "agencia": "Cuajone",
+      "departamento": "Moquegua",
+      "codigo_numerico": "430001"
+    },
+    {
+      "codigo": "430-002",
+      "tipo": "AGENCIA",
+      "agencia": "Punto BCP Plaza",
+      "departamento": "Moquegua",
+      "codigo_numerico": "430002"
+    },
+    {
+      "codigo": "435-000",
+      "tipo": "AGENCIA",
+      "agencia": "Moyobamba",
+      "departamento": "San Martín",
+      "codigo_numerico": "435000"
+    },
+    {
+      "codigo": "435-001",
+      "tipo": "AGENCIA",
+      "agencia": "Rioja",
+      "departamento": "San Martín",
+      "codigo_numerico": "435001"
+    },
+    {
+      "codigo": "435-002",
+      "tipo": "AGENCIA",
+      "agencia": "Nueva Cajamarca",
+      "departamento": "San Martín",
+      "codigo_numerico": "435002"
+    },
+    {
+      "codigo": "440-000",
+      "tipo": "AGENCIA",
+      "agencia": "Nazca",
+      "departamento": "Ica",
+      "codigo_numerico": "440000"
+    },
+    {
+      "codigo": "450-000",
+      "tipo": "AGENCIA",
+      "agencia": "Pacasmayo",
+      "departamento": "La Libertad",
+      "codigo_numerico": "450000"
+    },
+    {
+      "codigo": "455-000",
+      "tipo": "AGENCIA",
+      "agencia": "Paita",
+      "departamento": "Piura",
+      "codigo_numerico": "455000"
+    },
+    {
+      "codigo": "470-000",
+      "tipo": "AGENCIA",
+      "agencia": "Pisco",
+      "departamento": "Ica",
+      "codigo_numerico": "470000"
+    },
+    {
+      "codigo": "475-000",
+      "tipo": "AGENCIA",
+      "agencia": "Piura",
+      "departamento": "Piura",
+      "codigo_numerico": "475000"
+    },
+    {
+      "codigo": "475-007",
+      "tipo": "AGENCIA",
+      "agencia": "Real Plaza Piura",
+      "departamento": "Piura",
+      "codigo_numerico": "475007"
+    },
+    {
+      "codigo": "480-000",
+      "tipo": "AGENCIA",
+      "agencia": "Pucallpa",
+      "departamento": "Ucayali",
+      "codigo_numerico": "480000"
+    },
+    {
+      "codigo": "480-001",
+      "tipo": "AGENCIA",
+      "agencia": "7 de Junio",
+      "departamento": "Ucayali",
+      "codigo_numerico": "480001"
+    },
+    {
+      "codigo": "480-003",
+      "tipo": "AGENCIA",
+      "agencia": "Open Plaza Pucallpa",
+      "departamento": "Ucayali",
+      "codigo_numerico": "480003"
+    },
+    {
+      "codigo": "485-000",
+      "tipo": "AGENCIA",
+      "agencia": "Puerto Maldonado",
+      "departamento": "Madre de Dios",
+      "codigo_numerico": "485000"
+    },
+    {
+      "codigo": "495-000",
+      "tipo": "AGENCIA",
+      "agencia": "Puno",
+      "departamento": "Puno",
+      "codigo_numerico": "495000"
+    },
+    {
+      "codigo": "505-000",
+      "tipo": "AGENCIA",
+      "agencia": "Quillabamba",
+      "departamento": "Cusco",
+      "codigo_numerico": "505000"
+    },
+    {
+      "codigo": "533-000",
+      "tipo": "AGENCIA",
+      "agencia": "Sicuani",
+      "departamento": "Cusco",
+      "codigo_numerico": "533000"
+    },
+    {
+      "codigo": "535-000",
+      "tipo": "AGENCIA",
+      "agencia": "Sullana",
+      "departamento": "Piura",
+      "codigo_numerico": "535000"
+    },
+    {
+      "codigo": "540-000",
+      "tipo": "AGENCIA",
+      "agencia": "Tacna",
+      "departamento": "Tacna",
+      "codigo_numerico": "540000"
+    },
+    {
+      "codigo": "540-002",
+      "tipo": "AGENCIA",
+      "agencia": "Bolognesi",
+      "departamento": "Tacna",
+      "codigo_numerico": "540002"
+    },
+    {
+      "codigo": "540-004",
+      "tipo": "AGENCIA",
+      "agencia": "Alto de la Alianza",
+      "departamento": "Tacna",
+      "codigo_numerico": "540004"
+    },
+    {
+      "codigo": "550-000",
+      "tipo": "AGENCIA",
+      "agencia": "Tarapoto",
+      "departamento": "San Martín",
+      "codigo_numerico": "550000"
+    },
+    {
+      "codigo": "560-000",
+      "tipo": "AGENCIA",
+      "agencia": "Tingo María",
+      "departamento": "Huánuco",
+      "codigo_numerico": "560000"
+    },
+    {
+      "codigo": "565-000",
+      "tipo": "AGENCIA",
+      "agencia": "Toquepala",
+      "departamento": "Tacna",
+      "codigo_numerico": "565000"
+    },
+    {
+      "codigo": "570-000",
+      "tipo": "AGENCIA",
+      "agencia": "Trujillo",
+      "departamento": "La Libertad",
+      "codigo_numerico": "570000"
+    },
+    {
+      "codigo": "570-011",
+      "tipo": "AGENCIA",
+      "agencia": "Real Plaza Trujillo",
+      "departamento": "La Libertad",
+      "codigo_numerico": "570011"
+    },
+    {
+      "codigo": "575-000",
+      "tipo": "AGENCIA",
+      "agencia": "Tumbes",
+      "departamento": "Tumbes",
+      "codigo_numerico": "575000"
+    },
+    {
+      "codigo": "585-000",
+      "tipo": "AGENCIA",
+      "agencia": "Yurimaguas",
+      "departamento": "Loreto",
+      "codigo_numerico": "585000"
+    }
+  ]
+}
