@@ -335,29 +335,40 @@
             });
         }
 
+        /** Top N + "Otros" para que la leyenda no explote con muchas categorías. */
+        function serieTopN(serie, n) {
+            n = n || 6;
+            var labels = (serie && serie.labels) || [];
+            var data = (serie && serie.data) || [];
+            var pares = [];
+            var i;
+            for (i = 0; i < labels.length; i++) {
+                pares.push({ label: labels[i], value: Number(data[i]) || 0 });
+            }
+            pares.sort(function (a, b) {
+                return b.value - a.value;
+            });
+            if (pares.length <= n) {
+                return {
+                    labels: pares.map(function (p) { return p.label; }),
+                    data: pares.map(function (p) { return p.value; })
+                };
+            }
+            var top = pares.slice(0, n - 1);
+            var resto = 0;
+            for (i = n - 1; i < pares.length; i++) {
+                resto += pares[i].value;
+            }
+            return {
+                labels: top.map(function (p) { return p.label; }).concat(["Otros"]),
+                data: top.map(function (p) { return p.value; }).concat([resto])
+            };
+        }
+
         donut("tipo", "hdChartTipo", ch.por_tipo);
         donut("prioridad", "hdChartPrioridad", ch.por_prioridad);
         donut("sistema", "hdChartSistema", ch.por_sistema);
-
-        crearChart("area", "hdChartArea", {
-            type: "bar",
-            data: {
-                labels: (ch.por_area && ch.por_area.labels) || [],
-                datasets: [{
-                    data: (ch.por_area && ch.por_area.data) || [],
-                    backgroundColor: "#AED6F1",
-                    borderRadius: 4
-                }]
-            },
-            options: optsBase({
-                indexAxis: "y",
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { beginAtZero: true, ticks: { precision: 0, font: { size: 9 } } },
-                    y: { ticks: { font: { size: 9 } } }
-                }
-            })
-        });
+        donut("area", "hdChartArea", serieTopN(ch.por_area, 6));
     }
 
     function cargarIndicadores() {

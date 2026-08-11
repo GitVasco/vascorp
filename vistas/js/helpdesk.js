@@ -21,7 +21,8 @@ $(function () {
         control_total: false,
         agente_bandeja: false,
         pulir_ia: false,
-        reabrir: false
+        reabrir: false,
+        eliminar: false
     };
     var ticketActual = null;
     var agentes = [];
@@ -1430,6 +1431,19 @@ $(function () {
             );
         }
 
+        if (permisos.eliminar) {
+            $("#hdConvSidebarBody").append(
+                '<div class="hd-eliminar-box">' +
+                    '<hr style="margin:14px 0 10px;border-top-color:#ddd;">' +
+                    '<p class="help-block" style="margin-bottom:8px;">' +
+                    '<i class="fa fa-exclamation-triangle text-red"></i> ' +
+                    "Borrado definitivo (solo vos). No se puede deshacer.</p>" +
+                    '<button type="button" class="btn btn-danger btn-block hd-btn-eliminar-ticket">' +
+                    '<i class="fa fa-trash"></i> Eliminar ticket</button>' +
+                "</div>"
+            );
+        }
+
         function correoVisible(c) {
             c = String(c || "").trim();
             return c && c !== "0" && c.indexOf("@") !== -1 ? c : "";
@@ -1928,6 +1942,58 @@ $(function () {
             .always(function () {
                 $btn.prop("disabled", false);
             });
+    });
+
+    $(document).on("click", ".hd-btn-eliminar-ticket", function () {
+        if (!permisos.eliminar || !ticketActual) {
+            return;
+        }
+        var id = ticketActual.id;
+        var titulo = ticketActual.titulo || "";
+        var confirmar = function () {
+            var $btn = $(".hd-btn-eliminar-ticket");
+            $btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Eliminando…');
+            post("eliminar", { id: id })
+                .done(function (res) {
+                    if (!res || !res.ok) {
+                        toast("error", (res && res.msg) || "No se pudo eliminar.");
+                        $btn.prop("disabled", false)
+                            .html('<i class="fa fa-trash"></i> Eliminar ticket');
+                        return;
+                    }
+                    toast("success", res.msg || ("Ticket #" + id + " eliminado."));
+                    ticketActual = null;
+                    mostrarVistaLista();
+                })
+                .fail(function () {
+                    toast("error", "Error de red al eliminar.");
+                    $btn.prop("disabled", false)
+                        .html('<i class="fa fa-trash"></i> Eliminar ticket');
+                });
+        };
+
+        if (typeof swal === "function") {
+            swal({
+                title: "¿Eliminar ticket #" + id + "?",
+                text: titulo
+                    ? ('Se borrará "' + titulo + '" con comentarios y adjuntos. No se puede deshacer.')
+                    : "Se borrará el ticket con comentarios y adjuntos. No se puede deshacer.",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dd4b39",
+                confirmButtonText: "Sí, eliminar",
+                cancelButtonText: "Cancelar"
+            }).then(function (result) {
+                if (result && result.value) {
+                    confirmar();
+                }
+            });
+            return;
+        }
+
+        if (window.confirm("¿Eliminar ticket #" + id + "? No se puede deshacer.")) {
+            confirmar();
+        }
     });
 
     $("#hdConvSidebarBody").on("submit", "#hdFormGestionar", function (e) {

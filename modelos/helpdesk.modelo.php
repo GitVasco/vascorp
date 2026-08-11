@@ -582,6 +582,48 @@ class ModeloHelpdesk
         return (int) $db->lastInsertId();
     }
 
+    /**
+     * Borrado definitivo del ticket y dependencias en BD.
+     * Los archivos de adjuntos se limpian en el controlador.
+     */
+    public static function mdlEliminarTicket($id)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return false;
+        }
+
+        $db = Conexion::conectar();
+        try {
+            $db->beginTransaction();
+
+            $stAdj = $db->prepare("DELETE FROM helpdesk_adjuntojf WHERE ticket_id = :id");
+            $stAdj->bindValue(":id", $id, PDO::PARAM_INT);
+            $stAdj->execute();
+
+            $stCom = $db->prepare("DELETE FROM helpdesk_comentariojf WHERE ticket_id = :id");
+            $stCom->bindValue(":id", $id, PDO::PARAM_INT);
+            $stCom->execute();
+
+            $stTkt = $db->prepare("DELETE FROM helpdesk_ticketjf WHERE id = :id");
+            $stTkt->bindValue(":id", $id, PDO::PARAM_INT);
+            $stTkt->execute();
+
+            if ($stTkt->rowCount() < 1) {
+                $db->rollBack();
+                return false;
+            }
+
+            $db->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            return false;
+        }
+    }
+
     public static function mdlUsuariosPorIds($ids)
     {
         $ids = array_values(array_unique(array_filter(array_map("intval", $ids))));

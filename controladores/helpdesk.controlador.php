@@ -30,6 +30,8 @@ class ControladorHelpdesk
     const USUARIO_PULIR_IA = 6;
     /** Solo este usuario puede reabrir tickets cerrados (panel TI, sin plazo) */
     const USUARIO_REABRIR = 6;
+    /** Solo este usuario puede eliminar tickets (borrado definitivo) */
+    const USUARIO_ELIMINAR = 6;
     /** Días tras el cierre en que el solicitante puede reabrir con comentario */
     const DIAS_REAPERTURA_SOLICITANTE = 7;
     /** Horas límite SLA por prioridad (horas laborales hasta el cierre) */
@@ -255,6 +257,11 @@ class ControladorHelpdesk
     public static function ctrPuedeReabrir()
     {
         return self::ctrUsuarioSesionId() === self::USUARIO_REABRIR;
+    }
+
+    public static function ctrPuedeEliminar()
+    {
+        return self::ctrUsuarioSesionId() === self::USUARIO_ELIMINAR;
     }
 
     /**
@@ -610,6 +617,7 @@ class ControladorHelpdesk
             "agente_bandeja" => self::ctrEsAgenteBandeja(),
             "pulir_ia" => self::ctrPuedePulirIa(),
             "reabrir" => self::ctrPuedeReabrir(),
+            "eliminar" => self::ctrPuedeEliminar(),
         );
     }
 
@@ -2035,6 +2043,44 @@ class ControladorHelpdesk
         }
 
         return array("ok" => true, "msg" => "Ticket actualizado.");
+    }
+
+    /**
+     * Eliminación definitiva: solo USUARIO_ELIMINAR (id 6).
+     * Borra comentarios, adjuntos (BD + archivos) y el ticket.
+     */
+    public static function ctrEliminar()
+    {
+        if (!self::ctrPuedeEliminar()) {
+            return array("ok" => false, "msg" => "Sin permiso para eliminar tickets.");
+        }
+
+        $id = isset($_POST["id"]) ? (int) $_POST["id"] : 0;
+        if ($id < 1) {
+            return array("ok" => false, "msg" => "Ticket inválido.");
+        }
+
+        $ticket = ModeloHelpdesk::mdlObtener($id);
+        if (!$ticket) {
+            return array("ok" => false, "msg" => "Ticket no encontrado.");
+        }
+
+        $adjuntos = ModeloHelpdesk::mdlListarAdjuntos($id);
+        if (!ModeloHelpdesk::mdlEliminarTicket($id)) {
+            return array("ok" => false, "msg" => "No se pudo eliminar el ticket.");
+        }
+
+        foreach ($adjuntos as $adj) {
+            if (empty($adj["nombre_guardado"])) {
+                continue;
+            }
+            $path = self::pathAdjuntoAbs($adj["nombre_guardado"]);
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        return array("ok" => true, "msg" => "Ticket #" . $id . " eliminado.");
     }
 
     public static function ctrAgentes()

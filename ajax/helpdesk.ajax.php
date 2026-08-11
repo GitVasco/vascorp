@@ -39,6 +39,7 @@ if ($accion === "" && isset($_POST["accion"])) {
 $accionesRegistrar = array("crear");
 $accionesPulirIa = array("pulir");
 $accionesGestionar = array("actualizar");
+$accionesEliminar = array("eliminar");
 
 if (in_array($accion, $accionesRegistrar, true)
     && !usuarioPuedeModulo("ti", "helpdesk", "registrar")
@@ -54,6 +55,14 @@ if (in_array($accion, $accionesPulirIa, true)
 ) {
     http_response_code(403);
     hdJson(array("ok" => false, "msg" => "Sin permiso para corregir con IA."));
+    exit;
+}
+
+if (in_array($accion, $accionesEliminar, true)
+    && (int) (isset($_SESSION["id"]) ? $_SESSION["id"] : 0) !== ControladorHelpdesk::USUARIO_ELIMINAR
+) {
+    http_response_code(403);
+    hdJson(array("ok" => false, "msg" => "Sin permiso para eliminar tickets."));
     exit;
 }
 
@@ -101,6 +110,10 @@ switch ($accion) {
 
     case "actualizar":
         hdJson(ControladorHelpdesk::ctrActualizar());
+        break;
+
+    case "eliminar":
+        hdJson(ControladorHelpdesk::ctrEliminar());
         break;
 
     case "adjunto":
