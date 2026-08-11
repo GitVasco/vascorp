@@ -4,6 +4,16 @@ $(function () {
     }
 
     var API = "ajax/helpdesk.ajax.php";
+    var LS_FILTRO_ESTADO = "helpdesk_filtro_estado";
+    var ESTADOS_FILTRO_OK = {
+        "": true,
+        "__ACTIVOS__": true,
+        "ABIERTO": true,
+        "EN_PROGRESO": true,
+        "ESPERANDO_USUARIO": true,
+        "CERRADO": true,
+        "__VENCIDOS__": true
+    };
     var permisos = {
         ver: true,
         registrar: false,
@@ -277,6 +287,41 @@ $(function () {
         }
     }
 
+    function leerFiltroEstadoGuardado() {
+        try {
+            var v = localStorage.getItem(LS_FILTRO_ESTADO);
+            if (v === null || v === undefined) {
+                return null;
+            }
+            return ESTADOS_FILTRO_OK.hasOwnProperty(v) ? v : "";
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function guardarFiltroEstado(val) {
+        try {
+            localStorage.setItem(LS_FILTRO_ESTADO, val == null ? "" : String(val));
+        } catch (e) { /* ignore */ }
+    }
+
+    function setFiltroEstado(val) {
+        if (!ESTADOS_FILTRO_OK.hasOwnProperty(val == null ? "" : String(val))) {
+            val = "";
+        }
+        var $sel = $("#hdFiltroEstado");
+        ignorarCambioFiltroEstado = true;
+        $sel.val(val == null ? "" : String(val));
+        if ($.fn.selectpicker && $sel.data("selectpicker")) {
+            $sel.selectpicker("val", $sel.val());
+        }
+        guardarFiltroEstado($sel.val() || "");
+        setTimeout(function () {
+            ignorarCambioFiltroEstado = false;
+        }, 50);
+        return $sel.val() || "";
+    }
+
     function post(accion, data) {
         data = data || {};
         data.accion = accion;
@@ -300,6 +345,7 @@ $(function () {
         }
         if (permisos.gestionar) {
             $(".hd-solo-gestionar").show();
+            $("#hdFiltrosPersonas").css("display", "inline");
             $("#hdTabIndicadoresLi").show();
             if (permisos.control_total) {
                 $("#hdTabListaLabel, #hdListaTitulo").text("Bandeja");
@@ -308,6 +354,7 @@ $(function () {
             }
         } else {
             $(".hd-solo-gestionar").hide();
+            $("#hdFiltrosPersonas").hide();
             $("#hdTabIndicadoresLi").hide();
             $("#hdTabListaLabel, #hdListaTitulo").text("Mis tickets");
         }
@@ -600,7 +647,54 @@ $(function () {
             fillSelect($("#hdSolicitante"), usuarios, "Yo (sesión actual)", "id", function (u) {
                 return (u.nombre || "") + (u.usuario ? " (" + u.usuario + ")" : "");
             });
+            fillFiltrosPersonas();
+            var guardado = leerFiltroEstadoGuardado();
+            if (guardado !== null) {
+                $("#hdFiltroEstado").val(guardado);
+            }
+            initPicker("#hdFiltroEstado");
+            initPicker("#hdFiltroTipo");
         });
+    }
+
+    function fillFiltrosPersonas() {
+        if (!permisos.gestionar) {
+            return;
+        }
+        fillSelect($("#hdFiltroSolicitante"), usuarios, "Solicitante", "id", function (u) {
+            return (u.nombre || "") + (u.usuario ? " (" + u.usuario + ")" : "");
+        });
+        var $asig = $("#hdFiltroAsignado");
+        var currentAsig = $asig.val();
+        $asig.empty();
+        $asig.append('<option value="">Asignado</option>');
+        $asig.append('<option value="__SIN__">Sin asignar</option>');
+        (agentes || []).forEach(function (u) {
+            $asig.append(
+                '<option value="' + esc(u.id) + '">' + esc(u.nombre || ("#" + u.id)) + "</option>"
+            );
+        });
+        if (currentAsig) {
+            $asig.val(currentAsig);
+        }
+        initPicker("#hdFiltroSolicitante");
+        initPicker("#hdFiltroAsignado");
+    }
+
+    function fmtFechaCorta(fecha) {
+        if (!fecha) {
+            return "—";
+        }
+        var s = String(fecha);
+        var m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+|T)(\d{2}):(\d{2})/);
+        if (m) {
+            return m[3] + "/" + m[2] + "/" + m[1] + " " + m[4] + ":" + m[5];
+        }
+        m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) {
+            return m[3] + "/" + m[2] + "/" + m[1];
+        }
+        return s;
     }
 
     function antiguedadTxt(fecha) {
@@ -730,6 +824,16 @@ $(function () {
             tipo: $("#hdFiltroTipo").val(),
             q: $.trim($("#hdFiltroQ").val())
         };
+        if (permisos.gestionar) {
+            var sol = $("#hdFiltroSolicitante").val();
+            var asig = $("#hdFiltroAsignado").val();
+            if (sol) {
+                data.solicitante_id = sol;
+            }
+            if (asig) {
+                data.asignado_id = asig;
+            }
+        }
         if (estado === "__ACTIVOS__") {
             data.solo_abiertos = 1;
         } else if (estado === "__VENCIDOS__") {
@@ -890,7 +994,8 @@ $(function () {
             ALTA: { txt: "Creación", icon: "fa-plus-circle", cls: "hd-hist-alta" },
             COMENTARIO: { txt: "Comentario", icon: "fa-comment", cls: "hd-hist-comentario" },
             CAMBIO_ESTADO: { txt: "Cambio de estado", icon: "fa-exchange", cls: "hd-hist-estado" },
-            ASIGNACION: { txt: "Asignación", icon: "fa-user", cls: "hd-hist-asignacion" }
+            ASIGNACION: { txt: "Asignación", icon: "fa-user", cls: "hd-hist-asignacion" },
+            REAPERTURA_USUARIO: { txt: "Reabierto por usuario", icon: "fa-undo", cls: "hd-hist-reapertura" }
         };
         return map[tipo] || { txt: tipo || "Evento", icon: "fa-circle", cls: "hd-hist-otro" };
     }
@@ -904,6 +1009,10 @@ $(function () {
                 var a = (LABELS_ESTADO[m[2]] && LABELS_ESTADO[m[2]].txt) || m[2];
                 return "Pasó de <strong>" + esc(de) + "</strong> a <strong>" + esc(a) + "</strong>";
             }
+        }
+        if (c.tipo_evento === "REAPERTURA_USUARIO") {
+            return "El solicitante indicó que no quedó resuelto:<br>" +
+                esc(msg).replace(/\n/g, "<br>");
         }
         return esc(msg).replace(/\n/g, "<br>");
     }
@@ -925,6 +1034,7 @@ $(function () {
                                 c.tipo_evento === "ALTA" ? "label-success" :
                                 c.tipo_evento === "CAMBIO_ESTADO" ? "label-info" :
                                 c.tipo_evento === "ASIGNACION" ? "label-primary" :
+                                c.tipo_evento === "REAPERTURA_USUARIO" ? "label-warning" :
                                 "label-default"
                             ) + '">' + esc(meta.txt) + "</span>" +
                             '<span class="hd-timeline-fecha"><i class="fa fa-clock-o"></i> ' +
@@ -982,6 +1092,17 @@ $(function () {
                     '<div class="hd-msg-sistema">' +
                         '<span class="label label-default">' + esc(c.tipo_evento) + "</span> " +
                         esc(c.mensaje) +
+                        ' <small class="text-muted">' + esc(c.creado_en) + "</small>" +
+                    "</div>";
+                return;
+            }
+            if (c.tipo_evento === "REAPERTURA_USUARIO") {
+                html +=
+                    '<div class="hd-msg-sistema hd-msg-reapertura">' +
+                        '<span class="label label-warning">Reabierto por el usuario</span> ' +
+                        '<div class="hd-msg-text" style="margin-top:6px;">' +
+                            esc(c.mensaje).replace(/\n/g, "<br>") +
+                        "</div>" +
                         ' <small class="text-muted">' + esc(c.creado_en) + "</small>" +
                     "</div>";
                 return;
@@ -1121,6 +1242,7 @@ $(function () {
 
         // Sidebar gestión
         var cerrado = t.estado === "CERRADO";
+        var reapInfo = res.reapertura_solicitante || {};
         var estadoSel = cerrado ? "EN_PROGRESO" : t.estado;
         var optsEstado = "";
         ["ABIERTO", "EN_PROGRESO", "ESPERANDO_USUARIO", "CERRADO"].forEach(function (e) {
@@ -1332,11 +1454,22 @@ $(function () {
         $("#hdComentario").val("");
         $("#hdRespEstado").val("");
         limpiarArchivosResp();
+        $("#hdReabrirSolicitanteBox").remove();
         if (cerrado) {
             $("#hdResponderBox").hide();
-            var msgCerrado = permisos.reabrir
-                ? " Para responder, reabrilo desde el panel derecho."
-                : " No se pueden agregar respuestas.";
+            var reap = reapInfo;
+            var msgCerrado;
+            if (permisos.reabrir) {
+                msgCerrado = " Para responder, reabrilo desde el panel derecho.";
+            } else if (reap.puede_reabrir) {
+                msgCerrado = " Si no quedó resuelto, completá el formulario de abajo" +
+                    " (hasta el " + esc(fmtFechaCorta(reap.hasta)) + ").";
+            } else if (reap.es_solicitante && reap.vencida) {
+                msgCerrado = " El plazo de " + esc(String(reap.dias || 7)) +
+                    " días para reabrir ya venció. Si necesitás ayuda, abrí un ticket nuevo.";
+            } else {
+                msgCerrado = " No se pueden agregar respuestas.";
+            }
             if ($("#hdCerradoBanner").length === 0) {
                 $("#hdHilo").after(
                     '<div id="hdCerradoBanner" class="hd-cerrado-banner">' +
@@ -1347,6 +1480,20 @@ $(function () {
                 $("#hdCerradoBanner").html(
                     '<i class="fa fa-lock"></i> Este ticket está cerrado.' + msgCerrado
                 ).show();
+            }
+            if (reap.puede_reabrir && !permisos.gestionar) {
+                $("#hdCerradoBanner").after(
+                    '<div id="hdReabrirSolicitanteBox" class="hd-reabrir-solicitante">' +
+                        "<p><strong>¿No quedó resuelto?</strong> Explicá qué falta y reabriremos el ticket " +
+                        "para que TI lo retome. Tenés tiempo hasta el <strong>" +
+                        esc(fmtFechaCorta(reap.hasta)) + "</strong>.</p>" +
+                        '<textarea class="form-control hd-reabrir-motivo" rows="3" ' +
+                        'placeholder="Ej: Pedí mover las fechas y solo corrigieron una parte…"></textarea>' +
+                        '<button type="button" class="btn btn-warning hd-btn-reabrir-solicitante">' +
+                            '<i class="fa fa-undo"></i> No está resuelto — reabrir ticket' +
+                        "</button>" +
+                    "</div>"
+                );
             }
         } else {
             $("#hdCerradoBanner").remove();
@@ -1502,7 +1649,26 @@ $(function () {
         cargarLista();
     });
 
-    $("#hdFiltroEstado, #hdFiltroTipo").on("change", function () {
+    $("#hdFiltroTipo, #hdFiltroSolicitante, #hdFiltroAsignado").on("change", function () {
+        cargarLista();
+    });
+    $("#hdFiltroTipo").on("changed.bs.select", function () {
+        cargarLista();
+    });
+    var filtroEstadoTimer = null;
+    var ignorarCambioFiltroEstado = false;
+    function onCambioFiltroEstado() {
+        if (ignorarCambioFiltroEstado) {
+            return;
+        }
+        clearTimeout(filtroEstadoTimer);
+        filtroEstadoTimer = setTimeout(function () {
+            guardarFiltroEstado($("#hdFiltroEstado").val() || "");
+            cargarLista();
+        }, 30);
+    }
+    $("#hdFiltroEstado").on("changed.bs.select change", onCambioFiltroEstado);
+    $("#hdFiltroSolicitante, #hdFiltroAsignado").on("changed.bs.select", function () {
         cargarLista();
     });
 
@@ -1511,7 +1677,7 @@ $(function () {
         if (filtro === undefined) {
             filtro = "";
         }
-        $("#hdFiltroEstado").val(filtro);
+        setFiltroEstado(filtro);
         cargarLista();
     });
 
@@ -1729,6 +1895,38 @@ $(function () {
             })
             .always(function () {
                 $("#hdBtnEnviarResp").prop("disabled", false);
+            });
+    });
+
+    $(document).on("click", ".hd-btn-reabrir-solicitante", function () {
+        if (!ticketActual) {
+            return;
+        }
+        var $box = $(this).closest(".hd-reabrir-solicitante");
+        var mensaje = $.trim($box.find(".hd-reabrir-motivo").val());
+        if (mensaje.length < 5) {
+            toast("warning", "Explicá qué falta o qué no quedó resuelto.");
+            return;
+        }
+        var $btn = $(this);
+        $btn.prop("disabled", true);
+        post("reabrir_solicitante", {
+            id: ticketActual.id,
+            mensaje: mensaje
+        })
+            .done(function (res) {
+                if (!res || !res.ok) {
+                    toast("error", (res && res.msg) || "No se pudo reabrir.");
+                    return;
+                }
+                toast("success", res.msg || "Ticket reabierto.");
+                verTicket(ticketActual.id);
+            })
+            .fail(function () {
+                toast("error", "Error de red al reabrir.");
+            })
+            .always(function () {
+                $btn.prop("disabled", false);
             });
     });
 

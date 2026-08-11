@@ -28,8 +28,10 @@ class ControladorHelpdesk
     const USUARIO_CONTROL_TOTAL = 6;
     /** Solo este usuario puede usar Corregir / Pulir con IA */
     const USUARIO_PULIR_IA = 6;
-    /** Solo este usuario puede reabrir tickets cerrados */
+    /** Solo este usuario puede reabrir tickets cerrados (panel TI, sin plazo) */
     const USUARIO_REABRIR = 6;
+    /** Días tras el cierre en que el solicitante puede reabrir con comentario */
+    const DIAS_REAPERTURA_SOLICITANTE = 7;
     /** Horas límite SLA por prioridad (horas laborales hasta el cierre) */
     const SLA_HORAS = array(
         "ALTA" => 4,
@@ -253,6 +255,61 @@ class ControladorHelpdesk
     public static function ctrPuedeReabrir()
     {
         return self::ctrUsuarioSesionId() === self::USUARIO_REABRIR;
+    }
+
+    /**
+     * Info de reapertura por solicitante (plazo de DIAS_REAPERTURA_SOLICITANTE tras cerrado_en).
+     */
+    public static function ctrInfoReaperturaSolicitante($ticket)
+    {
+        $dias = self::DIAS_REAPERTURA_SOLICITANTE;
+        $uid = self::ctrUsuarioSesionId();
+        $esSolicitante = $ticket
+            && ((int) $ticket["solicitante_id"] === $uid);
+
+        $out = array(
+            "es_solicitante" => $esSolicitante,
+            "puede_reabrir" => false,
+            "dias" => $dias,
+            "hasta" => null,
+            "vencida" => false,
+        );
+
+        if (!$ticket || !$esSolicitante || $ticket["estado"] !== "CERRADO") {
+            return $out;
+        }
+
+        // Preferir cerrado_en; si falta (cierres viejos), usar actualizado_en.
+        $fechaRef = "";
+        if (!empty($ticket["cerrado_en"])) {
+            $fechaRef = $ticket["cerrado_en"];
+        } elseif (!empty($ticket["actualizado_en"])) {
+            $fechaRef = $ticket["actualizado_en"];
+        }
+
+        if ($fechaRef === "") {
+            // Cerrado sin fecha usable: permitir reabrir dentro del plazo desde ahora.
+            $out["puede_reabrir"] = true;
+            $out["hasta"] = date("Y-m-d H:i:s", time() + ($dias * 86400));
+            return $out;
+        }
+
+        $ts = strtotime($fechaRef);
+        if ($ts === false) {
+            $out["puede_reabrir"] = true;
+            $out["hasta"] = date("Y-m-d H:i:s", time() + ($dias * 86400));
+            return $out;
+        }
+
+        $hastaTs = $ts + ($dias * 86400);
+        $out["hasta"] = date("Y-m-d H:i:s", $hastaTs);
+        if (time() <= $hastaTs) {
+            $out["puede_reabrir"] = true;
+        } else {
+            $out["vencida"] = true;
+        }
+
+        return $out;
     }
 
     /** Joel: ve y gestiona todos los tickets. */
@@ -648,14 +705,24 @@ class ControladorHelpdesk
             "tipo" => isset($_POST["tipo"]) ? trim((string) $_POST["tipo"]) : "",
             "prioridad" => isset($_POST["prioridad"]) ? trim((string) $_POST["prioridad"]) : "",
             "area" => isset($_POST["area"]) ? trim((string) $_POST["area"]) : "",
-            "asignado_id" => isset($_POST["asignado_id"]) ? (int) $_POST["asignado_id"] : 0,
             "q" => isset($_POST["q"]) ? trim((string) $_POST["q"]) : "",
             "solo_abiertos" => !empty($_POST["solo_abiertos"]),
             "solo_vencidos" => !empty($_POST["solo_vencidos"]),
         );
 
-        if (self::ctrEsControlTotal() && !empty($_POST["solicitante_id"])) {
-            $filtros["solicitante_id"] = (int) $_POST["solicitante_id"];
+        // Filtros por persona: solo gestionar (Joel/Kennedy). El alcance de bandeja se aplica después.
+        if (self::ctrPuede("gestionar")) {
+            if (!empty($_POST["solicitante_id"])) {
+                $filtros["solicitante_id"] = (int) $_POST["solicitante_id"];
+            }
+            if (isset($_POST["asignado_id"]) && $_POST["asignado_id"] !== "") {
+                $asigRaw = trim((string) $_POST["asignado_id"]);
+                if ($asigRaw === "__SIN__") {
+                    $filtros["asignado_libre"] = true;
+                } else {
+                    $filtros["asignado_id"] = (int) $asigRaw;
+                }
+            }
         }
 
         self::aplicarAlcanceBandeja($filtros);
@@ -727,6 +794,7 @@ class ControladorHelpdesk
             "permisos" => self::ctrPermisos(),
             "catalogos" => self::ctrCatalogos(),
             "agentes" => self::ctrPuede("gestionar") ? self::agentes() : array(),
+            "reapertura_solicitante" => self::ctrInfoReaperturaSolicitante($ticket),
         );
     }
 
@@ -1621,6 +1689,70 @@ class ControladorHelpdesk
         }
 
         return array("ok" => true, "msg" => $msg);
+    }
+
+    /**
+     * El solicitante reabre un ticket cerrado dentro del plazo, con comentario obligatorio.
+     * Pasa a EN_PROGRESO y queda visible de nuevo en la bandeja de TI.
+     */
+    public static function ctrReabrirSolicitante()
+    {
+        if (!self::ctrPuede("ver")) {
+            return array("ok" => false, "msg" => "Sin permiso.");
+        }
+
+        $id = isset($_POST["id"]) ? (int) $_POST["id"] : 0;
+        $mensaje = isset($_POST["mensaje"]) ? trim((string) $_POST["mensaje"]) : "";
+        $ticket = ModeloHelpdesk::mdlObtener($id);
+
+        if (!$ticket || !self::puedeVerTicket($ticket)) {
+            return array("ok" => false, "msg" => "Ticket no encontrado.");
+        }
+
+        $info = self::ctrInfoReaperturaSolicitante($ticket);
+        if (empty($info["puede_reabrir"])) {
+            if (!empty($info["es_solicitante"]) && !empty($info["vencida"])) {
+                return array(
+                    "ok" => false,
+                    "msg" => "El plazo de " . self::DIAS_REAPERTURA_SOLICITANTE
+                        . " días para reabrir ya venció. Abrí un ticket nuevo si necesitás ayuda.",
+                );
+            }
+            return array("ok" => false, "msg" => "No podés reabrir este ticket.");
+        }
+
+        if ($mensaje === "" || strlen($mensaje) < 5) {
+            return array(
+                "ok" => false,
+                "msg" => "Explicá qué falta o qué no quedó resuelto (mínimo unas palabras).",
+            );
+        }
+        if (strlen($mensaje) > 4000) {
+            $mensaje = substr($mensaje, 0, 4000);
+        }
+
+        $uid = self::ctrUsuarioSesionId();
+        $ok = ModeloHelpdesk::mdlActualizar($id, array(
+            "estado" => "EN_PROGRESO",
+            "cerrado_en" => null,
+        ));
+        if (!$ok) {
+            return array("ok" => false, "msg" => "No se pudo reabrir el ticket.");
+        }
+
+        ModeloHelpdesk::mdlAgregarComentario(array(
+            "ticket_id" => $id,
+            "usuario_id" => $uid,
+            "tipo_evento" => "REAPERTURA_USUARIO",
+            "mensaje" => $mensaje,
+            "estado_anterior" => "CERRADO",
+            "estado_nuevo" => "EN_PROGRESO",
+        ));
+
+        return array(
+            "ok" => true,
+            "msg" => "Ticket reabierto. El equipo de TI lo verá de nuevo en la bandeja.",
+        );
     }
 
     public static function ctrActualizar()

@@ -95,6 +95,10 @@ switch ($accion) {
         hdJson(ControladorHelpdesk::ctrComentar());
         break;
 
+    case "reabrir_solicitante":
+        hdJson(ControladorHelpdesk::ctrReabrirSolicitante());
+        break;
+
     case "actualizar":
         hdJson(ControladorHelpdesk::ctrActualizar());
         break;

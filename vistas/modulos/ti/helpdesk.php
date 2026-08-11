@@ -351,8 +351,9 @@
                         <div class="box-tools pull-right hd-filtros">
                             <input type="text" class="form-control input-sm" id="hdFiltroQ"
                                    placeholder="Buscar…" style="width:140px;display:inline-block;">
-                            <select class="form-control input-sm" id="hdFiltroEstado" style="width:auto;display:inline-block;">
-                                <option value="" selected>Todos</option>
+                            <select class="form-control input-sm selectpicker" id="hdFiltroEstado"
+                                    title="Estado" data-width="170px" data-container="body">
+                                <option value="">Todos</option>
                                 <option value="__ACTIVOS__">Activos</option>
                                 <option value="ABIERTO">Abierto</option>
                                 <option value="EN_PROGRESO">En progreso</option>
@@ -360,7 +361,8 @@
                                 <option value="CERRADO">Cerrado</option>
                                 <option value="__VENCIDOS__">Vencidos SLA</option>
                             </select>
-                            <select class="form-control input-sm" id="hdFiltroTipo" style="width:auto;display:inline-block;">
+                            <select class="form-control input-sm selectpicker" id="hdFiltroTipo"
+                                    title="Tipo" data-width="150px" data-container="body">
                                 <option value="">Tipo</option>
                                 <option value="INCIDENCIA">Incidencia</option>
                                 <option value="REQUERIMIENTO">Requerimiento</option>
@@ -369,6 +371,19 @@
                                 <option value="CORRECCION">Corrección</option>
                                 <option value="OTRO">Otro</option>
                             </select>
+                            <span id="hdFiltrosPersonas" class="hd-filtros-personas" style="display:none;">
+                                <select class="form-control input-sm" id="hdFiltroSolicitante"
+                                        title="Solicitante" data-live-search="true" data-width="170px"
+                                        style="width:170px;display:inline-block;">
+                                    <option value="">Solicitante</option>
+                                </select>
+                                <select class="form-control input-sm" id="hdFiltroAsignado"
+                                        title="Asignado" data-width="140px"
+                                        style="width:140px;display:inline-block;">
+                                    <option value="">Asignado</option>
+                                    <option value="__SIN__">Sin asignar</option>
+                                </select>
+                            </span>
                             <button type="button" class="btn btn-default btn-sm" id="hdBtnRefrescar" title="Actualizar">
                                 <i class="fa fa-refresh"></i>
                             </button>

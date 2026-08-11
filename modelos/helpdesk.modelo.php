@@ -57,7 +57,9 @@ class ModeloHelpdesk
             $params[":area"] = $filtros["area"];
         }
 
-        if (!empty($filtros["asignado_id"])) {
+        if (!empty($filtros["asignado_libre"])) {
+            $sql .= " AND t.asignado_id IS NULL";
+        } elseif (!empty($filtros["asignado_id"])) {
             $sql .= " AND t.asignado_id = :asignado_id";
             $params[":asignado_id"] = (int) $filtros["asignado_id"];
         }
@@ -126,7 +128,9 @@ class ModeloHelpdesk
             $sql .= " AND t.area = :area";
             $params[":area"] = $filtros["area"];
         }
-        if (!empty($filtros["asignado_id"])) {
+        if (!empty($filtros["asignado_libre"])) {
+            $sql .= " AND t.asignado_id IS NULL";
+        } elseif (!empty($filtros["asignado_id"])) {
             $sql .= " AND t.asignado_id = :asignado_id";
             $params[":asignado_id"] = (int) $filtros["asignado_id"];
         }
@@ -219,7 +223,9 @@ class ModeloHelpdesk
             $sql .= " AND t.area = :area";
             $params[":area"] = $filtros["area"];
         }
-        if (!empty($filtros["asignado_id"])) {
+        if (!empty($filtros["asignado_libre"])) {
+            $sql .= " AND t.asignado_id IS NULL";
+        } elseif (!empty($filtros["asignado_id"])) {
             $sql .= " AND t.asignado_id = :asignado_id";
             $params[":asignado_id"] = (int) $filtros["asignado_id"];
         }
