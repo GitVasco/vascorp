@@ -1,0 +1,230 @@
+@charset "utf-8";
+
+body {
+    margin: 8px 0 8px 8px;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    color: #111;
+}
+
+/* Margen derecho para anotaciones de almacén */
+.zona_impresion {
+    width: 860px;
+    margin: 0 70px 0 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.pedido-v2-hoja {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media print {
+    body {
+        margin: 0;
+        height: auto;
+    }
+
+    .zona_impresion {
+        width: auto;
+        max-width: none;
+        margin: 0 70px 0 0;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .pedido-v2-hoja:not(.pedido-v2-hoja-ultima) {
+        page-break-after: always;
+        break-after: page;
+    }
+
+    .pedido-v2-hoja-ultima {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    .pedido-v2-pie-wrap {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+}
+
+/* ---- Cabecera ---- */
+.pedido-v2-cab {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6px;
+    table-layout: fixed;
+}
+
+.pedido-v2-cab td,
+.pedido-v2-cab th {
+    vertical-align: top;
+    padding: 2px 4px;
+    font-size: 13px;
+}
+
+.pedido-v2-cab td:first-child {
+    width: 72%;
+}
+
+.pedido-v2-cab td:last-child {
+    width: 28%;
+}
+
+.pedido-v2-cab .empresa {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+}
+
+.pedido-v2-cab .pedido-nro {
+    text-align: right;
+    font-size: 15px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.pedido-v2-cab .lbl {
+    font-weight: bold;
+    white-space: nowrap;
+    padding-right: 2px;
+}
+
+.pedido-v2-cab .meta {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.pedido-v2-cab .meta .lbl {
+    display: inline;
+    margin-right: 4px;
+}
+
+.pedido-v2-cab .fila-sep td {
+    border-bottom: 1px solid #999;
+    padding-bottom: 4px;
+    padding-top: 2px;
+}
+
+/* Nombre / dirección: 1 sola línea (evita cabecera alta → hoja vacía) */
+.pedido-v2-celda-texto {
+    max-width: 0; /* fuerza truncado con table-layout:fixed */
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.pedido-v2-truncar {
+    display: inline;
+    white-space: nowrap;
+}
+
+.pedido-v2-sello-meta {
+    text-align: right;
+    padding-top: 1px !important;
+    padding-bottom: 2px !important;
+}
+
+.pedido-v2-sello-meta .hc-print-sello-direccion {
+    display: inline-block;
+    border: 1px solid #c0392b;
+    color: #c0392b;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 1px 6px;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+}
+
+.pedido-v2-sello-meta .hc-print-sello-direccion-texto {
+    text-transform: uppercase;
+}
+
+/* ---- Tabla única (thead + cuerpo) ---- */
+.pedido-v2-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.pedido-v2-grid th,
+.pedido-v2-grid td {
+    border: 1px dotted #444;
+    padding: 2px 3px;
+    font-size: 12px;
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+/* Cabeceras de tallas: borde sólido más marcado */
+.pedido-v2-grid thead th {
+    border: 1px solid #000;
+    font-weight: bold;
+}
+
+.pedido-v2-grid .col-modelo {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.pedido-v2-grid .col-color {
+    text-align: left;
+}
+
+.pedido-v2-grid .col-total {
+    font-weight: bold;
+}
+
+.pedido-v2-grid td.col-modelo b {
+    font-weight: bold;
+}
+
+/* Separador entre modelos: doble borde (sin colspan, mantiene anchos) */
+.pedido-v2-grid tr.pedido-v2-sep-modelo td {
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-bottom: 3px double #000;
+    height: 5px;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+}
+
+.pedido-v2-totales {
+    margin-top: 0;
+    font-weight: bold;
+}
+
+.pedido-v2-totales td {
+    border: 1px solid #000;
+}
+
+.pedido-v2-pie {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.pedido-v2-pie td {
+    padding: 2px 4px;
+    font-size: 13px;
+    border: none;
+}
+
+.pedido-v2-pie .lbl {
+    font-weight: bold;
+    width: 14%;
+}
+
+.pedido-v2-hoja-num {
+    text-align: right;
+    font-size: 11px;
+    color: #666;
+    margin: 6px 0 0;
+    padding-top: 2px;
+}

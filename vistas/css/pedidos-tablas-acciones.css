@@ -74,3 +74,231 @@ table.dataTable td .clientesAcciones.btn-group > .btn:hover,
 table.dataTable td .clientesAcciones.btn-group > .btn:focus {
     z-index: 2;
 }
+
+/*
+ * Pedidos CV: una sola fila por pedido (evitar wrap por condición / cliente).
+ * Columnas: 1 Código · 2 Cod.Cli · 3 Cliente · 4 Vend · 5 Total · 6 Condición
+ *           7 Estado · 8 Usuario · 9 Fecha · 10 F.Aprob · 11 Acciones
+ */
+table.dataTable.tablaPedidosCV,
+table.dataTable.tablaPedidosGenerados,
+table.dataTable.tablaPedidosAprobados,
+table.dataTable.tablaPedidosAPT,
+table.dataTable.tablaPedidosConfirmados,
+table.dataTable.tablaPedidosFacturados {
+    table-layout: fixed;
+}
+
+table.dataTable.tablaPedidosCV th,
+table.dataTable.tablaPedidosCV td,
+table.dataTable.tablaPedidosGenerados th,
+table.dataTable.tablaPedidosGenerados td,
+table.dataTable.tablaPedidosAprobados th,
+table.dataTable.tablaPedidosAprobados td,
+table.dataTable.tablaPedidosAPT th,
+table.dataTable.tablaPedidosAPT td,
+table.dataTable.tablaPedidosConfirmados th,
+table.dataTable.tablaPedidosConfirmados td,
+table.dataTable.tablaPedidosFacturados th,
+table.dataTable.tablaPedidosFacturados td {
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Código */
+table.dataTable.tablaPedidosCV th:nth-child(1),
+table.dataTable.tablaPedidosCV td:nth-child(1),
+table.dataTable.tablaPedidosGenerados th:nth-child(1),
+table.dataTable.tablaPedidosGenerados td:nth-child(1),
+table.dataTable.tablaPedidosAprobados th:nth-child(1),
+table.dataTable.tablaPedidosAprobados td:nth-child(1),
+table.dataTable.tablaPedidosAPT th:nth-child(1),
+table.dataTable.tablaPedidosAPT td:nth-child(1),
+table.dataTable.tablaPedidosConfirmados th:nth-child(1),
+table.dataTable.tablaPedidosConfirmados td:nth-child(1),
+table.dataTable.tablaPedidosFacturados th:nth-child(1),
+table.dataTable.tablaPedidosFacturados td:nth-child(1) {
+    width: 7% !important;
+}
+
+/* Cod. Cliente */
+table.dataTable.tablaPedidosCV th:nth-child(2),
+table.dataTable.tablaPedidosCV td:nth-child(2),
+table.dataTable.tablaPedidosGenerados th:nth-child(2),
+table.dataTable.tablaPedidosGenerados td:nth-child(2),
+table.dataTable.tablaPedidosAprobados th:nth-child(2),
+table.dataTable.tablaPedidosAprobados td:nth-child(2),
+table.dataTable.tablaPedidosAPT th:nth-child(2),
+table.dataTable.tablaPedidosAPT td:nth-child(2),
+table.dataTable.tablaPedidosConfirmados th:nth-child(2),
+table.dataTable.tablaPedidosConfirmados td:nth-child(2),
+table.dataTable.tablaPedidosFacturados th:nth-child(2),
+table.dataTable.tablaPedidosFacturados td:nth-child(2) {
+    width: 7% !important;
+}
+
+/* Cliente: cede espacio, se trunca */
+table.dataTable.tablaPedidosCV th:nth-child(3),
+table.dataTable.tablaPedidosCV td:nth-child(3),
+table.dataTable.tablaPedidosGenerados th:nth-child(3),
+table.dataTable.tablaPedidosGenerados td:nth-child(3),
+table.dataTable.tablaPedidosAprobados th:nth-child(3),
+table.dataTable.tablaPedidosAprobados td:nth-child(3),
+table.dataTable.tablaPedidosAPT th:nth-child(3),
+table.dataTable.tablaPedidosAPT td:nth-child(3),
+table.dataTable.tablaPedidosConfirmados th:nth-child(3),
+table.dataTable.tablaPedidosConfirmados td:nth-child(3),
+table.dataTable.tablaPedidosFacturados th:nth-child(3),
+table.dataTable.tablaPedidosFacturados td:nth-child(3) {
+    width: 16% !important;
+}
+
+table.dataTable td .pedidosCvClienteNombre {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
+}
+
+/* Vendedor */
+table.dataTable.tablaPedidosCV th:nth-child(4),
+table.dataTable.tablaPedidosCV td:nth-child(4),
+table.dataTable.tablaPedidosGenerados th:nth-child(4),
+table.dataTable.tablaPedidosGenerados td:nth-child(4),
+table.dataTable.tablaPedidosAprobados th:nth-child(4),
+table.dataTable.tablaPedidosAprobados td:nth-child(4),
+table.dataTable.tablaPedidosAPT th:nth-child(4),
+table.dataTable.tablaPedidosAPT td:nth-child(4),
+table.dataTable.tablaPedidosConfirmados th:nth-child(4),
+table.dataTable.tablaPedidosConfirmados td:nth-child(4),
+table.dataTable.tablaPedidosFacturados th:nth-child(4),
+table.dataTable.tablaPedidosFacturados td:nth-child(4) {
+    width: 5% !important;
+}
+
+/* Total */
+table.dataTable.tablaPedidosCV th:nth-child(5),
+table.dataTable.tablaPedidosCV td:nth-child(5),
+table.dataTable.tablaPedidosGenerados th:nth-child(5),
+table.dataTable.tablaPedidosGenerados td:nth-child(5),
+table.dataTable.tablaPedidosAprobados th:nth-child(5),
+table.dataTable.tablaPedidosAprobados td:nth-child(5),
+table.dataTable.tablaPedidosAPT th:nth-child(5),
+table.dataTable.tablaPedidosAPT td:nth-child(5),
+table.dataTable.tablaPedidosConfirmados th:nth-child(5),
+table.dataTable.tablaPedidosConfirmados td:nth-child(5),
+table.dataTable.tablaPedidosFacturados th:nth-child(5),
+table.dataTable.tablaPedidosFacturados td:nth-child(5) {
+    width: 7% !important;
+}
+
+/* Condición: suficiente para "FACTURA 60 DIAS" */
+table.dataTable.tablaPedidosCV th:nth-child(6),
+table.dataTable.tablaPedidosCV td:nth-child(6),
+table.dataTable.tablaPedidosGenerados th:nth-child(6),
+table.dataTable.tablaPedidosGenerados td:nth-child(6),
+table.dataTable.tablaPedidosAprobados th:nth-child(6),
+table.dataTable.tablaPedidosAprobados td:nth-child(6),
+table.dataTable.tablaPedidosAPT th:nth-child(6),
+table.dataTable.tablaPedidosAPT td:nth-child(6),
+table.dataTable.tablaPedidosConfirmados th:nth-child(6),
+table.dataTable.tablaPedidosConfirmados td:nth-child(6),
+table.dataTable.tablaPedidosFacturados th:nth-child(6),
+table.dataTable.tablaPedidosFacturados td:nth-child(6) {
+    width: 11% !important;
+    min-width: 120px !important;
+}
+
+/* Estado */
+table.dataTable.tablaPedidosCV th:nth-child(7),
+table.dataTable.tablaPedidosCV td:nth-child(7),
+table.dataTable.tablaPedidosGenerados th:nth-child(7),
+table.dataTable.tablaPedidosGenerados td:nth-child(7),
+table.dataTable.tablaPedidosAprobados th:nth-child(7),
+table.dataTable.tablaPedidosAprobados td:nth-child(7),
+table.dataTable.tablaPedidosAPT th:nth-child(7),
+table.dataTable.tablaPedidosAPT td:nth-child(7),
+table.dataTable.tablaPedidosConfirmados th:nth-child(7),
+table.dataTable.tablaPedidosConfirmados td:nth-child(7),
+table.dataTable.tablaPedidosFacturados th:nth-child(7),
+table.dataTable.tablaPedidosFacturados td:nth-child(7) {
+    width: 7% !important;
+}
+
+/* Usuario */
+table.dataTable.tablaPedidosCV th:nth-child(8),
+table.dataTable.tablaPedidosCV td:nth-child(8),
+table.dataTable.tablaPedidosGenerados th:nth-child(8),
+table.dataTable.tablaPedidosGenerados td:nth-child(8),
+table.dataTable.tablaPedidosAprobados th:nth-child(8),
+table.dataTable.tablaPedidosAprobados td:nth-child(8),
+table.dataTable.tablaPedidosAPT th:nth-child(8),
+table.dataTable.tablaPedidosAPT td:nth-child(8),
+table.dataTable.tablaPedidosConfirmados th:nth-child(8),
+table.dataTable.tablaPedidosConfirmados td:nth-child(8),
+table.dataTable.tablaPedidosFacturados th:nth-child(8),
+table.dataTable.tablaPedidosFacturados td:nth-child(8) {
+    width: 9% !important;
+}
+
+/* Fecha */
+table.dataTable.tablaPedidosCV th:nth-child(9),
+table.dataTable.tablaPedidosCV td:nth-child(9),
+table.dataTable.tablaPedidosGenerados th:nth-child(9),
+table.dataTable.tablaPedidosGenerados td:nth-child(9),
+table.dataTable.tablaPedidosAprobados th:nth-child(9),
+table.dataTable.tablaPedidosAprobados td:nth-child(9),
+table.dataTable.tablaPedidosAPT th:nth-child(9),
+table.dataTable.tablaPedidosAPT td:nth-child(9),
+table.dataTable.tablaPedidosConfirmados th:nth-child(9),
+table.dataTable.tablaPedidosConfirmados td:nth-child(9),
+table.dataTable.tablaPedidosFacturados th:nth-child(9),
+table.dataTable.tablaPedidosFacturados td:nth-child(9) {
+    width: 7% !important;
+}
+
+/* F. Aprobación */
+table.dataTable.tablaPedidosCV th:nth-child(10),
+table.dataTable.tablaPedidosCV td:nth-child(10),
+table.dataTable.tablaPedidosGenerados th:nth-child(10),
+table.dataTable.tablaPedidosGenerados td:nth-child(10),
+table.dataTable.tablaPedidosAprobados th:nth-child(10),
+table.dataTable.tablaPedidosAprobados td:nth-child(10),
+table.dataTable.tablaPedidosAPT th:nth-child(10),
+table.dataTable.tablaPedidosAPT td:nth-child(10),
+table.dataTable.tablaPedidosConfirmados th:nth-child(10),
+table.dataTable.tablaPedidosConfirmados td:nth-child(10),
+table.dataTable.tablaPedidosFacturados th:nth-child(10),
+table.dataTable.tablaPedidosFacturados td:nth-child(10) {
+    width: 7% !important;
+}
+
+/* Acciones */
+table.dataTable.tablaPedidosCV th:nth-child(11),
+table.dataTable.tablaPedidosCV td:nth-child(11),
+table.dataTable.tablaPedidosGenerados th:nth-child(11),
+table.dataTable.tablaPedidosGenerados td:nth-child(11),
+table.dataTable.tablaPedidosAprobados th:nth-child(11),
+table.dataTable.tablaPedidosAprobados td:nth-child(11),
+table.dataTable.tablaPedidosAPT th:nth-child(11),
+table.dataTable.tablaPedidosAPT td:nth-child(11),
+table.dataTable.tablaPedidosConfirmados th:nth-child(11),
+table.dataTable.tablaPedidosConfirmados td:nth-child(11),
+table.dataTable.tablaPedidosFacturados th:nth-child(11),
+table.dataTable.tablaPedidosFacturados td:nth-child(11) {
+    width: 17% !important;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+table.dataTable.tablaPedidosCV td:nth-child(11) .pedidosCvAcciones.btn-group,
+table.dataTable.tablaPedidosGenerados td:nth-child(11) .pedidosCvAcciones.btn-group,
+table.dataTable.tablaPedidosAprobados td:nth-child(11) .pedidosCvAcciones.btn-group,
+table.dataTable.tablaPedidosAPT td:nth-child(11) .pedidosCvAcciones.btn-group,
+table.dataTable.tablaPedidosConfirmados td:nth-child(11) .pedidosCvAcciones.btn-group,
+table.dataTable.tablaPedidosFacturados td:nth-child(11) .pedidosCvAcciones.btn-group {
+    max-width: none;
+}

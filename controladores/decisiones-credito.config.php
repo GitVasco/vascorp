@@ -542,6 +542,8 @@ function dcTextoSelloControlCreditoImpresion()
  */
 function dcPedidoMostrarSelloControlCreditoImpresion($codigoPedido)
 {
+    // Preview temporal del sello en todos los pedidos (impresión).
+    // Volver a false cuando se valide el diseño.
     static $previewEnTodosLosPedidos = false;
 
     if ($previewEnTodosLosPedidos) {

@@ -99,11 +99,10 @@
 
             <div class="box-body">
 
-                <table class="table table-bordered table-striped dt-responsive tablaPedidosCV" width="100%">
+                <table class="table table-bordered table-striped tablaPedidosCV" width="100%">
 
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Código</th>
                             <th>Cod. Cliente</th>
                             <th>Cliente</th>
@@ -113,6 +112,7 @@
                             <th>Estado</th>
                             <th>Usuario</th>
                             <th>Fecha</th>
+                            <th>F. Aprobación</th>
                             <th width="320px">Acciones</th>
                         </tr>
                     </thead>

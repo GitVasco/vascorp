@@ -1266,6 +1266,7 @@ class ModeloPedidos
 						t.agencia,
 						u.nombre AS nom_usu,
 						DATE(t.fecha) AS fecha,
+						apro.fecha_aprobacion,
 						cv.dias,
 						DATE_ADD(DATE(t.fecha), INTERVAL cv.dias DAY) AS fecha_ven
 					FROM
@@ -1276,6 +1277,12 @@ class ModeloPedidos
 						ON t.condicion_venta = cv.id
 						LEFT JOIN usuariosjf u
 						ON t.usuario = u.id
+						LEFT JOIN (
+							SELECT codigo_pedido, DATE(MIN(fecha)) AS fecha_aprobacion
+							FROM decision_credito_accionjf
+							WHERE tipo_accion = 'APROBADO'
+							GROUP BY codigo_pedido
+						) apro ON apro.codigo_pedido = t.codigo
 					ORDER BY fecha DESC,
 					 RIGHT(t.codigo, 7) DESC";
 
@@ -1372,6 +1379,7 @@ class ModeloPedidos
 			t.agencia,
 			u.nombre AS nom_usu,
 			DATE(t.fecha) AS fecha,
+			apro.fecha_aprobacion,
 			cv.dias,
 			DATE_ADD(DATE(t.fecha), INTERVAL cv.dias DAY) AS fecha_ven 
 		  FROM
@@ -1382,6 +1390,12 @@ class ModeloPedidos
 			  ON t.condicion_venta = cv.id 
 			LEFT JOIN usuariosjf u 
 			  ON t.usuario = u.id 
+			LEFT JOIN (
+				SELECT codigo_pedido, DATE(MIN(fecha)) AS fecha_aprobacion
+				FROM decision_credito_accionjf
+				WHERE tipo_accion = 'APROBADO'
+				GROUP BY codigo_pedido
+			) apro ON apro.codigo_pedido = t.codigo
 		  WHERE t.estado = '$valor' 
 		  ORDER BY 
 			t.fecha DESC,

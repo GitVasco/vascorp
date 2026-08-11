@@ -74,17 +74,20 @@ class TablaPedidosCV
                     $codigo = $pedidos[$i]["cod_cli"];
                 }
 
+                $nombreCli = htmlspecialchars(isset($pedidos[$i]["nombre"]) ? $pedidos[$i]["nombre"] : "", ENT_QUOTES, "UTF-8");
+                $celdaCliente = "<span class='pedidosCvClienteNombre' title='" . $nombreCli . "'><b>" . $nombreCli . "</b></span>";
+
                 $datosJson .= '[
-            "' . ($i + 1) . '",
             "<b>' . $pedidos[$i]["codigo"] . '</b>",
             "' . $codigo . '",
-            "<b>' . $pedidos[$i]["nombre"] . '</b>",
+            "' . $celdaCliente . '",
             "' . $pedidos[$i]["vendedor"] . '",
             "<b>' . $moneda . $pedidos[$i]["total"] . '</b>",
             "' . $pedidos[$i]["descripcion"] . '",
             "' . $estado . '",
             "' . $pedidos[$i]["nom_usu"] . '",
             "' . $pedidos[$i]["fecha"] . '",
+            "' . (!empty($pedidos[$i]["fecha_aprobacion"]) ? $pedidos[$i]["fecha_aprobacion"] : "—") . '",
             "' . $botones . '"
             ],';
             }

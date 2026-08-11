@@ -67,17 +67,20 @@ class TablaPedidosCV
 
                 $botones =  "<div class='btn-group pedidosCvAcciones' role='group'><button title='Editar Pedido' class='btn btn-xs btn-warning btnEditarPedidoCV' codigo='" . $pedidos[$i]["codigo"] . "'><i class='fa fa-pencil-square-o'></i></button>" . $btnBarcodeEscaneo . "<button title='Imprimir Pedido' class='btn btn-xs btn-success btnImprimirPedido' codigo='" . $pedidos[$i]["codigo"] . "'><i class='fa fa-print'></i></button><button title='Anular Pedido' class='btn btn-xs  btn-danger btnAnularPedidoCV' codigo='" . $pedidos[$i]["codigo"] . "' estado='" . $pedidos[$i]["estado"] . "'><i class='fa fa-close'></i></button><button title='Cotizar Pedido' class='btn btn-xs btn-info btnCotizarPedido' codigo='" . $pedidos[$i]["codigo"] . "'><i class='fa fa-calculator'></i></button><button title='Duplicar Pedido' class='btn btn-xs btn-default btnDuplicarPedido' codigo='" . $pedidos[$i]["codigo"] . "'><i class='fa fa-copy'></i></button></div>";
 
+                $nombreCli = htmlspecialchars(isset($pedidos[$i]["nombre"]) ? $pedidos[$i]["nombre"] : "", ENT_QUOTES, "UTF-8");
+                $celdaCliente = "<span class='pedidosCvClienteNombre' title='" . $nombreCli . "'><b>" . $nombreCli . "</b></span>";
+
                 $datosJson .= '[
-            "' . ($i + 1) . '",
             "<b>' . $pedidos[$i]["codigo"] . '</b>",
             "' . $codigo . '",
-            "<b>' . $pedidos[$i]["nombre"] . '</b>",
+            "' . $celdaCliente . '",
             "' . $pedidos[$i]["vendedor"] . '",
             "<b>' . $moneda . $pedidos[$i]["total"] . '</b>",
             "' . $pedidos[$i]["descripcion"] . '",
             "' . $estado . '",
             "' . $pedidos[$i]["nom_usu"] . '",
             "' . $pedidos[$i]["fecha"] . '",
+            "' . (!empty($pedidos[$i]["fecha_aprobacion"]) ? $pedidos[$i]["fecha_aprobacion"] : "—") . '",
             "' . $botones . '"
             ],';
             }

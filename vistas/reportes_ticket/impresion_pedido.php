@@ -1,3 +1,11 @@
+<?php
+// Enruta al formato nuevo o deja el legado según PEDIDO_IMPRESION en config.php
+require_once __DIR__ . "/../../controladores/config.php";
+if (function_exists("pedidoImpresionEsNuevo") && pedidoImpresionEsNuevo()) {
+    require __DIR__ . "/impresion_pedido_v2.php";
+    exit;
+}
+?>
 <html>
 
 <head>

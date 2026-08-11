@@ -107,12 +107,11 @@
 
             <div class="box-body">
 
-                <table class="table table-bordered table-striped dt-responsive tablaPedidosGenerados" width="100%">
+                <table class="table table-bordered table-striped tablaPedidosGenerados" width="100%">
 
                     <thead>
 
                         <tr>
-                            <th>Id</th>
                             <th>Código</th>
                             <th>Cod. Cliente</th>
                             <th>Cliente</th>
@@ -122,6 +121,7 @@
                             <th>Estado</th>
                             <th>Usuario</th>
                             <th>Fecha</th>
+                            <th>F. Aprobación</th>
                             <th>Acciones</th>
                         </tr>
 

@@ -396,7 +396,7 @@ $(".tablaPedidosCV").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
-    order: [[9, "desc"]],
+    order: [[8, "desc"]],
     pageLength: 20,
     lengthMenu: [
         [20, 40, 60, -1],
@@ -1242,7 +1242,7 @@ $(".tablaPedidosGenerados").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
-    order: [[9, "desc"]],
+    order: [[8, "desc"]],
     pageLength: 20,
     lengthMenu: [
         [20, 40, 60, -1],
@@ -1284,7 +1284,7 @@ $(".tablaPedidosAprobados").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
-    order: [[9, "desc"]],
+    order: [[8, "desc"]],
     pageLength: 20,
     lengthMenu: [
         [20, 40, 60, -1],
@@ -1326,7 +1326,7 @@ $(".tablaPedidosAPT").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
-    order: [[9, "desc"]],
+    order: [[8, "desc"]],
     pageLength: 20,
     lengthMenu: [
         [20, 40, 60, -1],
@@ -1368,7 +1368,7 @@ $(".tablaPedidosConfirmados").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
-    order: [[9, "desc"]],
+    order: [[8, "desc"]],
     pageLength: 20,
     lengthMenu: [
         [20, 40, 60, -1],
@@ -1410,7 +1410,7 @@ $(".tablaPedidosFacturados").DataTable({
     deferRender: true,
     retrieve: true,
     processing: true,
-    order: [[9, "desc"]],
+    order: [[8, "desc"]],
     pageLength: 20,
     lengthMenu: [
         [20, 40, 60, -1],

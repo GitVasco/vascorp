@@ -1530,6 +1530,39 @@ class ModeloDecisionesCredito
         );
     }
 
+    /**
+     * Primera fecha de aprobación del pedido (bitácora decision_credito_accionjf).
+     * Null si no hay fila APROBADO o la tabla no existe.
+     */
+    static public function mdlFechaAprobacionPedido($codigoPedido)
+    {
+        $codigoPedido = (int) $codigoPedido;
+        if ($codigoPedido <= 0) {
+            return null;
+        }
+
+        try {
+            $sql = "SELECT fecha
+                    FROM decision_credito_accionjf
+                    WHERE codigo_pedido = :codigo_pedido
+                      AND tipo_accion = 'APROBADO'
+                    ORDER BY fecha ASC, id ASC
+                    LIMIT 1";
+            $stmt = Conexion::conectar()->prepare($sql);
+            $stmt->bindValue(":codigo_pedido", $codigoPedido, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return null;
+        }
+
+        if (!$row || empty($row["fecha"])) {
+            return null;
+        }
+
+        return (string) $row["fecha"];
+    }
+
     static public function mdlControlPendientePorPedido($codigoPedido)
     {
         $codigoPedido = (int) $codigoPedido;
