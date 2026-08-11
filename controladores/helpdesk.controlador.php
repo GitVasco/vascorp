@@ -513,6 +513,24 @@ class ControladorHelpdesk
         return $codigo === "CUMPLIDO" || $codigo === "FUERA";
     }
 
+    /**
+     * Cuenta abiertos vencidos con el mismo reloj laboral que el badge SLA.
+     * Excluye desarrollo y SLA cancelado (vía candidatos del modelo).
+     */
+    private static function ctrContarVencidosSla($filtros)
+    {
+        $candidatos = ModeloHelpdesk::mdlCandidatosSlaAbiertos($filtros);
+        $n = 0;
+        foreach ($candidatos as $t) {
+            $sla = self::ctrSlaDeTicket($t);
+            if (isset($sla["codigo"]) && $sla["codigo"] === "VENCIDO") {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
     public static function ctrEnriquecerSla($items)
     {
         if (!is_array($items)) {
@@ -676,10 +694,7 @@ class ControladorHelpdesk
         }
 
         $resumen = ModeloHelpdesk::mdlResumen($filtrosResumen);
-        $resumen["vencidos"] = ModeloHelpdesk::mdlContarVencidosSla(
-            $filtrosResumen,
-            self::SLA_HORAS
-        );
+        $resumen["vencidos"] = self::ctrContarVencidosSla($filtrosResumen);
 
         return array(
             "ok" => true,

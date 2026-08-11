@@ -1,0 +1,61 @@
+/* KPIs estilo Helpdesk (bandeja) */
+#panelRecetasModelo .rm-kpis {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+#panelRecetasModelo .rm-kpi {
+	flex: 1 1 120px;
+	min-width: 110px;
+	border: 1px solid #e6ebf0;
+	border-radius: 6px;
+	background: #fff;
+	padding: 10px 12px;
+	text-align: left;
+	cursor: pointer;
+	transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+#panelRecetasModelo .rm-kpi:hover {
+	border-color: #3c8dbc;
+	box-shadow: 0 1px 4px rgba(60, 141, 188, 0.15);
+}
+
+#panelRecetasModelo .rm-kpi.active {
+	border-color: #3c8dbc;
+	box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.2);
+	background: #f4f9fc;
+}
+
+#panelRecetasModelo .rm-kpi-n {
+	display: block;
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.1;
+	color: #333;
+}
+
+#panelRecetasModelo .rm-kpi-lbl {
+	display: block;
+	margin-top: 4px;
+	font-size: 11px;
+	color: #777;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+#panelRecetasModelo .rm-kpi-total .rm-kpi-n { color: #3c8dbc; }
+#panelRecetasModelo .rm-kpi-borrador .rm-kpi-n { color: #f39c12; }
+#panelRecetasModelo .rm-kpi-publicada .rm-kpi-n { color: #00a65a; }
+#panelRecetasModelo .rm-kpi-archivada .rm-kpi-n { color: #777; }
+#panelRecetasModelo .rm-kpi-sin-tela .rm-kpi-n { color: #dd4b39; }
+#panelRecetasModelo .rm-kpi-sin-receta .rm-kpi-n { color: #f39c12; }
+
+#panelRecetasModelo .rm-kpi-total.active { border-left: 3px solid #3c8dbc; }
+#panelRecetasModelo .rm-kpi-borrador.active { border-left: 3px solid #f39c12; }
+#panelRecetasModelo .rm-kpi-publicada.active { border-left: 3px solid #00a65a; }
+#panelRecetasModelo .rm-kpi-archivada.active { border-left: 3px solid #777; }
+#panelRecetasModelo .rm-kpi-sin-tela.active { border-left: 3px solid #dd4b39; }
+#panelRecetasModelo .rm-kpi-sin-receta.active { border-left: 3px solid #f39c12; }

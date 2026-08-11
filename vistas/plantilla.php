@@ -203,6 +203,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") : ?>
     <link rel="stylesheet" href="vistas/css/helpdesk.css?v=27">
     <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "recetas-modelo") : ?>
+    <link rel="stylesheet" href="vistas/css/recetas-modelo.css?v=1">
+    <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-articulo") : ?>
     <link rel="stylesheet" href="vistas/css/crear-articulo.css?v=1">
     <?php endif; ?>
@@ -966,7 +969,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/materiaprima.js"></script>
     <script src="vistas/js/tarjetas.js"></script>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "recetas-modelo" || $_GET["ruta"] == "editar-receta-modelo")) { ?>
-    <script src="vistas/js/recetas-modelo.js?v=30"></script>
+    <script src="vistas/js/recetas-modelo.js?v=42"></script>
     <?php } ?>
     <script src="vistas/js/movimientos.js"></script>
     <script src="vistas/js/ordencorte.js"></script>

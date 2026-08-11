@@ -183,25 +183,24 @@ class ModeloHelpdesk
     }
 
     /**
-     * Cuenta tickets abiertos fuera de plazo SLA según horas por prioridad.
+     * Tickets abiertos sujetos a SLA (excluye desarrollo y SLA cancelado).
+     * El vencimiento se evalúa en el controlador con horas laborales.
      */
-    public static function mdlContarVencidosSla($filtros, $slaHoras)
+    public static function mdlCandidatosSlaAbiertos($filtros)
     {
-        $alta = isset($slaHoras["ALTA"]) ? (int) $slaHoras["ALTA"] : 4;
-        $media = isset($slaHoras["MEDIA"]) ? (int) $slaHoras["MEDIA"] : 24;
-        $baja = isset($slaHoras["BAJA"]) ? (int) $slaHoras["BAJA"] : 72;
-
-        $sql = "SELECT COUNT(*) AS total
+        $sql = "SELECT
+                    t.id,
+                    t.tipo,
+                    t.prioridad,
+                    t.estado,
+                    t.creado_en,
+                    t.cerrado_en,
+                    t.sla_exento,
+                    t.sla_exento_motivo
                 FROM helpdesk_ticketjf t
                 WHERE t.estado <> 'CERRADO'
                   AND t.tipo NOT IN ('DESARROLLO')
-                  AND IFNULL(t.sla_exento, 0) = 0
-                  AND (
-                    (t.prioridad = 'ALTA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$alta} HOUR))
-                    OR (t.prioridad = 'MEDIA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$media} HOUR))
-                    OR (t.prioridad = 'BAJA' AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$baja} HOUR))
-                    OR (t.prioridad NOT IN ('ALTA','MEDIA','BAJA') AND t.creado_en < DATE_SUB(NOW(), INTERVAL {$media} HOUR))
-                  )";
+                  AND IFNULL(t.sla_exento, 0) = 0";
         $params = array();
 
         if (!empty($filtros["tipo"])) {
@@ -249,9 +248,9 @@ class ModeloHelpdesk
             $stmt->bindValue($key, $value);
         }
         $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $row ? (int) $row["total"] : 0;
+        return is_array($rows) ? $rows : array();
     }
 
     /**

@@ -29,6 +29,11 @@ if ($accion === "listar") {
 	return;
 }
 
+if ($accion === "estadisticas") {
+	echo json_encode(ControladorRecetasModelo::ctrEstadisticas());
+	return;
+}
+
 if ($accion === "detalle") {
 	$id = isset($_POST["id_receta"]) ? (int) $_POST["id_receta"] : 0;
 	echo json_encode(ControladorRecetasModelo::ctrDetalle($id));
@@ -59,6 +64,12 @@ if ($accion === "listarSublineas") {
 	$q = isset($_POST["q"]) ? $_POST["q"] : "";
 	$limit = isset($_POST["limit"]) ? (int) $_POST["limit"] : 200;
 	echo json_encode(ControladorRecetasModelo::ctrListarSublineas($q, $limit));
+	return;
+}
+
+if ($accion === "infoSublineas") {
+	$codigos = isset($_POST["codigos"]) ? $_POST["codigos"] : array();
+	echo json_encode(ControladorRecetasModelo::ctrInfoSublineas($codigos));
 	return;
 }
 
@@ -105,6 +116,17 @@ if ($accion === "eliminarBorrador") {
 	return;
 }
 
+if ($accion === "eliminarReceta") {
+	$id = isset($_POST["id_receta"]) ? (int) $_POST["id_receta"] : 0;
+	echo json_encode(ControladorRecetasModelo::ctrEliminarReceta($id));
+	return;
+}
+
+if ($accion === "eliminarTodas") {
+	echo json_encode(ControladorRecetasModelo::ctrEliminarTodas());
+	return;
+}
+
 if ($accion === "importarDesdeTarjetas") {
 	$modelo = isset($_POST["modelo"]) ? $_POST["modelo"] : "";
 	echo json_encode(ControladorRecetasModelo::ctrImportarDesdeTarjetas($modelo));
@@ -113,6 +135,11 @@ if ($accion === "importarDesdeTarjetas") {
 
 if ($accion === "listarModelosImportTarjetas") {
 	echo json_encode(ControladorRecetasModelo::ctrListarModelosImportTarjetas());
+	return;
+}
+
+if ($accion === "importarDesdeExcel") {
+	echo json_encode(ControladorRecetasModelo::ctrImportarDesdeExcel($_POST, $_FILES));
 	return;
 }
 

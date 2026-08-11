@@ -10,6 +10,7 @@ var RM = {
 	mpActivaUnd: "",
 	mpActivaColor: "",
 	mpCache: {},
+	sublineaCache: {},
 	dirty: false,
 	_ctxFlashTimer: null
 };
@@ -55,12 +56,62 @@ function rmClaveArt(art) {
 	return String(art.cod_color || "") + "|" + String(art.cod_talla || "");
 }
 
+/** Normaliza códigos cortos para cruzar variantes importadas vs artículos (01 ≈ 1). */
+function rmNormCodigoCorto(v) {
+	var s = String(v == null ? "" : v).trim();
+	if (s === "") return "";
+	if (/^\d+$/.test(s)) {
+		s = String(parseInt(s, 10));
+		if (s === "NaN") return String(v).trim();
+	}
+	return s;
+}
+
+function rmClavesVarianteCandidatas(codColor, codTalla) {
+	var c = String(codColor || "");
+	var t = String(codTalla || "");
+	var cn = rmNormCodigoCorto(c);
+	var tn = rmNormCodigoCorto(t);
+	var keys = [c + "|" + t];
+	if (cn !== c || tn !== t) keys.push(cn + "|" + tn);
+	if (/^\d+$/.test(c) && c.length < 2) keys.push(("0" + c).slice(-2) + "|" + t);
+	if (/^\d+$/.test(t) && t.length < 2) keys.push(c + "|" + ("0" + t).slice(-2));
+	if (/^\d+$/.test(c) && c.length < 2 && /^\d+$/.test(t) && t.length < 2) {
+		keys.push(("0" + c).slice(-2) + "|" + ("0" + t).slice(-2));
+	}
+	keys.push(c + "|");
+	keys.push("|" + t);
+	keys.push(cn + "|");
+	keys.push("|" + tn);
+	var seen = {};
+	var out = [];
+	keys.forEach(function (k) {
+		if (seen[k]) return;
+		seen[k] = true;
+		out.push(k);
+	});
+	return out;
+}
+
 function rmMapaVariantes(linea) {
 	var mapa = {};
 	(linea.variantes || []).forEach(function (v) {
-		mapa[String(v.cod_color || "") + "|" + String(v.cod_talla || "")] = v;
+		var c = String(v.cod_color || "");
+		var t = String(v.cod_talla || "");
+		mapa[c + "|" + t] = v;
+		// Índice alterno normalizado para imports con ceros a la izquierda
+		var alt = rmNormCodigoCorto(c) + "|" + rmNormCodigoCorto(t);
+		if (!mapa[alt]) mapa[alt] = v;
 	});
 	return mapa;
+}
+
+function rmBuscarVarianteEnMapa(mapa, art) {
+	var keys = rmClavesVarianteCandidatas(art.cod_color, art.cod_talla);
+	for (var i = 0; i < keys.length; i++) {
+		if (mapa[keys[i]]) return mapa[keys[i]];
+	}
+	return {};
 }
 
 function rmConsumoLinea(linea) {
@@ -72,14 +123,11 @@ function rmConsumoLinea(linea) {
 
 function rmAsegurarVariantesArticulos(linea) {
 	var mapa = rmMapaVariantes(linea);
-	var consumo = rmConsumoLinea(linea);
+	var consumoDefault = rmConsumoLinea(linea);
 	var nuevas = [];
 	(RM.articulos || []).forEach(function (art) {
-		var key = rmClaveArt(art);
-		var prev = mapa[key]
-			|| mapa[String(art.cod_color || "") + "|"]
-			|| mapa["|" + String(art.cod_talla || "")]
-			|| {};
+		var prev = rmBuscarVarianteEnMapa(mapa, art);
+		var consumoPrev = prev.consumo != null && prev.consumo !== "" ? prev.consumo : consumoDefault;
 		nuevas.push({
 			cod_color: art.cod_color || "",
 			cod_talla: art.cod_talla || "",
@@ -87,14 +135,14 @@ function rmAsegurarVariantesArticulos(linea) {
 			talla: art.talla || "",
 			articulo: art.articulo,
 			mp_codigo: prev.mp_codigo || "",
-			consumo: consumo,
+			consumo: consumoPrev,
 			observacion: prev.observacion || ""
 		});
 	});
 	linea.variantes = nuevas;
 	linea.regla_variante = "COLOR_TALLA";
 	linea.activo = 1;
-	linea.consumo_base = consumo;
+	linea.consumo_base = consumoDefault;
 }
 
 function rmContarOk(linea) {
@@ -142,24 +190,85 @@ function rmArtPorColorTalla(codColor, codTalla) {
 
 /* ===================== LISTADO ===================== */
 
+var RM_DT_LANG = {
+	sProcessing: "Procesando...",
+	sLengthMenu: "Mostrar _MENU_ registros",
+	sZeroRecords: "No se encontraron resultados",
+	sEmptyTable: "Ningún dato disponible en esta tabla",
+	sInfo: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_",
+	sInfoEmpty: "Mostrando registros del 0 al 0 de un total de 0",
+	sInfoFiltered: "(filtrado de un total de _MAX_ registros)",
+	sInfoPostFix: "",
+	sSearch: "Buscar:",
+	sUrl: "",
+	sInfoThousands: ",",
+	sLoadingRecords: "Cargando...",
+	oPaginate: {
+		sFirst: "Primero",
+		sLast: "Último",
+		sNext: "Siguiente",
+		sPrevious: "Anterior"
+	},
+	oAria: {
+		sSortAscending: ": Activar para ordenar la columna de manera ascendente",
+		sSortDescending: ": Activar para ordenar la columna de manera descendente"
+	}
+};
+
+function rmDestroyListadoDt() {
+	var $t = $("#tablaRecetasModelo");
+	if ($t.length && $.fn.DataTable && $.fn.DataTable.isDataTable($t)) {
+		$t.DataTable().clear().destroy();
+	}
+}
+
+function rmMarcarKpiActivo(estado) {
+	estado = (estado == null) ? "" : String(estado);
+	$("#rmStatsCabecera .rm-kpi").removeClass("active");
+	var $btn = $('#rmStatsCabecera .rm-kpi[data-estado="' + estado + '"]');
+	if ($btn.length) $btn.addClass("active");
+	else $("#rmStatsCabecera .rm-kpi-total").addClass("active");
+}
+
+function rmCargarEstadisticas() {
+	if (!$("#rmStatsCabecera").length) return;
+	rmPost({ accion: "estadisticas" }).done(function (resp) {
+		var d = (resp && resp.ok && resp.data) ? resp.data : {};
+		$("#rmStatTotal").text(Number(d.total || 0));
+		$("#rmStatBorrador").text(Number(d.borrador || 0));
+		$("#rmStatPublicada").text(Number(d.publicada || 0));
+		$("#rmStatArchivada").text(Number(d.archivada || 0));
+		$("#rmStatSinTela").text(Number(d.sin_tela_principal || 0));
+		var sinReceta = Number(d.modelos_sin_receta || 0);
+		$("#rmStatSinReceta").text(sinReceta);
+		var $badge = $("#badgeModelosSinReceta");
+		if (sinReceta > 0) $badge.text(sinReceta).show();
+		else $badge.hide();
+		rmMarcarKpiActivo($("#filtroEstadoReceta").val() || "");
+	});
+}
+
+function rmActualizarAlertaSinReceta() {
+	rmCargarEstadisticas();
+}
+
 function rmCargarListado() {
-	var $tb = $("#tablaRecetasModelo tbody");
+	var $t = $("#tablaRecetasModelo");
+	var $tb = $t.find("tbody");
 	if (!$tb.length) return;
+	rmDestroyListadoDt();
 	$tb.html("<tr><td colspan='10' class='text-center text-muted'>Cargando…</td></tr>");
 	rmPost({
 		accion: "listar",
 		modelo: $("#filtroModeloReceta").val() || "",
 		estado: $("#filtroEstadoReceta").val() || ""
 	}).done(function (resp) {
+		rmDestroyListadoDt();
 		if (!resp || !resp.ok) {
 			$tb.html("<tr><td colspan='10' class='text-danger'>" + rmEsc((resp && resp.mensaje) || "Error") + "</td></tr>");
 			return;
 		}
 		var lista = resp.data || [];
-		if (!lista.length) {
-			$tb.html("<tr><td colspan='10' class='text-center text-muted'>Sin recetas</td></tr>");
-			return;
-		}
 		var html = "";
 		lista.forEach(function (r) {
 			var id = Number(r.id);
@@ -169,8 +278,8 @@ function rmCargarListado() {
 				+ "<button type='button' class='btn btn-xs btn-warning btnDuplicarRecetaLista' data-id='" + id + "' title='Duplicar'><i class='fa fa-copy'></i></button>";
 			if (r.estado === "BORRADOR") {
 				botones += "<button type='button' class='btn btn-xs btn-success btnPublicarRecetaLista' data-id='" + id + "' title='Publicar'><i class='fa fa-check'></i></button>";
-				botones += "<button type='button' class='btn btn-xs btn-danger btnEliminarBorradorLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' title='Eliminar borrador'><i class='fa fa-trash'></i></button>";
 			}
+			botones += "<button type='button' class='btn btn-xs btn-danger btnEliminarRecetaLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' data-version='" + rmEsc(r.version) + "' data-estado='" + rmEsc(r.estado) + "' title='Eliminar'><i class='fa fa-trash'></i></button>";
 			botones += "</div>";
 
 			var alertas = [];
@@ -195,25 +304,31 @@ function rmCargarListado() {
 			html += "<tr>"
 				+ "<td><strong>" + rmEsc(r.modelo) + "</strong></td>"
 				+ "<td>" + rmEsc(r.nombre_modelo || "") + "</td>"
-				+ "<td>" + rmEsc(r.version) + "</td>"
-				+ "<td>" + rmBadgeEstado(r.estado) + "</td>"
-				+ "<td>" + rmEsc(r.articulos_activos) + "</td>"
-				+ "<td>" + rmEsc(r.lineas_activas) + "</td>"
+				+ "<td data-order='" + rmEsc(r.version) + "'>" + rmEsc(r.version) + "</td>"
+				+ "<td data-order='" + rmEsc(r.estado) + "'>" + rmBadgeEstado(r.estado) + "</td>"
+				+ "<td data-order='" + Number(r.articulos_activos || 0) + "'>" + rmEsc(r.articulos_activos) + "</td>"
+				+ "<td data-order='" + Number(r.lineas_activas || 0) + "'>" + rmEsc(r.lineas_activas) + "</td>"
 				+ "<td>" + rmEsc(r.tela_principal_rol || "—") + "</td>"
-				+ "<td>" + alertaHtml + "</td>"
+				+ "<td data-order='" + sinReceta + "'>" + alertaHtml + "</td>"
 				+ "<td>" + rmEsc(r.updated_at || r.created_at || "") + "</td>"
 				+ "<td style='white-space:nowrap; width:1%;'>" + botones + "</td></tr>";
 		});
 		$tb.html(html);
-	});
-}
-
-function rmActualizarAlertaSinReceta() {
-	rmPost({ accion: "listarModelosImportTarjetas" }).done(function (resp) {
-		var n = (resp && resp.ok && resp.data) ? Number(resp.data.total || 0) : 0;
-		var $badge = $("#badgeModelosSinReceta");
-		if (n > 0) $badge.text(n).show();
-		else $badge.hide();
+		if ($.fn.DataTable) {
+			$t.DataTable({
+				pageLength: 25,
+				lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
+				order: [[0, "asc"]],
+				columnDefs: [
+					{ orderable: false, targets: -1 }
+				],
+				language: RM_DT_LANG,
+				autoWidth: false
+			});
+		}
+	}).fail(function () {
+		rmDestroyListadoDt();
+		$tb.html("<tr><td colspan='10' class='text-danger'>Error al cargar</td></tr>");
 	});
 }
 
@@ -356,8 +471,7 @@ function rmRenderChips() {
 		}
 		var esTela = Number(linea.es_tela_principal) === 1;
 		var html = "<div class='rm2-chip" + (active ? " active" : "") + "' data-idx='" + idx + "'>"
-			+ "<strong>" + rmEsc(rmNombreLinea(linea)) + "</strong>"
-			+ "<span class='label label-primary'>" + rmEsc(linea.codigo_sublinea || "?") + "</span>";
+			+ "<strong>" + rmEsc(rmEtiquetaLinea(linea)) + "</strong>";
 		if (active) {
 			html += "<span class='rm2-chip-editando'>EDITANDO</span>";
 		}
@@ -396,20 +510,66 @@ function rmSetPickSublinea(cod, nom) {
 }
 
 function rmNombreLinea(linea) {
+	var cod = linea && linea.codigo_sublinea ? String(linea.codigo_sublinea) : "";
+	var catalogo = "";
+	if (cod && RM.sublineaCache[cod]) catalogo = RM.sublineaCache[cod];
+	else if (linea && linea.nombre_sublinea) catalogo = String(linea.nombre_sublinea);
+
 	var nom = linea && linea.nombre_rol != null ? String(linea.nombre_rol) : "";
-	// Nombre fantasma de import viejo: no es tela pero dice "Tela principal"
-	if (nom === "Tela principal" && Number(linea.es_tela_principal) !== 1) {
-		return linea.codigo_sublinea || "Insumo";
+	// Nombre fantasma / genérico: preferir nombre de catálogo de la sublínea
+	if (nom === "Tela principal" || nom === "" || nom === cod) {
+		nom = catalogo || (nom === "Tela principal" ? "" : nom);
 	}
-	return nom || linea.codigo_sublinea || "Insumo";
+	if ((!nom || nom === cod) && catalogo) {
+		nom = catalogo;
+	}
+	return nom || cod || "Insumo";
 }
 
 function rmEtiquetaLinea(linea) {
 	if (!linea) return "—";
-	var nom = rmNombreLinea(linea);
 	var cod = linea.codigo_sublinea || "";
-	if (cod && nom !== cod) return nom + " · " + cod;
+	var nom = rmNombreLinea(linea);
+	if (cod && nom && nom !== cod) return cod + " — " + nom;
 	return nom || cod || "Insumo";
+}
+
+function rmEnriquecerNombresSublinea(done) {
+	var cods = [];
+	var seen = {};
+	(RM.estado && RM.estado.lineas || []).forEach(function (l) {
+		var c = l.codigo_sublinea ? String(l.codigo_sublinea).toUpperCase() : "";
+		if (!c || seen[c] || RM.sublineaCache[c]) return;
+		seen[c] = true;
+		cods.push(c);
+	});
+	if (!cods.length) {
+		if (typeof done === "function") done();
+		return;
+	}
+	rmPost({ accion: "infoSublineas", codigos: JSON.stringify(cods) }).done(function (resp) {
+		if (resp && resp.ok && resp.data) {
+			Object.keys(resp.data).forEach(function (cod) {
+				var nom = resp.data[cod];
+				if (nom) RM.sublineaCache[cod] = String(nom);
+			});
+			// Si nombre_rol era solo el código, completar con el nombre de catálogo
+			(RM.estado.lineas || []).forEach(function (l) {
+				var c = l.codigo_sublinea ? String(l.codigo_sublinea).toUpperCase() : "";
+				if (!c || !RM.sublineaCache[c]) return;
+				l.nombre_sublinea = RM.sublineaCache[c];
+				if (!l.nombre_rol || String(l.nombre_rol) === c || String(l.nombre_rol) === "Tela principal") {
+					if (Number(l.es_tela_principal) === 1 && String(l.nombre_rol) === "Tela principal") {
+						// conservar "Tela principal" como rol, el label usará cache
+					} else if (!l.nombre_rol || String(l.nombre_rol) === c) {
+						l.nombre_rol = RM.sublineaCache[c];
+					}
+				}
+			});
+		}
+	}).always(function () {
+		if (typeof done === "function") done();
+	});
 }
 
 /**
@@ -431,6 +591,7 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 		$("#rmConsumoLineaLabel").text("Consumo");
 		$("#rmUnidadLineaAddon").text("—");
 		$("#rmMatrizContexto").text("Asignar · color artículo × talla");
+		$("#rmTituloArticulos").text("2. Asignar materia prima");
 		return;
 	}
 
@@ -439,16 +600,17 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 	var und = linea.unidad ? String(linea.unidad) : "—";
 
 	$ctx.show();
+	// El nombre completo solo aquí (evitar repetirlo en título / consumo / matriz)
 	$("#rmCtxNombre").text(etiqueta);
 	$("#rmCtxMeta").text(
 		"Consumo único para esta sublínea · se aplica a " + nArts
 		+ " combinación" + (nArts === 1 ? "" : "es") + " color × talla"
 	);
-	$("#rmConsumoLineaLabel").html("Consumo de: <strong>" + rmEsc(etiqueta) + "</strong>");
+	$("#rmConsumoLineaLabel").text("Consumo");
 	$("#rmUnidadLineaAddon").text(und);
-	$("#rmMatrizContexto").text("Asignar MP · " + etiqueta + " · color × talla");
-	$("#rmTituloArticulos").text("2. Asignar MP — «" + etiqueta + "»");
-	$hint.html("Sublínea seleccionada: <strong>" + rmEsc(etiqueta) + "</strong>").show();
+	$("#rmMatrizContexto").text("Asignar MP · color × talla");
+	$("#rmTituloArticulos").text("2. Asignar materia prima");
+	$hint.hide().empty();
 
 	if (mensajeTemporal) {
 		$("#rmCtxFlashTxt").text(mensajeTemporal);
@@ -458,7 +620,7 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 			: null;
 		if (opts.mostrarVolver && ant && Number(ant.activo) !== 0) {
 			$("#rmBtnVolverLineaAnterior")
-				.text("Volver a «" + rmNombreLinea(ant) + "»")
+				.text("Volver a «" + rmEtiquetaLinea(ant) + "»")
 				.show();
 		} else {
 			$("#rmBtnVolverLineaAnterior").hide();
@@ -639,7 +801,7 @@ function rmFmtNum(v) {
 function rmResolverMpLinea(linea, art) {
 	rmAsegurarVariantesArticulos(linea);
 	var mapa = rmMapaVariantes(linea);
-	var v = mapa[rmClaveArt(art)] || {};
+	var v = rmBuscarVarianteEnMapa(mapa, art);
 	var consumo = v.consumo != null && v.consumo !== ""
 		? v.consumo
 		: (linea.consumo_base != null ? linea.consumo_base : "");
@@ -1069,16 +1231,31 @@ function rmCargarEditor() {
 				return (parseInt(a.cod_talla, 10) || 0) - (parseInt(b.cod_talla, 10) || 0);
 			});
 			if (RM.lineaIdx === null && RM.estado.lineas.length) RM.lineaIdx = 0;
-			RM.estado.lineas.forEach(rmAsegurarVariantesArticulos);
-			if (rmNormalizarNombresTela()) rmMarcarDirty(true);
-			else rmMarcarDirty(false);
-			rmRenderCabecera();
-			rmRenderChips();
-			rmEnriquecerMpsAsignadas(function () {
-				rmRenderMatriz();
-				rmCargarTablaMp();
+			var artKeysExactos = {};
+			(RM.articulos || []).forEach(function (a) {
+				artKeysExactos[rmClaveArt(a)] = true;
 			});
-			rmCargarCobertura();
+			var needsRemap = false;
+			(RM.estado.lineas || []).forEach(function (l) {
+				(l.variantes || []).forEach(function (v) {
+					if (!v.mp_codigo) return;
+					var k = String(v.cod_color || "") + "|" + String(v.cod_talla || "");
+					if (!artKeysExactos[k]) needsRemap = true;
+				});
+			});
+			RM.estado.lineas.forEach(rmAsegurarVariantesArticulos);
+			if (rmNormalizarNombresTela() || needsRemap) rmMarcarDirty(true);
+			else rmMarcarDirty(false);
+			rmEnriquecerNombresSublinea(function () {
+				rmRenderCabecera();
+				rmRenderChips();
+				rmActualizarContextoLineaActiva();
+				rmEnriquecerMpsAsignadas(function () {
+					rmRenderMatriz();
+					rmCargarTablaMp();
+				});
+				rmCargarCobertura();
+			});
 		});
 	});
 }
@@ -1105,14 +1282,17 @@ function rmGuardar(silent) {
 		rmNormalizarNombresTela();
 		RM.lineaIdx = keep !== null && RM.estado.lineas[keep] ? keep : (RM.estado.lineas.length ? 0 : null);
 		rmMarcarDirty(false);
-		rmRenderCabecera();
-		rmRenderChips();
-		rmEnriquecerMpsAsignadas(function () {
-			rmRenderMatriz();
-			rmCargarTablaMp();
+		rmEnriquecerNombresSublinea(function () {
+			rmRenderCabecera();
+			rmRenderChips();
+			rmActualizarContextoLineaActiva();
+			rmEnriquecerMpsAsignadas(function () {
+				rmRenderMatriz();
+				rmCargarTablaMp();
+			});
+			rmCargarCobertura();
+			if (!silent) rmAlerta("success", "Guardado", "Cambios guardados");
 		});
-		rmCargarCobertura();
-		if (!silent) rmAlerta("success", "Guardado", "Cambios guardados");
 	}).always(function () {
 		$("#rmBtnGuardar").prop("disabled", !rmEsBorradorEditable()).html("<i class='fa fa-save'></i> Guardar");
 	});
@@ -1156,8 +1336,39 @@ function rmBuscarSublineas() {
 $(document).ready(function () {
 	if ($("#tablaRecetasModelo").length) {
 		rmCargarListado();
-		rmActualizarAlertaSinReceta();
-		$("#btnFiltrarRecetasModelo").on("click", rmCargarListado);
+		rmCargarEstadisticas();
+		$("#btnFiltrarRecetasModelo").on("click", function () {
+			rmMarcarKpiActivo($("#filtroEstadoReceta").val() || "");
+			rmCargarListado();
+		});
+		$("#filtroModeloReceta").on("keydown", function (e) {
+			if (e.which === 13) {
+				e.preventDefault();
+				rmMarcarKpiActivo($("#filtroEstadoReceta").val() || "");
+				rmCargarListado();
+			}
+		});
+		$("#filtroEstadoReceta").on("change", function () {
+			rmMarcarKpiActivo($(this).val() || "");
+		});
+		$("#rmStatsCabecera").on("click", ".rm-kpi", function () {
+			var $btn = $(this);
+			if ($btn.data("filtro") === "sin_receta") {
+				$("#rmStatsCabecera .rm-kpi").removeClass("active");
+				$btn.addClass("active");
+				return;
+			}
+			if ($btn.data("filtro") === "sin_tela") {
+				$("#rmStatsCabecera .rm-kpi").removeClass("active");
+				$btn.addClass("active");
+				return;
+			}
+			var est = $btn.attr("data-estado");
+			if (typeof est === "undefined") est = "";
+			$("#filtroEstadoReceta").val(est);
+			rmMarcarKpiActivo(est);
+			rmCargarListado();
+		});
 		$("#btnCrearRecetaModelo").on("click", function () {
 			var modelo = $.trim($("#nuevoModeloReceta").val() || "");
 			if (!modelo) {
@@ -1220,6 +1431,178 @@ $(document).ready(function () {
 			rmEjecutarImportModelo(modelo, $(this));
 		});
 
+		function rmLimpiarModalExcelReceta() {
+			$("#archivoExcelReceta").val("");
+			$("#resumenImportacionExcelReceta").hide().removeClass("alert-success alert-danger").text("");
+			$("#contenedorPreviewExcelReceta, #contenedorPreviewModelosExcelReceta").hide();
+			$("#previewImportacionExcelRecetaBody, #previewModelosExcelRecetaBody").empty();
+			$("#btnConfirmarExcelReceta").prop("disabled", true);
+		}
+
+		function rmEnviarImportExcelReceta(confirmar) {
+			var input = $("#archivoExcelReceta")[0];
+			if (!input || !input.files || !input.files.length) {
+				rmAlerta("warning", "Archivo", "Selecciona un archivo Excel o CSV");
+				return;
+			}
+			var datos = new FormData();
+			datos.append("accion", "importarDesdeExcel");
+			datos.append("confirmar", confirmar ? "1" : "0");
+			datos.append("archivo", input.files[0]);
+
+			var $botones = $("#btnPrevisualizarExcelReceta, #btnConfirmarExcelReceta");
+			$botones.prop("disabled", true);
+
+			$.ajax({
+				url: RM.url,
+				method: "POST",
+				data: datos,
+				dataType: "json",
+				processData: false,
+				contentType: false
+			}).done(function (resp) {
+				if (!resp || !resp.ok) {
+					rmAlerta("error", "Importación", (resp && resp.mensaje) || "No se pudo procesar el archivo");
+					return;
+				}
+				if (confirmar) {
+					$("#modalImportarExcelReceta").modal("hide");
+					rmLimpiarModalExcelReceta();
+					rmActualizarAlertaSinReceta();
+					rmCargarListado();
+					var creados = (resp.data && resp.data.creados) ? resp.data.creados : [];
+					var detalle = creados.map(function (c) {
+						return c.modelo + " v" + c.version;
+					}).join(", ");
+					rmAlerta(
+						"success",
+						"Importado",
+						(resp.mensaje || "Listo") + (detalle ? "\n" + detalle : "")
+					);
+					if (creados.length === 1 && creados[0].id) {
+						window.setTimeout(function () {
+							window.location = "index.php?ruta=editar-receta-modelo&idReceta=" + creados[0].id;
+						}, 800);
+					}
+					return;
+				}
+
+				var rechazadas = Number(resp.rechazadas || 0);
+				var modelosError = Number(resp.modelos_error || 0);
+				var aCrear = Number(resp.a_crear || 0);
+				var puedeImportar = aCrear >= 1;
+				var parcial = puedeImportar && (rechazadas > 0 || modelosError > 0);
+				var resumenTxt = "Filas: " + (resp.total || 0)
+					+ " · Válidas: " + (resp.validas || 0)
+					+ " · Rechazadas: " + rechazadas
+					+ " · Modelos a crear: " + aCrear
+					+ (modelosError ? " · Modelos omitidos: " + modelosError : "");
+				if (parcial) {
+					resumenTxt += " · Se importarán solo los válidos";
+				}
+				if (resp.preview_limitado) {
+					resumenTxt += " · Mostrando " + (resp.preview_mostradas || 0)
+						+ " filas en pantalla (prioriza errores)";
+				}
+				$("#resumenImportacionExcelReceta")
+					.removeClass("alert-success alert-danger alert-warning")
+					.addClass(!puedeImportar ? "alert-danger" : (parcial ? "alert-warning" : "alert-success"))
+					.text(resumenTxt)
+					.show();
+
+				var modelosHtml = (resp.modelos || []).map(function (m) {
+					var err = (m.errores && m.errores.length)
+						? "<span class='text-danger'>" + rmEsc(m.errores.join("; ")) + "</span>"
+						: "<span class='text-success'>OK</span>";
+					var accion = m.accion === "crear_borrador"
+						? "<span class='label label-primary'>Crear borrador</span>"
+						: "<span class='label label-default'>Omitir</span>";
+					return "<tr><td>" + rmEsc(m.modelo)
+						+ "</td><td>" + rmEsc(m.lineas)
+						+ "</td><td>" + rmEsc(m.variantes)
+						+ "</td><td>" + accion
+						+ "</td><td>" + err + "</td></tr>";
+				});
+				$("#previewModelosExcelRecetaBody").html(modelosHtml.join(""));
+				$("#contenedorPreviewModelosExcelReceta").toggle(modelosHtml.length > 0);
+
+				var filasHtml = (resp.data || []).map(function (fila) {
+					var errores = (fila.errores && fila.errores.length)
+						? "<span class='text-danger'>" + rmEsc(fila.errores.join("; ")) + "</span>"
+						: "<span class='text-success'>OK</span>";
+					var mpTxt = fila.mp_codigo || "";
+					if (fila.mp_normalizado && fila.mp_codigo_original) {
+						mpTxt = fila.mp_codigo_original + " → " + fila.mp_codigo;
+					}
+					return "<tr><td>" + rmEsc(fila.fila)
+						+ "</td><td>" + rmEsc(fila.articulo)
+						+ "</td><td>" + rmEsc(fila.modelo)
+						+ "</td><td>" + rmEsc(fila.cod_color)
+						+ "</td><td>" + rmEsc(fila.cod_talla)
+						+ "</td><td>" + rmEsc(mpTxt)
+						+ "</td><td>" + rmEsc(fila.consumo)
+						+ "</td><td>" + errores + "</td></tr>";
+				});
+				$("#previewImportacionExcelRecetaBody").html(filasHtml.join(""));
+				$("#contenedorPreviewExcelReceta").show();
+				$("#btnConfirmarExcelReceta")
+					.prop("disabled", !puedeImportar)
+					.html(parcial
+						? "<i class='fa fa-check'></i> Importar " + aCrear + " modelo(s) válido(s)"
+						: "<i class='fa fa-check'></i> Confirmar importación");
+				window._rmImportExcelParcial = parcial;
+				window._rmImportExcelACrear = aCrear;
+				window._rmImportExcelRechazadas = rechazadas;
+			}).fail(function () {
+				rmAlerta("error", "Error", "No se pudo comunicar con el servidor");
+			}).always(function () {
+				$("#btnPrevisualizarExcelReceta").prop("disabled", false);
+				if (Number(window._rmImportExcelACrear || 0) >= 1) {
+					$("#btnConfirmarExcelReceta").prop("disabled", false);
+				}
+			});
+		}
+
+		$("#btnPrevisualizarExcelReceta").on("click", function () {
+			rmEnviarImportExcelReceta(false);
+		});
+		$("#btnConfirmarExcelReceta").on("click", function () {
+			var aCrear = Number(window._rmImportExcelACrear || 0);
+			if (aCrear < 1) {
+				rmAlerta("warning", "Importación", "No hay modelos válidos para importar");
+				return;
+			}
+			if (window._rmImportExcelParcial) {
+				rmConfirmarMasivo(
+					"Importar solo válidos",
+					"Hay " + (window._rmImportExcelRechazadas || 0)
+						+ " fila(s) con error. Se importarán " + aCrear
+						+ " modelo(s) con las filas correctas y se omitirán las fallidas.",
+					function () {
+						rmEnviarImportExcelReceta(true);
+					}
+				);
+				return;
+			}
+			rmEnviarImportExcelReceta(true);
+		});
+		$("#modalImportarExcelReceta").on("hidden.bs.modal", function () {
+			rmLimpiarModalExcelReceta();
+			window._rmImportExcelParcial = false;
+			window._rmImportExcelACrear = 0;
+			window._rmImportExcelRechazadas = 0;
+			$("#btnConfirmarExcelReceta").html("<i class='fa fa-check'></i> Confirmar importación");
+		});
+		$("#archivoExcelReceta").on("change", function () {
+			$("#btnConfirmarExcelReceta").prop("disabled", true)
+				.html("<i class='fa fa-check'></i> Confirmar importación");
+			window._rmImportExcelParcial = false;
+			window._rmImportExcelACrear = 0;
+			window._rmImportExcelRechazadas = 0;
+			$("#resumenImportacionExcelReceta").hide();
+			$("#contenedorPreviewExcelReceta, #contenedorPreviewModelosExcelReceta").hide();
+		});
+
 		$(document).on("click", ".btnImportarModeloLista", function () {
 			rmEjecutarImportModelo(String($(this).attr("data-modelo") || ""), $(this));
 		});
@@ -1235,23 +1618,26 @@ $(document).ready(function () {
 				if (!resp || !resp.ok) rmAlerta("error", "No se publicó", (resp && resp.mensaje) || "");
 				else {
 					rmAlerta("success", "Publicada", "");
+					rmCargarEstadisticas();
 					rmCargarListado();
 				}
 			});
 		});
-		$(document).on("click", ".btnEliminarBorradorLista", function () {
+		$(document).on("click", ".btnEliminarRecetaLista", function () {
 			var id = $(this).data("id");
 			var modelo = String($(this).attr("data-modelo") || $(this).data("modelo") || "");
+			var version = String($(this).attr("data-version") || $(this).data("version") || "");
+			var estado = String($(this).attr("data-estado") || $(this).data("estado") || "");
 			rmConfirmarMasivo(
-				"Eliminar borrador",
-				"Se borrará la receta del modelo " + modelo + " (v. borrador). Luego podrás volver a importar desde tarjetas.",
+				"Eliminar receta",
+				"Se borrará la receta del modelo " + modelo + " (v" + version + ", " + estado + "). Esta acción no se puede deshacer.",
 				function () {
-					rmPost({ accion: "eliminarBorrador", id_receta: id }).done(function (resp) {
+					rmPost({ accion: "eliminarReceta", id_receta: id }).done(function (resp) {
 						if (!resp || !resp.ok) {
 							rmAlerta("error", "No se eliminó", (resp && resp.mensaje) || "");
 							return;
 						}
-						rmAlerta("success", "Eliminado", "Ya puedes reimportar el modelo si quieres.");
+						rmAlerta("success", "Eliminado", "Receta borrada.");
 						rmActualizarAlertaSinReceta();
 						rmCargarListado();
 					}).fail(function () {
@@ -1260,6 +1646,36 @@ $(document).ready(function () {
 				}
 			);
 		});
+
+		$("#btnBorrarTodasRecetasModelo").on("click", function () {
+			rmConfirmarMasivo(
+				"Borrar TODAS las recetas",
+				"Se eliminarán todas las recetas por modelo (borrador, publicadas y archivadas). No afecta las tarjetas antiguas. ¿Continuar?",
+				function () {
+					rmConfirmarMasivo(
+						"Confirmación final",
+						"Última confirmación: se borrará TODO el catálogo de recetas por modelo.",
+						function () {
+							var $btn = $("#btnBorrarTodasRecetasModelo").prop("disabled", true);
+							rmPost({ accion: "eliminarTodas" }).done(function (resp) {
+								if (!resp || !resp.ok) {
+									rmAlerta("error", "No se borró", (resp && resp.mensaje) || "");
+									return;
+								}
+								rmAlerta("success", "Listo", resp.mensaje || "Recetas eliminadas");
+								rmActualizarAlertaSinReceta();
+								rmCargarListado();
+							}).fail(function () {
+								rmAlerta("error", "Error", "No se pudo comunicar con el servidor");
+							}).always(function () {
+								$btn.prop("disabled", false);
+							});
+						}
+					);
+				}
+			);
+		});
+
 		$(document).on("click", ".btnPreviewRecetaLista", function () {
 			var id = $(this).attr("data-id") || $(this).data("id");
 			var modelo = String($(this).attr("data-modelo") || "");
@@ -1356,6 +1772,9 @@ $(document).ready(function () {
 		}
 		if (!nom || nom === "\u00a0" || nom.indexOf("Solo agrega") === 0 || nom.indexOf("Luego marca") === 0) {
 			nom = sub;
+		}
+		if (sub && nom && nom !== sub) {
+			RM.sublineaCache[String(sub).toUpperCase()] = nom;
 		}
 
 		rmSincronizarConsumoEnVariantes();

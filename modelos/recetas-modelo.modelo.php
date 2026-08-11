@@ -68,6 +68,68 @@ class ModeloRecetasModelo
 	}
 
 	/*=============================================
+	Estadísticas del listado (cabecera)
+	=============================================*/
+	static public function mdlEstadisticas()
+	{
+		$pdo = Conexion::conectar();
+		$out = array(
+			"total" => 0,
+			"borrador" => 0,
+			"publicada" => 0,
+			"archivada" => 0,
+			"modelos_con_receta" => 0,
+			"modelos_sin_receta" => 0,
+			"sin_tela_principal" => 0,
+		);
+
+		$stmt = $pdo->query(
+			"SELECT estado, COUNT(*) AS n
+			 FROM recetas_modelo
+			 GROUP BY estado"
+		);
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+			$n = (int) $row["n"];
+			$out["total"] += $n;
+			$est = strtolower(trim((string) $row["estado"]));
+			if (isset($out[$est])) {
+				$out[$est] = $n;
+			}
+		}
+
+		$stmt = $pdo->query(
+			"SELECT COUNT(DISTINCT modelo) FROM recetas_modelo"
+		);
+		$out["modelos_con_receta"] = (int) $stmt->fetchColumn();
+
+		$stmt = $pdo->query(
+			"SELECT COUNT(DISTINCT a.modelo)
+			 FROM articulojf a
+			 INNER JOIN detalles_tarjetajf dt ON dt.articulo = a.articulo
+			 WHERE a.estado = 'Activo'
+			   AND TRIM(IFNULL(a.modelo, '')) <> ''
+			   AND NOT EXISTS (
+					SELECT 1 FROM recetas_modelo r WHERE r.modelo = a.modelo
+			   )"
+		);
+		$out["modelos_sin_receta"] = (int) $stmt->fetchColumn();
+
+		$stmt = $pdo->query(
+			"SELECT COUNT(*) FROM recetas_modelo r
+			 WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+			   AND NOT EXISTS (
+			     SELECT 1 FROM recetas_modelo_detalles d
+			     WHERE d.id_receta_modelo = r.id
+			       AND d.activo = 1
+			       AND d.es_tela_principal = 1
+			   )"
+		);
+		$out["sin_tela_principal"] = (int) $stmt->fetchColumn();
+
+		return $out;
+	}
+
+	/*=============================================
 	Cabecera por id
 	=============================================*/
 	static public function mdlObtenerCabecera($id)
@@ -322,6 +384,50 @@ class ModeloRecetasModelo
 		$stmt->execute();
 
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	Nombres de sublíneas por código (lote)
+	=============================================*/
+	static public function mdlInfoSublineas(array $codigos)
+	{
+		$unicos = array();
+		foreach ($codigos as $c) {
+			$c = strtoupper(trim((string) $c));
+			if ($c !== "") {
+				$unicos[$c] = true;
+			}
+		}
+		$lista = array_keys($unicos);
+		if (empty($lista)) {
+			return array();
+		}
+
+		$mapa = array();
+		$pdo = Conexion::conectar();
+		foreach (array_chunk($lista, 200) as $chunk) {
+			$placeholders = array();
+			foreach ($chunk as $i => $c) {
+				$placeholders[] = ":c" . $i;
+			}
+			$sql = "SELECT
+					UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) AS codigo_sublinea,
+					TRIM(t.Des_Larga) AS nombre
+				FROM Tabla_M_Detalle t
+				WHERE t.Cod_Tabla = 'TSUB'
+				  AND t.Estado = '1'
+				  AND UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) IN ("
+				. implode(", ", $placeholders) . ")";
+			$stmt = $pdo->prepare($sql);
+			foreach ($chunk as $i => $c) {
+				$stmt->bindValue(":c" . $i, $c, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+				$mapa[$row["codigo_sublinea"]] = trim((string) $row["nombre"]);
+			}
+		}
+		return $mapa;
 	}
 
 	static public function mdlObtenerMp($mpCodigo)
@@ -588,6 +694,52 @@ class ModeloRecetasModelo
 	}
 
 	/*=============================================
+	Lookup en lote de artículos (import Excel)
+	=============================================*/
+	static public function mdlArticulosPorCodigos(array $codigos)
+	{
+		$unicos = array();
+		foreach ($codigos as $c) {
+			$c = trim((string) $c);
+			if ($c !== "") {
+				$unicos[$c] = true;
+			}
+		}
+		$lista = array_keys($unicos);
+		if (empty($lista)) {
+			return array();
+		}
+
+		$mapa = array();
+		$pdo = Conexion::conectar();
+		foreach (array_chunk($lista, 400) as $chunk) {
+			$placeholders = array();
+			foreach ($chunk as $i => $c) {
+				$placeholders[] = ":a" . $i;
+			}
+			$sql = "SELECT
+					a.articulo,
+					a.modelo,
+					IFNULL(a.cod_color, '') AS cod_color,
+					IFNULL(a.color, '') AS color,
+					IFNULL(a.cod_talla, '') AS cod_talla,
+					IFNULL(a.talla, '') AS talla,
+					a.estado
+				FROM articulojf a
+				WHERE a.articulo IN (" . implode(", ", $placeholders) . ")";
+			$stmt = $pdo->prepare($sql);
+			foreach ($chunk as $i => $c) {
+				$stmt->bindValue(":a" . $i, $c, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+				$mapa[$row["articulo"]] = $row;
+			}
+		}
+		return $mapa;
+	}
+
+	/*=============================================
 	Receta PUBLICADA vigente del modelo (opcional por fechas)
 	=============================================*/
 	static public function mdlRecetaPublicadaModelo($modelo, $fecha = null)
@@ -633,33 +785,33 @@ class ModeloRecetasModelo
 			return array();
 		}
 
-		$placeholders = array();
-		foreach ($lista as $i => $c) {
-			$placeholders[] = ":p" . $i;
-		}
-
-		$sql = "SELECT
-				TRIM(p.CodPro) AS mp_codigo,
-				p.DesPro AS descripcion,
-				IFNULL(tc.Des_Larga, '') AS color,
-				IFNULL(tu.Des_Corta, '') AS unidad,
-				LEFT(p.CodFab, 6) AS codigo_sublinea
-			FROM producto p
-			LEFT JOIN Tabla_M_Detalle tc
-			  ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro
-			LEFT JOIN Tabla_M_Detalle tu
-			  ON tu.Cod_Tabla = 'TUND' AND tu.Cod_Argumento = p.UndPro
-			WHERE p.CodPro IN (" . implode(", ", $placeholders) . ")";
-
-		$stmt = Conexion::conectar()->prepare($sql);
-		foreach ($lista as $i => $c) {
-			$stmt->bindValue(":p" . $i, $c, PDO::PARAM_STR);
-		}
-		$stmt->execute();
-
 		$mapa = array();
-		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-			$mapa[$row["mp_codigo"]] = $row;
+		$pdo = Conexion::conectar();
+		foreach (array_chunk($lista, 400) as $chunk) {
+			$placeholders = array();
+			foreach ($chunk as $i => $c) {
+				$placeholders[] = ":p" . $i;
+			}
+			$sql = "SELECT
+					TRIM(p.CodPro) AS mp_codigo,
+					p.DesPro AS descripcion,
+					IFNULL(tc.Des_Larga, '') AS color,
+					IFNULL(tu.Des_Corta, '') AS unidad,
+					LEFT(p.CodFab, 6) AS codigo_sublinea
+				FROM producto p
+				LEFT JOIN Tabla_M_Detalle tc
+				  ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro
+				LEFT JOIN Tabla_M_Detalle tu
+				  ON tu.Cod_Tabla = 'TUND' AND tu.Cod_Argumento = p.UndPro
+				WHERE p.CodPro IN (" . implode(", ", $placeholders) . ")";
+			$stmt = $pdo->prepare($sql);
+			foreach ($chunk as $i => $c) {
+				$stmt->bindValue(":p" . $i, $c, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+				$mapa[$row["mp_codigo"]] = $row;
+			}
 		}
 		return $mapa;
 	}
@@ -831,25 +983,22 @@ class ModeloRecetasModelo
 	}
 
 	/*=============================================
-	Eliminar BORRADOR completo (cabecera + líneas + variantes)
+	Eliminar una receta (cualquier estado) + líneas + variantes
 	=============================================*/
-	static public function mdlEliminarBorrador($idReceta)
+	static public function mdlEliminarReceta($idReceta)
 	{
 		$pdo = Conexion::conectar();
 		$pdo->beginTransaction();
 
 		try {
 			$stmt = $pdo->prepare(
-				"SELECT id, estado FROM recetas_modelo WHERE id = :id LIMIT 1 FOR UPDATE"
+				"SELECT id, modelo, version, estado FROM recetas_modelo WHERE id = :id LIMIT 1 FOR UPDATE"
 			);
 			$stmt->bindValue(":id", (int) $idReceta, PDO::PARAM_INT);
 			$stmt->execute();
 			$cab = $stmt->fetch(PDO::FETCH_ASSOC);
 			if (!$cab) {
 				throw new Exception("Receta no encontrada");
-			}
-			if ($cab["estado"] !== "BORRADOR") {
-				throw new Exception("Solo se puede eliminar un BORRADOR");
 			}
 
 			$ids = array();
@@ -880,12 +1029,60 @@ class ModeloRecetasModelo
 			$delCab->execute(array((int) $idReceta));
 
 			$pdo->commit();
-			return true;
+			return array("ok" => true, "cabecera" => $cab);
 		} catch (Exception $e) {
 			if ($pdo->inTransaction()) {
 				$pdo->rollBack();
 			}
+			return array("ok" => false, "mensaje" => $e->getMessage());
+		}
+	}
+
+	/*=============================================
+	Eliminar BORRADOR completo (cabecera + líneas + variantes)
+	=============================================*/
+	static public function mdlEliminarBorrador($idReceta)
+	{
+		$cab = self::mdlObtenerCabecera($idReceta);
+		if (!$cab) {
 			return false;
+		}
+		if ($cab["estado"] !== "BORRADOR") {
+			return false;
+		}
+		$res = self::mdlEliminarReceta($idReceta);
+		return !empty($res["ok"]);
+	}
+
+	/*=============================================
+	Eliminar TODAS las recetas del módulo
+	=============================================*/
+	static public function mdlEliminarTodasRecetas()
+	{
+		$pdo = Conexion::conectar();
+		$pdo->beginTransaction();
+
+		try {
+			$nCab = (int) $pdo->query("SELECT COUNT(*) FROM recetas_modelo")->fetchColumn();
+			$nDet = (int) $pdo->query("SELECT COUNT(*) FROM recetas_modelo_detalles")->fetchColumn();
+			$nVar = (int) $pdo->query("SELECT COUNT(*) FROM recetas_modelo_variantes")->fetchColumn();
+
+			$pdo->exec("DELETE FROM recetas_modelo_variantes");
+			$pdo->exec("DELETE FROM recetas_modelo_detalles");
+			$pdo->exec("DELETE FROM recetas_modelo");
+
+			$pdo->commit();
+			return array(
+				"ok" => true,
+				"recetas" => $nCab,
+				"detalles" => $nDet,
+				"variantes" => $nVar,
+			);
+		} catch (Exception $e) {
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+			return array("ok" => false, "mensaje" => $e->getMessage());
 		}
 	}
 }
