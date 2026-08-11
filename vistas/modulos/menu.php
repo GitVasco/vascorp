@@ -2022,6 +2022,21 @@
             }
             ?>
 
+            <!-- Utilidades -->
+            <?php
+            if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("utilidades", "utilidades")) {
+                $isActiveUtilidades = (isset($_GET["ruta"]) && $_GET["ruta"] == "utilidades") ? "active" : "";
+            ?>
+                <li class="<?= $isActiveUtilidades; ?>">
+                    <a href="utilidades">
+                        <i class="fa fa-wrench text-maroon"></i>
+                        <span>Utilidades</span>
+                    </a>
+                </li>
+            <?php
+            }
+            ?>
+
                 <!--  Costos-->
             <?php
             if ($_SESSION["caja"] == 1) {

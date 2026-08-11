@@ -56,6 +56,7 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 | Doc | Tema |
 |-----|------|
 | [`ti/PLAN_HELPDESK.md`](ti/PLAN_HELPDESK.md) | Helpdesk interno: tickets, estados e indicadores |
+| [`ti/UTILIDADES.md`](ti/UTILIDADES.md) | Utilidades: cuadre stock almacén 01, cuadre servicio/cierre, etc. |
 
 ---
 

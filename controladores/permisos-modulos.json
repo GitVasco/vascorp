@@ -98,5 +98,11 @@
       "registrar": ["*"],
       "gestionar": [6, 10]
     }
+  },
+  "utilidades": {
+    "utilidades": {
+      "ver": [6],
+      "ejecutar": [6]
+    }
   }
 }

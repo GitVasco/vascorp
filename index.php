@@ -190,7 +190,11 @@ require_once "controladores/vasco-online.config.php";
 
 require_once "modelos/helpdesk.modelo.php";
 
+require_once "modelos/utilidades.modelo.php";
+
 require_once "controladores/helpdesk.controlador.php";
+
+require_once "controladores/utilidades.controlador.php";
 
 /* 
 * MODELOS
