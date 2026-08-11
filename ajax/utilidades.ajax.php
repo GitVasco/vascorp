@@ -39,4 +39,14 @@ if ($accion === "actualizarServicio") {
 	return;
 }
 
+if ($accion === "contarCuentaVtaOficina") {
+	echo json_encode(ControladorUtilidades::ctrContarCuentaVtaOficina());
+	return;
+}
+
+if ($accion === "eliminarCuentaVtaOficina") {
+	echo json_encode(ControladorUtilidades::ctrEliminarCuentaVtaOficina());
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no reconocida"));

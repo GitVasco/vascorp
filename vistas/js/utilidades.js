@@ -205,10 +205,9 @@ $(document).on("click", "#btnUtActualizarStock01", function () {
         showCancelButton: true,
         confirmButtonColor: "#1e8449",
         confirmButtonText: "Sí, actualizar",
-        cancelButtonText: "Cancelar",
-        closeOnConfirm: true
-    }, function (confirmado) {
-        if (!confirmado) {
+        cancelButtonText: "Cancelar"
+    }).then(function (result) {
+        if (!result.value) {
             return;
         }
         utSetBtnLoading($btn, true, '<i class="fa fa-check"></i> Actualizar seleccionados');
@@ -403,10 +402,9 @@ $(document).on("click", "#btnUtActualizarServicio", function () {
         showCancelButton: true,
         confirmButtonColor: "#1e8449",
         confirmButtonText: "Sí, actualizar",
-        cancelButtonText: "Cancelar",
-        closeOnConfirm: true
-    }, function (confirmado) {
-        if (!confirmado) {
+        cancelButtonText: "Cancelar"
+    }).then(function (result) {
+        if (!result.value) {
             return;
         }
         utSetBtnLoading($btn, true, '<i class="fa fa-check"></i> Actualizar seleccionados');
@@ -445,6 +443,103 @@ $(document).on("click", "#btnUtActualizarServicio", function () {
                 text: "No se pudo comunicar con el servidor",
                 confirmButtonText: "Cerrar"
             });
+        });
+    });
+});
+
+/* ---- Limpiar cte. VTAOFIC21 ---- */
+
+$(document).on("click", "#btnUtLimpiarVtaOfic", function () {
+    var $btn = $("#btnUtLimpiarVtaOfic");
+
+    utSetBtnLoading($btn, true, '<i class="fa fa-trash"></i> Eliminar');
+    utMostrarCarga("Consultando movimientos…");
+
+    $.post("ajax/utilidades.ajax.php", {
+        accion: "contarCuentaVtaOficina"
+    }, function (prev) {
+        utOcultarCarga();
+        utSetBtnLoading($btn, false, '<i class="fa fa-trash"></i> Eliminar');
+
+        if (!prev || !prev.ok) {
+            swal({
+                type: "error",
+                title: "Error",
+                text: (prev && prev.mensaje) ? prev.mensaje : "No se pudo consultar",
+                confirmButtonText: "Cerrar"
+            });
+            return;
+        }
+
+        var total = Number(prev.total) || 0;
+        if (total < 1) {
+            swal({
+                type: "info",
+                title: "Sin movimientos",
+                text: "VTAOFIC21 no tiene registros en cuenta corriente.",
+                confirmButtonText: "Cerrar"
+            });
+            return;
+        }
+
+        var textoCantidad = total === 1
+            ? "Se eliminará 1 movimiento de VTAOFIC21. No se puede deshacer."
+            : ("Se eliminarán " + total + " movimientos de VTAOFIC21. No se puede deshacer.");
+
+        swal({
+            title: "¿Borrar cte. de VTAOFIC21?",
+            text: textoCantidad,
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#c0392b",
+            confirmButtonText: "Sí, eliminar " + total,
+            cancelButtonText: "Cancelar"
+        }).then(function (result) {
+            if (!result.value) {
+                return;
+            }
+            utSetBtnLoading($btn, true, '<i class="fa fa-trash"></i> Eliminar');
+            $btn.html('<i class="fa fa-spinner fa-spin"></i> Eliminando…');
+            utMostrarCarga("Eliminando " + total + " movimiento(s)…");
+            $.post("ajax/utilidades.ajax.php", {
+                accion: "eliminarCuentaVtaOficina"
+            }, function (resp) {
+                utOcultarCarga();
+                utSetBtnLoading($btn, false, '<i class="fa fa-trash"></i> Eliminar');
+                if (!resp || !resp.ok) {
+                    swal({
+                        type: "error",
+                        title: "Error",
+                        text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo eliminar",
+                        confirmButtonText: "Cerrar"
+                    });
+                    return;
+                }
+                swal({
+                    type: "success",
+                    title: "Listo",
+                    text: resp.mensaje || "Cuenta corriente eliminada",
+                    confirmButtonText: "Cerrar"
+                });
+            }, "json").fail(function () {
+                utOcultarCarga();
+                utSetBtnLoading($btn, false, '<i class="fa fa-trash"></i> Eliminar');
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: "No se pudo comunicar con el servidor",
+                    confirmButtonText: "Cerrar"
+                });
+            });
+        });
+    }, "json").fail(function () {
+        utOcultarCarga();
+        utSetBtnLoading($btn, false, '<i class="fa fa-trash"></i> Eliminar');
+        swal({
+            type: "error",
+            title: "Error",
+            text: "No se pudo comunicar con el servidor",
+            confirmButtonText: "Cerrar"
         });
     });
 });

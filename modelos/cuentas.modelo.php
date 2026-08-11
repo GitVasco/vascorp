@@ -1109,6 +1109,62 @@ class ModeloCuentas
 		$stmt = null;
 	}
 
+	/**
+	 * Cuenta movimientos de cuenta corriente de un cliente.
+	 * @return array{ok:bool,total:int,msg?:string}
+	 */
+	static public function mdlContarCuentasPorCliente($tabla, $cliente)
+	{
+		$cliente = strtoupper(trim((string) $cliente));
+		if ($cliente === "") {
+			return array("ok" => false, "total" => 0, "msg" => "Cliente vacío.");
+		}
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT COUNT(*) AS total FROM {$tabla} WHERE UPPER(TRIM(cliente)) = :cliente"
+		);
+		$stmt->bindParam(":cliente", $cliente, PDO::PARAM_STR);
+		if (!$stmt->execute()) {
+			return array("ok" => false, "total" => 0, "msg" => "No se pudo consultar.");
+		}
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+		return array(
+			"ok" => true,
+			"total" => $row ? (int) $row["total"] : 0,
+		);
+	}
+
+	/**
+	 * Borra todos los movimientos de cuenta corriente de un cliente.
+	 * @return array{ok:bool,eliminados:int,msg?:string}
+	 */
+	static public function mdlEliminarCuentasPorCliente($tabla, $cliente)
+	{
+		$conteo = self::mdlContarCuentasPorCliente($tabla, $cliente);
+		if (empty($conteo["ok"])) {
+			return array(
+				"ok" => false,
+				"eliminados" => 0,
+				"msg" => isset($conteo["msg"]) ? $conteo["msg"] : "No se pudo consultar.",
+			);
+		}
+
+		$cliente = strtoupper(trim((string) $cliente));
+		$total = (int) $conteo["total"];
+
+		$stmt = Conexion::conectar()->prepare(
+			"DELETE FROM {$tabla} WHERE UPPER(TRIM(cliente)) = :cliente"
+		);
+		$stmt->bindParam(":cliente", $cliente, PDO::PARAM_STR);
+
+		if ($stmt->execute()) {
+			return array("ok" => true, "eliminados" => $total);
+		}
+
+		return array("ok" => false, "eliminados" => 0, "msg" => "No se pudo eliminar.");
+	}
+
 	/*=============================================
 	ELIMINAR TIPO DE PAGO
 	=============================================*/

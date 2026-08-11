@@ -22,6 +22,13 @@ $infoServicio = "Compara articulojf.servicio con:\n"
     . "+ suma de cantidades en cierres_detallejf.\n\n"
     . "• Solo muestra los que no cuadran.\n"
     . "• Al confirmar, deja servicio = servicio abierto + cierre.";
+
+$infoVtaOfic = "Elimina TODOS los movimientos de cuenta corriente\n"
+    . "del cliente VTAOFIC21 (venta oficina / boleto).\n\n"
+    . "Equivalente a:\n"
+    . "DELETE FROM cuenta_ctejf WHERE cliente = 'VTAOFIC21'\n\n"
+    . "• No se puede deshacer.\n"
+    . "• Solo afecta ese cliente.";
 ?>
 <div class="content-wrapper ut-page">
 
@@ -86,6 +93,34 @@ $infoServicio = "Compara articulojf.servicio con:\n"
                     <?php if ($puedeEjecutar) { ?>
                     <button type="button" class="btn btn-primary" id="btnUtCuadrarServicio">
                         <i class="fa fa-wrench"></i> Cuadrar
+                    </button>
+                    <?php } else { ?>
+                    <span class="text-muted">Sin permiso</span>
+                    <?php } ?>
+                </div>
+            </article>
+
+            <article class="ut-card">
+                <div class="ut-card__top">
+                    <h2 class="ut-card__title">Limpiar cte. VTAOFIC21</h2>
+                    <button type="button"
+                        class="ut-info"
+                        tabindex="0"
+                        data-toggle="popover"
+                        data-trigger="hover focus"
+                        data-placement="left"
+                        title="Detalle"
+                        data-content="<?php echo htmlspecialchars($infoVtaOfic, ENT_QUOTES, 'UTF-8'); ?>">
+                        <i class="fa fa-info-circle"></i>
+                    </button>
+                </div>
+                <p class="ut-card__desc">
+                    Borra toda la cuenta corriente del cliente venta oficina (VTAOFIC21).
+                </p>
+                <div class="ut-card__actions">
+                    <?php if ($puedeEjecutar) { ?>
+                    <button type="button" class="btn btn-danger" id="btnUtLimpiarVtaOfic">
+                        <i class="fa fa-trash"></i> Eliminar
                     </button>
                     <?php } else { ?>
                     <span class="text-muted">Sin permiso</span>

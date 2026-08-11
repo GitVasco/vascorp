@@ -173,4 +173,97 @@ class ControladorUtilidades
 
 		return ModeloUtilidades::mdlActualizarServicio($limpios);
 	}
+
+	/** Cliente fijo venta oficina. */
+	const CLIENTE_VTA_OFICINA = "VTAOFIC21";
+
+	private static function ctrCargarModeloCuentas()
+	{
+		if (!class_exists("ModeloCuentas")) {
+			require_once __DIR__ . "/../modelos/cuentas.modelo.php";
+		}
+	}
+
+	/**
+	 * Cuántos movimientos tiene VTAOFIC21 (previa a borrar).
+	 */
+	static public function ctrContarCuentaVtaOficina()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "total" => 0);
+		}
+
+		self::ctrCargarModeloCuentas();
+		$cliente = self::CLIENTE_VTA_OFICINA;
+		$conteo = ModeloCuentas::mdlContarCuentasPorCliente("cuenta_ctejf", $cliente);
+
+		if (empty($conteo["ok"])) {
+			return array(
+				"ok" => false,
+				"mensaje" => isset($conteo["msg"]) ? $conteo["msg"] : "No se pudo consultar.",
+				"total" => 0,
+				"cliente" => $cliente,
+			);
+		}
+
+		$total = (int) $conteo["total"];
+
+		return array(
+			"ok" => true,
+			"cliente" => $cliente,
+			"total" => $total,
+			"mensaje" => $total === 1
+				? "Hay 1 movimiento de {$cliente}."
+				: ("Hay {$total} movimientos de {$cliente}."),
+		);
+	}
+
+	/**
+	 * Borra toda la cuenta corriente de VTAOFIC21.
+	 */
+	static public function ctrEliminarCuentaVtaOficina()
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para ejecutar");
+		}
+
+		self::ctrCargarModeloCuentas();
+
+		$cliente = self::CLIENTE_VTA_OFICINA;
+		$resultado = ModeloCuentas::mdlEliminarCuentasPorCliente("cuenta_ctejf", $cliente);
+
+		if (empty($resultado["ok"])) {
+			return array(
+				"ok" => false,
+				"mensaje" => isset($resultado["msg"]) ? $resultado["msg"] : "No se pudo eliminar.",
+				"eliminados" => 0,
+			);
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$eliminados = isset($resultado["eliminados"]) ? (int) $resultado["eliminados"] : 0;
+		$descripcion = "Utilidades: {$usuario} eliminó cte. de {$cliente} ({$eliminados} registro(s)).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return array(
+			"ok" => true,
+			"mensaje" => $eliminados > 0
+				? "Se eliminaron {$eliminados} movimiento(s) de {$cliente}."
+				: "No había movimientos de {$cliente} por eliminar.",
+			"eliminados" => $eliminados,
+			"cliente" => $cliente,
+		);
+	}
 }

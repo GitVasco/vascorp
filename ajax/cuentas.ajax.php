@@ -368,6 +368,7 @@ class AjaxCuentas
             echo json_encode(["status" => 400, "message" => "Hubo errores en el procesamiento", "errores" => $errores]);
         }
     }
+
 }
 
 
