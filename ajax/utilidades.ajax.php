@@ -49,4 +49,14 @@ if ($accion === "eliminarCuentaVtaOficina") {
 	return;
 }
 
+if ($accion === "trackingModelo") {
+	echo json_encode(ControladorUtilidades::ctrTrackingModelo($_POST));
+	return;
+}
+
+if ($accion === "corregirSaldosModelo") {
+	echo json_encode(ControladorUtilidades::ctrCorregirSaldosModelo($_POST));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no reconocida"));

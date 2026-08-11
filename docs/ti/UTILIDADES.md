@@ -167,7 +167,124 @@ En el módulo solo se listan filas donde
 
 ---
 
-## UX de carga (ambos botones)
+## Botón: Tracking modelo (producción)
 
-- Al pulsar **Cuadrar**: el botón pasa a “Calculando…” y hay overlay a pantalla completa; el modal se abre al terminar.
-- Al confirmar **Actualizar seleccionados**: overlay “Actualizando…” y el botón del modal muestra spinner hasta completar.
+### Qué resuelve
+
+Diagnóstico (y corrección de espejos) de un modelo en el flujo de producción:
+
+`orden de corte → almacén de corte → taller/servicio → cierre → ingresos E20`
+
+Útil cuando hay saldos “fantasma” (por ejemplo `alm_corte` cargado sin pasar por orden de corte / corte).
+
+### Qué hace en pantalla
+
+1. Ingresas el código de modelo (ej. `10400`) y pulsas **Analizar**.
+2. Se abre un modal con:
+   - **Resumen**: totales de columnas en `articulojf`, documentos por etapa, más **Inicio corte**, **En proceso**, **Ingresos E20** y **Brecha**.
+   - **Inconsistencias**: solo los problemas detectados.
+   - **Detalle por artículo**: comparación actual vs calculado, más inicio/ingresos/brecha.
+3. Con permiso `ejecutar`: botón **Corregir saldos artículo** sincroniza solo columnas de `articulojf` según documentos y re-analiza.
+
+### Conservación corte → ingresos
+
+```text
+inicio_corte = SUM(almacencorte_detallejf.cantidad)
+en_proceso   = alm_corte_calc + taller_calc + servicio_calc
+ingresos_e20 = SUM(E20) del año actual en movimientosjf_YYYY
+brecha       = inicio_corte − (en_proceso + ingresos_e20)
+```
+
+La brecha se muestra y alerta (`BRECHA_CORTE_INGRESOS`). **No** se fuerza creando ni borrando E20.
+
+### Cadena servicio → cierre → ingreso
+
+Tabla aparte en el modal. Por artículo:
+
+| Campo | Origen |
+|-------|--------|
+| Serv.orig | `SUM(servicios_detallejf.cantidad)` |
+| Serv.ab | `SUM(saldo)` con `cerrar = 0` |
+| Cierre ini | `SUM(cierres_detallejf.inicio)` (cantidad al crear el cierre) |
+| Cierre pend | `SUM(cierres_detallejf.cantidad)` (pendiente de ingresar) |
+| E20 cierre | `SUM(E20)` del año con `idcierre > 0` |
+
+Reglas (Δ ≠ 0 = descuadre, solo diagnóstico):
+
+```text
+Δ Serv→Cierre = Serv.orig − (Serv.ab + Cierre ini)
+Δ Cierre→Ing  = Cierre ini − (Cierre pend + E20 cierre)
+Δ Cadena      = Serv.orig − (Serv.ab + Cierre pend + E20 cierre)
+```
+
+Así se ve si el problema está al pasar a cierre o al ingresar a almacén.
+
+### Corrección de cadena (mismo botón)
+
+Orden de corrección:
+
+1. `cierres_detallejf.inicio` = `cantidad` pendiente + `SUM(E20)` con ese `idcierre`
+2. Por artículo: `servicios_detallejf.saldo` se redistribuye para que el abierto total sea `max(0, SUM(cantidad) − SUM(inicio cierres))` (quita pendiente fantasma; si una línea queda en 0 → `cerrar=1`). **No infla** `cantidad` origen.
+3. Espejos `articulojf` + saldos `entaller` externo
+
+No modifica movimientos E20 ni stock.
+
+### Reglas de detección
+
+| Código | Significado |
+|--------|-------------|
+| `ORD_CORTE_DESCUADRE` | `ord_corte` ≠ suma de `saldo` en `detalles_ordencortejf` |
+| `ALM_CORTE_DESCUADRE` | `alm_corte` ≠ suma de `saldo_taller` en `almacencorte_detallejf` |
+| `TALLER_DESCUADRE` | `taller` ≠ suma de `saldo` en envíos a **taller interno** (`sectorjf.tipo = 0` o `VC`; excluye servicio externo) |
+| `SERVICIO_DESCUADRE` | `servicio` ≠ servicios abiertos (`cerrar=0`) + cierres |
+| `BRECHA_CORTE_INGRESOS` | inicio corte ≠ en proceso + ingresos E20 (solo alerta) |
+| `CORTE_SIN_OC` | Detalle de almacén corte sin orden de corte válida |
+| `ENVIO_SIN_CORTE` | Envío a taller sin vínculo a detalle de almacén corte |
+| `SERVICIO_SIN_ENVIO` | Detalle de servicio sin `cabecera_taller` válida |
+| `MODELO_SIN_OC_CON_CORTE` | Hay corte/`alm_corte` y cero detalle de orden de corte |
+| `MODELO_SIN_DOC_CORTE` | `alm_corte > 0` sin filas en `almacencorte_detallejf` |
+
+### Corrección (`corregirSaldosModelo`)
+
+Por cada artículo del modelo deja:
+
+| Columna | Valor calculado |
+|---------|-----------------|
+| `ord_corte` | `SUM(detalles_ordencortejf.saldo)` |
+| `alm_corte` | `SUM(saldo_taller)` donde `saldo_taller > 0` |
+| `taller` | `SUM(saldo)` solo envíos a taller **interno** (`tipo = 0` / `VC`) |
+| `servicio` | servicios abiertos + cierres |
+
+Además, por cada envío a **servicio externo** (`entaller_cabjf` con `sectorjf.tipo <> 0`):
+
+| Campo | Valor |
+|-------|--------|
+| `entaller_cabjf.saldo` | `SUM(servicios_detallejf.saldo)` abiertos ligados (`cabecera_taller = id`); **0** si no hay servicio abierto |
+| `estado` | `1` si saldo queda 0; `0` si queda pendiente |
+
+En pantalla: columnas **Ent.ext** / **Ent.ext calc** (naranja si se corregirán).
+
+Requiere permiso `ejecutar`. Si `alm_corte` era fantasma sin documentos, queda en 0.
+
+**No** crea cortes ni ingresos; la brecha histórica puede seguir.
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `trackingModelo` | Analiza el modelo (requiere `ver`) |
+| `corregirSaldosModelo` | Sincroniza columnas espejo (requiere `ejecutar`) |
+
+### Qué no hace
+
+- No modifica `servicios_detallejf`, `cierres_detallejf`, `entaller_cabjf` ni movimientos.
+- No crea ni borra ingresos E20 (no toca stock).
+- No recrea órdenes de corte ni cortes.
+- No analiza todos los modelos a la vez (un código por corrida).
+
+---
+
+## UX de carga
+
+- Al pulsar **Cuadrar** / **Analizar**: el botón pasa a “Calculando…” / spinner y hay overlay a pantalla completa; el modal se abre al terminar.
+- Al confirmar **Actualizar seleccionados** / **Corregir saldos artículo**: overlay y spinner hasta completar.
