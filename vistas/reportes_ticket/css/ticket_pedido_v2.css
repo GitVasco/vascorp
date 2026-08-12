@@ -110,7 +110,7 @@ body {
     padding-top: 2px;
 }
 
-/* Nombre / dirección: 1 sola línea (evita cabecera alta → hoja vacía) */
+/* Nombre: 1 sola línea (evita cabecera alta → hoja vacía) */
 .pedido-v2-celda-texto {
     max-width: 0; /* fuerza truncado con table-layout:fixed */
     overflow: hidden;
@@ -120,6 +120,17 @@ body {
 .pedido-v2-truncar {
     display: inline;
     white-space: nowrap;
+}
+
+/* Dirección del cliente: fuente menor y completa, sin acortar */
+.pedido-v2-cab td.pedido-v2-celda-direccion {
+    font-size: 11px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.pedido-v2-cab td.pedido-v2-celda-direccion .lbl {
+    font-size: 11px;
 }
 
 .pedido-v2-sello-meta {

@@ -231,9 +231,8 @@ function pedidoV2CabeceraHoja(array $respuesta, $fechaEmision, $fechaAprobacion,
     echo '</tr>';
 
     echo '<tr>';
-    echo '<td class="pedido-v2-celda-texto"><span class="lbl">Dirección:</span> '
-        . '<span class="pedido-v2-truncar" title="' . pedidoV2Esc($direccionCompleta) . '">'
-        . pedidoV2Esc($direccionCompleta) . '</span></td>';
+    echo '<td class="pedido-v2-celda-direccion"><span class="lbl">Dirección:</span> '
+        . pedidoV2Esc($direccionCompleta) . '</td>';
     echo '<td class="meta"><span class="lbl">Aprobación:</span> ' . pedidoV2Esc($fechaAprobacion) . '</td>';
     echo '</tr>';
 

@@ -580,4 +580,1214 @@ class ControladorUtilidades
 			"cliente" => $cliente,
 		);
 	}
+
+	/**
+	 * Cargos sin fecha_ven (tip_mov = '+') para completar con la fecha del documento.
+	 */
+	static public function ctrCteSinFechaVen()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$filas = ModeloUtilidades::mdlCteSinFechaVen();
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar cuenta corriente", "data" => array());
+		}
+
+		$data = array();
+		foreach ($filas as $f) {
+			$data[] = array(
+				"id" => (int) $f["id"],
+				"tipo_doc" => (string) $f["tipo_doc"],
+				"num_cta" => (string) $f["num_cta"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"fecha" => (string) $f["fecha"],
+				"fecha_ven_propuesta" => (string) $f["fecha"],
+				"monto" => (float) $f["monto"],
+				"saldo" => (float) $f["saldo"],
+				"estado" => (string) $f["estado"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "No hay cargos sin fecha de vencimiento"
+				: ("Se encontraron " . count($data) . " cargo(s) sin fecha de vencimiento")
+		);
+	}
+
+	/**
+	 * Completa fecha_ven = fecha en los ids seleccionados.
+	 */
+	static public function ctrCompletarFechaVenCte($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["ids"]) ? $post["ids"] : "";
+		if (is_string($raw)) {
+			$ids = json_decode($raw, true);
+		} else {
+			$ids = $raw;
+		}
+
+		if (!is_array($ids) || count($ids) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarFechaVenCte($ids);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$descripcion = "Utilidades: {$usuario} completó fecha_ven en {$actualizados} cargo(s) de cte.";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/** Ventana por defecto (días) para abonos sin fecha_ori. */
+	const CTE_FECHA_ORI_DIAS = 60;
+
+	/**
+	 * Abonos sin fecha_ori / fecha_ori_ven (últimos N días) con cargo de referencia.
+	 */
+	static public function ctrCteSinFechaOri()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$dias = self::CTE_FECHA_ORI_DIAS;
+		$filas = ModeloUtilidades::mdlCteSinFechaOri($dias);
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar cuenta corriente", "data" => array());
+		}
+
+		$data = array();
+		foreach ($filas as $f) {
+			$data[] = array(
+				"id" => (int) $f["id"],
+				"tipo_doc" => (string) $f["tipo_doc"],
+				"num_cta" => (string) $f["num_cta"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"fecha" => (string) $f["fecha"],
+				"fecha_ori" => (string) $f["fecha_ori"],
+				"fecha_ori_ven" => (string) $f["fecha_ori_ven"],
+				"fecha_ori_prop" => (string) $f["fecha_ori_prop"],
+				"fecha_ori_ven_prop" => (string) $f["fecha_ori_ven_prop"],
+				"monto" => (float) $f["monto"],
+				"estado" => (string) $f["estado"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"dias" => $dias,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "No hay abonos sin fecha de origen (últimos {$dias} días)"
+				: ("Se encontraron " . count($data) . " abono(s) sin fecha de origen")
+		);
+	}
+
+	/**
+	 * Completa fecha_ori / fecha_ori_ven desde el cargo (+) del mismo documento.
+	 */
+	static public function ctrCompletarFechaOriCte($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["ids"]) ? $post["ids"] : "";
+		if (is_string($raw)) {
+			$ids = json_decode($raw, true);
+		} else {
+			$ids = $raw;
+		}
+
+		if (!is_array($ids) || count($ids) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarFechaOriCte($ids);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$descripcion = "Utilidades: {$usuario} completó fecha_ori en {$actualizados} abono(s) de cte.";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * Cuentas del año actual sin tip_cambio (con cambio en totalesjf).
+	 */
+	static public function ctrCteSinTipCambio()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = (int) date("Y");
+		$filas = ModeloUtilidades::mdlCteSinTipCambio($anio);
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar cuenta corriente", "data" => array());
+		}
+
+		$data = array();
+		foreach ($filas as $f) {
+			$data[] = array(
+				"id" => (int) $f["id"],
+				"tipo_doc" => (string) $f["tipo_doc"],
+				"num_cta" => (string) $f["num_cta"],
+				"tip_mov" => (string) $f["tip_mov"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"fecha" => (string) $f["fecha"],
+				"tip_cambio" => (float) $f["tip_cambio"],
+				"tip_cambio_prop" => (float) $f["tip_cambio_prop"],
+				"monto" => (float) $f["monto"],
+				"estado" => (string) $f["estado"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"anio" => $anio,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "No hay cuentas sin tipo de cambio en {$anio}"
+				: ("Se encontraron " . count($data) . " cuenta(s) sin tipo de cambio")
+		);
+	}
+
+	/**
+	 * Completa tip_cambio desde totalesjf.cambio_venta.
+	 */
+	static public function ctrCompletarTipCambioCte($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["ids"]) ? $post["ids"] : "";
+		if (is_string($raw)) {
+			$ids = json_decode($raw, true);
+		} else {
+			$ids = $raw;
+		}
+
+		if (!is_array($ids) || count($ids) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = (int) date("Y");
+		$resultado = ModeloUtilidades::mdlCompletarTipCambioCte($ids, $anio);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$descripcion = "Utilidades: {$usuario} actualizó tip_cambio en {$actualizados} cte. ({$anio}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * Ventas del año sin tipo_cambio (fecha &lt; hoy) con cambio en totalesjf.
+	 */
+	static public function ctrVentasSinTipCambio()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = (int) date("Y");
+		$filas = ModeloUtilidades::mdlVentasSinTipCambio($anio);
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar ventas", "data" => array());
+		}
+
+		$data = array();
+		foreach ($filas as $f) {
+			$data[] = array(
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"fecha" => (string) $f["fecha"],
+				"tipo_cambio" => (float) $f["tipo_cambio"],
+				"tipo_cambio_prop" => (float) $f["tipo_cambio_prop"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"anio" => $anio,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "No hay ventas sin tipo de cambio en {$anio}"
+				: ("Se encontraron " . count($data) . " venta(s) sin tipo de cambio")
+		);
+	}
+
+	/**
+	 * Completa ventajf.tipo_cambio desde totalesjf.cambio_venta.
+	 */
+	static public function ctrCompletarTipCambioVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = (int) date("Y");
+		$resultado = ModeloUtilidades::mdlCompletarTipCambioVentas($items, $anio);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$descripcion = "Utilidades: {$usuario} actualizó tipo_cambio en {$actualizados} venta(s) ({$anio}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * Facturas/boletas del periodo sin cuenta contable.
+	 */
+	static public function ctrVentasSinCuenta($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasSinCuenta($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"ubigeo" => (string) $f["ubigeo"],
+				"zona" => (string) $f["zona"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay facturas/boletas sin cuenta en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " venta(s) sin cuenta")
+		);
+	}
+
+	/**
+	 * Completa ventajf.cuenta (S02/S03) según ubigeo.
+	 */
+	static public function ctrCompletarCuentaVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$descripcion = "Utilidades: {$usuario} completó cuenta contable en {$actualizados} venta(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * Ventas con abono POS showroom del periodo → cuenta 702213.
+	 */
+	static public function ctrVentasCuentaPos($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasCuentaPos($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$cuenta = $res["cuenta"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo_doc" => (string) $f["tipo_doc"],
+				"num_cta" => (string) $f["num_cta"],
+				"cod_pago" => (string) $f["cod_pago"],
+				"vendedor" => (string) $f["vendedor"],
+				"fecha_pago" => (string) $f["fecha_pago"],
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"cuenta" => $cuenta,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay ventas POS showroom pendientes en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " venta(s) POS showroom")
+		);
+	}
+
+	/**
+	 * Completa cuenta 702213 en ventas POS showroom seleccionadas.
+	 */
+	static public function ctrCompletarCuentaPosVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaPosVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$cuenta = isset($resultado["cuenta"]) ? $resultado["cuenta"] : ModeloUtilidades::CUENTA_POS_SHOWROOM;
+		$descripcion = "Utilidades: {$usuario} asignó cuenta {$cuenta} (POS showroom) en {$actualizados} venta(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * Ventas con abono Culqi showroom del periodo → 702215/702216.
+	 */
+	static public function ctrVentasCuentaCulqi($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasCuentaCulqi($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo_doc" => (string) $f["tipo_doc"],
+				"num_cta" => (string) $f["num_cta"],
+				"cod_pago" => (string) $f["cod_pago"],
+				"vendedor" => (string) $f["vendedor"],
+				"fecha_pago" => (string) $f["fecha_pago"],
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"ubigeo" => (string) $f["ubigeo"],
+				"zona" => (string) $f["zona"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"cuenta_lima" => $res["cuenta_lima"],
+			"cuenta_prov" => $res["cuenta_prov"],
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay ventas Culqi pendientes en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " venta(s) Culqi")
+		);
+	}
+
+	/**
+	 * Completa cuenta Culqi (702215/702216) en ventas seleccionadas.
+	 */
+	static public function ctrCompletarCuentaCulqiVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaCulqiVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$descripcion = "Utilidades: {$usuario} asignó cuenta Culqi en {$actualizados} venta(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * NC E05 devolución (C1/C7) del periodo → 709411/709412.
+	 */
+	static public function ctrVentasCuentaNcDev($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasCuentaNcDev($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"ubigeo" => (string) $f["ubigeo"],
+				"zona" => (string) $f["zona"],
+				"vendedor" => (string) $f["vendedor"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"motivo" => (string) $f["motivo"],
+				"observacion" => (string) $f["observacion"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"cuenta_lima" => $res["cuenta_lima"],
+			"cuenta_prov" => $res["cuenta_prov"],
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay NC devolución pendientes en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " NC devolución")
+		);
+	}
+
+	/**
+	 * Completa cuenta NC devolución (709411/709412).
+	 */
+	static public function ctrCompletarCuentaNcDevVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaNcDevVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$descripcion = "Utilidades: {$usuario} asignó cuenta NC devolución en {$actualizados} doc(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * NC E05 descuento (motivo ≠ C1/C7) del periodo → 741101/741102.
+	 */
+	static public function ctrVentasCuentaNcDscto($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasCuentaNcDscto($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"ubigeo" => (string) $f["ubigeo"],
+				"zona" => (string) $f["zona"],
+				"vendedor" => (string) $f["vendedor"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"motivo" => (string) $f["motivo"],
+				"observacion" => (string) $f["observacion"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"cuenta_lima" => $res["cuenta_lima"],
+			"cuenta_prov" => $res["cuenta_prov"],
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay NC descuento pendientes en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " NC descuento")
+		);
+	}
+
+	/**
+	 * Completa cuenta NC descuento (741101/741102).
+	 */
+	static public function ctrCompletarCuentaNcDsctoVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaNcDsctoVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$descripcion = "Utilidades: {$usuario} asignó cuenta NC descuento en {$actualizados} doc(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * ND S05 flete showroom (vendedor %08%) del periodo → 75995/75996.
+	 */
+	static public function ctrVentasCuentaNdFlete($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasCuentaNdFlete($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"ubigeo" => (string) $f["ubigeo"],
+				"zona" => (string) $f["zona"],
+				"vendedor" => (string) $f["vendedor"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"motivo" => (string) $f["motivo"],
+				"observacion" => (string) $f["observacion"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"cuenta_lima" => $res["cuenta_lima"],
+			"cuenta_prov" => $res["cuenta_prov"],
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay ND flete pendientes en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " ND flete")
+		);
+	}
+
+	/**
+	 * Completa cuenta ND flete (75995/75996).
+	 */
+	static public function ctrCompletarCuentaNdFleteVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaNdFleteVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$descripcion = "Utilidades: {$usuario} asignó cuenta ND flete en {$actualizados} doc(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * ND S05 protesto (vendedor sin 08) del periodo → 75991/75992.
+	 */
+	static public function ctrVentasCuentaNdProtesto($post = array())
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$res = ModeloUtilidades::mdlVentasCuentaNdProtesto($periodo);
+		if ($res === false) {
+			return array("ok" => false, "mensaje" => "Periodo inválido", "data" => array());
+		}
+
+		$rango = $res["rango"];
+		$data = array();
+		foreach ($res["filas"] as $f) {
+			$data[] = array(
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"cliente" => (string) $f["cliente"],
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"ubigeo" => (string) $f["ubigeo"],
+				"zona" => (string) $f["zona"],
+				"vendedor" => (string) $f["vendedor"],
+				"fecha" => (string) $f["fecha"],
+				"cuenta" => (string) $f["cuenta"],
+				"cuenta_prop" => (string) $f["cuenta_prop"],
+				"motivo" => (string) $f["motivo"],
+				"observacion" => (string) $f["observacion"],
+				"total" => (float) $f["total"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"periodo" => $rango["periodo"],
+			"inicio" => $rango["inicio"],
+			"fin" => $rango["fin"],
+			"cuenta_lima" => $res["cuenta_lima"],
+			"cuenta_prov" => $res["cuenta_prov"],
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? ("No hay ND protesto pendientes en " . $rango["periodo"])
+				: ("Se encontraron " . count($data) . " ND protesto")
+		);
+	}
+
+	/**
+	 * Completa cuenta ND protesto (75991/75992).
+	 */
+	static public function ctrCompletarCuentaNdProtestoVentas($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$periodo = isset($post["periodo"]) ? $post["periodo"] : null;
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay registros para actualizar");
+		}
+
+		$resultado = ModeloUtilidades::mdlCompletarCuentaNdProtestoVentas($items, $periodo);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$per = isset($resultado["periodo"]) ? $resultado["periodo"] : (string) $periodo;
+		$descripcion = "Utilidades: {$usuario} asignó cuenta ND protesto en {$actualizados} doc(s) ({$per}).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
+
+	/**
+	 * Días del año en totalesjf sin tipo de cambio.
+	 */
+	static public function ctrTotalesSinTipCambio()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = (int) date("Y");
+		$filas = ModeloUtilidades::mdlTotalesSinTipCambio($anio);
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar totales", "data" => array());
+		}
+
+		$dias = array(
+			1 => "Lun", 2 => "Mar", 3 => "Mié", 4 => "Jue",
+			5 => "Vie", 6 => "Sáb", 7 => "Dom"
+		);
+		$data = array();
+		foreach ($filas as $f) {
+			$fecha = (string) $f["fecha"];
+			$n = (int) date("N", strtotime($fecha));
+			$data[] = array(
+				"fecha" => $fecha,
+				"dia_semana" => isset($dias[$n]) ? $dias[$n] : "",
+				"mes" => (int) $f["mes"],
+				"dia" => (int) $f["dia"],
+				"cambio_compra" => (float) $f["cambio_compra"],
+				"cambio_venta" => (float) $f["cambio_venta"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"anio" => $anio,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "No hay días sin tipo de cambio en totales ({$anio})"
+				: ("Se encontraron " . count($data) . " día(s) sin tipo de cambio en totales")
+		);
+	}
+
+	/**
+	 * Completa cambio_compra/venta en totalesjf vía API (misma fuente que datos-dia).
+	 * Si la API no responde, reusa el último TC previo registrado.
+	 */
+	static public function ctrCompletarTipCambioTotales($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["fechas"]) ? $post["fechas"] : "";
+		if (is_string($raw)) {
+			$fechas = json_decode($raw, true);
+		} else {
+			$fechas = $raw;
+		}
+
+		if (!is_array($fechas) || count($fechas) < 1) {
+			return array("ok" => false, "mensaje" => "No hay fechas para actualizar");
+		}
+
+		$limpias = array();
+		foreach ($fechas as $f) {
+			$f = trim((string) $f);
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $f)) {
+				$limpias[$f] = $f;
+			}
+		}
+		$limpias = array_values($limpias);
+		if (count($limpias) < 1) {
+			return array("ok" => false, "mensaje" => "Fechas inválidas");
+		}
+		if (count($limpias) > 120) {
+			return array("ok" => false, "mensaje" => "Máximo 120 días por vez");
+		}
+
+		if (!class_exists("JsonPeApi")) {
+			require_once __DIR__ . "/../helpers/jsonpe.api.php";
+		}
+
+		date_default_timezone_set("America/Lima");
+		@set_time_limit(300);
+
+		$actualizados = 0;
+		$omitidos = 0;
+		$detalle = array();
+
+		foreach ($limpias as $fecha) {
+			$compra = null;
+			$venta = null;
+			$fuente = "api";
+
+			$api = JsonPeApi::consultarTipoCambio($fecha);
+			$ventaApi = isset($api["venta"]) ? $api["venta"] : null;
+			$compraApi = isset($api["compra"]) ? $api["compra"] : null;
+
+			if (
+				$ventaApi !== null
+				&& $ventaApi !== "Fuera de plazo permitido"
+				&& is_numeric($ventaApi)
+				&& (float) $ventaApi > 0
+			) {
+				$compra = is_numeric($compraApi) ? (float) $compraApi : 0;
+				$venta = (float) $ventaApi;
+			} else {
+				$prev = ModeloUtilidades::mdlUltimoTipCambioTotalesAntes($fecha);
+				if ($prev && (float) $prev["cambio_venta"] > 0) {
+					$compra = (float) $prev["cambio_compra"];
+					$venta = (float) $prev["cambio_venta"];
+					$fuente = "previo:" . $prev["fecha"];
+				}
+			}
+
+			if ($venta === null || $venta <= 0) {
+				$omitidos++;
+				$detalle[] = array(
+					"fecha" => $fecha,
+					"ok" => false,
+					"mensaje" => "Sin TC en API ni día previo"
+				);
+				continue;
+			}
+
+			$upd = ModeloUtilidades::mdlActualizarTipCambioTotales(
+				$fecha,
+				(string) $compra,
+				(string) $venta
+			);
+			if (empty($upd["ok"])) {
+				$omitidos++;
+				$detalle[] = array(
+					"fecha" => $fecha,
+					"ok" => false,
+					"mensaje" => isset($upd["mensaje"]) ? $upd["mensaje"] : "Error al guardar"
+				);
+				continue;
+			}
+
+			$actualizados++;
+			$detalle[] = array(
+				"fecha" => $fecha,
+				"ok" => true,
+				"compra" => $compra,
+				"venta" => $venta,
+				"fuente" => $fuente
+			);
+		}
+
+		$fechaAudit = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$anio = (int) date("Y");
+		$descripcion = "Utilidades: {$usuario} completó TC totales ({$actualizados} ok, {$omitidos} omit.) {$anio}.";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fechaAudit->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return array(
+			"ok" => true,
+			"actualizados" => $actualizados,
+			"omitidos" => $omitidos,
+			"total" => count($limpias),
+			"detalle" => $detalle,
+			"mensaje" => "Totales: {$actualizados} actualizado(s), {$omitidos} omitido(s)"
+		);
+	}
 }

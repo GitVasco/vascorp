@@ -284,7 +284,441 @@ Requiere permiso `ejecutar`. Si `alm_corte` era fantasma sin documentos, queda e
 
 ---
 
+## Botón: Completar fecha vencimiento
+
+### Qué resuelve
+
+Antes de canje / transferencias a SISCONT, aparecen cargos (`tip_mov = '+'`) sin `fecha_ven` (sobre todo notas de débito antiguas o editadas). Esta utilidad los lista y completa.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista los cargos sin vencimiento válido (NULL, vacío o `0000-00-00`) que sí tienen fecha de documento.
+2. El modal muestra tipo, documento, cliente, fecha, vencimiento propuesto (= fecha), monto, saldo y estado.
+3. **Completar seleccionados** deja `fecha_ven = fecha` en los marcados.
+
+### Reglas
+
+| Regla | Detalle |
+|-------|---------|
+| Filtro | `tip_mov = '+'` y `fecha_ven` vacía/nula/`0000-00-00` |
+| Requisito | `fecha` del documento válida |
+| Actualización | solo `cuenta_ctejf.fecha_ven` |
+| Origen del valor | misma fecha del documento (igual que al crear ND) |
+
+### Prevención en facturación
+
+- Al **crear** ND con cte: ya se grababa `fecha_ven = fecha`.
+- Al **editar** ND: antes `mdlEditarCuenta` recibía el array sin `fecha_ven` y la dejaba NULL; ahora también envía `fecha_ven = fecha`.
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `cteSinFechaVen` | Lista cargos sin vencimiento (requiere `ver`) |
+| `completarFechaVenCte` | Completa `fecha_ven` de los seleccionados (requiere `ejecutar`) |
+
+---
+
+## Botón: Completar fecha origen
+
+### Qué resuelve
+
+En abonos (`tip_mov = '-'`) a veces faltan `fecha_ori` / `fecha_ori_ven`. Se toman del cargo (`tip_mov = '+'`) con el mismo `tipo_doc` + `num_cta`. Necesario para canje / transferencias a SISCONT.
+
+Equivalente al script manual de los últimos 60 días.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista abonos de los últimos 60 días sin origen (o con origen vacío/`0000-00-00`) que sí tienen cargo de referencia.
+2. El modal muestra documento, cliente, fecha del abono y las fechas propuestas del cargo.
+3. **Completar seleccionados** deja:
+   - `fecha_ori = fecha` del cargo
+   - `fecha_ori_ven = fecha_ven` del cargo
+
+### Reglas
+
+| Regla | Detalle |
+|-------|---------|
+| Filtro abono | `tip_mov = '-'`, `fecha` en últimos 60 días |
+| Falta origen | `fecha_ori` o `fecha_ori_ven` nula/vacía/`0000-00-00` |
+| Cargo | mismo `tipo_doc` + `num_cta`, `tip_mov = '+'` (si hay varios, el de menor `id`) |
+| Actualización | solo `fecha_ori` y `fecha_ori_ven` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `cteSinFechaOri` | Lista abonos sin origen (requiere `ver`) |
+| `completarFechaOriCte` | Completa origen de los seleccionados (requiere `ejecutar`) |
+
+---
+
+## Botón: Completar tipo de cambio
+
+### Qué resuelve
+
+Cuentas del año actual con `tip_cambio` en `0` o `NULL`. Se completa con `totalesjf.cambio_venta` del mismo día (`DATE(fecha)`).
+
+### Qué hace en pantalla
+
+1. **Revisar** lista las cuentas del año sin T/C que sí tienen cambio de venta en totales.
+2. El modal muestra documento, movimiento, cliente, fecha, T/C actual y propuesto.
+3. **Completar seleccionados** deja `tip_cambio = cambio_venta` del día.
+
+### Reglas
+
+| Regla | Detalle |
+|-------|---------|
+| Año | año actual (zona `America/Lima`) |
+| Filtro | `tip_cambio IS NULL` o `= 0` |
+| Fuente | `totalesjf.cambio_venta` del mismo día (si hay varios, el máximo del día) |
+| Sin match | no aparece en la lista (no deja T/C en null) |
+| Actualización | solo `cuenta_ctejf.tip_cambio` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `cteSinTipCambio` | Lista cuentas sin T/C (requiere `ver`) |
+| `completarTipCambioCte` | Actualiza T/C de los seleccionados (requiere `ejecutar`) |
+
+---
+
+## Botón: Preparar cte. (secuencia)
+
+### Qué resuelve
+
+Evita correr a mano los botones de cuenta corriente. Ideal antes de transferir a SISCONT.
+
+### Qué hace en pantalla
+
+1. **Ejecutar secuencia** pide confirmación.
+2. Abre un modal con pasos y avanza en orden:
+   0. Completar T/C en totales (datos-día / API)
+   1. Completar fecha vencimiento (todos los pendientes)
+   2. Completar fecha origen (todos los pendientes)
+   3. Completar tipo de cambio en cte. (todos los pendientes)
+3. Cada paso muestra: buscando → completando N → listo / sin pendientes / error.
+4. Si un paso falla, se detiene ahí; los botones individuales siguen disponibles.
+
+### Ajax
+
+Reutiliza las mismas acciones de los botones anteriores (sin acción nueva en servidor).
+
+---
+
+## Botón: Completar T/C en totales
+
+### Qué resuelve
+
+Días del año en totales (pantalla Datos diarios) sin `cambio_venta`. Necesario para que luego puedan completarse los T/C de cte. y ventas.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista los días del año (hasta hoy) con T/C venta en 0 o vacío.
+2. **Completar seleccionados** consulta la misma API que `/datos-dia` y graba compra/venta.
+3. Si un día no tiene TC en la API (finde/feriado), reusa el último día previo que sí tenga.
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `totalesSinTipCambio` | Lista días sin T/C (requiere `ver`) |
+| `completarTipCambioTotales` | Consulta API y actualiza totales (requiere `ejecutar`) |
+
+---
+
+## Botón: Preparar ventas (secuencia)
+
+### Qué resuelve
+
+Evita correr a mano los botones de ventas. Ideal antes de transferir a SISCONT.
+
+### Qué hace en pantalla
+
+1. Elige el **periodo** (mes) en la tarjeta de secuencia (aplica a pasos 2–8).
+2. **Ejecutar secuencia** pide confirmación.
+3. Abre un modal con pasos y avanza en orden:
+   0. Completar T/C en totales (datos-día / API)
+   1. Tipo de cambio en ventas (año actual, hasta ayer; no usa el periodo)
+   2. Cuenta facturas/boletas (S02/S03)
+   3. Cuenta POS showroom
+   4. Cuenta Culqi
+   5. Cuenta NC devolución
+   6. Cuenta NC descuento
+   7. Cuenta ND flete
+   8. Cuenta ND protesto
+4. Cada paso muestra: buscando → completando N → listo / sin pendientes / error.
+5. Si un paso falla, se detiene ahí; los botones **Revisar** individuales siguen disponibles.
+
+### Ajax
+
+Reutiliza las mismas acciones de los botones de ventas y de T/C en totales (sin acción nueva extra).
+
+---
+
+## Botón: Completar tipo de cambio (ventas)
+
+### Qué resuelve
+
+Ventas del año actual con `tipo_cambio` en `0` o `NULL` y fecha anterior a hoy. Se completa con `totalesjf.cambio_venta` del mismo día.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista las ventas sin T/C que sí tienen cambio de venta en totales.
+2. El modal muestra tipo, documento, cliente, fecha, T/C actual y propuesto, total.
+3. **Completar seleccionados** deja `tipo_cambio = cambio_venta` del día.
+
+### Reglas
+
+| Regla | Detalle |
+|-------|---------|
+| Año | año actual (zona `America/Lima`) |
+| Fecha | `DATE(fecha) < CURDATE()` (no incluye hoy) |
+| Filtro | `tipo_cambio IS NULL` o `= 0` |
+| Fuente | `totalesjf.cambio_venta` del mismo día |
+| Actualización | solo `ventajf.tipo_cambio` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasSinTipCambio` | Lista ventas sin T/C (requiere `ver`) |
+| `completarTipCambioVentas` | Actualiza T/C de los seleccionados (requiere `ejecutar`) |
+
+---
+
+## Botón: Completar cuenta contable (ventas)
+
+### Qué resuelve
+
+Asigna la cuenta del plan contable en facturas (`S02`) y boletas (`S03`) del periodo, cuando `cuenta` está vacía.
+
+### Periodo
+
+- Por defecto: **mes actual** (selector `YYYY-MM` en la tarjeta).
+- Se puede elegir otro mes (máximo el mes actual) para no tocar periodos futuros.
+- El update solo afecta ese rango de fechas.
+
+### Regla de cuenta
+
+| Condición | Cuenta |
+|-----------|--------|
+| Ubigeo del cliente empieza con `15` o `L` (Lima) | `702211` |
+| Resto (provincia / sin ubigeo) | `702212` |
+
+### Qué hace en pantalla
+
+1. Elige periodo y pulsa **Revisar**.
+2. Modal con tipo, documento, cliente, ubigeo, zona, fecha, cuenta propuesta y total.
+3. **Completar seleccionados** graba la cuenta propuesta.
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasSinCuenta` | Lista S02/S03 sin cuenta del periodo (requiere `ver`) |
+| `completarCuentaVentas` | Completa cuenta de los seleccionados (requiere `ejecutar`) |
+
+---
+
+## Botón: Cuenta POS showroom
+
+### Qué resuelve
+
+Sustituye el cruce manual Excel: abonos POS del showroom en cte. → actualizar `ventajf.cuenta = 702213`.
+
+### Criterio en cuenta corriente
+
+| Campo | Valor |
+|-------|--------|
+| `tip_mov` | `-` |
+| Periodo | mes elegido (fecha del abono) |
+| `vendedor` | contiene `08` |
+| `cod_pago` | `06` o `17` |
+
+### Mapeo tipo_doc → tipo venta
+
+| cte `tipo_doc` | venta `tipo` |
+|----------------|--------------|
+| `01` | `S03` |
+| `03` | `S02` |
+| `07` | `E05` |
+| `08` | `S05` |
+
+Cruce: `ventajf.documento = cuenta_ctejf.num_cta` + tipo mapeado.
+
+### Qué hace en pantalla
+
+1. Elige periodo y **Revisar**.
+2. Modal lista abonos POS con su venta equivalente, cuenta actual y `702213` propuesta.
+3. **Completar seleccionados** graba `cuenta = 702213` (solo si aún no la tienen).
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasCuentaPos` | Lista ventas POS pendientes (requiere `ver`) |
+| `completarCuentaPosVentas` | Asigna 702213 (requiere `ejecutar`) |
+
+---
+
+## Botón: Cuenta Culqi
+
+### Qué resuelve
+
+Abonos Culqi del showroom → `ventajf.cuenta` según ubigeo (Lima / provincia).
+
+### Criterio en cuenta corriente
+
+| Campo | Valor |
+|-------|--------|
+| `tip_mov` | `-` |
+| Periodo | mes elegido (fecha del abono) |
+| `vendedor` | contiene `08` |
+| `cod_pago` | `14` |
+| `tipo_doc` | `01` o `03` |
+
+### Mapeo y cuenta
+
+| cte `tipo_doc` | venta `tipo` | Cuenta |
+|----------------|--------------|--------|
+| `01` | `S03` | Lima `702215` / provincia `702216` |
+| `03` | `S02` | Lima `702215` / provincia `702216` |
+
+Lima = ubigeo empieza con `15` o `L`.
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasCuentaCulqi` | Lista ventas Culqi pendientes (requiere `ver`) |
+| `completarCuentaCulqiVentas` | Asigna 702215/702216 (requiere `ejecutar`) |
+
+---
+
+## Botón: Cuenta NC devolución
+
+### Qué resuelve
+
+Notas de crédito `E05` por devolución (motivos `C1` / `C7`) → cuenta según ubigeo.
+
+### Criterio
+
+| Campo | Valor |
+|-------|--------|
+| `ventajf.tipo` | `E05` |
+| Periodo | mes elegido (`ventajf.fecha`) |
+| `notascd_jf.motivo` | `C1` o `C7` |
+
+### Cuenta
+
+| Zona | Cuenta |
+|------|--------|
+| Lima (`ubigeo` 15… o L…) | `709411` |
+| Provincia | `709412` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasCuentaNcDev` | Lista NC devolución pendientes (requiere `ver`) |
+| `completarCuentaNcDevVentas` | Asigna 709411/709412 (requiere `ejecutar`) |
+
+---
+
+## Botón: Cuenta NC descuento
+
+### Qué resuelve
+
+Notas de crédito `E05` por descuento (motivos **distintos** de `C1` / `C7`) → cuenta según ubigeo.
+
+### Criterio
+
+| Campo | Valor |
+|-------|--------|
+| `ventajf.tipo` | `E05` |
+| Periodo | mes elegido |
+| `notascd_jf.motivo` | `NOT IN ('C1', 'C7')` |
+
+### Cuenta
+
+| Zona | Cuenta |
+|------|--------|
+| Lima | `741101` |
+| Provincia | `741102` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasCuentaNcDscto` | Lista NC descuento pendientes (requiere `ver`) |
+| `completarCuentaNcDsctoVentas` | Asigna 741101/741102 (requiere `ejecutar`) |
+
+---
+
+## Botón: Cuenta ND flete
+
+### Qué resuelve
+
+Notas de débito `S05` por flete del showroom (vendedor contiene `08`) → cuenta según ubigeo.
+
+### Criterio
+
+| Campo | Valor |
+|-------|--------|
+| `ventajf.tipo` | `S05` |
+| Periodo | mes elegido |
+| `vendedor` | contiene `08` |
+
+### Cuenta
+
+| Zona | Cuenta |
+|------|--------|
+| Lima | `75995` |
+| Provincia | `75996` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasCuentaNdFlete` | Lista ND flete pendientes (requiere `ver`) |
+| `completarCuentaNdFleteVentas` | Asigna 75995/75996 (requiere `ejecutar`) |
+
+---
+
+## Botón: Cuenta ND protesto
+
+### Qué resuelve
+
+Notas de débito `S05` por protesto (vendedor **no** contiene `08`) → cuenta según ubigeo.
+
+### Criterio
+
+| Campo | Valor |
+|-------|--------|
+| `ventajf.tipo` | `S05` |
+| Periodo | mes elegido |
+| `vendedor` | `NOT LIKE '%08%'` |
+
+### Cuenta
+
+| Zona | Cuenta |
+|------|--------|
+| Lima | `75991` |
+| Provincia | `75992` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `ventasCuentaNdProtesto` | Lista ND protesto pendientes (requiere `ver`) |
+| `completarCuentaNdProtestoVentas` | Asigna 75991/75992 (requiere `ejecutar`) |
+
+---
+
 ## UX de carga
 
-- Al pulsar **Cuadrar** / **Analizar**: el botón pasa a “Calculando…” / spinner y hay overlay a pantalla completa; el modal se abre al terminar.
-- Al confirmar **Actualizar seleccionados** / **Corregir saldos artículo**: overlay y spinner hasta completar.
+- Al pulsar **Cuadrar** / **Analizar** / **Revisar**: el botón pasa a spinner y hay overlay a pantalla completa; el modal se abre al terminar.
+- Al confirmar **Actualizar seleccionados** / **Corregir saldos artículo** / **Completar seleccionados**: overlay y spinner hasta completar.
+- **Ejecutar secuencia** (cte o ventas): modal de avance paso a paso (sin overlay global).

@@ -1126,4 +1126,1780 @@ class ModeloUtilidades
 			);
 		}
 	}
+
+	/**
+	 * Cargos (tip_mov = '+') sin fecha de vencimiento válida,
+	 * con fecha de documento usable para completar.
+	 */
+	static public function mdlCteSinFechaVen()
+	{
+		$sql = "
+			SELECT
+				c.id,
+				COALESCE(c.tipo_doc, '') AS tipo_doc,
+				COALESCE(c.num_cta, '') AS num_cta,
+				COALESCE(c.cliente, '') AS cliente,
+				COALESCE(cli.nombre, '') AS cliente_nombre,
+				COALESCE(c.fecha, '') AS fecha,
+				ROUND(COALESCE(c.monto, 0), 2) AS monto,
+				ROUND(COALESCE(c.saldo, 0), 2) AS saldo,
+				COALESCE(c.estado, '') AS estado
+			FROM cuenta_ctejf c
+			LEFT JOIN clientesjf cli ON cli.codigo = c.cliente
+			WHERE c.tip_mov = '+'
+				AND (
+					c.fecha_ven IS NULL
+					OR TRIM(c.fecha_ven) = ''
+					OR c.fecha_ven = '0000-00-00'
+				)
+				AND c.fecha IS NOT NULL
+				AND TRIM(c.fecha) <> ''
+				AND c.fecha <> '0000-00-00'
+			ORDER BY c.fecha ASC, c.id ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/**
+	 * Completa fecha_ven = fecha en los ids indicados (solo cargos sin vencimiento).
+	 * $ids: array de enteros
+	 */
+	static public function mdlCompletarFechaVenCte($ids)
+	{
+		if (!is_array($ids) || count($ids) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$limpios = array();
+		foreach ($ids as $id) {
+			$id = (int) $id;
+			if ($id > 0) {
+				$limpios[$id] = $id;
+			}
+		}
+		$limpios = array_values($limpios);
+		if (count($limpios) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$placeholders = implode(",", array_fill(0, count($limpios), "?"));
+		$sql = "
+			UPDATE cuenta_ctejf
+			SET fecha_ven = fecha
+			WHERE tip_mov = '+'
+				AND id IN ({$placeholders})
+				AND (
+					fecha_ven IS NULL
+					OR TRIM(fecha_ven) = ''
+					OR fecha_ven = '0000-00-00'
+				)
+				AND fecha IS NOT NULL
+				AND TRIM(fecha) <> ''
+				AND fecha <> '0000-00-00'
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($limpios as $i => $id) {
+				$stmt->bindValue($i + 1, $id, PDO::PARAM_INT);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"mensaje" => "Se completaron {$actualizados} registro(s)"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar fechas de vencimiento"
+			);
+		}
+	}
+
+	/**
+	 * Abonos (tip_mov = '-') sin fecha_ori / fecha_ori_ven, últimos N días,
+	 * con cargo (+) del mismo tipo_doc + num_cta.
+	 */
+	static public function mdlCteSinFechaOri($dias = 60)
+	{
+		$dias = (int) $dias;
+		if ($dias < 1) {
+			$dias = 60;
+		}
+		if ($dias > 3650) {
+			$dias = 3650;
+		}
+
+		$sql = "
+			SELECT
+				cc.id,
+				COALESCE(cc.tipo_doc, '') AS tipo_doc,
+				COALESCE(cc.num_cta, '') AS num_cta,
+				COALESCE(cc.cliente, '') AS cliente,
+				COALESCE(cli.nombre, '') AS cliente_nombre,
+				COALESCE(cc.fecha, '') AS fecha,
+				COALESCE(cc.fecha_ori, '') AS fecha_ori,
+				COALESCE(cc.fecha_ori_ven, '') AS fecha_ori_ven,
+				COALESCE(c1.fecha, '') AS fecha_ori_prop,
+				COALESCE(c1.fecha_ven, '') AS fecha_ori_ven_prop,
+				ROUND(COALESCE(cc.monto, 0), 2) AS monto,
+				COALESCE(cc.estado, '') AS estado
+			FROM cuenta_ctejf cc
+			LEFT JOIN clientesjf cli ON cli.codigo = cc.cliente
+			INNER JOIN (
+				SELECT
+					c.tipo_doc,
+					c.num_cta,
+					c.fecha,
+					c.fecha_ven
+				FROM cuenta_ctejf c
+				INNER JOIN (
+					SELECT tipo_doc, num_cta, MIN(id) AS id
+					FROM cuenta_ctejf
+					WHERE tip_mov = '+'
+					GROUP BY tipo_doc, num_cta
+				) x ON x.id = c.id
+			) c1
+				ON cc.tipo_doc = c1.tipo_doc
+				AND cc.num_cta = c1.num_cta
+			WHERE cc.tip_mov = '-'
+				AND cc.fecha >= (CURDATE() - INTERVAL {$dias} DAY)
+				AND cc.fecha <= CURDATE()
+				AND (
+					cc.fecha_ori IS NULL
+					OR TRIM(cc.fecha_ori) = ''
+					OR cc.fecha_ori = '0000-00-00'
+					OR cc.fecha_ori_ven IS NULL
+					OR TRIM(cc.fecha_ori_ven) = ''
+					OR cc.fecha_ori_ven = '0000-00-00'
+				)
+				AND c1.fecha IS NOT NULL
+				AND TRIM(c1.fecha) <> ''
+				AND c1.fecha <> '0000-00-00'
+			ORDER BY cc.fecha ASC, cc.id ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/**
+	 * Completa fecha_ori / fecha_ori_ven desde el cargo (+) del mismo documento.
+	 * $ids: array de enteros (abonos)
+	 */
+	static public function mdlCompletarFechaOriCte($ids)
+	{
+		if (!is_array($ids) || count($ids) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$limpios = array();
+		foreach ($ids as $id) {
+			$id = (int) $id;
+			if ($id > 0) {
+				$limpios[$id] = $id;
+			}
+		}
+		$limpios = array_values($limpios);
+		if (count($limpios) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$placeholders = implode(",", array_fill(0, count($limpios), "?"));
+		$sql = "
+			UPDATE cuenta_ctejf cc
+			INNER JOIN (
+				SELECT
+					c.tipo_doc,
+					c.num_cta,
+					c.fecha,
+					c.fecha_ven
+				FROM cuenta_ctejf c
+				INNER JOIN (
+					SELECT tipo_doc, num_cta, MIN(id) AS id
+					FROM cuenta_ctejf
+					WHERE tip_mov = '+'
+					GROUP BY tipo_doc, num_cta
+				) x ON x.id = c.id
+			) c1
+				ON cc.tipo_doc = c1.tipo_doc
+				AND cc.num_cta = c1.num_cta
+			SET
+				cc.fecha_ori = c1.fecha,
+				cc.fecha_ori_ven = c1.fecha_ven
+			WHERE cc.tip_mov = '-'
+				AND cc.id IN ({$placeholders})
+				AND (
+					cc.fecha_ori IS NULL
+					OR TRIM(cc.fecha_ori) = ''
+					OR cc.fecha_ori = '0000-00-00'
+					OR cc.fecha_ori_ven IS NULL
+					OR TRIM(cc.fecha_ori_ven) = ''
+					OR cc.fecha_ori_ven = '0000-00-00'
+				)
+				AND c1.fecha IS NOT NULL
+				AND TRIM(c1.fecha) <> ''
+				AND c1.fecha <> '0000-00-00'
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($limpios as $i => $id) {
+				$stmt->bindValue($i + 1, $id, PDO::PARAM_INT);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"mensaje" => "Se completaron {$actualizados} registro(s)"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar fechas de origen"
+			);
+		}
+	}
+
+	/**
+	 * Cuentas del año sin tip_cambio, con cambio_venta en totalesjf para esa fecha.
+	 */
+	static public function mdlCteSinTipCambio($anio = null)
+	{
+		date_default_timezone_set("America/Lima");
+		$anio = $anio === null ? (int) date("Y") : (int) $anio;
+		if ($anio < 2000 || $anio > 2100) {
+			$anio = (int) date("Y");
+		}
+
+		$sql = "
+			SELECT
+				cc.id,
+				COALESCE(cc.tipo_doc, '') AS tipo_doc,
+				COALESCE(cc.num_cta, '') AS num_cta,
+				COALESCE(cc.tip_mov, '') AS tip_mov,
+				COALESCE(cc.cliente, '') AS cliente,
+				COALESCE(cli.nombre, '') AS cliente_nombre,
+				COALESCE(cc.fecha, '') AS fecha,
+				ROUND(COALESCE(cc.tip_cambio, 0), 4) AS tip_cambio,
+				ROUND(COALESCE(t.cambio_venta, 0), 4) AS tip_cambio_prop,
+				ROUND(COALESCE(cc.monto, 0), 2) AS monto,
+				COALESCE(cc.estado, '') AS estado
+			FROM cuenta_ctejf cc
+			LEFT JOIN clientesjf cli ON cli.codigo = cc.cliente
+			INNER JOIN (
+				SELECT
+					DATE(fecha) AS fecha_dia,
+					MAX(cambio_venta) AS cambio_venta
+				FROM totalesjf
+				WHERE cambio_venta IS NOT NULL
+					AND cambio_venta <> 0
+				GROUP BY DATE(fecha)
+			) t ON DATE(cc.fecha) = t.fecha_dia
+			WHERE YEAR(cc.fecha) = :anio
+				AND (
+					cc.tip_cambio IS NULL
+					OR cc.tip_cambio = 0
+				)
+			ORDER BY cc.fecha ASC, cc.id ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":anio", $anio, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/**
+	 * Completa tip_cambio = cambio_venta de totalesjf (misma fecha) en los ids.
+	 */
+	static public function mdlCompletarTipCambioCte($ids, $anio = null)
+	{
+		if (!is_array($ids) || count($ids) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = $anio === null ? (int) date("Y") : (int) $anio;
+		if ($anio < 2000 || $anio > 2100) {
+			$anio = (int) date("Y");
+		}
+
+		$limpios = array();
+		foreach ($ids as $id) {
+			$id = (int) $id;
+			if ($id > 0) {
+				$limpios[$id] = $id;
+			}
+		}
+		$limpios = array_values($limpios);
+		if (count($limpios) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$placeholders = implode(",", array_fill(0, count($limpios), "?"));
+		$sql = "
+			UPDATE cuenta_ctejf cc
+			INNER JOIN (
+				SELECT
+					DATE(fecha) AS fecha_dia,
+					MAX(cambio_venta) AS cambio_venta
+				FROM totalesjf
+				WHERE cambio_venta IS NOT NULL
+					AND cambio_venta <> 0
+				GROUP BY DATE(fecha)
+			) t ON DATE(cc.fecha) = t.fecha_dia
+			SET cc.tip_cambio = t.cambio_venta
+			WHERE YEAR(cc.fecha) = ?
+				AND cc.id IN ({$placeholders})
+				AND (
+					cc.tip_cambio IS NULL
+					OR cc.tip_cambio = 0
+				)
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindValue(1, $anio, PDO::PARAM_INT);
+			foreach ($limpios as $i => $id) {
+				$stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"mensaje" => "Se actualizaron {$actualizados} registro(s)"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al actualizar tipo de cambio"
+			);
+		}
+	}
+
+	/**
+	 * Ventas del año con tipo_cambio en 0/NULL (fecha &lt; hoy),
+	 * con cambio_venta en totalesjf para esa fecha.
+	 */
+	static public function mdlVentasSinTipCambio($anio = null)
+	{
+		date_default_timezone_set("America/Lima");
+		$anio = $anio === null ? (int) date("Y") : (int) $anio;
+		if ($anio < 2000 || $anio > 2100) {
+			$anio = (int) date("Y");
+		}
+
+		$sql = "
+			SELECT
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(cli.nombre, '') AS cliente_nombre,
+				COALESCE(v.fecha, '') AS fecha,
+				ROUND(COALESCE(v.tipo_cambio, 0), 4) AS tipo_cambio,
+				ROUND(COALESCE(t.cambio_venta, 0), 4) AS tipo_cambio_prop,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM ventajf v
+			LEFT JOIN clientesjf cli ON cli.codigo = v.cliente
+			INNER JOIN (
+				SELECT
+					DATE(fecha) AS fecha_dia,
+					MAX(cambio_venta) AS cambio_venta
+				FROM totalesjf
+				WHERE cambio_venta IS NOT NULL
+					AND cambio_venta <> 0
+				GROUP BY DATE(fecha)
+			) t ON DATE(v.fecha) = t.fecha_dia
+			WHERE YEAR(v.fecha) = :anio
+				AND DATE(v.fecha) < CURDATE()
+				AND (
+					v.tipo_cambio IS NULL
+					OR v.tipo_cambio = 0
+				)
+			ORDER BY v.fecha ASC, v.tipo ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":anio", $anio, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/**
+	 * Completa ventajf.tipo_cambio = totalesjf.cambio_venta (misma fecha).
+	 * $items: [ ['tipo' => ..., 'documento' => ...], ... ]
+	 */
+	static public function mdlCompletarTipCambioVentas($items, $anio = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$anio = $anio === null ? (int) date("Y") : (int) $anio;
+		if ($anio < 2000 || $anio > 2100) {
+			$anio = (int) date("Y");
+		}
+
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo === "" || $documento === "") {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$orParts = array();
+		$params = array($anio);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			INNER JOIN (
+				SELECT
+					DATE(fecha) AS fecha_dia,
+					MAX(cambio_venta) AS cambio_venta
+				FROM totalesjf
+				WHERE cambio_venta IS NOT NULL
+					AND cambio_venta <> 0
+				GROUP BY DATE(fecha)
+			) t ON DATE(v.fecha) = t.fecha_dia
+			SET v.tipo_cambio = t.cambio_venta
+			WHERE YEAR(v.fecha) = ?
+				AND DATE(v.fecha) < CURDATE()
+				AND (
+					v.tipo_cambio IS NULL
+					OR v.tipo_cambio = 0
+				)
+				AND ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$tipoBind = ($i === 0) ? PDO::PARAM_INT : PDO::PARAM_STR;
+				$stmt->bindValue($i + 1, $val, $tipoBind);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"mensaje" => "Se actualizaron {$actualizados} venta(s)"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al actualizar tipo de cambio de ventas"
+			);
+		}
+	}
+
+	/**
+	 * Normaliza periodo YYYY-MM → [anio, mes, inicio, fin] o false.
+	 */
+	static public function mdlPeriodoMes($periodo = null)
+	{
+		date_default_timezone_set("America/Lima");
+		if ($periodo === null || trim((string) $periodo) === "") {
+			$periodo = date("Y-m");
+		}
+		$periodo = trim((string) $periodo);
+		if (!preg_match('/^(\d{4})-(\d{2})$/', $periodo, $m)) {
+			return false;
+		}
+		$anio = (int) $m[1];
+		$mes = (int) $m[2];
+		if ($anio < 2000 || $anio > 2100 || $mes < 1 || $mes > 12) {
+			return false;
+		}
+		$inicio = sprintf("%04d-%02d-01", $anio, $mes);
+		$dt = DateTime::createFromFormat("Y-m-d", $inicio);
+		if (!$dt) {
+			return false;
+		}
+		$fin = $dt->format("Y-m-t");
+		return array(
+			"periodo" => sprintf("%04d-%02d", $anio, $mes),
+			"anio" => $anio,
+			"mes" => $mes,
+			"inicio" => $inicio,
+			"fin" => $fin
+		);
+	}
+
+	/**
+	 * Facturas/boletas (S02/S03) del periodo sin cuenta contable.
+	 * Propone 702211 (Lima) o 702212 (provincia) según ubigeo del cliente.
+	 */
+	static public function mdlVentasSinCuenta($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$sql = "
+			SELECT
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(c.nombre, '') AS cliente_nombre,
+				COALESCE(c.ubigeo, '') AS ubigeo,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN '702211'
+					ELSE '702212'
+				END AS cuenta_prop,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN 'Lima'
+					ELSE 'Provincia'
+				END AS zona,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM ventajf v
+			LEFT JOIN clientesjf c ON v.cliente = c.codigo
+			WHERE v.fecha BETWEEN :inicio AND :fin
+				AND v.tipo IN ('S02', 'S03')
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+				)
+			ORDER BY v.fecha ASC, v.tipo ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas
+		);
+	}
+
+	/**
+	 * Completa ventajf.cuenta según ubigeo del cliente (S02/S03, periodo).
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo === "" || $documento === "") {
+				continue;
+			}
+			if ($tipo !== "S02" && $tipo !== "S03") {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$orParts = array();
+		$params = array($rango["inicio"], $rango["fin"]);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			LEFT JOIN clientesjf c ON v.cliente = c.codigo
+			SET v.cuenta = CASE
+				WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+					OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+				THEN '702211'
+				ELSE '702212'
+			END
+			WHERE v.fecha BETWEEN ? AND ?
+				AND v.tipo IN ('S02', 'S03')
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+				)
+				AND ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"mensaje" => "Se actualizaron {$actualizados} venta(s)"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuentas contables"
+			);
+		}
+	}
+
+	/** Cuenta contable POS showroom. */
+	const CUENTA_POS_SHOWROOM = "702213";
+
+	/**
+	 * Ventas ligadas a abonos POS showroom (vendedor %08%, pagos 06/17)
+	 * del periodo, para asignar cuenta 702213.
+	 * Mapeo cte→venta: 01→S03, 03→S02, 07→E05, 08→S05.
+	 */
+	static public function mdlVentasCuentaPos($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$cuenta = self::CUENTA_POS_SHOWROOM;
+		$sql = "
+			SELECT
+				COALESCE(cc.tipo_doc, '') AS tipo_doc,
+				COALESCE(cc.num_cta, '') AS num_cta,
+				COALESCE(cc.cod_pago, '') AS cod_pago,
+				COALESCE(cc.vendedor, '') AS vendedor,
+				COALESCE(cc.fecha, '') AS fecha_pago,
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(cli.nombre, '') AS cliente_nombre,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				:cuenta_prop AS cuenta_prop,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM cuenta_ctejf cc
+			INNER JOIN ventajf v
+				ON v.documento = cc.num_cta
+				AND (
+					(cc.tipo_doc = '01' AND v.tipo = 'S03')
+					OR (cc.tipo_doc = '03' AND v.tipo = 'S02')
+					OR (cc.tipo_doc = '07' AND v.tipo = 'E05')
+					OR (cc.tipo_doc = '08' AND v.tipo = 'S05')
+				)
+			LEFT JOIN clientesjf cli ON cli.codigo = v.cliente
+			WHERE cc.tip_mov = '-'
+				AND cc.fecha BETWEEN :inicio AND :fin
+				AND cc.vendedor LIKE '%08%'
+				AND cc.cod_pago IN ('06', '17')
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+					OR v.cuenta <> :cuenta_diff
+				)
+			GROUP BY
+				v.tipo,
+				v.documento,
+				v.cliente,
+				cli.nombre,
+				v.fecha,
+				v.cuenta,
+				v.total,
+				cc.tipo_doc,
+				cc.num_cta,
+				cc.cod_pago,
+				cc.vendedor,
+				cc.fecha
+			ORDER BY cc.fecha ASC, v.tipo ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":cuenta_prop", $cuenta, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_diff", $cuenta, PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas,
+			"cuenta" => $cuenta
+		);
+	}
+
+	/**
+	 * Asigna cuenta 702213 a ventas (tipo+documento) del periodo POS.
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaPosVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$tiposOk = array("S02" => 1, "S03" => 1, "E05" => 1, "S05" => 1);
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo === "" || $documento === "" || !isset($tiposOk[$tipo])) {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$cuenta = self::CUENTA_POS_SHOWROOM;
+		$orParts = array();
+		$params = array($rango["inicio"], $rango["fin"], $cuenta);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		// Solo actualiza si hay abono POS showroom del periodo que mapea a esa venta
+		$sql = "
+			UPDATE ventajf v
+			INNER JOIN (
+				SELECT DISTINCT
+					v2.tipo,
+					v2.documento
+				FROM cuenta_ctejf cc
+				INNER JOIN ventajf v2
+					ON v2.documento = cc.num_cta
+					AND (
+						(cc.tipo_doc = '01' AND v2.tipo = 'S03')
+						OR (cc.tipo_doc = '03' AND v2.tipo = 'S02')
+						OR (cc.tipo_doc = '07' AND v2.tipo = 'E05')
+						OR (cc.tipo_doc = '08' AND v2.tipo = 'S05')
+					)
+				WHERE cc.tip_mov = '-'
+					AND cc.fecha BETWEEN ? AND ?
+					AND cc.vendedor LIKE '%08%'
+					AND cc.cod_pago IN ('06', '17')
+			) pos ON pos.tipo = v.tipo AND pos.documento = v.documento
+			SET v.cuenta = ?
+			WHERE ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"cuenta" => $cuenta,
+				"mensaje" => "Se actualizaron {$actualizados} venta(s) con cuenta {$cuenta}"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuenta POS showroom"
+			);
+		}
+	}
+
+	const CUENTA_CULQI_LIMA = "702215";
+	const CUENTA_CULQI_PROV = "702216";
+
+	/**
+	 * Ventas ligadas a abonos Culqi showroom (vendedor %08%, pago 14, docs 01/03)
+	 * del periodo. Cuenta según ubigeo: Lima 702215 / provincia 702216.
+	 */
+	static public function mdlVentasCuentaCulqi($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$lima = self::CUENTA_CULQI_LIMA;
+		$prov = self::CUENTA_CULQI_PROV;
+
+		$sql = "
+			SELECT
+				COALESCE(cc.tipo_doc, '') AS tipo_doc,
+				COALESCE(cc.num_cta, '') AS num_cta,
+				COALESCE(cc.cod_pago, '') AS cod_pago,
+				COALESCE(cc.vendedor, '') AS vendedor,
+				COALESCE(cc.fecha, '') AS fecha_pago,
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(cli.nombre, '') AS cliente_nombre,
+				COALESCE(cli.ubigeo, '') AS ubigeo,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				CASE
+					WHEN LEFT(COALESCE(cli.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(cli.ubigeo, ''), 1) = 'L'
+					THEN :cuenta_lima
+					ELSE :cuenta_prov
+				END AS cuenta_prop,
+				CASE
+					WHEN LEFT(COALESCE(cli.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(cli.ubigeo, ''), 1) = 'L'
+					THEN 'Lima'
+					ELSE 'Provincia'
+				END AS zona,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM cuenta_ctejf cc
+			INNER JOIN ventajf v
+				ON v.documento = cc.num_cta
+				AND (
+					(cc.tipo_doc = '01' AND v.tipo = 'S03')
+					OR (cc.tipo_doc = '03' AND v.tipo = 'S02')
+				)
+			LEFT JOIN clientesjf cli ON cli.codigo = v.cliente
+			WHERE cc.tip_mov = '-'
+				AND cc.fecha BETWEEN :inicio AND :fin
+				AND cc.vendedor LIKE '%08%'
+				AND cc.cod_pago = '14'
+				AND cc.tipo_doc IN ('01', '03')
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+					OR v.cuenta <> CASE
+						WHEN LEFT(COALESCE(cli.ubigeo, ''), 2) = '15'
+							OR LEFT(COALESCE(cli.ubigeo, ''), 1) = 'L'
+						THEN :cuenta_lima2
+						ELSE :cuenta_prov2
+					END
+				)
+			GROUP BY
+				v.tipo,
+				v.documento,
+				v.cliente,
+				cli.nombre,
+				cli.ubigeo,
+				v.fecha,
+				v.cuenta,
+				v.total,
+				cc.tipo_doc,
+				cc.num_cta,
+				cc.cod_pago,
+				cc.vendedor,
+				cc.fecha
+			ORDER BY cc.fecha ASC, v.tipo ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":cuenta_lima", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_lima2", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov2", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas,
+			"cuenta_lima" => $lima,
+			"cuenta_prov" => $prov
+		);
+	}
+
+	/**
+	 * Asigna 702215/702216 a ventas Culqi del periodo (por ubigeo).
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaCulqiVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$tiposOk = array("S02" => 1, "S03" => 1);
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo === "" || $documento === "" || !isset($tiposOk[$tipo])) {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$lima = self::CUENTA_CULQI_LIMA;
+		$prov = self::CUENTA_CULQI_PROV;
+		$orParts = array();
+		$params = array($rango["inicio"], $rango["fin"], $lima, $prov);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			INNER JOIN (
+				SELECT DISTINCT
+					v2.tipo,
+					v2.documento
+				FROM cuenta_ctejf cc
+				INNER JOIN ventajf v2
+					ON v2.documento = cc.num_cta
+					AND (
+						(cc.tipo_doc = '01' AND v2.tipo = 'S03')
+						OR (cc.tipo_doc = '03' AND v2.tipo = 'S02')
+					)
+				WHERE cc.tip_mov = '-'
+					AND cc.fecha BETWEEN ? AND ?
+					AND cc.vendedor LIKE '%08%'
+					AND cc.cod_pago = '14'
+					AND cc.tipo_doc IN ('01', '03')
+			) culqi ON culqi.tipo = v.tipo AND culqi.documento = v.documento
+			LEFT JOIN clientesjf c ON c.codigo = v.cliente
+			SET v.cuenta = CASE
+				WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+					OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+				THEN ?
+				ELSE ?
+			END
+			WHERE ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"mensaje" => "Se actualizaron {$actualizados} venta(s) Culqi ({$lima}/{$prov})"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuenta Culqi"
+			);
+		}
+	}
+
+	const CUENTA_NC_DEV_LIMA = "709411";
+	const CUENTA_NC_DEV_PROV = "709412";
+
+	/**
+	 * Notas de crédito (E05) por devolución (motivos C1, C7) del periodo,
+	 * sin cuenta o con cuenta distinta a la propuesta por ubigeo.
+	 */
+	static public function mdlVentasCuentaNcDev($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$lima = self::CUENTA_NC_DEV_LIMA;
+		$prov = self::CUENTA_NC_DEV_PROV;
+
+		$sql = "
+			SELECT
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(c.nombre, '') AS cliente_nombre,
+				COALESCE(c.ubigeo, '') AS ubigeo,
+				COALESCE(v.vendedor, '') AS vendedor,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN :cuenta_lima
+					ELSE :cuenta_prov
+				END AS cuenta_prop,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN 'Lima'
+					ELSE 'Provincia'
+				END AS zona,
+				COALESCE(n.motivo, '') AS motivo,
+				COALESCE(n.observacion, '') AS observacion,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM ventajf v
+			LEFT JOIN clientesjf c ON v.cliente = c.codigo
+			INNER JOIN notascd_jf n
+				ON v.tipo = n.tipo
+				AND v.documento = n.documento
+			WHERE v.fecha BETWEEN :inicio AND :fin
+				AND v.tipo = 'E05'
+				AND n.motivo IN ('C1', 'C7')
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+					OR v.cuenta <> CASE
+						WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+							OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+						THEN :cuenta_lima2
+						ELSE :cuenta_prov2
+					END
+				)
+			ORDER BY v.fecha ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":cuenta_lima", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_lima2", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov2", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas,
+			"cuenta_lima" => $lima,
+			"cuenta_prov" => $prov
+		);
+	}
+
+	/**
+	 * Asigna 709411/709412 a NC devolución (E05, C1/C7) seleccionadas.
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaNcDevVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo !== "E05" || $documento === "") {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$lima = self::CUENTA_NC_DEV_LIMA;
+		$prov = self::CUENTA_NC_DEV_PROV;
+		$orParts = array();
+		$params = array($lima, $prov, $rango["inicio"], $rango["fin"]);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			INNER JOIN notascd_jf n
+				ON v.tipo = n.tipo
+				AND v.documento = n.documento
+				AND n.motivo IN ('C1', 'C7')
+			LEFT JOIN clientesjf c ON c.codigo = v.cliente
+			SET v.cuenta = CASE
+				WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+					OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+				THEN ?
+				ELSE ?
+			END
+			WHERE v.tipo = 'E05'
+				AND v.fecha BETWEEN ? AND ?
+				AND ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"mensaje" => "Se actualizaron {$actualizados} NC devolución ({$lima}/{$prov})"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuenta NC devolución"
+			);
+		}
+	}
+
+	const CUENTA_NC_DSCTO_LIMA = "741101";
+	const CUENTA_NC_DSCTO_PROV = "741102";
+
+	/**
+	 * Notas de crédito (E05) por descuento (motivos distintos de C1/C7)
+	 * del periodo, sin cuenta o con cuenta distinta a la propuesta.
+	 */
+	static public function mdlVentasCuentaNcDscto($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$lima = self::CUENTA_NC_DSCTO_LIMA;
+		$prov = self::CUENTA_NC_DSCTO_PROV;
+
+		$sql = "
+			SELECT
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(c.nombre, '') AS cliente_nombre,
+				COALESCE(c.ubigeo, '') AS ubigeo,
+				COALESCE(v.vendedor, '') AS vendedor,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN :cuenta_lima
+					ELSE :cuenta_prov
+				END AS cuenta_prop,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN 'Lima'
+					ELSE 'Provincia'
+				END AS zona,
+				COALESCE(n.motivo, '') AS motivo,
+				COALESCE(n.observacion, '') AS observacion,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM ventajf v
+			LEFT JOIN clientesjf c ON v.cliente = c.codigo
+			INNER JOIN notascd_jf n
+				ON v.tipo = n.tipo
+				AND v.documento = n.documento
+			WHERE v.fecha BETWEEN :inicio AND :fin
+				AND v.tipo = 'E05'
+				AND n.motivo NOT IN ('C1', 'C7')
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+					OR v.cuenta <> CASE
+						WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+							OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+						THEN :cuenta_lima2
+						ELSE :cuenta_prov2
+					END
+				)
+			ORDER BY v.fecha ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":cuenta_lima", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_lima2", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov2", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas,
+			"cuenta_lima" => $lima,
+			"cuenta_prov" => $prov
+		);
+	}
+
+	/**
+	 * Asigna 741101/741102 a NC descuento (E05, motivo ≠ C1/C7).
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaNcDsctoVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo !== "E05" || $documento === "") {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$lima = self::CUENTA_NC_DSCTO_LIMA;
+		$prov = self::CUENTA_NC_DSCTO_PROV;
+		$orParts = array();
+		$params = array($lima, $prov, $rango["inicio"], $rango["fin"]);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			INNER JOIN notascd_jf n
+				ON v.tipo = n.tipo
+				AND v.documento = n.documento
+				AND n.motivo NOT IN ('C1', 'C7')
+			LEFT JOIN clientesjf c ON c.codigo = v.cliente
+			SET v.cuenta = CASE
+				WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+					OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+				THEN ?
+				ELSE ?
+			END
+			WHERE v.tipo = 'E05'
+				AND v.fecha BETWEEN ? AND ?
+				AND ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"mensaje" => "Se actualizaron {$actualizados} NC descuento ({$lima}/{$prov})"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuenta NC descuento"
+			);
+		}
+	}
+
+	const CUENTA_ND_FLETE_LIMA = "75995";
+	const CUENTA_ND_FLETE_PROV = "75996";
+
+	/**
+	 * Notas de débito (S05) por flete showroom (vendedor %08%) del periodo.
+	 */
+	static public function mdlVentasCuentaNdFlete($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$lima = self::CUENTA_ND_FLETE_LIMA;
+		$prov = self::CUENTA_ND_FLETE_PROV;
+
+		$sql = "
+			SELECT
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(c.nombre, '') AS cliente_nombre,
+				COALESCE(c.ubigeo, '') AS ubigeo,
+				COALESCE(v.vendedor, '') AS vendedor,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN :cuenta_lima
+					ELSE :cuenta_prov
+				END AS cuenta_prop,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN 'Lima'
+					ELSE 'Provincia'
+				END AS zona,
+				COALESCE(n.motivo, '') AS motivo,
+				COALESCE(n.observacion, '') AS observacion,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM ventajf v
+			LEFT JOIN clientesjf c ON v.cliente = c.codigo
+			LEFT JOIN notascd_jf n
+				ON v.tipo = n.tipo
+				AND v.documento = n.documento
+			WHERE v.fecha BETWEEN :inicio AND :fin
+				AND v.tipo = 'S05'
+				AND v.vendedor LIKE '%08%'
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+					OR v.cuenta <> CASE
+						WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+							OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+						THEN :cuenta_lima2
+						ELSE :cuenta_prov2
+					END
+				)
+			ORDER BY v.fecha ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":cuenta_lima", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_lima2", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov2", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas,
+			"cuenta_lima" => $lima,
+			"cuenta_prov" => $prov
+		);
+	}
+
+	/**
+	 * Asigna 75995/75996 a ND flete (S05, vendedor %08%).
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaNdFleteVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo !== "S05" || $documento === "") {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$lima = self::CUENTA_ND_FLETE_LIMA;
+		$prov = self::CUENTA_ND_FLETE_PROV;
+		$orParts = array();
+		$params = array($lima, $prov, $rango["inicio"], $rango["fin"]);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			LEFT JOIN clientesjf c ON c.codigo = v.cliente
+			SET v.cuenta = CASE
+				WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+					OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+				THEN ?
+				ELSE ?
+			END
+			WHERE v.tipo = 'S05'
+				AND v.vendedor LIKE '%08%'
+				AND v.fecha BETWEEN ? AND ?
+				AND ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"mensaje" => "Se actualizaron {$actualizados} ND flete ({$lima}/{$prov})"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuenta ND flete"
+			);
+		}
+	}
+
+	const CUENTA_ND_PROTESTO_LIMA = "75991";
+	const CUENTA_ND_PROTESTO_PROV = "75992";
+
+	/**
+	 * Notas de débito (S05) por protesto (vendedor sin 08) del periodo.
+	 */
+	static public function mdlVentasCuentaNdProtesto($periodo = null)
+	{
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return false;
+		}
+
+		$lima = self::CUENTA_ND_PROTESTO_LIMA;
+		$prov = self::CUENTA_ND_PROTESTO_PROV;
+
+		$sql = "
+			SELECT
+				COALESCE(v.tipo, '') AS tipo,
+				COALESCE(v.documento, '') AS documento,
+				COALESCE(v.cliente, '') AS cliente,
+				COALESCE(c.nombre, '') AS cliente_nombre,
+				COALESCE(c.ubigeo, '') AS ubigeo,
+				COALESCE(v.vendedor, '') AS vendedor,
+				COALESCE(v.fecha, '') AS fecha,
+				COALESCE(v.cuenta, '') AS cuenta,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN :cuenta_lima
+					ELSE :cuenta_prov
+				END AS cuenta_prop,
+				CASE
+					WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+						OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+					THEN 'Lima'
+					ELSE 'Provincia'
+				END AS zona,
+				COALESCE(n.motivo, '') AS motivo,
+				COALESCE(n.observacion, '') AS observacion,
+				ROUND(COALESCE(v.total, 0), 2) AS total
+			FROM ventajf v
+			LEFT JOIN clientesjf c ON v.cliente = c.codigo
+			LEFT JOIN notascd_jf n
+				ON v.tipo = n.tipo
+				AND v.documento = n.documento
+			WHERE v.fecha BETWEEN :inicio AND :fin
+				AND v.tipo = 'S05'
+				AND v.vendedor NOT LIKE '%08%'
+				AND (
+					v.cuenta IS NULL
+					OR TRIM(v.cuenta) = ''
+					OR v.cuenta <> CASE
+						WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+							OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+						THEN :cuenta_lima2
+						ELSE :cuenta_prov2
+					END
+				)
+			ORDER BY v.fecha ASC, v.documento ASC
+		";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindValue(":cuenta_lima", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_lima2", $lima, PDO::PARAM_STR);
+		$stmt->bindValue(":cuenta_prov2", $prov, PDO::PARAM_STR);
+		$stmt->bindValue(":inicio", $rango["inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $rango["fin"], PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return array(
+			"rango" => $rango,
+			"filas" => $filas,
+			"cuenta_lima" => $lima,
+			"cuenta_prov" => $prov
+		);
+	}
+
+	/**
+	 * Asigna 75991/75992 a ND protesto (S05, vendedor sin 08).
+	 * $items: [ ['tipo'=>..., 'documento'=>...], ... ]
+	 */
+	static public function mdlCompletarCuentaNdProtestoVentas($items, $periodo = null)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros");
+		}
+
+		$rango = self::mdlPeriodoMes($periodo);
+		if ($rango === false) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Periodo inválido");
+		}
+
+		$pares = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$tipo = isset($item["tipo"]) ? trim((string) $item["tipo"]) : "";
+			$documento = isset($item["documento"]) ? trim((string) $item["documento"]) : "";
+			if ($tipo !== "S05" || $documento === "") {
+				continue;
+			}
+			$key = $tipo . "|" . $documento;
+			$pares[$key] = array("tipo" => $tipo, "documento" => $documento);
+		}
+		$pares = array_values($pares);
+		if (count($pares) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin registros válidos");
+		}
+
+		$lima = self::CUENTA_ND_PROTESTO_LIMA;
+		$prov = self::CUENTA_ND_PROTESTO_PROV;
+		$orParts = array();
+		$params = array($lima, $prov, $rango["inicio"], $rango["fin"]);
+		foreach ($pares as $p) {
+			$orParts[] = "(v.tipo = ? AND v.documento = ?)";
+			$params[] = $p["tipo"];
+			$params[] = $p["documento"];
+		}
+		$orSql = implode(" OR ", $orParts);
+
+		$sql = "
+			UPDATE ventajf v
+			LEFT JOIN clientesjf c ON c.codigo = v.cliente
+			SET v.cuenta = CASE
+				WHEN LEFT(COALESCE(c.ubigeo, ''), 2) = '15'
+					OR LEFT(COALESCE(c.ubigeo, ''), 1) = 'L'
+				THEN ?
+				ELSE ?
+			END
+			WHERE v.tipo = 'S05'
+				AND v.vendedor NOT LIKE '%08%'
+				AND v.fecha BETWEEN ? AND ?
+				AND ({$orSql})
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			foreach ($params as $i => $val) {
+				$stmt->bindValue($i + 1, $val, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$actualizados = (int) $stmt->rowCount();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"periodo" => $rango["periodo"],
+				"mensaje" => "Se actualizaron {$actualizados} ND protesto ({$lima}/{$prov})"
+			);
+		} catch (Exception $e) {
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al completar cuenta ND protesto"
+			);
+		}
+	}
+
+	/**
+	 * Días del año en totalesjf sin cambio_venta (hasta hoy).
+	 */
+	static public function mdlTotalesSinTipCambio($anio)
+	{
+		$anio = (int) $anio;
+		$sql = "
+			SELECT
+				DATE(t.fecha) AS fecha,
+				t.ano,
+				t.mes,
+				t.dia,
+				ROUND(COALESCE(t.cambio_compra, 0), 4) AS cambio_compra,
+				ROUND(COALESCE(t.cambio_venta, 0), 4) AS cambio_venta
+			FROM totalesjf t
+			WHERE YEAR(t.fecha) = :anio
+				AND DATE(t.fecha) <= CURDATE()
+				AND (
+					t.cambio_venta IS NULL
+					OR t.cambio_venta = 0
+				)
+			ORDER BY t.fecha ASC
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+			$stmt->execute();
+			return $stmt->fetchAll(PDO::FETCH_ASSOC);
+		} catch (Exception $e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Último TC registrado en totalesjf antes de una fecha.
+	 */
+	static public function mdlUltimoTipCambioTotalesAntes($fecha)
+	{
+		$sql = "
+			SELECT
+				DATE(fecha) AS fecha,
+				ROUND(cambio_compra, 4) AS cambio_compra,
+				ROUND(cambio_venta, 4) AS cambio_venta
+			FROM totalesjf
+			WHERE DATE(fecha) < :fecha
+				AND cambio_venta IS NOT NULL
+				AND cambio_venta <> 0
+			ORDER BY fecha DESC
+			LIMIT 1
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindParam(":fecha", $fecha, PDO::PARAM_STR);
+			$stmt->execute();
+			$row = $stmt->fetch(PDO::FETCH_ASSOC);
+			return $row ? $row : null;
+		} catch (Exception $e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Actualiza cambio_compra / cambio_venta de un día en totalesjf.
+	 */
+	static public function mdlActualizarTipCambioTotales($fecha, $compra, $venta)
+	{
+		$sql = "
+			UPDATE totalesjf
+			SET
+				cambio_compra = :compra,
+				cambio_venta = :venta
+			WHERE DATE(fecha) = :fecha
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->bindParam(":compra", $compra, PDO::PARAM_STR);
+			$stmt->bindParam(":venta", $venta, PDO::PARAM_STR);
+			$stmt->bindParam(":fecha", $fecha, PDO::PARAM_STR);
+			if (!$stmt->execute()) {
+				return array("ok" => false, "mensaje" => "No se pudo actualizar totales");
+			}
+			return array("ok" => true, "actualizados" => (int) $stmt->rowCount());
+		} catch (Exception $e) {
+			return array("ok" => false, "mensaje" => "Error al actualizar totales");
+		}
+	}
 }

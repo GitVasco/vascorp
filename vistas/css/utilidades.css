@@ -26,10 +26,251 @@
     font-size: 13px;
 }
 
+.ut-block {
+    margin-bottom: 22px;
+}
+
+.ut-block__title {
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e5e9ef;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #6a737d;
+}
+
 .ut-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 14px;
+}
+
+.ut-grid--cte {
+    grid-template-columns: 1fr;
+    align-items: start;
+}
+
+.ut-grid--cte > .ut-card:not(.ut-card--pipeline) {
+    max-width: 320px;
+}
+
+.ut-card--pipeline {
+    border-top-color: #1e8449;
+    background: linear-gradient(180deg, #f7fbf8 0%, #fff 40%);
+}
+
+.ut-card__desc--inline {
+    margin-top: 4px;
+}
+
+.ut-card__top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.ut-pipeline-tools {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.ut-pipeline-tools--ventas {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.ut-pipeline-tools--ventas .ut-pipeline-tool {
+    padding: 10px 8px;
+}
+
+.ut-pipeline-tools--ventas .ut-pipeline-tool__head strong {
+    font-size: 12px;
+    line-height: 1.25;
+}
+
+.ut-pipeline-tools--ventas .ut-pipeline-tool__body p {
+    font-size: 11px;
+}
+
+.ut-pipeline-tool {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #e5e9ef;
+    border-radius: 4px;
+    background: #fff;
+    min-height: 100%;
+}
+
+.ut-pipeline-tool__num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1e8449;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ut-pipeline-tool__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ut-pipeline-tool__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ut-pipeline-tool__head strong {
+    font-size: 13px;
+    color: #1f2d3d;
+}
+
+.ut-pipeline-tool__body p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #6a737d;
+    line-height: 1.35;
+}
+
+.ut-pipeline-tool__action {
+    margin-top: auto;
+}
+
+@media (max-width: 1200px) {
+    .ut-pipeline-tools--ventas .ut-pipeline-tool__body p {
+        display: none;
+    }
+}
+
+@media (max-width: 1100px) {
+    .ut-pipeline-tools {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ut-pipeline-tools--ventas {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .ut-pipeline-tools--ventas .ut-pipeline-tool__body p {
+        display: block;
+    }
+}
+
+@media (max-width: 720px) {
+    .ut-pipeline-tools,
+    .ut-pipeline-tools--ventas {
+        grid-template-columns: 1fr;
+    }
+
+    .ut-card--pipeline .ut-card__top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ut-card__top-actions {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .ut-grid--cte > .ut-card:not(.ut-card--pipeline) {
+        max-width: none;
+    }
+}
+
+.ut-pipeline-intro {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: #6a737d;
+}
+
+.ut-pipeline-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ut-pipeline-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #e5e9ef;
+    border-radius: 4px;
+    background: #f7f8fa;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ut-pipeline-step__icon {
+    width: 22px;
+    text-align: center;
+    font-size: 16px;
+    color: #8a949e;
+    line-height: 1.3;
+    flex-shrink: 0;
+}
+
+.ut-pipeline-step__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ut-pipeline-step__body strong {
+    font-size: 14px;
+    color: #1f2d3d;
+}
+
+.ut-pipeline-step__msg {
+    font-size: 12px;
+    color: #6a737d;
+}
+
+.ut-pipeline-step.is-active {
+    border-color: #9b2335;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(155, 35, 53, 0.08);
+}
+
+.ut-pipeline-step.is-active .ut-pipeline-step__icon {
+    color: #9b2335;
+}
+
+.ut-pipeline-step.is-done {
+    border-color: #b7e0c5;
+    background: #f3fbf6;
+}
+
+.ut-pipeline-step.is-done .ut-pipeline-step__icon {
+    color: #1e8449;
+}
+
+.ut-pipeline-step.is-error {
+    border-color: #f5c6cb;
+    background: #fff5f5;
+}
+
+.ut-pipeline-step.is-error .ut-pipeline-step__icon {
+    color: #c0392b;
+}
+
+.ut-pipeline-step.is-skip .ut-pipeline-step__icon {
+    color: #1e8449;
 }
 
 .ut-card {
@@ -164,14 +405,47 @@
 #utStock01Table th,
 #utStock01Table td,
 #utServicioTable th,
-#utServicioTable td {
+#utServicioTable td,
+#utFechaVenTable th,
+#utFechaVenTable td,
+#utFechaOriTable th,
+#utFechaOriTable td,
+#utTipCambioTable th,
+#utTipCambioTable td,
+#utVentaTipCambioTable th,
+#utVentaTipCambioTable td,
+#utVentaCuentaTable th,
+#utVentaCuentaTable td,
+#utVentaPosTable th,
+#utVentaPosTable td,
+#utVentaCulqiTable th,
+#utVentaCulqiTable td,
+#utVentaNcDevTable th,
+#utVentaNcDevTable td,
+#utVentaNcDsctoTable th,
+#utVentaNcDsctoTable td,
+#utVentaNdFleteTable th,
+#utVentaNdFleteTable td,
+#utVentaNdProtestoTable th,
+#utVentaNdProtestoTable td {
     font-size: 12px;
     vertical-align: middle;
     white-space: nowrap;
 }
 
 #utStock01Table td.ut-nombre,
-#utServicioTable td.ut-nombre {
+#utServicioTable td.ut-nombre,
+#utFechaVenTable td.ut-nombre,
+#utFechaOriTable td.ut-nombre,
+#utTipCambioTable td.ut-nombre,
+#utVentaTipCambioTable td.ut-nombre,
+#utVentaCuentaTable td.ut-nombre,
+#utVentaPosTable td.ut-nombre,
+#utVentaCulqiTable td.ut-nombre,
+#utVentaNcDevTable td.ut-nombre,
+#utVentaNcDsctoTable td.ut-nombre,
+#utVentaNdFleteTable td.ut-nombre,
+#utVentaNdProtestoTable td.ut-nombre {
     white-space: normal;
     max-width: 220px;
 }
@@ -197,6 +471,12 @@
 
 .ut-input-modelo {
     max-width: 140px;
+    height: 34px;
+    display: inline-block;
+}
+
+.ut-input-periodo {
+    max-width: 160px;
     height: 34px;
     display: inline-block;
 }

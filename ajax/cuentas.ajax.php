@@ -186,6 +186,8 @@ class AjaxCuentas
             $pago = $value->{"cod_pago"};
             $origen = $value->{"doc_origen"};
             $user = $value->{"usuario"};
+            // Misma regla que al crear ND: sin fecha_ven explícita → usa la fecha del documento.
+            // Si no se envía, mdlEditarCuenta la deja NULL y rompe canje/SISCONT.
             $arregloCuenta = array(
                 "id" => $id,
                 "tipo_doc" => $doc,
@@ -193,6 +195,7 @@ class AjaxCuentas
                 "cliente" => $cli,
                 "vendedor" => $vend,
                 "fecha" => $fecha,
+                "fecha_ven" => $fecha,
                 "tip_mon" => $mon,
                 "monto" => $monto,
                 "estado" => $estado,
