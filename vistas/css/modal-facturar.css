@@ -50,6 +50,52 @@
     background: #f4f6f8;
 }
 
+#modalFacturar .mf-alert-precios {
+    margin: 4px 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #f0c36d;
+    border-radius: 5px;
+    background: #fff8e8;
+    color: #7a4e00;
+}
+
+#modalFacturar .mf-alert-precios.hidden {
+    display: none !important;
+}
+
+#modalFacturar .mf-alert-precios__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+#modalFacturar .mf-alert-precios__head strong {
+    font-size: 13px;
+}
+
+#modalFacturar .mf-alert-precios__hint {
+    margin: 0 0 6px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #8a6420;
+}
+
+#modalFacturar .mf-alert-precios__lista {
+    margin: 0;
+    padding-left: 18px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+#modalFacturar .mf-alert-precios__lista li {
+    margin-bottom: 2px;
+}
+
 #modalFacturar .mf-section {
     background: #fff;
     border: 1px solid #e3e7ec;

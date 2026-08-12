@@ -228,6 +228,34 @@ class AjaxFacturacion
     }
 
     /*=============================================
+    VERIFICAR ARTÍCULOS CON PRECIO CERO ANTES DE FACTURAR
+    =============================================*/
+    public $codigoPedidoPreciosCero;
+
+    public function ajaxVerificarPreciosCeroPedido()
+    {
+        $codigo = trim((string) $this->codigoPedidoPreciosCero);
+        $modelos = array();
+
+        if ($codigo !== "") {
+            $filas = ModeloPedidos::mdlArticulosPrecioCeroPedido($codigo);
+            foreach ($filas as $fila) {
+                $modelos[] = array(
+                    "modelo" => isset($fila["modelo"]) ? $fila["modelo"] : "",
+                    "nombre" => isset($fila["nombre"]) ? $fila["nombre"] : "",
+                    "items" => isset($fila["items"]) ? (int) $fila["items"] : 0,
+                );
+            }
+        }
+
+        echo json_encode(array(
+            "ok" => true,
+            "tiene_cero" => count($modelos) > 0,
+            "articulos" => $modelos,
+        ));
+    }
+
+    /*=============================================
     ACTIVAR PEDIDO
     =============================================*/
     public function ajaxActivarPedido()
@@ -585,6 +613,15 @@ if (isset($_POST["verificarControlFacturacion"])) {
     $verificarControl = new AjaxFacturacion();
     $verificarControl->codigoPedidoControl = isset($_POST["codigoPedido"]) ? $_POST["codigoPedido"] : 0;
     $verificarControl->ajaxVerificarControlFacturacion();
+}
+
+/*=============================================
+    VERIFICAR PRECIOS EN CERO ANTES DE FACTURAR
+    =============================================*/
+if (isset($_POST["verificarPreciosCeroPedido"])) {
+    $verificarPrecios = new AjaxFacturacion();
+    $verificarPrecios->codigoPedidoPreciosCero = isset($_POST["codigoPedido"]) ? $_POST["codigoPedido"] : "";
+    $verificarPrecios->ajaxVerificarPreciosCeroPedido();
 }
 
 /*=============================================

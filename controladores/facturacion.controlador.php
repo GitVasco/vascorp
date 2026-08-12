@@ -3956,6 +3956,28 @@ class ControladorFacturacion
                 }
             }
 
+            $articulosPrecioCero = ModeloPedidos::mdlArticulosPrecioCeroPedido($codigo);
+            if (!empty($articulosPrecioCero)) {
+                $nCero = count($articulosPrecioCero);
+                $msgCero = $nCero === 1
+                    ? "Hay 1 modelo sin precio. Corrígelo en el pedido antes de generar el documento."
+                    : ("Hay " . $nCero . " modelos sin precio. Corrígelos en el pedido antes de generar el documento.");
+                $textoPrecioCero = json_encode(
+                    $msgCero,
+                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
+                );
+                echo '<script>
+                    swal({
+                        type: "warning",
+                        title: "Precios incompletos",
+                        text: ' . $textoPrecioCero . ',
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    });
+                </script>';
+                return;
+            }
+
             $tipoDocumento = $_POST["tdoc"];
             $almacen = $_SESSION["almacen"] == "01" ? "stock01" : "stock05";
             $codigoAlmacen = $_SESSION["almacen"] == "01" ? "01" : "05";

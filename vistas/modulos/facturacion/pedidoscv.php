@@ -315,6 +315,14 @@ MODAL FACTURAR
                             </div>
                         </div>
                     </section>
+                    <div id="mfAlertPreciosCero" class="mf-alert-precios hidden" role="alert">
+                        <div class="mf-alert-precios__head">
+                            <strong id="mfAlertPreciosCeroTitulo">Hay modelos sin precio</strong>
+                            <a href="#" id="mfAlertPreciosCeroEditar" class="btn btn-xs btn-warning">Ir a editar el pedido</a>
+                        </div>
+                        <p class="mf-alert-precios__hint">Corrige el precio del modelo antes de generar factura o boleta.</p>
+                        <ul id="mfAlertPreciosCeroLista" class="mf-alert-precios__lista"></ul>
+                    </div>
                 </div>
                 <div class="modal-footer mf-footer">
                     <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>

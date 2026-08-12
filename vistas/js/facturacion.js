@@ -3158,7 +3158,7 @@ function checkSubmit() {
     if (!btn) {
         return true;
     }
-    if (btn.disabled) {
+    if (btn.disabled || window.mfPedidoBloqueadoPrecioCero) {
         return false;
     }
 
@@ -3170,6 +3170,7 @@ function checkSubmit() {
     }
 
     btn.disabled = true;
+    btn.setAttribute("data-mf-generando", "1");
     btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generando...';
     return true;
 }

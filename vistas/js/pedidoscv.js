@@ -505,6 +505,96 @@ $(".tablaPedidosConfirmados, .tablaPedidosGenerados, .tablaPedidosCV").on(
 /*
  * UX modal facturar
  */
+window.mfPedidoBloqueadoPrecioCero = false;
+
+function mfLimpiarAlertPreciosCero() {
+    window.mfPedidoBloqueadoPrecioCero = false;
+    var $alert = $("#mfAlertPreciosCero");
+    if ($alert.length) {
+        $alert.addClass("hidden");
+        $("#mfAlertPreciosCeroLista").empty();
+        $("#mfAlertPreciosCeroTitulo").text("Hay modelos sin precio");
+        $("#mfAlertPreciosCeroEditar").attr("href", "#");
+    }
+    var $btn = $("#btnGenerarDoc");
+    if ($btn.length && !$btn.data("mf-generando")) {
+        $btn.prop("disabled", false).html("Generar documento");
+    }
+}
+
+function mfMostrarAlertPreciosCero(articulos, codigoPedido) {
+    var n = articulos && articulos.length ? articulos.length : 0;
+    if (!n) {
+        mfLimpiarAlertPreciosCero();
+        return;
+    }
+
+    window.mfPedidoBloqueadoPrecioCero = true;
+    $("#mfAlertPreciosCeroTitulo").text(
+        n === 1
+            ? "Hay 1 modelo sin precio"
+            : "Hay " + n + " modelos sin precio"
+    );
+
+    var $lista = $("#mfAlertPreciosCeroLista").empty();
+    for (var i = 0; i < articulos.length; i++) {
+        var art = articulos[i] || {};
+        var modelo = art.modelo || "";
+        var nombre = art.nombre || "";
+        var texto = modelo;
+        if (nombre) {
+            texto += " — " + nombre;
+        }
+        $lista.append($("<li></li>").text(texto));
+    }
+
+    $("#mfAlertPreciosCeroEditar").attr(
+        "href",
+        "index.php?ruta=crear-pedidocv&pedido=" + encodeURIComponent(codigoPedido || "")
+    );
+    $("#mfAlertPreciosCero").removeClass("hidden");
+    $("#btnGenerarDoc")
+        .prop("disabled", true)
+        .html("Corregir precios primero");
+}
+
+function mfValidarPreciosCeroPedido(codigo) {
+    if (!codigo) {
+        mfLimpiarAlertPreciosCero();
+        return;
+    }
+
+    var datos = new FormData();
+    datos.append("verificarPreciosCeroPedido", "1");
+    datos.append("codigoPedido", codigo);
+
+    $.ajax({
+        url: "ajax/facturacion.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            if (
+                respuesta &&
+                respuesta.ok &&
+                respuesta.tiene_cero &&
+                respuesta.articulos &&
+                respuesta.articulos.length
+            ) {
+                mfMostrarAlertPreciosCero(respuesta.articulos, codigo);
+            } else {
+                mfLimpiarAlertPreciosCero();
+            }
+        },
+        error: function () {
+            mfLimpiarAlertPreciosCero();
+        },
+    });
+}
+
 function mfFormatoOpcionSerie(numero) {
     if (!numero) {
         return "";
@@ -1078,8 +1168,7 @@ $(document).on("change", "#serieSeparado", function () {
 });
 
 $("#modalFacturar").on("show.bs.modal", function () {
-    var $btn = $("#btnGenerarDoc");
-    $btn.prop("disabled", false).html("Generar documento");
+    mfLimpiarAlertPreciosCero();
 
     $("#GuiasDiv").addClass("hidden");
     $("#wrapSepararDoc").addClass("hidden");
@@ -1105,6 +1194,11 @@ $("#modalFacturar").on("show.bs.modal", function () {
 
     if (document.getElementById("tipDoc")) {
         mfMarcarTipDoc(null);
+    }
+
+    var codigoPedido = $("#codPedido").val();
+    if (codigoPedido) {
+        mfValidarPreciosCeroPedido(codigoPedido);
     }
 });
 

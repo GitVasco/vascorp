@@ -226,6 +226,31 @@ class ModeloPedidos
 		$stmt = null;
 	}
 
+	/**
+	 * Modelos del pedido temporal con algún ítem a precio nulo o <= 0
+	 * (agrupado por modelo para no listar cada talla/color).
+	 */
+	static public function mdlArticulosPrecioCeroPedido($codigo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT
+				IFNULL(NULLIF(TRIM(a.modelo), ''), t.articulo) AS modelo,
+				MAX(IFNULL(a.nombre, '')) AS nombre,
+				COUNT(*) AS items
+			FROM detalle_temporal t
+			LEFT JOIN articulojf a ON t.articulo = a.articulo
+			WHERE t.codigo = :codigo
+				AND (t.precio IS NULL OR CAST(t.precio AS DECIMAL(18,4)) <= 0)
+			GROUP BY IFNULL(NULLIF(TRIM(a.modelo), ''), t.articulo)
+			ORDER BY modelo"
+		);
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$stmt = null;
+		return $filas ? $filas : array();
+	}
+
 	/*
 	* GUARDAR DETALLE DE TEMPORAL
 	*/
