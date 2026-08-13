@@ -279,6 +279,9 @@ function listarTallas() {
 }
 
 $(".formularioAlmacenCorte").on("submit", function (e) {
+    if (!$("#seleccionarSectorServicio").length) {
+        return;
+    }
     if (!$("#seleccionarSectorServicio").val()) {
         e.preventDefault();
         Command: toastr["error"]("Debe seleccionar el taller de destino");

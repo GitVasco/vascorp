@@ -408,6 +408,26 @@ function sumarTotalAC() {
  */
 $("#nuevoTotalAlmacenCorte").number(true, 0);
 
+$(".formularioAlmacenCorte").on("submit", function (e) {
+    if (!$("#nuevaAlmacenCorte").length || !$("#nuevaGuia").length) {
+        return;
+    }
+
+    if (typeof listarArticulosAC === "function") {
+        listarArticulosAC();
+        listArticulo();
+    }
+
+    var $form = $(this);
+    if ($form.data("enviando")) {
+        e.preventDefault();
+        return false;
+    }
+
+    $form.data("enviando", true);
+    $form.find("button[type=submit]").prop("disabled", true);
+});
+
 /*
  * LISTAR TODOS LOS ARTICULOS DEL DETALLE
  */

@@ -19,6 +19,52 @@ class ModeloAlmacenCorte
 		$stmt = null;
 	}
 
+	static public function mdlSiguienteCodigoAC()
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT IFNULL(MAX(codigo), 1000) + 1 AS siguiente FROM almacencortejf");
+
+		$stmt->execute();
+
+		$fila = $stmt->fetch();
+
+		$stmt = null;
+
+		return $fila ? (int) $fila["siguiente"] : 1001;
+	}
+
+	static public function mdlExisteGuiaAC($guia)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE guia = :guia LIMIT 1");
+
+		$stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
+
+		$stmt->execute();
+
+		$fila = $stmt->fetch();
+
+		$stmt = null;
+
+		return !empty($fila);
+	}
+
+	static public function mdlExisteCodigoAC($codigo)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE codigo = :codigo LIMIT 1");
+
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_INT);
+
+		$stmt->execute();
+
+		$fila = $stmt->fetch();
+
+		$stmt = null;
+
+		return !empty($fila);
+	}
+
 	static public function mdlMostarArticulosOrdCorte()
 	{
 
@@ -239,19 +285,8 @@ class ModeloAlmacenCorte
 
 		if ($stmt->execute()) {
 
-			// Inicializar saldo_taller con la cantidad (todo disponible para taller/servicios)
-			// El stored procedure puede recibir guía o código, necesitamos obtener el código
-			// Primero intentar obtener el código del almacén de corte por guía
-			$stmt3 = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE guia = :guia ORDER BY codigo DESC LIMIT 1");
-			$stmt3->bindParam(":guia", $datos["almacencorte"], PDO::PARAM_STR);
-			$stmt3->execute();
-			$almacenCorte = $stmt3->fetch(PDO::FETCH_ASSOC);
-			$stmt3->closeCursor();
+			$codigoAC = $datos["almacencorte"];
 
-			// Si no se encuentra por guía, asumir que ya es el código
-			$codigoAC = $almacenCorte ? $almacenCorte["codigo"] : $datos["almacencorte"];
-
-			// Obtener el ID del detalle recién creado
 			$stmt2 = Conexion::conectar()->prepare("SELECT id FROM almacencorte_detallejf 
 				WHERE almacencorte = :almacencorte 
 				AND articulo = :articulo 
@@ -763,7 +798,7 @@ class ModeloAlmacenCorte
 			LEFT JOIN articulojf a 
 			  ON dac.articulo = a.articulo
 			LEFT JOIN almacencortejf da
- 			  ON dac.almacencorte=da.guia
+ 			  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
 			  where year(da.fecha)=YEAR(NOW())
 		  GROUP BY dac.almacencorte,
 			a.modelo,
@@ -844,7 +879,7 @@ class ModeloAlmacenCorte
 			LEFT JOIN articulojf a 
 			  ON dac.articulo = a.articulo 
 			LEFT JOIN almacencortejf da
- 			  ON dac.almacencorte=da.guia
+ 			  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
 			WHERE DATE(da.fecha) like '%$fechaFinal%'
 		  GROUP BY dac.almacencorte,
 			a.modelo,
@@ -937,7 +972,7 @@ class ModeloAlmacenCorte
 				LEFT JOIN articulojf a 
 				  ON dac.articulo = a.articulo
 				LEFT JOIN almacencortejf da
- 			  	  ON dac.almacencorte=da.guia
+ 			  	  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
 				WHERE DATE(da.fecha) BETWEEN '$fechaInicial' AND '$fechaFinalMasUno'
 			  GROUP BY dac.almacencorte,
 				a.modelo,
@@ -1015,7 +1050,7 @@ class ModeloAlmacenCorte
 				LEFT JOIN articulojf a 
 				  ON dac.articulo = a.articulo 
 				LEFT JOIN almacencortejf da
- 				  ON dac.almacencorte=da.guia
+ 				  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
 				WHERE DATE(da.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'
 			  GROUP BY dac.almacencorte,
 				a.modelo,

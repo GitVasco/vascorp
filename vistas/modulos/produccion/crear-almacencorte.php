@@ -80,26 +80,9 @@
 
                                         <?php
 
-                                        $ult_codigo = ControladorAlmacenCorte::ctrUltimoCodigoAC();
+                                        $codigo = ControladorAlmacenCorte::ctrSiguienteCodigoAC();
 
-                                        /* var_dump("ult_codigo", $ult_codigo); */
-
-                                        if (!$ult_codigo) {
-
-                                            echo '<input type="text" class="form-control" id="nuevaAlmacenCorte" name="nuevaAlmacenCorte" value="1001" readonly>';
-                                        } else {
-
-                                            foreach ($ult_codigo as $key => $value) {
-                                            }
-
-                                            /* var_dump("prueba", $value["ultimo_codigo"]); */
-
-                                            $codigo = $ult_codigo["ultimo_codigo"] + 1;
-
-                                            /* var_dump("codigo", $codigo); */
-
-                                            echo '<input type="text" class="form-control" id="nuevaAlmacenCorte" name="nuevaAlmacenCorte" value="' . $codigo . '" readonly>';
-                                        }
+                                        echo '<input type="text" class="form-control" id="nuevaAlmacenCorte" name="nuevaAlmacenCorte" value="' . $codigo . '" readonly title="Se confirma al guardar">';
 
 
                                         ?>
