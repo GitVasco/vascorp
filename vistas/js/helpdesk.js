@@ -265,7 +265,7 @@ $(function () {
     }
 
     function destroyPickers($root) {
-        $($root).find("select.selectpicker").each(function () {
+        $($root).find("select").each(function () {
             var $s = $(this);
             if ($s.data("selectpicker")) {
                 $s.selectpicker("destroy");
@@ -273,9 +273,13 @@ $(function () {
         });
     }
 
+    function cerrarPickers() {
+        $(".bootstrap-select.open").removeClass("open");
+    }
+
     function initPicker($sel) {
         var $sel = $($sel);
-        if (!$.fn.selectpicker) {
+        if (!$sel.length || !$.fn.selectpicker) {
             return;
         }
         if ($sel.data("selectpicker")) {
@@ -286,6 +290,31 @@ $(function () {
                 sanitize: false
             });
         }
+    }
+
+    function valPicker($sel, value) {
+        var $sel = $($sel);
+        $sel.val(value == null ? "" : value);
+        if ($.fn.selectpicker && $sel.data("selectpicker")) {
+            $sel.selectpicker("val", $sel.val());
+        }
+    }
+
+    function refrescarPickersAlta() {
+        ["#hdArea", "#hdModulo", "#hdPrioridad", "#hdSolicitante", "#hdAsignadoAlta"].forEach(initPicker);
+    }
+
+    function refrescarPickersLista() {
+        initPicker("#hdFiltroEstado");
+        initPicker("#hdFiltroTipo");
+        if (permisos.gestionar) {
+            initPicker("#hdFiltroSolicitante");
+            initPicker("#hdFiltroAsignado");
+        }
+    }
+
+    function refrescarPickersGestion() {
+        ["#hdGestTipo", "#hdGestEstado", "#hdGestPrioridad", "#hdGestSolicitante", "#hdGestAsignado", "#hdRespEstado"].forEach(initPicker);
     }
 
     function leerFiltroEstadoGuardado() {
@@ -452,10 +481,7 @@ $(function () {
     }
 
     function refreshPicker($sel) {
-        var $sel = $($sel);
-        if ($.fn.selectpicker && $sel.hasClass("selectpicker")) {
-            $sel.selectpicker("refresh");
-        }
+        initPicker($sel);
     }
 
     function fillOptions($sel, items, placeholder) {
@@ -610,10 +636,11 @@ $(function () {
         $("#hdTipo").val("INCIDENCIA");
         $("#hdTipoCards .hd-tipo-card").removeClass("active");
         $('#hdTipoCards .hd-tipo-card[data-tipo="INCIDENCIA"]').addClass("active");
-        $("#hdPrioridad").val("MEDIA");
-        if ($.fn.selectpicker && $("#hdPrioridad").data("selectpicker")) {
-            $("#hdPrioridad").selectpicker("refresh");
-        }
+        valPicker("#hdPrioridad", "MEDIA");
+        valPicker("#hdSolicitante", "");
+        valPicker("#hdAsignadoAlta", "");
+        valPicker("#hdArea", "");
+        valPicker("#hdModulo", "");
         $("#hdFechaEstimada").val("");
         toggleFechaEstimadaAlta();
         aplicarGuiaAlta();
@@ -622,6 +649,7 @@ $(function () {
         $("#hdAdjuntos").val("");
         fillOptions($("#hdArea"), catalogos.areas, "Seleccionar área");
         aplicarSistema("VASCORP");
+        refrescarPickersAlta();
     }
 
     function cargarBase() {
@@ -641,7 +669,6 @@ $(function () {
             aplicarPermisosUi();
             fillOptions($("#hdArea"), catalogos.areas, "Seleccionar área");
             aplicarSistema(sistemaActual);
-            initPicker("#hdPrioridad");
             fillSelect($("#hdAsignadoAlta"), agentes, "Sin asignar", "id", function (u) {
                 return u.nombre || ("#" + u.id);
             });
@@ -653,8 +680,7 @@ $(function () {
             if (guardado !== null) {
                 $("#hdFiltroEstado").val(guardado);
             }
-            initPicker("#hdFiltroEstado");
-            initPicker("#hdFiltroTipo");
+            refrescarPickersAlta();
         });
     }
 
@@ -678,8 +704,8 @@ $(function () {
         if (currentAsig) {
             $asig.val(currentAsig);
         }
-        initPicker("#hdFiltroSolicitante");
-        initPicker("#hdFiltroAsignado");
+        refreshPicker("#hdFiltroSolicitante");
+        refreshPicker("#hdFiltroAsignado");
     }
 
     function fmtFechaCorta(fecha) {
@@ -910,6 +936,7 @@ $(function () {
     }
 
     function mostrarVistaConversacion(ticketId) {
+        cerrarPickers();
         $("#hdVistaNuevo, #hdVistaLista, #hdVistaIndicadores").removeClass("active");
         $("#hdTabNuevoLi, #hdTabListaLi, #hdTabIndicadoresLi").removeClass("active");
         $("#hdVistaConversacion").addClass("active");
@@ -924,6 +951,7 @@ $(function () {
     }
 
     function mostrarVistaLista(actualizarHash) {
+        cerrarPickers();
         $("#hdVistaConversacion, #hdVistaIndicadores").removeClass("active");
         $("#hdVistaNuevo").removeClass("active");
         $("#hdTabNuevoLi, #hdTabIndicadoresLi").removeClass("active");
@@ -933,6 +961,7 @@ $(function () {
         if (actualizarHash !== false) {
             setHash("lista");
         }
+        refrescarPickersLista();
         cargarLista();
     }
 
@@ -949,6 +978,8 @@ $(function () {
         if (actualizarHash !== false) {
             setHash("nuevo");
         }
+        refrescarPickersAlta();
+        cerrarPickers();
     }
 
     function mostrarVistaIndicadores(actualizarHash) {
@@ -964,6 +995,7 @@ $(function () {
         if (actualizarHash !== false) {
             setHash("indicadores");
         }
+        cerrarPickers();
         if (typeof window.hdCargarIndicadores === "function") {
             window.hdCargarIndicadores(true);
         }
@@ -1362,11 +1394,6 @@ $(function () {
                         '<i class="fa fa-save"></i> Guardar cambios</button>' +
                 "</form>"
             );
-            initPicker("#hdGestTipo");
-            initPicker("#hdGestEstado");
-            initPicker("#hdGestPrioridad");
-            initPicker("#hdGestSolicitante");
-            initPicker("#hdGestAsignado");
             $("#hdGestTipo").on("changed.bs.select change", function () {
                 var show = tipoUsaFechaEstimada($(this).val());
                 $("#hdGestFechaWrap").toggle(!!show);
@@ -1408,7 +1435,6 @@ $(function () {
                         '<i class="fa fa-unlock"></i> Reabrir ticket</button>' +
                 "</form>"
             );
-            initPicker("#hdGestEstado");
         } else {
             $("#hdConvSidebarBody").html(
                 (cerrado
@@ -1512,10 +1538,9 @@ $(function () {
         } else {
             $("#hdCerradoBanner").remove();
             $("#hdResponderBox").show();
-            initPicker("#hdRespEstado");
-            refreshPicker("#hdRespEstado");
         }
         mostrarVistaConversacion(t.id);
+        refrescarPickersGestion();
         var $hilo = $("#hdHilo");
         $hilo.scrollTop($hilo[0].scrollHeight);
     }
@@ -1710,15 +1735,20 @@ $(function () {
             ticketActual = null;
             $("#hdVistaConversacion").removeClass("active");
             setHash("lista");
+            refrescarPickersLista();
+            cerrarPickers();
             cargarLista();
         } else if (href === "#hdVistaNuevo") {
             ticketActual = null;
             $("#hdVistaConversacion").removeClass("active");
             setHash("nuevo");
+            refrescarPickersAlta();
+            cerrarPickers();
         } else if (href === "#hdVistaIndicadores") {
             ticketActual = null;
             $("#hdVistaConversacion").removeClass("active");
             setHash("indicadores");
+            cerrarPickers();
             if (typeof window.hdCargarIndicadores === "function") {
                 window.hdCargarIndicadores(true);
             }

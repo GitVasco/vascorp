@@ -48,7 +48,7 @@ SELECT
 	IFNULL(s.nom_sector, x.cod_sector) AS taller,
 	TRIM(x.modelo) AS modelo,
 	IFNULL(mj.nombre, IFNULL(x.nombre, a.nombre)) AS nombre_modelo,
-	IFNULL(mar.marca, a.marca) AS marca,
+	IFNULL(NULLIF(TRIM(a.marca), ''), mar.marca) AS marca,
 	TRIM(IFNULL(x.cod_color, '')) AS cod_color,
 	IFNULL(x.color, a.color) AS color,
 	a.articulo,

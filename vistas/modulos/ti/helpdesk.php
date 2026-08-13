@@ -134,6 +134,7 @@
                                                     <label for="hdArea">Área <span class="text-danger">*</span></label>
                                                     <select class="form-control selectpicker" id="hdArea" required
                                                             data-live-search="true" data-width="100%"
+                                                            data-container="body"
                                                             title="Seleccionar área">
                                                         <option value="">Seleccionar área</option>
                                                     </select>
@@ -144,6 +145,7 @@
                                                     <label for="hdModulo">Módulo / tema</label>
                                                     <select class="form-control selectpicker" id="hdModulo"
                                                             data-live-search="true" data-width="100%"
+                                                            data-container="body"
                                                             title="Seleccionar módulo">
                                                         <option value="">Seleccionar módulo</option>
                                                     </select>
@@ -153,7 +155,8 @@
                                                 <div class="form-group">
                                                     <label for="hdPrioridad">Prioridad <span class="text-danger">*</span></label>
                                                     <select class="form-control selectpicker" id="hdPrioridad"
-                                                            data-width="100%" data-show-content="true">
+                                                            data-width="100%" data-show-content="true"
+                                                            data-container="body">
                                                         <option value="BAJA"
                                                             data-content="<span class='label label-prioridad-BAJA'><i class='fa fa-flag'></i> Baja</span>">Baja</option>
                                                         <option value="MEDIA" selected
@@ -192,6 +195,7 @@
                                                     <label for="hdSolicitante">Solicitante</label>
                                                     <select class="form-control selectpicker" id="hdSolicitante"
                                                             data-live-search="true" data-width="100%"
+                                                            data-container="body"
                                                             title="Yo (sesión actual)">
                                                         <option value="">Yo (sesión actual)</option>
                                                     </select>
@@ -202,6 +206,7 @@
                                                     <label for="hdAsignadoAlta"><i class="fa fa-user"></i> Asignar a</label>
                                                     <select class="form-control selectpicker" id="hdAsignadoAlta"
                                                             data-live-search="true" data-width="100%"
+                                                            data-container="body"
                                                             title="Elegir responsable…">
                                                         <option value="">Sin asignar</option>
                                                     </select>
@@ -372,14 +377,14 @@
                                 <option value="OTRO">Otro</option>
                             </select>
                             <span id="hdFiltrosPersonas" class="hd-filtros-personas" style="display:none;">
-                                <select class="form-control input-sm" id="hdFiltroSolicitante"
+                                <select class="form-control input-sm selectpicker" id="hdFiltroSolicitante"
                                         title="Solicitante" data-live-search="true" data-width="170px"
-                                        style="width:170px;display:inline-block;">
+                                        data-container="body">
                                     <option value="">Solicitante</option>
                                 </select>
-                                <select class="form-control input-sm" id="hdFiltroAsignado"
+                                <select class="form-control input-sm selectpicker" id="hdFiltroAsignado"
                                         title="Asignado" data-width="140px"
-                                        style="width:140px;display:inline-block;">
+                                        data-container="body">
                                     <option value="">Asignado</option>
                                     <option value="__SIN__">Sin asignar</option>
                                 </select>
