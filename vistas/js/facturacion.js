@@ -2020,7 +2020,11 @@ $(".tablaFacturas").on("click", ".btnImprimirFactura", function () {
     //window.open("extensiones/tcpdf/pdf/reporte_factura.php?tipo="+tipo+"&documento="+documento,"_blank");
 
     window.open(
-        "vistas/reportes_ticket/impresion_bolfact.php?tipo=" +
+        (typeof window.URL_BASE_IMPRESION_BOLFACT !== "undefined" &&
+        window.URL_BASE_IMPRESION_BOLFACT
+            ? window.URL_BASE_IMPRESION_BOLFACT
+            : "vistas/reportes_ticket/impresion_bolfact.php") +
+            "?tipo=" +
             tipo +
             "&documento=" +
             documento,
@@ -2035,7 +2039,11 @@ $(".tablaBoletas").on("click", ".btnImprimirBoleta", function () {
     //window.open("extensiones/tcpdf/pdf/reporte_boleta.php?tipo="+tipo+"&documento="+documento,"_blank");
 
     window.open(
-        "vistas/reportes_ticket/impresion_bolfact.php?tipo=" +
+        (typeof window.URL_BASE_IMPRESION_BOLFACT !== "undefined" &&
+        window.URL_BASE_IMPRESION_BOLFACT
+            ? window.URL_BASE_IMPRESION_BOLFACT
+            : "vistas/reportes_ticket/impresion_bolfact.php") +
+            "?tipo=" +
             tipo +
             "&documento=" +
             documento,

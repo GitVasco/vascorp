@@ -611,7 +611,7 @@ class ControladorFacturacion
                                 confirmButtonText: "Cerrar",
                             }).then(function (result) {
                                 if (result.value) {
-                                    window.open("vistas/reportes_ticket/impresion_bolfact.php?tipo=' . $tipo . '&documento=' . $docDestino . '","_blank"
+                                    window.open("' . obtenerUrlImpresionBolfact($tipo, $docDestino) . '","_blank"
                                     );
 
                                     window.location = "guias-remision";
@@ -788,7 +788,7 @@ class ControladorFacturacion
                                 }).then(function(result){
                                                 if (result.value) {
 
-                                                    window.open("vistas/reportes_ticket/impresion_bolfact.php?tipo=' . $tipo . '&documento=' . $docDestino . '","_blank")
+                                                    window.open("' . obtenerUrlImpresionBolfact($tipo, $docDestino) . '","_blank")
                                                     window.location = "guias-remision";
                                                 }
                                             })
@@ -4339,11 +4339,11 @@ class ControladorFacturacion
             ),
             "S02" => array(
                 "title" => "Se Genero la Boleta ",
-                "url" => "vistas/reportes_ticket/impresion_bolfact.php?tipo=S02&documento="
+                "url" => obtenerUrlBaseImpresionBolfact() . "?tipo=S02&documento="
             ),
             "S03" => array(
                 "title" => "Se Genero la Factura ",
-                "url" => "vistas/reportes_ticket/impresion_bolfact.php?tipo=S03&documento="
+                "url" => obtenerUrlBaseImpresionBolfact() . "?tipo=S03&documento="
             ),
             "S70" => array(
                 "title" => "Se Genero la Proforma ",

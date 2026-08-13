@@ -1,3 +1,10 @@
+<?php
+require_once __DIR__ . "/../../controladores/config.php";
+if (function_exists("bolfactImpresionEsSap") && bolfactImpresionEsSap()) {
+    require __DIR__ . "/impresion_bolfact_sap.php";
+    exit;
+}
+?>
 <html>
 
 <head>

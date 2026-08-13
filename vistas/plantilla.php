@@ -1161,6 +1161,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/vendedor.js"></script>
     <script>
         window.URL_BASE_IMPRESION_PROFORMA = "<?php echo obtenerUrlBaseImpresionProforma(); ?>";
+        window.URL_BASE_IMPRESION_BOLFACT = "<?php echo obtenerUrlBaseImpresionBolfact(); ?>";
     </script>
     <script src="vistas/js/facturacion.js?v=19"></script>
     <script src="vistas/js/abonos.js"></script>
