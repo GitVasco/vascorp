@@ -108,13 +108,15 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "costos_modelo");
             $puedeVerFichaModelos = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
+            $puedeVerProyeccionComercial = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardGerencial
                 || $puedeVerDashboardCxc
                 || $puedeVerCentroDecisiones
                 || $puedeVerHistorialCredito
                 || $puedeVerLineaCredito;
-            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor || $puedeVerFichaModelos;
+            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor || $puedeVerFichaModelos || $puedeVerProyeccionComercial;
             $mostrarCostosRentabilidad = $puedeVerCostosModelo;
             $mostrarCatalogosComerciales = $puedeVerCategoriasComerciales
                 || $puedeVerCategoriasPorRevisar
@@ -151,6 +153,11 @@
                 $rutasActivasMetasInteligencia[] = "ficha-gerencial-modelos";
                 $rutasActivasMetasInteligencia[] = "resumen-gerencial-modelos";
                 $rutasActivasMetasInteligencia[] = "comparacion-gerencial-modelos";
+            }
+            if ($puedeVerProyeccionComercial) {
+                $rutasActivasMetasInteligencia[] = "proyeccion-comercial-modelos";
+                $rutasActivasMetasInteligencia[] = "proyeccion-comercial-masiva";
+                $rutasActivasMetasInteligencia[] = "proyeccion-comercial-factores";
             }
 
             $rutasActivasCostosRentabilidad = array();
@@ -307,6 +314,20 @@
                                     <a href="index.php?ruta=ficha-gerencial-modelos">
                                         <i class="fa fa-cube"></i>
                                         <span>Análisis de modelos</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerProyeccionComercial) { ?>
+                                <li class="<?php if (in_array($_GET["ruta"], array("proyeccion-comercial-modelos", "proyeccion-comercial-masiva"), true)) echo 'active'; ?>">
+                                    <a href="index.php?ruta=proyeccion-comercial-modelos">
+                                        <i class="fa fa-line-chart"></i>
+                                        <span>Proyección comercial</span>
+                                    </a>
+                                </li>
+                                <li class="<?php if ($_GET["ruta"] == "proyeccion-comercial-factores") echo 'active'; ?>">
+                                    <a href="index.php?ruta=proyeccion-comercial-factores">
+                                        <i class="fa fa-tags"></i>
+                                        <span>Factores de proyección</span>
                                     </a>
                                 </li>
                                 <?php } ?>

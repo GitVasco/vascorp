@@ -47,6 +47,9 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `grupos_marcas` | `ver`, `editar` | Grupos comerciales de marcas |
 | `asignacion_grupos_marcas` | `ver`, `editar` | Asignación vendedor–grupo con vigencia |
 | `series_documentos` | `ver`, `editar` | Series fiscales (`talonariosjf`) + amarre a marcas |
+| `costos_modelo` | `ver`, `editar`, `aprobar` | Costos mensuales por modelo |
+| `ficha_modelos` | `ver`, `conciliar` | Ficha / resumen / comparación gerencial de modelos |
+| `proyeccion_comercial_modelos` | `ver`, `editar`, `publicar`, `cerrar`, `reabrir` | Proyección comercial de ventas por modelo–mes (+ vista Factores de proyección) |
 
 ### vasco_online
 

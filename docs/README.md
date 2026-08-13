@@ -40,6 +40,7 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 | [`recetas-modelos/`](comercial/recetas-modelos/) | Recetas, ficha, costos, categorías |
 | [`regularizaciones/`](comercial/regularizaciones/) | Regularizaciones comerciales |
 | [`dashboard-cxc/`](comercial/dashboard-cxc/) | Dashboard CxC |
+| [`comercial/PLAN_PROYECCION_COMERCIAL_MODELOS.md`](comercial/PLAN_PROYECCION_COMERCIAL_MODELOS.md) | Proyección oficial de ventas por modelo |
 
 ---
 

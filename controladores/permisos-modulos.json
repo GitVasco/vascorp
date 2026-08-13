@@ -65,6 +65,13 @@
     "ficha_modelos": {
       "ver": [6, 11],
       "conciliar": [6]
+    },
+    "proyeccion_comercial_modelos": {
+      "ver": [6],
+      "editar": [6],
+      "publicar": [6],
+      "cerrar": [6],
+      "reabrir": [6]
     }
   },
   "vasco_online": {

@@ -45,6 +45,12 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Costos mensuales por modelo | Vasco System";
         } elseif ($_GET["ruta"] === "ficha-gerencial-modelos") {
             $__tituloVentana = "Ficha gerencial de modelos | Vasco System";
+        } elseif ($_GET["ruta"] === "proyeccion-comercial-modelos") {
+            $__tituloVentana = "Proyección comercial por modelo | Vasco System";
+        } elseif ($_GET["ruta"] === "proyeccion-comercial-masiva") {
+            $__tituloVentana = "Proyección comercial — vista masiva | Vasco System";
+        } elseif ($_GET["ruta"] === "proyeccion-comercial-factores") {
+            $__tituloVentana = "Factores de proyección comercial | Vasco System";
         } elseif ($_GET["ruta"] === "resumen-gerencial-modelos") {
             $__tituloVentana = "Resumen gerencial de modelos | Vasco System";
         } elseif ($_GET["ruta"] === "comparacion-gerencial-modelos") {
@@ -173,6 +179,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") : ?>
     <link rel="stylesheet" href="vistas/css/ficha-gerencial-modelos.css?v=44">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], array("proyeccion-comercial-modelos", "proyeccion-comercial-masiva", "proyeccion-comercial-factores"), true)) : ?>
+    <link rel="stylesheet" href="vistas/bower_components/select2/dist/css/select2.min.css">
+    <link rel="stylesheet" href="vistas/css/proyeccion-comercial-modelos.css?v=15">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") : ?>
@@ -490,6 +500,27 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/ficha-gerencial-modelos.php";
+                }
+            } else if ($_GET["ruta"] == "proyeccion-comercial-modelos") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/proyeccion-comercial-modelos.php";
+                }
+            } else if ($_GET["ruta"] == "proyeccion-comercial-masiva") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/proyeccion-comercial-masiva.php";
+                }
+            } else if ($_GET["ruta"] == "proyeccion-comercial-factores") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/proyeccion-comercial-factores.php";
                 }
             } else if ($_GET["ruta"] == "resumen-gerencial-modelos") {
 
@@ -1034,6 +1065,16 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") { ?>
     <script src="vistas/js/ficha-gerencial-modelos.js?v=48"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "proyeccion-comercial-modelos") { ?>
+    <script src="vistas/bower_components/select2/dist/js/select2.full.min.js"></script>
+    <script src="vistas/js/proyeccion-comercial-modelos.js?v=25"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "proyeccion-comercial-masiva") { ?>
+    <script src="vistas/js/proyeccion-comercial-masiva.js?v=2"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "proyeccion-comercial-factores") { ?>
+    <script src="vistas/js/proyeccion-comercial-factores.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") { ?>
     <script src="vistas/js/resumen-gerencial-modelos.js?v=8"></script>

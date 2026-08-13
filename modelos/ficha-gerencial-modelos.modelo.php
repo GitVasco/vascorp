@@ -5,12 +5,16 @@ require_once "costos-modelo-mensual.modelo.php";
 
 class ModeloFichaGerencialModelos
 {
-	private static function tiposVenta()
+	/**
+	 * Tipos de movimiento de venta neta (ficha / proyección comercial).
+	 * Públicos para reutilizar la misma regla sin duplicarla.
+	 */
+	static public function tiposVenta()
 	{
 		return array("S02", "S03", "S70", "E05", "S05");
 	}
 
-	private static function sqlTiposVenta($alias = "m")
+	static public function sqlTiposVenta($alias = "m")
 	{
 		$tipos = array();
 		foreach (self::tiposVenta() as $tipo) {
@@ -19,7 +23,7 @@ class ModeloFichaGerencialModelos
 		return $alias . ".tipo IN (" . implode(", ", $tipos) . ")";
 	}
 
-	private static function sqlCabeceraValida($alias = "m")
+	static public function sqlCabeceraValida($alias = "m")
 	{
 		return "EXISTS (
 			SELECT 1
