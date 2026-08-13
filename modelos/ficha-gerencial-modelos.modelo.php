@@ -35,6 +35,22 @@ class ModeloFichaGerencialModelos
 		)";
 	}
 
+	private static function mdlClasificacionModelo($modelo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT ms.id_subcategoria, s.codigo AS codigo_subcategoria, s.nombre AS nombre_subcategoria,
+				c.id AS id_categoria, c.codigo AS codigo_categoria, c.nombre AS nombre_categoria
+			 FROM modelo_subcategoriajf ms
+			 INNER JOIN categoria_modelojf c ON c.id = ms.id_categoria AND c.estado = 1
+			 LEFT JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
+			 WHERE ms.modelo = :modelo
+			 LIMIT 1"
+		);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetch(PDO::FETCH_ASSOC);
+	}
+
 	static public function mdlRangoMes($anio, $mes)
 	{
 		$anio = (int) $anio;
@@ -360,23 +376,12 @@ class ModeloFichaGerencialModelos
 			"nombre" => $grupo["nombre"]
 		);
 
-		$stmtClasif = Conexion::conectar()->prepare(
-			"SELECT s.id AS id_subcategoria, s.codigo AS codigo_subcategoria, s.nombre AS nombre_subcategoria,
-				c.id AS id_categoria, c.codigo AS codigo_categoria, c.nombre AS nombre_categoria
-			 FROM modelo_subcategoriajf ms
-			 INNER JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
-			 INNER JOIN categoria_modelojf c ON c.id = s.id_categoria AND c.estado = 1
-			 WHERE ms.modelo = :modelo
-			 LIMIT 1"
-		);
-		$stmtClasif->bindValue(":modelo", $modelo, PDO::PARAM_STR);
-		$stmtClasif->execute();
-		$clasif = $stmtClasif->fetch(PDO::FETCH_ASSOC);
+		$clasif = self::mdlClasificacionModelo($modelo);
 
 		// Universo: modelos activos del mismo grupo comercial, con venta neta ≠ 0 en el período.
 		$sql = "SELECT TRIM(a.modelo) AS modelo,
 				ms.id_subcategoria,
-				s.id_categoria,
+				ms.id_categoria,
 				SUM(IFNULL(m.total, 0)) AS venta_neta,
 				SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
 			FROM {$fuente} m
@@ -391,7 +396,7 @@ class ModeloFichaGerencialModelos
 			WHERE m.fecha >= :inicio AND m.fecha < :fin
 			  AND " . self::sqlTiposVenta("m") . "
 			  AND " . self::sqlCabeceraValida("m") . "
-			GROUP BY TRIM(a.modelo), ms.id_subcategoria, s.id_categoria
+			GROUP BY TRIM(a.modelo), ms.id_subcategoria, ms.id_categoria
 			HAVING SUM(IFNULL(m.total, 0)) <> 0
 			ORDER BY venta_neta DESC, unidades_vendidas DESC, modelo ASC";
 		$stmt = Conexion::conectar()->prepare($sql);
@@ -402,16 +407,17 @@ class ModeloFichaGerencialModelos
 		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 		$rankGeneral = self::mdlPosicionRankingFilas($filas, $modelo, null, null);
-		$idCat = $clasif ? (int) $clasif["id_categoria"] : 0;
-		$idSub = $clasif ? (int) $clasif["id_subcategoria"] : 0;
-		$rankCat = $clasif
+		$idCat = $clasif && $clasif["id_categoria"] !== null ? (int) $clasif["id_categoria"] : 0;
+		$idSub = $clasif && $clasif["id_subcategoria"] !== null ? (int) $clasif["id_subcategoria"] : 0;
+		$tieneSub = $idSub > 0;
+		$rankCat = $idCat > 0
 			? self::mdlPosicionRankingFilas($filas, $modelo, $idCat, null)
 			: $rankVacio;
-		$rankSub = $clasif
+		$rankSub = $tieneSub
 			? self::mdlPosicionRankingFilas($filas, $modelo, null, $idSub)
 			: $rankVacio;
 
-		if (!$clasif) {
+		if ($idCat < 1) {
 			return array(
 				"estado" => "sin_clasificacion",
 				"posicion" => null,
@@ -431,29 +437,35 @@ class ModeloFichaGerencialModelos
 		}
 
 		return array(
-			"estado" => "ok",
-			"posicion" => $rankSub["posicion"],
-			"total_modelos_con_venta" => $rankSub["total"],
+			"estado" => $tieneSub ? "ok" : "parcial",
+			"posicion" => $tieneSub ? $rankSub["posicion"] : $rankCat["posicion"],
+			"total_modelos_con_venta" => $tieneSub ? $rankSub["total"] : $rankCat["total"],
 			"categoria" => array(
 				"id" => (int) $clasif["id_categoria"],
 				"codigo" => $clasif["codigo_categoria"],
 				"nombre" => $clasif["nombre_categoria"]
 			),
-			"subcategoria" => array(
-				"id" => (int) $clasif["id_subcategoria"],
-				"codigo" => $clasif["codigo_subcategoria"],
-				"nombre" => $clasif["nombre_subcategoria"]
-			),
+			"subcategoria" => $tieneSub
+				? array(
+					"id" => (int) $clasif["id_subcategoria"],
+					"codigo" => $clasif["codigo_subcategoria"],
+					"nombre" => $clasif["nombre_subcategoria"]
+				)
+				: null,
 			"ranking" => array(
 				"general" => $rankGeneral,
 				"categoria" => $rankCat,
 				"subcategoria" => $rankSub
 			),
 			"metrica" => "venta_neta",
-			"ventas_netas_modelo" => $rankSub["ventas_netas_modelo"] !== null
+			"ventas_netas_modelo" => $tieneSub && $rankSub["ventas_netas_modelo"] !== null
 				? $rankSub["ventas_netas_modelo"]
-				: $rankGeneral["ventas_netas_modelo"],
-			"mensaje" => null,
+				: ($rankCat["ventas_netas_modelo"] !== null
+					? $rankCat["ventas_netas_modelo"]
+					: $rankGeneral["ventas_netas_modelo"]),
+			"mensaje" => $tieneSub
+				? null
+				: "Tiene categoría; falta la subcategoría para comparar modelos equivalentes.",
 			"grupo" => $payloadGrupo
 		);
 	}
@@ -558,24 +570,13 @@ class ModeloFichaGerencialModelos
 			);
 		}
 
-		$stmtClasif = Conexion::conectar()->prepare(
-			"SELECT s.id AS id_subcategoria, s.codigo AS codigo_subcategoria, s.nombre AS nombre_subcategoria,
-				c.id AS id_categoria, c.codigo AS codigo_categoria, c.nombre AS nombre_categoria
-			 FROM modelo_subcategoriajf ms
-			 INNER JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
-			 INNER JOIN categoria_modelojf c ON c.id = s.id_categoria AND c.estado = 1
-			 WHERE ms.modelo = :modelo
-			 LIMIT 1"
-		);
-		$stmtClasif->bindValue(":modelo", $modelo, PDO::PARAM_STR);
-		$stmtClasif->execute();
-		$clasif = $stmtClasif->fetch(PDO::FETCH_ASSOC);
+		$clasif = self::mdlClasificacionModelo($modelo);
 
 		$sql = "SELECT YEAR(m.fecha) AS anio,
 				MONTH(m.fecha) AS mes,
 				TRIM(a.modelo) AS modelo,
 				ms.id_subcategoria,
-				s.id_categoria,
+				ms.id_categoria,
 				SUM(IFNULL(m.total, 0)) AS venta_neta,
 				SUM(IFNULL(m.cantidad, 0)) AS unidades_vendidas
 			FROM {$fuente} m
@@ -590,7 +591,7 @@ class ModeloFichaGerencialModelos
 			WHERE m.fecha >= :inicio AND m.fecha < :fin
 			  AND " . self::sqlTiposVenta("m") . "
 			  AND " . self::sqlCabeceraValida("m") . "
-			GROUP BY YEAR(m.fecha), MONTH(m.fecha), TRIM(a.modelo), ms.id_subcategoria, s.id_categoria
+			GROUP BY YEAR(m.fecha), MONTH(m.fecha), TRIM(a.modelo), ms.id_subcategoria, ms.id_categoria
 			HAVING SUM(IFNULL(m.total, 0)) <> 0";
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":id_grupo", (int) $grupo["id"], PDO::PARAM_INT);
@@ -607,8 +608,8 @@ class ModeloFichaGerencialModelos
 			$porMes[$clave][] = $fila;
 		}
 
-		$idCat = $clasif ? (int) $clasif["id_categoria"] : null;
-		$idSub = $clasif ? (int) $clasif["id_subcategoria"] : null;
+		$idCat = $clasif && $clasif["id_categoria"] !== null ? (int) $clasif["id_categoria"] : null;
+		$idSub = $clasif && $clasif["id_subcategoria"] !== null ? (int) $clasif["id_subcategoria"] : null;
 
 		$etiquetas = array();
 		$periodos = array();
@@ -662,7 +663,7 @@ class ModeloFichaGerencialModelos
 				"nombre" => $clasif["nombre_categoria"]
 			)
 			: null;
-		$payloadSub = $clasif
+		$payloadSub = $idSub
 			? array(
 				"id" => (int) $clasif["id_subcategoria"],
 				"codigo" => $clasif["codigo_subcategoria"],
@@ -670,8 +671,17 @@ class ModeloFichaGerencialModelos
 			)
 			: null;
 
+		$estadoEvo = "sin_clasificacion";
+		$mensajeEvo = "Sin clasificación: solo se calcula la evolución del ranking de grupo.";
+		if ($idCat) {
+			$estadoEvo = $idSub ? "ok" : "parcial";
+			$mensajeEvo = $idSub
+				? null
+				: "Tiene categoría; falta la subcategoría para la evolución por equivalentes.";
+		}
+
 		return array(
-			"estado" => $clasif ? "ok" : "sin_clasificacion",
+			"estado" => $estadoEvo,
 			"grupo" => $payloadGrupo,
 			"categoria" => $payloadCat,
 			"subcategoria" => $payloadSub,
@@ -681,9 +691,7 @@ class ModeloFichaGerencialModelos
 			"categoria_serie" => $serieCat,
 			"subcategoria_serie" => $serieSub,
 			"totales" => $totales,
-			"mensaje" => $clasif
-				? null
-				: "Sin clasificación: solo se calcula la evolución del ranking de grupo."
+			"mensaje" => $mensajeEvo
 		);
 	}
 
@@ -936,7 +944,7 @@ class ModeloFichaGerencialModelos
 			"SELECT c.id AS id_categoria, c.codigo AS codigo_categoria, c.nombre AS nombre_categoria, c.orden AS orden_categoria,
 				s.id AS id_subcategoria, s.codigo AS codigo_subcategoria, s.nombre AS nombre_subcategoria, s.orden AS orden_subcategoria
 			 FROM categoria_modelojf c
-			 INNER JOIN subcategoria_modelojf s ON s.id_categoria = c.id AND s.estado = 1
+			 LEFT JOIN subcategoria_modelojf s ON s.id_categoria = c.id AND s.estado = 1
 			 WHERE c.estado = 1
 			 ORDER BY c.orden ASC, c.nombre ASC, s.orden ASC, s.nombre ASC"
 		);
@@ -954,6 +962,9 @@ class ModeloFichaGerencialModelos
 					"nombre" => $fila["nombre_categoria"],
 					"subcategorias" => array()
 				);
+			}
+			if ($fila["id_subcategoria"] === null || (int) $fila["id_subcategoria"] < 1) {
+				continue;
 			}
 			$categorias[$mapa[$idCat]]["subcategorias"][] = array(
 				"id" => (int) $fila["id_subcategoria"],
@@ -1078,7 +1089,7 @@ class ModeloFichaGerencialModelos
 			LEFT JOIN grupos_marcas_comercialjf g ON g.id = gm.id_grupo
 			LEFT JOIN modelo_subcategoriajf ms ON ms.modelo = TRIM(mo.modelo)
 			LEFT JOIN subcategoria_modelojf s ON s.id = ms.id_subcategoria AND s.estado = 1
-			LEFT JOIN categoria_modelojf ccat ON ccat.id = s.id_categoria AND ccat.estado = 1
+			LEFT JOIN categoria_modelojf ccat ON ccat.id = COALESCE(ms.id_categoria, s.id_categoria) AND ccat.estado = 1
 			LEFT JOIN (
 				SELECT TRIM(a.modelo) AS modelo,
 					SUM(CASE WHEN m.fecha >= :inicio_mes_actual THEN IFNULL(m.cantidad, 0) ELSE 0 END) AS unidades_vendidas,

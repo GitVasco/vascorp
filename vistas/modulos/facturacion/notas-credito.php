@@ -52,7 +52,7 @@ $oneYearAgo = date("Y-m-d", strtotime("-1 year"));
                                                 Crédito
                                             </label>
                                             <label for="radio2">
-                                                <input type="radio" class="form-check-input optNotas1" id="radio2" name="optNotas1" value="debido">
+                                                <input type="radio" class="form-check-input optNotas1" id="radio2" name="optNotas1" value="debito">
                                                 Débito
                                             </label>
                                         </form>
@@ -297,7 +297,7 @@ $oneYearAgo = date("Y-m-d", strtotime("-1 year"));
         </div>
 
         <div class="enc-actions">
-            <button type="button" class="btn btnGuardarNotaCredito" id="btnBlocNCD"><i class="fa fa-save"></i> Guardar</button>
+            <button type="button" class="btn btnGuardarNotaCredito" id="btnBlocNCD" data-modo="crear"><i class="fa fa-save"></i> Guardar</button>
             <button type="button" class="btn btnImprimirNotaCredito" tipo="" documento="" disabled><i class="fa fa-print"></i> Imprimir</button>
             <button type="button" class="btn btnAnularNotaCredito"><i class="fa fa-window-close-o"></i> Anular</button>
             <button type="button" class="btn btnEliminarNotaCredito"><i class="fa fa-times"></i> Eliminar</button>

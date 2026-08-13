@@ -31,8 +31,13 @@ class ControladorCategoriasModelos
 					"id" => $idCat,
 					"codigo" => $f["codigo_categoria"],
 					"nombre" => $f["nombre_categoria"],
+					"modelos_categoria" => isset($f["modelos_categoria"]) ? (int) $f["modelos_categoria"] : 0,
+					"modelos_solo_categoria" => isset($f["modelos_solo_categoria"]) ? (int) $f["modelos_solo_categoria"] : 0,
 					"subcategorias" => array()
 				);
+			}
+			if ($f["id_subcategoria"] === null || (int) $f["id_subcategoria"] < 1) {
+				continue;
 			}
 			$categorias[$idCat]["subcategorias"][] = array(
 				"id" => (int) $f["id_subcategoria"],
@@ -162,7 +167,7 @@ class ControladorCategoriasModelos
 		}
 
 		$estadoLista = isset($post["estado_lista"]) ? trim((string) $post["estado_lista"]) : "pendientes";
-		if (!in_array($estadoLista, array("pendientes", "clasificados", "todos"), true)) {
+		if (!in_array($estadoLista, array("pendientes", "en_categoria", "clasificados", "pendientes_o_categoria", "todos"), true)) {
 			$estadoLista = "pendientes";
 		}
 
@@ -170,6 +175,7 @@ class ControladorCategoriasModelos
 			"q" => isset($post["q"]) ? trim((string) $post["q"]) : "",
 			"id_marca" => isset($post["id_marca"]) ? (int) $post["id_marca"] : 0,
 			"id_categoria" => isset($post["id_categoria"]) ? (int) $post["id_categoria"] : 0,
+			"id_categoria_pool" => isset($post["id_categoria_pool"]) ? (int) $post["id_categoria_pool"] : 0,
 			"id_subcategoria" => isset($post["id_subcategoria"]) ? (int) $post["id_subcategoria"] : 0,
 			"estado_lista" => $estadoLista,
 			"pagina" => isset($post["pagina"]) ? (int) $post["pagina"] : 1,
@@ -265,13 +271,25 @@ class ControladorCategoriasModelos
 		}
 
 		$idSubcategoria = isset($post["id_subcategoria"]) ? (int) $post["id_subcategoria"] : 0;
-		if ($idSubcategoria < 1) {
-			return array("ok" => false, "mensaje" => "Subcategoría destino requerida");
+		$idCategoria = isset($post["id_categoria"]) ? (int) $post["id_categoria"] : 0;
+		$destinoCategoria = $idSubcategoria < 1 && $idCategoria > 0;
+
+		if ($idSubcategoria < 1 && !$destinoCategoria) {
+			return array("ok" => false, "mensaje" => "Elija una categoría o subcategoría destino");
 		}
 
-		$sub = ModeloCategoriasModelos::mdlSubcategoriaActiva($idSubcategoria);
-		if (!$sub) {
-			return array("ok" => false, "mensaje" => "Subcategoría inválida o inactiva");
+		$sub = null;
+		$cat = null;
+		if ($destinoCategoria) {
+			$cat = ModeloCategoriasModelos::mdlCategoriaActiva($idCategoria);
+			if (!$cat) {
+				return array("ok" => false, "mensaje" => "Categoría inválida o inactiva");
+			}
+		} else {
+			$sub = ModeloCategoriasModelos::mdlSubcategoriaActiva($idSubcategoria);
+			if (!$sub) {
+				return array("ok" => false, "mensaje" => "Subcategoría inválida o inactiva");
+			}
 		}
 
 		$modelosRaw = array();
@@ -309,13 +327,24 @@ class ControladorCategoriasModelos
 		$errores = array();
 
 		foreach ($modelos as $modelo) {
-			$resultado = ModeloCategoriasModelos::mdlAsignar(
-				$modelo,
-				$idSubcategoria,
-				$usuarioId,
-				null,
-				"lote"
-			);
+			if ($destinoCategoria) {
+				$resultado = ModeloCategoriasModelos::mdlAsignarCategoria(
+					$modelo,
+					$idCategoria,
+					$usuarioId,
+					null,
+					"lote",
+					true
+				);
+			} else {
+				$resultado = ModeloCategoriasModelos::mdlAsignar(
+					$modelo,
+					$idSubcategoria,
+					$usuarioId,
+					null,
+					"lote"
+				);
+			}
 			if (!$resultado["ok"]) {
 				$errores[] = array(
 					"modelo" => $modelo,
@@ -336,12 +365,19 @@ class ControladorCategoriasModelos
 			"omitidos" => $omitidos,
 			"errores" => $errores,
 			"total_enviados" => count($modelos),
-			"destino" => array(
-				"id_subcategoria" => (int) $sub["id_subcategoria"],
-				"nombre_subcategoria" => $sub["nombre_subcategoria"],
-				"id_categoria" => (int) $sub["id_categoria"],
-				"nombre_categoria" => $sub["nombre_categoria"]
-			),
+			"destino" => $destinoCategoria
+				? array(
+					"id_subcategoria" => null,
+					"nombre_subcategoria" => null,
+					"id_categoria" => (int) $cat["id_categoria"],
+					"nombre_categoria" => $cat["nombre_categoria"]
+				)
+				: array(
+					"id_subcategoria" => (int) $sub["id_subcategoria"],
+					"nombre_subcategoria" => $sub["nombre_subcategoria"],
+					"id_categoria" => (int) $sub["id_categoria"],
+					"nombre_categoria" => $sub["nombre_categoria"]
+				),
 			"conteos" => ModeloCategoriasModelos::mdlConteos(0, ""),
 			"mensaje" => $asignados . " asignado(s)"
 				. ($omitidos ? ", " . $omitidos . " sin cambio" : "")
@@ -429,25 +465,36 @@ class ControladorCategoriasModelos
 		$filas = ModeloCategoriasModelos::mdlHistorial($modelo);
 		$data = array();
 		foreach ($filas as $f) {
-			$desde = $f["id_subcategoria_anterior"]
-				? (($f["nombre_cat_anterior"] ? $f["nombre_cat_anterior"] . " › " : "") . $f["nombre_sub_anterior"])
-				: "—";
-			if ($f["accion"] === "BAJA" || !$f["id_subcategoria_nueva"]) {
-				$hasta = "Sin asignar";
-			} else {
-				$hasta = ($f["nombre_cat_nueva"] ? $f["nombre_cat_nueva"] . " › " : "") . $f["nombre_sub_nueva"];
-			}
 			$data[] = array(
 				"id" => (int) $f["id"],
 				"accion" => $f["accion"],
 				"fecha" => $f["fecha"],
 				"usuario_nombre" => $f["usuario_nombre"],
-				"desde" => $desde,
-				"hasta" => $hasta,
+				"desde" => self::ctrEtiquetaHistorial($f, "anterior"),
+				"hasta" => $f["accion"] === "BAJA"
+					? "Sin asignar"
+					: self::ctrEtiquetaHistorial($f, "nueva"),
 				"observacion" => $f["observacion"]
 			);
 		}
 		return array("ok" => true, "modelo" => $modelo, "historial" => $data);
+	}
+
+	static private function ctrEtiquetaHistorial($f, $lado)
+	{
+		$idSub = $lado === "anterior" ? $f["id_subcategoria_anterior"] : $f["id_subcategoria_nueva"];
+		$idCat = $lado === "anterior"
+			? (isset($f["id_categoria_anterior"]) ? $f["id_categoria_anterior"] : null)
+			: (isset($f["id_categoria_nueva"]) ? $f["id_categoria_nueva"] : null);
+		$nomSub = $lado === "anterior" ? $f["nombre_sub_anterior"] : $f["nombre_sub_nueva"];
+		$nomCat = $lado === "anterior" ? $f["nombre_cat_anterior"] : $f["nombre_cat_nueva"];
+		if ($idSub) {
+			return ($nomCat ? $nomCat . " › " : "") . $nomSub;
+		}
+		if ($idCat || $nomCat) {
+			return $nomCat ? $nomCat : "Categoría";
+		}
+		return "—";
 	}
 
 	static public function ctrHistorialReciente($post)
@@ -460,14 +507,6 @@ class ControladorCategoriasModelos
 		$filas = ModeloCategoriasModelos::mdlHistorialReciente($limite, $idSub);
 		$data = array();
 		foreach ($filas as $f) {
-			$desde = $f["id_subcategoria_anterior"]
-				? (($f["nombre_cat_anterior"] ? $f["nombre_cat_anterior"] . " › " : "") . $f["nombre_sub_anterior"])
-				: "Sin asignar";
-			if ($f["accion"] === "BAJA" || !$f["id_subcategoria_nueva"]) {
-				$hasta = "Sin asignar";
-			} else {
-				$hasta = ($f["nombre_cat_nueva"] ? $f["nombre_cat_nueva"] . " › " : "") . $f["nombre_sub_nueva"];
-			}
 			$data[] = array(
 				"id" => (int) $f["id"],
 				"modelo" => $f["modelo"],
@@ -476,8 +515,10 @@ class ControladorCategoriasModelos
 				"fecha" => $f["fecha"],
 				"origen" => $f["origen"],
 				"usuario_nombre" => $f["usuario_nombre"],
-				"desde" => $desde,
-				"hasta" => $hasta
+				"desde" => self::ctrEtiquetaHistorial($f, "anterior"),
+				"hasta" => $f["accion"] === "BAJA"
+					? "Sin asignar"
+					: self::ctrEtiquetaHistorial($f, "nueva")
 			);
 		}
 		return array("ok" => true, "historial" => $data);
@@ -569,6 +610,54 @@ class ControladorCategoriasModelos
 			"categorias" => ModeloCategoriasModelos::mdlListarCategoriasAdmin(),
 			"subcategorias" => ModeloCategoriasModelos::mdlListarSubcategoriasAdmin(0),
 			"conteos" => ModeloCategoriasModelos::mdlConteos(0, "")
+		);
+	}
+
+	static public function ctrListarModelosCategoria($post)
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso");
+		}
+		$id = isset($post["id_categoria"]) ? (int) $post["id_categoria"] : 0;
+		if ($id < 1) {
+			return array("ok" => false, "mensaje" => "Categoría inválida");
+		}
+		$cat = ModeloCategoriasModelos::mdlCategoriaPorId($id);
+		if (!$cat) {
+			return array("ok" => false, "mensaje" => "Categoría no encontrada");
+		}
+		$filas = ModeloCategoriasModelos::mdlListarModelosPorCategoria($id, false);
+		$modelos = array();
+		$activos = 0;
+		foreach ($filas as $f) {
+			$esActivo = $f["estado"] === "ACTIVO";
+			if ($esActivo) {
+				$activos++;
+			}
+			$modelos[] = array(
+				"modelo" => $f["modelo"],
+				"nombre" => $f["nombre"],
+				"marca" => $f["marca"],
+				"tipo" => $f["tipo"],
+				"linea" => $f["linea"],
+				"imagen" => $f["imagen"],
+				"estado" => $f["estado"],
+				"id_subcategoria" => $f["id_subcategoria"] !== null ? (int) $f["id_subcategoria"] : null,
+				"nombre_subcategoria" => $f["nombre_subcategoria"],
+				"fecha" => $f["actualizado_en"] ? $f["actualizado_en"] : $f["fecha_asignacion"],
+				"usuario_nombre" => $f["usuario_nombre"]
+			);
+		}
+		return array(
+			"ok" => true,
+			"categoria" => array(
+				"id" => (int) $cat["id"],
+				"codigo" => $cat["codigo"],
+				"nombre" => $cat["nombre"]
+			),
+			"total" => count($modelos),
+			"activos" => $activos,
+			"modelos" => $modelos
 		);
 	}
 

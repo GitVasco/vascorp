@@ -119,7 +119,7 @@ if (file_exists($rutaLetras)) {
                                                     Crédito
                                                 </label>
                                                 <label for="radio2">
-                                                    <input type="radio" class="form-check-input optNotas1" id="radio2" name="optNotas1" value="debido" disabled>
+                                                    <input type="radio" class="form-check-input optNotas1" id="radio2" name="optNotas1" value="debito" disabled>
                                                     Débito
                                                 </label>
                                             <?php else : ?>
@@ -128,7 +128,7 @@ if (file_exists($rutaLetras)) {
                                                     Crédito
                                                 </label>
                                                 <label for="radio2">
-                                                    <input type="radio" class="form-check-input optNotas1" id="radio2" name="optNotas1" value="debido" checked>
+                                                    <input type="radio" class="form-check-input optNotas1" id="radio2" name="optNotas1" value="debito" checked>
                                                     Débito
                                                 </label>
                                             <?php endif; ?>
@@ -431,7 +431,7 @@ if (file_exists($rutaLetras)) {
         </div>
 
         <div class="enc-actions">
-            <button type="button" class="btn btnGuardarNotaCredito"><i class="fa fa-save"></i> Guardar</button>
+            <button type="button" class="btn btnGuardarNotaCredito" data-modo="editar"><i class="fa fa-save"></i> Guardar</button>
             <button type="button" class="btn btnImprimirNotaCredito" tipo="<?php echo $venta["tipo"] ?>" documento="<?php echo $venta["documento"] ?>"><i class="fa fa-print"></i> Imprimir</button>
             <button type="button" class="btn btnAnularNotaCredito"><i class="fa fa-window-close-o"></i> Anular</button>
             <button type="button" class="btn btnEliminarNotaCredito"><i class="fa fa-times"></i> Eliminar</button>

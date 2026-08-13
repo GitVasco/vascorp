@@ -503,7 +503,9 @@ function fichaAplicarRanking(resp) {
     var sub = ranking.subcategoria && ranking.subcategoria.nombre ? ranking.subcategoria.nombre : "";
 
     $("#fichaModeloCategoria").text(cat || (ranking.estado === "sin_clasificacion" ? "Sin clasificar" : "—"));
-    $("#fichaModeloSubcategoria").text(sub || "—");
+    $("#fichaModeloSubcategoria").text(
+        sub || (ranking.estado === "parcial" ? "Pendiente" : "—")
+    );
 
     fichaPintarRank("#fichaRankGeneral", gen);
     fichaPintarRank("#fichaRankCategoria", catRank);
@@ -515,10 +517,11 @@ function fichaAplicarRanking(resp) {
         return;
     }
 
-    if (ranking.estado === "sin_clasificacion") {
-        $("#preguntaRankingModelo").text(
-            gen.posicion ? ("Grupo # " + gen.posicion + (gen.total ? " de " + gen.total : "")) : ""
-        );
+    if (ranking.estado === "sin_clasificacion" || ranking.estado === "parcial") {
+        var textoParcial = ranking.estado === "parcial" && catRank.posicion
+            ? ("Cat # " + catRank.posicion + (catRank.total ? " de " + catRank.total : ""))
+            : (gen.posicion ? ("Grupo # " + gen.posicion + (gen.total ? " de " + gen.total : "")) : "");
+        $("#preguntaRankingModelo").text(textoParcial);
         if (window.fichaModelosConfig && window.fichaModelosConfig.puedeEditarCategoriasModelos) {
             var codigoModelo = $("#fichaModeloCodigo").text() || "";
             $("#fichaClasificarHref").attr(

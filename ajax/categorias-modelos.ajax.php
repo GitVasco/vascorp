@@ -61,6 +61,11 @@ if ($accion === "listarAdmin") {
 	return;
 }
 
+if ($accion === "listarModelosCategoria") {
+	echo json_encode(ControladorCategoriasModelos::ctrListarModelosCategoria($_POST));
+	return;
+}
+
 if ($accion === "listarModelosSubcategoria") {
 	echo json_encode(ControladorCategoriasModelos::ctrListarModelosSubcategoria($_POST));
 	return;

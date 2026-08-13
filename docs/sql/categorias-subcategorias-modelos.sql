@@ -38,18 +38,22 @@ CREATE TABLE IF NOT EXISTS subcategoria_modelojf (
 
 CREATE TABLE IF NOT EXISTS modelo_subcategoriajf (
     modelo VARCHAR(10) NOT NULL,
-    id_subcategoria INT UNSIGNED NOT NULL,
+    id_categoria INT UNSIGNED NULL,
+    id_subcategoria INT UNSIGNED NULL,
     fecha_asignacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     usuario_asignacion INT NULL,
     actualizado_en DATETIME NULL DEFAULT NULL,
     usuario_actualizacion INT NULL,
     PRIMARY KEY (modelo),
-    KEY idx_modelo_subcategoriajf_subcategoria_modelo (id_subcategoria, modelo)
+    KEY idx_modelo_subcategoriajf_subcategoria_modelo (id_subcategoria, modelo),
+    KEY idx_modelo_subcategoriajf_categoria_modelo (id_categoria, modelo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS modelo_subcategoria_historialjf (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     modelo VARCHAR(10) NOT NULL,
+    id_categoria_anterior INT UNSIGNED NULL,
+    id_categoria_nueva INT UNSIGNED NULL,
     id_subcategoria_anterior INT UNSIGNED NULL,
     id_subcategoria_nueva INT UNSIGNED NULL,
     accion ENUM('ALTA', 'CAMBIO', 'BAJA') NOT NULL,

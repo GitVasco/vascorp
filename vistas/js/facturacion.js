@@ -903,6 +903,9 @@ $(document).on("change", ".optNotas1", function () {
                 serie.append('<option value="">Seleccionar Serie</option>');
 
                 for (var id of respuesta) {
+                    if (!id.serie_nc) {
+                        continue;
+                    }
                     serie.append(
                         '<option value="' +
                             id.serie_nc +
@@ -910,8 +913,8 @@ $(document).on("change", ".optNotas1", function () {
                             id.serie_nc +
                             "</option>"
                     );
-                    //console.log(serie);
                 }
+                serie.selectpicker("val", "");
                 serie.selectpicker("refresh");
                 documento.val("0");
                 $("#radioCtaCte").prop("disabled", true);
@@ -971,6 +974,9 @@ $(document).on("change", ".optNotas1", function () {
                 serie.append('<option value="">Seleccionar Serie</option>');
 
                 for (var id of respuesta) {
+                    if (!id.serie_nd) {
+                        continue;
+                    }
                     serie.append(
                         '<option value="' +
                             id.serie_nd +
@@ -978,9 +984,9 @@ $(document).on("change", ".optNotas1", function () {
                             id.serie_nd +
                             "</option>"
                     );
-                    //console.log(serie);
                 }
 
+                serie.selectpicker("val", "");
                 serie.selectpicker("refresh");
                 documento.val("0");
                 $("#radioCtaCte").prop("disabled", false);
@@ -1049,7 +1055,20 @@ $("#tipoNotaSerie").change(function () {
             processData: false,
             dataType: "json",
             success: function (respuesta) {
+                if (!respuesta) {
+                    documento.val("0");
+                    Command: toastr["error"](
+                        "La serie " +
+                            serie +
+                            " no tiene correlativo de nota de crédito."
+                    );
+                    return;
+                }
                 var numero = Number(respuesta["nota_credito"]) + Number(1);
+                if (!isFinite(numero) || numero < 1) {
+                    documento.val("0");
+                    return;
+                }
                 documento.val(serie + ("0000000" + numero).slice(-8));
             },
         });
@@ -1066,7 +1085,20 @@ $("#tipoNotaSerie").change(function () {
             processData: false,
             dataType: "json",
             success: function (respuesta) {
+                if (!respuesta) {
+                    documento.val("0");
+                    Command: toastr["error"](
+                        "La serie " +
+                            serie +
+                            " no tiene correlativo de nota de débito. Use una serie configurada para débito."
+                    );
+                    return;
+                }
                 var numero = Number(respuesta["nota_debito"]) + Number(1);
+                if (!isFinite(numero) || numero < 1) {
+                    documento.val("0");
+                    return;
+                }
                 documento.val(serie + ("0000000" + numero).slice(-8));
             },
         });
@@ -1282,6 +1314,123 @@ $(document).on("input", "#notaNroFactura", function () {
     encSetHelpOrigen("", false);
 });
 
+function encEsEdicionNota() {
+    return (
+        $(".btnGuardarNotaCredito").attr("data-modo") === "editar" ||
+        !$("#tipoNotaSerie").is("select")
+    );
+}
+
+function encPayloadNotaCD(esCredito, documento) {
+    return {
+        tipo_doc: "08",
+        tipo_venta: esCredito ? "E05" : "S05",
+        num_cta: documento,
+        serie: ($("#tipoNotaSerie").val() || "").toString(),
+        cliente: $("#selectNotaCliente").val(),
+        vendedor: $("#selectNotaVendedor").val(),
+        neto: $("#notaSubTotal").val(),
+        igv: $("#notaIGV").val(),
+        monto: $("#notaTotal").val(),
+        saldo: $("#notaTotal").val(),
+        fecha: $("#notaFecha").val(),
+        estado: "PENDIENTE",
+        notas: "Nro doc " + documento + "/" + documento,
+        renovacion: 0,
+        protesta: 0,
+        tip_mon: "Soles",
+        cod_pago: "08",
+        doc_origen: documento,
+        usuario: $("#notaUsuario").val(),
+        tip_mov: "+",
+        tip_doc_venta: esCredito ? "NC" : "ND",
+        origen_venta: $("#notaNroFactura").val(),
+        tip_nota: $("#selectNotaDocumento").val(),
+        fecha_origen: $("#notaFechaFactura").val(),
+        motivo: $("#notaMotivo").val(),
+        tip_cont: $("#notaTipoCont").val(),
+        observacion: $("#notaTexto").val(),
+    };
+}
+
+function encGuardarNotaNueva(esCredito) {
+    var serie = ($("#tipoNotaSerie").val() || "").toString().trim();
+    if (!serie) {
+        Command: toastr["error"]("Seleccione la serie.");
+        return;
+    }
+    if (!$("#selectNotaCliente").val() || !$("#selectNotaVendedor").val()) {
+        Command: toastr["error"]("Seleccione cliente y vendedor.");
+        return;
+    }
+
+    var $btn = $(".btnGuardarNotaCredito");
+    if ($btn.data("enviando")) {
+        return;
+    }
+    $btn.data("enviando", true).prop("disabled", true);
+
+    var fila = encPayloadNotaCD(esCredito, $("#tipoNotaDocumento").val());
+    var jsonCuenta = { jsonCuenta: JSON.stringify({ datosCuenta: [fila] }) };
+
+    $.ajax({
+        url: "ajax/facturacion.ajax.php",
+        method: "POST",
+        data: jsonCuenta,
+        dataType: "json",
+        success: function (resp) {
+            if (!resp || resp.status !== "ok" || !resp.documento) {
+                Command: toastr["error"](
+                    (resp && resp.mensaje) || "No se pudo registrar la nota."
+                );
+                $btn.data("enviando", false).prop("disabled", false);
+                return;
+            }
+
+            var documento = resp.documento;
+            $("#tipoNotaDocumento").val(documento);
+            var tipoImp = esCredito ? "E05" : "S05";
+            $(".btnImprimirNotaCredito")
+                .prop("disabled", false)
+                .attr("tipo", tipoImp)
+                .attr("documento", documento);
+
+            Command: toastr["success"]("Registrado de venta exitosamente!");
+            Command: toastr["success"](
+                "Registrado de detalle nota exitosamente!"
+            );
+
+            var chkCuenta = document.getElementById("radioCtaCte");
+            if (!esCredito && chkCuenta && chkCuenta.checked) {
+                fila.num_cta = documento;
+                fila.notas = "Nro doc " + documento + "/" + documento;
+                fila.doc_origen = documento;
+                $.ajax({
+                    url: "ajax/cuentas.ajax.php",
+                    method: "POST",
+                    data: {
+                        jsonCuenta: JSON.stringify({ datosCuenta: [fila] }),
+                    },
+                    success: function () {
+                        Command: toastr["success"](
+                            "Registrado de cuenta exitosamente!"
+                        );
+                    },
+                    error: function () {
+                        Command: toastr["warning"](
+                            "La nota se registró, pero no se pudo generar la cuenta corriente."
+                        );
+                    },
+                });
+            }
+        },
+        error: function () {
+            Command: toastr["error"]("No se pudo registrar la nota.");
+            $btn.data("enviando", false).prop("disabled", false);
+        },
+    });
+}
+
 $(".btnGuardarNotaCredito").click(function () {
     /* document.getElementById("btnBlocNCD").value = "Enviando...";
 	document.getElementById("btnBlocNCD").disabled = true; */
@@ -1306,6 +1455,15 @@ $(".btnGuardarNotaCredito").click(function () {
     }
 
     var nota = $("input[name=optNotas1]:checked").val();
+    if (!encEsEdicionNota()) {
+        if (nota != "credito" && nota != "debito" && nota != "debido") {
+            Command: toastr["error"]("Seleccione crédito o débito.");
+            return;
+        }
+        encGuardarNotaNueva(nota == "credito");
+        return;
+    }
+
     var chkCuenta = document.getElementById("radioCtaCte");
     if (nota == "credito") {
         var tipoImp = "E05";

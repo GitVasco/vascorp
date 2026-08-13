@@ -9,7 +9,7 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
 <div class="content-wrapper cat-modelos-page">
 
     <section class="content-header">
-        <h1>Clasificación de modelos <small>emparejar disponibles → subcategoría</small></h1>
+        <h1>Clasificación de modelos <small>primero categoría, después subcategoría</small></h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
             <li>Maestros</li>
@@ -41,8 +41,8 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
                 <div class="info-box bg-yellow" style="margin-bottom:10px;min-height:70px;">
                     <span class="info-box-icon" style="height:70px;width:70px;line-height:70px;font-size:28px;"><i class="fa fa-sitemap"></i></span>
                     <div class="info-box-content">
-                        <span class="info-box-text">Destino actual</span>
-                        <span class="info-box-number" id="catMatchDestinoLabel" style="font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Ninguno</span>
+                        <span class="info-box-text">En categoría (falta sub)</span>
+                        <span class="info-box-number" id="catMatchEnCategoria">—</span>
                     </div>
                 </div>
             </div>
@@ -68,7 +68,7 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
             <div class="col-md-4">
                 <div class="box box-success cat-match-panel">
                     <div class="box-header with-border">
-                        <h3 class="box-title">Disponibles <small id="catMatchDispTitulo">(elige una subcategoría)</small></h3>
+                        <h3 class="box-title">Disponibles <small id="catMatchDispTitulo">(elige una categoría)</small></h3>
                     </div>
                     <div class="box-body" style="padding-top:8px;">
                         <div class="form-group" style="margin-bottom:8px;flex:0 0 auto;">
@@ -95,7 +95,7 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
                         </div>
                         <?php } ?>
                         <div class="cat-match-lista" id="catMatchListaDisp">
-                            <p class="text-muted text-center" style="padding:24px;">Selecciona una subcategoría a la izquierda</p>
+                            <p class="text-muted text-center" style="padding:24px;">Selecciona una categoría a la izquierda</p>
                         </div>
                     </div>
                 </div>
@@ -104,7 +104,7 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
             <div class="col-md-4">
                 <div class="box box-info cat-match-panel">
                     <div class="box-header with-border">
-                        <h3 class="box-title">En esta subcategoría</h3>
+                        <h3 class="box-title" id="catMatchDestinoTitulo">En este destino</h3>
                         <span class="badge bg-aqua pull-right" id="catMatchEnDestinoCount">0</span>
                     </div>
                     <div class="box-body" style="padding-top:8px;">
@@ -116,7 +116,7 @@ $modeloInicialCat = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : ""
                             <button type="button" class="btn btn-xs btn-danger" id="catMatchQuitar" disabled>
                                 <i class="fa fa-times"></i> Quitar
                             </button>
-                            <button type="button" class="btn btn-xs btn-warning" id="catMatchMover" disabled title="Mueve los seleccionados a la subcategoría activa de la izquierda">
+                            <button type="button" class="btn btn-xs btn-warning" id="catMatchMover" disabled title="Mueve los seleccionados al destino activo de la izquierda">
                                 <i class="fa fa-exchange"></i> Mover aquí
                             </button>
                             <span class="text-muted" id="catMatchSelDestInfo">0</span>

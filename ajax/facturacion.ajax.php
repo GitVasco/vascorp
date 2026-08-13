@@ -29,20 +29,27 @@ class AjaxFacturacion
     public $datosVenta;
     public function ajaxCrearVentaNota()
     {
+        header("Content-Type: application/json; charset=utf-8");
+
         $valor = $this->datosVenta;
         $datos = json_decode($valor);
-        foreach ($datos->{"datosCuenta"} as  $value) {
+        if (!$datos || empty($datos->{"datosCuenta"})) {
+            echo json_encode(array(
+                "status" => "error",
+                "mensaje" => "No se recibieron datos de la nota."
+            ));
+            return;
+        }
+
+        foreach ($datos->{"datosCuenta"} as $value) {
             $doc = $value->{"tipo_venta"};
-            $cta = $value->{"num_cta"};
             $cli = $value->{"cliente"};
             $vend = $value->{"vendedor"};
             $neto = $value->{"neto"};
             $igv = $value->{"igv"};
             $monto = $value->{"monto"};
-
-
             $fecha = $value->{"fecha"};
-            $tipo_doc = $value->{"tip_doc_venta"};
+            $tipo_doc = isset($value->{"tip_doc_venta"}) ? $value->{"tip_doc_venta"} : "";
             $origen_venta = $value->{"origen_venta"};
             $tip_nota = $value->{"tip_nota"};
             $motivo = $value->{"motivo"};
@@ -51,7 +58,30 @@ class AjaxFacturacion
             $observacion = $value->{"observacion"};
             $user = $value->{"usuario"};
 
-            if ($tipo_doc == 'NC') {
+            if ($tipo_doc !== "NC" && $tipo_doc !== "ND") {
+                echo json_encode(array(
+                    "status" => "error",
+                    "mensaje" => "Tipo de nota inválido."
+                ));
+                return;
+            }
+
+            $serieOrigen = isset($value->{"serie"}) ? $value->{"serie"} : (isset($value->{"num_cta"}) ? $value->{"num_cta"} : "");
+            $serie = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $serieOrigen));
+            $serie = substr($serie, 0, 4);
+            $tipoSunat = ($tipo_doc === "NC") ? "07" : "08";
+            $cta = ModeloFacturacion::mdlAsignarSiguienteDocumento($tipoSunat, $serie);
+
+            if (!$cta) {
+                $etiqueta = ($tipo_doc === "NC") ? "crédito" : "débito";
+                echo json_encode(array(
+                    "status" => "error",
+                    "mensaje" => "No se pudo asignar el correlativo de la serie " . $serie . " para nota de " . $etiqueta . ". Verifique que la serie exista para ese tipo."
+                ));
+                return;
+            }
+
+            if ($tipo_doc == "NC") {
                 $total = "-" . $monto;
                 $neto2 = "-" . $neto;
                 $igv2 = "-" . $igv;
@@ -62,8 +92,7 @@ class AjaxFacturacion
             }
 
             $usureg = $_SESSION["nombre"];
-            $pcreg = gethostbyaddr($_SERVER['REMOTE_ADDR']);
-
+            $pcreg = gethostbyaddr($_SERVER["REMOTE_ADDR"]);
 
             $arregloVenta = array(
                 "tipo" => $doc,
@@ -75,13 +104,21 @@ class AjaxFacturacion
                 "vendedor" => $vend,
                 "fecha" => $fecha,
                 "tipo_documento" => $tipo_doc,
-                "doc_origen" => '',
+                "doc_origen" => "",
                 "usuario" => $user,
                 "usureg" => $usureg,
                 "pcreg" => $pcreg
             );
 
             $respuesta = ModeloFacturacion::mdlRegistrarVentaNota($arregloVenta);
+            if ($respuesta !== "ok") {
+                echo json_encode(array(
+                    "status" => "error",
+                    "documento" => $cta,
+                    "mensaje" => "Se reservó el correlativo " . $cta . " pero no se pudo registrar la venta."
+                ));
+                return;
+            }
 
             $arregloNota = array(
                 "tipo" => $doc,
@@ -96,15 +133,21 @@ class AjaxFacturacion
             );
 
             $respuesta2 = ModeloFacturacion::mdlIngresarNotaCD($arregloNota);
-
-            if ($tipo_doc == 'NC') {
-                $aumento = ModeloFacturacion::mdlActualizarNotaSerie("nota_credito", "serie_nc", substr($cta, 0, 4));
-            } else {
-                $aumento = ModeloFacturacion::mdlActualizarNotaSerie("nota_debito", "serie_nd", substr($cta, 0, 4));
+            if ($respuesta2 !== "ok") {
+                echo json_encode(array(
+                    "status" => "error",
+                    "documento" => $cta,
+                    "mensaje" => "Se registró la venta " . $cta . " pero no el detalle de la nota."
+                ));
+                return;
             }
-        }
 
-        echo $respuesta2;
+            echo json_encode(array(
+                "status" => "ok",
+                "documento" => $cta
+            ));
+            return;
+        }
     }
 
     /*=============================================

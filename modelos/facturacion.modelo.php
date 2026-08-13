@@ -337,7 +337,8 @@ class ModeloFacturacion
       "08" => array("campo" => "nota_debito", "colSerie" => "serie_nd", "pad" => 8),
     );
 
-    if (!isset($map[$tipoDocumento]) || $serie === null || $serie === "") {
+    $serie = strtoupper(trim((string) $serie));
+    if (!isset($map[$tipoDocumento]) || $serie === "") {
       return null;
     }
 
@@ -350,9 +351,9 @@ class ModeloFacturacion
 
     try {
       $stmt = $db->prepare(
-        "SELECT id, `$campo` AS correlativo
+        "SELECT id, COALESCE(`$campo`, 0) AS correlativo
          FROM talonariosjf
-         WHERE `$colSerie` = :serie
+         WHERE TRIM(`$colSerie`) = :serie
          LIMIT 1
          FOR UPDATE"
       );
@@ -371,6 +372,17 @@ class ModeloFacturacion
       }
 
       $nuevo = ((int) $row["correlativo"]) + 1;
+
+      $tipoVenta = array(
+        "07" => "E05",
+        "08" => "S05",
+      );
+      if (isset($tipoVenta[$tipoDocumento])) {
+        $maxReal = self::mdlMaxCorrelativoVenta($tipoVenta[$tipoDocumento], $serie, $db);
+        if ($maxReal >= $nuevo) {
+          $nuevo = $maxReal + 1;
+        }
+      }
 
       $upd = $db->prepare(
         "UPDATE talonariosjf
@@ -396,7 +408,33 @@ class ModeloFacturacion
     }
   }
 
+  /*
+   * Último correlativo ya usado en ventajf para una serie (sin guion).
+   */
+  static public function mdlMaxCorrelativoVenta($tipoVenta, $serie, $db = null)
+  {
+    $serie = strtoupper(trim((string) $serie));
+    $len = strlen($serie);
+    if ($tipoVenta === "" || $serie === "" || $len < 3) {
+      return 0;
+    }
 
+    $db = $db ? $db : Conexion::conectar();
+    $pos = $len + 1;
+    $stmt = $db->prepare(
+      "SELECT MAX(CAST(SUBSTRING(documento, {$pos}) AS UNSIGNED)) AS max_n
+       FROM ventajf
+       WHERE tipo = :tipo
+         AND LEFT(documento, {$len}) = :serie"
+    );
+    $stmt->bindParam(":tipo", $tipoVenta, PDO::PARAM_STR);
+    $stmt->bindParam(":serie", $serie, PDO::PARAM_STR);
+    if (!$stmt->execute()) {
+      return 0;
+    }
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row && $row["max_n"] !== null ? (int) $row["max_n"] : 0;
+  }
 
   /*
     * ACTUALIZAR PEDIDO A FACTURADO
@@ -1616,16 +1654,23 @@ class ModeloFacturacion
 
     if ($item != null) {
 
-      $stmt = Conexion::conectar()->prepare("SELECT nota_credito FROM $tabla WHERE $item = :$item");
+      $stmt = Conexion::conectar()->prepare("SELECT COALESCE(nota_credito, 0) AS nota_credito FROM $tabla WHERE TRIM($item) = :$item");
 
       $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
 
       $stmt->execute();
 
-      return $stmt->fetch();
+      $row = $stmt->fetch();
+      if ($row && $item === "serie_nc") {
+        $maxReal = self::mdlMaxCorrelativoVenta("E05", $valor);
+        if ($maxReal > (int) $row["nota_credito"]) {
+          $row["nota_credito"] = $maxReal;
+        }
+      }
+      return $row;
     } else {
 
-      $stmt = Conexion::conectar()->prepare("SELECT serie_nc FROM $tabla ");
+      $stmt = Conexion::conectar()->prepare("SELECT serie_nc FROM $tabla WHERE serie_nc IS NOT NULL AND TRIM(serie_nc) <> ''");
 
       $stmt->execute();
 
@@ -1642,16 +1687,23 @@ class ModeloFacturacion
 
     if ($item != null) {
 
-      $stmt = Conexion::conectar()->prepare("SELECT nota_debito FROM $tabla WHERE $item = :$item");
+      $stmt = Conexion::conectar()->prepare("SELECT COALESCE(nota_debito, 0) AS nota_debito FROM $tabla WHERE TRIM($item) = :$item");
 
       $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
 
       $stmt->execute();
 
-      return $stmt->fetch();
+      $row = $stmt->fetch();
+      if ($row && $item === "serie_nd") {
+        $maxReal = self::mdlMaxCorrelativoVenta("S05", $valor);
+        if ($maxReal > (int) $row["nota_debito"]) {
+          $row["nota_debito"] = $maxReal;
+        }
+      }
+      return $row;
     } else {
 
-      $stmt = Conexion::conectar()->prepare("SELECT serie_nd FROM $tabla ");
+      $stmt = Conexion::conectar()->prepare("SELECT serie_nd FROM $tabla WHERE serie_nd IS NOT NULL AND TRIM(serie_nd) <> ''");
 
       $stmt->execute();
 
@@ -7674,17 +7726,25 @@ class ModeloFacturacion
   static public function mdlActualizarNotaSerie($item, $item2, $valor2)
   {
 
+    $permitidos = array(
+      "nota_credito" => "serie_nc",
+      "nota_debito" => "serie_nd",
+    );
+    if (!isset($permitidos[$item]) || $permitidos[$item] !== $item2) {
+      return "error";
+    }
+
     $sql = "UPDATE
                       talonariosjf
                   SET
-                      $item = $item + 1
-                  WHERE $item2 = :$item2";
+                      `$item` = COALESCE(`$item`, 0) + 1
+                  WHERE TRIM(`$item2`) = :serie";
 
     $stmt = Conexion::conectar()->prepare($sql);
 
-    $stmt->bindParam(":" . $item2, $valor2, PDO::PARAM_STR);
+    $stmt->bindParam(":serie", $valor2, PDO::PARAM_STR);
 
-    if ($stmt->execute()) {
+    if ($stmt->execute() && $stmt->rowCount() > 0) {
 
       return "ok";
     } else {

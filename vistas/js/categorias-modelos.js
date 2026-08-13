@@ -93,7 +93,7 @@
             return;
         }
         if (!destino) {
-            $btn.prop("disabled", true).html('<i class="fa fa-arrow-right"></i> Elige subcategoría');
+            $btn.prop("disabled", true).html('<i class="fa fa-arrow-right"></i> Elige categoría');
         } else if (n < 1) {
             $btn.prop("disabled", true).html('<i class="fa fa-arrow-right"></i> Agregar al destino');
         } else {
@@ -108,7 +108,18 @@
             return;
         }
         $("#catMatchPendientes").text(c.pendientes != null ? c.pendientes : "—");
+        $("#catMatchEnCategoria").text(c.en_categoria != null ? c.en_categoria : "—");
         $("#catMatchClasificados").text(c.clasificados != null ? c.clasificados : "—");
+    }
+
+    function etiquetaDestino(dest) {
+        if (!dest) {
+            return "";
+        }
+        if (dest.tipo === "categoria") {
+            return dest.nombre;
+        }
+        return dest.catNombre + " › " + dest.nombre;
     }
 
     function renderArbol() {
@@ -118,17 +129,43 @@
             return;
         }
         catalogo.forEach(function (cat) {
-            var totalCat = 0;
-            (cat.subcategorias || []).forEach(function (s) {
-                totalCat += Number(s.modelos_activos) || 0;
-            });
+            var totalCat = Number(cat.modelos_categoria);
+            if (!totalCat) {
+                totalCat = 0;
+                (cat.subcategorias || []).forEach(function (s) {
+                    totalCat += Number(s.modelos_activos) || 0;
+                });
+                totalCat += Number(cat.modelos_solo_categoria) || 0;
+            }
             var $bloque = $('<div class="cat-match-cat"></div>');
-            $bloque.append(
-                '<div class="cat-match-cat-head">' + escapar(cat.nombre) +
-                ' <span class="badge">' + totalCat + "</span></div>"
+            var catActive = destino && destino.tipo === "categoria" && String(destino.id) === String(cat.id)
+                ? " active"
+                : "";
+            var soloCat = Number(cat.modelos_solo_categoria) || 0;
+            var $head = $(
+                '<button type="button" class="cat-match-cat-head' + catActive + '" data-id="' + cat.id + '">' +
+                escapar(cat.nombre) +
+                ' <span class="badge">' + totalCat + "</span>" +
+                (soloCat ? ' <span class="badge bg-yellow" title="Sin subcategoría">' + soloCat + "</span>" : "") +
+                "</button>"
             );
+            $head.data("cat", {
+                tipo: "categoria",
+                id: cat.id,
+                nombre: cat.nombre,
+                catId: cat.id,
+                catNombre: cat.nombre
+            });
+            $bloque.append($head);
+            if (!(cat.subcategorias || []).length) {
+                $bloque.append(
+                    '<div class="cat-match-sub-vacia">Sin subcategorías aún. Ya se puede destinar la categoría.</div>'
+                );
+            }
             (cat.subcategorias || []).forEach(function (sub) {
-                var active = destino && String(destino.id) === String(sub.id) ? " active" : "";
+                var active = destino && destino.tipo === "subcategoria" && String(destino.id) === String(sub.id)
+                    ? " active"
+                    : "";
                 var $btn = $(
                     '<button type="button" class="cat-match-sub' + active + '" data-id="' + sub.id + '">' +
                     escapar(sub.nombre) +
@@ -136,6 +173,7 @@
                     "</button>"
                 );
                 $btn.data("sub", {
+                    tipo: "subcategoria",
                     id: sub.id,
                     nombre: sub.nombre,
                     codigo: sub.codigo,
@@ -148,12 +186,22 @@
         });
     }
 
-    function seleccionarDestino(sub) {
-        destino = sub;
-        $("#catMatchDestinoLabel").text(sub.catNombre + " › " + sub.nombre);
-        $("#catMatchDispTitulo").text("(" + sub.catNombre + " › " + sub.nombre + ")");
-        $(".cat-match-sub").removeClass("active");
-        $('.cat-match-sub[data-id="' + sub.id + '"]').addClass("active");
+    function seleccionarDestino(dest) {
+        destino = dest;
+        var label = etiquetaDestino(dest);
+        if (dest.tipo === "categoria") {
+            $("#catMatchDispTitulo").text("(sin categoría)");
+            $("#catMatchDestinoTitulo").text("En " + dest.nombre);
+        } else {
+            $("#catMatchDispTitulo").text("(en " + dest.catNombre + ", falta sub)");
+            $("#catMatchDestinoTitulo").text("En " + label);
+        }
+        $(".cat-match-cat-head, .cat-match-sub").removeClass("active");
+        if (dest.tipo === "categoria") {
+            $('.cat-match-cat-head[data-id="' + dest.id + '"]').addClass("active");
+        } else {
+            $('.cat-match-sub[data-id="' + dest.id + '"]').addClass("active");
+        }
         seleccion = {};
         actualizarSelBarra();
         actualizarSelDestBarra();
@@ -191,7 +239,11 @@
             actualizarConteos(resp.conteos);
             renderArbol();
             if (destino) {
-                $('.cat-match-sub[data-id="' + destino.id + '"]').addClass("active");
+                if (destino.tipo === "categoria") {
+                    $('.cat-match-cat-head[data-id="' + destino.id + '"]').addClass("active");
+                } else {
+                    $('.cat-match-sub[data-id="' + destino.id + '"]').addClass("active");
+                }
             }
         });
     }
@@ -200,14 +252,14 @@
         if (!destino || cargandoDisp) {
             if (!destino) {
                 $("#catMatchListaDisp").html(
-                    '<p class="text-muted text-center" style="padding:24px;">Selecciona una subcategoría a la izquierda</p>'
+                    '<p class="text-muted text-center" style="padding:24px;">Selecciona una categoría a la izquierda</p>'
                 );
             }
             return;
         }
         cargandoDisp = true;
         $("#catMatchListaDisp").html('<p class="text-muted text-center" style="padding:24px;">Cargando…</p>');
-        post("listar", {
+        var payloadDisp = {
             q: $("#catMatchBuscar").val() || modeloInicial,
             id_marca: $("#catMatchMarca").val() || 0,
             id_categoria: 0,
@@ -215,7 +267,12 @@
             estado_lista: "pendientes",
             pagina: 1,
             limite: 1000
-        }).done(function (resp) {
+        };
+        if (destino.tipo === "subcategoria") {
+            payloadDisp.estado_lista = "en_categoria";
+            payloadDisp.id_categoria = destino.catId || 0;
+        }
+        post("listar", payloadDisp).done(function (resp) {
             if (!resp || !resp.ok) {
                 $("#catMatchListaDisp").html(
                     '<p class="text-center text-danger">' + escapar((resp && resp.mensaje) || "Error") + "</p>"
@@ -236,7 +293,10 @@
     function renderDisponibles(filas) {
         var $lista = $("#catMatchListaDisp").empty();
         if (!filas.length) {
-            $lista.html('<p class="text-muted text-center" style="padding:24px;">No hay modelos pendientes</p>');
+            var vacio = destino && destino.tipo === "subcategoria"
+                ? "No hay modelos de esta categoría pendientes de subcategoría"
+                : "No hay modelos sin categoría";
+            $lista.html('<p class="text-muted text-center" style="padding:24px;">' + vacio + "</p>");
             return;
         }
         filas.forEach(function (f) {
@@ -322,7 +382,10 @@
             return;
         }
         $("#catMatchListaDestino").html('<p class="text-muted text-center">Cargando…</p>');
-        post("listarModelosSubcategoria", { id_subcategoria: destino.id }).done(function (resp) {
+        var reqDestino = destino.tipo === "categoria"
+            ? post("listarModelosCategoria", { id_categoria: destino.id })
+            : post("listarModelosSubcategoria", { id_subcategoria: destino.id });
+        reqDestino.done(function (resp) {
             if (!resp || !resp.ok) {
                 $("#catMatchListaDestino").html('<p class="text-danger text-center">Error</p>');
                 return;
@@ -351,6 +414,9 @@
                     '<div class="cat-match-item-body">' +
                     "<strong>" + escapar(m.modelo) + "</strong>" + escapar(m.nombre) +
                     '<span class="cat-match-item-meta">' + escapar(m.marca || "") +
+                    (m.nombre_subcategoria
+                        ? " · " + escapar(m.nombre_subcategoria)
+                        : (destino.tipo === "categoria" ? " · falta subcategoría" : "")) +
                     (m.fecha ? " · " + escapar(m.fecha) : "") +
                     "</span></div></div>"
                 );
@@ -379,7 +445,7 @@
             return;
         }
         confirmar(
-            "¿Quitar " + modelos.length + " modelo(s) de esta subcategoría?\nVolverán a Disponibles.",
+            "¿Quitar " + modelos.length + " modelo(s) de este destino?\nVolverán a Disponibles.",
             function () {
                 $("#catMatchQuitar").prop("disabled", true);
                 post("quitarLote", { modelos: JSON.stringify(modelos) }).done(function (resp) {
@@ -409,15 +475,18 @@
         if (!modelos.length || !destino || !puedeEditar) {
             return;
         }
-        var label = destino.catNombre + " › " + destino.nombre;
+        var label = etiquetaDestino(destino);
         confirmar(
             "¿Mover " + modelos.length + " modelo(s) a «" + label + "»?",
             function () {
                 $("#catMatchMover").prop("disabled", true);
-                post("asignarLote", {
-                    id_subcategoria: destino.id,
-                    modelos: JSON.stringify(modelos)
-                }).done(function (resp) {
+                var payloadMover = { modelos: JSON.stringify(modelos) };
+                if (destino.tipo === "categoria") {
+                    payloadMover.id_categoria = destino.id;
+                } else {
+                    payloadMover.id_subcategoria = destino.id;
+                }
+                post("asignarLote", payloadMover).done(function (resp) {
                     if (!resp || !resp.ok) {
                         alerta("error", (resp && resp.mensaje) || "No se pudo mover");
                         actualizarSelDestBarra();
@@ -447,15 +516,18 @@
         if (!modelos.length) {
             return;
         }
-        var label = destino.catNombre + " › " + destino.nombre;
+        var label = etiquetaDestino(destino);
         confirmar(
             "¿Agregar " + modelos.length + " modelo(s) a «" + label + "»?",
             function () {
                 $("#catMatchAgregar").prop("disabled", true);
-                post("asignarLote", {
-                    id_subcategoria: destino.id,
-                    modelos: JSON.stringify(modelos)
-                }).done(function (resp) {
+                var payloadAdd = { modelos: JSON.stringify(modelos) };
+                if (destino.tipo === "categoria") {
+                    payloadAdd.id_categoria = destino.id;
+                } else {
+                    payloadAdd.id_subcategoria = destino.id;
+                }
+                post("asignarLote", payloadAdd).done(function (resp) {
                     if (!resp || !resp.ok) {
                         alerta("error", (resp && resp.mensaje) || "No se pudo asignar");
                         actualizarSelBarra();
@@ -482,16 +554,19 @@
             if (modeloInicial) {
                 $("#catMatchBuscar").val(modeloInicial);
             }
-            if (catalogo.length && catalogo[0].subcategorias && catalogo[0].subcategorias.length) {
-                var first = catalogo[0].subcategorias[0];
+            if (catalogo.length) {
                 seleccionarDestino({
-                    id: first.id,
-                    nombre: first.nombre,
-                    codigo: first.codigo,
+                    tipo: "categoria",
+                    id: catalogo[0].id,
+                    nombre: catalogo[0].nombre,
                     catId: catalogo[0].id,
                     catNombre: catalogo[0].nombre
                 });
             }
+        });
+
+        $(document).on("click", ".cat-match-cat-head", function () {
+            seleccionarDestino($(this).data("cat"));
         });
 
         $(document).on("click", ".cat-match-sub", function () {

@@ -186,7 +186,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") : ?>
-    <link rel="stylesheet" href="vistas/css/categorias-modelos.css?v=7">
+    <link rel="stylesheet" href="vistas/css/categorias-modelos.css?v=9">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "resumen-gerencial-modelos") : ?>
@@ -1064,7 +1064,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/costos-modelo-mensual.js?v=2"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ficha-gerencial-modelos") { ?>
-    <script src="vistas/js/ficha-gerencial-modelos.js?v=48"></script>
+    <script src="vistas/js/ficha-gerencial-modelos.js?v=49"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "proyeccion-comercial-modelos") { ?>
     <script src="vistas/bower_components/select2/dist/js/select2.full.min.js"></script>
@@ -1101,7 +1101,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/series-documentos.js?v=3"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") { ?>
-    <script src="vistas/js/categorias-modelos.js?v=10"></script>
+    <script src="vistas/js/categorias-modelos.js?v=14"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-subcategorias-modelos") { ?>
     <script src="vistas/js/categorias-subcategorias-modelos.js?v=9"></script>
@@ -1163,7 +1163,7 @@ CUERPO DOCUMENTO
         window.URL_BASE_IMPRESION_PROFORMA = "<?php echo obtenerUrlBaseImpresionProforma(); ?>";
         window.URL_BASE_IMPRESION_BOLFACT = "<?php echo obtenerUrlBaseImpresionBolfact(); ?>";
     </script>
-    <script src="vistas/js/facturacion.js?v=19"></script>
+    <script src="vistas/js/facturacion.js?v=20"></script>
     <script src="vistas/js/abonos.js"></script>
     <script src="vistas/js/cierres.js"></script>
     <script src="vistas/js/procedimientos.js"></script>

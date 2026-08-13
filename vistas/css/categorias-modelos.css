@@ -46,10 +46,35 @@
 }
 
 .cat-match-cat-head {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
     padding: 10px 12px;
     font-weight: 600;
     background: #f7f7f7;
-    cursor: default;
+    cursor: pointer;
+}
+
+.cat-match-cat-head:hover {
+    background: #eef6fb;
+}
+
+.cat-match-cat-head.active {
+    background: #d9edf7;
+    box-shadow: inset 3px 0 0 #3c8dbc;
+}
+
+.cat-match-cat-head .badge {
+    float: right;
+    margin-top: 1px;
+    margin-left: 4px;
+}
+
+.cat-match-sub-vacia {
+    padding: 8px 12px 10px 22px;
+    font-size: 12px;
+    color: #888;
 }
 
 .cat-match-sub {
