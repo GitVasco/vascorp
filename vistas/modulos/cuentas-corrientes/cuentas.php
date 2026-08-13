@@ -1,3 +1,8 @@
+<?php
+require_once "modelos/linea-credito.modelo.php";
+$usuariosActivosCxc = ModeloLineaCredito::mdlUsuariosActivos();
+$idUsuarioSesionCxc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
+?>
 <div class="content-wrapper">
 
     <section class="content-header">
@@ -71,6 +76,13 @@
                     <button class="btn btn-outline-success btnReporteCuentas" ano="null" style="border:green 1px solid">
                         <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte cuentas </button>
                 </div>
+
+                <?php if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("gestion_comercial", "estado_cuenta_gerencia")) : ?>
+                <div class="pull-right">
+                    <button type="button" class="btn btn-outline-success" id="btnReporteClasificacionMorosidad" style="border:green 1px solid">
+                        <img src="vistas/img/plantilla/excel.png" width="20px"> Clasificación morosidad </button>
+                </div>
+                <?php endif; ?>
 
                 <div class="pull-right">
                     <button class="btn btn-outline-success btnDocContado" ano="null" style="border:green 1px solid">
@@ -1746,6 +1758,47 @@ MODAL IMPORTAR CUENTAS DE BANCO
     </div>
 
 </div>
+
+<?php if (function_exists("usuarioPuedeVerModulo") && usuarioPuedeVerModulo("gestion_comercial", "estado_cuenta_gerencia")) : ?>
+<div class="modal fade" id="modalClasificacionMorosidad" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#3c8dbc; color:white">
+                <button type="button" class="close" data-dismiss="modal" style="color:white">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-file-excel-o"></i> Clasificación de morosidad</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Excel con todos los clientes según cómo pagan (últimos 2 años, 8 días de gracia).
+                    Hojas <strong>Resumen</strong>, <strong>Clientes</strong> y <strong>Metadatos</strong>.
+                    Debe indicar quién solicita el archivo.
+                </p>
+                <div class="form-group">
+                    <label for="cmSolicitadoPor">Solicitado por <span class="text-danger">*</span></label>
+                    <select class="form-control selectpicker" id="cmSolicitadoPor" data-live-search="true" data-size="8" required>
+                        <option value="">Seleccione responsable…</option>
+                        <?php foreach ($usuariosActivosCxc as $usuarioCxc) : ?>
+                            <option value="<?php echo (int) $usuarioCxc["id"]; ?>"
+                                <?php echo ((int) $usuarioCxc["id"] === $idUsuarioSesionCxc) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($usuarioCxc["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <form id="cmFormExport" method="GET" action="vistas/reportes_excel/rpt_clasificacion_morosidad.php" target="_blank" style="display:inline;">
+                    <input type="hidden" name="solicitud_por" id="cmSolicitadoPorHidden" value="">
+                    <button type="submit" class="btn btn-success" id="btnCmConfirmarExport">
+                        <i class="fa fa-download"></i> Descargar Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php
 

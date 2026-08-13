@@ -148,6 +148,11 @@ $idUsuarioSesionCxc = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
                                     <img src="vistas/img/plantilla/excel.png" alt=""> Estado cuenta gerencia
                                 </a>
                             </li>
+                            <li>
+                                <a href="javascript:void(0)" id="btnReporteClasificacionMorosidad">
+                                    <img src="vistas/img/plantilla/excel.png" alt=""> Clasificación morosidad
+                                </a>
+                            </li>
                             <?php endif; ?>
                             <li>
                                 <a href="javascript:void(0)" id="btnReporteDeudaClientes">
@@ -1944,6 +1949,45 @@ $nombresMesModalGerencia = array(
                     <input type="hidden" name="mes" id="ecgMesHidden" value="">
                     <input type="hidden" name="anio" id="ecgAnioHidden" value="">
                     <button type="submit" class="btn btn-success" id="btnEcgConfirmarExport">
+                        <i class="fa fa-download"></i> Descargar Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalClasificacionMorosidad" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#3c8dbc; color:white">
+                <button type="button" class="close" data-dismiss="modal" style="color:white">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-file-excel-o"></i> Clasificación de morosidad</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Excel con todos los clientes según cómo pagan (últimos 2 años, 8 días de gracia).
+                    Hojas <strong>Resumen</strong>, <strong>Clientes</strong> y <strong>Metadatos</strong>.
+                    Debe indicar quién solicita el archivo.
+                </p>
+                <div class="form-group">
+                    <label for="cmSolicitadoPor">Solicitado por <span class="text-danger">*</span></label>
+                    <select class="form-control selectpicker" id="cmSolicitadoPor" data-live-search="true" data-size="8" required>
+                        <option value="">Seleccione responsable…</option>
+                        <?php foreach ($usuariosActivosCxc as $usuarioCxc) : ?>
+                            <option value="<?php echo (int) $usuarioCxc["id"]; ?>"
+                                <?php echo ((int) $usuarioCxc["id"] === $idUsuarioSesionCxc) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($usuarioCxc["nombre"], ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <form id="cmFormExport" method="GET" action="vistas/reportes_excel/rpt_clasificacion_morosidad.php" target="_blank" style="display:inline;">
+                    <input type="hidden" name="solicitud_por" id="cmSolicitadoPorHidden" value="">
+                    <button type="submit" class="btn btn-success" id="btnCmConfirmarExport">
                         <i class="fa fa-download"></i> Descargar Excel
                     </button>
                 </form>

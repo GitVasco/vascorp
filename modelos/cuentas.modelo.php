@@ -6064,4 +6064,181 @@ class ModeloCuentas
 			"total_general" => $totalGeneral,
 		);
 	}
+
+	/**
+	 * Clasificación de clientes por hábito de pago (promedio de días desde vencimiento).
+	 * Universo: documentos emitidos en los últimos N años. Excluye vendedores 06* y 08*.
+	 *
+	 * @return array{parametros: array, clientes: array, resumen: array}
+	 */
+	static public function mdlClasificacionMorosidadClientes($anios = 2, $graciaDias = 8)
+	{
+		$anios = (int) $anios;
+		$graciaDias = (int) $graciaDias;
+
+		if ($anios < 1) {
+			$anios = 2;
+		}
+		if ($graciaDias < 0) {
+			$graciaDias = 8;
+		}
+
+		$desde = date("Y-m-d", strtotime("-{$anios} years"));
+
+		$sql = "SELECT
+					cli.codigo AS codigo_cliente,
+					cli.documento AS ruc,
+					cli.nombre AS razon_social,
+					COALESCE(NULLIF(TRIM(m.descripcion), ''), TRIM(IFNULL(cli.vendedor, ''))) AS vendedor,
+					h.docs_evaluados,
+					h.docs_pagados,
+					h.docs_pendientes_vencidos,
+					ROUND(h.dias_promedio, 1) AS dias_promedio,
+					CASE
+						WHEN h.dias_promedio <= {$graciaDias} THEN 'Puntual'
+						WHEN h.dias_promedio <= 30 THEN 'Regular'
+						WHEN h.dias_promedio <= 60 THEN 'Moroso'
+						ELSE 'Crítico'
+					END AS clasificacion,
+					IFNULL(d.deuda_actual, 0) AS deuda_actual,
+					h.ultimo_pago
+				FROM (
+					SELECT
+						c.cliente,
+						SUM(
+							CASE
+								WHEN UPPER(c.estado) = 'CANCELADO' THEN 1
+								WHEN UPPER(c.estado) = 'PENDIENTE'
+									AND IFNULL(c.saldo, 0) > 0
+									AND c.fecha_ven < CURDATE()
+								THEN 1
+								ELSE 0
+							END
+						) AS docs_evaluados,
+						SUM(CASE WHEN UPPER(c.estado) = 'CANCELADO' THEN 1 ELSE 0 END) AS docs_pagados,
+						SUM(
+							CASE
+								WHEN UPPER(c.estado) = 'PENDIENTE'
+									AND IFNULL(c.saldo, 0) > 0
+									AND c.fecha_ven < CURDATE()
+								THEN 1
+								ELSE 0
+							END
+						) AS docs_pendientes_vencidos,
+						AVG(
+							CASE
+								WHEN UPPER(c.estado) = 'CANCELADO'
+									AND c.ult_pago IS NOT NULL
+									AND c.ult_pago > '0000-00-00'
+								THEN GREATEST(DATEDIFF(c.ult_pago, c.fecha_ven), 0)
+								WHEN UPPER(c.estado) = 'CANCELADO' THEN 0
+								WHEN UPPER(c.estado) = 'PENDIENTE'
+									AND IFNULL(c.saldo, 0) > 0
+									AND c.fecha_ven < CURDATE()
+								THEN GREATEST(DATEDIFF(CURDATE(), c.fecha_ven), 0)
+								ELSE NULL
+							END
+						) AS dias_promedio,
+						MAX(
+							CASE
+								WHEN c.ult_pago IS NOT NULL AND c.ult_pago > '0000-00-00'
+								THEN c.ult_pago
+								ELSE NULL
+							END
+						) AS ultimo_pago
+					FROM cuenta_ctejf c
+					WHERE c.tip_mov = '+'
+						AND c.fecha IS NOT NULL
+						AND c.fecha > '0000-00-00'
+						AND c.fecha >= DATE_SUB(CURDATE(), INTERVAL {$anios} YEAR)
+						AND c.fecha_ven IS NOT NULL
+						AND c.fecha_ven > '0000-00-00'
+						AND IFNULL(c.vendedor, '') NOT LIKE '06%'
+						AND IFNULL(c.vendedor, '') NOT LIKE '08%'
+						AND (
+							UPPER(c.estado) = 'CANCELADO'
+							OR (
+								UPPER(c.estado) = 'PENDIENTE'
+								AND IFNULL(c.saldo, 0) > 0
+							)
+						)
+					GROUP BY c.cliente
+					HAVING docs_evaluados > 0
+						AND dias_promedio IS NOT NULL
+				) h
+				INNER JOIN clientesjf cli ON cli.codigo = h.cliente
+					AND IFNULL(cli.vendedor, '') NOT LIKE '06%'
+					AND IFNULL(cli.vendedor, '') NOT LIKE '08%'
+				LEFT JOIN (
+					SELECT
+						cliente,
+						SUM(IFNULL(saldo, 0)) AS deuda_actual
+					FROM cuenta_ctejf
+					WHERE tip_mov = '+'
+						AND UPPER(estado) = 'PENDIENTE'
+						AND IFNULL(saldo, 0) > 0
+					GROUP BY cliente
+				) d ON d.cliente = cli.codigo
+				LEFT JOIN maestrajf m
+					ON m.codigo = cli.vendedor
+					AND m.tipo_dato = 'TVEND'
+				ORDER BY FIELD(
+					CASE
+						WHEN h.dias_promedio <= {$graciaDias} THEN 'Puntual'
+						WHEN h.dias_promedio <= 30 THEN 'Regular'
+						WHEN h.dias_promedio <= 60 THEN 'Moroso'
+						ELSE 'Crítico'
+					END,
+					'Crítico', 'Moroso', 'Regular', 'Puntual'
+				), h.dias_promedio DESC, cli.nombre ASC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->execute();
+		$clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$orden = array("Puntual", "Regular", "Moroso", "Crítico");
+		$resumenMap = array();
+		foreach ($orden as $nombre) {
+			$resumenMap[$nombre] = array(
+				"clasificacion" => $nombre,
+				"clientes" => 0,
+				"docs_evaluados" => 0,
+				"dias_promedio" => 0.0,
+				"deuda_actual" => 0.0,
+				"suma_dias_ponderada" => 0.0,
+			);
+		}
+
+		foreach ($clientes as $fila) {
+			$clave = isset($fila["clasificacion"]) ? $fila["clasificacion"] : "";
+			if (!isset($resumenMap[$clave])) {
+				continue;
+			}
+			$docs = (int) $fila["docs_evaluados"];
+			$resumenMap[$clave]["clientes"]++;
+			$resumenMap[$clave]["docs_evaluados"] += $docs;
+			$resumenMap[$clave]["deuda_actual"] += (float) $fila["deuda_actual"];
+			$resumenMap[$clave]["suma_dias_ponderada"] += ((float) $fila["dias_promedio"]) * $docs;
+		}
+
+		$resumen = array();
+		foreach ($orden as $nombre) {
+			$item = $resumenMap[$nombre];
+			$item["dias_promedio"] = $item["docs_evaluados"] > 0
+				? round($item["suma_dias_ponderada"] / $item["docs_evaluados"], 1)
+				: 0.0;
+			unset($item["suma_dias_ponderada"]);
+			$resumen[] = $item;
+		}
+
+		return array(
+			"parametros" => array(
+				"anios" => $anios,
+				"gracia_dias" => $graciaDias,
+				"desde" => $desde,
+			),
+			"clientes" => $clientes,
+			"resumen" => $resumen,
+		);
+	}
 }

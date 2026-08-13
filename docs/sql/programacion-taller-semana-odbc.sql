@@ -63,6 +63,7 @@ SELECT
 	(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_vivo,
 	IFNULL(a.stock, 0) AS stock,
 	IFNULL(a.pedidos, 0) AS pedidos,
+	(IFNULL(a.stock, 0) - IFNULL(a.pedidos, 0)) AS stock_menos_pedidos,
 	IFNULL(a.taller, 0) AS en_taller,
 	IFNULL(a.servicio, 0) AS en_servicio,
 	IFNULL(a.ult_mes, 0) AS ult_mes,
