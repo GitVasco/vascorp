@@ -164,15 +164,22 @@ function refrescarSelectPts($select) {
 }
 
 function botonesNivelHtmlPts() {
-    if (!ptsNiveles.length) {
+    var niveles = nivelesOrdenadosPts();
+    if (!niveles.length) {
         return '<span class="text-muted">Sin niveles</span>';
     }
-    return ptsNiveles.map(function (n) {
+    return niveles.map(function (n) {
         var bg = n.color || "#ddd";
         return '<button type="button" class="btn-nivel-pts btnNivelRapidoPts" data-nivel="'
             + escaparPts(n.id) + '" style="background:' + escaparPts(bg) + '" title="'
             + escaparPts(n.nombre) + '">' + escaparPts(n.nombre) + "</button>";
     }).join("");
+}
+
+function nivelesOrdenadosPts() {
+    return (ptsNiveles || []).slice().sort(function (a, b) {
+        return (parseInt(a.orden, 10) || 99) - (parseInt(b.orden, 10) || 99);
+    });
 }
 
 function cargarNivelesPts() {
@@ -181,17 +188,21 @@ function cargarNivelesPts() {
         ptsMapaNiveles = {};
         var $leyenda = $("#leyendaNivelesPts");
         var $filtro = $("#filtroNivelPts");
+        var $destNivel = $("#destFiltroNivelPts");
         var $modalNivel = $("#ptsNivel");
         $filtro.find("option:not(:first)").remove();
+        $destNivel.find("option:not(:first)").remove();
         $modalNivel.find("option:not(:first)").remove();
         var chips = ['<strong style="margin-right:4px;">Niveles:</strong>'];
-        ptsNiveles.forEach(function (n) {
+        nivelesOrdenadosPts().forEach(function (n) {
             ptsMapaNiveles[n.id] = n;
             chips.push(badgeNivelPts(n.id, n.nombre, n.color));
             $filtro.append($("<option>").val(n.id).text(n.nombre));
+            $destNivel.append($("<option>").val(n.id).text(n.nombre));
             $modalNivel.append($("<option>").val(n.id).text(n.nombre));
         });
         $leyenda.html(chips.join(" "));
+        refrescarSelectPts($destNivel);
         pintarChkNivelesLotePts();
     }, "json");
 }
@@ -199,13 +210,14 @@ function cargarNivelesPts() {
 function pintarChkNivelesLotePts() {
     var $box = $("#chkNivelesLotePts");
     if (!$box.length) return;
-    if (!ptsNiveles.length) {
+    var niveles = nivelesOrdenadosPts();
+    if (!niveles.length) {
         $box.html('<span class="text-muted">Sin niveles</span>');
         return;
     }
     var actual = nivelLoteSeleccionadoPts();
     var html = [];
-    ptsNiveles.forEach(function (n) {
+    niveles.forEach(function (n) {
         var bg = n.color || "#ddd";
         var checked = String(actual) === String(n.id) ? " checked" : "";
         var activo = checked ? " activo" : "";
@@ -241,15 +253,18 @@ function nivelLoteSeleccionadoPts() {
 function cargarModelosPts() {
     return $.post("ajax/programacion-taller-semana.ajax.php", { accion: "listarModelos" }, function (resp) {
         var $filtro = $("#filtroModeloPts");
+        var $destModelo = $("#destFiltroModeloPts");
         $filtro.find("option:not(:first)").remove();
+        $destModelo.find("option:not(:first)").remove();
         if (resp && resp.ok && resp.data) {
             resp.data.forEach(function (m) {
-                $filtro.append(
-                    $("<option>").val(m.modelo).text(m.etiqueta || m.modelo)
-                );
+                var txt = m.etiqueta || m.modelo;
+                $filtro.append($("<option>").val(m.modelo).text(txt));
+                $destModelo.append($("<option>").val(m.modelo).text(txt));
             });
         }
         refrescarSelectPts($filtro);
+        refrescarSelectPts($destModelo);
     }, "json");
 }
 
@@ -257,15 +272,19 @@ function cargarSectoresPts() {
     return $.post("ajax/programacion-taller-semana.ajax.php", { accion: "listarSectores" }, function (resp) {
         ptsSectores = (resp && resp.ok && resp.data) ? resp.data : [];
         var $filtro = $("#filtroTallerPts");
+        var $destTaller = $("#destFiltroTallerPts");
         var $modal = $("#ptsTaller");
         $filtro.find("option:not(:first)").remove();
+        $destTaller.find("option:not(:first)").remove();
         $modal.find("option:not(:first)").remove();
         ptsSectores.forEach(function (s) {
             var txt = s.cod_sector + " — " + (s.nom_sector || "");
             $filtro.append($("<option>").val(s.cod_sector).text(txt));
+            $destTaller.append($("<option>").val(s.cod_sector).text(txt));
             $modal.append($("<option>").val(s.cod_sector).text(txt));
         });
         refrescarSelectPts($filtro);
+        refrescarSelectPts($destTaller);
         refrescarSelectPts($modal);
     }, "json");
 }
@@ -1140,12 +1159,36 @@ function claveDispPts(r) {
     return String(r.modelo || "") + "|" + String(r.cod_color || "");
 }
 
+function filtrosDestinarPts() {
+    return {
+        nivel: $("#destFiltroNivelPts").val() || "",
+        taller: $("#destFiltroTallerPts").val() || "",
+        modelo: $("#destFiltroModeloPts").val() || ""
+    };
+}
+
+function filasDestinarVisiblesPts() {
+    var f = filtrosDestinarPts();
+    return (ptsPriorizadosCache || []).filter(function (r) {
+        if (f.nivel && String(r.nivel || "") !== String(f.nivel)) return false;
+        if (f.taller && String(r.cod_sector || "") !== String(f.taller)) return false;
+        if (f.modelo && String(r.modelo || "") !== String(f.modelo)) return false;
+        return true;
+    });
+}
+
 function pintarTablaPriorizadosPts() {
     var $tb = $("#tablaPriorizadosPts tbody").empty();
     $("#chkTodosPriPts").prop("checked", false);
-    var data = ptsPriorizadosCache || [];
-    if (!data.length) {
+    var todos = ptsPriorizadosCache || [];
+    var data = filasDestinarVisiblesPts();
+    if (!todos.length) {
         $tb.html('<tr><td colspan="12" class="text-center text-muted">Nada priorizado. Ve a la pestaña Priorizar.</td></tr>');
+        actualizarContadorSelDestPts();
+        return;
+    }
+    if (!data.length) {
+        $tb.html('<tr><td colspan="12" class="text-center text-muted">No hay coincidencias con los filtros de esta pestaña.</td></tr>');
         actualizarContadorSelDestPts();
         return;
     }
@@ -1242,10 +1285,7 @@ function quitarPriorizadoCachePts(id) {
 
 function cargarPriorizadosPts() {
     return $.post("ajax/programacion-taller-semana.ajax.php", {
-        accion: "priorizados",
-        cod_sector: $("#filtroTallerPts").val() || "",
-        nivel: $("#filtroNivelPts").val() || "",
-        modelo: $("#filtroModeloPts").val() || ""
+        accion: "priorizados"
     }, function (resp) {
         if (!resp || !resp.ok) {
             ptsPriorizadosCache = [];
@@ -1696,6 +1736,28 @@ if ($("#filtroAnioPts").length) {
     });
 }
 
+function limpiarFiltrosDestinarPts(silencio) {
+    var $nivel = $("#destFiltroNivelPts");
+    var $taller = $("#destFiltroTallerPts");
+    var $modelo = $("#destFiltroModeloPts");
+    $nivel.val("");
+    $taller.val("");
+    $modelo.val("");
+    try {
+        if ($nivel.data("selectpicker")) $nivel.selectpicker("val", "");
+        if ($taller.data("selectpicker")) $taller.selectpicker("val", "");
+        if ($modelo.data("selectpicker")) $modelo.selectpicker("val", "");
+    } catch (e) {
+        refrescarSelectPts($nivel);
+        refrescarSelectPts($taller);
+        refrescarSelectPts($modelo);
+    }
+    pintarTablaPriorizadosPts();
+    if (!silencio) {
+        toastPts("Filtros de destinar limpiados", "success");
+    }
+}
+
 function limpiarFiltrosPts() {
     ptsUrlSyncLock = true;
     var $modelo = $("#filtroModeloPts");
@@ -1720,6 +1782,7 @@ function limpiarFiltrosPts() {
         refrescarSelectPts($taller);
     }
     ptsUrlSyncLock = false;
+    limpiarFiltrosDestinarPts(true);
     recargarPts();
     toastPts("Filtros limpiados", "success");
 }
@@ -1785,6 +1848,9 @@ $("#filtroTallerPts, #filtroModeloPts, #filtroNivelPts").on("changed.bs.select c
     if (ptsUrlSyncLock) return;
     recargarPts();
 });
+$("#destFiltroNivelPts, #destFiltroTallerPts, #destFiltroModeloPts").on("changed.bs.select change", function () {
+    pintarTablaPriorizadosPts();
+});
 $("#chkOcultarConsumidosPts").on("change", function () {
     pintarTablaProgramadosPts();
     sincronizarUrlPts();
@@ -1806,6 +1872,9 @@ $("#tabsPts a[data-toggle='tab']").on("shown.bs.tab", function () {
         cargarPriorizadosPts();
         actualizarRangoDestPts();
         actualizarContadorSelDestPts();
+        refrescarSelectPts($("#destFiltroNivelPts"));
+        refrescarSelectPts($("#destFiltroTallerPts"));
+        refrescarSelectPts($("#destFiltroModeloPts"));
     } else if (tab === "priorizar") {
         cargarDisponiblesPts();
     }

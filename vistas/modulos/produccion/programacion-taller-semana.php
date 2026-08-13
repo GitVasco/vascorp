@@ -197,14 +197,14 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
 
                     <div class="tab-pane <?php echo $tabUrl === 'destinar' ? 'active' : ''; ?>" id="tabDestinarPts">
                         <div id="barraDestinarPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
-                            <div class="row" style="display:flex;flex-wrap:wrap;align-items:flex-end;">
-                                <div class="col-sm-2">
-                                    <label style="margin-bottom:2px;">Año destino</label>
+                            <div class="pts-filtros">
+                                <div class="pts-filtro pts-filtro-anio">
+                                    <label>Año destino</label>
                                     <input type="number" class="form-control input-sm" id="destAnioPts"
                                         value="<?php echo (int) $semanaActual['anio']; ?>" min="2000" max="2100">
                                 </div>
-                                <div class="col-sm-3">
-                                    <label style="margin-bottom:2px;">Semana destino</label>
+                                <div class="pts-filtro pts-filtro-semana">
+                                    <label>Semana destino</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-btn">
                                             <button type="button" class="btn btn-default" id="btnDestSemAntPts" title="Semana anterior">&laquo;</button>
@@ -216,26 +216,42 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                         </span>
                                     </div>
                                 </div>
-                                <div class="col-sm-3">
-                                    <label style="margin-bottom:2px;">Rango</label>
-                                    <p class="pts-rango-txt" id="textoRangoDestPts" style="margin:6px 0 0;">—</p>
+                                <div class="pts-filtro pts-filtro-rango">
+                                    <label>Rango</label>
+                                    <p class="pts-rango-txt" id="textoRangoDestPts">—</p>
                                     <p class="text-danger" id="avisoDestPasadaPts" style="margin:4px 0 0;font-size:12px;display:none;">
                                         Esa semana ya pasó; elige la actual o una futura.
                                     </p>
                                 </div>
-                                <div class="col-sm-3">
-                                    <label style="margin-bottom:2px;">&nbsp;</label>
-                                    <button type="button" class="btn btn-success btn-sm btn-block" id="btnDestinarLotePts" disabled>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Nivel</label>
+                                    <select class="form-control selectpicker" id="destFiltroNivelPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Taller</label>
+                                    <select class="form-control selectpicker" id="destFiltroTallerPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Modelo</label>
+                                    <select class="form-control selectpicker" id="destFiltroModeloPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-acciones">
+                                    <label>&nbsp;</label>
+                                    <button type="button" class="btn btn-success btn-sm" id="btnDestinarLotePts" disabled>
                                         Destinar seleccionados <span id="nSelDestPts">(0)</span>
                                     </button>
                                 </div>
-                                <div class="col-sm-12">
-                                    <p class="help-block" style="margin:10px 0 0;font-size:12px;">
-                                        <strong>Paso 2:</strong> elige aquí a qué semana van (no se permiten semanas ya pasadas).
-                                        Marca varios o usa Destinar en cada fila.
-                                    </p>
-                                </div>
                             </div>
+                            <p class="help-block" style="margin:10px 0 0;font-size:12px;">
+                                <strong>Paso 2:</strong> filtra, elige a qué semana van (no se permiten semanas ya pasadas)
+                                y marca varios o usa Destinar en cada fila.
+                            </p>
                         </div>
 
                         <div class="table-responsive pts-tabla-scroll">

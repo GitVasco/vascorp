@@ -70,7 +70,12 @@ class ControladorProgramacionTallerSemana
 			$porUmbral[] = $n;
 		}
 		usort($porUmbral, function ($a, $b) {
-			return ((int) $a["orden"]) - ((int) $b["orden"]);
+			$ua = (float) $a["urg_max"];
+			$ub = (float) $b["urg_max"];
+			if ($ua == $ub) {
+				return 0;
+			}
+			return ($ua < $ub) ? -1 : 1;
 		});
 
 		foreach ($porUmbral as $n) {

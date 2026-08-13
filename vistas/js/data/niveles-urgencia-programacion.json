@@ -9,10 +9,18 @@
       "descripcion": "Cobertura muy baja; atender primero"
     },
     {
+      "id": "prioridad",
+      "nombre": "Prioridad",
+      "color": "#A8D5A2",
+      "orden": 2,
+      "urg_max": 2.5,
+      "descripcion": "Prioritario dentro del plan"
+    },
+    {
       "id": "urgente",
       "nombre": "Urgente",
       "color": "#FFB380",
-      "orden": 2,
+      "orden": 3,
       "urg_max": 0.85,
       "descripcion": "Requiere acción esta semana"
     },
@@ -20,17 +28,9 @@
       "id": "avanzar",
       "nombre": "Avanzar",
       "color": "#B8E0D2",
-      "orden": 3,
+      "orden": 4,
       "urg_max": 1.5,
       "descripcion": "Conviene adelantar producción"
-    },
-    {
-      "id": "prioridad",
-      "nombre": "Prioridad",
-      "color": "#A8D5A2",
-      "orden": 4,
-      "urg_max": 2.5,
-      "descripcion": "Prioritario dentro del plan"
     },
     {
       "id": "campana",
@@ -67,5 +67,5 @@
     }
   ],
   "nivel_default": "prioridad",
-  "nota": "urg_max = meses de cobertura (urg_plan). Campaña se asigna por estado del artículo. Muestra Diseño, Muestra Producción y 1era Producción se eligen al priorizar."
+  "nota": "urg_max = meses de cobertura (urg_plan). El orden de lista es el de Destinar semana. Campaña se asigna por estado del artículo. Muestra Diseño, Muestra Producción y 1era Producción se eligen al priorizar."
 }
