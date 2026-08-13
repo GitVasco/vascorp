@@ -281,14 +281,14 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
 
                     <div class="tab-pane <?php echo $tabUrl === 'programado' ? 'active' : ''; ?>" id="tabProgramadoPts">
                         <div id="barraProgramadoPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
-                            <div class="row" style="display:flex;flex-wrap:wrap;align-items:flex-end;">
-                                <div class="col-sm-2">
-                                    <label style="margin-bottom:2px;">Año</label>
+                            <div class="pts-filtros">
+                                <div class="pts-filtro pts-filtro-anio">
+                                    <label>Año</label>
                                     <input type="number" class="form-control input-sm" id="progAnioPts"
                                         value="<?php echo (int) $infoActual['anio']; ?>" min="2000" max="2100">
                                 </div>
-                                <div class="col-sm-3">
-                                    <label style="margin-bottom:2px;">Semana a consultar</label>
+                                <div class="pts-filtro pts-filtro-semana">
+                                    <label>Semana a consultar</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-btn">
                                             <button type="button" class="btn btn-default" id="btnProgSemAntPts" title="Semana anterior">&laquo;</button>
@@ -300,19 +300,37 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                         </span>
                                     </div>
                                 </div>
-                                <div class="col-sm-3">
-                                    <label style="margin-bottom:2px;">Rango</label>
-                                    <p class="pts-rango-txt" id="textoRangoProgPts" style="margin:6px 0 0;">
+                                <div class="pts-filtro pts-filtro-rango">
+                                    <label>Rango</label>
+                                    <p class="pts-rango-txt" id="textoRangoProgPts">
                                         <?php echo htmlspecialchars($infoActual['fecha_inicio'] . ' → ' . $infoActual['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
                                     </p>
                                 </div>
-                                <div class="col-sm-4">
-                                    <label class="checkbox-inline" style="font-weight:normal;margin-top:22px;">
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Nivel</label>
+                                    <select class="form-control selectpicker" id="progFiltroNivelPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Taller</label>
+                                    <select class="form-control selectpicker" id="progFiltroTallerPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Modelo</label>
+                                    <select class="form-control selectpicker" id="progFiltroModeloPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-consumidos">
+                                    <label>&nbsp;</label>
+                                    <label class="pts-chk-consumidos" for="chkOcultarConsumidosPts">
                                         <input type="checkbox" id="chkOcultarConsumidosPts" <?php echo $ocultarConsumidosUrl ? 'checked' : ''; ?>>
-                                        Ocultar consumidos
-                                        <span class="text-muted">(sin saldo en corte ni OC)</span>
+                                        <span>Ocultar consumidos</span>
                                     </label>
-                                    <span id="conteoConsumidosPts" class="text-muted" style="margin-left:8px;"></span>
+                                    <span id="conteoConsumidosPts" class="text-muted"></span>
                                 </div>
                             </div>
                         </div>
@@ -500,7 +518,7 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                     <p class="text-muted" id="ptsSaldosTexto" style="margin-bottom:12px;">—</p>
                     <div class="form-group">
                         <label>Taller</label>
-                        <select class="form-control selectpicker" id="ptsTaller" data-live-search="true" data-container="body" data-size="8" required>
+                        <select class="form-control selectpicker" id="ptsTaller" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="— Seleccionar —" required>
                             <option value="">— Seleccionar —</option>
                         </select>
                     </div>
@@ -510,10 +528,24 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                             <option value="">— Seleccionar —</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Cantidad</label>
-                        <input type="number" class="form-control" id="ptsCantidad" min="1" step="1" required>
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <div class="form-group">
+                                <label>Año</label>
+                                <input type="number" class="form-control" id="ptsAnio" min="2000" max="2100" required>
+                            </div>
+                        </div>
+                        <div class="col-xs-6">
+                            <div class="form-group">
+                                <label>Semana</label>
+                                <input type="number" class="form-control" id="ptsSemana" min="1" max="53" required>
+                            </div>
+                        </div>
                     </div>
+                    <p class="help-block" id="ptsRangoSemana" style="margin-top:-6px;">—</p>
+                    <p class="text-danger" id="ptsAvisoPasada" style="margin:0 0 10px;font-size:12px;display:none;">
+                        Esa semana ya pasó; elige la actual o una futura.
+                    </p>
                     <div class="form-group">
                         <label>Observación</label>
                         <input type="text" class="form-control" id="ptsObservacion" maxlength="255">
@@ -675,6 +707,33 @@ body .bootstrap-select .dropdown-menu { z-index: 2060 !important; }
 }
 .pts-filtro-grow { flex: 1 1 160px; min-width: 140px; max-width: 240px; }
 .pts-filtro-acciones { flex: 0 0 auto; }
+.pts-filtro-consumidos {
+    flex: 0 0 168px;
+    min-width: 168px;
+    max-width: 180px;
+}
+.pts-chk-consumidos {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 5px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+}
+.pts-chk-consumidos input {
+    position: static;
+    margin: 0;
+    flex: 0 0 auto;
+}
+#conteoConsumidosPts {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.2;
+}
 .pts-rango-txt {
     margin: 0;
     padding: 5px 0 0;

@@ -1095,7 +1095,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/modelo-color-taller.js?v=9"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "programacion-taller-semana") { ?>
-    <script src="vistas/js/programacion-taller-semana.js?v=22"></script>
+    <script src="vistas/js/programacion-taller-semana.js?v=24"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "series-documentos") { ?>
     <script src="vistas/js/series-documentos.js?v=3"></script>

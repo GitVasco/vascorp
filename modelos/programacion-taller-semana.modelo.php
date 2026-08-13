@@ -367,6 +367,10 @@ class ModeloProgramacionTallerSemana
 	{
 		$stmt = Conexion::conectar()->prepare(
 			"UPDATE programacion_taller_semanajf SET
+				anio = :anio,
+				semana = :semana,
+				fecha_inicio = :fecha_inicio,
+				fecha_fin = :fecha_fin,
 				cantidad = :cantidad,
 				cod_sector = :cod_sector,
 				nivel = :nivel,
@@ -379,6 +383,10 @@ class ModeloProgramacionTallerSemana
 			 WHERE id = :id AND estado = 1"
 		);
 		$stmt->bindValue(":id", (int) $datos["id"], PDO::PARAM_INT);
+		$stmt->bindValue(":anio", (int) $datos["anio"], PDO::PARAM_INT);
+		$stmt->bindValue(":semana", (int) $datos["semana"], PDO::PARAM_INT);
+		$stmt->bindValue(":fecha_inicio", $datos["fecha_inicio"], PDO::PARAM_STR);
+		$stmt->bindValue(":fecha_fin", $datos["fecha_fin"], PDO::PARAM_STR);
 		$stmt->bindValue(":cantidad", (int) $datos["cantidad"], PDO::PARAM_INT);
 		$stmt->bindValue(":cod_sector", $datos["cod_sector"], PDO::PARAM_STR);
 		$stmt->bindValue(":nivel", $datos["nivel"], PDO::PARAM_STR);
@@ -873,6 +881,23 @@ class ModeloProgramacionTallerSemana
 			$stmt = Conexion::conectar()->prepare(
 				"SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave
 				 FROM programacion_taller_prioridadjf
+				 WHERE estado = 1"
+			);
+			$stmt->execute();
+			$rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+			return is_array($rows) ? $rows : array();
+		} catch (Exception $e) {
+			return array();
+		}
+	}
+
+	/** Claves modelo|color ya destinadas a alguna semana (activas). */
+	static public function mdlClavesProgramadasActivas()
+	{
+		try {
+			$stmt = Conexion::conectar()->prepare(
+				"SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave
+				 FROM programacion_taller_semanajf
 				 WHERE estado = 1"
 			);
 			$stmt->execute();

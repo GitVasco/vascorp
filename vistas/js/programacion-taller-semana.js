@@ -189,9 +189,11 @@ function cargarNivelesPts() {
         var $leyenda = $("#leyendaNivelesPts");
         var $filtro = $("#filtroNivelPts");
         var $destNivel = $("#destFiltroNivelPts");
+        var $progNivel = $("#progFiltroNivelPts");
         var $modalNivel = $("#ptsNivel");
         $filtro.find("option:not(:first)").remove();
         $destNivel.find("option:not(:first)").remove();
+        $progNivel.find("option:not(:first)").remove();
         $modalNivel.find("option:not(:first)").remove();
         var chips = ['<strong style="margin-right:4px;">Niveles:</strong>'];
         nivelesOrdenadosPts().forEach(function (n) {
@@ -199,10 +201,12 @@ function cargarNivelesPts() {
             chips.push(badgeNivelPts(n.id, n.nombre, n.color));
             $filtro.append($("<option>").val(n.id).text(n.nombre));
             $destNivel.append($("<option>").val(n.id).text(n.nombre));
+            $progNivel.append($("<option>").val(n.id).text(n.nombre));
             $modalNivel.append($("<option>").val(n.id).text(n.nombre));
         });
         $leyenda.html(chips.join(" "));
         refrescarSelectPts($destNivel);
+        refrescarSelectPts($progNivel);
         pintarChkNivelesLotePts();
     }, "json");
 }
@@ -254,17 +258,21 @@ function cargarModelosPts() {
     return $.post("ajax/programacion-taller-semana.ajax.php", { accion: "listarModelos" }, function (resp) {
         var $filtro = $("#filtroModeloPts");
         var $destModelo = $("#destFiltroModeloPts");
+        var $progModelo = $("#progFiltroModeloPts");
         $filtro.find("option:not(:first)").remove();
         $destModelo.find("option:not(:first)").remove();
+        $progModelo.find("option:not(:first)").remove();
         if (resp && resp.ok && resp.data) {
             resp.data.forEach(function (m) {
                 var txt = m.etiqueta || m.modelo;
                 $filtro.append($("<option>").val(m.modelo).text(txt));
                 $destModelo.append($("<option>").val(m.modelo).text(txt));
+                $progModelo.append($("<option>").val(m.modelo).text(txt));
             });
         }
         refrescarSelectPts($filtro);
         refrescarSelectPts($destModelo);
+        refrescarSelectPts($progModelo);
     }, "json");
 }
 
@@ -273,18 +281,22 @@ function cargarSectoresPts() {
         ptsSectores = (resp && resp.ok && resp.data) ? resp.data : [];
         var $filtro = $("#filtroTallerPts");
         var $destTaller = $("#destFiltroTallerPts");
+        var $progTaller = $("#progFiltroTallerPts");
         var $modal = $("#ptsTaller");
         $filtro.find("option:not(:first)").remove();
         $destTaller.find("option:not(:first)").remove();
+        $progTaller.find("option:not(:first)").remove();
         $modal.find("option:not(:first)").remove();
         ptsSectores.forEach(function (s) {
             var txt = s.cod_sector + " — " + (s.nom_sector || "");
             $filtro.append($("<option>").val(s.cod_sector).text(txt));
             $destTaller.append($("<option>").val(s.cod_sector).text(txt));
+            $progTaller.append($("<option>").val(s.cod_sector).text(txt));
             $modal.append($("<option>").val(s.cod_sector).text(txt));
         });
         refrescarSelectPts($filtro);
         refrescarSelectPts($destTaller);
+        refrescarSelectPts($progTaller);
         refrescarSelectPts($modal);
     }, "json");
 }
@@ -615,10 +627,29 @@ function actualizarContadorSelDestPts() {
     $("#btnDestinarLotePts").prop("disabled", n < 1 || !okDest);
 }
 
+function filtrosProgramadoPts() {
+    return {
+        nivel: $("#progFiltroNivelPts").val() || "",
+        taller: $("#progFiltroTallerPts").val() || "",
+        modelo: $("#progFiltroModeloPts").val() || ""
+    };
+}
+
+function filasProgramadoFiltradasPts() {
+    var f = filtrosProgramadoPts();
+    return (ptsProgramadosCache || []).filter(function (r) {
+        if (f.nivel && String(r.nivel || "") !== String(f.nivel)) return false;
+        if (f.taller && String(r.cod_sector || "") !== String(f.taller)) return false;
+        if (f.modelo && String(r.modelo || "") !== String(f.modelo)) return false;
+        return true;
+    });
+}
+
 function pintarTablaProgramadosPts() {
     var $tb = $("#tablaProgramadoPts tbody").empty();
     var ocultar = $("#chkOcultarConsumidosPts").is(":checked");
-    var data = ptsProgramadosCache || [];
+    var todos = ptsProgramadosCache || [];
+    var data = filasProgramadoFiltradasPts();
     var totalConsumidos = 0;
     data.forEach(function (r) {
         if (esConsumidoPts(r)) totalConsumidos += 1;
@@ -633,8 +664,12 @@ function pintarTablaProgramadosPts() {
             : ""
     );
 
-    if (!data.length) {
+    if (!todos.length) {
         $tb.html('<tr><td colspan="10" class="text-center text-muted">Nada programado en esta semana</td></tr>');
+        return;
+    }
+    if (!data.length) {
+        $tb.html('<tr><td colspan="10" class="text-center text-muted">No hay coincidencias con los filtros de esta pestaña.</td></tr>');
         return;
     }
     if (!visibles.length) {
@@ -1101,12 +1136,18 @@ function mostrarCargandoProgramadosPts() {
         + "</td></tr>"
     );
     $("#barraProgramadoPts").addClass("pts-cargando");
-    $("#progAnioPts, #progSemanaPts, #btnProgSemAntPts, #btnProgSemSigPts").prop("disabled", true);
+    $("#progAnioPts, #progSemanaPts, #btnProgSemAntPts, #btnProgSemSigPts, #progFiltroNivelPts, #progFiltroTallerPts, #progFiltroModeloPts").prop("disabled", true);
+    refrescarSelectPts($("#progFiltroNivelPts"));
+    refrescarSelectPts($("#progFiltroTallerPts"));
+    refrescarSelectPts($("#progFiltroModeloPts"));
 }
 
 function ocultarCargandoProgramadosPts() {
     $("#barraProgramadoPts").removeClass("pts-cargando");
-    $("#progAnioPts, #progSemanaPts, #btnProgSemAntPts, #btnProgSemSigPts").prop("disabled", false);
+    $("#progAnioPts, #progSemanaPts, #btnProgSemAntPts, #btnProgSemSigPts, #progFiltroNivelPts, #progFiltroTallerPts, #progFiltroModeloPts").prop("disabled", false);
+    refrescarSelectPts($("#progFiltroNivelPts"));
+    refrescarSelectPts($("#progFiltroTallerPts"));
+    refrescarSelectPts($("#progFiltroModeloPts"));
 }
 
 var ptsReqProgramados = 0;
@@ -1123,9 +1164,6 @@ function cargarProgramadosPts(opts) {
         accion: "programados",
         anio: anio,
         semana: semana,
-        cod_sector: $("#filtroTallerPts").val() || "",
-        nivel: $("#filtroNivelPts").val() || "",
-        modelo: $("#filtroModeloPts").val() || "",
         incluir_stats: incluirStats ? "1" : "0"
     }, function (resp) {
         if (reqId !== ptsReqProgramados) return;
@@ -1702,17 +1740,56 @@ function abrirModalProgramarPts(row, esEdicion) {
     }
     $("#ptsSaldosTexto").text(textoSaldo);
     var taller = row.cod_sector_resuelto || row.cod_sector || "";
-    $("#ptsTaller").val(taller);
-    refrescarSelectPts($("#ptsTaller"));
-    $("#ptsNivel").val(esEdicion && row.nivel ? row.nivel : "");
-    $("#ptsCantidad").val(esEdicion ? row.cantidad : (disp > 0 ? disp : 1));
-    if (esEdicion && esConsumidoPts(row)) {
-        $("#ptsCantidad").attr("max", Math.max(parseInt(row.cantidad, 10) || 0, 0));
-    } else {
-        $("#ptsCantidad").attr("max", disp > 0 ? disp : "");
+    var $taller = $("#ptsTaller");
+    $taller.val(taller);
+    try {
+        if ($taller.data("selectpicker")) {
+            $taller.selectpicker("val", taller);
+        } else {
+            refrescarSelectPts($taller);
+        }
+    } catch (e) {
+        refrescarSelectPts($taller);
     }
+    $("#ptsNivel").val(esEdicion && row.nivel ? row.nivel : "");
+    var anioEdit = esEdicion && row.anio ? row.anio : anioProgPts();
+    var semEdit = esEdicion && row.semana ? row.semana : semanaProgPts();
+    $("#ptsAnio").val(anioEdit).data("anio-orig", anioEdit);
+    $("#ptsSemana").val(semEdit).data("semana-orig", semEdit);
     $("#ptsObservacion").val(row.observacion || "");
+    actualizarRangoModalEditPts();
     $("#modalProgramarPts").modal("show");
+}
+
+function actualizarRangoModalEditPts() {
+    var anio = parseInt($("#ptsAnio").val(), 10) || 0;
+    var semana = parseInt($("#ptsSemana").val(), 10) || 0;
+    if (!anio || !semana) {
+        $("#ptsRangoSemana").text("—");
+        $("#ptsAvisoPasada").hide();
+        $("#formProgramarPts").data("pasada", 0);
+        return;
+    }
+    $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#ptsRangoSemana").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+            var pasada = parseInt(resp.data.pasada, 10) === 1;
+            var anioOrig = parseInt($("#ptsAnio").data("anio-orig"), 10) || 0;
+            var semOrig = parseInt($("#ptsSemana").data("semana-orig"), 10) || 0;
+            var misma = anio === anioOrig && semana === semOrig;
+            var bloquear = pasada && !misma;
+            $("#ptsAvisoPasada").toggle(bloquear);
+            $("#formProgramarPts").data("pasada", bloquear ? 1 : 0);
+        } else {
+            $("#ptsRangoSemana").text("Semana no válida");
+            $("#ptsAvisoPasada").show();
+            $("#formProgramarPts").data("pasada", 1);
+        }
+    }, "json");
 }
 
 if ($("#filtroAnioPts").length) {
@@ -1734,6 +1811,28 @@ if ($("#filtroAnioPts").length) {
             });
         });
     });
+}
+
+function limpiarFiltrosProgramadoPts(silencio) {
+    var $nivel = $("#progFiltroNivelPts");
+    var $taller = $("#progFiltroTallerPts");
+    var $modelo = $("#progFiltroModeloPts");
+    $nivel.val("");
+    $taller.val("");
+    $modelo.val("");
+    try {
+        if ($nivel.data("selectpicker")) $nivel.selectpicker("val", "");
+        if ($taller.data("selectpicker")) $taller.selectpicker("val", "");
+        if ($modelo.data("selectpicker")) $modelo.selectpicker("val", "");
+    } catch (e) {
+        refrescarSelectPts($nivel);
+        refrescarSelectPts($taller);
+        refrescarSelectPts($modelo);
+    }
+    pintarTablaProgramadosPts();
+    if (!silencio) {
+        toastPts("Filtros de Ya programado limpiados", "success");
+    }
 }
 
 function limpiarFiltrosDestinarPts(silencio) {
@@ -1783,6 +1882,7 @@ function limpiarFiltrosPts() {
     }
     ptsUrlSyncLock = false;
     limpiarFiltrosDestinarPts(true);
+    limpiarFiltrosProgramadoPts(true);
     recargarPts();
     toastPts("Filtros limpiados", "success");
 }
@@ -1851,6 +1951,9 @@ $("#filtroTallerPts, #filtroModeloPts, #filtroNivelPts").on("changed.bs.select c
 $("#destFiltroNivelPts, #destFiltroTallerPts, #destFiltroModeloPts").on("changed.bs.select change", function () {
     pintarTablaPriorizadosPts();
 });
+$("#progFiltroNivelPts, #progFiltroTallerPts, #progFiltroModeloPts").on("changed.bs.select change", function () {
+    pintarTablaProgramadosPts();
+});
 $("#chkOcultarConsumidosPts").on("change", function () {
     pintarTablaProgramadosPts();
     sincronizarUrlPts();
@@ -1865,6 +1968,9 @@ $("#tabsPts a[data-toggle='tab']").on("shown.bs.tab", function () {
         actualizarRangoProgPts();
         cargarProgramadosPts({ stats: false });
         programarRefreshStatsPts();
+        refrescarSelectPts($("#progFiltroNivelPts"));
+        refrescarSelectPts($("#progFiltroTallerPts"));
+        refrescarSelectPts($("#progFiltroModeloPts"));
     } else if (tab === "no_ejecutado") {
         actualizarRangoNePts();
         cargarNoEjecutadosPts();
@@ -2048,23 +2154,32 @@ $(document).on("click", ".btnEliminarPts", function () {
 $("#formProgramarPts").on("submit", function (e) {
     e.preventDefault();
     var id = $("#ptsId").val();
+    if (parseInt($("#formProgramarPts").data("pasada"), 10) === 1) {
+        toastPts("No se puede mover a una semana que ya pasó", "warning");
+        return;
+    }
     var payload = {
         accion: id ? "editar" : "programar",
         id: id || "",
-        anio: anioPts(),
-        semana: semanaPts(),
+        anio: $("#ptsAnio").val(),
+        semana: $("#ptsSemana").val(),
         modelo: $("#ptsModelo").val(),
         cod_color: $("#ptsCodColor").val(),
         cod_sector: $("#ptsTaller").val(),
         nivel: $("#ptsNivel").val(),
-        cantidad: $("#ptsCantidad").val(),
         observacion: $("#ptsObservacion").val()
     };
     $.post("ajax/programacion-taller-semana.ajax.php", payload, function (resp) {
         if (resp && resp.ok) {
             $("#modalProgramarPts").modal("hide");
             if (resp.row) {
-                upsertProgramadoCachePts(resp.row);
+                var mismaSemana = parseInt(resp.row.anio, 10) === anioProgPts()
+                    && parseInt(resp.row.semana, 10) === semanaProgPts();
+                if (mismaSemana) {
+                    upsertProgramadoCachePts(resp.row);
+                } else {
+                    quitarProgramadoCachePts(resp.row.id);
+                }
                 var clave = claveDispPts(resp.row);
                 ptsDisponiblesCache = ptsDisponiblesCache.filter(function (x) {
                     return claveDispPts(x) !== clave;
@@ -2084,8 +2199,16 @@ $("#formProgramarPts").on("submit", function (e) {
     });
 });
 
+$("#ptsAnio, #ptsSemana").on("change", actualizarRangoModalEditPts);
+
 $("#modalProgramarPts").on("shown.bs.modal", function () {
-    refrescarSelectPts($("#ptsTaller"));
+    var $taller = $("#ptsTaller");
+    refrescarSelectPts($taller);
+    try {
+        if ($taller.data("selectpicker")) {
+            $taller.selectpicker("val", $taller.val());
+        }
+    } catch (e) {}
 });
 
 $("#chkTodosNePts").on("change", function () {

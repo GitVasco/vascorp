@@ -99,6 +99,23 @@ class ControladorProgramacionTallerSemana
 		return $fila;
 	}
 
+	static public function ctrMapaClavesActivas($lista)
+	{
+		$map = array();
+		if (!is_array($lista)) {
+			return $map;
+		}
+		foreach ($lista as $clave) {
+			$map[(string) $clave] = true;
+		}
+		return $map;
+	}
+
+	static public function ctrClaveModeloColor($modelo, $codColor)
+	{
+		return trim((string) $modelo) . "|" . trim((string) $codColor);
+	}
+
 	static public function ctrListarCandidatos($filtros = array())
 	{
 		$lista = ModeloProgramacionTallerSemana::mdlListarCandidatos($filtros);
@@ -106,13 +123,15 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
-		$enPrioridad = array();
-		foreach (ModeloProgramacionTallerSemana::mdlClavesPrioridadActivas() as $clave) {
-			$enPrioridad[(string) $clave] = true;
-		}
+		$enPrioridad = self::ctrMapaClavesActivas(
+			ModeloProgramacionTallerSemana::mdlClavesPrioridadActivas()
+		);
+		$enProgramado = self::ctrMapaClavesActivas(
+			ModeloProgramacionTallerSemana::mdlClavesProgramadasActivas()
+		);
 		foreach ($lista as $fila) {
-			$clave = trim((string) $fila["modelo"]) . "|" . trim((string) $fila["cod_color"]);
-			if (isset($enPrioridad[$clave])) {
+			$clave = self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]);
+			if (isset($enPrioridad[$clave]) || isset($enProgramado[$clave])) {
 				continue;
 			}
 			// Nivel lo elige quien prioriza; no se asigna automáticamente
@@ -181,7 +200,17 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
+		$enProgramado = self::ctrMapaClavesActivas(
+			ModeloProgramacionTallerSemana::mdlClavesProgramadasActivas()
+		);
 		foreach ($lista as $fila) {
+			$clave = self::ctrClaveModeloColor(
+				isset($fila["modelo"]) ? $fila["modelo"] : "",
+				isset($fila["cod_color"]) ? $fila["cod_color"] : ""
+			);
+			if (isset($enProgramado[$clave])) {
+				continue;
+			}
 			$out[] = self::ctrEnriquecerPriorizado($fila);
 		}
 		usort($out, function ($a, $b) {
@@ -235,6 +264,19 @@ class ControladorProgramacionTallerSemana
 		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($modelo, $codColor);
 		if (!$art) {
 			return array("ok" => false, "mensaje" => "Modelo/color no encontrado");
+		}
+		$desdeDevolver = !empty($post["desde_devolver"]);
+		if (!$desdeDevolver) {
+			$enProgramado = self::ctrMapaClavesActivas(
+				ModeloProgramacionTallerSemana::mdlClavesProgramadasActivas()
+			);
+			$clave = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]);
+			if (isset($enProgramado[$clave])) {
+				return array(
+					"ok" => false,
+					"mensaje" => "Ya está en Ya programado; quítalo de esa semana o devuélvelo desde No ejecutado"
+				);
+			}
 		}
 		$disponible = (int) $art["saldo_disponible"];
 		if ($disponible < 1) {
@@ -697,6 +739,10 @@ class ControladorProgramacionTallerSemana
 			false
 		);
 		$datosBase = array(
+			"anio" => $rango["anio"],
+			"semana" => $rango["semana"],
+			"fecha_inicio" => $rango["fecha_inicio"],
+			"fecha_fin" => $rango["fecha_fin"],
 			"cantidad" => $cantidad,
 			"cod_sector" => $codSector,
 			"nivel" => $nivel,
@@ -783,31 +829,32 @@ class ControladorProgramacionTallerSemana
 		}
 
 		$codSector = trim(isset($post["cod_sector"]) ? $post["cod_sector"] : $row["cod_sector"]);
-		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : (int) $row["cantidad"];
+		$cantidad = (int) $row["cantidad"];
 		$nivel = trim(isset($post["nivel"]) ? $post["nivel"] : $row["nivel"]);
 		$observacion = trim(isset($post["observacion"]) ? $post["observacion"] : "");
+		$anio = isset($post["anio"]) ? (int) $post["anio"] : (int) $row["anio"];
+		$semana = isset($post["semana"]) ? (int) $post["semana"] : (int) $row["semana"];
 
 		$map = self::ctrMapaNiveles();
 		if ($codSector === "" || $cantidad < 1 || !isset($map[$nivel])) {
 			return array("ok" => false, "mensaje" => "Datos incompletos o inválidos");
 		}
 
-		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
-		$disponible = $art ? (int) $art["saldo_disponible"] : 0;
-		// Si ya está consumido (sin saldo), solo permitir mantener o bajar la cantidad programada
-		if ($disponible < 1) {
-			if ($cantidad > (int) $row["cantidad"]) {
-				return array("ok" => false, "mensaje" => "Consumido: sin saldo vivo; no se puede aumentar la cantidad");
-			}
-		} elseif ($cantidad > $disponible) {
-			return array("ok" => false, "mensaje" => "La cantidad supera el saldo disponible ({$disponible})");
+		$rango = ModeloProgramacionTallerSemana::mdlRangoSemana($anio, $semana);
+		if (!$rango) {
+			return array("ok" => false, "mensaje" => "Semana no válida");
+		}
+		$cambiaSemana = $anio !== (int) $row["anio"] || $semana !== (int) $row["semana"];
+		if ($cambiaSemana && ModeloProgramacionTallerSemana::mdlSemanaYaPasada($anio, $semana)) {
+			return array("ok" => false, "mensaje" => "No se puede mover a una semana que ya pasó");
 		}
 
-		// Si cambian taller, validar unicidad
-		if ($codSector !== $row["cod_sector"]) {
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+
+		if ($cambiaSemana || $codSector !== $row["cod_sector"]) {
 			$otro = ModeloProgramacionTallerSemana::mdlIdExistente(
-				(int) $row["anio"],
-				(int) $row["semana"],
+				$anio,
+				$semana,
 				$row["modelo"],
 				$row["cod_color"],
 				$codSector
@@ -819,6 +866,10 @@ class ControladorProgramacionTallerSemana
 
 		$datos = array(
 			"id" => $id,
+			"anio" => $rango["anio"],
+			"semana" => $rango["semana"],
+			"fecha_inicio" => $rango["fecha_inicio"],
+			"fecha_fin" => $rango["fecha_fin"],
 			"cantidad" => $cantidad,
 			"cod_sector" => $codSector,
 			"nivel" => $nivel,
@@ -943,6 +994,10 @@ class ControladorProgramacionTallerSemana
 			$exist = ModeloProgramacionTallerSemana::mdlMostrar($idDest);
 			$datosDest = array(
 				"id" => $idDest,
+				"anio" => $rango["anio"],
+				"semana" => $rango["semana"],
+				"fecha_inicio" => $rango["fecha_inicio"],
+				"fecha_fin" => $rango["fecha_fin"],
 				"cantidad" => $cantidad,
 				"cod_sector" => $row["cod_sector"],
 				"nivel" => $row["nivel"],
@@ -1060,7 +1115,8 @@ class ControladorProgramacionTallerSemana
 			"cod_sector" => $row["cod_sector"],
 			"cantidad" => $cantidad,
 			"nivel" => $row["nivel"],
-			"observacion" => isset($row["observacion"]) ? $row["observacion"] : ""
+			"observacion" => isset($row["observacion"]) ? $row["observacion"] : "",
+			"desde_devolver" => 1
 		));
 		if (empty($pri["ok"])) {
 			return $pri;
