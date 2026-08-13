@@ -19,7 +19,7 @@
     {
       "id": "avanzar",
       "nombre": "Avanzar",
-      "color": "#FFE08A",
+      "color": "#B8E0D2",
       "orden": 3,
       "urg_max": 1.5,
       "descripcion": "Conviene adelantar producción"
@@ -35,13 +35,37 @@
     {
       "id": "campana",
       "nombre": "Campaña",
-      "color": "#C9B1FF",
+      "color": "#FFE08A",
       "orden": 5,
       "urg_max": null,
       "por_estado_articulo": ["CampañaD", "CAMPANA", "campaña", "Campana"],
       "descripcion": "Artículo de campaña comercial"
+    },
+    {
+      "id": "muestra_diseno",
+      "nombre": "Muestra Diseño",
+      "color": "#F5B4E0",
+      "orden": 6,
+      "urg_max": null,
+      "descripcion": "Muestra de diseño"
+    },
+    {
+      "id": "muestra_produccion",
+      "nombre": "Muestra Producción",
+      "color": "#9FD4F0",
+      "orden": 7,
+      "urg_max": null,
+      "descripcion": "Muestra de producción"
+    },
+    {
+      "id": "primera_produccion",
+      "nombre": "1era Producción",
+      "color": "#C9B1FF",
+      "orden": 8,
+      "urg_max": null,
+      "descripcion": "Primera producción"
     }
   ],
   "nivel_default": "prioridad",
-  "nota": "urg_max = meses de cobertura (urg_plan). Campaña se asigna por estado del artículo."
+  "nota": "urg_max = meses de cobertura (urg_plan). Campaña se asigna por estado del artículo. Muestra Diseño, Muestra Producción y 1era Producción se eligen al priorizar."
 }

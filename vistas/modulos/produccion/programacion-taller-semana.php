@@ -187,7 +187,7 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                         <th title="Órdenes de corte">Ord. corte</th>
                                         <th title="Cantidad = Alm. + Ord.">Total</th>
                                         <th>Cob.</th>
-                                        <th style="min-width:220px;">Priorizar (elige nivel)</th>
+                                        <th style="min-width:280px;">Priorizar (elige nivel)</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -253,7 +253,7 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                         <th>Alm.</th>
                                         <th>OC</th>
                                         <th>Cob.</th>
-                                        <th style="min-width:200px;">Cambiar nivel</th>
+                                        <th style="min-width:280px;">Cambiar nivel</th>
                                         <th style="width:110px;">Destinar</th>
                                         <th style="width:70px;"></th>
                                     </tr>
@@ -649,7 +649,14 @@ body .bootstrap-select .dropdown-menu { z-index: 2060 !important; }
 .pts-filtro-anio { width: 78px; }
 .pts-filtro-semana { width: 130px; }
 .pts-filtro-rango { min-width: 150px; }
-.pts-filtro-nivel { width: 110px; }
+.pts-filtro-nivel { width: 170px; }
+.celda-niveles-pts {
+    white-space: normal;
+    min-width: 280px;
+}
+.celda-niveles-pts .btn-nivel-pts {
+    margin: 2px 1px;
+}
 .pts-filtro-grow { flex: 1 1 160px; min-width: 140px; max-width: 240px; }
 .pts-filtro-acciones { flex: 0 0 auto; }
 .pts-rango-txt {
