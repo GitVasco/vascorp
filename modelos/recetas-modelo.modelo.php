@@ -307,7 +307,7 @@ class ModeloRecetasModelo
 	=============================================*/
 	static public function mdlBuscarMp($q, $codigoSublinea = "", $limit = 30)
 	{
-		$limit = max(1, min(100, (int) $limit));
+		$limit = max(1, min(400, (int) $limit));
 		$sql = "SELECT
 				TRIM(p.CodPro) AS mp_codigo,
 				p.DesPro AS descripcion,
@@ -320,17 +320,24 @@ class ModeloRecetasModelo
 			FROM producto p
 			LEFT JOIN Tabla_M_Detalle tc
 			  ON tc.Cod_Tabla = 'TCOL'
-			 AND tc.Cod_Argumento = p.ColPro
+			 AND TRIM(tc.Cod_Argumento) = TRIM(p.ColPro)
 			LEFT JOIN Tabla_M_Detalle tu
 			  ON tu.Cod_Tabla = 'TUND'
-			 AND tu.Cod_Argumento = p.UndPro
+			 AND TRIM(tu.Cod_Argumento) = TRIM(p.UndPro)
 			WHERE p.EstPro = '1'";
 
 		if ($codigoSublinea !== "") {
 			$sql .= " AND LEFT(p.CodFab, 6) = :sublinea";
 		}
 		if ($q !== "") {
-			$sql .= " AND (p.CodPro LIKE :q OR p.DesPro LIKE :q2 OR p.CodFab LIKE :q3)";
+			$sql .= " AND (
+				p.CodPro LIKE :q
+				OR p.DesPro LIKE :q2
+				OR p.CodFab LIKE :q3
+				OR IFNULL(tc.Des_Larga, '') LIKE :q4
+				OR IFNULL(tu.Des_Corta, '') LIKE :q5
+				OR p.ColPro LIKE :q6
+			)";
 		}
 		$sql .= " ORDER BY p.CodPro ASC LIMIT " . $limit;
 
@@ -343,6 +350,9 @@ class ModeloRecetasModelo
 			$stmt->bindValue(":q", $like, PDO::PARAM_STR);
 			$stmt->bindValue(":q2", $like, PDO::PARAM_STR);
 			$stmt->bindValue(":q3", $like, PDO::PARAM_STR);
+			$stmt->bindValue(":q4", $like, PDO::PARAM_STR);
+			$stmt->bindValue(":q5", $like, PDO::PARAM_STR);
+			$stmt->bindValue(":q6", $like, PDO::PARAM_STR);
 		}
 		$stmt->execute();
 

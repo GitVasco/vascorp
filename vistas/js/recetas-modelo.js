@@ -10,9 +10,13 @@ var RM = {
 	mpActivaUnd: "",
 	mpActivaColor: "",
 	mpCache: {},
+	mpCatalogo: [],
+	mpCatalogoSub: "",
 	sublineaCache: {},
 	dirty: false,
-	_ctxFlashTimer: null
+	_ctxFlashTimer: null,
+	_mpReqSeq: 0,
+	_mpFiltroTimer: null
 };
 
 function rmEsc(v) {
@@ -50,6 +54,93 @@ function rmEsBorradorEditable() {
 function rmLineaActual() {
 	if (RM.lineaIdx === null || !RM.estado || !RM.estado.lineas) return null;
 	return RM.estado.lineas[RM.lineaIdx] || null;
+}
+
+function rmLineaTieneMp(linea) {
+	if (!linea) return false;
+	if (linea.mp_base_codigo) return true;
+	var vars = linea.variantes || [];
+	for (var i = 0; i < vars.length; i++) {
+		if (vars[i] && vars[i].mp_codigo) return true;
+	}
+	return false;
+}
+
+/** La sublínea activa existe y todavía no tiene MP: se puede reemplazar sin perder asignaciones. */
+function rmLineaActualReemplazable() {
+	var linea = rmLineaActual();
+	if (!linea || Number(linea.activo) === 0) return false;
+	return !rmLineaTieneMp(linea);
+}
+
+function rmIdxLineaPorSublinea(cod) {
+	var needle = String(cod || "").toUpperCase();
+	if (!needle || !RM.estado) return -1;
+	var found = -1;
+	(RM.estado.lineas || []).forEach(function (l, i) {
+		if (Number(l.activo) === 0) return;
+		if (String(l.codigo_sublinea || "").toUpperCase() === needle) found = i;
+	});
+	return found;
+}
+
+function rmNombrePickSublinea(sub, nom) {
+	nom = $.trim(nom || "");
+	if (!nom || nom === "\u00a0"
+		|| nom.indexOf("Solo agrega") === 0
+		|| nom.indexOf("Luego marca") === 0
+		|| nom.indexOf("No era esta") === 0
+		|| nom.indexOf("Cambiar reemplaza") === 0) {
+		nom = sub;
+	}
+	if (sub && nom && nom !== sub) {
+		RM.sublineaCache[String(sub).toUpperCase()] = nom;
+	}
+	return nom;
+}
+
+function rmLimpiarMpDeLinea(linea) {
+	if (!linea) return;
+	linea.mp_base_codigo = "";
+	linea.unidad = "";
+	(linea.variantes || []).forEach(function (v) {
+		v.mp_codigo = "";
+	});
+}
+
+function rmResetMpEnMano() {
+	RM.mpActiva = null;
+	RM.mpActivaUnd = "";
+	RM.mpActivaColor = "";
+}
+
+function rmEnfocarPanelLinea() {
+	var $ctx = $("#rmLineaActivaContexto");
+	if ($ctx.length && $ctx[0].scrollIntoView) {
+		$ctx[0].scrollIntoView({ behavior: "smooth", block: "start" });
+	}
+	setTimeout(function () {
+		$("#rmConsumoLinea").focus().select();
+	}, 120);
+}
+
+function rmActualizarAccionesSublinea() {
+	var $btnCambiar = $("#rmBtnCambiarSublinea");
+	var $hint = $("#rmHintCambiarSublinea");
+	var editable = rmEsBorradorEditable();
+	var reemplazable = rmLineaActualReemplazable();
+	var hayPick = $.trim($("#rmNuevaSublinea").val() || "") !== "";
+	$btnCambiar.toggle(!!(editable && reemplazable && hayPick));
+	if ($hint.length) $hint.toggle(!!(editable && reemplazable));
+	if (!$("#rmNuevaSublinea").val()) {
+		if (reemplazable) {
+			$("#rmNuevaSublineaCod").text("Buscar para cambiar o agregar otra…").addClass("empty");
+			$("#rmNuevaSublineaNom").text("Cambiar reemplaza la sublínea vacía; Agregar suma otra");
+		} else {
+			$("#rmNuevaSublineaCod").text("Buscar y agregar otra sublínea…").addClass("empty");
+			$("#rmNuevaSublineaNom").text("Solo agrega; la edición es del chip seleccionado abajo");
+		}
+	}
 }
 
 function rmClaveArt(art) {
@@ -443,7 +534,7 @@ function rmRenderCabecera() {
 	$("#rmArtActivos").text(RM.articulos.length);
 	$("#rmTituloCabecera").text(c.modelo + " v" + c.version);
 	var editable = rmEsBorradorEditable();
-	$("#rmBtnGuardar, #rmBtnPublicar, #rmBtnAgregarSublinea").prop("disabled", !editable);
+	$("#rmBtnGuardar, #rmBtnPublicar, #rmBtnAgregarSublinea, #rmBtnCambiarSublinea").prop("disabled", !editable);
 	$("#rmConsumoLinea").prop("disabled", !editable);
 	$("#rmMsgEstado").text(editable ? "" : "Solo lectura — crea «Nueva versión»");
 }
@@ -495,8 +586,7 @@ function rmRenderChips() {
 
 function rmLimpiarPickSublinea() {
 	$("#rmNuevaSublinea").val("");
-	$("#rmNuevaSublineaCod").text("Buscar y agregar otra sublínea…").addClass("empty");
-	$("#rmNuevaSublineaNom").text("Solo agrega; la edición es del chip seleccionado abajo");
+	rmActualizarAccionesSublinea();
 }
 
 function rmSetPickSublinea(cod, nom) {
@@ -504,9 +594,115 @@ function rmSetPickSublinea(cod, nom) {
 	if (cod) {
 		$("#rmNuevaSublineaCod").text(cod).removeClass("empty");
 		$("#rmNuevaSublineaNom").text(nom || "");
+		rmActualizarAccionesSublinea();
 	} else {
 		rmLimpiarPickSublinea();
 	}
+}
+
+function rmReemplazarLineaActual(sub, nom) {
+	sub = $.trim(sub || "");
+	if (!sub) return false;
+	nom = rmNombrePickSublinea(sub, nom);
+	var linea = rmLineaActual();
+	if (!linea) return false;
+	if (rmLineaTieneMp(linea)) {
+		rmAlerta(
+			"warning",
+			"Sublínea",
+			"Esta sublínea ya tiene materia prima. Quítala con × si quieres reemplazarla, o usa Agregar para sumar otra."
+		);
+		return false;
+	}
+
+	var idxExistente = rmIdxLineaPorSublinea(sub);
+	if (idxExistente === RM.lineaIdx) {
+		rmLimpiarPickSublinea();
+		return true;
+	}
+	if (idxExistente >= 0) {
+		var quitarIdx = RM.lineaIdx;
+		RM.estado.lineas.splice(quitarIdx, 1);
+		if (idxExistente > quitarIdx) idxExistente--;
+		RM.lineaIdx = idxExistente;
+		RM.lineaAnteriorIdx = null;
+		rmResetMpEnMano();
+		rmLimpiarPickSublinea();
+		rmMarcarDirty(true);
+		rmRefrescarPaso2(true);
+		rmActualizarContextoLineaActiva(
+			"Esa sublínea ya estaba en la receta; se seleccionó y se quitó la que no tenía MP"
+		);
+		rmEnfocarPanelLinea();
+		return true;
+	}
+
+	linea.codigo_sublinea = sub;
+	linea.nombre_rol = nom;
+	linea.nombre_sublinea = nom;
+	rmLimpiarMpDeLinea(linea);
+	rmAsegurarVariantesArticulos(linea);
+	rmResetMpEnMano();
+	rmLimpiarPickSublinea();
+	rmMarcarDirty(true);
+	rmRefrescarPaso2(true);
+	rmActualizarContextoLineaActiva("Se cambió la sublínea a: " + rmEtiquetaLinea(linea));
+	rmEnfocarPanelLinea();
+	return true;
+}
+
+function rmAgregarLineaSublinea(sub, nom) {
+	sub = $.trim(sub || "");
+	if (!sub) {
+		rmAlerta("warning", "Sublínea", "Elige una sublínea");
+		return false;
+	}
+	nom = rmNombrePickSublinea(sub, nom);
+
+	var idxExistente = rmIdxLineaPorSublinea(sub);
+	if (idxExistente >= 0) {
+		rmSincronizarConsumoEnVariantes();
+		RM.lineaAnteriorIdx = null;
+		RM.lineaIdx = idxExistente;
+		rmResetMpEnMano();
+		rmLimpiarPickSublinea();
+		rmRefrescarPaso2(true);
+		rmActualizarContextoLineaActiva("Esa sublínea ya está en la receta");
+		rmEnfocarPanelLinea();
+		return true;
+	}
+
+	rmSincronizarConsumoEnVariantes();
+	var lineaAnteriorIdx = RM.lineaIdx;
+	var linea = {
+		orden: RM.estado.lineas.length + 1,
+		nombre_rol: nom,
+		es_tela_principal: 0,
+		codigo_sublinea: sub,
+		nombre_sublinea: nom,
+		regla_variante: "COLOR_TALLA",
+		unidad: "",
+		consumo_base: "1",
+		mp_base_codigo: "",
+		activo: 1,
+		variantes: []
+	};
+	rmAsegurarVariantesArticulos(linea);
+	RM.estado.lineas.push(linea);
+	RM.lineaAnteriorIdx = (lineaAnteriorIdx !== null && RM.estado.lineas[lineaAnteriorIdx])
+		? lineaAnteriorIdx
+		: null;
+	RM.lineaIdx = RM.estado.lineas.length - 1;
+	rmResetMpEnMano();
+	rmLimpiarPickSublinea();
+	rmMarcarDirty(true);
+	rmRefrescarPaso2(true);
+	rmActualizarContextoLineaActiva(
+		"Ahora estás configurando: " + rmEtiquetaLinea(linea),
+		{ mostrarVolver: RM.lineaAnteriorIdx !== null }
+	);
+	rmEnfocarPanelLinea();
+	return true;
 }
 
 function rmNombreLinea(linea) {
@@ -976,6 +1172,7 @@ function rmRefrescarPaso2(reloadCatalogo) {
 	rmRenderChips();
 	rmRenderMatriz();
 	if (reloadCatalogo) rmCargarTablaMp();
+	rmActualizarAccionesSublinea();
 }
 
 function rmAplicarMpAKey(key, mp) {
@@ -1135,36 +1332,111 @@ function rmCargarTablaMp() {
 	var linea = rmLineaActual();
 	var $tb = $("#rmTablaMp tbody");
 	if (!linea || !linea.codigo_sublinea) {
+		RM.mpCatalogo = [];
+		RM.mpCatalogoSub = "";
 		$tb.html("<tr><td colspan='4' class='text-muted'>Sin sublínea</td></tr>");
 		return;
 	}
+	var sub = String(linea.codigo_sublinea);
 	$tb.html("<tr><td colspan='4' class='text-muted'>Cargando MP…</td></tr>");
+	var seq = ++RM._mpReqSeq;
 	rmPost({
 		accion: "buscarMp",
-		q: $("#rmFiltroMp").val() || "",
-		codigo_sublinea: linea.codigo_sublinea,
-		limit: 100
+		q: "",
+		codigo_sublinea: sub,
+		limit: 400
 	}).done(function (resp) {
-		$tb.empty();
-		if (!resp || !resp.ok || !(resp.data || []).length) {
+		if (seq !== RM._mpReqSeq) return;
+		var data = (resp && resp.ok && resp.data) ? resp.data : [];
+		RM.mpCatalogo = data;
+		RM.mpCatalogoSub = sub;
+		data.forEach(rmCacheMp);
+		rmAplicarFiltroMp();
+	}).fail(function () {
+		if (seq !== RM._mpReqSeq) return;
+		$tb.html("<tr><td colspan='4' class='text-muted'>No se pudo cargar el catálogo</td></tr>");
+	});
+}
+
+function rmHaystackMp(mp) {
+	return [
+		mp.mp_codigo || "",
+		mp.descripcion || "",
+		mp.color || "",
+		mp.unidad || "",
+		mp.colpro || "",
+		mp.codigo_sublinea || ""
+	].join(" ").toLowerCase();
+}
+
+function rmFiltrarMpLocal(q) {
+	q = $.trim(String(q || "")).toLowerCase();
+	if (!q) return RM.mpCatalogo.slice();
+	return (RM.mpCatalogo || []).filter(function (mp) {
+		return rmHaystackMp(mp).indexOf(q) >= 0;
+	});
+}
+
+function rmPintarTablaMp(lista, q) {
+	var $tb = $("#rmTablaMp tbody").empty();
+	if (!(lista || []).length) {
+		if (q) {
+			$tb.html("<tr><td colspan='4' class='text-muted'>Ninguna MP coincide con «" + rmEsc(q) + "»</td></tr>");
+		} else {
 			$tb.html("<tr><td colspan='4' class='text-muted'>No hay MP para esta sublínea</td></tr>");
-			return;
 		}
-		resp.data.forEach(function (mp) {
-			rmCacheMp(mp);
-			var activa = String(RM.mpActiva || "") === String(mp.mp_codigo) ? " activa" : "";
-			$tb.append("<tr class='" + activa + "' data-mp='" + rmEsc(mp.mp_codigo) + "'>"
-				+ "<td><div class='rm2-mp-color'>" + rmEsc(mp.color || "—") + "</div>"
-				+ "<div class='rm2-mp-cod'>" + rmEsc(mp.mp_codigo) + "</div></td>"
-				+ "<td><span class='rm2-mp-und'>" + rmEsc(mp.unidad || "—") + "</span></td>"
-				+ "<td><div class='rm2-mp-desc' title='" + rmEsc(mp.descripcion) + "'>" + rmEsc(mp.descripcion) + "</div></td>"
-				+ "<td><button type='button' class='btn btn-xs btn-primary rmElegirMpActiva'"
-				+ " data-mp='" + rmEsc(mp.mp_codigo) + "'"
-				+ " data-und='" + rmEsc(mp.unidad || "") + "'"
-				+ " data-color='" + rmEsc(mp.color || "") + "'"
-				+ " data-desc='" + rmEsc(mp.descripcion) + "'>Elegir</button></td>"
-				+ "</tr>");
-		});
+		return;
+	}
+	lista.forEach(function (mp) {
+		rmCacheMp(mp);
+		var activa = String(RM.mpActiva || "") === String(mp.mp_codigo) ? " activa" : "";
+		$tb.append("<tr class='" + activa + "' data-mp='" + rmEsc(mp.mp_codigo) + "'>"
+			+ "<td><div class='rm2-mp-color'>" + rmEsc(mp.color || "—") + "</div>"
+			+ "<div class='rm2-mp-cod'>" + rmEsc(mp.mp_codigo) + "</div></td>"
+			+ "<td><span class='rm2-mp-und'>" + rmEsc(mp.unidad || "—") + "</span></td>"
+			+ "<td><div class='rm2-mp-desc' title='" + rmEsc(mp.descripcion) + "'>" + rmEsc(mp.descripcion) + "</div></td>"
+			+ "<td><button type='button' class='btn btn-xs btn-primary rmElegirMpActiva'"
+			+ " data-mp='" + rmEsc(mp.mp_codigo) + "'"
+			+ " data-und='" + rmEsc(mp.unidad || "") + "'"
+			+ " data-color='" + rmEsc(mp.color || "") + "'"
+			+ " data-desc='" + rmEsc(mp.descripcion) + "'>Elegir</button></td>"
+			+ "</tr>");
+	});
+}
+
+function rmAplicarFiltroMp() {
+	var linea = rmLineaActual();
+	var $tb = $("#rmTablaMp tbody");
+	if (!linea || !linea.codigo_sublinea) {
+		$tb.html("<tr><td colspan='4' class='text-muted'>Sin sublínea</td></tr>");
+		return;
+	}
+	var q = $.trim($("#rmFiltroMp").val() || "");
+	var sub = String(linea.codigo_sublinea);
+	if (RM.mpCatalogoSub !== sub) {
+		rmCargarTablaMp();
+		return;
+	}
+	var local = rmFiltrarMpLocal(q);
+	if (local.length || q.length < 2) {
+		rmPintarTablaMp(local, q);
+		return;
+	}
+	var seq = ++RM._mpReqSeq;
+	$tb.html("<tr><td colspan='4' class='text-muted'>Buscando MP…</td></tr>");
+	rmPost({
+		accion: "buscarMp",
+		q: q,
+		codigo_sublinea: sub,
+		limit: 400
+	}).done(function (resp) {
+		if (seq !== RM._mpReqSeq) return;
+		var data = (resp && resp.ok && resp.data) ? resp.data : [];
+		data.forEach(rmCacheMp);
+		rmPintarTablaMp(data, q);
+	}).fail(function () {
+		if (seq !== RM._mpReqSeq) return;
+		rmPintarTablaMp([], q);
 	});
 }
 
@@ -1250,6 +1522,7 @@ function rmCargarEditor() {
 				rmRenderCabecera();
 				rmRenderChips();
 				rmActualizarContextoLineaActiva();
+				rmActualizarAccionesSublinea();
 				rmEnriquecerMpsAsignadas(function () {
 					rmRenderMatriz();
 					rmCargarTablaMp();
@@ -1286,6 +1559,7 @@ function rmGuardar(silent) {
 			rmRenderCabecera();
 			rmRenderChips();
 			rmActualizarContextoLineaActiva();
+			rmActualizarAccionesSublinea();
 			rmEnriquecerMpsAsignadas(function () {
 				rmRenderMatriz();
 				rmCargarTablaMp();
@@ -1321,11 +1595,19 @@ function rmBuscarSublineas() {
 	}).done(function (resp) {
 		var $tb = $("#rmTablaSublineas tbody").empty();
 		(resp && resp.data || []).forEach(function (s) {
+			var btns = "<button type='button' class='btn btn-xs btn-primary rmPickSub' data-cod='"
+				+ rmEsc(s.codigo_sublinea) + "' data-nom='" + rmEsc(s.nombre) + "'>Elegir</button>";
+			if (rmEsBorradorEditable() && rmLineaActualReemplazable()) {
+				btns = "<button type='button' class='btn btn-xs btn-warning rmReemplazarSub' data-cod='"
+					+ rmEsc(s.codigo_sublinea) + "' data-nom='" + rmEsc(s.nombre)
+					+ "' title='Reemplazar la sublínea actual en chips y tarjetas'>Cambiar</button> "
+					+ btns;
+			}
 			$tb.append("<tr>"
 				+ "<td><strong>" + rmEsc(s.codigo_sublinea) + "</strong></td>"
 				+ "<td>" + rmEsc(s.linea) + "</td>"
 				+ "<td>" + rmEsc(s.nombre) + "</td>"
-				+ "<td><button type='button' class='btn btn-xs btn-primary rmPickSub' data-cod='" + rmEsc(s.codigo_sublinea) + "' data-nom='" + rmEsc(s.nombre) + "'>Elegir</button></td>"
+				+ "<td style='white-space:nowrap;'>" + btns + "</td>"
 				+ "</tr>");
 		});
 	});
@@ -1748,6 +2030,7 @@ $(document).ready(function () {
 		e.preventDefault();
 		e.stopPropagation();
 		$("#rmBuscarSublineaQ").val("");
+		rmActualizarAccionesSublinea();
 		$("#modalSublineasReceta").modal("show");
 		rmBuscarSublineas();
 	});
@@ -1761,8 +2044,15 @@ $(document).ready(function () {
 		rmSetPickSublinea(cod, nom);
 		$("#modalSublineasReceta").modal("hide");
 	});
+	$(document).on("click", ".rmReemplazarSub", function () {
+		if (!rmEsBorradorEditable()) return;
+		var cod = String($(this).attr("data-cod") || $(this).data("cod") || "");
+		var nom = String($(this).attr("data-nom") || $(this).data("nom") || "");
+		$("#modalSublineasReceta").modal("hide");
+		rmReemplazarLineaActual(cod, nom);
+	});
 
-	$("#rmBtnAgregarSublinea").on("click", function () {
+	$("#rmBtnCambiarSublinea").on("click", function () {
 		if (!rmEsBorradorEditable()) return;
 		var sub = $.trim($("#rmNuevaSublinea").val() || "");
 		var nom = $.trim($("#rmNuevaSublineaNom").text() || "");
@@ -1770,53 +2060,14 @@ $(document).ready(function () {
 			rmAlerta("warning", "Sublínea", "Elige una sublínea");
 			return;
 		}
-		if (!nom || nom === "\u00a0" || nom.indexOf("Solo agrega") === 0 || nom.indexOf("Luego marca") === 0) {
-			nom = sub;
-		}
-		if (sub && nom && nom !== sub) {
-			RM.sublineaCache[String(sub).toUpperCase()] = nom;
-		}
+		rmReemplazarLineaActual(sub, nom);
+	});
 
-		rmSincronizarConsumoEnVariantes();
-		var lineaAnteriorIdx = RM.lineaIdx;
-
-		var linea = {
-			orden: RM.estado.lineas.length + 1,
-			nombre_rol: nom,
-			es_tela_principal: 0,
-			codigo_sublinea: sub,
-			regla_variante: "COLOR_TALLA",
-			unidad: "",
-			consumo_base: "1",
-			mp_base_codigo: "",
-			activo: 1,
-			variantes: []
-		};
-		rmAsegurarVariantesArticulos(linea);
-		RM.estado.lineas.push(linea);
-		RM.lineaAnteriorIdx = (lineaAnteriorIdx !== null && RM.estado.lineas[lineaAnteriorIdx])
-			? lineaAnteriorIdx
-			: null;
-		RM.lineaIdx = RM.estado.lineas.length - 1;
-		RM.mpActiva = null;
-		RM.mpActivaUnd = "";
-		RM.mpActivaColor = "";
-
-		rmLimpiarPickSublinea();
-
-		rmMarcarDirty(true);
-		rmRefrescarPaso2(true);
-		rmActualizarContextoLineaActiva(
-			"Ahora estás configurando: " + rmEtiquetaLinea(linea),
-			{ mostrarVolver: RM.lineaAnteriorIdx !== null }
-		);
-		var $ctx = $("#rmLineaActivaContexto");
-		if ($ctx.length && $ctx[0].scrollIntoView) {
-			$ctx[0].scrollIntoView({ behavior: "smooth", block: "start" });
-		}
-		setTimeout(function () {
-			$("#rmConsumoLinea").focus().select();
-		}, 120);
+	$("#rmBtnAgregarSublinea").on("click", function () {
+		if (!rmEsBorradorEditable()) return;
+		var sub = $.trim($("#rmNuevaSublinea").val() || "");
+		var nom = $.trim($("#rmNuevaSublineaNom").text() || "");
+		rmAgregarLineaSublinea(sub, nom);
 	});
 
 	$(document).on("click", ".rm2-chip", function (e) {
@@ -1836,6 +2087,7 @@ $(document).ready(function () {
 			RM._ctxFlashTimer = null;
 		}
 		rmRenderChips();
+		rmActualizarAccionesSublinea();
 		rmEnriquecerMpsAsignadas(function () {
 			rmRenderMatriz();
 			rmCargarTablaMp();
@@ -1894,9 +2146,20 @@ $(document).ready(function () {
 		rmActualizarContextoLineaActiva();
 	});
 
-	$("#rmBtnFiltroMp").on("click", rmCargarTablaMp);
+	$("#rmBtnFiltroMp").on("click", function () {
+		if (RM._mpFiltroTimer) clearTimeout(RM._mpFiltroTimer);
+		rmAplicarFiltroMp();
+	});
+	$("#rmFiltroMp").on("input", function () {
+		if (RM._mpFiltroTimer) clearTimeout(RM._mpFiltroTimer);
+		RM._mpFiltroTimer = setTimeout(rmAplicarFiltroMp, 120);
+	});
 	$("#rmFiltroMp").on("keydown", function (e) {
-		if (e.which === 13) rmCargarTablaMp();
+		if (e.which === 13) {
+			e.preventDefault();
+			if (RM._mpFiltroTimer) clearTimeout(RM._mpFiltroTimer);
+			rmAplicarFiltroMp();
+		}
 	});
 
 	$(document).on("click", ".rmElegirMpActiva", function () {

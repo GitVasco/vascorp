@@ -38,7 +38,7 @@ if ($idReceta <= 0) {
 	display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
 }
 .rm2-sub-pick {
-	display:flex; align-items:stretch; flex:1 1 280px; max-width:520px;
+	display:flex; align-items:stretch; flex:1 1 280px; max-width:640px;
 	border:1px solid #d2d6de; border-radius:3px; background:#fff; overflow:hidden;
 }
 .rm2-sub-pick .rm2-sub-info {
@@ -55,6 +55,12 @@ if ($idReceta <= 0) {
 .rm2-sub-pick .rm2-sub-search {
 	border:0; border-left:1px solid #d2d6de; border-radius:0; padding:0 12px; background:#fafafa;
 }
+.rm2-sub-pick .rm2-sub-change {
+	border:0; border-left:1px solid #c87f0a; border-radius:0; padding:0 14px;
+	background:#f39c12; color:#fff; font-weight:600; white-space:nowrap; display:none;
+}
+.rm2-sub-pick .rm2-sub-change:hover,
+.rm2-sub-pick .rm2-sub-change:focus { background:#e08e0b; color:#fff; }
 .rm2-sub-pick .rm2-sub-add {
 	border:0; border-left:1px solid #2e6da4; border-radius:0; padding:0 14px;
 	background:#3c8dbc; color:#fff; font-weight:600; white-space:nowrap;
@@ -242,6 +248,9 @@ if ($idReceta <= 0) {
 						<button type="button" class="btn rm2-sub-search" id="rmBtnBuscarSublineaIcon" title="Buscar">
 							<i class="fa fa-search"></i>
 						</button>
+						<button type="button" class="btn rm2-sub-change" id="rmBtnCambiarSublinea" title="Reemplazar la sublínea actual (aún no tiene MP)">
+							<i class="fa fa-exchange"></i> Cambiar
+						</button>
 						<button type="button" class="btn rm2-sub-add" id="rmBtnAgregarSublinea" title="Agregar sublínea">
 							<i class="fa fa-plus"></i> Agregar
 						</button>
@@ -311,7 +320,7 @@ if ($idReceta <= 0) {
 						<div class="col-md-4 rm2-col-mp">
 							<div class="rm2-panel-title">Catálogo MP (por sublínea)</div>
 							<div class="input-group input-group-sm" style="margin-bottom:8px;">
-								<input type="text" class="form-control" id="rmFiltroMp" placeholder="Buscar por color o nombre…">
+								<input type="text" class="form-control" id="rmFiltroMp" placeholder="Buscar por color, descripción o código…">
 								<span class="input-group-btn">
 									<button type="button" class="btn btn-default" id="rmBtnFiltroMp"><i class="fa fa-search"></i></button>
 								</span>
@@ -399,6 +408,13 @@ if ($idReceta <= 0) {
 					<span class="input-group-btn">
 						<button type="button" class="btn btn-primary" id="rmBtnBuscarSublinea"><i class="fa fa-search"></i></button>
 					</span>
+				</div>
+				<div class="callout callout-warning" id="rmHintCambiarSublinea" style="display:none; margin:10px 0 0;">
+					<p style="margin:0;">
+						La sublínea actual aún no tiene materia prima.
+						Usa <strong>Cambiar</strong> para reemplazarla en las tarjetas,
+						o <strong>Elegir</strong> y luego <strong>Agregar</strong> si quieres sumar otra.
+					</p>
 				</div>
 				<div class="table-responsive" style="max-height:400px; overflow:auto; margin-top:10px;">
 					<table class="table table-hover table-condensed" id="rmTablaSublineas">
