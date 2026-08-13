@@ -8348,12 +8348,12 @@ class ModeloFacturacion
                 '' AS e1,
                 '1' AS f1,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE '1' 
                 END AS g1,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE '1' 
                 END AS h1,
@@ -8388,7 +8388,7 @@ class ModeloFacturacion
                 'ATTACH_DOC' AS e3,
                 /*FILA 4*/
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8399,12 +8399,12 @@ class ModeloFacturacion
                     AND t.cod_tabla = 'tcho') 
                 END AS a4,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE '1' 
                 END AS b4,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8415,7 +8415,7 @@ class ModeloFacturacion
                     AND t.cod_tabla = 'tcho') 
                 END AS c4,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8426,7 +8426,7 @@ class ModeloFacturacion
                     AND t.cod_tabla = 'tcho') 
                 END AS d4,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8437,13 +8437,13 @@ class ModeloFacturacion
                     AND t.cod_tabla = 'tcho') 
                 END AS e4,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 'ATTACH_DOC' 
                 END AS f4,
                 /*FILA 5*/
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8457,7 +8457,7 @@ class ModeloFacturacion
                 '' AS c5,
                 '' AS d5,
                 CASE
-                WHEN v.agencia <> '0' 
+                WHEN IFNULL(v.agencia, 0) <> 0 
                 THEN '' 
                 ELSE 'ATTACH_DOC' 
                 END AS e5,
@@ -8495,13 +8495,13 @@ class ModeloFacturacion
                 ROUND(v.peso, 3) AS d10,
                 'KGM' AS e10,
                 CASE
-                WHEN v.agencia = 0 
+                WHEN IFNULL(v.agencia, 0) = 0 
                 THEN '02' 
                 ELSE '01' 
                 END AS f10,
                 v.fecha AS g10,
                 CASE
-                WHEN v.agencia = 0 
+                WHEN IFNULL(v.agencia, 0) = 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8511,12 +8511,12 @@ class ModeloFacturacion
                 WHERE v.agencia = a.id) 
                 END AS h10,
                 CASE
-                WHEN v.agencia = 0 
+                WHEN IFNULL(v.agencia, 0) = 0 
                 THEN '' 
                 ELSE '6' 
                 END AS i10,
                 CASE
-                WHEN v.agencia = 0 
+                WHEN IFNULL(v.agencia, 0) = 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8563,7 +8563,7 @@ class ModeloFacturacion
                 END AS v10,
                 v.bultos AS w10,
                 CASE
-                WHEN v.agencia = 0 
+                WHEN IFNULL(v.agencia, 0) = 0 
                 THEN '' 
                 ELSE 
                 (SELECT 
@@ -8573,7 +8573,7 @@ class ModeloFacturacion
                 WHERE v.agencia = a.id) 
                 END AS aa10,
                 CASE
-                WHEN v.agencia = 0 
+                WHEN IFNULL(v.agencia, 0) = 0 
                 THEN '' 
                 ELSE '' 
                 END AS ao10,

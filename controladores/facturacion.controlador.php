@@ -174,6 +174,15 @@ class ControladorFacturacion
     }
 
     /*
+     * Sin agencia (vacío / null) se guarda como 0 = transporte propio.
+     */
+    static private function normalizarAgenciaGuia($agencia)
+    {
+        $agencia = trim((string) $agencia);
+        return $agencia === "" ? "0" : $agencia;
+    }
+
+    /*
     * MOSTRAR CABECERA DE TEMPORAL
     */
     static public function ctrMostrarTablas($tipo, $estado, $valor)
@@ -4248,7 +4257,9 @@ class ControladorFacturacion
             "total" => $signo * $respuestaDoc["total"],
             "cliente" => $respuestaDoc["cod_cli"],
             "vendedor" => $respuestaDoc["vendedor"],
-            "agencia" => $respuestaDoc["agencia"],
+            "agencia" => self::normalizarAgenciaGuia(
+                isset($respuestaDoc["agencia"]) ? $respuestaDoc["agencia"] : ""
+            ),
             "lista_precios" => $respuestaDoc["lista"],
             "condicion_venta" => $respuestaDoc["condicion_venta"],
             "doc_destino" => $docDest,
@@ -4395,7 +4406,9 @@ class ControladorFacturacion
                 "carro" => $_POST["carro"],
                 "peso" => $_POST["peso"],
                 "bultos" => $_POST["bultos"],
-                "agencia" => isset($_POST["agenciaGuia"]) ? $_POST["agenciaGuia"] : "",
+                "agencia" => self::normalizarAgenciaGuia(
+                    isset($_POST["agenciaGuia"]) ? $_POST["agenciaGuia"] : ""
+                ),
             );
 
             $respuesta = ModeloFacturacion::mdlActualizarGuiaRemision($datos);
