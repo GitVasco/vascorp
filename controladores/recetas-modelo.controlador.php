@@ -665,9 +665,7 @@ class ControladorRecetasModelo
 			);
 		}
 
-		if ($telas > 1) {
-			return array("ok" => false, "mensaje" => "Solo puede haber una línea de tela principal activa");
-		}
+		// Varias telas principales permitidas; al resolver, cada color debe quedar con exactamente una.
 
 		return array("ok" => true, "lineas" => $lineas);
 	}
@@ -777,6 +775,9 @@ class ControladorRecetasModelo
 					$seenMp[$mp] = true;
 				}
 				$ok = !empty($ins["completo"]);
+				if (!$ok) {
+					continue;
+				}
 				$unidad = "";
 				if ($ok) {
 					if (!empty($ins["mp_unidad"])) {
@@ -1049,7 +1050,7 @@ class ControladorRecetasModelo
 	- Regla COLOR_TALLA (compatible con el editor actual)
 	- Por artículo/sublínea: prioriza fila tej_princ=si
 	- consumo_base = moda de consumos del grupo
-	- Una sola tela principal (grupo con más tej_princ=si)
+	- Sublíneas con tej_princ=si quedan como tela principal (una por color al explotar)
 	=============================================*/
 	static public function ctrImportarDesdeTarjetas($modelo)
 	{
@@ -1194,17 +1195,14 @@ class ControladorRecetasModelo
 			return array("ok" => false, "mensaje" => "No se pudieron armar líneas desde las tarjetas");
 		}
 
-		// Elegir tela principal: grupo con más tej_princ=si
-		$telaKey = null;
-		$telaMax = 0;
+		// Todas las sublíneas con tej_princ=si son tela principal (un color usa una u otra).
+		$telaKeys = array();
 		foreach ($grupos as $k => $g) {
-			if ($g["tej_count"] > $telaMax) {
-				$telaMax = $g["tej_count"];
-				$telaKey = $k;
+			if ($g["tej_count"] > 0) {
+				$telaKeys[$k] = true;
 			}
 		}
-		if ($telaMax === 0) {
-			// Heurística: sublínea BAL* o nombre que sugiera tela/jersey/rib
+		if (!count($telaKeys)) {
 			foreach ($grupos as $k => $g) {
 				$sub = strtoupper((string) ($g["codigo_sublinea"] ? $g["codigo_sublinea"] : $k));
 				$nom = strtoupper($g["nombre_sublinea"] . " " . self::valorMasFrecuente(array_map(function ($v) {
@@ -1215,24 +1213,14 @@ class ControladorRecetasModelo
 					|| strpos($nom, "JERSEY") !== false
 					|| strpos($nom, "RIB") !== false
 				) {
-					$telaKey = $k;
+					$telaKeys[$k] = true;
 					$avisos[] = "Ninguna fila tenía tej_princ=si; se marcó como tela principal la sublínea «"
 						. ($g["codigo_sublinea"] ? $g["codigo_sublinea"] : $k) . "» por heurística.";
 					break;
 				}
 			}
-			if ($telaKey === null) {
+			if (!count($telaKeys)) {
 				$avisos[] = "Ninguna fila tenía tej_princ=si. Marca la tela principal en el editor antes de publicar.";
-			}
-		} else {
-			$otras = 0;
-			foreach ($grupos as $k => $g) {
-				if ($k !== $telaKey && $g["tej_count"] > 0) {
-					$otras++;
-				}
-			}
-			if ($otras > 0) {
-				$avisos[] = "Había tej_princ=si en $otras sublínea(s) adicional(es); solo se marcó una como tela principal.";
 			}
 		}
 
@@ -1283,7 +1271,7 @@ class ControladorRecetasModelo
 				$nombreRol = substr($nombreRol, 0, 80);
 			}
 
-			$esTela = ($telaKey !== null && $k === $telaKey) ? 1 : 0;
+			$esTela = isset($telaKeys[$k]) ? 1 : 0;
 			// No renombrar a "Tela principal": el flag es_tela_principal basta
 			// (si no, al cambiar la tela el nombre viejo queda mal en la explosión).
 
@@ -1981,22 +1969,16 @@ class ControladorRecetasModelo
 				$erroresModelo[] = "Hubo $dupes filas con distinta MP en el mismo color/talla; se conservó una.";
 			}
 
-			// Si el Excel marcó tela principal, consolidar a un solo grupo; si no, queda en 0 para configurar luego.
-			$telaKey = null;
+			// Todas las sublíneas marcadas tela en el Excel quedan como tela principal.
 			$telaMax = 0;
 			foreach ($grupos as $k => $g) {
 				if ($g["tej_count"] > $telaMax) {
 					$telaMax = $g["tej_count"];
-					$telaKey = $k;
 				}
 			}
 			foreach ($grupos as $k => &$g) {
 				if ($telaMax > 0) {
-					$g["es_tela_principal"] = ($k === $telaKey) ? 1 : 0;
-					if ($g["es_tela_principal"]) {
-						$g["nombre_rol"] = "Tela principal";
-						$g["orden"] = 1;
-					}
+					$g["es_tela_principal"] = ($g["tej_count"] > 0) ? 1 : 0;
 				} else {
 					$g["es_tela_principal"] = 0;
 				}

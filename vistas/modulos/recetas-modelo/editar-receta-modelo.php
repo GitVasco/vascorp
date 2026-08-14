@@ -161,6 +161,8 @@ if ($idReceta <= 0) {
 .rm2-celda:hover { background:#e8f4fc; }
 .rm2-celda.ok { background:#e8f8ef; }
 .rm2-celda.falta { background:#fff8e6; }
+.rm2-celda.na { background:#f5f5f5; color:#888; }
+.rm2-celda.na .rm2-celda-color { font-weight:500; color:#999; }
 .rm2-celda .rm2-celda-color { font-weight:700; font-size:12px; line-height:1.2; }
 .rm2-celda .rm2-celda-art { font-size:10px; color:#999; margin-top:2px; }
 .rm2-scroll { max-height:520px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }

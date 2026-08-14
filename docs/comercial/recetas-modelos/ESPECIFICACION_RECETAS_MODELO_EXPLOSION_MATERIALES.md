@@ -25,11 +25,11 @@ No eliminar `tarjetasjf` ni `detalles_tarjetajf` en esta implementación: tienen
 
 ### Regla crítica: tela principal
 
-- Una receta tiene exactamente **una** línea marcada como `es_tela_principal = 1`.
-- La tela principal es obligatoria para publicar una receta.
-- Cada artículo activo cubierto por la receta debe resolver una única MP de tela principal.
-- La explosión dirigida a corte toma la tela principal como material que direcciona el corte. Los otros insumos se consideran complementarios.
-- No se permiten dos líneas principales ni una variante con más de una resolución principal aplicable.
+- Una receta puede tener **varias** líneas marcadas como `es_tela_principal = 1` (sublíneas distintas, p.ej. Full Licra y Nazca).
+- Hace falta al menos una para publicar.
+- Cada artículo / color resuelve **exactamente una** MP de tela principal. Las demás líneas de tela no aplican a ese color (no es error).
+- Un mismo color no puede resolver dos telas principales.
+- La explosión dirigida a corte toma esa MP como material que direcciona el corte. Los otros insumos (p.ej. tela secundaria en todos los colores) se consideran complementarios.
 
 ## Variantes soportadas
 
@@ -174,7 +174,7 @@ La salida debe distinguir `es_tela_principal`, para que corte use esa fila como 
 ## Casos de aceptación mínimos
 
 1. Un modelo con tres colores y cuatro tallas puede configurarse sin crear doce tarjetas individuales.
-2. La tela principal puede variar por color y cada combinación color+talla recibe exactamente una MP principal.
+2. Un modelo puede tener varias telas principales (sublíneas distintas). Cada color usa exactamente una; la otra no aparece como falta.
 3. La etiqueta puede variar por talla, independiente del color.
 4. Un elástico puede variar por color+talla.
 5. Una combinación sin tela principal no permite publicar ni explotar materiales.

@@ -165,7 +165,6 @@ class ServicioRecetasModeloResolucion
 			if (isset($linea["activo"]) && (int) $linea["activo"] !== 1) {
 				continue;
 			}
-			$lineasTotales++;
 			$idDet = isset($linea["id"]) ? (int) $linea["id"] : 0;
 			$vars = array();
 			if (isset($linea["variantes"]) && is_array($linea["variantes"])) {
@@ -178,6 +177,14 @@ class ServicioRecetasModeloResolucion
 			$res["articulo"] = $codigoArticulo;
 			$res["cod_color"] = $codColor;
 			$res["cod_talla"] = $codTalla;
+			$esTelaLinea = !empty($linea["es_tela_principal"]);
+
+			// Tela principal de otra sublínea: este color no la usa. No es error ni insumo.
+			if ($esTelaLinea && empty($res["completo"])) {
+				continue;
+			}
+
+			$lineasTotales++;
 			$res["consumo_total"] = $res["completo"] ? round($res["consumo"] * $cantidad, 8) : null;
 
 			$mpInfo = null;
@@ -228,15 +235,6 @@ class ServicioRecetasModeloResolucion
 				if ($res["completo"] && $res["sublinea_ok"]) {
 					$telasResueltas++;
 					$telaPrincipal = $res;
-				} elseif (!$res["completo"] || !$res["sublinea_ok"]) {
-					$errores[] = array(
-						"articulo" => $codigoArticulo,
-						"rol" => $res["nombre_rol"],
-						"tipo" => "tela_principal",
-						"mensaje" => "Tela principal sin resolución válida",
-						"cod_color" => $codColor,
-						"cod_talla" => $codTalla,
-					);
 				}
 			}
 
@@ -269,6 +267,17 @@ class ServicioRecetasModeloResolucion
 				"tipo" => "tela_principal",
 				"mensaje" => "La receta no tiene línea de tela principal activa",
 			);
+		} elseif ($telasResueltas === 0) {
+			$okTela = false;
+			$completo = false;
+			$errores[] = array(
+				"articulo" => $codigoArticulo,
+				"rol" => "Tela principal",
+				"tipo" => "tela_principal",
+				"mensaje" => "Este color no tiene tela principal",
+				"cod_color" => $codColor,
+				"cod_talla" => $codTalla,
+			);
 		} elseif ($telasResueltas > 1) {
 			$okTela = false;
 			$completo = false;
@@ -276,7 +285,9 @@ class ServicioRecetasModeloResolucion
 				"articulo" => $codigoArticulo,
 				"rol" => "Tela principal",
 				"tipo" => "tela_principal",
-				"mensaje" => "Más de una tela principal resuelta",
+				"mensaje" => "Este color tiene más de una tela principal",
+				"cod_color" => $codColor,
+				"cod_talla" => $codTalla,
 			);
 		}
 

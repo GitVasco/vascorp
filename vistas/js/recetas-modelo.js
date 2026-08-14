@@ -367,6 +367,18 @@ function rmContarOk(linea) {
 	return { ok: ok, total: (linea.variantes || []).length };
 }
 
+function rmLineaCoberturaParcial(linea) {
+	var con = {};
+	var sin = {};
+	(linea && linea.variantes || []).forEach(function (v) {
+		var c = String(v.cod_color || "");
+		if (!c) return;
+		if (v.mp_codigo) con[c] = true;
+		else sin[c] = true;
+	});
+	return Object.keys(con).length > 0 && Object.keys(sin).length > 0;
+}
+
 function rmColoresOrdenados() {
 	var mapa = {};
 	(RM.articulos || []).forEach(function (a) {
@@ -726,11 +738,13 @@ function rmRenderChips() {
 		if (cons !== "") {
 			html += "<span class='label label-default'>" + rmEsc(rmFmtNum(cons)) + (linea.unidad ? " " + rmEsc(linea.unidad) : "") + "</span>";
 		}
-		html += "<span class='label " + (cont.ok === cont.total && cont.total ? "label-success" : "label-warning") + "'>"
+		html += "<span class='label " + (esTela
+			? (cont.ok ? "label-primary" : "label-warning")
+			: (cont.ok === cont.total && cont.total ? "label-success" : "label-warning")) + "'>"
 			+ cont.ok + "/" + cont.total + "</span>";
 		if (rmEsBorradorEditable()) {
 			html += "<button type='button' class='rm2-btn-tela rmToggleTela" + (esTela ? " on" : "") + "' data-idx='" + idx + "'"
-				+ " title='" + (esTela ? "Es la tela principal (clic para quitar)" : "Marcar esta sublínea como tela principal") + "'>"
+				+ " title='" + (esTela ? "Es tela principal (clic para quitar). Puede haber varias; cada color usa una sola." : "Marcar como tela principal (puede haber más de una)") + "'>"
 				+ (esTela ? "★ Tela principal" : "Hacer tela") + "</button>";
 			html += "<a href='javascript:;' class='rm2-chip-x rmQuitarChip' data-idx='" + idx + "' title='Quitar'>&times;</a>";
 		} else if (esTela) {
@@ -961,7 +975,11 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 	);
 	$("#rmConsumoLineaLabel").text("Consumo");
 	$("#rmUnidadLineaAddon").text(und);
-	$("#rmMatrizContexto").text("Asignar MP · color × talla");
+	$("#rmMatrizContexto").text(
+		(Number(linea.es_tela_principal) === 1 || rmLineaCoberturaParcial(linea))
+			? "Asignar MP · color × talla · vacío = este color no usa esta tela"
+			: "Asignar MP · color × talla"
+	);
 	$("#rmTituloArticulos").text("2. Asignar materia prima");
 	$hint.hide().empty();
 
@@ -1198,10 +1216,11 @@ function rmFilasTarjetaDeArticulo(art, lineas) {
 		var res = rmResolverMpLinea(linea, art);
 		var sub = rmNormSublinea(linea.codigo_sublinea);
 		var mp = String(res.mp_codigo || "").replace(/\s+/g, "");
+		if (!mp) return;
 		if (sub && seenSub[sub]) return;
-		if (mp && seenMp[mp]) return;
+		if (seenMp[mp]) return;
 		if (sub) seenSub[sub] = true;
-		if (mp) seenMp[mp] = true;
+		seenMp[mp] = true;
 		filas.push({ linea: linea, res: res });
 	});
 	return filas;
@@ -1427,10 +1446,12 @@ function rmRenderMatriz() {
 			var key = rmClaveArt(art);
 			var v = mapa[key] || {};
 			var ok = !!v.mp_codigo;
-			var etiqueta = ok ? rmEtiquetaMp(v.mp_codigo) : "—";
-			row += "<td class='rm2-celda " + (ok ? "ok" : "falta") + "' data-articulo='" + rmEsc(art.articulo)
+			var vacioOk = !ok && (Number(linea.es_tela_principal) === 1 || rmLineaCoberturaParcial(linea));
+			var etiqueta = ok ? rmEtiquetaMp(v.mp_codigo) : (vacioOk ? "No usa" : "—");
+			var celdaClase = ok ? "ok" : (vacioOk ? "na" : "falta");
+			row += "<td class='rm2-celda " + celdaClase + "' data-articulo='" + rmEsc(art.articulo)
 				+ "' data-color='" + rmEsc(col.cod_color) + "' data-talla='" + rmEsc(tal.cod_talla) + "' data-key='" + rmEsc(key) + "'"
-				+ " title='" + rmEsc(art.articulo + (ok ? " · MP " + v.mp_codigo : "") + " — clic: asignar · Alt+clic: quitar") + "'"
+				+ " title='" + rmEsc(art.articulo + (ok ? " · MP " + v.mp_codigo : (vacioOk ? " · no usa esta tela" : "")) + " — clic: asignar · Alt+clic: quitar") + "'"
 				+ (editable ? "" : " style='cursor:default;'") + ">"
 				+ "<div class='rm2-celda-color'>" + rmEsc(etiqueta) + "</div>"
 				+ "<div class='rm2-celda-art'>" + rmEsc(art.articulo) + "</div>"
@@ -2395,8 +2416,7 @@ $(document).ready(function () {
 		var linea = RM.estado.lineas[idx];
 		if (!linea) return;
 		var activar = Number(linea.es_tela_principal) !== 1;
-		RM.estado.lineas.forEach(function (l) { l.es_tela_principal = 0; });
-		if (activar) linea.es_tela_principal = 1;
+		linea.es_tela_principal = activar ? 1 : 0;
 		rmNormalizarNombresTela();
 		rmMarcarDirty(true);
 		rmRenderChips();

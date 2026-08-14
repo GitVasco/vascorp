@@ -35,13 +35,11 @@ class ModeloRecetasModelo
 					  AND d.activo = 1
 				) AS lineas_activas,
 				(
-					SELECT d.nombre_rol
+					SELECT GROUP_CONCAT(d.nombre_rol ORDER BY d.orden SEPARATOR ' / ')
 					FROM recetas_modelo_detalles d
 					WHERE d.id_receta_modelo = r.id
 					  AND d.activo = 1
 					  AND d.es_tela_principal = 1
-					ORDER BY d.orden ASC, d.id ASC
-					LIMIT 1
 				) AS tela_principal_rol
 			FROM recetas_modelo r
 			LEFT JOIN modelojf m ON m.modelo = r.modelo
