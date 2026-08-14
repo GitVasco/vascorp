@@ -73,13 +73,35 @@ function rmLineaActualReemplazable() {
 	return !rmLineaTieneMp(linea);
 }
 
+function rmNormSublinea(cod) {
+	return String(cod || "").toUpperCase().replace(/[\s\u00A0\u2000-\u200B\uFEFF\u0000]+/g, "");
+}
+
+function rmMpDominanteLinea(linea) {
+	var counts = {};
+	(linea && linea.variantes || []).forEach(function (v) {
+		var m = String(v && v.mp_codigo ? v.mp_codigo : "").replace(/\s+/g, "");
+		if (!m) return;
+		counts[m] = (counts[m] || 0) + 1;
+	});
+	var best = "";
+	var n = 0;
+	Object.keys(counts).forEach(function (m) {
+		if (counts[m] > n) {
+			n = counts[m];
+			best = m;
+		}
+	});
+	return best;
+}
+
 function rmIdxLineaPorSublinea(cod) {
-	var needle = String(cod || "").toUpperCase();
+	var needle = rmNormSublinea(cod);
 	if (!needle || !RM.estado) return -1;
 	var found = -1;
 	(RM.estado.lineas || []).forEach(function (l, i) {
 		if (Number(l.activo) === 0) return;
-		if (String(l.codigo_sublinea || "").toUpperCase() === needle) found = i;
+		if (rmNormSublinea(l.codigo_sublinea) === needle) found = i;
 	});
 	return found;
 }
@@ -138,7 +160,7 @@ function rmActualizarAccionesSublinea() {
 			$("#rmNuevaSublineaNom").text("Cambiar reemplaza la sublínea vacía; Agregar suma otra");
 		} else {
 			$("#rmNuevaSublineaCod").text("Buscar y agregar otra sublínea…").addClass("empty");
-			$("#rmNuevaSublineaNom").text("Solo agrega; la edición es del chip seleccionado abajo");
+			$("#rmNuevaSublineaNom").text("Solo agrega; la edición es del chip seleccionado a la derecha");
 		}
 	}
 }
@@ -170,10 +192,6 @@ function rmClavesVarianteCandidatas(codColor, codTalla) {
 	if (/^\d+$/.test(c) && c.length < 2 && /^\d+$/.test(t) && t.length < 2) {
 		keys.push(("0" + c).slice(-2) + "|" + ("0" + t).slice(-2));
 	}
-	keys.push(c + "|");
-	keys.push("|" + t);
-	keys.push(cn + "|");
-	keys.push("|" + tn);
 	var seen = {};
 	var out = [];
 	keys.forEach(function (k) {
@@ -212,11 +230,115 @@ function rmConsumoLinea(linea) {
 	return $("#rmConsumoLinea").val() || "1";
 }
 
+function rmClaveColorTallaNorm(art) {
+	return rmNormCodigoCorto(art.cod_color) + "|" + rmNormCodigoCorto(art.cod_talla);
+}
+
+function rmClaveLineaTarjeta(linea) {
+	var sub = rmNormSublinea(linea && linea.codigo_sublinea);
+	if (sub) return "S:" + sub;
+	var mp = linea && linea.mp_base_codigo ? String(linea.mp_base_codigo).replace(/\s+/g, "") : "";
+	if (!mp) mp = rmMpDominanteLinea(linea);
+	if (mp) return "M:" + mp;
+	return "R:" + String(linea && linea.nombre_rol ? linea.nombre_rol : "") + "|O:" + String(linea && linea.orden != null ? linea.orden : "");
+}
+
+function rmArticulosUnicos() {
+	var seen = {};
+	var out = [];
+	(RM.articulos || []).forEach(function (a) {
+		var k = String(a.articulo || "").trim();
+		if (!k) k = rmClaveArt(a);
+		if (!k || seen[k]) return;
+		seen[k] = true;
+		out.push(a);
+	});
+	return out;
+}
+
+function rmFusionarVariantesLinea(destino, origen) {
+	if (!destino || !origen) return;
+	var mapaOrig = rmMapaVariantes(origen);
+	rmAsegurarVariantesArticulos(destino);
+	(destino.variantes || []).forEach(function (v) {
+		if (v.mp_codigo) return;
+		var o = rmBuscarVarianteEnMapa(mapaOrig, v);
+		if (o && o.mp_codigo) {
+			v.mp_codigo = o.mp_codigo;
+			if (o.consumo != null && o.consumo !== "") v.consumo = o.consumo;
+		}
+	});
+	if (!Number(destino.es_tela_principal) && Number(origen.es_tela_principal)) {
+		destino.es_tela_principal = 1;
+	}
+	if (!destino.unidad && origen.unidad) destino.unidad = origen.unidad;
+}
+
+/** Quita sublíneas o la misma MP cargada dos veces (import + módulo). Devuelve cuántas se fusionaron. */
+function rmDeduplicarLineasEstado() {
+	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return 0;
+	var actual = rmLineaActual();
+	var seenSub = {};
+	var seenMp = {};
+	var kept = [];
+	var removed = 0;
+	RM.estado.lineas.forEach(function (l) {
+		if (l.codigo_sublinea) l.codigo_sublinea = String(l.codigo_sublinea).trim();
+		if (Number(l.activo) === 0) {
+			kept.push(l);
+			return;
+		}
+		var c = rmNormSublinea(l.codigo_sublinea);
+		var mp = rmMpDominanteLinea(l);
+		var idxMerge = (c && seenSub[c] !== undefined)
+			? seenSub[c]
+			: (mp && seenMp[mp] !== undefined ? seenMp[mp] : undefined);
+		if (idxMerge !== undefined) {
+			rmFusionarVariantesLinea(kept[idxMerge], l);
+			removed++;
+			return;
+		}
+		var idx = kept.length;
+		kept.push(l);
+		if (c) seenSub[c] = idx;
+		if (mp) seenMp[mp] = idx;
+	});
+	if (!removed) return 0;
+	RM.estado.lineas = kept;
+	if (actual) {
+		var ni = -1;
+		kept.forEach(function (l, i) {
+			if (l === actual) ni = i;
+		});
+		if (ni < 0) {
+			var cod = rmNormSublinea(actual.codigo_sublinea);
+			var mpAct = rmMpDominanteLinea(actual);
+			kept.forEach(function (l, i) {
+				if (ni >= 0) return;
+				if (cod && rmNormSublinea(l.codigo_sublinea) === cod) ni = i;
+				else if (mpAct && rmMpDominanteLinea(l) === mpAct) ni = i;
+			});
+		}
+		RM.lineaIdx = ni >= 0 ? ni : (kept.length ? 0 : null);
+	}
+	return removed;
+}
+
 function rmAsegurarVariantesArticulos(linea) {
 	var mapa = rmMapaVariantes(linea);
 	var consumoDefault = rmConsumoLinea(linea);
 	var nuevas = [];
+	var seenArt = {};
+	var seenCT = {};
 	(RM.articulos || []).forEach(function (art) {
+		var ak = String(art.articulo || "").trim();
+		if (ak) {
+			if (seenArt[ak]) return;
+			seenArt[ak] = true;
+		}
+		var ct = String(art.cod_color || "") + "|" + String(art.cod_talla || "");
+		if (seenCT[ct]) return;
+		seenCT[ct] = true;
 		var prev = rmBuscarVarianteEnMapa(mapa, art);
 		var consumoPrev = prev.consumo != null && prev.consumo !== "" ? prev.consumo : consumoDefault;
 		nuevas.push({
@@ -366,6 +488,7 @@ function rmCargarListado() {
 			var botones = "<div class='btn-group' style='display:inline-flex; flex-wrap:nowrap; white-space:nowrap;'>"
 				+ "<a class='btn btn-xs btn-primary' href='index.php?ruta=editar-receta-modelo&idReceta=" + id + "' title='Editar'><i class='fa fa-pencil'></i></a>"
 				+ "<button type='button' class='btn btn-xs btn-info btnPreviewRecetaLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' title='Previsualizar'><i class='fa fa-eye'></i></button>"
+				+ "<a class='btn btn-xs btn-success' href='ajax/recetas-modelo-excel.php?id_receta=" + id + "' title='Descargar tarjetas en Excel'><i class='fa fa-file-excel-o'></i></a>"
 				+ "<button type='button' class='btn btn-xs btn-warning btnDuplicarRecetaLista' data-id='" + id + "' title='Duplicar'><i class='fa fa-copy'></i></button>";
 			if (r.estado === "BORRADOR") {
 				botones += "<button type='button' class='btn btn-xs btn-success btnPublicarRecetaLista' data-id='" + id + "' title='Publicar'><i class='fa fa-check'></i></button>";
@@ -539,18 +662,52 @@ function rmRenderCabecera() {
 	$("#rmMsgEstado").text(editable ? "" : "Solo lectura — crea «Nueva versión»");
 }
 
+function rmSiguienteOrdenLinea() {
+	var max = 0;
+	(RM.estado && RM.estado.lineas || []).forEach(function (l) {
+		var o = parseInt(l.orden, 10);
+		if (isFinite(o) && o > max) max = o;
+	});
+	return max + 1;
+}
+
+/** Sublíneas activas en orden de receta (las nuevas van al final de cada color × talla). */
+function rmLineasActivasPorOrden() {
+	var out = [];
+	var seenSub = {};
+	var seenMp = {};
+	(RM.estado && RM.estado.lineas || []).forEach(function (linea, idx) {
+		if (Number(linea.activo) === 0) return;
+		var sub = rmNormSublinea(linea.codigo_sublinea);
+		var mp = rmMpDominanteLinea(linea);
+		if (sub && seenSub[sub]) return;
+		if (mp && seenMp[mp]) return;
+		if (sub) seenSub[sub] = true;
+		if (mp) seenMp[mp] = true;
+		out.push({ linea: linea, idx: idx });
+	});
+	out.sort(function (a, b) {
+		var oa = parseInt(a.linea.orden, 10);
+		var ob = parseInt(b.linea.orden, 10);
+		if (!isFinite(oa)) oa = a.idx + 1;
+		if (!isFinite(ob)) ob = b.idx + 1;
+		if (oa !== ob) return oa - ob;
+		return a.idx - b.idx;
+	});
+	return out;
+}
+
 function rmRenderChips() {
 	var $box = $("#rmChipsInsumos").empty();
-	var lineasActivas = (RM.estado.lineas || []).filter(function (l) {
-		return Number(l.activo) !== 0;
-	});
+	var lineasActivas = rmLineasActivasPorOrden();
 	if (!lineasActivas.length) {
-		$box.removeClass("has-chips").hide();
+		$box.removeClass("has-chips");
 		return;
 	}
-	$box.addClass("has-chips").show();
-	RM.estado.lineas.forEach(function (linea, idx) {
-		if (Number(linea.activo) === 0) return;
+	$box.addClass("has-chips");
+	lineasActivas.forEach(function (item) {
+		var linea = item.linea;
+		var idx = item.idx;
 		rmAsegurarVariantesArticulos(linea);
 		var cont = rmContarOk(linea);
 		var active = RM.lineaIdx === idx;
@@ -675,7 +832,7 @@ function rmAgregarLineaSublinea(sub, nom) {
 	rmSincronizarConsumoEnVariantes();
 	var lineaAnteriorIdx = RM.lineaIdx;
 	var linea = {
-		orden: RM.estado.lineas.length + 1,
+		orden: rmSiguienteOrdenLinea(),
 		nombre_rol: nom,
 		es_tela_principal: 0,
 		codigo_sublinea: sub,
@@ -1008,15 +1165,142 @@ function rmResolverMpLinea(linea, art) {
 	};
 }
 
+function rmLineasParaTarjetas() {
+	var seenLinea = {};
+	var lineas = [];
+	rmLineasActivasPorOrden().forEach(function (item) {
+		var k = rmClaveLineaTarjeta(item.linea);
+		if (seenLinea[k]) return;
+		seenLinea[k] = true;
+		lineas.push(item.linea);
+	});
+	return lineas;
+}
+
+function rmArticulosParaTarjetas() {
+	return rmArticulosUnicos().slice().sort(function (a, b) {
+		var c = String(a.cod_color || "").localeCompare(String(b.cod_color || ""));
+		if (c !== 0) return c;
+		var ta = String(a.cod_talla || "");
+		var tb = String(b.cod_talla || "");
+		var na = parseInt(ta, 10);
+		var nb = parseInt(tb, 10);
+		if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
+		return ta.localeCompare(tb);
+	});
+}
+
+function rmFilasTarjetaDeArticulo(art, lineas) {
+	var seenSub = {};
+	var seenMp = {};
+	var filas = [];
+	(lineas || []).forEach(function (linea) {
+		var res = rmResolverMpLinea(linea, art);
+		var sub = rmNormSublinea(linea.codigo_sublinea);
+		var mp = String(res.mp_codigo || "").replace(/\s+/g, "");
+		if (sub && seenSub[sub]) return;
+		if (mp && seenMp[mp]) return;
+		if (sub) seenSub[sub] = true;
+		if (mp) seenMp[mp] = true;
+		filas.push({ linea: linea, res: res });
+	});
+	return filas;
+}
+
+function rmFilasPlanasTarjetas() {
+	var lineas = rmLineasParaTarjetas();
+	var arts = rmArticulosParaTarjetas();
+	lineas.forEach(rmAsegurarVariantesArticulos);
+	var rows = [];
+	arts.forEach(function (art) {
+		rmFilasTarjetaDeArticulo(art, lineas).forEach(function (item) {
+			var res = item.res;
+			var ok = !!res.mp_codigo;
+			rows.push({
+				articulo: art.articulo || "",
+				color: art.color || art.cod_color || "",
+				talla: art.talla || art.cod_talla || "",
+				mp_nombre: ok ? (rmNombreMp(res.mp_codigo) || res.mp_codigo) : "",
+				es_tela: Number(item.linea.es_tela_principal) === 1 ? "SI" : "",
+				sublinea: item.linea.codigo_sublinea || "",
+				mp_codigo: ok ? res.mp_codigo : "",
+				color_mp: ok ? rmEtiquetaMp(res.mp_codigo) : "",
+				consumo: ok ? res.consumo : "",
+				unidad: ok ? (res.unidad || "") : "",
+				estado: ok ? "OK" : "Falta"
+			});
+		});
+	});
+	return rows;
+}
+
+function rmDescargarBlob(contenido, nombre, mime) {
+	var blob = contenido instanceof Blob
+		? contenido
+		: new Blob([contenido], { type: mime || "application/octet-stream" });
+	var url = URL.createObjectURL(blob);
+	var a = document.createElement("a");
+	a.href = url;
+	a.download = nombre;
+	document.body.appendChild(a);
+	a.click();
+	setTimeout(function () {
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}, 400);
+}
+
+function rmExportarExcelTarjetas() {
+	var rows = rmFilasPlanasTarjetas();
+	if (!rows.length) {
+		rmAlerta("warning", "Sin tarjetas", "No hay artículos o sublíneas para exportar");
+		return;
+	}
+	var cab = (RM.estado && RM.estado.cabecera) ? RM.estado.cabecera : {};
+	var modelo = String(cab.modelo || "modelo");
+	var version = cab.version != null ? String(cab.version) : "";
+	var estado = String(cab.estado || "");
+	var nombreModelo = String(cab.nombre_modelo || $("#rmNombreModelo").text() || "");
+	var $btn = $("#rmBtnExcelTarjetas").prop("disabled", true);
+	$.ajax({
+		url: "ajax/recetas-modelo-excel.php",
+		method: "POST",
+		data: {
+			modelo: modelo,
+			version: version,
+			estado: estado,
+			nombre: nombreModelo,
+			filas: JSON.stringify(rows)
+		},
+		xhrFields: { responseType: "blob" }
+	}).done(function (data, _st, xhr) {
+		var ctype = (xhr.getResponseHeader("Content-Type") || "").toLowerCase();
+		if (ctype.indexOf("json") !== -1) {
+			var reader = new FileReader();
+			reader.onload = function () {
+				var resp = {};
+				try { resp = JSON.parse(reader.result); } catch (e) {}
+				rmAlerta("error", "Excel", (resp && resp.mensaje) || "No se pudo generar el archivo");
+			};
+			reader.readAsText(data);
+			return;
+		}
+		var archivo = "tarjetas-" + modelo.replace(/[^\w.-]+/g, "_")
+			+ (version ? "-v" + version : "") + ".xls";
+		rmDescargarBlob(data, archivo, "application/vnd.ms-excel");
+	}).fail(function () {
+		rmAlerta("error", "Excel", "No se pudo generar el archivo");
+	}).always(function () {
+		$btn.prop("disabled", false);
+	});
+}
+
 function rmRenderTarjetasPorArticulo() {
 	var $tb = $("#rmTablaTarjetasArticulo tbody");
 	if (!$tb.length) return;
-	$tb.empty();
 
-	var lineas = (RM.estado && RM.estado.lineas || []).filter(function (l) {
-		return Number(l.activo) !== 0;
-	});
-	var arts = RM.articulos || [];
+	var lineas = rmLineasParaTarjetas();
+	var arts = rmArticulosParaTarjetas();
 
 	if (!arts.length) {
 		$tb.html("<tr><td colspan='10' class='text-muted'>Sin artículos activos</td></tr>");
@@ -1029,23 +1313,22 @@ function rmRenderTarjetasPorArticulo() {
 
 	lineas.forEach(rmAsegurarVariantesArticulos);
 
+	var html = [];
 	arts.forEach(function (art, artIdx) {
-		var n = lineas.length;
 		var prev = artIdx > 0 ? arts[artIdx - 1] : null;
 		var sepClass = "";
 		if (prev) {
-			var colorPrev = String(prev.cod_color || "");
-			var colorCur = String(art.cod_color || "");
-			var tallaPrev = String(prev.cod_talla || "");
-			var tallaCur = String(art.cod_talla || "");
-			if (colorPrev !== colorCur) {
+			if (String(prev.cod_color || "") !== String(art.cod_color || "")) {
 				sepClass = " rm2-sep-color";
-			} else if (tallaPrev !== tallaCur) {
+			} else if (String(prev.cod_talla || "") !== String(art.cod_talla || "")) {
 				sepClass = " rm2-sep-talla";
 			}
 		}
-		lineas.forEach(function (linea, i) {
-			var res = rmResolverMpLinea(linea, art);
+		var filas = rmFilasTarjetaDeArticulo(art, lineas);
+		var n = filas.length;
+		filas.forEach(function (item, i) {
+			var linea = item.linea;
+			var res = item.res;
 			var ok = !!res.mp_codigo;
 			var esTela = Number(linea.es_tela_principal) === 1;
 			var sep = i === 0 ? sepClass : "";
@@ -1056,11 +1339,11 @@ function rmRenderTarjetasPorArticulo() {
 					+ "<td class='rm2-meta-cell' rowspan='" + n + "'>" + rmEsc(art.talla || art.cod_talla) + "</td>";
 			}
 			var nombreMp = ok ? (rmNombreMp(res.mp_codigo) || res.mp_codigo) : "—";
-			row += "<td title='" + rmEsc(ok ? res.mp_codigo : "") + "'>" + rmEsc(nombreMp)
+			row += "<td>" + rmEsc(linea.codigo_sublinea || "—") + "</td>"
+				+ "<td>" + rmEsc(ok ? res.mp_codigo : "—") + "</td>"
+				+ "<td title='" + rmEsc(ok ? res.mp_codigo : "") + "'>" + rmEsc(nombreMp)
 				+ (esTela ? " <span class='label label-danger'>Tela</span>" : "")
 				+ "</td>"
-				+ "<td>" + rmEsc(linea.codigo_sublinea || "—") + "</td>"
-				+ "<td>" + rmEsc(ok ? res.mp_codigo : "—") + "</td>"
 				+ "<td>" + rmEsc(ok ? rmEtiquetaMp(res.mp_codigo) : "—") + "</td>"
 				+ "<td>" + rmEsc(ok ? rmFmtNum(res.consumo) : "—") + "</td>"
 				+ "<td>" + rmEsc(ok ? (res.unidad || "") : "") + "</td>"
@@ -1068,9 +1351,10 @@ function rmRenderTarjetasPorArticulo() {
 					? "<span class='label label-success'>OK</span>"
 					: "<span class='label label-warning'>Falta</span>")
 				+ "</td></tr>";
-			$tb.append(row);
+			html.push(row);
 		});
 	});
+	$tb.html(html.join(""));
 }
 
 function rmRenderPorArticulo() {
@@ -1361,6 +1645,7 @@ function rmCargarTablaMp() {
 function rmHaystackMp(mp) {
 	return [
 		mp.mp_codigo || "",
+		mp.codfab || "",
 		mp.descripcion || "",
 		mp.color || "",
 		mp.unidad || "",
@@ -1391,10 +1676,13 @@ function rmPintarTablaMp(lista, q) {
 		rmCacheMp(mp);
 		var activa = String(RM.mpActiva || "") === String(mp.mp_codigo) ? " activa" : "";
 		$tb.append("<tr class='" + activa + "' data-mp='" + rmEsc(mp.mp_codigo) + "'>"
-			+ "<td><div class='rm2-mp-color'>" + rmEsc(mp.color || "—") + "</div>"
-			+ "<div class='rm2-mp-cod'>" + rmEsc(mp.mp_codigo) + "</div></td>"
+			+ "<td><div class='rm2-mp-color'>" + rmEsc(mp.color || "—") + "</div></td>"
 			+ "<td><span class='rm2-mp-und'>" + rmEsc(mp.unidad || "—") + "</span></td>"
-			+ "<td><div class='rm2-mp-desc' title='" + rmEsc(mp.descripcion) + "'>" + rmEsc(mp.descripcion) + "</div></td>"
+			+ "<td><div class='rm2-mp-desc' title='" + rmEsc((mp.mp_codigo || "") + " — " + (mp.descripcion || "") + (mp.codfab ? " · " + mp.codfab : "")) + "'>"
+			+ "<strong>" + rmEsc(mp.mp_codigo || "") + "</strong>"
+			+ (mp.descripcion ? " — " + rmEsc(mp.descripcion) : "")
+			+ (mp.codfab ? " · " + rmEsc(mp.codfab) : "")
+			+ "</div></td>"
 			+ "<td><button type='button' class='btn btn-xs btn-primary rmElegirMpActiva'"
 			+ " data-mp='" + rmEsc(mp.mp_codigo) + "'"
 			+ " data-und='" + rmEsc(mp.unidad || "") + "'"
@@ -1442,6 +1730,7 @@ function rmAplicarFiltroMp() {
 
 function rmPayloadLineas() {
 	rmNormalizarNombresTela();
+	rmDeduplicarLineasEstado();
 	return (RM.estado.lineas || []).map(function (linea, idx) {
 		var consumo = (RM.lineaIdx === idx)
 			? ($("#rmConsumoLinea").val() || linea.consumo_base || "1")
@@ -1497,6 +1786,7 @@ function rmCargarEditor() {
 			RM.articulos = (artResp && artResp.ok && artResp.data && artResp.data.articulos)
 				? artResp.data.articulos
 				: [];
+			RM.articulos = rmArticulosUnicos();
 			RM.articulos.sort(function (a, b) {
 				var c = String(a.cod_color || "").localeCompare(String(b.cod_color || ""));
 				if (c !== 0) return c;
@@ -1515,8 +1805,9 @@ function rmCargarEditor() {
 					if (!artKeysExactos[k]) needsRemap = true;
 				});
 			});
+			var dupsLineas = rmDeduplicarLineasEstado();
 			RM.estado.lineas.forEach(rmAsegurarVariantesArticulos);
-			if (rmNormalizarNombresTela() || needsRemap) rmMarcarDirty(true);
+			if (rmNormalizarNombresTela() || needsRemap || dupsLineas) rmMarcarDirty(true);
 			else rmMarcarDirty(false);
 			rmEnriquecerNombresSublinea(function () {
 				rmRenderCabecera();
@@ -1527,7 +1818,6 @@ function rmCargarEditor() {
 					rmRenderMatriz();
 					rmCargarTablaMp();
 				});
-				rmCargarCobertura();
 			});
 		});
 	});
@@ -1564,26 +1854,10 @@ function rmGuardar(silent) {
 				rmRenderMatriz();
 				rmCargarTablaMp();
 			});
-			rmCargarCobertura();
-			if (!silent) rmAlerta("success", "Guardado", "Cambios guardados");
 		});
+		if (!silent) rmAlerta("success", "Guardado", "Cambios guardados");
 	}).always(function () {
 		$("#rmBtnGuardar").prop("disabled", !rmEsBorradorEditable()).html("<i class='fa fa-save'></i> Guardar");
-	});
-}
-
-function rmCargarCobertura() {
-	var id = Number($("#rmIdReceta").val() || 0);
-	if (!id) return;
-	rmPost({ accion: "validarCobertura", id_receta: id, bloquear_complementarios: 1 }).done(function (resp) {
-		if (!resp || !resp.ok) return;
-		var d = resp.data;
-		$("#rmResumenCobertura").html(
-			"<div class='col-sm-3'><div class='info-box bg-aqua'><span class='info-box-icon'><i class='fa fa-cubes'></i></span><div class='info-box-content'><span class='info-box-text'>Artículos</span><span class='info-box-number'>" + d.total_articulos + "</span></div></div></div>"
-			+ "<div class='col-sm-3'><div class='info-box bg-green'><span class='info-box-icon'><i class='fa fa-check'></i></span><div class='info-box-content'><span class='info-box-text'>Completos</span><span class='info-box-number'>" + d.ok + "</span></div></div></div>"
-			+ "<div class='col-sm-3'><div class='info-box bg-yellow'><span class='info-box-icon'><i class='fa fa-warning'></i></span><div class='info-box-content'><span class='info-box-text'>Alertas</span><span class='info-box-number'>" + d.alertas + "</span></div></div></div>"
-			+ "<div class='col-sm-3'><div class='info-box " + (d.puede_publicar ? "bg-green" : "bg-red") + "'><span class='info-box-icon'><i class='fa fa-flag'></i></span><div class='info-box-content'><span class='info-box-text'>¿Publicar?</span><span class='info-box-number'>" + (d.puede_publicar ? "Sí" : "No") + "</span></div></div></div>"
-		);
 	});
 }
 
@@ -2255,6 +2529,10 @@ $(document).ready(function () {
 		rmRefrescarPaso2(false);
 	});
 
+	$("#rmBtnExcelTarjetas").on("click", function () {
+		rmExportarExcelTarjetas();
+	});
+
 	$("#rmBtnGuardar").on("click", function () { rmGuardar(false); });
 
 	$("#rmBtnPublicar").on("click", function () {
@@ -2273,14 +2551,6 @@ $(document).ready(function () {
 			if (resp && resp.ok) window.location = "index.php?ruta=editar-receta-modelo&idReceta=" + resp.data.id;
 			else rmAlerta("error", "Error", (resp && resp.mensaje) || "");
 		});
-	});
-
-	// Revisar = solo cobertura de lo ya guardado (no autoguarda ni limpia el editor)
-	$("#rmBtnRefrescarCobertura").on("click", function () {
-		if (RM.dirty) {
-			$("#rmMsgEstado").text("Hay cambios sin guardar — Revisar usa lo último guardado");
-		}
-		rmCargarCobertura();
 	});
 });
 

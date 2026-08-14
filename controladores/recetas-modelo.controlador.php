@@ -21,6 +21,98 @@ class ControladorRecetasModelo
 		return $out;
 	}
 
+	static private function normalizarCodigoSublinea($valor)
+	{
+		$valor = strtoupper(trim((string) $valor));
+		$valor = preg_replace('/\s+/', '', $valor);
+		return $valor === null ? "" : $valor;
+	}
+
+	static private function fusionarVariantesLineaReceta(&$destino, $origen)
+	{
+		$mapa = array();
+		$prevVars = isset($destino["variantes"]) && is_array($destino["variantes"])
+			? $destino["variantes"]
+			: array();
+		foreach ($prevVars as $v) {
+			$k = (isset($v["cod_color"]) ? $v["cod_color"] : "") . "|" . (isset($v["cod_talla"]) ? $v["cod_talla"] : "");
+			$mapa[$k] = $v;
+		}
+		$nuevas = isset($origen["variantes"]) && is_array($origen["variantes"]) ? $origen["variantes"] : array();
+		foreach ($nuevas as $v) {
+			$k = (isset($v["cod_color"]) ? $v["cod_color"] : "") . "|" . (isset($v["cod_talla"]) ? $v["cod_talla"] : "");
+			if (empty($mapa[$k]["mp_codigo"])) {
+				$mapa[$k] = $v;
+			}
+		}
+		$destino["variantes"] = array_values($mapa);
+		if (empty($destino["es_tela_principal"]) && !empty($origen["es_tela_principal"])) {
+			$destino["es_tela_principal"] = 1;
+		}
+	}
+
+	static private function mpDominanteLinea($linea)
+	{
+		$counts = array();
+		$vars = isset($linea["variantes"]) && is_array($linea["variantes"]) ? $linea["variantes"] : array();
+		foreach ($vars as $v) {
+			$mp = trim((string) (isset($v["mp_codigo"]) ? $v["mp_codigo"] : ""));
+			if ($mp === "") {
+				continue;
+			}
+			if (!isset($counts[$mp])) {
+				$counts[$mp] = 0;
+			}
+			$counts[$mp]++;
+		}
+		if (!count($counts)) {
+			return "";
+		}
+		arsort($counts);
+		$keys = array_keys($counts);
+		return (string) $keys[0];
+	}
+
+	/** Una sola línea por sublínea o por la misma MP dominante (carga inicial + alta en el módulo). */
+	static private function deduplicarLineasPorSublinea($lineas)
+	{
+		if (!is_array($lineas) || !count($lineas)) {
+			return $lineas;
+		}
+		$kept = array();
+		$seenSub = array();
+		$seenMp = array();
+		foreach ($lineas as $l) {
+			if (!is_array($l)) {
+				continue;
+			}
+			$sub = self::normalizarCodigoSublinea(isset($l["codigo_sublinea"]) ? $l["codigo_sublinea"] : "");
+			if ($sub !== "") {
+				$l["codigo_sublinea"] = substr($sub, 0, 6);
+			}
+			$mp = self::mpDominanteLinea($l);
+			$idxMerge = null;
+			if ($sub !== "" && isset($seenSub[$sub])) {
+				$idxMerge = $seenSub[$sub];
+			} elseif ($mp !== "" && isset($seenMp[$mp])) {
+				$idxMerge = $seenMp[$mp];
+			}
+			if ($idxMerge !== null) {
+				self::fusionarVariantesLineaReceta($kept[$idxMerge], $l);
+				continue;
+			}
+			$idx = count($kept);
+			$kept[] = $l;
+			if ($sub !== "") {
+				$seenSub[$sub] = $idx;
+			}
+			if ($mp !== "") {
+				$seenMp[$mp] = $idx;
+			}
+		}
+		return $kept;
+	}
+
 	static private function normalizarCodigoCorto($valor, $maxLen = 2)
 	{
 		$valor = trim((string) $valor);
@@ -182,6 +274,7 @@ class ControladorRecetasModelo
 			$d["variantes"] = isset($porDetalle[$idDet]) ? $porDetalle[$idDet] : array();
 			$lineas[] = $d;
 		}
+		$lineas = self::deduplicarLineasPorSublinea($lineas);
 
 		$articulos = ModeloRecetasModelo::mdlArticulosActivosModelo($cabecera["modelo"]);
 
@@ -386,6 +479,7 @@ class ControladorRecetasModelo
 		$lineas = array();
 		$telas = 0;
 		$ordenAuto = 1;
+		$sublineasVistas = array();
 
 		foreach ($lineasRaw as $idx => $raw) {
 			if (!is_array($raw)) {
@@ -412,15 +506,21 @@ class ControladorRecetasModelo
 
 			$esTela = isset($raw["es_tela_principal"]) ? (int) $raw["es_tela_principal"] : 0;
 			$esTela = $esTela ? 1 : 0;
-			if ($esTela && $activo) {
-				$telas++;
-			}
 
 			$sublinea = isset($raw["codigo_sublinea"]) ? trim((string) $raw["codigo_sublinea"]) : "";
 			if ($sublinea === "") {
 				$sublinea = null;
 			} else {
 				$sublinea = substr($sublinea, 0, 6);
+				$subKey = strtoupper($sublinea);
+				if (isset($sublineasVistas[$subKey])) {
+					continue;
+				}
+				$sublineasVistas[$subKey] = true;
+			}
+
+			if ($esTela && $activo) {
+				$telas++;
 			}
 
 			$unidad = isset($raw["unidad"]) ? trim((string) $raw["unidad"]) : "";
@@ -607,6 +707,7 @@ class ControladorRecetasModelo
 			$d["variantes"] = isset($porDetalle[$idDet]) ? $porDetalle[$idDet] : array();
 			$lineas[] = $d;
 		}
+		$lineas = self::deduplicarLineasPorSublinea($lineas);
 
 		return array(
 			"cabecera" => $cabecera,
@@ -614,6 +715,105 @@ class ControladorRecetasModelo
 			"variantes_por_detalle" => $porDetalle,
 			"mp_info" => ModeloRecetasModelo::mdlInfoMps($mps),
 		);
+	}
+
+	/*=============================================
+	Filas de tarjetas armadas para Excel (listado / receta guardada)
+	=============================================*/
+	static public function ctrArmarFilasTarjetasExcel($idReceta)
+	{
+		require_once dirname(__FILE__) . "/../modelos/recetas-modelo.resolucion.php";
+
+		$idReceta = (int) $idReceta;
+		$estructura = self::cargarEstructuraReceta($idReceta, true);
+		if (!$estructura) {
+			return self::respuesta(false, "Receta no encontrada");
+		}
+
+		$cab = $estructura["cabecera"];
+		$articulos = ModeloRecetasModelo::mdlArticulosActivosModelo($cab["modelo"]);
+		if (!$articulos) {
+			$articulos = array();
+		}
+
+		$seenArt = array();
+		$arts = array();
+		foreach ($articulos as $a) {
+			$k = trim((string) (isset($a["articulo"]) ? $a["articulo"] : ""));
+			if ($k === "" || isset($seenArt[$k])) {
+				continue;
+			}
+			$seenArt[$k] = true;
+			$arts[] = $a;
+		}
+
+		$filas = array();
+		foreach ($arts as $art) {
+			$resArt = ServicioRecetasModeloResolucion::resolverArticulo(
+				$estructura["lineas"],
+				$estructura["variantes_por_detalle"],
+				$art,
+				1.0,
+				$estructura["mp_info"]
+			);
+			$insumos = isset($resArt["insumos"]) && is_array($resArt["insumos"]) ? $resArt["insumos"] : array();
+			$seenSub = array();
+			$seenMp = array();
+			foreach ($insumos as $ins) {
+				$sub = self::normalizarCodigoSublinea(
+					isset($ins["codigo_sublinea_esperada"]) ? $ins["codigo_sublinea_esperada"] : ""
+				);
+				$mp = trim((string) (isset($ins["mp_codigo"]) ? $ins["mp_codigo"] : ""));
+				if ($sub !== "" && isset($seenSub[$sub])) {
+					continue;
+				}
+				if ($mp !== "" && isset($seenMp[$mp])) {
+					continue;
+				}
+				if ($sub !== "") {
+					$seenSub[$sub] = true;
+				}
+				if ($mp !== "") {
+					$seenMp[$mp] = true;
+				}
+				$ok = !empty($ins["completo"]);
+				$unidad = "";
+				if ($ok) {
+					if (!empty($ins["mp_unidad"])) {
+						$unidad = (string) $ins["mp_unidad"];
+					} elseif (!empty($ins["unidad"])) {
+						$unidad = (string) $ins["unidad"];
+					}
+				}
+				$nombreMp = "";
+				if ($ok) {
+					$nombreMp = !empty($ins["mp_descripcion"]) ? (string) $ins["mp_descripcion"] : $mp;
+				}
+				$filas[] = array(
+					"articulo" => isset($art["articulo"]) ? $art["articulo"] : "",
+					"color" => (isset($art["color"]) && trim((string) $art["color"]) !== "")
+						? $art["color"]
+						: (isset($art["cod_color"]) ? $art["cod_color"] : ""),
+					"talla" => (isset($art["talla"]) && trim((string) $art["talla"]) !== "")
+						? $art["talla"]
+						: (isset($art["cod_talla"]) ? $art["cod_talla"] : ""),
+					"sublinea" => $sub,
+					"mp_codigo" => $ok ? $mp : "",
+					"mp_nombre" => $nombreMp,
+					"color_mp" => ($ok && !empty($ins["mp_color"])) ? (string) $ins["mp_color"] : "",
+					"consumo" => ($ok && isset($ins["consumo"])) ? $ins["consumo"] : "",
+					"unidad" => $unidad,
+				);
+			}
+		}
+
+		return self::respuesta(true, "", array(
+			"modelo" => isset($cab["modelo"]) ? $cab["modelo"] : "",
+			"nombre" => isset($cab["nombre_modelo"]) ? $cab["nombre_modelo"] : "",
+			"version" => isset($cab["version"]) ? $cab["version"] : "",
+			"estado" => isset($cab["estado"]) ? $cab["estado"] : "",
+			"filas" => $filas,
+		));
 	}
 
 	/*=============================================

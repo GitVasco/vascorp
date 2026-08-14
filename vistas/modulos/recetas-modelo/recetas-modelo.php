@@ -96,7 +96,7 @@ if (!isset($_SESSION["tarjetas"]) || (int) $_SESSION["tarjetas"] !== 1) {
 								<th>Tela principal</th>
 								<th>Art. sin receta</th>
 								<th>Actualizado</th>
-								<th style="width:160px; min-width:160px;">Acciones</th>
+								<th style="width:190px; min-width:190px;">Acciones</th>
 							</tr>
 						</thead>
 						<tbody></tbody>

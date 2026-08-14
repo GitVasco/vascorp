@@ -34,11 +34,16 @@ if ($idReceta <= 0) {
 .rm2-dirty { color:#f39c12; font-weight:600; font-size:12px; display:none; }
 
 .rm2-box-slim > .box-body { padding:10px 12px; }
-.rm2-sub-row {
-	display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
+.rm2-top-grid { margin-left:-8px; margin-right:-8px; }
+.rm2-top-grid > [class*="col-"] { padding-left:8px; padding-right:8px; }
+.rm2-top-pick-col { display:flex; flex-direction:column; }
+.rm2-top-chips-col { display:flex; flex-direction:column; min-width:0; }
+.rm2-top-col-title {
+	font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+	color:#888; margin:0 0 6px;
 }
 .rm2-sub-pick {
-	display:flex; align-items:stretch; flex:1 1 280px; max-width:640px;
+	display:flex; align-items:stretch; width:100%;
 	border:1px solid #d2d6de; border-radius:3px; background:#fff; overflow:hidden;
 }
 .rm2-sub-pick .rm2-sub-info {
@@ -68,13 +73,26 @@ if ($idReceta <= 0) {
 .rm2-sub-pick .rm2-sub-add:hover,
 .rm2-sub-pick .rm2-sub-add:focus { background:#367fa9; color:#fff; }
 .rm2-insumos {
-	display:none; flex-wrap:wrap; gap:6px; margin:8px 0 0; min-height:0;
-	padding-top:8px; border-top:1px solid #f0f0f0;
+	display:flex; flex-direction:column; gap:6px; margin:0; min-height:36px;
+	max-height:260px; overflow:auto; padding:0; flex:1;
 }
-.rm2-insumos.has-chips { display:flex; }
+.rm2-insumos:empty::before {
+	content:"Ninguna aún. Busca a la izquierda y pulsa Agregar.";
+	color:#aaa; font-size:12px; padding:6px 0;
+}
+@media (min-width:992px) {
+	.rm2-top-chips-col { border-left:1px solid #eee; }
+}
+@media (max-width:991px) {
+	.rm2-top-chips-col { margin-top:12px; }
+}
 .rm2-chip {
-	border:1px solid #ccc; border-radius:16px; padding:4px 10px; background:#fff; cursor:pointer;
-	display:inline-flex; align-items:center; gap:6px; font-size:12px;
+	border:1px solid #ccc; border-radius:6px; padding:5px 10px; background:#fff; cursor:pointer;
+	display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:12px; width:100%;
+}
+.rm2-chip > strong {
+	flex:1 1 120px; min-width:0;
+	overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .rm2-chip.active { border-color:#3c8dbc; background:#eaf5fb; box-shadow:0 0 0 2px rgba(60,141,188,.2); }
 .rm2-chip:not(.active) { opacity:.78; background:#f7f7f7; }
@@ -86,9 +104,9 @@ if ($idReceta <= 0) {
 	margin-top:8px; font-size:12px; color:#555;
 }
 .rm2-ctx {
-	margin:0 0 12px; padding:12px 14px; border-radius:4px;
+	display:none; margin:10px 0 0; padding:10px 12px; border-radius:4px;
 	background:linear-gradient(180deg, #eef6fb 0%, #f7fbfe 100%);
-	border:1px solid #b8d4e8;
+	border:1px solid #b8d4e8; flex:1;
 }
 .rm2-ctx-flash {
 	display:none; margin:0 0 10px; padding:8px 10px; border-radius:3px;
@@ -102,10 +120,17 @@ if ($idReceta <= 0) {
 	color:#3c8dbc; margin-bottom:2px;
 }
 .rm2-ctx-nombre {
-	font-size:20px; font-weight:700; color:#222; line-height:1.25; margin-bottom:2px;
+	font-size:15px; font-weight:700; color:#222; line-height:1.3; margin-bottom:2px;
 }
 .rm2-ctx-meta { font-size:12px; color:#666; }
-.rm2-chip .rm2-chip-x { color:#dd4b39; margin-left:2px; font-size:14px; line-height:1; }
+.rm2-ctx-fields {
+	margin-top:10px; padding-top:10px; border-top:1px solid #c5dcec;
+	margin-left:-8px; margin-right:-8px;
+}
+.rm2-ctx-fields > [class*="col-"] { padding-left:8px; padding-right:8px; }
+.rm2-ctx-fields label { margin-bottom:3px; font-size:12px; font-weight:600; }
+.rm2-ctx-fields .rm2-asignados { max-height:56px; padding:2px 0 0; }
+.rm2-chip .rm2-chip-x { color:#dd4b39; margin-left:auto; font-size:14px; line-height:1; }
 .rm2-chip .label { margin:0; }
 .rm2-chip .rm2-btn-tela {
 	border:1px solid #ddd; background:#fff; color:#888; border-radius:10px;
@@ -138,23 +163,28 @@ if ($idReceta <= 0) {
 .rm2-celda.falta { background:#fff8e6; }
 .rm2-celda .rm2-celda-color { font-weight:700; font-size:12px; line-height:1.2; }
 .rm2-celda .rm2-celda-art { font-size:10px; color:#999; margin-top:2px; }
-.rm2-scroll { max-height:480px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }
-.rm2-mp-list { max-height:360px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }
+.rm2-scroll { max-height:520px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }
+.rm2-mp-list { max-height:380px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }
+.rm2-paso2-stack { display:flex; flex-direction:column; gap:10px; }
+.rm2-paso2-stack .rm2-mp-activa { margin-bottom:0; }
 .rm2-mp-list table { table-layout:fixed; width:100%; }
 .rm2-mp-list thead th { background:#3c8dbc; color:#fff; font-size:11px; white-space:nowrap; }
-.rm2-mp-list th:nth-child(1), .rm2-mp-list td:nth-child(1) { width:26%; }
-.rm2-mp-list th:nth-child(2), .rm2-mp-list td:nth-child(2) { width:12%; text-align:center; }
-.rm2-mp-list th:nth-child(3), .rm2-mp-list td:nth-child(3) { width:46%; }
+.rm2-mp-list th:nth-child(1), .rm2-mp-list td:nth-child(1) { width:20%; }
+.rm2-mp-list th:nth-child(2), .rm2-mp-list td:nth-child(2) { width:10%; text-align:center; }
+.rm2-mp-list th:nth-child(3), .rm2-mp-list td:nth-child(3) { width:54%; }
 .rm2-mp-list th:nth-child(4), .rm2-mp-list td:nth-child(4) { width:16%; text-align:center; }
 .rm2-mp-list .rm2-mp-color { font-weight:700; font-size:12px; line-height:1.2; }
 .rm2-mp-list .rm2-mp-cod { font-size:10px; color:#999; }
 .rm2-mp-list .rm2-mp-desc {
 	font-size:11px; color:#555; line-height:1.25;
-	display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+	white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .rm2-mp-list .rm2-mp-und { font-size:11px; font-weight:600; color:#333; }
 .rm2-mp-list tr.activa { background:#e8f4fc; }
 .rm2-tabla-tarjetas { font-size:12px; width:100%; }
+.rm2-tarjetas-full {
+	overflow-x:auto; border:1px solid #e5e5e5; border-radius:4px;
+}
 .rm2-tabla-tarjetas thead th {
 	background:#3c8dbc; color:#fff; white-space:nowrap; position:sticky; top:0; z-index:2;
 }
@@ -163,8 +193,14 @@ if ($idReceta <= 0) {
 	background:#f7f7f7; font-weight:700; white-space:nowrap;
 }
 .rm2-tabla-tarjetas .rm2-meta-cell { background:#fafafa; white-space:nowrap; }
-.rm2-tabla-tarjetas tr.rm2-sep-talla > td { border-top:1px solid #a8b8c4 !important; }
-.rm2-tabla-tarjetas tr.rm2-sep-color > td { border-top:3px solid #4a6572 !important; }
+.rm2-tabla-tarjetas tr.rm2-sep-talla > td {
+	border-top:3px solid #5a7384 !important;
+	box-shadow: inset 0 3px 0 #c5d4de;
+}
+.rm2-tabla-tarjetas tr.rm2-sep-color > td {
+	border-top:5px solid #2f4550 !important;
+	box-shadow: none;
+}
 .rm2-tabla-tarjetas tr.falta td { background:#fff8e6; }
 .rm2-tabla-tarjetas tr.ok td { background:#e8f8ef; }
 .rm2-tabla-tarjetas td.rm2-art-cell { background:#f7f7f7 !important; }
@@ -234,29 +270,65 @@ if ($idReceta <= 0) {
 					<button type="button" class="btn btn-warning btn-sm" id="rmBtnDuplicar">
 						<i class="fa fa-copy"></i> Nueva versión
 					</button>
+					<button type="button" class="btn btn-success btn-sm" id="rmBtnExcelTarjetas" title="Descargar las tarjetas armadas en Excel">
+						<i class="fa fa-file-excel-o"></i> Excel
+					</button>
 					<a href="recetas-modelo" class="btn btn-default btn-sm" title="Listado"><i class="fa fa-arrow-left"></i></a>
 				</div>
 			</div>
 			<div class="box-body">
-				<div class="rm2-sub-row">
-					<div class="rm2-sub-pick">
-						<input type="hidden" id="rmNuevaSublinea" value="">
-						<div class="rm2-sub-info" id="rmBtnBuscarSublineaTop" title="Buscar sublínea" role="button">
-							<div class="cod empty" id="rmNuevaSublineaCod">Buscar y agregar otra sublínea…</div>
-							<div class="nom" id="rmNuevaSublineaNom">Solo agrega; la edición es del chip seleccionado abajo</div>
+				<div class="row rm2-top-grid">
+					<div class="col-md-6 rm2-top-pick-col">
+						<div class="rm2-top-col-title">Agregar sublínea</div>
+						<div class="rm2-sub-pick">
+							<input type="hidden" id="rmNuevaSublinea" value="">
+							<div class="rm2-sub-info" id="rmBtnBuscarSublineaTop" title="Buscar sublínea" role="button">
+								<div class="cod empty" id="rmNuevaSublineaCod">Buscar y agregar otra sublínea…</div>
+								<div class="nom" id="rmNuevaSublineaNom">Solo agrega; la edición es del chip seleccionado a la derecha</div>
+							</div>
+							<button type="button" class="btn rm2-sub-search" id="rmBtnBuscarSublineaIcon" title="Buscar">
+								<i class="fa fa-search"></i>
+							</button>
+							<button type="button" class="btn rm2-sub-change" id="rmBtnCambiarSublinea" title="Reemplazar la sublínea actual (aún no tiene MP)">
+								<i class="fa fa-exchange"></i> Cambiar
+							</button>
+							<button type="button" class="btn rm2-sub-add" id="rmBtnAgregarSublinea" title="Agregar sublínea">
+								<i class="fa fa-plus"></i> Agregar
+							</button>
 						</div>
-						<button type="button" class="btn rm2-sub-search" id="rmBtnBuscarSublineaIcon" title="Buscar">
-							<i class="fa fa-search"></i>
-						</button>
-						<button type="button" class="btn rm2-sub-change" id="rmBtnCambiarSublinea" title="Reemplazar la sublínea actual (aún no tiene MP)">
-							<i class="fa fa-exchange"></i> Cambiar
-						</button>
-						<button type="button" class="btn rm2-sub-add" id="rmBtnAgregarSublinea" title="Agregar sublínea">
-							<i class="fa fa-plus"></i> Agregar
-						</button>
+						<div class="rm2-ctx" id="rmLineaActivaContexto">
+							<div class="rm2-ctx-flash" id="rmCtxFlash">
+								<span id="rmCtxFlashTxt"></span>
+								<button type="button" class="btn btn-xs btn-default" id="rmBtnVolverLineaAnterior" style="display:none;">
+									Volver a la anterior
+								</button>
+							</div>
+							<div class="rm2-ctx-kicker">Editando ahora</div>
+							<div class="rm2-ctx-nombre" id="rmCtxNombre">—</div>
+							<div class="rm2-ctx-meta" id="rmCtxMeta"></div>
+							<div class="row rm2-ctx-fields">
+								<div class="col-sm-3">
+									<label id="rmConsumoLineaLabel">Consumo</label>
+									<div class="input-group input-group-sm">
+										<input type="number" step="any" class="form-control" id="rmConsumoLinea" min="0">
+										<span class="input-group-addon" id="rmUnidadLineaAddon">—</span>
+									</div>
+									<small class="text-muted">Igual para todos los artículos de esta sublínea.</small>
+								</div>
+								<div class="col-sm-9">
+									<label>MPs ya usadas <small class="text-muted">(color MP · cuántas celdas)</small></label>
+									<div class="rm2-asignados" id="rmMpsAsignadas">
+										<span class="text-muted">Ninguna aún</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-6 rm2-top-chips-col">
+						<div class="rm2-top-col-title">Sublíneas de materia prima</div>
+						<div class="rm2-insumos" id="rmChipsInsumos"></div>
 					</div>
 				</div>
-				<div class="rm2-insumos" id="rmChipsInsumos"></div>
 				<div class="rm2-sel-hint" id="rmSublineaSeleccionadaHint" style="display:none;"></div>
 			</div>
 		</div>
@@ -270,76 +342,51 @@ if ($idReceta <= 0) {
 					<p>Agrega una sublínea arriba y selecciónala para asignar MP.</p>
 				</div>
 				<div id="rmPanelPaso2" style="display:none;">
-					<div class="rm2-ctx" id="rmLineaActivaContexto">
-						<div class="rm2-ctx-flash" id="rmCtxFlash">
-							<span id="rmCtxFlashTxt"></span>
-							<button type="button" class="btn btn-xs btn-default" id="rmBtnVolverLineaAnterior" style="display:none;">
-								Volver a la anterior
-							</button>
-						</div>
-						<div class="rm2-ctx-kicker">Editando ahora</div>
-						<div class="rm2-ctx-nombre" id="rmCtxNombre">—</div>
-						<div class="rm2-ctx-meta" id="rmCtxMeta"></div>
-					</div>
-					<div class="row" style="margin-bottom:10px;">
-						<div class="col-sm-3">
-							<label id="rmConsumoLineaLabel">Consumo</label>
-							<div class="input-group input-group-sm">
-								<input type="number" step="any" class="form-control" id="rmConsumoLinea" min="0">
-								<span class="input-group-addon" id="rmUnidadLineaAddon">—</span>
-							</div>
-							<small class="text-muted">Igual para todos los artículos de esta sublínea.</small>
-						</div>
-						<div class="col-sm-9">
-							<label>MPs ya usadas <small class="text-muted">(color MP · cuántas celdas)</small></label>
-							<div class="rm2-asignados" id="rmMpsAsignadas">
-								<span class="text-muted">Ninguna aún</span>
-							</div>
-						</div>
-					</div>
-
-					<div class="rm2-mp-activa" id="rmMpActivaBox">
-						<strong>MP en mano:</strong>
-						<span id="rmMpActivaTxt">—</span>
-						<span class="text-muted" id="rmMpActivaUndTxt"></span>
-						<button type="button" class="btn btn-xs btn-default pull-right" id="rmBtnLimpiarMpActiva">Soltar MP</button>
-						<div id="rmMpActivaAcciones" style="margin-top:8px; display:none;">
-							<button type="button" class="btn btn-xs btn-success rmAplicarTodos">
-								<i class="fa fa-th"></i> Aplicar a todos
-							</button>
-							<button type="button" class="btn btn-xs btn-danger rmQuitarTodos">
-								<i class="fa fa-eraser"></i> Quitar de todos
-							</button>
-						</div>
-						<div class="text-muted" style="margin-top:6px; font-size:12px;">
-							Clic celda = asignar · <kbd>Alt</kbd>+clic = quitar · columna/fila = alcance · chips de «MPs ya usadas» = poner en mano.
-						</div>
-					</div>
-
 					<div class="row">
-						<div class="col-md-4 rm2-col-mp">
-							<div class="rm2-panel-title">Catálogo MP (por sublínea)</div>
-							<div class="input-group input-group-sm" style="margin-bottom:8px;">
-								<input type="text" class="form-control" id="rmFiltroMp" placeholder="Buscar por color, descripción o código…">
-								<span class="input-group-btn">
-									<button type="button" class="btn btn-default" id="rmBtnFiltroMp"><i class="fa fa-search"></i></button>
-								</span>
-							</div>
-							<div class="rm2-mp-list">
-								<table class="table table-condensed table-hover" id="rmTablaMp" style="margin:0;">
-									<thead>
-										<tr>
-											<th>Color</th>
-											<th>Und</th>
-											<th>Detalle</th>
-											<th></th>
-										</tr>
-									</thead>
-									<tbody></tbody>
-								</table>
+						<div class="col-md-6 rm2-col-mp">
+							<div class="rm2-paso2-stack">
+								<div class="rm2-mp-activa" id="rmMpActivaBox">
+									<strong>MP en mano:</strong>
+									<span id="rmMpActivaTxt">—</span>
+									<span class="text-muted" id="rmMpActivaUndTxt"></span>
+									<button type="button" class="btn btn-xs btn-default pull-right" id="rmBtnLimpiarMpActiva">Soltar MP</button>
+									<div id="rmMpActivaAcciones" style="margin-top:8px; display:none;">
+										<button type="button" class="btn btn-xs btn-success rmAplicarTodos">
+											<i class="fa fa-th"></i> Aplicar a todos
+										</button>
+										<button type="button" class="btn btn-xs btn-danger rmQuitarTodos">
+											<i class="fa fa-eraser"></i> Quitar de todos
+										</button>
+									</div>
+									<div class="text-muted" style="margin-top:6px; font-size:12px;">
+										Clic celda = asignar · <kbd>Alt</kbd>+clic = quitar · columna/fila = alcance · chips de «MPs ya usadas» = poner en mano.
+									</div>
+								</div>
+								<div>
+									<div class="rm2-panel-title">Catálogo MP (por sublínea)</div>
+									<div class="input-group input-group-sm" style="margin-bottom:8px;">
+										<input type="text" class="form-control" id="rmFiltroMp" placeholder="Buscar por color, descripción o código…">
+										<span class="input-group-btn">
+											<button type="button" class="btn btn-default" id="rmBtnFiltroMp"><i class="fa fa-search"></i></button>
+										</span>
+									</div>
+									<div class="rm2-mp-list">
+										<table class="table table-condensed table-hover" id="rmTablaMp" style="margin:0;">
+											<thead>
+												<tr>
+													<th>Color</th>
+													<th>Und</th>
+													<th>Detalle</th>
+													<th></th>
+												</tr>
+											</thead>
+											<tbody></tbody>
+										</table>
+									</div>
+								</div>
 							</div>
 						</div>
-						<div class="col-md-8 rm2-col-matriz">
+						<div class="col-md-6 rm2-col-matriz">
 							<div class="rm2-panel-title" id="rmMatrizContexto">Asignar · color artículo × talla</div>
 							<div class="rm2-scroll">
 								<table class="rm2-matriz" id="rmMatriz">
@@ -355,16 +402,16 @@ if ($idReceta <= 0) {
 							Tarjetas por artículo
 							<small class="text-muted" style="font-weight:400;">— cómo quedaría cada tarjeta con esta receta</small>
 						</div>
-						<div class="rm2-scroll" style="max-height:360px;">
+						<div class="rm2-tarjetas-full">
 							<table class="table table-condensed table-bordered rm2-tabla-tarjetas" id="rmTablaTarjetasArticulo" style="margin:0;">
 								<thead>
 									<tr>
 										<th>Artículo</th>
 										<th>Color</th>
 										<th>Talla</th>
-										<th>MP (nombre)</th>
 										<th>Sublínea</th>
 										<th>Cód. MP</th>
+										<th>MP (nombre)</th>
 										<th>Color MP</th>
 										<th>Consumo</th>
 										<th>Und</th>
@@ -376,20 +423,6 @@ if ($idReceta <= 0) {
 						</div>
 					</div>
 				</div>
-			</div>
-		</div>
-
-		<div class="box box-warning rm2-box-slim">
-			<div class="box-header with-border">
-				<h3 class="box-title">3. ¿Listo para publicar?</h3>
-				<div class="box-tools">
-					<button type="button" class="btn btn-xs btn-default" id="rmBtnRefrescarCobertura">
-						<i class="fa fa-refresh"></i> Revisar
-					</button>
-				</div>
-			</div>
-			<div class="box-body">
-				<div id="rmResumenCobertura" class="row"></div>
 			</div>
 		</div>
 	</section>

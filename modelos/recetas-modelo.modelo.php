@@ -310,6 +310,7 @@ class ModeloRecetasModelo
 		$limit = max(1, min(400, (int) $limit));
 		$sql = "SELECT
 				TRIM(p.CodPro) AS mp_codigo,
+				TRIM(p.CodFab) AS codfab,
 				p.DesPro AS descripcion,
 				TRIM(p.ColPro) AS colpro,
 				IFNULL(tc.Des_Larga, '') AS color,
