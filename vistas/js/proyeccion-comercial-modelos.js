@@ -14,11 +14,25 @@
 	var catalogoLineaCache = null;
 	var modelosProyectadosCache = [];
 	var modelosPendientesCache = [];
+	var dashboardCache = null;
 	var filtroListaModelos = "pendientes";
 	var select2Ready = false;
 	var mesFactorLineaId = "";
 	var factoresPorMesCache = [];
 	var silenceMesSelect = false;
+	var decMorrisLine = null;
+	var decMorrisBar = null;
+	var decChartTimer = null;
+	var decMesFoco = null;
+	var matrizColorPref = {};
+	var DEC_COL = {
+		h3: "#8e44ad",
+		h2: "#16a085",
+		h1: "#2980b9",
+		curso: "#7fb3d5",
+		sug: "#e67e22",
+		ofi: "#27ae60"
+	};
 
 	function proyAlert(mensaje, tipo) {
 		tipo = tipo || "info";
@@ -210,15 +224,46 @@
 		planActual = null;
 		espacioActual = null;
 		$("#panelModeloActivo").hide();
+		$("#panelModeloCarga").hide();
+		$("#decCarga").hide();
 		$("#panelModeloVacio").show();
+		ocultarCargaBarra();
 		$("#proyModeloActivo").val("");
 		modeloSeleccionado = null;
 		mesFactorLineaId = "";
+		resetDecisionModelo();
 		$("#proyTituloPagina").html('Proyección comercial <small>Planes de venta por modelo</small>');
 		if (window.history && window.history.replaceState) {
 			window.history.replaceState({}, "", urlEstado(null, null));
 		}
 		listarPlanes();
+	}
+
+	function mostrarCargaBarra(texto) {
+		$("#proyCargaBarraTxt").text(texto || "Cargando…");
+		$("#proyCargaBarra").show();
+	}
+
+	function ocultarCargaBarra() {
+		$("#proyCargaBarra").hide();
+	}
+
+	function mostrarCargaModelo(modelo) {
+		var nom = $.trim(modelo || modeloSeleccionado || "");
+		$("#panelModeloVacio").hide();
+		$("#panelModeloActivo").hide();
+		$("#proyCargaTitulo").text(nom ? ("Cargando " + nom + "…") : "Cargando modelo…");
+		$("#panelModeloCarga").show();
+		$("#decVacio").hide();
+		$("#decActivo").hide();
+		$("#decCarga").show();
+		$("#decTitulo").text(nom || "Panorama");
+		$("#decSub").text("Armando historial y receta…");
+	}
+
+	function ocultarCargaModelo() {
+		$("#panelModeloCarga").hide();
+		$("#decCarga").hide();
 	}
 
 	function mostrarPlan(plan) {
@@ -333,6 +378,15 @@
 			|| String(m.marca || "").toLowerCase().indexOf(q) >= 0;
 	}
 
+	function ordenarPorCodigo(rows) {
+		return (rows || []).slice().sort(function (a, b) {
+			return String(a.modelo || "").localeCompare(String(b.modelo || ""), "es", {
+				numeric: true,
+				sensitivity: "base"
+			});
+		});
+	}
+
 	function htmlItemLista(m, tipo) {
 		var activo = modeloSeleccionado && String(modeloSeleccionado) === String(m.modelo);
 		var meta;
@@ -343,7 +397,7 @@
 				meta += " · " + num(m.unidades_oficiales, 0) + " uds";
 			}
 		} else {
-			meta = (m.marca || "Sin marca") + " · Pendiente";
+			meta = m.marca || "Sin marca";
 		}
 		var btnLabel = tipo === "proyectado" ? "Reabrir" : "Abrir";
 		var btnClass = tipo === "proyectado" ? "btn-default" : "btn-primary";
@@ -368,15 +422,15 @@
 		}
 		var idMarca = parseInt($("#proyMarca").val() || "0", 10);
 		var q = $.trim($("#proyQ").val() || "").toLowerCase();
-		var pendientes = (modelosPendientesCache || []).filter(function (m) {
+		var pendientes = ordenarPorCodigo((modelosPendientesCache || []).filter(function (m) {
 			return coincideBusqueda(m, q);
-		});
-		var proyectados = (modelosProyectadosCache || []).filter(function (m) {
+		}));
+		var proyectados = ordenarPorCodigo((modelosProyectadosCache || []).filter(function (m) {
 			if (idMarca > 0 && parseInt(m.id_marca, 10) !== idMarca) {
 				return false;
 			}
 			return coincideBusqueda(m, q);
-		});
+		}));
 
 		$("#chipPendientes").text("Pendientes (" + pendientes.length + ")");
 		$("#chipProyectados").text("Proyectados (" + proyectados.length + ")");
@@ -387,23 +441,35 @@
 		var mostrarProy = filtroListaModelos !== "pendientes";
 		var n = 0;
 
-		if (mostrarProy && proyectados.length && filtroListaModelos === "todos") {
-			html.push('<div class="proy-lista-grupo">Proyectados</div>');
-		}
-		if (mostrarProy) {
-			proyectados.forEach(function (m) {
-				html.push(htmlItemLista(m, "proyectado"));
+		if (filtroListaModelos === "todos") {
+			var mezcla = pendientes.map(function (m) {
+				return { m: m, tipo: "pendiente" };
+			}).concat(proyectados.map(function (m) {
+				return { m: m, tipo: "proyectado" };
+			}));
+			mezcla.sort(function (a, b) {
+				return String(a.m.modelo || "").localeCompare(String(b.m.modelo || ""), "es", {
+					numeric: true,
+					sensitivity: "base"
+				});
+			});
+			mezcla.forEach(function (item) {
+				html.push(htmlItemLista(item.m, item.tipo));
 				n++;
 			});
-		}
-		if (mostrarPend && pendientes.length && filtroListaModelos === "todos") {
-			html.push('<div class="proy-lista-grupo">Pendientes</div>');
-		}
-		if (mostrarPend) {
-			pendientes.forEach(function (m) {
-				html.push(htmlItemLista(m, "pendiente"));
-				n++;
-			});
+		} else {
+			if (mostrarProy) {
+				proyectados.forEach(function (m) {
+					html.push(htmlItemLista(m, "proyectado"));
+					n++;
+				});
+			}
+			if (mostrarPend) {
+				pendientes.forEach(function (m) {
+					html.push(htmlItemLista(m, "pendiente"));
+					n++;
+				});
+			}
 		}
 
 		if (!n) {
@@ -486,6 +552,1434 @@
 		}
 		$("#stPublicadasMeta").text(metaPub);
 		setStatTone($("#cardPublicadas"), publicadas > 0 ? "ok" : "neutral");
+		renderDashboard(stats, dashboardCache, planActual);
+	}
+
+	function nombreMesCorto(mes) {
+		var n = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+		mes = parseInt(mes, 10);
+		return n[mes] || String(mes);
+	}
+
+	function deltaTxt(ofi, sug) {
+		var d = (Number(ofi) || 0) - (Number(sug) || 0);
+		if (!d) {
+			return "igual a sug.";
+		}
+		var cls = d > 0 ? "proy-num-pos" : "proy-num-neg";
+		return '<span class="' + cls + '">' + (d > 0 ? "+" : "") + num(d, 0) + "</span>";
+	}
+
+	function chipAlerta(cls, icono, texto) {
+		return '<span class="proy-dash-chip ' + cls + '"><i class="fa ' + icono + '"></i> ' +
+			texto + "</span>";
+	}
+
+	function mostrarResumenPlan() {
+		modeloSeleccionado = null;
+		$("#proyModeloActivo").val("");
+		$("#panelModeloActivo").hide();
+		$("#panelModeloVacio").show();
+		$(".proy-lista-item").removeClass("is-active");
+		resetDecisionModelo();
+		syncUrlEstado();
+	}
+
+	function htmlDecKpi(label, value, cls, meta) {
+		return '<div class="proy-dec-kpi' + (cls ? " " + cls : "") + '"><em>' +
+			label + "</em><b>" + value + "</b>" +
+			(meta ? '<span class="proy-dec-kpi-meta">' + meta + "</span>" : "") +
+			"</div>";
+	}
+
+	function flechaPct(pct) {
+		if (pct == null || !isFinite(pct)) {
+			return "—";
+		}
+		if (pct > 5) {
+			return "▲ " + fmtPct(pct, 0);
+		}
+		if (pct < -5) {
+			return "▼ " + fmtPct(pct, 0);
+		}
+		return "• " + fmtPct(pct, 0);
+	}
+
+	function clsPct(pct) {
+		if (pct == null || !isFinite(pct)) {
+			return "";
+		}
+		if (pct > 5) {
+			return "is-pos";
+		}
+		if (pct < -5) {
+			return "is-neg";
+		}
+		return "";
+	}
+
+	function bandaSugMes(sug, a, b) {
+		var vals = [];
+		if (a != null && isFinite(a)) {
+			vals.push(Number(a));
+		}
+		if (b != null && isFinite(b)) {
+			vals.push(Number(b));
+		}
+		if (!vals.length || sug == null || !isFinite(sug)) {
+			return "nd";
+		}
+		sug = Number(sug);
+		var lo = Math.min.apply(null, vals);
+		var hi = Math.max.apply(null, vals);
+		if (sug > hi * 1.1) {
+			return "alta";
+		}
+		if (sug < lo * 0.9) {
+			return "baja";
+		}
+		return "rango";
+	}
+
+	function pintarRecomendacion(opts) {
+		opts = opts || {};
+		var altas = opts.altas || [];
+		var bajas = opts.bajas || [];
+		var nEval = Number(opts.nEval) || 0;
+		var lblRef = opts.lblRef || "";
+		var lblPrev = opts.lblPrev || "";
+		var titulo = "Usá la sugerencia";
+		var detalle = "";
+		var cls = "is-ok";
+		var chips = [];
+
+		if (!nEval) {
+			titulo = "Sin año cerrado";
+			detalle = "Cuando cierre el periodo comparable, acá va a aparecer si conviene subir o bajar.";
+			cls = "";
+		} else if (altas.length && bajas.length) {
+			titulo = "Revisá meses";
+			detalle = "Hay meses altos y bajos vs " + lblPrev + "–" + lblRef + ".";
+			cls = "is-mix";
+		} else if (altas.length) {
+			titulo = "Revisá bajar · " + altas.join(", ");
+			detalle = "Por encima de " + lblPrev + " y " + lblRef + ".";
+			cls = "is-down";
+		} else if (bajas.length) {
+			titulo = "Revisá subir · " + bajas.join(", ");
+			detalle = "Por debajo de " + lblRef + " y " + lblPrev + ".";
+			cls = "is-up";
+		} else if (opts.rango && lblRef && lblPrev) {
+			detalle = opts.rango + " entre " + lblPrev + " y " + lblRef + ".";
+		} else if (lblRef) {
+			detalle = "En línea con " + lblRef + ".";
+		} else {
+			detalle = "En línea con el último periodo cerrado.";
+		}
+
+		var recPct = opts.recientePct;
+		if (recPct != null && isFinite(recPct) && nEval) {
+			if (recPct < -10) {
+				if (cls === "is-ok") {
+					titulo = "Usá la sugerencia · no subas";
+				}
+				chips.push('<span class="proy-dec-chip is-alta">A la baja</span>');
+			} else if (recPct > 10) {
+				chips.push('<span class="proy-dec-chip is-ok">Al alza</span>');
+			}
+		}
+
+		altas.forEach(function (m) {
+			chips.push('<span class="proy-dec-chip is-alta">' + m + " bajá</span>");
+		});
+		bajas.forEach(function (m) {
+			chips.push('<span class="proy-dec-chip is-baja">' + m + " subí</span>");
+		});
+
+		$("#decRecoBox").html(
+			'<div class="proy-dec-reco ' + cls + '"><b>' + titulo + "</b>" +
+			(detalle ? "<span>" + detalle + "</span>" : "") +
+			(chips.length ? '<div class="proy-dec-chips">' + chips.join("") + "</div>" : "") +
+			"</div>"
+		);
+	}
+
+	function pctCambio(actual, anterior) {
+		if (actual == null || anterior == null || !isFinite(actual) || !isFinite(anterior)) {
+			return null;
+		}
+		if (Number(anterior) === 0) {
+			return null;
+		}
+		return ((Number(actual) - Number(anterior)) / Math.abs(Number(anterior))) * 100;
+	}
+
+	function sentidoPct(pct, umbral) {
+		umbral = umbral == null ? 5 : umbral;
+		if (pct == null) {
+			return null;
+		}
+		if (pct > umbral) {
+			return "crece";
+		}
+		if (pct < -umbral) {
+			return "baja";
+		}
+		return "se mantiene";
+	}
+
+	function fmtPct(pct, dec) {
+		if (pct == null || !isFinite(pct)) {
+			return "—";
+		}
+		dec = dec == null ? 0 : dec;
+		return (pct > 0 ? "+" : "") + pct.toFixed(dec) + "%";
+	}
+
+	function mesDesdePeriodo(periodo) {
+		var p = String(periodo || "");
+		var parts = p.split("-");
+		return parseInt(parts[1], 10) || 0;
+	}
+
+	function anioDesdePeriodo(periodo) {
+		var p = String(periodo || "");
+		var parts = p.split("-");
+		return parseInt(parts[0], 10) || 0;
+	}
+
+	function etiquetaMesPlan(m) {
+		var mes = m.mes != null ? m.mes : mesDesdePeriodo(m.periodo);
+		var anio = m.anio != null ? m.anio : anioDesdePeriodo(m.periodo);
+		var yy = anio ? String(anio).slice(-2) : "";
+		return nombreMesCorto(mes) + (yy ? " " + yy : "");
+	}
+
+	function oficialVivo(linea) {
+		if (linea && linea.id) {
+			var $inp = $(".inpOficialModelo[data-id='" + linea.id + "']");
+			if ($inp.length) {
+				return Number($inp.val()) || 0;
+			}
+		}
+		return Number(linea && linea.unidades_oficiales) || 0;
+	}
+
+	function sugDeLinea(linea, ctx) {
+		var sug = Number(linea && linea.unidades_sugeridas) || 0;
+		if (ctx && ctx.sugerencias && linea && ctx.sugerencias[linea.periodo] &&
+			ctx.sugerencias[linea.periodo].unidades != null) {
+			sug = Number(ctx.sugerencias[linea.periodo].unidades) || 0;
+		}
+		return sug;
+	}
+
+	function mixSugColor(bloque, color, tallas) {
+		var s = 0;
+		(tallas || []).forEach(function (t) {
+			var cel = ((bloque && bloque.celdas) || {})[claveVariante(color.cod, t.cod)];
+			s += cel ? Number(cel.sug) || 0 : 0;
+		});
+		return s;
+	}
+
+	function mixOffBloque(mz, bloque) {
+		var prefs = matrizPrefs();
+		var off = 0;
+		(mz.colores || []).forEach(function (c) {
+			if (prefs.off[c.cod]) {
+				off += mixSugColor(bloque, c, mz.tallas);
+			}
+		});
+		return off;
+	}
+
+	function poolSugBloque(mz, bloque) {
+		var orig = Number(bloque && bloque.sug) || 0;
+		var pool = orig - mixOffBloque(mz, bloque);
+		return pool < 0 ? 0 : pool;
+	}
+
+	function ajustarSugPorColores(sug, periodo, ctx) {
+		var mz = ctx && ctx.matriz_articulos;
+		if (!mz || sug == null || !isFinite(Number(sug))) {
+			return sug;
+		}
+		var bloque = (periodo && mz.por_mes && mz.por_mes[periodo]) ? mz.por_mes[periodo] : null;
+		if (!bloque || !(Number(bloque.sug) > 0)) {
+			bloque = mz.plan;
+		}
+		if (!bloque || !(Number(bloque.sug) > 0)) {
+			return sug;
+		}
+		var orig = Number(bloque.sug);
+		var pool = poolSugBloque(mz, bloque);
+		if (pool === orig) {
+			return sug;
+		}
+		return Math.round(Number(sug) * (pool / orig));
+	}
+
+	function destroyDecisionCharts() {
+		if (decChartTimer) {
+			clearTimeout(decChartTimer);
+			decChartTimer = null;
+		}
+		$("#decChartComp").empty().removeClass("proy-dec-chart--empty").addClass("proy-dec-chart");
+		decMorrisLine = null;
+		decMorrisBar = null;
+	}
+
+	function resetDecisionModelo() {
+		destroyDecisionCharts();
+		decMesFoco = null;
+		$("#decVerPlan").hide();
+		$("#tablaHistEstacional tbody tr").removeClass("is-foco");
+		$("#decActivo").hide();
+		$("#decVacio").show();
+		$("#decTitulo").text("Panorama");
+		$("#decSub").text("Elige un modelo para ver tendencia y comparación.");
+		$("#decCompLine, #decTendKpis, #decLegendComp, #decRecoBox, #decVieneKpis").empty();
+		$("#decTendLabel").text("Tendencia");
+		$("#decVieneLabel").text("Cómo viene");
+	}
+
+	function mesesDecision(ctx, lineas) {
+		var meses = (ctx && ctx.periodo_plan && ctx.periodo_plan.meses_lista) || [];
+		if (meses.length) {
+			return meses;
+		}
+		var filas = (ctx && ctx.historial_estacional && ctx.historial_estacional.filas) || [];
+		if (filas.length) {
+			return filas.map(function (f) {
+				return {
+					periodo: f.periodo,
+					mes: mesDesdePeriodo(f.periodo),
+					anio: anioDesdePeriodo(f.periodo)
+				};
+			});
+		}
+		return (lineas || []).map(function (l) {
+			return {
+				periodo: l.periodo,
+				mes: l.mes != null ? l.mes : mesDesdePeriodo(l.periodo),
+				anio: l.anio != null ? l.anio : anioDesdePeriodo(l.periodo)
+			};
+		});
+	}
+
+	function pintarDecisionCharts(lineData, aniosLinea) {
+		if (typeof Morris === "undefined") {
+			$("#decChartComp").empty().addClass("proy-dec-chart--empty").removeClass("proy-dec-chart")
+				.html("Sin gráfico.");
+			decMorrisLine = null;
+			decMorrisBar = null;
+			return;
+		}
+		aniosLinea = aniosLinea || {};
+		var incluirH1 = !!aniosLinea.incluirH1;
+		$("#decChartComp").empty().removeClass("proy-dec-chart--empty").addClass("proy-dec-chart");
+		decMorrisLine = null;
+		decMorrisBar = null;
+		var hayCurso = incluirH1 && lineData.some(function (r) {
+			return r.h1curso != null;
+		});
+		var hayOfiDistinto = lineData.some(function (r) {
+			return r.ofi != null && Number(r.ofi) !== Number(r.sug || 0);
+		});
+		if (!lineData.length) {
+			$("#decChartComp").addClass("proy-dec-chart--empty").removeClass("proy-dec-chart")
+				.html("Sin meses para graficar.");
+			return;
+		}
+		var ykeys = ["h3", "h2"];
+		var lineLabels = [
+			aniosLinea.h3 ? String(aniosLinea.h3) : "Hace 3",
+			aniosLinea.h2 ? String(aniosLinea.h2) : "Hace 2"
+		];
+		var lineColors = [DEC_COL.h3, DEC_COL.h2];
+		if (incluirH1) {
+			ykeys.push("h1");
+			lineLabels.push(aniosLinea.h1 ? String(aniosLinea.h1) : "Hace 1");
+			lineColors.push(DEC_COL.h1);
+		}
+		if (hayCurso) {
+			ykeys.push("h1curso");
+			lineLabels.push("En curso");
+			lineColors.push(DEC_COL.curso);
+		}
+		ykeys.push("sug");
+		lineLabels.push("Sug.");
+		lineColors.push(DEC_COL.sug);
+		if (hayOfiDistinto) {
+			ykeys.push("ofi");
+			lineLabels.push("Oficial");
+			lineColors.push(DEC_COL.ofi);
+		}
+		decMorrisLine = Morris.Line({
+			element: "decChartComp",
+			resize: true,
+			parseTime: false,
+			smooth: false,
+			data: lineData,
+			xkey: "mes",
+			ykeys: ykeys,
+			labels: lineLabels,
+			lineColors: lineColors,
+			pointSize: 2,
+			lineWidth: 2,
+			hideHover: "auto",
+			gridTextColor: "#8898aa",
+			gridTextSize: 9,
+			ymin: 0,
+			numLines: 4,
+			xLabelAngle: lineData.length > 10 ? 45 : 0,
+			yLabelFormat: function (y) {
+				return num(y, 0);
+			}
+		});
+	}
+
+	function renderDecisionModelo(resp) {
+		if (!$("#proyDecisionCol").length) {
+			return;
+		}
+		var ctx = resp && resp.contexto;
+		var lineas = (resp && resp.lineas) || [];
+		if (!ctx) {
+			resetDecisionModelo();
+			return;
+		}
+		$("#decVacio").hide();
+		$("#decActivo").show();
+		var cab = ctx.cabecera || {};
+		$("#decTitulo").text(cab.modelo || "Panorama");
+
+		var meses = mesesDecision(ctx, lineas);
+		var byPeriodo = {};
+		lineas.forEach(function (l) {
+			byPeriodo[l.periodo] = l;
+		});
+		var est = mapaEstacional(ctx);
+
+		var nBorr = 0;
+		var nPub = 0;
+		var nCerr = 0;
+		var nFalta = 0;
+		meses.forEach(function (m) {
+			var l = byPeriodo[m.periodo];
+			if (l) {
+				if (l.estado_linea === "PUBLICADO") {
+					nPub++;
+				} else if (l.estado_linea === "CERRADO") {
+					nCerr++;
+				} else {
+					nBorr++;
+				}
+			} else {
+				nFalta++;
+			}
+		});
+		var nCarg = nBorr + nPub + nCerr;
+		var subParts = [];
+		if (cab.nombre || cab.marca) {
+			subParts.push(cab.nombre || cab.marca);
+		}
+		if (meses.length) {
+			subParts.push(nCarg + "/" + meses.length);
+		}
+		if (nBorr) {
+			subParts.push(nBorr + " borrador");
+		} else if (nPub + nCerr) {
+			subParts.push((nPub + nCerr) + " publicados");
+		}
+		if (nFalta) {
+			subParts.push("faltan " + nFalta);
+		}
+		$("#decSub").text(subParts.join(" · ") || "");
+
+		var totOfi = 0;
+		var totSug = 0;
+		var nDesv = 0;
+		var desvMeses = [];
+		lineas.forEach(function (l) {
+			var sug = sugDeLinea(l, ctx);
+			var aj = Number(l.unidades_ajustes) || 0;
+			var ofi = oficialVivo(l);
+			totOfi += ofi;
+			totSug += sug;
+			if (desviacionRelevanteUi(sug, aj, ofi)) {
+				nDesv++;
+				desvMeses.push(nombreMesCorto(l.mes != null ? l.mes : mesDesdePeriodo(l.periodo)));
+			}
+		});
+		var dOfi = totOfi - totSug;
+		var pctOfi = pctCambio(totOfi, totSug);
+		var clsOfi = dOfi > 0 ? "is-pos" : (dOfi < 0 ? "is-neg" : "");
+		var lineHtml;
+		if (!dOfi) {
+			lineHtml = "<span>Oficial = sugerencia <b>" + num(totOfi, 0) + "</b></span>";
+		} else {
+			lineHtml = "<span>Oficial <b>" + num(totOfi, 0) + "</b></span>" +
+				"<span>Sug. <b>" + num(totSug, 0) + "</b></span>" +
+				'<span class="' + clsOfi + '">Δ <b>' + (dOfi > 0 ? "+" : "") + num(dOfi, 0) +
+				"</b> " + fmtPct(pctOfi, 0) + "</span>";
+		}
+		if (nDesv) {
+			lineHtml += '<span class="is-warn">' + nDesv +
+				(nDesv === 1 ? " mes >10%" : " meses >10%") +
+				(desvMeses.length ? " · " + desvMeses.join(", ") : "") +
+				"</span>";
+		}
+		$("#decCompLine").html(lineHtml);
+
+		var totH1Per = 0;
+		var totH2Per = 0;
+		var totH3Per = 0;
+		var lineData = [];
+		var recAltas = [];
+		var recBajas = [];
+		var recNEval = 0;
+		var anioH1 = null;
+		var anioH2 = null;
+		var anioH3 = null;
+		var h1Completo = offsetPeriodoCompleto(meses, est, 1);
+		var h2Completo = offsetPeriodoCompleto(meses, est, 2);
+		var h3Completo = offsetPeriodoCompleto(meses, est, 3);
+		if (h1Completo) {
+			totH1Per = totOffsetPeriodo(meses, est, 1);
+		}
+		if (h2Completo) {
+			totH2Per = totOffsetPeriodo(meses, est, 2);
+		}
+		if (h3Completo) {
+			totH3Per = totOffsetPeriodo(meses, est, 3);
+		}
+
+		meses.forEach(function (m) {
+			var f = est[m.periodo];
+			var l = byPeriodo[m.periodo];
+			var hist = f ? f.historial : [];
+			var h1 = h1Completo ? histValorCerrado(hist, 1) : null;
+			var h2 = histValorCerrado(hist, 2);
+			var h3 = histValorCerrado(hist, 3);
+			var h1curso = h1Completo ? histValorEnCurso(hist, 1) : null;
+			var sug = 0;
+			var ofi = null;
+			if (l) {
+				sug = sugDeLinea(l, ctx);
+				ofi = oficialVivo(l);
+			} else if (f && f.sugerencia && f.sugerencia.unidades != null) {
+				sug = Number(f.sugerencia.unidades) || 0;
+			}
+			if (!anioH1) {
+				anioH1 = histAnio(hist, 1);
+			}
+			if (!anioH2) {
+				anioH2 = histAnio(hist, 2);
+			}
+			if (!anioH3) {
+				anioH3 = histAnio(hist, 3);
+			}
+			var nomMes = nombreMesCorto(m.mes != null ? m.mes : mesDesdePeriodo(m.periodo));
+			var refMes = h1Completo ? h1 : h2;
+			var prevMes = h1Completo ? h2 : h3;
+			var band = bandaSugMes(sug, refMes, prevMes);
+			if (band === "alta") {
+				recAltas.push(nomMes);
+			} else if (band === "baja") {
+				recBajas.push(nomMes);
+			}
+			if (band !== "nd") {
+				recNEval++;
+			}
+			lineData.push({
+				mes: etiquetaMesPlan(m),
+				h3: h3,
+				h2: h2,
+				h1: h1,
+				h1curso: h1curso,
+				sug: sug,
+				ofi: ofi
+			});
+		});
+
+		var lblH1 = anioH1 ? String(anioH1) : "Hace 1";
+		var lblH2 = anioH2 ? String(anioH2) : "Hace 2";
+		var lblH3 = anioH3 ? String(anioH3) : "Hace 3";
+		var rangoPlan = rangoMesesPlan(meses);
+		var tendTitulo = rangoPlan ? rangoPlan : "Tendencia";
+		if (!h1Completo && anioH1) {
+			tendTitulo += " · sin " + lblH1;
+		}
+		$("#decTendLabel").text(tendTitulo);
+
+		var totRef = h1Completo ? totH1Per : (h2Completo ? totH2Per : null);
+		var lblRef = h1Completo ? lblH1 : (h2Completo ? lblH2 : null);
+		var totPrev = h1Completo ? (h2Completo ? totH2Per : null) : (h3Completo ? totH3Per : null);
+		var lblPrev = h1Completo ? lblH2 : lblH3;
+		var tendHtml = "";
+		if (totRef != null && totPrev != null) {
+			var pctHist = pctCambio(totRef, totPrev);
+			tendHtml += htmlDecKpi(
+				lblRef + " vs " + lblPrev,
+				flechaPct(pctHist),
+				clsPct(pctHist),
+				num(totRef, 0) + " vs " + num(totPrev, 0)
+			);
+		}
+		if (totRef != null) {
+			var pctSugRef = pctCambio(totSug, totRef);
+			tendHtml += htmlDecKpi(
+				"Sug. vs " + lblRef,
+				flechaPct(pctSugRef),
+				clsPct(pctSugRef),
+				num(totSug, 0) + " vs " + num(totRef, 0)
+			);
+			if (dOfi) {
+				var pctOfiRef = pctCambio(totOfi, totRef);
+				tendHtml += htmlDecKpi(
+					"Oficial vs " + lblRef,
+					flechaPct(pctOfiRef),
+					clsPct(pctOfiRef),
+					num(totOfi, 0) + " vs " + num(totRef, 0)
+				);
+			} else if (totPrev != null) {
+				var pctSugPrev = pctCambio(totSug, totPrev);
+				tendHtml += htmlDecKpi(
+					"Sug. vs " + lblPrev,
+					flechaPct(pctSugPrev),
+					clsPct(pctSugPrev),
+					num(totSug, 0) + " vs " + num(totPrev, 0)
+				);
+			}
+		}
+		if (!tendHtml) {
+			tendHtml = htmlDecKpi("Periodo", "—", "", "Sin años cerrados");
+		}
+		$("#decTendKpis").toggleClass("proy-dec-kpis--3", true).html(tendHtml);
+
+		var recient = (ctx && ctx.tendencia_reciente) || {};
+		pintarRecomendacion({
+			altas: recAltas,
+			bajas: recBajas,
+			nEval: recNEval,
+			lblRef: lblRef || "",
+			lblPrev: totPrev != null ? lblPrev : "",
+			rango: rangoPlan,
+			recientePct: recient.pct,
+			recienteRango: recient.rango || ""
+		});
+
+		if (recient.n_meses) {
+			$("#decVieneLabel").text("Cómo viene · " + (recient.rango || ""));
+			var htmlViene = htmlDecKpi(
+				(recient.anio || "") + " vs " + (recient.anio_ant || ""),
+				flechaPct(recient.pct),
+				clsPct(recient.pct),
+				num(recient.uds, 0) + " vs " + num(recient.uds_anio_ant, 0)
+			);
+			if (recient.pct_3 != null) {
+				htmlViene += htmlDecKpi(
+					"3 m · " + (recient.rango_3 || ""),
+					flechaPct(recient.pct_3),
+					clsPct(recient.pct_3),
+					num(recient.uds_3, 0) + " vs " + num(recient.uds_3_anio_ant, 0)
+				);
+			}
+			$("#decVieneKpis").html(htmlViene);
+		} else {
+			$("#decVieneLabel").text("Cómo viene");
+			$("#decVieneKpis").html(htmlDecKpi("Año en curso", "—", "", "Sin meses cerrados"));
+		}
+
+		var legend = '<span><i style="background:' + DEC_COL.h3 + '"></i>' + lblH3 + "</span>" +
+			'<span><i style="background:' + DEC_COL.h2 + '"></i>' + lblH2 + "</span>";
+		if (h1Completo) {
+			legend += '<span><i style="background:' + DEC_COL.h1 + '"></i>' + lblH1 + "</span>";
+		}
+		legend += '<span><i style="background:' + DEC_COL.sug + '"></i>Sug.</span>';
+		if (dOfi) {
+			legend += '<span><i style="background:' + DEC_COL.ofi + '"></i>Oficial</span>';
+		}
+		$("#decLegendComp").html(legend);
+
+		if (decChartTimer) {
+			clearTimeout(decChartTimer);
+		}
+		decChartTimer = setTimeout(function () {
+			pintarDecisionCharts(lineData, {
+				h1: anioH1,
+				h2: anioH2,
+				h3: anioH3,
+				incluirH1: h1Completo
+			});
+		}, 40);
+
+		if (decMesFoco) {
+			aplicarPanoramaMes(ctx, lineas, byPeriodo, est, decMesFoco);
+		} else {
+			$("#decVerPlan").hide();
+		}
+	}
+
+	function pintarLineaOficialSug(totOfi, totSug, nDesv, desvMeses) {
+		var dOfi = totOfi - totSug;
+		var pctOfi = pctCambio(totOfi, totSug);
+		var clsOfi = dOfi > 0 ? "is-pos" : (dOfi < 0 ? "is-neg" : "");
+		var lineHtml;
+		if (!dOfi) {
+			lineHtml = "<span>Oficial = sugerencia <b>" + num(totOfi, 0) + "</b></span>";
+		} else {
+			lineHtml = "<span>Oficial <b>" + num(totOfi, 0) + "</b></span>" +
+				"<span>Sug. <b>" + num(totSug, 0) + "</b></span>" +
+				'<span class="' + clsOfi + '">Δ <b>' + (dOfi > 0 ? "+" : "") + num(dOfi, 0) +
+				"</b> " + fmtPct(pctOfi, 0) + "</span>";
+		}
+		if (nDesv) {
+			lineHtml += '<span class="is-warn">' + nDesv +
+				(nDesv === 1 ? " mes >10%" : " meses >10%") +
+				(desvMeses && desvMeses.length ? " · " + desvMeses.join(", ") : "") +
+				"</span>";
+		}
+		$("#decCompLine").html(lineHtml);
+		return dOfi;
+	}
+
+	function aplicarPanoramaMes(ctx, lineas, byPeriodo, est, periodo) {
+		var f = est[periodo] || {};
+		var hist = f.historial || [];
+		var l = byPeriodo[periodo];
+		var nom = nombreMesCorto(mesDesdePeriodo(periodo));
+		var cab = ctx.cabecera || {};
+		var sug = 0;
+		var ofi = 0;
+		var nDesv = 0;
+		if (l) {
+			sug = sugDeLinea(l, ctx);
+			ofi = oficialVivo(l);
+			if (desviacionRelevanteUi(sug, Number(l.unidades_ajustes) || 0, ofi)) {
+				nDesv = 1;
+			}
+		} else if (f.sugerencia && f.sugerencia.unidades != null) {
+			sug = Number(f.sugerencia.unidades) || 0;
+			ofi = sug;
+		}
+		var h1 = histValorCerrado(hist, 1);
+		var h1c = histValorEnCurso(hist, 1);
+		var h2 = histValorCerrado(hist, 2);
+		var h3 = histValorCerrado(hist, 3);
+		var a1 = histAnio(hist, 1);
+		var a2 = histAnio(hist, 2);
+		var a3 = histAnio(hist, 3);
+		var lblH1 = a1 ? String(a1) : "Hace 1";
+		var lblH2 = a2 ? String(a2) : "Hace 2";
+		var lblH3 = a3 ? String(a3) : "Hace 3";
+		var sub = cab.nombre || cab.marca || "";
+		$("#decSub").text((sub ? sub + " · " : "") + nom);
+		$("#decVerPlan").show();
+
+		pintarLineaOficialSug(ofi, sug, nDesv, nDesv ? [nom] : []);
+
+		var ref = h1 != null ? h1 : h2;
+		var prev = h1 != null ? h2 : h3;
+		var lblRef = h1 != null ? lblH1 : lblH2;
+		var lblPrev = h1 != null ? lblH2 : lblH3;
+		var band = bandaSugMes(sug, ref, prev);
+		var recient = (ctx && ctx.tendencia_reciente) || {};
+		pintarRecomendacion({
+			altas: band === "alta" ? [nom] : [],
+			bajas: band === "baja" ? [nom] : [],
+			nEval: band !== "nd" ? 1 : 0,
+			lblRef: ref != null ? lblRef : "",
+			lblPrev: prev != null ? lblPrev : "",
+			rango: nom,
+			recientePct: recient.pct,
+			recienteRango: recient.rango || ""
+		});
+
+		$("#decVieneLabel").text("Este mes · " + nom);
+		var htmlViene = "";
+		if (h1 != null && h2 != null) {
+			htmlViene += htmlDecKpi(
+				lblH1 + " vs " + lblH2,
+				flechaPct(pctCambio(h1, h2)),
+				clsPct(pctCambio(h1, h2)),
+				num(h1, 0) + " vs " + num(h2, 0)
+			);
+		} else if (h1c != null && h2 != null) {
+			htmlViene += htmlDecKpi(
+				lblH1 + " en curso vs " + lblH2,
+				flechaPct(pctCambio(h1c, h2)),
+				clsPct(pctCambio(h1c, h2)),
+				num(h1c, 0) + " vs " + num(h2, 0)
+			);
+		}
+		if (h2 != null && h3 != null) {
+			htmlViene += htmlDecKpi(
+				lblH2 + " vs " + lblH3,
+				flechaPct(pctCambio(h2, h3)),
+				clsPct(pctCambio(h2, h3)),
+				num(h2, 0) + " vs " + num(h3, 0)
+			);
+		}
+		$("#decVieneKpis").html(htmlViene || htmlDecKpi("Histórico", "—", "", "Sin años cerrados"));
+
+		var totRef = h1 != null ? h1 : h2;
+		$("#decTendLabel").text("Sug. · " + nom);
+		var tendHtml = "";
+		if (totRef != null) {
+			tendHtml += htmlDecKpi(
+				"Sug. vs " + lblRef,
+				flechaPct(pctCambio(sug, totRef)),
+				clsPct(pctCambio(sug, totRef)),
+				num(sug, 0) + " vs " + num(totRef, 0)
+			);
+		}
+		if (prev != null && prev !== totRef) {
+			tendHtml += htmlDecKpi(
+				"Sug. vs " + lblPrev,
+				flechaPct(pctCambio(sug, prev)),
+				clsPct(pctCambio(sug, prev)),
+				num(sug, 0) + " vs " + num(prev, 0)
+			);
+		}
+		$("#decTendKpis").toggleClass("proy-dec-kpis--3", false).html(
+			tendHtml || htmlDecKpi("Mes", "—", "", "Sin años cerrados")
+		);
+	}
+
+	function setMesFoco(periodo) {
+		if (periodo && decMesFoco === periodo) {
+			decMesFoco = null;
+		} else {
+			decMesFoco = periodo || null;
+		}
+		$("#tablaHistEstacional tbody tr").removeClass("is-foco");
+		if (decMesFoco) {
+			$("#tablaHistEstacional tbody tr[data-periodo='" + decMesFoco + "']").addClass("is-foco");
+		}
+		if (espacioActual) {
+			renderDecisionModelo(espacioActual);
+			renderMatrizSugerencia(espacioActual.contexto);
+		}
+	}
+
+	function proyEsc(valor) {
+		return $("<div>").text(valor == null ? "" : String(valor)).html();
+	}
+
+	function proyColorVisual(nombre) {
+		var normalizar = function (valor) {
+			return String(valor || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+		};
+		var texto = normalizar(nombre);
+		var paleta = window.proyPaletaColores || {};
+		var claves = Object.keys(paleta).sort(function (a, b) {
+			return normalizar(b).length - normalizar(a).length;
+		});
+		var validar = function (color) {
+			return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : null;
+		};
+		var i;
+		for (i = 0; i < claves.length; i++) {
+			if (normalizar(claves[i]) === texto) {
+				return validar(paleta[claves[i]]) || "#d9dee3";
+			}
+		}
+		for (i = 0; i < claves.length; i++) {
+			if (texto.indexOf(normalizar(claves[i])) !== -1) {
+				return validar(paleta[claves[i]]) || "#d9dee3";
+			}
+		}
+		return "#d9dee3";
+	}
+
+	function matrizPrefKey() {
+		return String(modeloSeleccionado || "") + "|" + String($("#proyIdPeriodo").val() || "");
+	}
+
+	function matrizPrefs() {
+		var k = matrizPrefKey();
+		if (!matrizColorPref[k]) {
+			matrizColorPref[k] = { off: {}, uds: {} };
+		}
+		return matrizColorPref[k];
+	}
+
+	function matrizPrefsLoad() {
+		try {
+			matrizColorPref = JSON.parse(localStorage.getItem("proyMatrizColores") || "{}") || {};
+		} catch (e) {
+			matrizColorPref = {};
+		}
+	}
+
+	function matrizPrefsSave() {
+		try {
+			localStorage.setItem("proyMatrizColores", JSON.stringify(matrizColorPref));
+		} catch (e) { /* noop */ }
+	}
+
+	function claveVariante(codColor, codTalla) {
+		return String(codColor || "") + "|" + String(codTalla || "");
+	}
+
+	function repartirEnterosJs(total, pesos) {
+		var out = {};
+		var suma = 0;
+		var k;
+		for (k in pesos) {
+			if (!pesos.hasOwnProperty(k)) {
+				continue;
+			}
+			out[k] = 0;
+			suma += Number(pesos[k]) || 0;
+		}
+		total = Math.round(Number(total) || 0);
+		if (total <= 0 || suma <= 0) {
+			return out;
+		}
+		var fracs = [];
+		var asignado = 0;
+		for (k in pesos) {
+			if (!pesos.hasOwnProperty(k)) {
+				continue;
+			}
+			var v = total * ((Number(pesos[k]) || 0) / suma);
+			var ent = Math.floor(v);
+			out[k] = ent;
+			asignado += ent;
+			fracs.push({ k: k, f: v - ent });
+		}
+		fracs.sort(function (a, b) { return b.f - a.f; });
+		var resto = total - asignado;
+		var i;
+		for (i = 0; i < fracs.length && resto > 0; i++) {
+			out[fracs[i].k]++;
+			resto--;
+		}
+		return out;
+	}
+
+	function armarCeldasMatriz(mz, bloque) {
+		var prefs = matrizPrefs();
+		var colores = mz.colores || [];
+		var tallas = mz.tallas || [];
+		var celdasIn = (bloque && bloque.celdas) || {};
+		var baseOrig = Number(bloque && bloque.sug) || 0;
+		var base = poolSugBloque(mz, bloque);
+		var incOld = [];
+		var incNew = [];
+		colores.forEach(function (c) {
+			if (prefs.off[c.cod]) {
+				return;
+			}
+			if (c.nuevo) {
+				incNew.push(c);
+			} else {
+				incOld.push(c);
+			}
+		});
+		var manual = 0;
+		incNew.forEach(function (c) {
+			manual += udsColorNuevo(c, celdasIn, tallas, prefs);
+		});
+		var resto = base - manual;
+		if (resto < 0) {
+			resto = 0;
+		}
+		var pesosOld = {};
+		incOld.forEach(function (c) {
+			tallas.forEach(function (t) {
+				var k = claveVariante(c.cod, t.cod);
+				var cel = celdasIn[k];
+				pesosOld[k] = cel ? Number(cel.hist) || 0 : 0;
+			});
+		});
+		var repartoOld = repartirEnterosJs(resto, pesosOld);
+		var pesoTalla = {};
+		var sumaT = 0;
+		tallas.forEach(function (t) {
+			pesoTalla[t.cod] = 0;
+			incOld.forEach(function (c) {
+				pesoTalla[t.cod] += pesosOld[claveVariante(c.cod, t.cod)] || 0;
+			});
+			sumaT += pesoTalla[t.cod];
+		});
+		if (sumaT <= 0) {
+			tallas.forEach(function (t) {
+				pesoTalla[t.cod] = 1;
+			});
+		}
+		var out = {};
+		incOld.forEach(function (c) {
+			tallas.forEach(function (t) {
+				var k = claveVariante(c.cod, t.cod);
+				var cel = celdasIn[k];
+				out[k] = {
+					hist: cel ? Number(cel.hist) || 0 : 0,
+					sug: repartoOld[k] || 0
+				};
+			});
+		});
+		incNew.forEach(function (c) {
+			var uds = udsColorNuevo(c, celdasIn, tallas, prefs);
+			var pesosN = {};
+			tallas.forEach(function (t) {
+				pesosN[t.cod] = pesoTalla[t.cod];
+			});
+			var split = repartirEnterosJs(uds, pesosN);
+			tallas.forEach(function (t) {
+				out[claveVariante(c.cod, t.cod)] = {
+					hist: 0,
+					sug: split[t.cod] || 0
+				};
+			});
+		});
+		return { celdas: out, manual: manual, resto: resto, base: base, baseOrig: baseOrig };
+	}
+
+	function udsColorNuevo(c, celdasIn, tallas, prefs) {
+		if (Object.prototype.hasOwnProperty.call(prefs.uds, c.cod)) {
+			return parseInt(prefs.uds[c.cod], 10) || 0;
+		}
+		var s = 0;
+		(tallas || []).forEach(function (t) {
+			var cel = celdasIn[claveVariante(c.cod, t.cod)];
+			s += cel ? Number(cel.sug) || 0 : 0;
+		});
+		return s;
+	}
+
+	function renderMatrizSugerencia(ctx) {
+		var $tb = $("#tablaMatrizSug");
+		if (!$tb.length) {
+			return;
+		}
+		var mz = ctx && ctx.matriz_articulos;
+		if (!mz || !(mz.colores || []).length || !(mz.tallas || []).length) {
+			$("#proyMatrizSugLabel").text("Sugerencia por color × talla");
+			$("#proyMatrizSugHint").text("");
+			$tb.html('<tbody><tr><td class="text-muted">Sin artículos color/talla para este modelo.</td></tr></tbody>');
+			return;
+		}
+		var bloque = null;
+		var titulo = "Sugerencia por color × talla";
+		if (decMesFoco && mz.por_mes && mz.por_mes[decMesFoco]) {
+			bloque = mz.por_mes[decMesFoco];
+			titulo = "Sugerencia · " + decMesFoco;
+		} else if (mz.plan) {
+			bloque = mz.plan;
+			titulo = "Sugerencia · " + (mz.plan.mix_label || "plan");
+		}
+		$("#proyMatrizSugLabel").text(titulo);
+		if (!bloque) {
+			$("#proyMatrizSugHint").text("Sin mix histórico para repartir la sugerencia.");
+			$tb.html('<tbody><tr><td class="text-muted">No hay ventas cerradas de ese mes para armar la curva.</td></tr></tbody>');
+			return;
+		}
+		var prefs = matrizPrefs();
+		var armado = armarCeldasMatriz(mz, bloque);
+		var celdas = armado.celdas;
+		var colores = (mz.colores || []).slice();
+		var tallas = mz.tallas || [];
+		colores.sort(function (a, b) {
+			var ta = 0;
+			var tbTot = 0;
+			tallas.forEach(function (t) {
+				var ca = celdas[claveVariante(a.cod, t.cod)];
+				var cb = celdas[claveVariante(b.cod, t.cod)];
+				ta += ca ? Number(ca.sug) || 0 : 0;
+				tbTot += cb ? Number(cb.sug) || 0 : 0;
+			});
+			if (a.nuevo !== b.nuevo) {
+				return a.nuevo ? 1 : -1;
+			}
+			return tbTot - ta;
+		});
+		var totTalla = {};
+		var totColor = {};
+		var tot = 0;
+		colores.forEach(function (c) {
+			totColor[c.cod] = 0;
+			tallas.forEach(function (t) {
+				if (totTalla[t.cod] == null) {
+					totTalla[t.cod] = 0;
+				}
+				if (prefs.off[c.cod]) {
+					return;
+				}
+				var cel = celdas[claveVariante(c.cod, t.cod)];
+				var v = cel ? Number(cel.sug) || 0 : 0;
+				totColor[c.cod] += v;
+				totTalla[t.cod] += v;
+				tot += v;
+			});
+		});
+		var html = "<thead><tr><th>Color</th>";
+		tallas.forEach(function (t) {
+			html += "<th>" + proyEsc(t.nombre) + "</th>";
+		});
+		html += "<th>Total</th></tr></thead><tbody>";
+		colores.forEach(function (c) {
+			var on = !prefs.off[c.cod];
+			var trCls = "proy-mx-row" + (on ? "" : " is-off") + (c.nuevo ? " is-nuevo" : "");
+			html += '<tr class="' + trCls + '" data-cod="' + proyEsc(c.cod) + '">';
+			html += '<th class="proy-mx-color">';
+			html += '<label class="proy-mx-lab">';
+			html += '<input type="checkbox" class="proy-mx-on" data-cod="' +
+				proyEsc(c.cod) + '"' + (on ? " checked" : "") + ">";
+			html += '<i style="background:' + proyColorVisual(c.nombre) + '"></i>';
+			html += '<span>' + proyEsc(c.nombre) + "</span>";
+			if (c.nuevo) {
+				html += ' <span class="proy-mx-badge" title="Sin venta o muy poca vs el resto (hace 2–3 años)">nuevo</span>';
+			}
+			html += "</label></th>";
+			tallas.forEach(function (t) {
+				if (!on) {
+					html += '<td class="text-muted">·</td>';
+					return;
+				}
+				var cel = celdas[claveVariante(c.cod, t.cod)];
+				var v = cel ? Number(cel.sug) || 0 : 0;
+				html += '<td class="' + (v ? "proy-mx-num" : "text-muted") + '">' +
+					(v ? num(v, 0) : "·") + "</td>";
+			});
+			if (on && c.nuevo) {
+				html += '<td class="proy-mx-tot proy-mx-tot-edit">';
+				html += '<input type="number" min="0" step="1" class="form-control input-sm proy-mx-uds" data-cod="' +
+					proyEsc(c.cod) + '" value="' + udsColorNuevo(c, bloque.celdas || {}, tallas, prefs) + '">';
+				html += "</td>";
+			} else {
+				html += '<td class="proy-mx-tot">' + (on ? num(totColor[c.cod], 0) : "·") + "</td>";
+			}
+			html += "</tr>";
+		});
+		html += '</tbody><tfoot><tr class="proy-tfoot"><td>Total</td>';
+		tallas.forEach(function (t) {
+			html += "<td>" + (totTalla[t.cod] ? num(totTalla[t.cod], 0) : "·") + "</td>";
+		});
+		html += "<td>" + num(tot, 0) + "</td></tr></tfoot>";
+		$tb.html(html);
+		var hint = "Reparto de " + num(armado.base, 0) + " uds entre colores tildados";
+		if (armado.baseOrig && armado.base !== armado.baseOrig) {
+			hint = "Sug. " + num(armado.base, 0) + " uds (original " + num(armado.baseOrig, 0) + ")";
+			var offNombres = [];
+			colores.forEach(function (c) {
+				if (prefs.off[c.cod]) {
+					offNombres.push(c.nombre);
+				}
+			});
+			if (offNombres.length && offNombres.length <= 4) {
+				hint += " · sin " + offNombres.join(", ");
+			} else if (offNombres.length) {
+				hint += " · sin " + offNombres.length + " colores";
+			}
+		}
+		if (bloque.mix_label) {
+			hint += " · mix " + bloque.mix_label;
+		}
+		hint += ". Nuevo = sin historia o muy poca venta vs el resto: editá el total. Clic en el color para tildar.";
+		if (armado.manual) {
+			hint += " Nuevos: " + num(armado.manual, 0) + " uds.";
+		}
+		$("#proyMatrizSugHint").text(hint);
+	}
+
+	function mixUdsPorColor(ctx) {
+		var mz = ctx && ctx.matriz_articulos;
+		var out = {};
+		if (!mz) {
+			return out;
+		}
+		var bloque = null;
+		if (decMesFoco && mz.por_mes && mz.por_mes[decMesFoco]) {
+			bloque = mz.por_mes[decMesFoco];
+		} else {
+			bloque = mz.plan;
+		}
+		var celdas = (bloque && bloque.celdas) || {};
+		(mz.colores || []).forEach(function (c) {
+			var s = 0;
+			(mz.tallas || []).forEach(function (t) {
+				var cel = celdas[claveVariante(c.cod, t.cod)];
+				s += cel ? Number(cel.sug) || 0 : 0;
+			});
+			out[c.cod] = s;
+		});
+		return out;
+	}
+
+	function normColorTxt(valor) {
+		return String(valor || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+	}
+
+	function colorMatrizOff(clave, prefs, coloresMz) {
+		if (prefs.off[clave]) {
+			return true;
+		}
+		var n = normColorTxt(clave);
+		var i;
+		for (i = 0; i < (coloresMz || []).length; i++) {
+			var c = coloresMz[i];
+			if (normColorTxt(c.cod) === n || normColorTxt(c.nombre) === n) {
+				return !!prefs.off[c.cod];
+			}
+		}
+		return false;
+	}
+
+	function mpTextoEsColorOff(it, prefs, coloresMz) {
+		var textos = [normColorTxt(it.color), normColorTxt(it.descripcion)].join(" ");
+		var i;
+		for (i = 0; i < (coloresMz || []).length; i++) {
+			var c = coloresMz[i];
+			if (!prefs.off[c.cod]) {
+				continue;
+			}
+			var nom = normColorTxt(c.nombre);
+			if (nom.length >= 4 && textos.indexOf(nom) !== -1) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function itemsMpSegunColores(ctx) {
+		var prefs = matrizPrefs();
+		var mix = mixUdsPorColor(ctx);
+		var items = ((ctx && ctx.mp_riesgo) || {}).items || [];
+		var coloresMz = ((ctx && ctx.matriz_articulos) || {}).colores || [];
+		var visibles = [];
+		if (!Object.keys(mix).length && !coloresMz.length) {
+			return items;
+		}
+		items.forEach(function (it) {
+			var cols = it.colores || [];
+			var uds = 0;
+			if (cols.length) {
+				var alguno = false;
+				cols.forEach(function (cod) {
+					if (!colorMatrizOff(cod, prefs, coloresMz)) {
+						alguno = true;
+						uds += Number(mix[cod]) || 0;
+					}
+				});
+				if (!alguno) {
+					return;
+				}
+			} else if (mpTextoEsColorOff(it, prefs, coloresMz)) {
+				return;
+			} else {
+				var algunoGen = false;
+				Object.keys(mix).forEach(function (cod) {
+					if (!prefs.off[cod]) {
+						algunoGen = true;
+						uds += Number(mix[cod]) || 0;
+					}
+				});
+				if (!algunoGen) {
+					return;
+				}
+			}
+			var cons = Number(it.consumo) || 0;
+			var req = cons > 0 ? cons * uds : 0;
+			visibles.push($.extend({}, it, { requerido: Math.round(req * 10) / 10 }));
+		});
+		return visibles;
+	}
+
+	function renderMpRiesgo(ctx) {
+		var $body = $("#proyMpRiesgoBody");
+		var $hint = $("#proyMpRiesgoHint");
+		if (!$body.length) {
+			return;
+		}
+		var data = (ctx && ctx.mp_riesgo) || {};
+		var items = itemsMpSegunColores(ctx).filter(function (it) {
+			return it.estado === "unico" || it.estado === "poco";
+		});
+		var labels = {
+			tela: "Telas",
+			blonda: "Blondas",
+			elastico: "Elásticos",
+			sesgo: "Sesgos",
+			tirante: "Tirantes"
+		};
+		var estLbl = {
+			unico: "1 artículo",
+			poco: "poca",
+			ok: "compartida"
+		};
+		if (!items.length) {
+			$hint.text(data.fuente
+				? "Ninguna MP de la receta está en alerta: todas están compartidas en varios artículos."
+				: "Este modelo no tiene receta publicada ni tarjeta con esas materias primas.");
+			$body.empty();
+			return;
+		}
+		var hint = "Solo MP en alerta (1 artículo o poca compartición)";
+		if (data.fuente === "tarjeta") {
+			hint += " · según la tarjeta";
+		} else if (data.version) {
+			hint += " · receta v" + data.version;
+		}
+		$hint.text(hint);
+		var html = '<table class="table table-condensed proy-table" id="tablaMpRiesgo">';
+		html += "<thead><tr><th>Tipo</th><th>Materia prima</th><th>Pide el plan</th><th>Artículos</th><th>Modelos</th><th></th></tr></thead><tbody>";
+		items.forEach(function (it) {
+			var und = it.unidad ? " " + it.unidad : "";
+			var nom = (it.descripcion || it.mp) + (it.color ? " · " + it.color : "");
+			html += '<tr class="proy-mp-row is-' + proyEsc(it.estado) + '">';
+			html += "<td>" + proyEsc(labels[it.tipo] || it.tipo);
+			if (it.tela_principal) {
+				html += ' <span class="proy-mp-prin" title="Tela que direcciona el corte">principal</span>';
+			}
+			html += "</td>";
+			html += "<td><strong>" + proyEsc(nom) + "</strong> <span class='text-muted'>" +
+				proyEsc(it.mp) + "</span></td>";
+			html += "<td>" + (it.requerido ? num(it.requerido, 1) + und : "·") + "</td>";
+			html += "<td>" + num(it.articulos || 0, 0) + "</td>";
+			html += "<td>" + num(it.modelos || 0, 0) + "</td>";
+			html += '<td><span class="proy-mp-est">' + (estLbl[it.estado] || it.estado) + "</span></td>";
+			html += "</tr>";
+		});
+		html += "</tbody></table>";
+		$body.html(html);
+	}
+
+	function renderDashboard(stats, dash, plan) {
+		if (!$("#proyDashCol").length) {
+			return;
+		}
+		stats = stats || {};
+		dash = dash || {};
+		plan = plan || planActual || {};
+
+		var proyectados = Number(stats.modelos_proyectados) || 0;
+		var pendientes = Number(stats.modelos_pendientes) || 0;
+		var activos = Number(stats.modelos_activos) || 0;
+		var avance = Number(stats.avance_pct) || 0;
+		var udsOfi = Number(stats.unidades_oficiales) || 0;
+		var udsSug = Number(stats.unidades_sugeridas) || 0;
+		var udsAj = Number(stats.unidades_ajustes) || 0;
+		var borrador = Number(stats.lineas_borrador) || 0;
+		var publicadas = Number(stats.lineas_publicadas) || 0;
+		var cerradas = Number(stats.lineas_cerradas) || 0;
+		var sin9 = Number(stats.lineas_sin_lista9) || 0;
+		var desvio = Number(dash.lineas_desvio) || 0;
+		var cero = Number(dash.modelos_cero) || 0;
+		var umbral = Number(dash.umbral_pct) || 10;
+		var fact = dash.factores || {};
+		var factN = Number(fact.aplicados) || 0;
+		var factMod = Number(fact.modelos) || 0;
+		var factAj = Number(fact.ajuste) || 0;
+		var catalogo = Number(dash.catalogo_activos) || 0;
+
+		if (plan && plan.id) {
+			$("#dashPlanTitulo").text((plan.nombre || ("Plan #" + plan.id)));
+			$("#dashPlanMeta").text(
+				nombreMesCorto(plan.mes_desde) + " " + plan.anio_desde +
+				" → " + nombreMesCorto(plan.mes_hasta) + " " + plan.anio_hasta +
+				" · " + (plan.estado || "")
+			);
+		}
+
+		var alertas = [];
+		if (pendientes > 0) {
+			alertas.push(chipAlerta("is-warn", "fa-clock-o", num(pendientes, 0) + " modelos sin proyectar"));
+		} else if (activos > 0) {
+			alertas.push(chipAlerta("is-ok", "fa-check", "Todos los modelos activos tienen proyección"));
+		}
+		if (borrador > 0) {
+			alertas.push(chipAlerta("is-warn", "fa-pencil", num(borrador, 0) + " líneas aún en borrador"));
+		}
+		if (sin9 > 0) {
+			alertas.push(chipAlerta("is-danger", "fa-tag", num(sin9, 0) + " líneas sin lista 9"));
+		}
+		if (cero > 0) {
+			alertas.push(chipAlerta("is-warn", "fa-ban", num(cero, 0) + " modelos en 0 unidades"));
+		}
+		if (desvio > 0) {
+			alertas.push(chipAlerta(
+				"is-warn",
+				"fa-balance-scale",
+				num(desvio, 0) + " líneas con desvío &gt; " + umbral + "% vs sug.+factores"
+			));
+		}
+		if (factN > 0) {
+			alertas.push(chipAlerta(
+				"is-ok",
+				"fa-sliders",
+				num(factN, 0) + " factores en " + num(factMod, 0) + " modelos (" +
+				(factAj > 0 ? "+" : "") + num(factAj, 0) + " uds)"
+			));
+		} else {
+			alertas.push(chipAlerta("is-neutral", "fa-sliders", "Ningún factor aplicado todavía"));
+		}
+		$("#dashAlertas").html(alertas.join(""));
+
+		var $tbMes = $("#dashTablaMeses tbody");
+		$tbMes.empty();
+		var meses = dash.meses || [];
+		if (!meses.length) {
+			$tbMes.append('<tr><td colspan="3" class="text-muted text-center">Todavía no hay meses cargados.</td></tr>');
+		} else {
+			meses.forEach(function (m) {
+				var ofi = Number(m.unidades_oficiales) || 0;
+				var sug = (Number(m.unidades_sugeridas) || 0) + (Number(m.unidades_ajustes) || 0);
+				var tr = $("<tr>");
+				tr.append($("<td>").text(nombreMesCorto(m.mes) + " " + m.anio));
+				tr.append($("<td class='text-right'>").text(num(ofi, 0)));
+				tr.append($("<td class='text-right'>").html(deltaTxt(ofi, sug)));
+				$tbMes.append(tr);
+			});
+		}
+
+		var marcas = {};
+		(modelosProyectadosCache || []).forEach(function (m) {
+			var k = m.marca || "Sin marca";
+			if (!marcas[k]) {
+				marcas[k] = { marca: k, proy: 0, pend: 0, uds: 0 };
+			}
+			marcas[k].proy += 1;
+			marcas[k].uds += Number(m.unidades_oficiales) || 0;
+		});
+		(modelosPendientesCache || []).forEach(function (m) {
+			var k = m.marca || "Sin marca";
+			if (!marcas[k]) {
+				marcas[k] = { marca: k, proy: 0, pend: 0, uds: 0 };
+			}
+			marcas[k].pend += 1;
+		});
+		var marcasArr = Object.keys(marcas).map(function (k) { return marcas[k]; });
+		marcasArr.sort(function (a, b) {
+			return (b.uds - a.uds) || (b.proy - a.proy) || a.marca.localeCompare(b.marca, "es");
+		});
+		var $tbMar = $("#dashTablaMarcas tbody");
+		$tbMar.empty();
+		if (!marcasArr.length) {
+			$tbMar.append('<tr><td colspan="4" class="text-muted text-center">—</td></tr>');
+		} else {
+			marcasArr.slice(0, 12).forEach(function (m) {
+				var tr = $("<tr>");
+				tr.append($("<td>").text(m.marca));
+				tr.append($("<td class='text-right'>").text(num(m.proy, 0)));
+				tr.append($("<td class='text-right'>").text(num(m.pend, 0)));
+				tr.append($("<td class='text-right'>").text(num(m.uds, 0)));
+				$tbMar.append(tr);
+			});
+		}
+
+		var cfg = [];
+		cfg.push("<li><em>Sugerencia</em> promedio del mismo mes en los 3 años previos, redondeado a 10.</li>");
+		cfg.push("<li><em>Oficial</em> es la cifra que confirman. Si se desvía más de " + umbral + "% vs sug.+factores, pide motivo.</li>");
+		cfg.push("<li><em>Factores</em> " + num(catalogo, 0) + " activos en el catálogo" +
+			(factN ? (" · " + num(factN, 0) + " aplicados en este plan") : "") +
+			'. <a href="index.php?ruta=proyeccion-comercial-factores">Configurar</a></li>');
+		cfg.push("<li><em>Publicar</em> congela lista 9 y deja la cifra lista para producción/logística.</li>");
+		$("#dashConfig").html(cfg.join(""));
 	}
 
 	function renderSelectProyectados(rows) {
@@ -511,9 +2005,10 @@
 			if (!resp || !resp.ok) {
 				return;
 			}
-			renderStats(resp.stats || {});
+			dashboardCache = resp.dashboard || null;
 			modelosProyectadosCache = resp.modelos_proyectados || [];
 			modelosPendientesCache = resp.modelos || [];
+			renderStats(resp.stats || {});
 			renderListaModelos();
 		});
 	}
@@ -824,6 +2319,11 @@
 	function abrirPlan(id, opts) {
 		opts = opts || {};
 		$("#proyIdPeriodo").val(id);
+		mostrarCargaBarra(opts.modelo ? "Abriendo el plan y el modelo…" : "Cargando el plan…");
+		if (opts.modelo) {
+			modeloSeleccionado = opts.modelo;
+			mostrarCargaModelo(opts.modelo);
+		}
 		var data = { id_periodo: id, q: $("#proyQ").val() || "" };
 		var mesSel = $("#filtroMesPlan").val();
 		if (mesSel) {
@@ -842,6 +2342,8 @@
 			if (mesSel) {
 				$("#filtroMesPlan").val(mesSel);
 			}
+			dashboardCache = resp.dashboard || null;
+			modelosProyectadosCache = resp.modelos_proyectados || [];
 			renderStats(resp.stats || {});
 			renderSelectProyectados(resp.modelos_proyectados || []);
 			cargarPendientesYStats();
@@ -853,9 +2355,15 @@
 				cargarEspacioModelo(!!opts.asegurar);
 			}
 		}).fail(function (xhr, status) {
+			ocultarCargaModelo();
+			$("#panelModeloVacio").show();
 			proyAlert(status === "timeout"
 				? "La carga del plan tardó demasiado."
 				: "Error de red al cargar el plan");
+		}).always(function () {
+			if (!opts.modelo) {
+				ocultarCargaBarra();
+			}
 		});
 	}
 
@@ -981,16 +2489,23 @@
 		}).join("") + "</div>";
 	}
 
-	function fmtDelta(actual, anterior, etiqueta) {
+	function fmtDelta(actual, anterior, etiqueta, compacto) {
 		if (actual == null || anterior == null || !isFinite(actual) || !isFinite(anterior)) {
-			return '<span class="text-muted">' +
+			return compacto ? "" : ('<span class="text-muted">' +
 				(etiqueta ? '<small class="proy-delta-lbl">' + etiqueta + "</small> " : "") +
-				"—</span>";
+				"—</span>");
 		}
 		var d = Number(actual) - Number(anterior);
 		var pct = Number(anterior) !== 0 ? (d / Math.abs(Number(anterior))) * 100 : null;
 		var cls = d > 0 ? "proy-delta-up" : (d < 0 ? "proy-delta-down" : "proy-delta-flat");
 		var arrow = d > 0 ? "▲" : (d < 0 ? "▼" : "•");
+		if (compacto) {
+			if (pct == null) {
+				return '<span class="' + cls + '">' + arrow + "</span>";
+			}
+			return '<span class="' + cls + '">' + arrow + " " +
+				(pct > 0 ? "+" : "") + pct.toFixed(0) + "%</span>";
+		}
 		var pctTxt = pct == null ? "" : " (" + (pct > 0 ? "+" : "") + pct.toFixed(0) + "%)";
 		return '<span class="' + cls + '">' +
 			(etiqueta ? '<small class="proy-delta-lbl">' + etiqueta + "</small> " : "") +
@@ -998,12 +2513,7 @@
 	}
 
 	function histValorNum(detalle, offset) {
-		var found = null;
-		(detalle || []).forEach(function (h) {
-			if (Number(h.offset) === offset) {
-				found = h;
-			}
-		});
+		var found = histItem(detalle, offset);
 		if (!found || found.sin_tabla || found.unidades === null || found.unidades === undefined) {
 			return null;
 		}
@@ -1013,20 +2523,129 @@
 		return Number(found.unidades);
 	}
 
-	/** Valor histórico + Δ vs el año anterior (mismo mes). Hace 3 no compara. */
-	function histConVsAnioAnt(detalle, offset, offsetPrev) {
+	function histItem(detalle, offset) {
+		var found = null;
+		(detalle || []).forEach(function (h) {
+			if (Number(h.offset) === offset) {
+				found = h;
+			}
+		});
+		return found;
+	}
+
+	function histEsCerrado(detalle, offset) {
+		var h = histItem(detalle, offset);
+		return !!(h && !h.sin_tabla && !h.periodo_abierto);
+	}
+
+	function offsetPeriodoCompleto(meses, est, offset) {
+		if (!meses || !meses.length) {
+			return false;
+		}
+		var i;
+		for (i = 0; i < meses.length; i++) {
+			var f = est[meses[i].periodo];
+			if (!histEsCerrado(f ? f.historial : [], offset)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function totOffsetPeriodo(meses, est, offset) {
+		var tot = 0;
+		(meses || []).forEach(function (m) {
+			var f = est[m.periodo];
+			var v = histValorCerrado(f ? f.historial : [], offset);
+			tot += v == null ? 0 : v;
+		});
+		return tot;
+	}
+
+	function rangoMesesPlan(meses) {
+		return txtRangoMeses((meses || []).map(function (m) {
+			return nombreMesCorto(m.mes != null ? m.mes : mesDesdePeriodo(m.periodo));
+		}));
+	}
+
+	function histValorCerrado(detalle, offset) {
+		var h = histItem(detalle, offset);
+		if (!h || h.sin_tabla || h.periodo_abierto) {
+			return null;
+		}
+		if (h.unidades === null || h.unidades === undefined) {
+			return 0;
+		}
+		return Number(h.unidades);
+	}
+
+	function histValorEnCurso(detalle, offset) {
+		var h = histItem(detalle, offset);
+		if (!h || h.sin_tabla || !h.periodo_abierto) {
+			return null;
+		}
+		if (h.unidades === null || h.unidades === undefined) {
+			return null;
+		}
+		return Number(h.unidades);
+	}
+
+	function histEstadoH1(detalle) {
+		var h = histItem(detalle, 1);
+		if (!h || h.sin_tabla) {
+			return "nd";
+		}
+		if (!h.periodo_abierto) {
+			return "cerrado";
+		}
+		if (h.unidades !== null && h.unidades !== undefined) {
+			return "en_curso";
+		}
+		return "pendiente";
+	}
+
+	function histAnio(detalle, offset) {
+		var h = histItem(detalle, offset);
+		return h && h.anio != null ? Number(h.anio) : null;
+	}
+
+	function txtRangoMeses(nombres) {
+		if (!nombres || !nombres.length) {
+			return "";
+		}
+		var first = String(nombres[0]).toLowerCase();
+		var last = String(nombres[nombres.length - 1]).toLowerCase();
+		return nombres.length === 1 ? first : first + "–" + last;
+	}
+
+	function tonoPct(pct) {
+		if (pct == null || !isFinite(pct)) {
+			return "";
+		}
+		if (pct > 0.5) {
+			return "is-pos";
+		}
+		if (pct < -0.5) {
+			return "is-neg";
+		}
+		return "";
+	}
+
+	/** Valor histórico + % vs el año anterior, todo en una línea. */
+	function histCellVs(detalle, offset, offsetPrev) {
 		var udsHtml = histUds(detalle, offset);
 		if (offsetPrev == null) {
-			return udsHtml;
+			return { html: udsHtml, cls: "" };
 		}
 		var actual = histValorNum(detalle, offset);
 		var prev = histValorNum(detalle, offsetPrev);
 		if (actual == null || prev == null) {
-			return '<div class="proy-hist-anio-cell">' + udsHtml +
-				'<div class="proy-hist-vs text-muted">vs ant. —</div></div>';
+			return { html: udsHtml, cls: "" };
 		}
-		return '<div class="proy-hist-anio-cell">' + udsHtml +
-			'<div class="proy-hist-vs">' + fmtDelta(actual, prev, "vs") + "</div></div>";
+		return {
+			html: udsHtml + " " + fmtDelta(actual, prev, "", true),
+			cls: tonoPct(pctCambio(actual, prev))
+		};
 	}
 
 	function mapaEstacional(ctx) {
@@ -1048,6 +2667,8 @@
 			$("#lblTendenciaHist").text("");
 			$("#lblGlobalHist").text("");
 			$tb.append('<tr><td colspan="7" class="text-muted text-center">Sin historial estacional</td></tr>');
+			renderMatrizSugerencia(ctx);
+			renderMpRiesgo(ctx);
 			return;
 		}
 		var prevSug = null;
@@ -1055,33 +2676,52 @@
 		var lastSug = null;
 		var totSug = 0;
 		var nSug = 0;
-		var totH1 = 0;
-		var nH1 = 0;
-		var totH2 = 0;
-		var nH2 = 0;
-		var totH3 = 0;
-		var nH3 = 0;
 		var totProm = 0;
 		var nProm = 0;
+		var anioH1 = null;
+		var anioH2 = null;
+		var anioH3 = null;
+		var mesesHist = filas.map(function (f) {
+			return {
+				periodo: f.periodo,
+				mes: f.mes != null ? f.mes : mesDesdePeriodo(f.periodo),
+				anio: f.anio
+			};
+		});
+		var estHist = mapaEstacional(ctx);
+		var h1Ok = offsetPeriodoCompleto(mesesHist, estHist, 1);
+		var h2Ok = offsetPeriodoCompleto(mesesHist, estHist, 2);
+		var h3Ok = offsetPeriodoCompleto(mesesHist, estHist, 3);
+		var totH1Per = h1Ok ? totOffsetPeriodo(mesesHist, estHist, 1) : null;
+		var totH2Per = h2Ok ? totOffsetPeriodo(mesesHist, estHist, 2) : null;
+		var totH3Per = h3Ok ? totOffsetPeriodo(mesesHist, estHist, 3) : null;
 
 		filas.forEach(function (f) {
 			var sug = f.sugerencia || {};
 			var sugCalc = sug.unidades != null ? Number(sug.unidades) : null;
-			var sugTxt = sugCalc != null ? "<strong>" + num(sugCalc, 0) + "</strong>" : "—";
+			var sugTxt = sugCalc != null ? '<strong class="proy-hist-sug">' + num(sugCalc, 0) + "</strong>" : "—";
 			if (sug.sin_historia) {
 				sugTxt += ' <span class="text-muted">sin hist.</span>';
 			}
-			var h1 = histValorNum(f.historial, 1);
-			var h2 = histValorNum(f.historial, 2);
-			var h3 = histValorNum(f.historial, 3);
+			var c1 = histCellVs(f.historial, 1, 2);
+			var c2 = histCellVs(f.historial, 2, 3);
+			var c3 = histCellVs(f.historial, 3, null);
+			var v1 = histValorNum(f.historial, 1);
+			var v2 = histValorNum(f.historial, 2);
+			var v3 = histValorNum(f.historial, 3);
+			var band = bandaSugMes(sugCalc, v1 != null ? v1 : v2, v1 != null ? v2 : v3);
+			var sugCls = band === "alta" ? "is-alta" : (band === "baja" ? "is-baja" : (band === "rango" ? "is-ok" : ""));
+			var dCls = tonoPct(pctCambio(sugCalc, prevSug));
 			$tb.append(
-				"<tr><td><strong>" + f.periodo + "</strong></td>" +
-				"<td>" + histConVsAnioAnt(f.historial, 1, 2) + "</td>" +
-				"<td>" + histConVsAnioAnt(f.historial, 2, 3) + "</td>" +
-				"<td>" + histConVsAnioAnt(f.historial, 3, null) + "</td>" +
+				'<tr class="proy-hist-mes' + (decMesFoco === f.periodo ? " is-foco" : "") +
+				'" data-periodo="' + f.periodo + '" title="Clic para ver este mes en el panorama">' +
+				"<td><strong>" + f.periodo + "</strong></td>" +
+				'<td class="' + c1.cls + '">' + c1.html + "</td>" +
+				'<td class="' + c2.cls + '">' + c2.html + "</td>" +
+				'<td class="' + c3.cls + '">' + c3.html + "</td>" +
 				"<td>" + (sug.promedio_simple != null ? num(sug.promedio_simple, 1) : "—") + "</td>" +
-				"<td>" + sugTxt + "</td>" +
-				"<td>" + fmtDelta(sugCalc, prevSug) + "</td></tr>"
+				'<td class="' + sugCls + '">' + sugTxt + "</td>" +
+				'<td class="' + dCls + '">' + fmtDelta(sugCalc, prevSug, "", true) + "</td></tr>"
 			);
 			if (sugCalc != null) {
 				if (firstSug == null) {
@@ -1092,38 +2732,42 @@
 				totSug += sugCalc;
 				nSug++;
 			}
-			if (h1 != null) {
-				totH1 += h1;
-				nH1++;
-			}
-			if (h2 != null) {
-				totH2 += h2;
-				nH2++;
-			}
-			if (h3 != null) {
-				totH3 += h3;
-				nH3++;
-			}
 			if (sug.promedio_simple != null) {
 				totProm += Number(sug.promedio_simple);
 				nProm++;
 			}
+			if (!anioH1) {
+				anioH1 = histAnio(f.historial, 1);
+			}
+			if (!anioH2) {
+				anioH2 = histAnio(f.historial, 2);
+			}
+			if (!anioH3) {
+				anioH3 = histAnio(f.historial, 3);
+			}
 		});
 
+		var totRef = h1Ok ? totH1Per : totH2Per;
+		var pieLbl = "Total " + (rangoMesesPlan(mesesHist) || "periodo");
+		var pieH1 = h1Ok
+			? "<strong>" + num(totH1Per, 0) + "</strong>"
+			: '— <span class="text-muted">incompleto</span>';
+		var pieH2 = h2Ok
+			? "<strong>" + num(totH2Per, 0) + "</strong>" +
+				(h2Ok && h3Ok ? " " + fmtDelta(totH2Per, totH3Per, "", true) : "")
+			: "—";
+		var pieSug = nSug
+			? '<strong class="proy-hist-sug">' + num(totSug, 0) + "</strong>" +
+				(totRef != null ? " " + fmtDelta(totSug, totRef, "", true) : "")
+			: "—";
 		$tf.html(
-			"<tr class='proy-hist-total'>" +
-			"<td><strong>Total periodo</strong></td>" +
-			"<td><strong>" + (nH1 ? num(totH1, 0) : "—") + "</strong>" +
-				(nH1 && nH2 ? '<div class="proy-hist-vs">' + fmtDelta(totH1, totH2, "vs") + "</div>" : "") +
-			"</td>" +
-			"<td><strong>" + (nH2 ? num(totH2, 0) : "—") + "</strong>" +
-				(nH2 && nH3 ? '<div class="proy-hist-vs">' + fmtDelta(totH2, totH3, "vs") + "</div>" : "") +
-			"</td>" +
-			"<td><strong>" + (nH3 ? num(totH3, 0) : "—") + "</strong></td>" +
+			"<tr class='proy-tfoot'>" +
+			"<td><strong>" + pieLbl + "</strong></td>" +
+			"<td>" + pieH1 + "</td>" +
+			"<td>" + pieH2 + "</td>" +
+			"<td><strong>" + (h3Ok ? num(totH3Per, 0) : "—") + "</strong></td>" +
 			"<td>" + (nProm ? num(totProm, 0) : "—") + "</td>" +
-			"<td><strong>" + (nSug ? num(totSug, 0) : "—") + "</strong>" +
-				(nSug && nH1 ? '<div class="proy-hist-vs">' + fmtDelta(totSug, totH1, "vs año") + "</div>" : "") +
-			"</td>" +
+			"<td>" + pieSug + "</td>" +
 			"<td>—</td>" +
 			"</tr>"
 		);
@@ -1134,7 +2778,7 @@
 			var sentido = dTot > 0 ? "crece" : (dTot < 0 ? "baja" : "se mantiene");
 			var pctPart = pctTot == null ? "" : " (" + (pctTot > 0 ? "+" : "") + pctTot.toFixed(0) + "%)";
 			$("#lblTendenciaHist").html(
-				"Tendencia mes a mes en el plan: <strong>" + sentido + "</strong> " +
+				"Sugerencia del plan: <strong>" + sentido + "</strong> " +
 				num(firstSug, 0) + " → " + num(lastSug, 0) +
 				" · Δ " + (dTot > 0 ? "+" : "") + num(dTot, 0) + pctPart +
 				"."
@@ -1145,22 +2789,29 @@
 
 		if (nSug) {
 			var vsAnioTxt = "";
-			if (nH1) {
-				var dAnio = totSug - totH1;
-				var pctAnio = totH1 !== 0 ? (dAnio / Math.abs(totH1)) * 100 : null;
+			if (totRef != null) {
+				var dAnio = totSug - totRef;
+				var pctAnio = totRef !== 0 ? (dAnio / Math.abs(totRef)) * 100 : null;
 				var sentAnio = dAnio > 0 ? "arriba" : (dAnio < 0 ? "abajo" : "igual");
-				vsAnioTxt = " · sugerencia <strong>" + sentAnio + "</strong> vs hace 1 año: " +
-					num(totSug, 0) + " vs " + num(totH1, 0) +
+				var anioRef = h1Ok ? anioH1 : anioH2;
+				var anioTxt = anioRef ? String(anioRef) : "último año cerrado";
+				vsAnioTxt = " · vs " + anioTxt + " (periodo cerrado): <strong>" + sentAnio + "</strong> " +
+					num(totSug, 0) + " vs " + num(totRef, 0) +
 					" · Δ " + (dAnio > 0 ? "+" : "") + num(dAnio, 0) +
 					(pctAnio == null ? "" : " (" + (pctAnio > 0 ? "+" : "") + pctAnio.toFixed(0) + "%)");
 			}
+			var abiertoTxt = h1Ok
+				? ""
+				: " · " + (anioH1 ? anioH1 : "el año anterior") + " no entra (periodo incompleto)";
 			$("#lblGlobalHist").html(
 				"Global del periodo: sugerencia <strong>" + num(totSug, 0) + "</strong> uds" +
-				vsAnioTxt + "."
+				vsAnioTxt + abiertoTxt + "."
 			);
 		} else {
 			$("#lblGlobalHist").text("");
 		}
+		renderMatrizSugerencia(ctx);
+		renderMpRiesgo(ctx);
 	}
 
 	function destroyMotivoPickers() {
@@ -1204,10 +2855,7 @@
 		}
 		lineas.forEach(function (l) {
 			var editable = puedeEditar && l.estado_linea !== "CERRADO";
-			var sugMes = Number(l.unidades_sugeridas) || 0;
-			if (ctx && ctx.sugerencias && ctx.sugerencias[l.periodo] && ctx.sugerencias[l.periodo].unidades != null) {
-				sugMes = Number(ctx.sugerencias[l.periodo].unidades) || 0;
-			}
+			var sugMes = sugDeLinea(l, ctx);
 			var aj = Number(l.unidades_ajustes) || 0;
 			var base = Math.max(0, sugMes + aj);
 			var ofi = Number(l.unidades_oficiales) || 0;
@@ -1544,6 +3192,7 @@
 						}
 					});
 					renderMesesModelo(espacioActual.lineas, espacioActual.contexto);
+					renderDecisionModelo(espacioActual);
 				}
 				renderChecksCatalogo(resp);
 				refrescarResumenFactoresModelo();
@@ -1578,6 +3227,8 @@
 		if (String($("#proyModeloActivo").val() || "") !== String(cab.modelo || "")) {
 			mesFactorLineaId = "";
 		}
+		ocultarCargaModelo();
+		ocultarCargaBarra();
 		$("#panelModeloVacio").hide();
 		$("#panelModeloActivo").show();
 		$("#proyModeloActivo").val(cab.modelo);
@@ -1597,7 +3248,11 @@
 		$("#kpiProceso").text(num(c.inventario.en_proceso, 0));
 		renderHistEstacional(c, resp.lineas || []);
 		renderMesesModelo(resp.lineas || [], c);
+		if (hayColoresOff()) {
+			aplicarSugColoresAOficial();
+		}
 		renderFactoresPorMes(resp.factores_por_mes || []);
+		renderDecisionModelo(resp);
 		$("#proyConcModelo").val(cab.modelo);
 		if (resp.catalogo_factores) {
 			// mantener tabla catálogo si ya cargamos todos; solo refrescar checks
@@ -1616,6 +3271,8 @@
 			return;
 		}
 		modeloSeleccionado = modelo;
+		mostrarCargaBarra("Cargando " + modelo + "…");
+		mostrarCargaModelo(modelo);
 		var $item = $(".proy-lista-item[data-modelo='" + modelo.replace(/'/g, "") + "']");
 		$item.addClass("is-loading");
 		$item.find(".btnListaModelo").prop("disabled", true);
@@ -1625,14 +3282,21 @@
 			asegurar: asegurar ? 1 : 0
 		}).done(function (resp) {
 			if (!resp || !resp.ok) {
+				ocultarCargaModelo();
+				$("#panelModeloVacio").show();
+				$("#decVacio").show();
 				proyAlert((resp && resp.mensaje) || "No se pudo abrir el modelo");
 				return;
 			}
 			renderEspacio(resp);
 			cargarPendientesYStats();
 		}).fail(function (xhr, status) {
+			ocultarCargaModelo();
+			$("#panelModeloVacio").show();
+			$("#decVacio").show();
 			proyAlert(status === "timeout" ? "Timeout al abrir el modelo" : "Error de red");
 		}).always(function () {
+			ocultarCargaBarra();
 			$(".proy-lista-item").removeClass("is-loading");
 			$(".proy-lista-item .btnListaModelo").prop("disabled", false);
 			renderListaModelos();
@@ -1641,6 +3305,44 @@
 
 	function redondeo10(n) {
 		return Math.max(0, Math.round(Number(n) / 10) * 10);
+	}
+
+	function hayColoresOff() {
+		var off = (matrizPrefs().off) || {};
+		var k;
+		for (k in off) {
+			if (off.hasOwnProperty(k) && off[k]) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function aplicarSugColoresAOficial() {
+		if ($("#proyPuedeEditar").val() !== "1" || !espacioActual) {
+			return;
+		}
+		var ctx = espacioActual.contexto;
+		(espacioActual.lineas || []).forEach(function (l) {
+			if (l.estado_linea === "CERRADO") {
+				return;
+			}
+			var $inp = $(".inpOficialModelo[data-id='" + l.id + "']");
+			if (!$inp.length) {
+				return;
+			}
+			var sugAdj = ajustarSugPorColores(sugDeLinea(l, ctx), l.periodo, ctx);
+			var aj = Number(l.unidades_ajustes) || 0;
+			var base = Math.max(0, sugAdj + aj);
+			var ofi = redondeo10(base);
+			$inp.data("sug", sugAdj);
+			$inp.data("aj", aj);
+			$inp.data("base", base);
+			$inp.val(ofi);
+			$inp.closest("tr").find(".inpPctMes").data("base", base);
+			l.unidades_oficiales = ofi;
+			syncPctFromOficial($inp);
+		});
 	}
 
 	function syncPctFromOficial($input) {
@@ -1673,6 +3375,9 @@
 			$(this).val(ofi);
 			syncPctFromOficial($(this));
 		});
+		if (espacioActual) {
+			renderDecisionModelo(espacioActual);
+		}
 	}
 
 	function guardarModelo() {
@@ -2122,14 +3827,24 @@
 			return;
 		}
 		puedeEditarPlanes = $("#proyPuedeEditar").val() === "1";
+		matrizPrefsLoad();
 		initFechas();
 		initSelectsModelo();
 		// mesFactorSelect se (re)inicializa en llenarSelectMesFactores
 		cargarCatalogo();
 		cargarTiposFactor();
+		var planIni = parseInt($("#proyPlanInicial").val() || "0", 10);
+		var modeloIni = $.trim($("#proyModeloInicial").val() || "");
+		if (planIni > 0) {
+			$("#pantallaListado").hide();
+			$("#pantallaPlan").show();
+			mostrarCargaBarra(modeloIni ? "Recargando el modelo…" : "Abriendo el plan…");
+			if (modeloIni) {
+				modeloSeleccionado = modeloIni;
+				mostrarCargaModelo(modeloIni);
+			}
+		}
 		listarPlanes().always(function () {
-			var planIni = parseInt($("#proyPlanInicial").val() || "0", 10);
-			var modeloIni = $.trim($("#proyModeloInicial").val() || "");
 			if (planIni > 0) {
 				abrirPlan(planIni, modeloIni ? { modelo: modeloIni, asegurar: true } : {});
 			} else {
@@ -2192,13 +3907,77 @@
 				abrirPlan(id);
 			}
 		});
+		$(document).on("click", "#tablaHistEstacional tbody tr.proy-hist-mes", function () {
+			setMesFoco($(this).attr("data-periodo") || "");
+		});
+		$(document).on("click", "#tablaHistEstacionalFoot tr", function () {
+			if (decMesFoco) {
+				setMesFoco(null);
+			}
+		});
+		$("#decVerPlan").on("click", function (e) {
+			e.preventDefault();
+			setMesFoco(null);
+		});
+		$(document).on("change", "#tablaMatrizSug .proy-mx-on", function () {
+			var prefs = matrizPrefs();
+			var cod = String($(this).attr("data-cod") || "");
+			if ($(this).is(":checked")) {
+				delete prefs.off[cod];
+			} else {
+				prefs.off[cod] = 1;
+			}
+			matrizPrefsSave();
+			if (espacioActual) {
+				aplicarSugColoresAOficial();
+				renderHistEstacional(espacioActual.contexto, espacioActual.lineas);
+				renderDecisionModelo(espacioActual);
+			}
+		});
+		$(document).on("change", "#tablaMatrizSug .proy-mx-uds", function () {
+			var prefs = matrizPrefs();
+			var cod = String($(this).attr("data-cod") || "");
+			var raw = String($(this).val() || "").trim();
+			var v = parseInt(raw, 10);
+			if (raw === "" || isNaN(v) || v < 0) {
+				delete prefs.uds[cod];
+			} else {
+				prefs.uds[cod] = v;
+			}
+			matrizPrefsSave();
+			if (espacioActual) {
+				renderMatrizSugerencia(espacioActual.contexto);
+			}
+		});
+		$(document).on("click", "#tablaMatrizSug .proy-mx-on, #tablaMatrizSug .proy-mx-uds", function (e) {
+			e.stopPropagation();
+		});
+		$(document).on("focus", "#tablaMatrizSug .proy-mx-uds", function () {
+			this.select();
+		});
 
 
 		$(document).on("input", ".inpOficialModelo", function () {
 			syncPctFromOficial($(this));
+			if (espacioActual) {
+				if (decChartTimer) {
+					clearTimeout(decChartTimer);
+				}
+				decChartTimer = setTimeout(function () {
+					renderDecisionModelo(espacioActual);
+				}, 280);
+			}
 		});
 		$(document).on("input", ".inpPctMes", function () {
 			syncOficialFromPct($(this));
+			if (espacioActual) {
+				if (decChartTimer) {
+					clearTimeout(decChartTimer);
+				}
+				decChartTimer = setTimeout(function () {
+					renderDecisionModelo(espacioActual);
+				}, 280);
+			}
 		});
 		$(document).on("changed.bs.select change", ".selMotivoDesv", function () {
 			var $tr = $(this).closest("tr");

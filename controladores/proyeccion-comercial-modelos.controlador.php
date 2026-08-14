@@ -300,6 +300,7 @@ class ControladorProyeccionComercialModelos
 				"plan" => $cab,
 				"lineas" => $lineas,
 				"stats" => $stats,
+				"dashboard" => ModeloProyeccionComercialModelos::mdlDashboardPeriodo($idPeriodo),
 				"modelos_proyectados" => $proyectados,
 				"permisos" => array(
 					"editar" => self::ctrPuede("editar"),
@@ -647,6 +648,7 @@ class ControladorProyeccionComercialModelos
 				"modelos" => $modelos,
 				"total" => count($modelos),
 				"stats" => ModeloProyeccionComercialModelos::mdlEstadisticasPeriodo($idPeriodo),
+				"dashboard" => ModeloProyeccionComercialModelos::mdlDashboardPeriodo($idPeriodo),
 				"modelos_proyectados" => ModeloProyeccionComercialModelos::mdlModelosProyectadosPeriodo($idPeriodo)
 			);
 		} catch (Exception $e) {

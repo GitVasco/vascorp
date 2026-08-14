@@ -455,6 +455,102 @@ class ModeloProyeccionComercialModelos
 		return $serie;
 	}
 
+	static public function mdlTendenciaReciente($modelo)
+	{
+		$vacio = array(
+			"hasta" => null,
+			"anio" => null,
+			"anio_ant" => null,
+			"rango" => "",
+			"n_meses" => 0,
+			"uds" => null,
+			"uds_anio_ant" => null,
+			"pct" => null,
+			"rango_3" => "",
+			"uds_3" => null,
+			"uds_3_anio_ant" => null,
+			"pct_3" => null
+		);
+		$modelo = trim((string) $modelo);
+		if ($modelo === "") {
+			return $vacio;
+		}
+		$ultimo = self::mdlSumarMeses((int) date("Y"), (int) date("n"), -1);
+		$anio = (int) $ultimo["anio"];
+		$mesHasta = (int) $ultimo["mes"];
+		if ($anio < self::ANIO_MIN || $mesHasta < 1 || $mesHasta > 12) {
+			return $vacio;
+		}
+
+		$anioAnt = $anio - 1;
+		$anios = array();
+		foreach (array($anioAnt, $anio) as $a) {
+			if ($a >= self::ANIO_MIN && ModeloFichaGerencialModelos::mdlResolverTablaMovimientos($a) !== null) {
+				$anios[] = $a;
+			}
+		}
+		if (empty($anios)) {
+			return $vacio;
+		}
+
+		$inicio = sprintf("%04d-01-01", $anioAnt);
+		$fin = $mesHasta === 12
+			? sprintf("%04d-01-01", $anio + 1)
+			: sprintf("%04d-%02d-01", $anio, $mesHasta + 1);
+		$ventas = self::mdlVentasMensualesLote(array($modelo), array(
+			"inicio" => $inicio,
+			"fin" => $fin,
+			"anios" => $anios
+		));
+		$mapa = isset($ventas[$modelo]) ? $ventas[$modelo] : array();
+
+		$sumar = function ($anioS, $mesDesde, $mesHastaS) use ($mapa) {
+			$t = 0.0;
+			for ($m = (int) $mesDesde; $m <= (int) $mesHastaS; $m++) {
+				$clave = sprintf("%04d-%02d", (int) $anioS, $m);
+				if (isset($mapa[$clave])) {
+					$t += (float) $mapa[$clave]["unidades_vendidas"];
+				}
+			}
+			return $t;
+		};
+
+		$uds = $sumar($anio, 1, $mesHasta);
+		$udsAnt = $sumar($anioAnt, 1, $mesHasta);
+		$pct = ($udsAnt != 0.0) ? (($uds - $udsAnt) / abs($udsAnt)) * 100.0 : null;
+
+		$nombres = array(1 => "ene", 2 => "feb", 3 => "mar", 4 => "abr", 5 => "may", 6 => "jun",
+			7 => "jul", 8 => "ago", 9 => "sep", 10 => "oct", 11 => "nov", 12 => "dic");
+		$rango = $nombres[1] . "–" . $nombres[$mesHasta] . " " . $anio;
+
+		$uds3 = null;
+		$uds3Ant = null;
+		$pct3 = null;
+		$rango3 = "";
+		if ($mesHasta >= 3) {
+			$mesDesde3 = $mesHasta - 2;
+			$uds3 = $sumar($anio, $mesDesde3, $mesHasta);
+			$uds3Ant = $sumar($anioAnt, $mesDesde3, $mesHasta);
+			$pct3 = ($uds3Ant != 0.0) ? (($uds3 - $uds3Ant) / abs($uds3Ant)) * 100.0 : null;
+			$rango3 = $nombres[$mesDesde3] . "–" . $nombres[$mesHasta];
+		}
+
+		return array(
+			"hasta" => sprintf("%04d-%02d", $anio, $mesHasta),
+			"anio" => $anio,
+			"anio_ant" => $anioAnt,
+			"rango" => $rango,
+			"n_meses" => $mesHasta,
+			"uds" => (int) round($uds),
+			"uds_anio_ant" => (int) round($udsAnt),
+			"pct" => ($pct === null) ? null : round($pct, 1),
+			"rango_3" => $rango3,
+			"uds_3" => ($uds3 === null) ? null : (int) round($uds3),
+			"uds_3_anio_ant" => ($uds3Ant === null) ? null : (int) round($uds3Ant),
+			"pct_3" => ($pct3 === null) ? null : round($pct3, 1)
+		);
+	}
+
 	static public function mdlPromedioMovil($serieUnidades, $n)
 	{
 		$n = (int) $n;
@@ -878,6 +974,749 @@ class ModeloProyeccionComercialModelos
 		);
 	}
 
+	static public function mdlNombreMesCorto($mes)
+	{
+		$n = array(
+			1 => "Ene", 2 => "Feb", 3 => "Mar", 4 => "Abr",
+			5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Ago",
+			9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dic"
+		);
+		$mes = (int) $mes;
+		return isset($n[$mes]) ? $n[$mes] : (string) $mes;
+	}
+
+	static public function mdlClaveVariante($codColor, $codTalla)
+	{
+		return trim((string) $codColor) . "|" . trim((string) $codTalla);
+	}
+
+	static public function mdlRepartirEnteros($total, $pesos)
+	{
+		$total = (int) round((float) $total);
+		$out = array();
+		$suma = 0.0;
+		foreach ((array) $pesos as $k => $p) {
+			$out[$k] = 0;
+			$suma += (float) $p;
+		}
+		if ($total <= 0 || $suma <= 0 || empty($out)) {
+			return $out;
+		}
+		$fracs = array();
+		$asignado = 0;
+		foreach ($pesos as $k => $p) {
+			$v = $total * ((float) $p / $suma);
+			$ent = (int) floor($v);
+			$out[$k] = $ent;
+			$asignado += $ent;
+			$fracs[$k] = $v - $ent;
+		}
+		$resto = $total - $asignado;
+		arsort($fracs, SORT_NUMERIC);
+		foreach ($fracs as $k => $ignore) {
+			if ($resto <= 0) {
+				break;
+			}
+			$out[$k]++;
+			$resto--;
+		}
+		return $out;
+	}
+
+	static public function mdlCatalogoVariantes($modelo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT articulo,
+				TRIM(IFNULL(cod_color, '')) AS cod_color,
+				IFNULL(NULLIF(TRIM(color), ''), TRIM(cod_color)) AS color,
+				TRIM(IFNULL(cod_talla, '')) AS cod_talla,
+				IFNULL(NULLIF(TRIM(talla), ''), TRIM(cod_talla)) AS talla,
+				UPPER(TRIM(IFNULL(estado, ''))) AS estado
+			FROM articulojf
+			WHERE TRIM(modelo) = :modelo"
+		);
+		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+		$stmt->execute();
+		$articulos = array();
+		$colores = array();
+		$tallas = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+			$codC = (string) $fila["cod_color"];
+			$codT = (string) $fila["cod_talla"];
+			$estado = (string) $fila["estado"];
+			$activo = ($estado === "ACTIVO" || $estado === "CAMPAÑAD" || $estado === "CAMPANAD");
+			$articulos[$fila["articulo"]] = array(
+				"cod_color" => $codC,
+				"color" => trim((string) $fila["color"]),
+				"cod_talla" => $codT,
+				"talla" => trim((string) $fila["talla"]),
+				"activo" => $activo
+			);
+			if (!$activo) {
+				continue;
+			}
+			$claveC = $codC === "" ? "_" : $codC;
+			$claveT = $codT === "" ? "_" : $codT;
+			if (!isset($colores[$claveC])) {
+				$colores[$claveC] = array(
+					"cod" => $codC,
+					"nombre" => trim((string) $fila["color"]) !== "" ? trim($fila["color"]) : "(s/color)",
+					"activo" => true
+				);
+			}
+			if (!isset($tallas[$claveT])) {
+				$tallas[$claveT] = array(
+					"cod" => $codT,
+					"nombre" => trim((string) $fila["talla"]) !== "" ? trim($fila["talla"]) : "(s/talla)",
+					"ord" => ctype_digit($codT) ? (int) $codT : 1000,
+					"activo" => true
+				);
+			}
+		}
+		uasort($tallas, function ($a, $b) {
+			if ($a["ord"] === $b["ord"]) {
+				return strcasecmp($a["nombre"], $b["nombre"]);
+			}
+			return $a["ord"] < $b["ord"] ? -1 : 1;
+		});
+		uasort($colores, function ($a, $b) {
+			return strcasecmp($a["nombre"], $b["nombre"]);
+		});
+		return array(
+			"articulos" => $articulos,
+			"colores" => array_values($colores),
+			"tallas" => array_values($tallas)
+		);
+	}
+
+	static public function mdlVentasColorTallaMeses($modelo, $periodos)
+	{
+		$periodos = array_values(array_unique(array_filter((array) $periodos)));
+		$out = array();
+		foreach ($periodos as $p) {
+			$out[$p] = array();
+		}
+		if (empty($periodos)) {
+			return $out;
+		}
+		$cat = self::mdlCatalogoVariantes($modelo);
+		$arts = $cat["articulos"];
+		if (empty($arts)) {
+			return $out;
+		}
+		$anios = array();
+		$mesesPorAnio = array();
+		foreach ($periodos as $p) {
+			$anio = (int) substr($p, 0, 4);
+			$mes = (int) substr($p, 5, 2);
+			if ($anio < self::ANIO_MIN || $mes < 1 || $mes > 12) {
+				continue;
+			}
+			$anios[$anio] = true;
+			if (!isset($mesesPorAnio[$anio])) {
+				$mesesPorAnio[$anio] = array();
+			}
+			$mesesPorAnio[$anio][$mes] = true;
+		}
+		$listaArts = array();
+		foreach ($arts as $art => $info) {
+			if (!empty($info["activo"])) {
+				$listaArts[] = $art;
+			}
+		}
+		if (empty($listaArts)) {
+			return $out;
+		}
+		$pdo = Conexion::conectar();
+		foreach (array_keys($anios) as $anio) {
+			$tabla = ModeloFichaGerencialModelos::mdlResolverTablaMovimientos($anio);
+			if ($tabla === null) {
+				continue;
+			}
+			$inicio = sprintf("%04d-01-01", $anio);
+			$fin = sprintf("%04d-01-01", $anio + 1);
+			$chunks = array_chunk($listaArts, 400);
+			foreach ($chunks as $idx => $chunk) {
+				$marcadores = array();
+				foreach ($chunk as $i => $art) {
+					$marcadores[] = ":art_{$anio}_{$idx}_{$i}";
+				}
+				$sql = "SELECT m.articulo,
+						MONTH(m.fecha) AS mes,
+						COALESCE(SUM(IFNULL(m.cantidad, 0)), 0) AS unidades
+					FROM {$tabla} m
+					WHERE m.articulo IN (" . implode(", ", $marcadores) . ")
+					  AND m.fecha >= :inicio AND m.fecha < :fin
+					  AND " . ModeloFichaGerencialModelos::sqlTiposVenta("m") . "
+					  AND " . ModeloFichaGerencialModelos::sqlCabeceraValida("m") . "
+					GROUP BY m.articulo, MONTH(m.fecha)";
+				$stmt = $pdo->prepare($sql);
+				foreach ($chunk as $i => $art) {
+					$stmt->bindValue(":art_{$anio}_{$idx}_{$i}", $art, PDO::PARAM_STR);
+				}
+				$stmt->bindValue(":inicio", $inicio, PDO::PARAM_STR);
+				$stmt->bindValue(":fin", $fin, PDO::PARAM_STR);
+				$stmt->execute();
+				foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+					$mes = (int) $fila["mes"];
+					if (empty($mesesPorAnio[$anio][$mes])) {
+						continue;
+					}
+					$art = $fila["articulo"];
+					if (!isset($arts[$art])) {
+						continue;
+					}
+					$claveP = sprintf("%04d-%02d", $anio, $mes);
+					$claveV = self::mdlClaveVariante($arts[$art]["cod_color"], $arts[$art]["cod_talla"]);
+					if (!isset($out[$claveP][$claveV])) {
+						$out[$claveP][$claveV] = 0.0;
+					}
+					$out[$claveP][$claveV] += (float) $fila["unidades"];
+				}
+			}
+		}
+		return $out;
+	}
+
+	static public function mdlMatrizSugerenciaArticulos($modelo, $periodoPlan, $estacional)
+	{
+		$vacio = array(
+			"colores" => array(),
+			"tallas" => array(),
+			"por_mes" => array(),
+			"plan" => null
+		);
+		$cat = self::mdlCatalogoVariantes($modelo);
+		if (empty($cat["colores"]) || empty($cat["tallas"])) {
+			return $vacio;
+		}
+		$mesesPlan = isset($periodoPlan["meses_lista"]) ? $periodoPlan["meses_lista"] : array();
+		if (empty($mesesPlan)) {
+			return $vacio;
+		}
+		$periodosMix = array();
+		$periodosViejos = array();
+		foreach ($mesesPlan as $m) {
+			$anioObj = (int) $m["anio"];
+			$mesObj = (int) $m["mes"];
+			$mixTomado = false;
+			for ($off = 1; $off <= self::ANIOS_ESTACIONALES; $off++) {
+				$anioH = $anioObj - $off;
+				if (!self::mdlMesHistorialCerrado($anioH, $mesObj)) {
+					continue;
+				}
+				$claveH = sprintf("%04d-%02d", $anioH, $mesObj);
+				if (!$mixTomado) {
+					$periodosMix[] = $claveH;
+					$mixTomado = true;
+				}
+				if ($off >= 2) {
+					$periodosViejos[] = $claveH;
+				}
+			}
+		}
+		$ventas = self::mdlVentasColorTallaMeses(
+			$modelo,
+			array_values(array_unique(array_merge($periodosMix, $periodosViejos)))
+		);
+		$histViejoColor = array();
+		foreach ($cat["colores"] as $col) {
+			$histViejoColor[$col["cod"]] = 0.0;
+			foreach ($periodosViejos as $pViejo) {
+				if (!isset($ventas[$pViejo])) {
+					continue;
+				}
+				foreach ($cat["tallas"] as $tal) {
+					$k = self::mdlClaveVariante($col["cod"], $tal["cod"]);
+					if (isset($ventas[$pViejo][$k])) {
+						$histViejoColor[$col["cod"]] += (float) $ventas[$pViejo][$k];
+					}
+				}
+			}
+		}
+		$histMixColor = array();
+		$totalMix = 0.0;
+		foreach ($cat["colores"] as $col) {
+			$hm = 0.0;
+			foreach ($periodosMix as $pMix) {
+				if (!isset($ventas[$pMix])) {
+					continue;
+				}
+				foreach ($cat["tallas"] as $tal) {
+					$k = self::mdlClaveVariante($col["cod"], $tal["cod"]);
+					if (isset($ventas[$pMix][$k])) {
+						$hm += (float) $ventas[$pMix][$k];
+					}
+				}
+			}
+			$histMixColor[$col["cod"]] = $hm;
+			$totalMix += $hm;
+		}
+		foreach ($cat["colores"] as &$colRef) {
+			$hv = isset($histViejoColor[$colRef["cod"]]) ? $histViejoColor[$colRef["cod"]] : 0.0;
+			$hm = isset($histMixColor[$colRef["cod"]]) ? $histMixColor[$colRef["cod"]] : 0.0;
+			$shareM = $totalMix > 0 ? $hm / $totalMix : 0.0;
+			$colRef["hist_viejo"] = $hv;
+			$colRef["nuevo"] = ($hv <= 0) || ($totalMix > 0 && $shareM < 0.04);
+		}
+		unset($colRef);
+		$sugerencias = isset($estacional["sugerencias"]) ? $estacional["sugerencias"] : array();
+		$porMes = array();
+		$planCeldas = array();
+		$planSug = 0;
+		$planHist = 0;
+		foreach ($mesesPlan as $m) {
+			$periodo = $m["periodo"];
+			$anioObj = (int) $m["anio"];
+			$mesObj = (int) $m["mes"];
+			$sug = 0;
+			if (isset($sugerencias[$periodo]["unidades"])) {
+				$sug = (int) $sugerencias[$periodo]["unidades"];
+			}
+			$mixClave = null;
+			for ($off = 1; $off <= self::ANIOS_ESTACIONALES; $off++) {
+				$anioH = $anioObj - $off;
+				if (self::mdlMesHistorialCerrado($anioH, $mesObj)) {
+					$mixClave = sprintf("%04d-%02d", $anioH, $mesObj);
+					break;
+				}
+			}
+			$pesos = ($mixClave && isset($ventas[$mixClave])) ? $ventas[$mixClave] : array();
+			$clavesOk = array();
+			foreach ($cat["colores"] as $col) {
+				foreach ($cat["tallas"] as $tal) {
+					$clavesOk[self::mdlClaveVariante($col["cod"], $tal["cod"])] = true;
+				}
+			}
+			$pesosAct = array();
+			$sumaHist = 0.0;
+			foreach ($pesos as $k => $u) {
+				if (!isset($clavesOk[$k])) {
+					continue;
+				}
+				$pesosAct[$k] = (float) $u;
+				$sumaHist += (float) $u;
+			}
+			$reparto = self::mdlRepartirEnteros($sug, $pesosAct);
+			$celdas = array();
+			foreach ($cat["colores"] as $col) {
+				foreach ($cat["tallas"] as $tal) {
+					$k = self::mdlClaveVariante($col["cod"], $tal["cod"]);
+					$hist = isset($pesosAct[$k]) ? (float) $pesosAct[$k] : 0.0;
+					$uds = isset($reparto[$k]) ? (int) $reparto[$k] : 0;
+					if ($hist <= 0 && $uds <= 0) {
+						continue;
+					}
+					$celdas[$k] = array(
+						"hist" => $hist,
+						"pct" => $sumaHist > 0 ? round($hist * 100 / $sumaHist, 1) : 0,
+						"sug" => $uds
+					);
+					if (!isset($planCeldas[$k])) {
+						$planCeldas[$k] = array("hist" => 0.0, "sug" => 0, "pct" => 0);
+					}
+					$planCeldas[$k]["hist"] += $hist;
+					$planCeldas[$k]["sug"] += $uds;
+				}
+			}
+			$porMes[$periodo] = array(
+				"sug" => $sug,
+				"mix_periodo" => $mixClave,
+				"mix_label" => $mixClave
+					? (self::mdlNombreMesCorto((int) substr($mixClave, 5, 2)) . " " . substr($mixClave, 0, 4))
+					: "",
+				"hist" => $sumaHist,
+				"celdas" => $celdas
+			);
+			$planSug += $sug;
+			$planHist += $sumaHist;
+		}
+		foreach ($planCeldas as $k => $c) {
+			$planCeldas[$k]["pct"] = $planHist > 0 ? round($c["hist"] * 100 / $planHist, 1) : 0;
+		}
+		$rango = array();
+		foreach ($mesesPlan as $m) {
+			$rango[] = self::mdlNombreMesCorto($m["mes"]);
+		}
+		$rangoTxt = "";
+		if (count($rango) === 1) {
+			$rangoTxt = strtolower($rango[0]);
+		} elseif (count($rango) > 1) {
+			$rangoTxt = strtolower($rango[0] . "–" . $rango[count($rango) - 1]);
+		}
+		return array(
+			"colores" => $cat["colores"],
+			"tallas" => $cat["tallas"],
+			"por_mes" => $porMes,
+			"plan" => array(
+				"sug" => $planSug,
+				"mix_periodo" => null,
+				"mix_label" => $rangoTxt !== "" ? "Plan " . $rangoTxt : "Plan",
+				"hist" => $planHist,
+				"celdas" => $planCeldas
+			)
+		);
+	}
+
+	static private function mdlNormColorTxt($valor)
+	{
+		$t = strtoupper(trim((string) $valor));
+		if (class_exists("Normalizer")) {
+			$n = Normalizer::normalize($t, Normalizer::FORM_D);
+			if ($n !== false) {
+				$t = $n;
+			}
+		}
+		$t = preg_replace("/\\p{Mn}/u", "", $t);
+		$t = strtr($t, array("Á" => "A", "É" => "E", "Í" => "I", "Ó" => "O", "Ú" => "U", "Ü" => "U", "Ñ" => "N"));
+		return trim($t);
+	}
+
+	static private function mdlClasificarRolMp($rol, $linea, $esTela)
+	{
+		$t = strtoupper(trim((string) $rol . " " . $linea));
+		$t = strtr($t, array("Á" => "A", "É" => "E", "Í" => "I", "Ó" => "O", "Ú" => "U"));
+		if ($esTela || preg_match("/TELA|LICRA|NAZCA|JERSEY/", $t)) {
+			return "tela";
+		}
+		if (preg_match("/BLONDA|ENCAJE|PUNTILLA/", $t)) {
+			return "blonda";
+		}
+		if (preg_match("/ELAST/", $t)) {
+			return "elastico";
+		}
+		if (preg_match("/SESGO|BIES|BIÉS/", $t)) {
+			return "sesgo";
+		}
+		if (preg_match("/TIRANTE|TIRA\\b|CINTA/", $t)) {
+			return "tirante";
+		}
+		return null;
+	}
+
+	/**
+	 * MP crítica de la receta (tela, blonda, elástico, sesgo, tirante):
+	 * stock, consumo del plan y cuántos artículos/modelos la comparten.
+	 */
+	static public function mdlMpRiesgoModelo($modelo, $udsPlan, $mixColor = array())
+	{
+		$vacio = array(
+			"fuente" => null,
+			"version" => null,
+			"uds_plan" => (int) $udsPlan,
+			"items" => array()
+		);
+		$modelo = trim((string) $modelo);
+		if ($modelo === "") {
+			return $vacio;
+		}
+		$udsPlan = max(0, (int) $udsPlan);
+		$pdo = Conexion::conectar();
+		$mps = array();
+		$fuente = null;
+		$version = null;
+
+		try {
+			$receta = $pdo->prepare(
+				"SELECT r.id, r.version
+				 FROM recetas_modelo r
+				 WHERE TRIM(r.modelo) = :modelo
+				   AND r.estado = 'PUBLICADA'
+				   AND (r.vigente_desde IS NULL OR r.vigente_desde <= CURDATE())
+				   AND (r.vigente_hasta IS NULL OR r.vigente_hasta >= CURDATE())
+				 ORDER BY r.version DESC
+				 LIMIT 1"
+			);
+			$receta->bindValue(":modelo", $modelo, PDO::PARAM_STR);
+			$receta->execute();
+			$cab = $receta->fetch(PDO::FETCH_ASSOC);
+			if ($cab) {
+				$fuente = "receta";
+				$version = (int) $cab["version"];
+				$det = $pdo->prepare(
+					"SELECT id, nombre_rol, es_tela_principal, mp_base_codigo, consumo_base, regla_variante
+					 FROM recetas_modelo_detalles
+					 WHERE id_receta_modelo = :id AND activo = 1
+					 ORDER BY orden ASC, id ASC"
+				);
+				$det->bindValue(":id", (int) $cab["id"], PDO::PARAM_INT);
+				$det->execute();
+				$vars = $pdo->prepare(
+					"SELECT v.id_receta_modelo_detalle, TRIM(v.mp_codigo) AS mp_codigo,
+						v.consumo, IFNULL(v.cod_color, '') AS cod_color
+					 FROM recetas_modelo_variantes v
+					 INNER JOIN recetas_modelo_detalles d
+					   ON d.id = v.id_receta_modelo_detalle
+					 WHERE d.id_receta_modelo = :id AND d.activo = 1
+					   AND TRIM(IFNULL(v.mp_codigo, '')) <> ''"
+				);
+				$vars->bindValue(":id", (int) $cab["id"], PDO::PARAM_INT);
+				$vars->execute();
+				$varsPorDet = array();
+				foreach ($vars->fetchAll(PDO::FETCH_ASSOC) as $v) {
+					$idD = (int) $v["id_receta_modelo_detalle"];
+					if (!isset($varsPorDet[$idD])) {
+						$varsPorDet[$idD] = array();
+					}
+					$varsPorDet[$idD][] = $v;
+				}
+				foreach ($det->fetchAll(PDO::FETCH_ASSOC) as $d) {
+					$tipo = self::mdlClasificarRolMp(
+						isset($d["nombre_rol"]) ? $d["nombre_rol"] : "",
+						"",
+						!empty($d["es_tela_principal"])
+					);
+					if ($tipo === null) {
+						continue;
+					}
+					$lista = isset($varsPorDet[(int) $d["id"]]) ? $varsPorDet[(int) $d["id"]] : array();
+					$mpBase = trim((string) $d["mp_base_codigo"]);
+					if ($mpBase !== "" && empty($lista)) {
+						$lista[] = array(
+							"mp_codigo" => $mpBase,
+							"consumo" => $d["consumo_base"],
+							"cod_color" => ""
+						);
+					}
+					foreach ($lista as $v) {
+						$cod = substr(trim((string) $v["mp_codigo"]), 0, 5);
+						if ($cod === "") {
+							continue;
+						}
+						if (!isset($mps[$cod])) {
+							$mps[$cod] = array(
+								"mp" => $cod,
+								"tipo" => $tipo,
+								"rol" => isset($d["nombre_rol"]) ? $d["nombre_rol"] : $tipo,
+								"tela_principal" => !empty($d["es_tela_principal"]) ? 1 : 0,
+								"consumo" => 0.0,
+								"n_cons" => 0,
+								"colores" => array()
+							);
+						} elseif (!empty($d["es_tela_principal"])) {
+							$mps[$cod]["tela_principal"] = 1;
+						}
+						$cons = isset($v["consumo"]) && $v["consumo"] !== null && $v["consumo"] !== ""
+							? (float) $v["consumo"]
+							: (isset($d["consumo_base"]) ? (float) $d["consumo_base"] : 0.0);
+						if ($cons > 0) {
+							$mps[$cod]["consumo"] += $cons;
+							$mps[$cod]["n_cons"]++;
+						}
+						$col = trim((string) $v["cod_color"]);
+						if ($col !== "") {
+							$mps[$cod]["colores"][$col] = true;
+						}
+					}
+				}
+			}
+		} catch (Exception $e) {
+			$mps = array();
+		}
+
+		if (empty($mps)) {
+			try {
+				$stmt = $pdo->prepare(
+					"SELECT TRIM(dt.mat_pri) AS mp,
+						LOWER(TRIM(IFNULL(dt.tej_princ, ''))) AS tej,
+						AVG(dt.consumo) AS consumo,
+						IFNULL(MAX(ts.Des_Larga), '') AS sublinea
+					 FROM articulojf a
+					 INNER JOIN detalles_tarjetajf dt ON dt.articulo = a.articulo
+					 LEFT JOIN producto p ON TRIM(p.CodPro) = TRIM(dt.mat_pri)
+					 LEFT JOIN Tabla_M_Detalle ts
+					   ON ts.Cod_Tabla = 'TSUB'
+					  AND CONCAT(TRIM(ts.Des_Corta), TRIM(ts.Valor_3)) = LEFT(TRIM(IFNULL(p.CodFab, '')), 6)
+					 WHERE a.modelo = :modelo
+					   AND a.estado IN ('Activo', 'ACTIVO', 'CAMPAÑAD', 'CAMPANAD')
+					   AND TRIM(IFNULL(dt.mat_pri, '')) <> ''
+					 GROUP BY TRIM(dt.mat_pri), LOWER(TRIM(IFNULL(dt.tej_princ, '')))"
+				);
+				$stmt->bindValue(":modelo", $modelo, PDO::PARAM_STR);
+				$stmt->execute();
+				foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+					$tipo = self::mdlClasificarRolMp(
+						$row["sublinea"],
+						$row["sublinea"],
+						$row["tej"] === "si"
+					);
+					if ($tipo === null) {
+						continue;
+					}
+					$cod = substr(trim((string) $row["mp"]), 0, 5);
+					if ($cod === "" || isset($mps[$cod])) {
+						continue;
+					}
+					$mps[$cod] = array(
+						"mp" => $cod,
+						"tipo" => $tipo,
+						"rol" => $tipo,
+						"tela_principal" => $row["tej"] === "si" ? 1 : 0,
+						"consumo" => (float) $row["consumo"],
+						"n_cons" => 1,
+						"colores" => array()
+					);
+				}
+				if (!empty($mps)) {
+					$fuente = "tarjeta";
+				}
+			} catch (Exception $e) {
+				return $vacio;
+			}
+		}
+
+		if (empty($mps)) {
+			$vacio["fuente"] = $fuente;
+			$vacio["version"] = $version;
+			return $vacio;
+		}
+
+		$mapaNomCod = array();
+		try {
+			$catCols = self::mdlCatalogoVariantes($modelo);
+			foreach ($catCols["colores"] as $cCat) {
+				$mapaNomCod[self::mdlNormColorTxt($cCat["nombre"])] = $cCat["cod"];
+				$mapaNomCod[self::mdlNormColorTxt($cCat["cod"])] = $cCat["cod"];
+			}
+		} catch (Exception $e) {
+			$mapaNomCod = array();
+		}
+
+		$codigos = array_keys($mps);
+		$info = array();
+		$uso = array();
+		foreach (array_chunk($codigos, 80) as $chunk) {
+			$ph = array();
+			foreach ($chunk as $i => $c) {
+				$ph[] = ":p" . $i;
+			}
+			$in = implode(", ", $ph);
+			$sqlInfo = "SELECT
+					TRIM(p.CodPro) AS mp,
+					IFNULL(p.DesPro, '') AS descripcion,
+					IFNULL(tc.Des_Larga, '') AS color,
+					IFNULL(tu.Des_Corta, '') AS unidad
+				 FROM producto p
+				 LEFT JOIN Tabla_M_Detalle tc
+				   ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro
+				 LEFT JOIN Tabla_M_Detalle tu
+				   ON tu.Cod_Tabla = 'TUND' AND tu.Cod_Argumento = p.UndPro
+				 WHERE p.CodPro IN ($in)";
+			$st = $pdo->prepare($sqlInfo);
+			foreach ($chunk as $i => $c) {
+				$st->bindValue(":p" . $i, $c, PDO::PARAM_STR);
+			}
+			$st->execute();
+			foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+				$info[$row["mp"]] = $row;
+			}
+			$sqlUso = "SELECT
+					TRIM(dt.mat_pri) AS mp,
+					COUNT(DISTINCT dt.articulo) AS articulos,
+					COUNT(DISTINCT a.modelo) AS modelos,
+					COUNT(DISTINCT CASE WHEN a.modelo = :mod THEN dt.articulo END) AS art_modelo
+				 FROM detalles_tarjetajf dt
+				 INNER JOIN articulojf a ON a.articulo = dt.articulo
+				 WHERE TRIM(dt.mat_pri) IN ($in)
+				   AND a.estado IN ('Activo', 'ACTIVO', 'CAMPAÑAD', 'CAMPANAD')
+				 GROUP BY TRIM(dt.mat_pri)";
+			$stU = $pdo->prepare($sqlUso);
+			$stU->bindValue(":mod", $modelo, PDO::PARAM_STR);
+			foreach ($chunk as $i => $c) {
+				$stU->bindValue(":p" . $i, $c, PDO::PARAM_STR);
+			}
+			$stU->execute();
+			foreach ($stU->fetchAll(PDO::FETCH_ASSOC) as $row) {
+				$uso[$row["mp"]] = $row;
+			}
+		}
+
+		$items = array();
+		foreach ($mps as $cod => $m) {
+			$inf = isset($info[$cod]) ? $info[$cod] : array();
+			$u = isset($uso[$cod]) ? $uso[$cod] : array();
+			$cons = $m["n_cons"] > 0 ? $m["consumo"] / $m["n_cons"] : 0.0;
+			$udsMp = $udsPlan;
+			if (!empty($m["colores"]) && !empty($mixColor)) {
+				$udsMp = 0;
+				foreach ($m["colores"] as $col => $ok) {
+					if (isset($mixColor[$col])) {
+						$udsMp += (int) $mixColor[$col];
+					}
+				}
+				if ($udsMp <= 0) {
+					$udsMp = $udsPlan;
+				}
+			}
+			$req = $cons > 0 ? $cons * $udsMp : 0.0;
+			$colsRes = array();
+			foreach ($m["colores"] as $colK => $okC) {
+				$nk = self::mdlNormColorTxt($colK);
+				$colsRes[isset($mapaNomCod[$nk]) ? $mapaNomCod[$nk] : $colK] = true;
+			}
+			$nomProd = self::mdlNormColorTxt(isset($inf["color"]) ? $inf["color"] : "");
+			$descProd = self::mdlNormColorTxt(isset($inf["descripcion"]) ? $inf["descripcion"] : "");
+			foreach ($mapaNomCod as $nomC => $codC) {
+				if ($nomC === "" || strlen($nomC) < 4) {
+					continue;
+				}
+				if ($nomProd === $nomC || ($descProd !== "" && strpos($descProd, $nomC) !== false)) {
+					$colsRes[$codC] = true;
+				}
+			}
+			$art = isset($u["articulos"]) ? (int) $u["articulos"] : 0;
+			$mods = isset($u["modelos"]) ? (int) $u["modelos"] : 0;
+			if ($art < 1) {
+				$art = 1;
+			}
+			if ($mods < 1) {
+				$mods = 1;
+			}
+			$estado = "ok";
+			if ($art <= 1) {
+				$estado = "unico";
+			} elseif ($art <= 3) {
+				$estado = "poco";
+			}
+			$items[] = array(
+				"mp" => $cod,
+				"tipo" => $m["tipo"],
+				"rol" => $m["rol"],
+				"tela_principal" => !empty($m["tela_principal"]) ? 1 : 0,
+				"descripcion" => isset($inf["descripcion"]) ? $inf["descripcion"] : $cod,
+				"color" => isset($inf["color"]) ? $inf["color"] : "",
+				"unidad" => isset($inf["unidad"]) ? $inf["unidad"] : "",
+				"consumo" => round($cons, 4),
+				"requerido" => round($req, 2),
+				"colores" => array_values(array_keys($colsRes)),
+				"articulos" => $art,
+				"art_modelo" => isset($u["art_modelo"]) ? (int) $u["art_modelo"] : 0,
+				"modelos" => $mods,
+				"estado" => $estado
+			);
+		}
+
+		$ordenTipo = array("tela" => 1, "blonda" => 2, "elastico" => 3, "sesgo" => 4, "tirante" => 5);
+		usort($items, function ($a, $b) use ($ordenTipo) {
+			$ta = isset($ordenTipo[$a["tipo"]]) ? $ordenTipo[$a["tipo"]] : 9;
+			$tb = isset($ordenTipo[$b["tipo"]]) ? $ordenTipo[$b["tipo"]] : 9;
+			if ($ta !== $tb) {
+				return $ta - $tb;
+			}
+			if ((int) $a["tela_principal"] !== (int) $b["tela_principal"]) {
+				return (int) $b["tela_principal"] - (int) $a["tela_principal"];
+			}
+			return strcmp($a["descripcion"], $b["descripcion"]);
+		});
+
+		return array(
+			"fuente" => $fuente,
+			"version" => $version,
+			"uds_plan" => $udsPlan,
+			"items" => $items
+		);
+	}
+
 	/**
 	 * Detalle de un modelo: historial estacional + inventario + lista 9 + sugerencias.
 	 */
@@ -905,16 +1744,55 @@ class ModeloProyeccionComercialModelos
 		$mapaMeses = isset($ventas[$modelo]) ? $ventas[$modelo] : array();
 		$serie = ($periodoHist === null) ? array() : self::mdlSerieCompleta($mapaMeses, $periodoHist);
 
+		$matriz = array("colores" => array(), "tallas" => array(), "por_mes" => array(), "plan" => null);
+		try {
+			$matriz = self::mdlMatrizSugerenciaArticulos($modelo, $periodoPlan, $estacional);
+		} catch (Exception $e) {
+			$matriz = array("colores" => array(), "tallas" => array(), "por_mes" => array(), "plan" => null);
+		}
+
+		$udsPlan = 0;
+		if (isset($estacional["sugerencias"]) && is_array($estacional["sugerencias"])) {
+			foreach ($estacional["sugerencias"] as $sugMes) {
+				if (isset($sugMes["unidades"])) {
+					$udsPlan += (int) $sugMes["unidades"];
+				}
+			}
+		}
+		$mixColor = array();
+		if (isset($matriz["plan"]["celdas"]) && is_array($matriz["plan"]["celdas"])) {
+			foreach ($matriz["plan"]["celdas"] as $clave => $cel) {
+				$partes = explode("|", $clave, 2);
+				$col = isset($partes[0]) ? $partes[0] : "";
+				if ($col === "") {
+					continue;
+				}
+				if (!isset($mixColor[$col])) {
+					$mixColor[$col] = 0;
+				}
+				$mixColor[$col] += isset($cel["sug"]) ? (int) $cel["sug"] : 0;
+			}
+		}
+		$mpRiesgo = array("fuente" => null, "version" => null, "uds_plan" => $udsPlan, "items" => array());
+		try {
+			$mpRiesgo = self::mdlMpRiesgoModelo($modelo, $udsPlan, $mixColor);
+		} catch (Exception $e) {
+			$mpRiesgo = array("fuente" => null, "version" => null, "uds_plan" => $udsPlan, "items" => array());
+		}
+
 		return array(
 			"cabecera" => $cabecera,
 			"periodo_plan" => $periodoPlan,
 			"periodo_historial" => $periodoHist,
 			"historial_estacional" => $estacional,
 			"serie_mensual" => $serie,
+			"tendencia_reciente" => self::mdlTendenciaReciente($modelo),
 			"inventario" => $inv,
 			"precio_lista9" => $precio9,
 			"sin_lista9" => ($precio9 === null),
 			"sugerencias" => $estacional["sugerencias"],
+			"matriz_articulos" => $matriz,
+			"mp_riesgo" => $mpRiesgo,
 			"formula_version" => self::FORMULA_VERSION,
 			"anios_estacionales" => (int) $aniosEstacionales
 		);
@@ -1621,6 +2499,113 @@ class ModeloProyeccionComercialModelos
 			"unidades_sugeridas" => (int) (isset($r["unidades_sugeridas"]) ? $r["unidades_sugeridas"] : 0),
 			"unidades_ajustes" => (int) (isset($r["unidades_ajustes"]) ? $r["unidades_ajustes"] : 0),
 			"lineas_sin_lista9" => (int) (isset($r["lineas_sin_lista9"]) ? $r["lineas_sin_lista9"] : 0)
+		);
+	}
+
+	/**
+	 * Resumen del plan para el panel derecho (meses, factores, alertas).
+	 */
+	static public function mdlDashboardPeriodo($idPeriodo)
+	{
+		$idPeriodo = (int) $idPeriodo;
+		$pdo = Conexion::conectar();
+		$umbralPct = self::UMBRAL_DESVIACION_PCT;
+		$umbralAbs = self::UMBRAL_DESVIACION_ABS;
+
+		$stmt = $pdo->prepare(
+			"SELECT anio, mes,
+				COUNT(*) AS lineas,
+				COUNT(DISTINCT TRIM(modelo)) AS modelos,
+				COALESCE(SUM(unidades_oficiales), 0) AS unidades_oficiales,
+				COALESCE(SUM(unidades_sugeridas), 0) AS unidades_sugeridas,
+				COALESCE(SUM(unidades_ajustes), 0) AS unidades_ajustes,
+				SUM(CASE WHEN estado_linea = 'BORRADOR' THEN 1 ELSE 0 END) AS borrador,
+				SUM(CASE WHEN estado_linea = 'PUBLICADO' THEN 1 ELSE 0 END) AS publicado,
+				SUM(CASE WHEN estado_linea = 'CERRADO' THEN 1 ELSE 0 END) AS cerrado
+			 FROM proyeccion_comercial_modelojf
+			 WHERE id_periodo = :id
+			 GROUP BY anio, mes
+			 ORDER BY anio ASC, mes ASC"
+		);
+		$stmt->bindValue(":id", $idPeriodo, PDO::PARAM_INT);
+		$stmt->execute();
+		$meses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$stmt = $pdo->prepare(
+			"SELECT
+				SUM(CASE WHEN ABS(unidades_oficiales - (unidades_sugeridas + unidades_ajustes)) > :abs
+					AND (ABS(unidades_oficiales - (unidades_sugeridas + unidades_ajustes))
+						/ GREATEST(1, ABS(unidades_sugeridas + unidades_ajustes))) * 100 > :pct
+					THEN 1 ELSE 0 END) AS lineas_desvio
+			 FROM proyeccion_comercial_modelojf
+			 WHERE id_periodo = :id"
+		);
+		$stmt->bindValue(":id", $idPeriodo, PDO::PARAM_INT);
+		$stmt->bindValue(":abs", $umbralAbs, PDO::PARAM_INT);
+		$stmt->bindValue(":pct", $umbralPct);
+		$stmt->execute();
+		$alertas = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$alertas) {
+			$alertas = array();
+		}
+
+		$modelosCero = 0;
+		$stmt = $pdo->prepare(
+			"SELECT COUNT(*) FROM (
+				SELECT TRIM(modelo) AS modelo
+				 FROM proyeccion_comercial_modelojf
+				 WHERE id_periodo = :id
+				 GROUP BY TRIM(modelo)
+				 HAVING SUM(unidades_oficiales) = 0
+			 ) t"
+		);
+		$stmt->bindValue(":id", $idPeriodo, PDO::PARAM_INT);
+		$stmt->execute();
+		$modelosCero = (int) $stmt->fetchColumn();
+
+		$factores = array(
+			"aplicados" => 0,
+			"modelos" => 0,
+			"ajuste" => 0
+		);
+		try {
+			$stmt = $pdo->prepare(
+				"SELECT COUNT(*) AS aplicados,
+					COUNT(DISTINCT TRIM(l.modelo)) AS modelos,
+					COALESCE(SUM(f.ajuste_unidades), 0) AS ajuste
+				 FROM proyeccion_comercial_factorjf f
+				 INNER JOIN proyeccion_comercial_modelojf l ON l.id = f.id_proyeccion_modelo
+				 WHERE l.id_periodo = :id AND f.activo = 1"
+			);
+			$stmt->bindValue(":id", $idPeriodo, PDO::PARAM_INT);
+			$stmt->execute();
+			$f = $stmt->fetch(PDO::FETCH_ASSOC);
+			if ($f) {
+				$factores["aplicados"] = (int) $f["aplicados"];
+				$factores["modelos"] = (int) $f["modelos"];
+				$factores["ajuste"] = (int) $f["ajuste"];
+			}
+		} catch (Exception $e) {
+			// tabla de factores aún no creada
+		}
+
+		$catalogo = 0;
+		try {
+			$catalogo = (int) $pdo->query(
+				"SELECT COUNT(*) FROM proyeccion_comercial_factor_catalogojf WHERE activo = 1"
+			)->fetchColumn();
+		} catch (Exception $e) {
+			$catalogo = 0;
+		}
+
+		return array(
+			"meses" => $meses ? $meses : array(),
+			"factores" => $factores,
+			"catalogo_activos" => $catalogo,
+			"lineas_desvio" => (int) (isset($alertas["lineas_desvio"]) ? $alertas["lineas_desvio"] : 0),
+			"modelos_cero" => $modelosCero,
+			"umbral_pct" => $umbralPct,
+			"formula" => self::FORMULA_VERSION
 		);
 	}
 

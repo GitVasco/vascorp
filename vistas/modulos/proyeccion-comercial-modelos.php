@@ -16,6 +16,14 @@ $modeloInicial = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : "";
 if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial)) {
 	$modeloInicial = "";
 }
+$paletaColoresProy = array();
+$archivoPaletaProy = dirname(__FILE__) . "/../js/data/colores-modelos.json";
+if (is_readable($archivoPaletaProy)) {
+	$paletaDecodificadaProy = json_decode(file_get_contents($archivoPaletaProy), true);
+	if (is_array($paletaDecodificadaProy)) {
+		$paletaColoresProy = $paletaDecodificadaProy;
+	}
+}
 ?>
 
 <div class="content-wrapper proyeccion-comercial-wrap">
@@ -86,6 +94,10 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 						<i class="fa fa-arrow-left"></i> Listado
 					</button>
 					<span id="lblPlanActivoBarra" class="proy-plan-meta"></span>
+					<span id="proyCargaBarra" class="proy-carga-barra" style="display:none;">
+						<i class="fa fa-circle-o-notch fa-spin"></i>
+						<span id="proyCargaBarraTxt">Cargando…</span>
+					</span>
 					<a href="index.php?ruta=proyeccion-comercial-masiva" class="btn btn-default btn-sm" id="btnIrMasiva">
 						<i class="fa fa-th"></i> Masiva
 					</a>
@@ -159,9 +171,16 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 							</div>
 						</aside>
 						<div class="proy-modelos-detalle">
-					<div id="panelModeloVacio" class="proy-empty">
-						<span class="text-muted">Elige un modelo en la lista de la izquierda para abrirlo o reabrirlo.</span>
-					</div>
+							<div id="panelModeloVacio" class="proy-empty">
+								<span class="text-muted">Elige un modelo en la lista de la izquierda para abrirlo o reabrirlo.</span>
+							</div>
+							<div id="panelModeloCarga" class="proy-carga" style="display:none;">
+								<div class="proy-carga-box">
+									<i class="fa fa-circle-o-notch fa-spin"></i>
+									<strong id="proyCargaTitulo">Cargando modelo…</strong>
+									<span id="proyCargaMeta">Historial, receta y panorama. Puede tardar unos segundos.</span>
+								</div>
+							</div>
 
 					<div id="panelModeloActivo" style="display:none;">
 						<div class="proy-modelo-bar">
@@ -205,6 +224,7 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 									<p class="proy-hint">
 										La sugerencia ya trae el patrón histórico del mismo mes (p. ej. subida de fin de año).
 										Si la campaña de este año será parecida, no hace falta factor; si será más fuerte o más débil, ajústalo en Factores.
+										Clic en un mes para verlo en el panorama.
 									</p>
 									<p class="proy-hint" id="lblTendenciaHist" style="margin-top:-4px;"></p>
 									<p class="proy-hint" id="lblGlobalHist" style="margin-top:-4px;"></p>
@@ -213,7 +233,7 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 											<thead>
 												<tr>
 													<th>Mes</th>
-													<th title="Histórico + Δ vs hace 2 años">Hace 1 año</th>
+													<th title="Mismo mes del año anterior. Si aún no cerró, va en gris y no entra al total.">Hace 1 año</th>
 													<th title="Histórico + Δ vs hace 3 años">Hace 2 años</th>
 													<th title="Sin comparación (no hay hace 4 años)">Hace 3 años</th>
 													<th>Promedio</th>
@@ -228,8 +248,31 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 										</table>
 									</div>
 									<p class="proy-hint">
-										<span class="proy-legenda proy-legenda-parcial"></span> Mes aún abierto: se muestra como referencia y no entra al promedio/sugerencia.
+										<span class="proy-legenda proy-legenda-parcial"></span>
+										Mes aún abierto o que no ocurrió (p. ej. agosto en camino, sep–dic de este año): se muestra como referencia y no entra al promedio, a la sugerencia ni al total comparable.
 									</p>
+									<div class="row proy-matriz-mp-row">
+										<div class="col-sm-6">
+											<div class="proy-matriz-sug" id="proyMatrizSugWrap">
+												<div class="proy-dec-label" id="proyMatrizSugLabel">Sugerencia por color × talla</div>
+												<div class="table-responsive">
+													<table class="table table-condensed proy-table" id="tablaMatrizSug">
+														<tbody>
+															<tr><td class="text-muted">Elegí un modelo para ver el desglose.</td></tr>
+														</tbody>
+													</table>
+												</div>
+												<p class="proy-hint" id="proyMatrizSugHint"></p>
+											</div>
+										</div>
+										<div class="col-sm-6">
+											<div class="proy-mp-riesgo" id="proyMpRiesgoWrap">
+												<div class="proy-dec-label">Materia prima · alertas</div>
+												<p class="proy-hint" id="proyMpRiesgoHint"></p>
+												<div id="proyMpRiesgoBody"></div>
+											</div>
+										</div>
+									</div>
 								</div>
 
 								<div class="tab-pane" id="tabFact">
@@ -326,6 +369,33 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 						</div>
 					</div>
 						</div>
+						<aside class="proy-modelos-decision" id="proyDecisionCol">
+							<div class="proy-dec-head">
+								<strong id="decTitulo">Panorama</strong>
+								<span class="proy-dec-sub" id="decSub">Elige un modelo para ver tendencia y comparación.</span>
+								<a href="#" class="proy-dec-back" id="decVerPlan" style="display:none;">Todo el plan</a>
+							</div>
+							<div class="proy-dec-body" id="decCarga" style="display:none;">
+								<p class="proy-carga-mini"><i class="fa fa-circle-o-notch fa-spin"></i> Armando el panorama…</p>
+							</div>
+							<div class="proy-dec-body" id="decVacio">
+								<p class="text-muted" style="margin:8px 0 0;">Elegí un modelo.</p>
+							</div>
+							<div class="proy-dec-body" id="decActivo" style="display:none;">
+								<div class="proy-dec-line" id="decCompLine"></div>
+								<div id="decRecoBox"></div>
+								<div class="proy-dec-block">
+									<div class="proy-dec-label" id="decVieneLabel">Cómo viene</div>
+									<div class="proy-dec-kpis" id="decVieneKpis"></div>
+								</div>
+								<div class="proy-dec-block">
+									<div class="proy-dec-label" id="decTendLabel">Jul–dic</div>
+									<div class="proy-dec-kpis proy-dec-kpis--3" id="decTendKpis"></div>
+									<div class="proy-dec-legend" id="decLegendComp"></div>
+									<div id="decChartComp" class="proy-dec-chart"></div>
+								</div>
+							</div>
+						</aside>
 					</div>
 				</div>
 			</div>
@@ -337,5 +407,6 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 		<input type="hidden" id="proyModeloActivo" value="">
 		<input type="hidden" id="proyPlanInicial" value="<?php echo $planInicial; ?>">
 		<input type="hidden" id="proyModeloInicial" value="<?php echo htmlspecialchars($modeloInicial, ENT_QUOTES, 'UTF-8'); ?>">
+		<script>window.proyPaletaColores = <?php echo json_encode($paletaColoresProy, JSON_UNESCAPED_UNICODE); ?>;</script>
 	</section>
 </div>
