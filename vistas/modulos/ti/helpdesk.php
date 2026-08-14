@@ -492,7 +492,7 @@
                 <div class="row hd-ind-charts-row">
                     <div class="col-md-5">
                         <div class="box box-solid hd-ind-box">
-                            <div class="box-header with-border"><h3 class="box-title">Creados por día</h3></div>
+                            <div class="box-header with-border"><h3 class="box-title">Creados vs cerrados por día</h3></div>
                             <div class="box-body hd-chart-sm"><canvas id="hdChartDia"></canvas></div>
                         </div>
                     </div>

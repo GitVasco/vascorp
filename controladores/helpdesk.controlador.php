@@ -878,7 +878,8 @@ class ControladorHelpdesk
             "Más de 15 días" => 0,
         );
 
-        $porDia = array();
+        $porDiaCreados = array();
+        $porDiaCerrados = array();
         $porTipo = array();
         $porPrioridad = array();
         $porSistema = array();
@@ -903,10 +904,10 @@ class ControladorHelpdesk
             if ($enPeriodoCreado) {
                 $creados++;
                 $dia = date("Y-m-d", $creadoTs);
-                if (!isset($porDia[$dia])) {
-                    $porDia[$dia] = 0;
+                if (!isset($porDiaCreados[$dia])) {
+                    $porDiaCreados[$dia] = 0;
                 }
-                $porDia[$dia]++;
+                $porDiaCreados[$dia]++;
 
                 $tipo = isset($t["tipo"]) ? $t["tipo"] : "OTRO";
                 $porTipo[$tipo] = isset($porTipo[$tipo]) ? $porTipo[$tipo] + 1 : 1;
@@ -945,6 +946,11 @@ class ControladorHelpdesk
 
             if ($enPeriodoCerrado) {
                 $cerradosPeriodo++;
+                $diaCerrado = date("Y-m-d", $cerradoTs);
+                if (!isset($porDiaCerrados[$diaCerrado])) {
+                    $porDiaCerrados[$diaCerrado] = 0;
+                }
+                $porDiaCerrados[$diaCerrado]++;
                 // Solo CUMPLIDO / FUERA; Sin SLA y cancelado no bajan el %.
                 if (self::slaCuentaCumplimiento($sla["codigo"])) {
                     if ($sla["codigo"] === "CUMPLIDO") {
@@ -1027,7 +1033,19 @@ class ControladorHelpdesk
             }
         }
 
-        ksort($porDia);
+        $labelsDia = array();
+        $dataCreadosDia = array();
+        $dataCerradosDia = array();
+        $cursorDia = strtotime($desde);
+        $finDiaTs = strtotime($hasta);
+        while ($cursorDia !== false && $finDiaTs !== false && $cursorDia <= $finDiaTs) {
+            $diaKey = date("Y-m-d", $cursorDia);
+            $labelsDia[] = $diaKey;
+            $dataCreadosDia[] = isset($porDiaCreados[$diaKey]) ? (int) $porDiaCreados[$diaKey] : 0;
+            $dataCerradosDia[] = isset($porDiaCerrados[$diaKey]) ? (int) $porDiaCerrados[$diaKey] : 0;
+            $cursorDia = strtotime("+1 day", $cursorDia);
+        }
+
         arsort($porModulo);
         $topModulos = array();
         $i = 0;
@@ -1169,8 +1187,10 @@ class ControladorHelpdesk
             ),
             "charts" => array(
                 "por_dia" => array(
-                    "labels" => array_keys($porDia),
-                    "data" => array_values($porDia),
+                    "labels" => $labelsDia,
+                    "data" => $dataCreadosDia,
+                    "creados" => $dataCreadosDia,
+                    "cerrados" => $dataCerradosDia,
                 ),
                 "por_tipo" => $mapSerie($porTipo, $labelsTipo),
                 "por_prioridad" => $mapSerie($porPrioridad),

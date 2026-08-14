@@ -15,6 +15,7 @@
     ];
     var PASTEL_LINE = "#7FB3D5";
     var PASTEL_FILL = "rgba(168,213,229,0.35)";
+    var PASTEL_LINE_CERRADO = "#6BB89A";
     var PASTEL_BAR = "#C5B3E0";
     var PASTEL_SLA = ["#A9DFBF", "#F5B7B1"];
 
@@ -255,23 +256,39 @@
             return;
         }
 
+        var porDia = ch.por_dia || {};
         crearChart("dia", "hdChartDia", {
             type: "line",
             data: {
-                labels: (ch.por_dia && ch.por_dia.labels) || [],
+                labels: porDia.labels || [],
                 datasets: [{
                     label: "Creados",
-                    data: (ch.por_dia && ch.por_dia.data) || [],
+                    data: porDia.creados || porDia.data || [],
                     borderColor: PASTEL_LINE,
                     backgroundColor: PASTEL_FILL,
                     fill: true,
                     tension: 0.3,
                     pointRadius: 2,
                     borderWidth: 2
+                }, {
+                    label: "Cerrados",
+                    data: porDia.cerrados || [],
+                    borderColor: PASTEL_LINE_CERRADO,
+                    backgroundColor: "transparent",
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 2,
+                    borderWidth: 2
                 }]
             },
             options: optsBase({
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: "bottom",
+                        labels: { boxWidth: 10, font: { size: 10 }, padding: 8 }
+                    }
+                },
                 scales: {
                     y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
                     x: { ticks: { font: { size: 9 }, maxRotation: 0 } }

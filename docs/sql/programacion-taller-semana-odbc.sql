@@ -68,14 +68,17 @@ SELECT
 	IFNULL(a.servicio, 0) AS en_servicio,
 	IFNULL(a.ult_mes, 0) AS ult_mes,
 	x.urg_plan AS cobertura_al_programar,
+	(
+		(IFNULL(a.stock, 0) - IFNULL(a.pedidos, 0))
+		+ (IFNULL(a.taller, 0) + IFNULL(a.servicio, 0))
+	) AS cobertura_viva,
 	ROUND(
 		(
 			(IFNULL(a.stock, 0) - IFNULL(a.pedidos, 0))
-			+ IFNULL(a.taller, 0) + IFNULL(a.servicio, 0)
-			+ IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)
+			+ (IFNULL(a.taller, 0) + IFNULL(a.servicio, 0))
 		) / NULLIF(a.ult_mes, 0),
 		2
-	) AS cobertura_viva,
+	) AS cobertura_meses,
 	x.observacion,
 	x.usureg,
 	x.fecreg,
