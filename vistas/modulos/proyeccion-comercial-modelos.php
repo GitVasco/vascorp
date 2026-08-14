@@ -95,60 +95,72 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 				</div>
 			</div>
 
+			<div class="proy-stats" id="proyStats">
+				<div class="proy-stat proy-stat--primary" id="cardAvance">
+					<div class="proy-stat-label"><i class="fa fa-bullseye"></i> Avance</div>
+					<div class="proy-stat-value" id="stAvance">0%</div>
+					<div class="proy-stat-meta" id="stAvanceMeta">0 de 0 modelos</div>
+					<div class="progress proy-progress">
+						<div class="progress-bar" id="stBarra" style="width:0%"></div>
+					</div>
+				</div>
+				<div class="proy-stat proy-stat--ok" id="cardProyectados">
+					<div class="proy-stat-label"><i class="fa fa-cubes"></i> Proyectados</div>
+					<div class="proy-stat-value" id="stProyectados">0</div>
+					<div class="proy-stat-meta" id="stProyectadosMeta">modelos con meses cargados</div>
+				</div>
+				<div class="proy-stat proy-stat--warn" id="cardPendientes">
+					<div class="proy-stat-label"><i class="fa fa-clock-o"></i> Pendientes</div>
+					<div class="proy-stat-value" id="stPendientes">0</div>
+					<div class="proy-stat-meta" id="stPendientesMeta">modelos activos sin proyectar</div>
+				</div>
+				<div class="proy-stat proy-stat--neutral" id="cardUds">
+					<div class="proy-stat-label"><i class="fa fa-th"></i> Unidades proyectadas</div>
+					<div class="proy-stat-value" id="stUds">0</div>
+					<div class="proy-stat-meta" id="stUdsMeta">de 0 modelos ya proyectados</div>
+				</div>
+				<div class="proy-stat proy-stat--warn" id="cardBorrador">
+					<div class="proy-stat-label"><i class="fa fa-pencil"></i> Borrador</div>
+					<div class="proy-stat-value" id="stBorrador">0</div>
+					<div class="proy-stat-meta" id="stBorradorMeta">líneas aún no publicadas</div>
+				</div>
+				<div class="proy-stat proy-stat--ok" id="cardPublicadas">
+					<div class="proy-stat-label"><i class="fa fa-check"></i> Publicadas</div>
+					<div class="proy-stat-value" id="stPublicadas">0</div>
+					<div class="proy-stat-meta" id="stPublicadasMeta">líneas publicadas</div>
+				</div>
+			</div>
+
 			<div class="box box-solid">
 				<div class="box-header with-border">
 					<h3 class="box-title"><i class="fa fa-cube"></i> Modelos</h3>
 				</div>
-				<div class="box-body">
-					<div class="proy-stats" id="proyStats">
-						<div class="proy-stat"><em>Avance</em><b id="stAvance">0%</b></div>
-						<div class="proy-stat"><em>Proyectados</em><b id="stProyectados">0</b></div>
-						<div class="proy-stat"><em>Pendientes</em><b id="stPendientes">0</b></div>
-						<div class="proy-stat"><em>Uds oficiales</em><b id="stUds">0</b></div>
-						<div class="proy-stat"><em>Borrador</em><b id="stBorrador">0</b></div>
-						<div class="proy-stat"><em>Publicadas</em><b id="stPublicadas">0</b></div>
-					</div>
-					<div class="progress proy-progress">
-						<div class="progress-bar progress-bar-primary" id="stBarra" style="width:0%"></div>
-					</div>
-
-					<div class="row proy-busca-row">
-						<div class="col-sm-3">
-							<label class="proy-lbl">Marca</label>
-							<select class="form-control input-sm" id="proyMarca">
-								<option value="0">Todas</option>
-							</select>
-						</div>
-						<div class="col-sm-5">
-							<label class="proy-lbl">Pendientes (aún no proyectados)</label>
-							<select class="form-control input-sm" id="selModeloPendiente" style="width:100%;">
-								<option value="">Elige un modelo…</option>
-							</select>
-						</div>
-						<div class="col-sm-4">
-							<label class="proy-lbl">Ya proyectados</label>
-							<select class="form-control input-sm" id="selModeloProyectado" style="width:100%;">
-								<option value="">Reabrir modelo…</option>
-							</select>
-						</div>
-					</div>
-					<div class="proy-busca-actions" style="margin-top:6px;">
-						<button type="button" class="btn btn-primary btn-sm" id="btnAbrirModelo">
-							<i class="fa fa-cube"></i> Abrir pendiente
-						</button>
-						<button type="button" class="btn btn-default btn-sm" id="btnAbrirProyectado">
-							<i class="fa fa-folder-open"></i> Reabrir
-						</button>
-						<?php if ($puedeEditar) { ?>
-						<button type="button" class="btn btn-default btn-sm" id="btnAsegurarLineas">
-							<i class="fa fa-magic"></i> Preparar meses
-						</button>
-						<?php } ?>
-						<span class="text-muted proy-hint-inline" id="lblPendientesCount"></span>
-					</div>
-
+				<div class="box-body proy-modelos-body">
+					<div class="proy-modelos-layout">
+						<aside class="proy-modelos-lista">
+							<div class="proy-lista-filtros">
+								<label class="proy-lbl">Marca</label>
+								<select class="form-control input-sm" id="proyMarca">
+									<option value="0">Todas</option>
+								</select>
+								<input type="text" class="form-control input-sm" id="proyQ" maxlength="100"
+									placeholder="Buscar modelo…">
+								<div class="proy-lista-chips">
+									<button type="button" class="proy-lista-chip is-active" data-filtro="pendientes" id="chipPendientes">Pendientes</button>
+									<button type="button" class="proy-lista-chip" data-filtro="proyectados" id="chipProyectados">Proyectados</button>
+									<button type="button" class="proy-lista-chip" data-filtro="todos" id="chipTodos">Todos</button>
+								</div>
+							</div>
+							<div class="proy-lista-items" id="listaModelos">
+								<div class="proy-lista-vacio">Cargando modelos…</div>
+							</div>
+							<div class="proy-lista-foot">
+								<span class="text-muted" id="lblListaCount"></span>
+							</div>
+						</aside>
+						<div class="proy-modelos-detalle">
 					<div id="panelModeloVacio" class="proy-empty">
-						<span class="text-muted">Elige un modelo pendiente o reabre uno ya proyectado.</span>
+						<span class="text-muted">Elige un modelo en la lista de la izquierda para abrirlo o reabrirlo.</span>
 					</div>
 
 					<div id="panelModeloActivo" style="display:none;">
@@ -161,6 +173,11 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 								<span class="proy-kpi"><em>Lista 9</em> <b id="kpiLista9">—</b></span>
 								<span class="proy-kpi"><em>Stock</em> <b id="kpiStock">—</b></span>
 								<span class="proy-kpi"><em>Proceso</em> <b id="kpiProceso">—</b></span>
+								<?php if ($puedeEditar) { ?>
+								<button type="button" class="btn btn-default btn-xs" id="btnAsegurarLineas" title="Crear los meses que falten en este modelo">
+									<i class="fa fa-magic"></i> Preparar meses
+								</button>
+								<?php } ?>
 							</div>
 						</div>
 
@@ -306,6 +323,8 @@ if ($modeloInicial !== "" && !preg_match('/^[A-Za-z0-9._-]+$/', $modeloInicial))
 									</div>
 								</div>
 							</div>
+						</div>
+					</div>
 						</div>
 					</div>
 				</div>

@@ -2,6 +2,16 @@
 $tipo = $_GET["tipo"];
 $documento = $_GET["documento"];
 
+$ventaExistente = ControladorFacturacion::ctrVerDocumento($tipo, $documento);
+$facturacion = (is_array($ventaExistente) && isset($ventaExistente["facturacion"]))
+    ? $ventaExistente["facturacion"]
+    : "";
+
+if (!ControladorFacturacion::ctrPuedeEditarNotaCD($facturacion)) {
+    echo '<script>window.location = "ver-nota-credito";</script>';
+    return;
+}
+
 $venta = ModeloFacturacion::mdlMostrarVentaImpresion($documento, $tipo);
 
 if ($tipo == "E05") {

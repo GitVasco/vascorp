@@ -186,9 +186,21 @@ class AjaxFacturacion
     {
         $valor = $this->datosVenta2;
         $datos = json_decode($valor);
+        if (!$datos || empty($datos->{"datosCuenta"})) {
+            echo "error";
+            return;
+        }
         foreach ($datos->{"datosCuenta"} as  $value) {
             $doc = $value->{"tipo_venta"};
             $cta = $value->{"num_cta"};
+            $existente = ControladorFacturacion::ctrVerDocumento($doc, $cta);
+            $facturacion = (is_array($existente) && isset($existente["facturacion"]))
+                ? $existente["facturacion"]
+                : "";
+            if (!ControladorFacturacion::ctrPuedeEditarNotaCD($facturacion)) {
+                echo "error";
+                return;
+            }
             $cli = $value->{"cliente"};
             $vend = $value->{"vendedor"};
             $neto = $value->{"neto"};

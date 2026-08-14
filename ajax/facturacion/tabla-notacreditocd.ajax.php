@@ -1,5 +1,9 @@
 <?php
 
+if (!isset($_SESSION)) {
+    session_start();
+}
+
 require_once "../../controladores/facturacion.controlador.php";
 require_once "../../modelos/facturacion.modelo.php";
 
@@ -46,11 +50,6 @@ class TablaNotasCD
                     $cuenta = "<button title='Cuenta' class='btn btn-xs btn-warning btnCargarCuenta' tipo='" . $notas[$i]["tipo"] . "' documento='" . $notas[$i]["documento"] . "' data-toggle='modal' data-target='#modalCuenta'><i class='fa fa-certificate'></i></button>";
                 }
 
-                /* 
-            todo: formato de miles
-            */
-                $serie = substr($notas[$i]["documento"], 0, 4);
-
                 if ($notas[$i]["facturacion"] == "0" && $hoy == $notas[$i]["fecha"]) {
 
                     $estado = "<span style='font-size:85%' class='label label-success'>GENERADO</span>";
@@ -73,14 +72,12 @@ class TablaNotasCD
 
 
 
-                #$estado = "<button class='btn btn-success btn-xs'>FACTURADO</button>";
-
-
-                if ($serie == "B002" || $serie == "F002" || $serie = "B003" || $serie = "F003") {
-                    $botones =  "<div class='btn-group'><button class='btn btn-xs btn-warning btnEditarNotaCD' title='Editar notas CD' tipo='" . $notas[$i]["tipo"] . "' documento='" . $notas[$i]["documento"] . "'><i class='fa fa-pencil'></i></button><button title='Imprimir Nota Credito' class='btn btn-xs btn-success btnImprimirNotaCredito' tipo='" . $notas[$i]["tipo"] . "' documento='" . $notas[$i]["documento"] . "'><i class='fa fa-print'></i></button>" . $cuenta . "</div>";
-                } else {
-                    $botones =  "<div class='btn-group'><button title='Imprimir Nota Credito' class='btn btn-xs btn-success btnImprimirNotaCredito' tipo='" . $notas[$i]["tipo"] . "' documento='" . $notas[$i]["documento"] . "'><i class='fa fa-print'></i></button>" . $cuenta . "</div>";
+                $botonEditar = "";
+                if (ControladorFacturacion::ctrPuedeEditarNotaCD($notas[$i]["facturacion"])) {
+                    $botonEditar = "<button class='btn btn-xs btn-warning btnEditarNotaCD' title='Editar notas CD' tipo='" . $notas[$i]["tipo"] . "' documento='" . $notas[$i]["documento"] . "'><i class='fa fa-pencil'></i></button>";
                 }
+
+                $botones = "<div class='btn-group'>" . $botonEditar . "<button title='Imprimir Nota Credito' class='btn btn-xs btn-success btnImprimirNotaCredito' tipo='" . $notas[$i]["tipo"] . "' documento='" . $notas[$i]["documento"] . "'><i class='fa fa-print'></i></button>" . $cuenta . "</div>";
 
                 if ($notas[$i]["nombre_tipo"] == "ND") {
 

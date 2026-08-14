@@ -13,6 +13,8 @@
 	var catalogoFactoresCache = [];
 	var catalogoLineaCache = null;
 	var modelosProyectadosCache = [];
+	var modelosPendientesCache = [];
+	var filtroListaModelos = "pendientes";
 	var select2Ready = false;
 	var mesFactorLineaId = "";
 	var factoresPorMesCache = [];
@@ -292,7 +294,7 @@
 
 	function filtroOk() {
 		var idMarca = parseInt($("#proyMarca").val() || "0", 10);
-		var q = $.trim($("#proyQ").val() || $("#selModeloPendiente").val() || "");
+		var q = $.trim($("#proyQ").val() || "");
 		if (idMarca <= 0 && q.length < 1) {
 			proyAlert("Elige una marca o un modelo pendiente.");
 			return false;
@@ -301,7 +303,7 @@
 	}
 
 	function initSelectsModelo() {
-		if (!$.fn.select2) {
+		if (!$.fn.select2 || !$("#selModeloPendiente").length) {
 			return;
 		}
 		select2Ready = true;
@@ -317,54 +319,183 @@
 		});
 	}
 
+	function escHtml(s) {
+		return $("<div>").text(s == null ? "" : String(s)).html();
+	}
+
+	function coincideBusqueda(m, q) {
+		if (!q) {
+			return true;
+		}
+		q = q.toLowerCase();
+		return String(m.modelo || "").toLowerCase().indexOf(q) >= 0
+			|| String(m.nombre || "").toLowerCase().indexOf(q) >= 0
+			|| String(m.marca || "").toLowerCase().indexOf(q) >= 0;
+	}
+
+	function htmlItemLista(m, tipo) {
+		var activo = modeloSeleccionado && String(modeloSeleccionado) === String(m.modelo);
+		var meta;
+		if (tipo === "proyectado") {
+			meta = (m.marca || "Sin marca") + " · " + num(m.meses, 0) + " " +
+				plural(Number(m.meses) || 0, "mes", "meses");
+			if (Number(m.unidades_oficiales) > 0) {
+				meta += " · " + num(m.unidades_oficiales, 0) + " uds";
+			}
+		} else {
+			meta = (m.marca || "Sin marca") + " · Pendiente";
+		}
+		var btnLabel = tipo === "proyectado" ? "Reabrir" : "Abrir";
+		var btnClass = tipo === "proyectado" ? "btn-default" : "btn-primary";
+		return '<div class="proy-lista-item' +
+			(tipo === "proyectado" ? " is-proyectado" : " is-pendiente") +
+			(activo ? " is-active" : "") +
+			'" data-modelo="' + escHtml(m.modelo) + '" data-tipo="' + tipo + '">' +
+			'<div class="proy-lista-item-main">' +
+			'<div class="proy-lista-item-title"><strong>' + escHtml(m.modelo) + "</strong> " +
+			escHtml(m.nombre || "") + "</div>" +
+			'<div class="proy-lista-item-meta">' + escHtml(meta) + "</div>" +
+			"</div>" +
+			'<button type="button" class="btn btn-xs ' + btnClass + ' btnListaModelo">' +
+			btnLabel + "</button>" +
+			"</div>";
+	}
+
+	function renderListaModelos() {
+		var $lista = $("#listaModelos");
+		if (!$lista.length) {
+			return;
+		}
+		var idMarca = parseInt($("#proyMarca").val() || "0", 10);
+		var q = $.trim($("#proyQ").val() || "").toLowerCase();
+		var pendientes = (modelosPendientesCache || []).filter(function (m) {
+			return coincideBusqueda(m, q);
+		});
+		var proyectados = (modelosProyectadosCache || []).filter(function (m) {
+			if (idMarca > 0 && parseInt(m.id_marca, 10) !== idMarca) {
+				return false;
+			}
+			return coincideBusqueda(m, q);
+		});
+
+		$("#chipPendientes").text("Pendientes (" + pendientes.length + ")");
+		$("#chipProyectados").text("Proyectados (" + proyectados.length + ")");
+		$("#chipTodos").text("Todos (" + (pendientes.length + proyectados.length) + ")");
+
+		var html = [];
+		var mostrarPend = filtroListaModelos !== "proyectados";
+		var mostrarProy = filtroListaModelos !== "pendientes";
+		var n = 0;
+
+		if (mostrarProy && proyectados.length && filtroListaModelos === "todos") {
+			html.push('<div class="proy-lista-grupo">Proyectados</div>');
+		}
+		if (mostrarProy) {
+			proyectados.forEach(function (m) {
+				html.push(htmlItemLista(m, "proyectado"));
+				n++;
+			});
+		}
+		if (mostrarPend && pendientes.length && filtroListaModelos === "todos") {
+			html.push('<div class="proy-lista-grupo">Pendientes</div>');
+		}
+		if (mostrarPend) {
+			pendientes.forEach(function (m) {
+				html.push(htmlItemLista(m, "pendiente"));
+				n++;
+			});
+		}
+
+		if (!n) {
+			html.push('<div class="proy-lista-vacio">No hay modelos en este filtro.</div>');
+		}
+		$lista.html(html.join(""));
+		$("#lblListaCount").text(n + " " + plural(n, "modelo", "modelos"));
+	}
+
+	function setStatTone($el, tone) {
+		$el.removeClass("proy-stat--primary proy-stat--ok proy-stat--warn proy-stat--danger proy-stat--neutral");
+		if (tone) {
+			$el.addClass("proy-stat--" + tone);
+		}
+	}
+
+	function plural(n, uno, muchos) {
+		return n === 1 ? uno : muchos;
+	}
+
 	function renderStats(stats) {
 		stats = stats || {};
 		var avance = Number(stats.avance_pct) || 0;
+		var activos = Number(stats.modelos_activos) || 0;
+		var proyectados = Number(stats.modelos_proyectados) || 0;
+		var pendientes = Number(stats.modelos_pendientes) || 0;
+		var udsOfi = Number(stats.unidades_oficiales) || 0;
+		var udsSug = Number(stats.unidades_sugeridas) || 0;
+		var sinLista9 = Number(stats.lineas_sin_lista9) || 0;
+		var borrador = Number(stats.lineas_borrador) || 0;
+		var publicadas = Number(stats.lineas_publicadas) || 0;
+		var cerradas = Number(stats.lineas_cerradas) || 0;
+		var totalLineas = Number(stats.total_lineas) || 0;
+
 		$("#stAvance").text(avance.toFixed(1) + "%");
-		$("#stProyectados").text(num(stats.modelos_proyectados, 0));
-		$("#stPendientes").text(num(stats.modelos_pendientes, 0));
-		$("#stUds").text(num(stats.unidades_oficiales, 0));
-		$("#stBorrador").text(num(stats.lineas_borrador, 0));
-		$("#stPublicadas").text(num(stats.lineas_publicadas, 0));
+		$("#stAvanceMeta").text(num(proyectados, 0) + " de " + num(activos, 0) + " modelos");
 		$("#stBarra").css("width", Math.min(100, avance) + "%");
+		if (avance >= 80) {
+			setStatTone($("#cardAvance"), "ok");
+		} else if (avance >= 40) {
+			setStatTone($("#cardAvance"), "primary");
+		} else {
+			setStatTone($("#cardAvance"), "warn");
+		}
+
+		$("#stProyectados").text(num(proyectados, 0));
+		$("#stProyectadosMeta").text(
+			num(totalLineas, 0) + " " + plural(totalLineas, "línea en el plan", "líneas en el plan")
+		);
+		setStatTone($("#cardProyectados"), proyectados > 0 ? "ok" : "neutral");
+
+		$("#stPendientes").text(num(pendientes, 0));
+		$("#stPendientesMeta").text(
+			pendientes === 0 ? "Todos los activos cubiertos" : "modelos activos sin proyectar"
+		);
+		setStatTone($("#cardPendientes"), pendientes > 0 ? "warn" : "ok");
+
+		$("#stUds").text(num(udsOfi, 0));
+		var metaUds = "de " + num(proyectados, 0) + " " +
+			plural(proyectados, "modelo ya proyectado", "modelos ya proyectados");
+		if (udsSug > 0) {
+			metaUds += " · sug. " + num(udsSug, 0);
+		}
+		if (sinLista9 > 0) {
+			metaUds += " · " + num(sinLista9, 0) + " sin lista 9";
+		}
+		$("#stUdsMeta").text(metaUds);
+		setStatTone($("#cardUds"), sinLista9 > 0 ? "warn" : "neutral");
+
+		$("#stBorrador").text(num(borrador, 0));
+		$("#stBorradorMeta").text(
+			plural(borrador, "línea aún no publicada", "líneas aún no publicadas")
+		);
+		setStatTone($("#cardBorrador"), borrador > 0 ? "warn" : "neutral");
+
+		$("#stPublicadas").text(num(publicadas, 0));
+		var metaPub = plural(publicadas, "línea publicada", "líneas publicadas");
+		if (cerradas > 0) {
+			metaPub += " · " + num(cerradas, 0) + " " + plural(cerradas, "cerrada", "cerradas");
+		}
+		$("#stPublicadasMeta").text(metaPub);
+		setStatTone($("#cardPublicadas"), publicadas > 0 ? "ok" : "neutral");
 	}
 
 	function renderSelectProyectados(rows) {
 		modelosProyectadosCache = rows || [];
-		var $sel = $("#selModeloProyectado");
-		var prev = $sel.val();
-		$sel.empty().append($("<option>").val("").text("Reabrir modelo…"));
-		modelosProyectadosCache.forEach(function (m) {
-			var label = m.modelo + " — " + (m.nombre || "") +
-				(m.marca ? " (" + m.marca + ")" : "") +
-				" · " + m.meses + " mes(es)";
-			$sel.append($("<option>").val(m.modelo).text(label));
-		});
-		if (prev && $sel.find("option[value='" + prev + "']").length) {
-			$sel.val(prev);
-		}
-		if (select2Ready) {
-			$sel.trigger("change.select2");
-		}
+		renderListaModelos();
 	}
 
 	function renderSelectPendientes(rows) {
-		var $sel = $("#selModeloPendiente");
-		var prev = $sel.val();
-		$sel.empty().append($("<option>").val("").text("Elige un modelo…"));
-		(rows || []).forEach(function (m) {
-			var label = m.modelo + " — " + (m.nombre || "") + (m.marca ? " (" + m.marca + ")" : "");
-			$sel.append($("<option>").val(m.modelo).text(label));
-		});
-		$("#lblPendientesCount").text((rows || []).length + " en lista");
-		if (prev && $sel.find("option[value='" + prev + "']").length) {
-			$sel.val(prev);
-		} else {
-			$sel.val("");
-		}
-		if (select2Ready) {
-			$sel.trigger("change.select2");
-		}
+		modelosPendientesCache = rows || [];
+		renderListaModelos();
 	}
 
 	function cargarPendientesYStats() {
@@ -375,14 +506,15 @@
 		return post("modelosPendientes", {
 			id_periodo: id,
 			id_marca: $("#proyMarca").val() || 0,
-			q: ""
+			q: $.trim($("#proyQ").val() || "")
 		}).done(function (resp) {
 			if (!resp || !resp.ok) {
 				return;
 			}
 			renderStats(resp.stats || {});
-			renderSelectProyectados(resp.modelos_proyectados || []);
-			renderSelectPendientes(resp.modelos || []);
+			modelosProyectadosCache = resp.modelos_proyectados || [];
+			modelosPendientesCache = resp.modelos || [];
+			renderListaModelos();
 		});
 	}
 
@@ -718,10 +850,6 @@
 			}
 			if (opts.modelo) {
 				modeloSeleccionado = opts.modelo;
-				$("#selModeloProyectado").val(opts.modelo);
-				if (select2Ready) {
-					$("#selModeloProyectado").trigger("change.select2");
-				}
 				cargarEspacioModelo(!!opts.asegurar);
 			}
 		}).fail(function (xhr, status) {
@@ -1478,19 +1606,19 @@
 
 	function cargarEspacioModelo(asegurar) {
 		var id = $("#proyIdPeriodo").val();
-		var modelo = modeloSeleccionado ||
-			$.trim($("#selModeloPendiente").val() || "") ||
-			$.trim($("#selModeloProyectado").val() || "");
+		var modelo = modeloSeleccionado;
 		if (!id) {
 			proyAlert("Abre un plan primero");
 			return;
 		}
 		if (!modelo) {
-			proyAlert("Elige un modelo pendiente o uno ya proyectado");
+			proyAlert("Elige un modelo en la lista");
 			return;
 		}
 		modeloSeleccionado = modelo;
-		$("#btnAbrirModelo").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Cargando…');
+		var $item = $(".proy-lista-item[data-modelo='" + modelo.replace(/'/g, "") + "']");
+		$item.addClass("is-loading");
+		$item.find(".btnListaModelo").prop("disabled", true);
 		post("espacioModelo", {
 			id_periodo: id,
 			modelo: modelo,
@@ -1505,7 +1633,9 @@
 		}).fail(function (xhr, status) {
 			proyAlert(status === "timeout" ? "Timeout al abrir el modelo" : "Error de red");
 		}).always(function () {
-			$("#btnAbrirModelo").prop("disabled", false).html('<i class="fa fa-cube"></i> Abrir pendiente');
+			$(".proy-lista-item").removeClass("is-loading");
+			$(".proy-lista-item .btnListaModelo").prop("disabled", false);
+			renderListaModelos();
 		});
 	}
 
@@ -1683,7 +1813,7 @@
 		post("generarLineas", {
 			id_periodo: id,
 			id_marca: $("#proyMarca").val() || 0,
-			q: $("#proyQ").val() || $("#selModeloPendiente").val() || ""
+			q: $("#proyQ").val() || ""
 		}).done(function (resp) {
 			if (!resp || !resp.ok) {
 				proyAlert((resp && resp.mensaje) || "No se pudo generar");
@@ -2011,21 +2141,24 @@
 			mostrarListado();
 		});
 		$("#btnCrearPlan").on("click", crearPlan);
-		$("#btnAbrirModelo").on("click", function () {
-			modeloSeleccionado = $.trim($("#selModeloPendiente").val() || "");
-			if (!modeloSeleccionado) {
-				proyAlert("Elige un modelo pendiente");
+		$(document).on("click", ".proy-lista-item", function (e) {
+			var $item = $(this);
+			var modelo = $.trim($item.attr("data-modelo") || "");
+			var tipo = $item.attr("data-tipo") || "";
+			if (!modelo || $item.hasClass("is-loading")) {
 				return;
 			}
-			cargarEspacioModelo(true);
+			e.preventDefault();
+			modeloSeleccionado = modelo;
+			$(".proy-lista-item").removeClass("is-active");
+			$item.addClass("is-active");
+			cargarEspacioModelo(tipo === "pendiente");
 		});
-		$("#btnAbrirProyectado").on("click", function () {
-			modeloSeleccionado = $.trim($("#selModeloProyectado").val() || "");
-			if (!modeloSeleccionado) {
-				proyAlert("Elige un modelo ya proyectado");
-				return;
-			}
-			cargarEspacioModelo(false);
+		$(document).on("click", ".proy-lista-chip", function () {
+			filtroListaModelos = $(this).data("filtro") || "pendientes";
+			$(".proy-lista-chip").removeClass("is-active");
+			$(this).addClass("is-active");
+			renderListaModelos();
 		});
 		$("#btnAsegurarLineas").on("click", function () {
 			cargarEspacioModelo(true);
@@ -2033,29 +2166,12 @@
 		$("#proyMarca").on("change", function () {
 			cargarPendientesYStats();
 		});
-		$("#selModeloPendiente").on("change", function () {
-			var v = $.trim($(this).val() || "");
-			if (v) {
-				modeloSeleccionado = v;
-			}
-		});
-		$("#selModeloProyectado").on("change", function () {
-			var v = $.trim($(this).val() || "");
-			if (v) {
-				modeloSeleccionado = v;
-			}
-		});
-		$("#selModeloPendiente").on("select2:select", function (e) {
-			modeloSeleccionado = e.params.data.id;
-			if (modeloSeleccionado) {
-				cargarEspacioModelo(true);
-			}
-		});
-		$("#selModeloProyectado").on("select2:select", function (e) {
-			modeloSeleccionado = e.params.data.id;
-			if (modeloSeleccionado) {
-				cargarEspacioModelo(false);
-			}
+		$("#proyQ").on("input", function () {
+			renderListaModelos();
+			clearTimeout(buscarTimer);
+			buscarTimer = setTimeout(function () {
+				cargarPendientesYStats();
+			}, 300);
 		});
 		$("#btnGuardarModelo").on("click", guardarModelo);
 		$("#btnPublicarModelo").on("click", publicarModelo);
@@ -2125,10 +2241,6 @@
 		});
 		$(document).on("click", ".btnIrModelo", function () {
 			modeloSeleccionado = $(this).data("modelo");
-			$("#selModeloProyectado").val(modeloSeleccionado);
-			if (select2Ready) {
-				$("#selModeloProyectado").trigger("change.select2");
-			}
 			cargarEspacioModelo(false);
 		});
 		$(document).on("click", ".btnEditarFactor", function () {
