@@ -129,19 +129,17 @@
 		var relevante = desviacionRelevanteUi(sug, aj, ofi);
 		var justificado = (Number(nFactores) || 0) > 0;
 		var cls = "proy-desv";
-		var badge = "";
-		if (relevante && !justificado) {
-			cls += " proy-desv-warn";
-			badge = ' <span class="label label-warning" title="Supera 10% sin factor: elige motivo">!</span>';
-		} else if (relevante && justificado) {
-			cls += " proy-desv-ok";
-		} else if (d.diff === 0) {
+		if (d.diff === 0) {
 			return '<span class="text-muted proy-desv">0</span>';
+		}
+		if (relevante && justificado) {
+			cls += " proy-desv-ok";
+		} else if (relevante) {
+			cls += " proy-desv-warn";
 		}
 		return '<span class="' + cls + '" title="Oficial − (sug. + factores)">' +
 			(d.diff > 0 ? "+" : "") + num(d.diff, 0) +
-			" <small>(" + (d.pct > 0 ? "+" : "") + d.pct + "%)</small>" +
-			badge + "</span>";
+			" <small>(" + (d.pct > 0 ? "+" : "") + d.pct + "%)</small></span>";
 	}
 
 	function htmlMotivoSelect(idLinea, observacion, editable, requiere) {
@@ -166,6 +164,35 @@
 			opts + "</select>";
 	}
 
+	function histRefCerrado(detalle) {
+		var v1 = histValorNum(detalle, 1);
+		if (v1 != null) {
+			return { uds: v1, anio: histAnio(detalle, 1) };
+		}
+		var v2 = histValorNum(detalle, 2);
+		if (v2 != null) {
+			return { uds: v2, anio: histAnio(detalle, 2) };
+		}
+		return null;
+	}
+
+	function htmlVsAnio(ofi, ref) {
+		if (!ref || ref.uds == null) {
+			return '<span class="text-muted">—</span>';
+		}
+		return '<div class="proy-hist-cell">' +
+			'<span class="proy-hist-num">' + num(ref.uds, 0) + "</span>" +
+			htmlPctLine(ofi, ref.uds, ref.anio ? String(ref.anio) : "") +
+			"</div>";
+	}
+
+	function htmlSolesFila(ofi, precio) {
+		if (precio == null || !isFinite(precio)) {
+			return '<span class="text-muted">—</span>';
+		}
+		return moneda(Number(ofi) * Number(precio));
+	}
+
 	function refrescarDesvFila($tr) {
 		var $ofi = $tr.find(".inpOficialModelo");
 		if (!$ofi.length) {
@@ -175,24 +202,14 @@
 		var aj = Number($ofi.data("aj")) || 0;
 		var ofi = Number($ofi.val()) || 0;
 		var nFact = Number($tr.data("nFactores")) || 0;
-		var requiere = desviacionRelevanteUi(sug, aj, ofi) && nFact <= 0;
+		var refUds = $tr.attr("data-hist-ref");
+		var refAnio = $tr.attr("data-hist-anio");
+		var precio = $tr.attr("data-precio");
 		$tr.find(".tdDesv").html(htmlCeldaDesv(sug, aj, ofi, nFact));
-		$tr.toggleClass("proy-fila-desv", requiere);
-		var $sel = $tr.find(".selMotivoDesv");
-		if ($sel.length) {
-			$sel.toggleClass("proy-motivo-req", requiere);
-			if ($sel.data("selectpicker")) {
-				$sel.selectpicker("refresh");
-			}
-			if (requiere && !$sel.val()) {
-				$sel.find("option:first").text("Elegir motivo…");
-			} else if (!requiere && !$sel.val()) {
-				$sel.find("option:first").text("—");
-			}
-			if ($sel.data("selectpicker")) {
-				$sel.selectpicker("refresh");
-			}
-		}
+		$tr.find(".tdVsAnio").html(htmlVsAnio(ofi, refUds != null && refUds !== ""
+			? { uds: Number(refUds), anio: refAnio } : null));
+		$tr.find(".tdSoles").html(htmlSolesFila(ofi, precio != null && precio !== "" ? Number(precio) : null));
+		pintarResumenCantidades();
 	}
 
 	function urlEstado(idPlan, modelo) {
@@ -561,6 +578,34 @@
 		return n[mes] || String(mes);
 	}
 
+	function nombreMesLargo(mes) {
+		var n = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+			"Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+		mes = parseInt(mes, 10);
+		return n[mes] || String(mes);
+	}
+
+	function etiquetaMesDePeriodo(periodo, largo) {
+		var mes = mesDesdePeriodo(periodo);
+		var anio = anioDesdePeriodo(periodo);
+		var nom = largo ? nombreMesLargo(mes) : nombreMesCorto(mes);
+		return nom + (anio ? " " + anio : "");
+	}
+
+	function etiquetaEstadoLinea(estado) {
+		var e = String(estado || "").toLowerCase();
+		if (e === "borrador") {
+			return "Borrador";
+		}
+		if (e === "publicado") {
+			return "Publicado";
+		}
+		if (e === "cerrado") {
+			return "Cerrado";
+		}
+		return estado || "";
+	}
+
 	function deltaTxt(ofi, sug) {
 		var d = (Number(ofi) || 0) - (Number(sug) || 0);
 		if (!d) {
@@ -894,13 +939,13 @@
 		}
 		var ykeys = ["h3", "h2"];
 		var lineLabels = [
-			aniosLinea.h3 ? String(aniosLinea.h3) : "Hace 3",
-			aniosLinea.h2 ? String(aniosLinea.h2) : "Hace 2"
+			etiquetaAnio(3, aniosLinea.h3),
+			etiquetaAnio(2, aniosLinea.h2)
 		];
 		var lineColors = [DEC_COL.h3, DEC_COL.h2];
 		if (incluirH1) {
 			ykeys.push("h1");
-			lineLabels.push(aniosLinea.h1 ? String(aniosLinea.h1) : "Hace 1");
+			lineLabels.push(etiquetaAnio(1, aniosLinea.h1));
 			lineColors.push(DEC_COL.h1);
 		}
 		if (hayCurso) {
@@ -1104,9 +1149,9 @@
 			});
 		});
 
-		var lblH1 = anioH1 ? String(anioH1) : "Hace 1";
-		var lblH2 = anioH2 ? String(anioH2) : "Hace 2";
-		var lblH3 = anioH3 ? String(anioH3) : "Hace 3";
+		var lblH1 = etiquetaAnio(1, anioH1);
+		var lblH2 = etiquetaAnio(2, anioH2);
+		var lblH3 = etiquetaAnio(3, anioH3);
 		var rangoPlan = rangoMesesPlan(meses);
 		var tendTitulo = rangoPlan ? rangoPlan : "Tendencia";
 		if (!h1Completo && anioH1) {
@@ -1272,9 +1317,9 @@
 		var a1 = histAnio(hist, 1);
 		var a2 = histAnio(hist, 2);
 		var a3 = histAnio(hist, 3);
-		var lblH1 = a1 ? String(a1) : "Hace 1";
-		var lblH2 = a2 ? String(a2) : "Hace 2";
-		var lblH3 = a3 ? String(a3) : "Hace 3";
+		var lblH1 = etiquetaAnio(1, a1);
+		var lblH2 = etiquetaAnio(2, a2);
+		var lblH3 = etiquetaAnio(3, a3);
 		var sub = cab.nombre || cab.marca || "";
 		$("#decSub").text((sub ? sub + " · " : "") + nom);
 		$("#decVerPlan").show();
@@ -2562,9 +2607,10 @@
 		return tot;
 	}
 
-	function rangoMesesPlan(meses) {
+	function rangoMesesPlan(meses, largo) {
 		return txtRangoMeses((meses || []).map(function (m) {
-			return nombreMesCorto(m.mes != null ? m.mes : mesDesdePeriodo(m.periodo));
+			var mes = m.mes != null ? m.mes : mesDesdePeriodo(m.periodo);
+			return largo ? nombreMesLargo(mes) : nombreMesCorto(mes);
 		}));
 	}
 
@@ -2618,34 +2664,78 @@
 		return nombres.length === 1 ? first : first + "–" + last;
 	}
 
-	function tonoPct(pct) {
-		if (pct == null || !isFinite(pct)) {
+	function htmlPctLine(actual, anterior, vsLabel) {
+		if (actual == null || anterior == null || !isFinite(actual) || !isFinite(anterior)) {
 			return "";
 		}
+		var pct = pctCambio(actual, anterior);
+		if (pct == null) {
+			return "";
+		}
+		var cls = "proy-hist-pct";
 		if (pct > 0.5) {
-			return "is-pos";
+			cls += " proy-delta-up";
+		} else if (pct < -0.5) {
+			cls += " proy-delta-down";
+		} else {
+			cls += " proy-delta-flat";
 		}
-		if (pct < -0.5) {
-			return "is-neg";
-		}
-		return "";
+		var arrow = pct > 0.5 ? "▲" : (pct < -0.5 ? "▼" : "•");
+		var vs = vsLabel ? " vs " + vsLabel : "";
+		return '<span class="' + cls + '">' + arrow + " " +
+			(pct > 0 ? "+" : "") + pct.toFixed(0) + "%" + vs + "</span>";
 	}
 
-	/** Valor histórico + % vs el año anterior, todo en una línea. */
+	function htmlThAnio(anio, nota) {
+		if (!anio) {
+			return nota || "—";
+		}
+		return String(anio) + (nota ? "<small>" + nota + "</small>" : "");
+	}
+
+	function anioDesdePlan(offset, anioPlan) {
+		var base = Number(anioPlan) || 0;
+		if (!base && planActual) {
+			base = Number(planActual.anio_desde) || 0;
+		}
+		if (!base) {
+			return null;
+		}
+		return base - Number(offset);
+	}
+
+	function etiquetaAnio(offset, anioHist, anioPlan) {
+		var a = anioHist || anioDesdePlan(offset, anioPlan);
+		return a ? String(a) : "—";
+	}
+
+	function pintarCabeceraHist(anioPlan, h1Completo) {
+		var a1 = anioDesdePlan(1, anioPlan);
+		var a2 = anioDesdePlan(2, anioPlan);
+		var a3 = anioDesdePlan(3, anioPlan);
+		$("#thHist1").html(htmlThAnio(a1, h1Completo === false ? "aún no cierra" : ""));
+		$("#thHist2").html(htmlThAnio(a2, ""));
+		$("#thHist3").html(htmlThAnio(a3, ""));
+		$("#thHistSug").html("Sugerencia" + (anioPlan ? "<small>" + anioPlan + "</small>" : ""));
+	}
+
+	/** Unidades arriba; el % vs el año de al lado, debajo y en chico. */
 	function histCellVs(detalle, offset, offsetPrev) {
 		var udsHtml = histUds(detalle, offset);
 		if (offsetPrev == null) {
-			return { html: udsHtml, cls: "" };
+			return udsHtml;
 		}
 		var actual = histValorNum(detalle, offset);
 		var prev = histValorNum(detalle, offsetPrev);
-		if (actual == null || prev == null) {
-			return { html: udsHtml, cls: "" };
+		var anioPrev = histAnio(detalle, offsetPrev) || anioDesdePlan(offsetPrev);
+		var pctHtml = htmlPctLine(actual, prev, anioPrev ? String(anioPrev) : "");
+		if (!pctHtml) {
+			return udsHtml;
 		}
-		return {
-			html: udsHtml + " " + fmtDelta(actual, prev, "", true),
-			cls: tonoPct(pctCambio(actual, prev))
-		};
+		return '<div class="proy-hist-cell">' +
+			'<span class="proy-hist-num">' + udsHtml + "</span>" +
+			pctHtml +
+			"</div>";
 	}
 
 	function mapaEstacional(ctx) {
@@ -2666,6 +2756,7 @@
 		if (!filas.length) {
 			$("#lblTendenciaHist").text("");
 			$("#lblGlobalHist").text("");
+			pintarCabeceraHist(planActual && planActual.anio_desde, null);
 			$tb.append('<tr><td colspan="7" class="text-muted text-center">Sin historial estacional</td></tr>');
 			renderMatrizSugerencia(ctx);
 			renderMpRiesgo(ctx);
@@ -2695,33 +2786,43 @@
 		var totH1Per = h1Ok ? totOffsetPeriodo(mesesHist, estHist, 1) : null;
 		var totH2Per = h2Ok ? totOffsetPeriodo(mesesHist, estHist, 2) : null;
 		var totH3Per = h3Ok ? totOffsetPeriodo(mesesHist, estHist, 3) : null;
+		var anioPlan = filas[0].anio != null ? Number(filas[0].anio) : anioDesdePeriodo(filas[0].periodo);
+		if (!anioPlan && planActual) {
+			anioPlan = Number(planActual.anio_desde) || 0;
+		}
+		anioH1 = histAnio(filas[0].historial, 1) || anioDesdePlan(1, anioPlan);
+		anioH2 = histAnio(filas[0].historial, 2) || anioDesdePlan(2, anioPlan);
+		anioH3 = histAnio(filas[0].historial, 3) || anioDesdePlan(3, anioPlan);
+		var rangoLargo = rangoMesesPlan(mesesHist, true) || "el periodo";
+		pintarCabeceraHist(anioPlan, h1Ok);
 
 		filas.forEach(function (f) {
 			var sug = f.sugerencia || {};
 			var sugCalc = sug.unidades != null ? Number(sug.unidades) : null;
-			var sugTxt = sugCalc != null ? '<strong class="proy-hist-sug">' + num(sugCalc, 0) + "</strong>" : "—";
+			var mesNom = nombreMesLargo(f.mes != null ? f.mes : mesDesdePeriodo(f.periodo));
+			var sugInner = sugCalc != null
+				? '<strong class="proy-hist-sug">' + num(sugCalc, 0) + "</strong>"
+				: "—";
 			if (sug.sin_historia) {
-				sugTxt += ' <span class="text-muted">sin hist.</span>';
+				sugInner += '<span class="text-muted proy-hist-pct">sin historial</span>';
 			}
+			var sugTxt = sugCalc != null
+				? '<div class="proy-hist-cell">' + sugInner + "</div>"
+				: sugInner;
 			var c1 = histCellVs(f.historial, 1, 2);
 			var c2 = histCellVs(f.historial, 2, 3);
 			var c3 = histCellVs(f.historial, 3, null);
-			var v1 = histValorNum(f.historial, 1);
-			var v2 = histValorNum(f.historial, 2);
-			var v3 = histValorNum(f.historial, 3);
-			var band = bandaSugMes(sugCalc, v1 != null ? v1 : v2, v1 != null ? v2 : v3);
-			var sugCls = band === "alta" ? "is-alta" : (band === "baja" ? "is-baja" : (band === "rango" ? "is-ok" : ""));
-			var dCls = tonoPct(pctCambio(sugCalc, prevSug));
+			var vsMes = htmlPctLine(sugCalc, prevSug, "");
 			$tb.append(
 				'<tr class="proy-hist-mes' + (decMesFoco === f.periodo ? " is-foco" : "") +
-				'" data-periodo="' + f.periodo + '" title="Clic para ver este mes en el panorama">' +
-				"<td><strong>" + f.periodo + "</strong></td>" +
-				'<td class="' + c1.cls + '">' + c1.html + "</td>" +
-				'<td class="' + c2.cls + '">' + c2.html + "</td>" +
-				'<td class="' + c3.cls + '">' + c3.html + "</td>" +
-				"<td>" + (sug.promedio_simple != null ? num(sug.promedio_simple, 1) : "—") + "</td>" +
-				'<td class="' + sugCls + '">' + sugTxt + "</td>" +
-				'<td class="' + dCls + '">' + fmtDelta(sugCalc, prevSug, "", true) + "</td></tr>"
+				'" data-periodo="' + f.periodo + '" title="Clic para ver este mes a la derecha">' +
+				'<td class="proy-hist-mes-nom"><strong>' + mesNom + "</strong></td>" +
+				"<td>" + c1 + "</td>" +
+				"<td>" + c2 + "</td>" +
+				"<td>" + c3 + "</td>" +
+				"<td>" + (sug.promedio_simple != null ? num(sug.promedio_simple, 0) : "—") + "</td>" +
+				'<td class="proy-td-sug">' + sugTxt + "</td>" +
+				"<td>" + (vsMes || "—") + "</td></tr>"
 			);
 			if (sugCalc != null) {
 				if (firstSug == null) {
@@ -2736,52 +2837,48 @@
 				totProm += Number(sug.promedio_simple);
 				nProm++;
 			}
-			if (!anioH1) {
-				anioH1 = histAnio(f.historial, 1);
-			}
-			if (!anioH2) {
-				anioH2 = histAnio(f.historial, 2);
-			}
-			if (!anioH3) {
-				anioH3 = histAnio(f.historial, 3);
-			}
 		});
 
 		var totRef = h1Ok ? totH1Per : totH2Per;
-		var pieLbl = "Total " + (rangoMesesPlan(mesesHist) || "periodo");
+		var anioRef = h1Ok ? anioH1 : anioH2;
 		var pieH1 = h1Ok
 			? "<strong>" + num(totH1Per, 0) + "</strong>"
-			: '— <span class="text-muted">incompleto</span>';
+			: '<span class="text-muted">aún no cierra</span>';
 		var pieH2 = h2Ok
-			? "<strong>" + num(totH2Per, 0) + "</strong>" +
-				(h2Ok && h3Ok ? " " + fmtDelta(totH2Per, totH3Per, "", true) : "")
+			? '<div class="proy-hist-cell"><strong>' + num(totH2Per, 0) + "</strong>" +
+				(h3Ok ? htmlPctLine(totH2Per, totH3Per, anioH3 ? String(anioH3) : "") : "") +
+				"</div>"
 			: "—";
 		var pieSug = nSug
-			? '<strong class="proy-hist-sug">' + num(totSug, 0) + "</strong>" +
-				(totRef != null ? " " + fmtDelta(totSug, totRef, "", true) : "")
+			? '<div class="proy-hist-cell"><strong class="proy-hist-sug">' + num(totSug, 0) + "</strong>" +
+				(totRef != null ? htmlPctLine(totSug, totRef, anioRef ? String(anioRef) : "") : "") +
+				"</div>"
 			: "—";
 		$tf.html(
 			"<tr class='proy-tfoot'>" +
-			"<td><strong>" + pieLbl + "</strong></td>" +
+			"<td><strong>Total " + rangoLargo + "</strong></td>" +
 			"<td>" + pieH1 + "</td>" +
 			"<td>" + pieH2 + "</td>" +
 			"<td><strong>" + (h3Ok ? num(totH3Per, 0) : "—") + "</strong></td>" +
 			"<td>" + (nProm ? num(totProm, 0) : "—") + "</td>" +
-			"<td>" + pieSug + "</td>" +
-			"<td>—</td>" +
+			'<td class="proy-td-sug">' + pieSug + "</td>" +
+			"<td></td>" +
 			"</tr>"
 		);
 
 		if (firstSug != null && lastSug != null && filas.length > 1) {
 			var dTot = lastSug - firstSug;
 			var pctTot = firstSug !== 0 ? (dTot / Math.abs(firstSug)) * 100 : null;
-			var sentido = dTot > 0 ? "crece" : (dTot < 0 ? "baja" : "se mantiene");
-			var pctPart = pctTot == null ? "" : " (" + (pctTot > 0 ? "+" : "") + pctTot.toFixed(0) + "%)";
+			var primerMes = nombreMesLargo(mesesHist[0].mes);
+			var ultimoMes = nombreMesLargo(mesesHist[mesesHist.length - 1].mes);
+			var sentido = dTot > 0 ? "sube" : (dTot < 0 ? "baja" : "se mantiene");
+			var pctPart = pctTot == null
+				? ""
+				: " (" + Math.abs(pctTot).toFixed(0) + "%)";
 			$("#lblTendenciaHist").html(
-				"Sugerencia del plan: <strong>" + sentido + "</strong> " +
-				num(firstSug, 0) + " → " + num(lastSug, 0) +
-				" · Δ " + (dTot > 0 ? "+" : "") + num(dTot, 0) + pctPart +
-				"."
+				"De " + primerMes.toLowerCase() + " a " + ultimoMes.toLowerCase() +
+				" la sugerencia <strong>" + sentido + "</strong> de " +
+				num(firstSug, 0) + " a " + num(lastSug, 0) + " unidades" + pctPart + "."
 			);
 		} else {
 			$("#lblTendenciaHist").text("");
@@ -2792,20 +2889,22 @@
 			if (totRef != null) {
 				var dAnio = totSug - totRef;
 				var pctAnio = totRef !== 0 ? (dAnio / Math.abs(totRef)) * 100 : null;
-				var sentAnio = dAnio > 0 ? "arriba" : (dAnio < 0 ? "abajo" : "igual");
-				var anioRef = h1Ok ? anioH1 : anioH2;
-				var anioTxt = anioRef ? String(anioRef) : "último año cerrado";
-				vsAnioTxt = " · vs " + anioTxt + " (periodo cerrado): <strong>" + sentAnio + "</strong> " +
-					num(totSug, 0) + " vs " + num(totRef, 0) +
-					" · Δ " + (dAnio > 0 ? "+" : "") + num(dAnio, 0) +
-					(pctAnio == null ? "" : " (" + (pctAnio > 0 ? "+" : "") + pctAnio.toFixed(0) + "%)");
+				var anioTxt = anioRef ? String(anioRef) : "el último año cerrado";
+				if (pctAnio == null || Math.abs(dAnio) < 0.5) {
+					vsAnioTxt = ", casi igual que en " + rangoLargo + " " + anioTxt;
+				} else {
+					vsAnioTxt = ", un <strong>" + Math.abs(pctAnio).toFixed(0) + "% " +
+						(dAnio > 0 ? "más" : "menos") + "</strong> que en " +
+						rangoLargo + " " + anioTxt;
+				}
 			}
 			var abiertoTxt = h1Ok
 				? ""
-				: " · " + (anioH1 ? anioH1 : "el año anterior") + " no entra (periodo incompleto)";
+				: " " + (anioH1 ? anioH1 : "El año anterior") +
+					" no se compara porque todavía no cerró.";
 			$("#lblGlobalHist").html(
-				"Global del periodo: sugerencia <strong>" + num(totSug, 0) + "</strong> uds" +
-				vsAnioTxt + abiertoTxt + "."
+				"En total se sugieren <strong>" + num(totSug, 0) + "</strong> unidades" +
+				vsAnioTxt + "." + abiertoTxt
 			);
 		} else {
 			$("#lblGlobalHist").text("");
@@ -2843,16 +2942,25 @@
 	}
 
 	function renderMesesModelo(lineas, ctx) {
-		destroyMotivoPickers();
 		var $tb = $("#tablaMesesModelo tbody");
+		var $tf = $("#tablaMesesModeloFoot");
 		$tb.empty();
+		$tf.empty();
 		var puedeEditar = $("#proyPuedeEditar").val() === "1";
 		var est = mapaEstacional(ctx);
+		var precio = ctx && ctx.precio_lista9 != null ? Number(ctx.precio_lista9) : null;
 		if (!(lineas || []).length) {
 			$tb.append('<tr><td colspan="9" class="text-muted text-center">Sin líneas. Pulsa “Preparar meses”.</td></tr>');
+			$("#proyCantResumen").empty();
 			llenarSelectMesFactores([], { skipLoad: false });
 			return;
 		}
+		var totOfi = 0;
+		var totSug = 0;
+		var totAj = 0;
+		var totRef = 0;
+		var nRef = 0;
+		var anioRefHead = null;
 		lineas.forEach(function (l) {
 			var editable = puedeEditar && l.estado_linea !== "CERRADO";
 			var sugMes = sugDeLinea(l, ctx);
@@ -2864,46 +2972,140 @@
 			if (base > 0) {
 				pct = String(Math.round(((ofi - base) / base) * 100));
 			}
-			var requiereMotivo = desviacionRelevanteUi(sugMes, aj, ofi) && nFact <= 0;
 			var f = est[l.periodo];
 			var histTxt = f ? histStack(f.historial) : "—";
+			var ref = f ? histRefCerrado(f.historial) : null;
+			if (ref && !anioRefHead) {
+				anioRefHead = ref.anio;
+			}
 			var ajHtml = '<span class="' + (aj > 0 ? "proy-num-pos" : (aj < 0 ? "proy-num-neg" : "")) + '">' +
 				(aj > 0 ? "+" : "") + num(aj, 0) + "</span>";
 			if (nFact) {
 				ajHtml += ' <span class="label label-info">' + nFact + "</span>";
 			}
+			var ofiHtml = editable
+				? '<input type="number" min="0" step="10" class="form-control input-sm inpOficialModelo" data-id="' +
+					l.id + '" data-base="' + base + '" data-sug="' + sugMes + '" data-aj="' + aj +
+					'" value="' + ofi + '">' +
+					'<small class="tdDesv">' + htmlCeldaDesv(sugMes, aj, ofi, nFact) + "</small>"
+				: '<strong>' + num(ofi, 0) + "</strong>" +
+					'<small class="tdDesv">' + htmlCeldaDesv(sugMes, aj, ofi, nFact) + "</small>";
 			var tr = $("<tr data-id='" + l.id + "' data-n-factores='" + nFact + "'>");
-			if (requiereMotivo) {
-				tr.addClass("proy-fila-desv");
+			if (ref) {
+				tr.attr("data-hist-ref", ref.uds);
+				tr.attr("data-hist-anio", ref.anio || "");
 			}
-			tr.append($("<td>").html("<strong>" + l.periodo + "</strong>"));
+			if (precio != null) {
+				tr.attr("data-precio", precio);
+			}
+			tr.append($("<td>").html("<strong>" + etiquetaMesDePeriodo(l.periodo, true) + "</strong>"));
 			tr.append($("<td>").html(histTxt));
 			tr.append($("<td>").html(
 				num(sugMes, 0) +
 				(ctx && ctx.sugerencias && ctx.sugerencias[l.periodo] && ctx.sugerencias[l.periodo].sin_historia
-					? ' <span class="text-muted">sin hist.</span>' : "")
+					? ' <span class="text-muted">sin historial</span>' : "")
 			));
 			tr.append($("<td>").html(ajHtml));
 			tr.append($("<td>").html(
 				editable
 					? '<input type="number" step="1" class="form-control input-sm inpPctMes" data-id="' +
-						l.id + '" data-base="' + base + '" value="' + pct + '" style="width:64px;" title="% entero sobre sug.+factores">'
+						l.id + '" data-base="' + base + '" value="' + pct + '" title="% sobre sug. + factores">'
 					: (pct === "" ? "—" : pct + "%")
 			));
+			tr.append($("<td class='tdOficial'>").html(ofiHtml));
+			tr.append($("<td class='tdVsAnio'>").html(htmlVsAnio(ofi, ref)));
+			tr.append($("<td class='tdSoles'>").html(htmlSolesFila(ofi, precio)));
 			tr.append($("<td>").html(
-				editable
-					? '<input type="number" min="0" step="10" class="form-control input-sm inpOficialModelo" data-id="' +
-						l.id + '" data-base="' + base + '" data-sug="' + sugMes + '" data-aj="' + aj +
-						'" value="' + ofi + '" style="width:100px;">'
-					: String(ofi)
+				'<span class="label label-default">' + etiquetaEstadoLinea(l.estado_linea) + "</span>"
 			));
-			tr.append($("<td class='tdDesv'>").html(htmlCeldaDesv(sugMes, aj, ofi, nFact)));
-			tr.append($("<td>").html(htmlMotivoSelect(l.id, l.observacion, editable, requiereMotivo)));
-			tr.append($("<td>").html('<span class="label label-default">' + l.estado_linea + "</span>"));
 			$tb.append(tr);
+			totOfi += ofi;
+			totSug += sugMes;
+			totAj += aj;
+			if (ref) {
+				totRef += ref.uds;
+				nRef++;
+			}
 		});
+		if (anioRefHead) {
+			$("#thCantVs").text("vs " + anioRefHead);
+		} else {
+			$("#thCantVs").text("vs año");
+		}
+		$tf.html(
+			"<tr class='proy-tfoot'>" +
+			"<td><strong>Total</strong></td>" +
+			"<td></td>" +
+			"<td><strong>" + num(totSug, 0) + "</strong></td>" +
+			"<td><strong>" + (totAj > 0 ? "+" : "") + num(totAj, 0) + "</strong></td>" +
+			"<td></td>" +
+			"<td><strong>" + num(totOfi, 0) + "</strong></td>" +
+			"<td>" + (nRef ? htmlVsAnio(totOfi, { uds: totRef, anio: anioRefHead }) : "") + "</td>" +
+			"<td><strong>" + htmlSolesFila(totOfi, precio) + "</strong></td>" +
+			"<td></td>" +
+			"</tr>"
+		);
+		pintarResumenCantidades();
 		llenarSelectMesFactores(lineas, { skipLoad: !!mesFactorLineaId });
-		initMotivoPickers();
+	}
+
+	function pintarResumenCantidades() {
+		var $box = $("#proyCantResumen");
+		if (!$box.length || !espacioActual) {
+			return;
+		}
+		var ctx = espacioActual.contexto || {};
+		var totOfi = 0;
+		$(".inpOficialModelo").each(function () {
+			totOfi += Number($(this).val()) || 0;
+		});
+		if (!totOfi && espacioActual.lineas) {
+			espacioActual.lineas.forEach(function (l) {
+				totOfi += Number(l.unidades_oficiales) || 0;
+			});
+		}
+		var inv = ctx.inventario || {};
+		var stock = Number(inv.stock_disponible) || 0;
+		var proc = Number(inv.en_proceso) || 0;
+		var cubierto = stock + proc;
+		var gap = totOfi - cubierto;
+		var precio = ctx.precio_lista9 != null ? Number(ctx.precio_lista9) : null;
+		var totRef = 0;
+		var nRef = 0;
+		var anioRef = null;
+		$("#tablaMesesModelo tbody tr").each(function () {
+			var ref = $(this).attr("data-hist-ref");
+			if (ref != null && ref !== "") {
+				totRef += Number(ref) || 0;
+				nRef++;
+				if (!anioRef) {
+					anioRef = $(this).attr("data-hist-anio");
+				}
+			}
+		});
+		var vsHtml = "—";
+		if (nRef && totRef) {
+			var d = totOfi - totRef;
+			var pct = totRef ? Math.round((d / Math.abs(totRef)) * 100) : 0;
+			var cls = d > 0 ? "proy-num-pos" : (d < 0 ? "proy-num-neg" : "");
+			vsHtml = '<span class="' + cls + '">' + (d > 0 ? "+" : "") + pct + "%</span>" +
+				'<span class="proy-stat-meta">vs ' + (anioRef || "año cerrado") + "</span>";
+		}
+		var cubHtml;
+		if (gap > 0) {
+			cubHtml = '<span class="proy-num-neg">faltan ' + num(gap, 0) + "</span>" +
+				'<span class="proy-stat-meta">stock ' + num(stock, 0) + " + proceso " + num(proc, 0) + "</span>";
+		} else {
+			cubHtml = '<span class="proy-num-pos">cubierto</span>' +
+				'<span class="proy-stat-meta">stock ' + num(stock, 0) + " + proceso " + num(proc, 0) + "</span>";
+		}
+		$box.html(
+			'<div class="proy-fp-item"><em>Proyectás</em><b>' + num(totOfi, 0) + " uds</b></div>" +
+			'<div class="proy-fp-item"><em>Contra el histórico</em><b>' + vsHtml + "</b></div>" +
+			'<div class="proy-fp-item proy-fp-result"><em>A lista 9</em><b>' +
+				(precio != null ? moneda(totOfi * precio) : "—") + "</b></div>" +
+			'<div class="proy-fp-item"><em>Abastecimiento</em><b>' + cubHtml + "</b></div>"
+		);
 	}
 
 	function mesSelectVal() {
@@ -2928,19 +3130,16 @@
 		if (!(lineas || []).length) {
 			$sel.append($("<option>").val("").text("Sin meses"));
 			mesFactorLineaId = "";
-			$sel.selectpicker({
-				liveSearch: true,
-				width: "100%",
-				size: 8,
-				title: "Seleccionar mes"
-			});
 			silenceMesSelect = false;
+			pintarChipsMesFactores([]);
+			$("#proyFactMesTitulo").text("Elegí un mes");
+			$("#proyFactMesEstado").text("");
 			$("#listaCatalogoChecks").html('<p class="text-muted">Prepara meses primero.</p>');
 			limpiarPreviewFactores();
 			return;
 		}
 		lineas.forEach(function (l) {
-			$sel.append($("<option>").val(String(l.id)).text(l.periodo + " · " + l.estado_linea));
+			$sel.append($("<option>").val(String(l.id)).text(etiquetaMesDePeriodo(l.periodo, true)));
 		});
 		if (prev && $sel.find("option[value='" + prev + "']").length) {
 			$sel.val(prev);
@@ -2948,17 +3147,27 @@
 			$sel.val(String(lineas[0].id));
 		}
 		mesFactorLineaId = mesSelectVal();
-		$sel.selectpicker({
-			liveSearch: true,
-			width: "100%",
-			size: 8,
-			title: "Seleccionar mes"
-		});
-		$sel.selectpicker("val", mesFactorLineaId);
 		silenceMesSelect = false;
+		pintarChipsMesFactores(lineas);
 		if (!opts.skipLoad) {
 			cargarChecksMesActual();
 		}
+	}
+
+	function pintarChipsMesFactores(lineas) {
+		var $box = $("#proyFactMeses").empty();
+		(lineas || []).forEach(function (l) {
+			var nFact = Number(l.n_factores) || 0;
+			var btn = $('<button type="button" class="proy-fact-chip-mes"></button>');
+			btn.attr("data-id", l.id);
+			btn.toggleClass("is-active", String(l.id) === String(mesFactorLineaId));
+			btn.toggleClass("has-facts", nFact > 0);
+			btn.html(
+				"<strong>" + etiquetaMesDePeriodo(l.periodo, false) + "</strong>" +
+				(nFact ? "<em>" + nFact + "</em>" : "")
+			);
+			$box.append(btn);
+		});
 	}
 
 	function limpiarPreviewFactores() {
@@ -3010,22 +3219,27 @@
 		pintarNum($("#fpRes"), resultado, false);
 		pintarNum($("#fpOfi"), ofi, false);
 		var deltaOfi = resultado - ofi;
-		$("#resumenFactorLinea").html(
-			"<strong>" + (lin.periodo || "") + "</strong> · " +
-			"Si aplicas estos factores: sugerencia " + num(sug, 0) +
-			" " + (suma >= 0 ? "+" : "") + num(suma, 0) +
-			" = <strong>" + num(resultado, 0) + "</strong>" +
-			(deltaOfi === 0
-				? " (igual al oficial actual)"
-				: " · vs oficial: <span class='" + (deltaOfi > 0 ? "proy-num-pos" : "proy-num-neg") + "'>" +
-					(deltaOfi > 0 ? "+" : "") + num(deltaOfi, 0) + "</span>")
-		);
+		var mesNom = etiquetaMesDePeriodo(lin.periodo, true).toLowerCase();
+		var txt;
+		if (deltaOfi === 0) {
+			txt = "En " + mesNom + ", con lo marcado, quedaría en <strong>" +
+				num(resultado, 0) + "</strong> unidades. Es igual al oficial.";
+		} else {
+			txt = "En " + mesNom + ", con lo marcado, quedaría en <strong>" +
+				num(resultado, 0) + "</strong> unidades: <span class='" +
+				(deltaOfi > 0 ? "proy-num-pos" : "proy-num-neg") + "'>" +
+				num(Math.abs(deltaOfi), 0) + " " + (deltaOfi > 0 ? "más" : "menos") +
+				"</span> que el oficial.";
+		}
+		$("#resumenFactorLinea").html(txt);
 	}
 
 	function cargarChecksMesActual() {
 		var idLinea = mesFactorLineaId || mesSelectVal();
 		if (!idLinea) {
-			$("#listaCatalogoChecks").html('<p class="text-muted">Elige un mes.</p>');
+			$("#listaCatalogoChecks").html('<p class="text-muted">Elegí un mes arriba.</p>');
+			$("#proyFactMesTitulo").text("Elegí un mes");
+			$("#proyFactMesEstado").text("");
 			limpiarPreviewFactores();
 			return;
 		}
@@ -3047,68 +3261,111 @@
 		});
 	}
 
+	function htmlCheckFactor(it, lin, sug, puedeEditar) {
+		var id = "chkCat_" + it.id;
+		var ajEst = ajusteItemEstimado(it, sug);
+		var esPos = ajEst > 0;
+		var esNeg = ajEst < 0;
+		var row = $('<label class="proy-check-item"></label>');
+		if (esPos) {
+			row.addClass("proy-check-pos");
+		} else if (esNeg) {
+			row.addClass("proy-check-neg");
+		}
+		if (it.aplicado) {
+			row.addClass("proy-check-on");
+		}
+		if (!puedeEditar) {
+			row.addClass("is-disabled");
+		}
+		var cb = $('<input type="checkbox" class="chkCatalogoLinea">');
+		cb.attr("id", id);
+		cb.prop("checked", !!it.aplicado);
+		cb.prop("disabled", !puedeEditar);
+		cb.data("idCatalogo", it.id);
+		cb.data("idLinea", lin.id);
+		cb.data("ajusteEst", ajEst);
+		var signo = (ajEst > 0 ? "+" : "") + num(ajEst, 0);
+		var meta = tipoNombre(it.tipo);
+		if (it.impacto_pct_default != null) {
+			meta += " · " + num(it.impacto_pct_default, 0) + "%";
+		}
+		row.append(cb);
+		row.append($("<span class='proy-check-flag'>").text(it.aplicado ? "Marcado" : "Marcar"));
+		row.append($("<span class='proy-check-title'>").text(it.titulo));
+		row.append(
+			$("<span class='proy-check-ajuste'>")
+				.addClass(esPos ? "proy-num-pos" : (esNeg ? "proy-num-neg" : ""))
+				.text(signo + " uds")
+		);
+		row.append($("<span class='proy-check-meta'>").text(meta));
+		return row;
+	}
+
+	function renderGrupoChecks($box, titulo, items, lin, sug, puedeEditar) {
+		if (!items.length) {
+			return;
+		}
+		var nOn = items.filter(function (it) { return !!it.aplicado; }).length;
+		var $g = $('<div class="proy-check-grupo"></div>');
+		$g.append(
+			$('<div class="proy-check-grupo-tit"></div>').text(
+				titulo + (nOn ? " · " + nOn + " marcado" + (nOn === 1 ? "" : "s") : "")
+			)
+		);
+		var $grid = $('<div class="proy-catalogo-checks"></div>');
+		items.forEach(function (it) {
+			$grid.append(htmlCheckFactor(it, lin, sug, puedeEditar));
+		});
+		$g.append($grid);
+		$box.append($g);
+	}
+
 	function renderChecksCatalogo(detalle) {
 		var $box = $("#listaCatalogoChecks").empty();
 		var lin = detalle.linea || {};
 		var sug = Number(lin.unidades_sugeridas) || 0;
 		var items = detalle.items || [];
+		$("#proyFactMesTitulo").text(lin.periodo ? etiquetaMesDePeriodo(lin.periodo, true) : "Elegí un mes");
+		$("#proyFactMesEstado").text(etiquetaEstadoLinea(lin.estado_linea));
+		$("#proyFactMesEstado").toggleClass("is-pub", String(lin.estado_linea) === "PUBLICADO");
+		$("#proyFactMesEstado").toggleClass("is-cerrado", String(lin.estado_linea) === "CERRADO");
 		if (!items.length) {
 			$box.html('<p class="text-muted">No hay factores. Créalos en <a href="index.php?ruta=proyeccion-comercial-factores">Factores de proyección</a>.</p>');
 			actualizarPreviewFactores();
 			return;
 		}
 		var puedeEditar = $("#proyPuedeEditar").val() === "1" && lin.estado_linea !== "CERRADO";
+		var pos = [];
+		var neg = [];
 		items.forEach(function (it) {
-			var id = "chkCat_" + it.id;
-			var ajEst = ajusteItemEstimado(it, sug);
-			var esPos = ajEst > 0;
-			var esNeg = ajEst < 0;
-			var row = $('<label class="proy-check-item"></label>');
-			if (esPos) {
-				row.addClass("proy-check-pos");
-			} else if (esNeg) {
-				row.addClass("proy-check-neg");
+			if (ajusteItemEstimado(it, sug) < 0) {
+				neg.push(it);
+			} else {
+				pos.push(it);
 			}
-			if (it.aplicado) {
-				row.addClass("proy-check-on");
-			}
-			var cb = $('<input type="checkbox" class="chkCatalogoLinea">');
-			cb.attr("id", id);
-			cb.prop("checked", !!it.aplicado);
-			cb.prop("disabled", !puedeEditar);
-			cb.data("idCatalogo", it.id);
-			cb.data("idLinea", lin.id);
-			cb.data("ajusteEst", ajEst);
-			var signo = (ajEst > 0 ? "+" : "") + num(ajEst, 0);
-			var meta = tipoNombre(it.tipo);
-			if (it.impacto_pct_default != null) {
-				meta += " · " + num(it.impacto_pct_default, 2) + "%";
-			}
-			row.append(cb);
-			row.append($("<span class='proy-check-title'>").text(it.titulo));
-			row.append(
-				$("<span class='proy-check-ajuste'>")
-					.addClass(esPos ? "proy-num-pos" : (esNeg ? "proy-num-neg" : ""))
-					.text(signo + " uds")
-			);
-			row.append($("<span class='proy-check-meta'>").text(meta));
-			$box.append(row);
 		});
+		renderGrupoChecks($box, "Suma unidades", pos, lin, sug, puedeEditar);
+		renderGrupoChecks($box, "Resta unidades", neg, lin, sug, puedeEditar);
 		actualizarPreviewFactores();
+		$("#tablaFactoresPorMes tbody tr").removeClass("is-active");
+		$("#tablaFactoresPorMes tbody tr[data-id='" + lin.id + "']").addClass("is-active");
+		$(".proy-fact-chip-mes").removeClass("is-active");
+		$(".proy-fact-chip-mes[data-id='" + lin.id + "']").addClass("is-active");
 	}
 
 	function renderFactoresPorMes(rows) {
 		factoresPorMesCache = rows || [];
 		var $tb = $("#tablaFactoresPorMes tbody").empty();
 		if (!factoresPorMesCache.length) {
-			$tb.append('<tr><td colspan="6" class="text-muted text-center">Sin meses del modelo</td></tr>');
+			$tb.append('<tr><td colspan="5" class="text-muted text-center">Sin meses del modelo</td></tr>');
 			return;
 		}
 		factoresPorMesCache.forEach(function (m) {
 			var facts = m.factores || [];
 			var lista;
 			if (!facts.length) {
-				lista = '<span class="text-muted">Sin factores</span>';
+				lista = '<span class="text-muted">Ninguno</span>';
 			} else {
 				lista = facts.map(function (f) {
 					var cls = f.ajuste_unidades > 0 ? "proy-num-pos" : (f.ajuste_unidades < 0 ? "proy-num-neg" : "");
@@ -3120,8 +3377,10 @@
 			var aj = Number(m.unidades_ajustes) || 0;
 			var sug = Number(m.unidades_sugeridas) || 0;
 			var res = Math.max(0, sug + aj);
-			var tr = $("<tr>");
-			tr.append($("<td>").html("<strong>" + m.periodo + "</strong>"));
+			var tr = $("<tr class='proy-fact-mes-row'>");
+			tr.attr("data-id", m.id_linea);
+			tr.toggleClass("is-active", String(m.id_linea) === String(mesFactorLineaId));
+			tr.append($("<td>").html("<strong>" + etiquetaMesDePeriodo(m.periodo, true) + "</strong>"));
 			tr.append($("<td>").html(lista));
 			tr.append($("<td>").html(
 				'<span class="' + (aj > 0 ? "proy-num-pos" : (aj < 0 ? "proy-num-neg" : "")) + '">' +
@@ -3129,10 +3388,6 @@
 			));
 			tr.append($("<td>").text(num(res, 0)));
 			tr.append($("<td>").text(num(m.unidades_oficiales, 0)));
-			tr.append($("<td>").html(
-				'<button type="button" class="btn btn-xs btn-primary btnEditarFactoresMes" data-id="' +
-				m.id_linea + '">Editar</button>'
-			));
 			$tb.append(tr);
 		});
 	}
@@ -3240,8 +3495,8 @@
 			" · fórmula " + (c.formula_version || "")
 		);
 		$("#mdlRangoPlan").text(
-			(resp.plan.anio_desde + "-" + pad2(resp.plan.mes_desde)) +
-			" → " + (resp.plan.anio_hasta + "-" + pad2(resp.plan.mes_hasta))
+			nombreMesCorto(resp.plan.mes_desde) + " " + resp.plan.anio_desde +
+			" → " + nombreMesCorto(resp.plan.mes_hasta) + " " + resp.plan.anio_hasta
 		);
 		$("#kpiLista9").text(c.sin_lista9 ? "Sin lista 9" : moneda(c.precio_lista9));
 		$("#kpiStock").text(num(c.inventario.stock_disponible, 0));
@@ -3386,45 +3641,13 @@
 			return;
 		}
 		var cambios = [];
-		var faltanMotivo = [];
 		$(".inpOficialModelo").each(function () {
 			var idLinea = parseInt($(this).data("id"), 10);
 			var ofi = parseInt($(this).val(), 10) || 0;
-			var sug = Number($(this).data("sug")) || 0;
-			var aj = Number($(this).data("aj")) || 0;
-			var $tr = $(this).closest("tr");
-			var nFact = Number($tr.data("nFactores")) || 0;
-			var motivo = $.trim($tr.find(".selMotivoDesv").val() || "");
-			var linea = null;
-			(espacioActual.lineas || []).forEach(function (l) {
-				if (String(l.id) === String(idLinea)) {
-					linea = l;
-				}
-			});
-			var item = { id: idLinea, unidades_oficiales: ofi };
-			if (motivo) {
-				item.observacion = motivo;
-			} else if (linea && linea.observacion && !desviacionRelevanteUi(sug, aj, ofi)) {
-				// mantiene observación previa si ya no hay desviación
-				item.observacion = linea.observacion;
-			} else if (!motivo && desviacionRelevanteUi(sug, aj, ofi) && nFact <= 0) {
-				item.observacion = "";
-			}
-			cambios.push(item);
-			if (desviacionRelevanteUi(sug, aj, ofi) && nFact <= 0 && !motivo) {
-				faltanMotivo.push(linea ? linea.periodo : ("#" + idLinea));
-			}
+			cambios.push({ id: idLinea, unidades_oficiales: ofi });
 		});
 		if (!cambios.length) {
 			proyAlert("No hay meses editables", "warning");
-			return;
-		}
-		if (faltanMotivo.length) {
-			proyAlert(
-				"Hay desviación >10% en " + faltanMotivo.join(", ") +
-				". Elige un motivo en la columna Motivo (o agrega un factor).",
-				"warning"
-			);
 			return;
 		}
 		var hayPub = false;
@@ -3637,12 +3860,6 @@
 		var lin = detalle.linea || {};
 		$("#lblFactorLinea").text((lin.modelo || "") + " · " + (lin.periodo || ""));
 		$("#factorIdLinea").val(lin.id || "");
-		$("#resumenFactorLinea").html(
-			"<strong>" + (lin.periodo || "") + "</strong> · Sug. " + num(lin.unidades_sugeridas, 0) +
-			" · Factores " + num(detalle.suma_ajustes, 0) +
-			" · Sug+ajustes " + num((lin.unidades_sugeridas || 0) + (detalle.suma_ajustes || 0), 0) +
-			" · Oficial " + num(lin.unidades_oficiales, 0)
-		);
 		var factores = detalle.factores || [];
 		factoresById = {};
 		if (!factores.length) {
@@ -3677,17 +3894,15 @@
 
 	function abrirFactores(idLinea) {
 		mesFactorLineaId = String(idLinea);
-		var $sel = $("#mesFactorSelect");
-		$sel.val(mesFactorLineaId);
-		if ($sel.data("selectpicker")) {
-			$sel.selectpicker("val", mesFactorLineaId);
-		}
+		$("#mesFactorSelect").val(mesFactorLineaId);
 		cargarChecksMesActual();
+		$(".proy-fact-chip-mes").removeClass("is-active");
+		$(".proy-fact-chip-mes[data-id='" + mesFactorLineaId + "']").addClass("is-active");
 		$('a[href="#tabFact"]').tab("show");
 		setTimeout(function () {
-			var $row = $("#tablaFactoresPorMes");
-			if ($row.length) {
-				$("html, body").animate({ scrollTop: $row.offset().top - 80 }, 250);
+			var $cat = $(".proy-fact-catalogo");
+			if ($cat.length) {
+				$("html, body").animate({ scrollTop: $cat.offset().top - 80 }, 250);
 			}
 		}, 50);
 	}
@@ -3999,14 +4214,34 @@
 				return;
 			}
 			mesFactorLineaId = v;
+			$(".proy-fact-chip-mes").removeClass("is-active");
+			$(".proy-fact-chip-mes[data-id='" + v + "']").addClass("is-active");
+			cargarChecksMesActual();
+		});
+		$(document).on("click", ".proy-fact-chip-mes", function () {
+			var id = String($(this).data("id") || "");
+			if (!id || id === String(mesFactorLineaId)) {
+				return;
+			}
+			mesFactorLineaId = id;
+			silenceMesSelect = true;
+			$("#mesFactorSelect").val(id);
+			silenceMesSelect = false;
+			$(".proy-fact-chip-mes").removeClass("is-active");
+			$(this).addClass("is-active");
 			cargarChecksMesActual();
 		});
 		$(document).on("change", ".chkCatalogoLinea", function () {
 			toggleCatalogoCheck($(this));
 		});
+		$(document).on("click", "#tablaFactoresPorMes tbody tr.proy-fact-mes-row", function () {
+			var id = $(this).data("id");
+			if (id) {
+				abrirFactores(id);
+			}
+		});
 		$(document).on("click", ".btnEditarFactoresMes", function () {
 			abrirFactores($(this).data("id"));
-			$("html, body").animate({ scrollTop: $("#listaCatalogoChecks").offset().top - 90 }, 250);
 		});
 
 		$(document).on("click", ".btnAbrirPlan", function () {

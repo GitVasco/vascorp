@@ -222,35 +222,72 @@ if (is_readable($archivoPaletaProy)) {
 							<div class="tab-content">
 								<div class="tab-pane active" id="tabHist">
 									<p class="proy-hint">
-										La sugerencia ya trae el patrón histórico del mismo mes (p. ej. subida de fin de año).
-										Si la campaña de este año será parecida, no hace falta factor; si será más fuerte o más débil, ajústalo en Factores.
-										Clic en un mes para verlo en el panorama.
+										La sugerencia sigue lo que se vendió en el mismo mes de otros años
+										(si en diciembre siempre sube, acá también).
+										Si este año va a ser distinto, ajústalo en Factores.
+										Clic en un mes para verlo a la derecha.
 									</p>
-									<p class="proy-hint" id="lblTendenciaHist" style="margin-top:-4px;"></p>
-									<p class="proy-hint" id="lblGlobalHist" style="margin-top:-4px;"></p>
-									<div class="table-responsive">
-										<table class="table table-hover table-condensed proy-table" id="tablaHistEstacional">
-											<thead>
-												<tr>
-													<th>Mes</th>
-													<th title="Mismo mes del año anterior. Si aún no cerró, va en gris y no entra al total.">Hace 1 año</th>
-													<th title="Histórico + Δ vs hace 3 años">Hace 2 años</th>
-													<th title="Sin comparación (no hay hace 4 años)">Hace 3 años</th>
-													<th>Promedio</th>
-													<th>Sugerencia</th>
-													<th>Δ vs mes ant.</th>
-												</tr>
-											</thead>
-											<tbody>
-												<tr><td colspan="7" class="text-muted text-center">—</td></tr>
-											</tbody>
-											<tfoot id="tablaHistEstacionalFoot"></tfoot>
-										</table>
+									<p class="proy-hint proy-hist-resumen" id="lblTendenciaHist" style="margin-top:-4px;"></p>
+									<p class="proy-hint proy-hist-resumen" id="lblGlobalHist" style="margin-top:-4px;"></p>
+									<div class="proy-hist-cols">
+										<div class="proy-hist-tabla">
+											<div class="table-responsive">
+												<table class="table table-hover table-condensed proy-table" id="tablaHistEstacional">
+													<thead>
+														<tr class="proy-hist-grupo">
+															<th rowspan="2">Mes</th>
+															<th colspan="4">Ventas de otros años</th>
+															<th colspan="2">Propuesta de este plan</th>
+														</tr>
+														<tr>
+															<th id="thHist1" title="Mismo mes del año anterior. Si aún no cerró, va en gris y no entra al total."></th>
+															<th id="thHist2"></th>
+															<th id="thHist3"></th>
+															<th title="Promedio de ese mes en los años que ya cerraron">Promedio</th>
+															<th id="thHistSug" class="proy-th-sug">Sugerencia</th>
+															<th title="Cómo cambia la sugerencia respecto al mes de arriba">vs mes anterior</th>
+														</tr>
+													</thead>
+													<tbody>
+														<tr><td colspan="7" class="text-muted text-center">—</td></tr>
+													</tbody>
+													<tfoot id="tablaHistEstacionalFoot"></tfoot>
+												</table>
+											</div>
+											<p class="proy-hint">
+												<span class="proy-legenda proy-legenda-parcial"></span>
+												Los números en gris son meses que todavía no cerraron: sirven de referencia y no entran al promedio, a la sugerencia ni al total.
+												El porcentaje bajo cada año es la comparación con el año de al lado.
+											</p>
+										</div>
+										<aside class="proy-modelos-decision" id="proyDecisionCol">
+											<div class="proy-dec-head">
+												<strong id="decTitulo">Panorama</strong>
+												<span class="proy-dec-sub" id="decSub">Elige un modelo para ver tendencia y comparación.</span>
+												<a href="#" class="proy-dec-back" id="decVerPlan" style="display:none;">Todo el plan</a>
+											</div>
+											<div class="proy-dec-body" id="decCarga" style="display:none;">
+												<p class="proy-carga-mini"><i class="fa fa-circle-o-notch fa-spin"></i> Armando el panorama…</p>
+											</div>
+											<div class="proy-dec-body" id="decVacio">
+												<p class="text-muted" style="margin:8px 0 0;">Elegí un modelo.</p>
+											</div>
+											<div class="proy-dec-body" id="decActivo" style="display:none;">
+												<div class="proy-dec-line" id="decCompLine"></div>
+												<div id="decRecoBox"></div>
+												<div class="proy-dec-block">
+													<div class="proy-dec-label" id="decVieneLabel">Cómo viene</div>
+													<div class="proy-dec-kpis" id="decVieneKpis"></div>
+												</div>
+												<div class="proy-dec-block">
+													<div class="proy-dec-label" id="decTendLabel">Jul–dic</div>
+													<div class="proy-dec-kpis proy-dec-kpis--3" id="decTendKpis"></div>
+													<div class="proy-dec-legend" id="decLegendComp"></div>
+													<div id="decChartComp" class="proy-dec-chart"></div>
+												</div>
+											</div>
+										</aside>
 									</div>
-									<p class="proy-hint">
-										<span class="proy-legenda proy-legenda-parcial"></span>
-										Mes aún abierto o que no ocurrió (p. ej. agosto en camino, sep–dic de este año): se muestra como referencia y no entra al promedio, a la sugerencia ni al total comparable.
-									</p>
 									<div class="row proy-matriz-mp-row">
 										<div class="col-sm-6">
 											<div class="proy-matriz-sug" id="proyMatrizSugWrap">
@@ -277,76 +314,81 @@ if (is_readable($archivoPaletaProy)) {
 
 								<div class="tab-pane" id="tabFact">
 									<p class="proy-hint">
-										Catálogo en
-										<a href="index.php?ruta=proyeccion-comercial-factores">Factores</a>
-										· elige mes, marca checks y mira el resultado estimado antes de ir a Cantidades.
+										Marcá lo que va a pasar en cada mes (campaña, falta de stock, precio, etc.).
+										El sistema suma o resta unidades a la sugerencia. Después lo confirmás en Cantidades.
 									</p>
-									<div class="row proy-fact-bar">
-										<div class="col-sm-4">
-											<label class="proy-lbl">Mes</label>
-											<select class="form-control selectpicker" id="mesFactorSelect"
-												data-live-search="true" data-width="100%" data-size="8"
-												title="Seleccionar mes"></select>
+									<div class="proy-fact-meses" id="proyFactMeses"></div>
+									<select class="form-control" id="mesFactorSelect" style="display:none;" title="Mes"></select>
+									<aside class="proy-fact-cuenta">
+										<div class="proy-fact-cuenta-head">
+											<div class="proy-dec-label">Cómo queda este mes</div>
+											<strong id="proyFactMesTitulo">Elegí un mes</strong>
+											<span class="proy-fact-estado" id="proyFactMesEstado"></span>
 										</div>
-										<div class="col-sm-8">
-											<div class="proy-factor-preview" id="proyFactorPreview">
-												<div class="proy-fp-item"><em>Sugerencia</em><b id="fpSug">—</b></div>
-												<div class="proy-fp-item"><em>Ajuste factores</em><b id="fpAj">—</b></div>
-												<div class="proy-fp-item proy-fp-result"><em>Resultado estimado</em><b id="fpRes">—</b></div>
-												<div class="proy-fp-item"><em>Oficial actual</em><b id="fpOfi">—</b></div>
+										<div class="proy-factor-preview" id="proyFactorPreview">
+											<div class="proy-fp-item"><em>Sugerencia</em><b id="fpSug">—</b></div>
+											<div class="proy-fp-item"><em>Estos factores</em><b id="fpAj">—</b></div>
+											<div class="proy-fp-item proy-fp-result"><em>Quedaría</em><b id="fpRes">—</b></div>
+											<div class="proy-fp-item"><em>Oficial hoy</em><b id="fpOfi">—</b></div>
+										</div>
+										<p class="proy-hint" id="resumenFactorLinea"></p>
+									</aside>
+									<div class="proy-fact-layout">
+										<div class="proy-fact-catalogo">
+											<div class="proy-dec-label">Campañas y factores</div>
+											<p class="proy-hint" id="proyFactCatHint">Clic en una tarjeta para marcarla o quitarla.</p>
+											<div id="listaCatalogoChecks">
+												<p class="text-muted">Elegí un mes para ver los factores.</p>
 											</div>
 										</div>
-									</div>
-									<div id="resumenFactorLinea" class="proy-hint" style="margin-bottom:6px;"></div>
-									<div id="listaCatalogoChecks" class="proy-catalogo-checks">
-										<p class="text-muted">Sin factores en el catálogo.</p>
-									</div>
-									<hr class="proy-sep">
-									<h5 class="proy-subttl">Factores agregados por mes</h5>
-									<p class="proy-hint">Resumen del modelo. Usa <em>Editar</em> para cambiar los checks de ese mes.</p>
-									<div class="table-responsive">
-										<table class="table table-hover table-condensed proy-table" id="tablaFactoresPorMes">
-											<thead>
-												<tr>
-													<th>Mes</th>
-													<th>Factores</th>
-													<th>Ajuste</th>
-													<th>Sug. + aj.</th>
-													<th>Oficial</th>
-													<th></th>
-												</tr>
-											</thead>
-											<tbody>
-												<tr><td colspan="6" class="text-muted text-center">Sin datos</td></tr>
-											</tbody>
-										</table>
+										<div class="proy-fact-todos">
+											<div class="proy-dec-label">Todos los meses</div>
+											<p class="proy-hint">Clic en un mes para editarlo.</p>
+											<div class="table-responsive">
+												<table class="table table-hover table-condensed proy-table" id="tablaFactoresPorMes">
+													<thead>
+														<tr>
+															<th>Mes</th>
+															<th>Aplica</th>
+															<th>Ajuste</th>
+															<th>Quedaría</th>
+															<th>Oficial</th>
+														</tr>
+													</thead>
+													<tbody>
+														<tr><td colspan="5" class="text-muted text-center">Sin datos</td></tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
 									</div>
 								</div>
 
 								<div class="tab-pane" id="tabCant">
 									<p class="proy-hint">
-										<strong>Historial</strong> = ventas del mismo mes en los 3 años previos.
-										<strong>Desv.</strong> = diferencia del oficial vs sug.+factores.
-										Si supera 10% sin factor, elige un <strong>motivo</strong> en la fila.
+										Acá se decide cuánto proyectar cada mes. La sugerencia ya trae el historial;
+										los factores se marcan en la pestaña anterior. El oficial es la cifra que se publica.
 									</p>
+									<div class="proy-cant-resumen" id="proyCantResumen"></div>
 									<div class="table-responsive">
 										<table class="table table-hover table-condensed proy-table" id="tablaMesesModelo">
 											<thead>
 												<tr>
 													<th>Mes</th>
-													<th title="Mismo mes · 3 años atrás">Historial</th>
-													<th>Sug.</th>
+													<th title="Mismo mes en los años previos">Vendió</th>
+													<th>Sugerencia</th>
 													<th>Factores</th>
-													<th>% mes</th>
+													<th title="% sobre sugerencia + factores">%</th>
 													<th>Oficial</th>
-													<th title="Oficial vs sug.+factores">Desv.</th>
-													<th>Motivo</th>
+													<th id="thCantVs" title="Oficial vs el mismo mes del último año cerrado">vs año</th>
+													<th title="Oficial × lista 9">Soles</th>
 													<th>Estado</th>
 												</tr>
 											</thead>
 											<tbody>
 												<tr><td colspan="9" class="text-muted text-center">Sin meses</td></tr>
 											</tbody>
+											<tfoot id="tablaMesesModeloFoot"></tfoot>
 										</table>
 									</div>
 									<div class="proy-actions">
@@ -369,33 +411,6 @@ if (is_readable($archivoPaletaProy)) {
 						</div>
 					</div>
 						</div>
-						<aside class="proy-modelos-decision" id="proyDecisionCol">
-							<div class="proy-dec-head">
-								<strong id="decTitulo">Panorama</strong>
-								<span class="proy-dec-sub" id="decSub">Elige un modelo para ver tendencia y comparación.</span>
-								<a href="#" class="proy-dec-back" id="decVerPlan" style="display:none;">Todo el plan</a>
-							</div>
-							<div class="proy-dec-body" id="decCarga" style="display:none;">
-								<p class="proy-carga-mini"><i class="fa fa-circle-o-notch fa-spin"></i> Armando el panorama…</p>
-							</div>
-							<div class="proy-dec-body" id="decVacio">
-								<p class="text-muted" style="margin:8px 0 0;">Elegí un modelo.</p>
-							</div>
-							<div class="proy-dec-body" id="decActivo" style="display:none;">
-								<div class="proy-dec-line" id="decCompLine"></div>
-								<div id="decRecoBox"></div>
-								<div class="proy-dec-block">
-									<div class="proy-dec-label" id="decVieneLabel">Cómo viene</div>
-									<div class="proy-dec-kpis" id="decVieneKpis"></div>
-								</div>
-								<div class="proy-dec-block">
-									<div class="proy-dec-label" id="decTendLabel">Jul–dic</div>
-									<div class="proy-dec-kpis proy-dec-kpis--3" id="decTendKpis"></div>
-									<div class="proy-dec-legend" id="decLegendComp"></div>
-									<div id="decChartComp" class="proy-dec-chart"></div>
-								</div>
-							</div>
-						</aside>
 					</div>
 				</div>
 			</div>

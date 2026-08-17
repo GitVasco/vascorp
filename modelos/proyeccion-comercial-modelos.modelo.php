@@ -3058,22 +3058,6 @@ class ModeloProyeccionComercialModelos
 					continue;
 				}
 
-				if (self::mdlDesviacionRelevante(
-					(int) $linea["unidades_sugeridas"],
-					(int) $linea["unidades_ajustes"],
-					$ofi
-				)) {
-					$tieneFactor = self::mdlContarFactoresActivosLinea($pdo, $id) > 0;
-					$tieneObs = ($obs !== null && trim((string) $obs) !== "");
-					if (!$tieneFactor && !$tieneObs) {
-						throw new Exception(
-							"Desviación relevante en " . $linea["modelo"] . " " .
-							sprintf("%04d-%02d", (int) $linea["anio"], (int) $linea["mes"]) .
-							": elige un motivo en la tabla o agrega un factor."
-						);
-					}
-				}
-
 				$upd->bindValue(":ofi", $ofi, PDO::PARAM_INT);
 				$upd->bindValue(":obs", $obs === null || $obs === "" ? null : $obs, ($obs === null || $obs === "") ? PDO::PARAM_NULL : PDO::PARAM_STR);
 				$upd->bindValue(":usuario", (int) $usuario, PDO::PARAM_INT);

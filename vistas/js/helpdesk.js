@@ -201,6 +201,14 @@ $(function () {
         return $("<div>").text(v == null ? "" : String(v)).html();
     }
 
+    function escPre(v) {
+        return esc(String(v == null ? "" : v).replace(/\r\n|\r/g, "\n"));
+    }
+
+    function escBr(v) {
+        return escPre(v).replace(/\n/g, "<br>");
+    }
+
     function toast(tipo, msg) {
         if (window.toastr) {
             toastr[tipo](msg);
@@ -1044,10 +1052,9 @@ $(function () {
             }
         }
         if (c.tipo_evento === "REAPERTURA_USUARIO") {
-            return "El solicitante indicó que no quedó resuelto:<br>" +
-                esc(msg).replace(/\n/g, "<br>");
+            return "El solicitante indicó que no quedó resuelto:<br>" + escBr(msg);
         }
-        return esc(msg).replace(/\n/g, "<br>");
+        return escBr(msg);
     }
 
     function renderHistorial(comentarios) {
@@ -1112,7 +1119,7 @@ $(function () {
                 '<div class="hd-msg-body">' +
                     '<div class="hd-msg-meta"><strong>' + esc(t.solicitante_nombre || "Solicitante") +
                     '</strong> <span class="text-muted">' + esc(t.creado_en) + "</span></div>" +
-                    '<div class="hd-msg-text">' + esc(t.descripcion).replace(/\n/g, "<br>") + "</div>" +
+                    '<div class="hd-msg-text">' + escPre(t.descripcion) + "</div>" +
                 "</div>" +
             "</div>";
 
@@ -1134,7 +1141,7 @@ $(function () {
                     '<div class="hd-msg-sistema hd-msg-reapertura">' +
                         '<span class="label label-warning">Reabierto por el usuario</span> ' +
                         '<div class="hd-msg-text" style="margin-top:6px;">' +
-                            esc(c.mensaje).replace(/\n/g, "<br>") +
+                            escPre(c.mensaje) +
                         "</div>" +
                         ' <small class="text-muted">' + esc(c.creado_en) + "</small>" +
                     "</div>";
@@ -1166,7 +1173,7 @@ $(function () {
                         "</strong> <span class=\"text-muted\">" + esc(c.creado_en) + "</span>" +
                         etiqueta +
                         "</div>" +
-                        '<div class="hd-msg-text">' + esc(c.mensaje).replace(/\n/g, "<br>") + "</div>" +
+                        '<div class="hd-msg-text">' + escPre(c.mensaje) + "</div>" +
                     "</div>" +
                 "</div>";
         });
@@ -1260,12 +1267,12 @@ $(function () {
                 "</div>" +
                 '<div class="hd-det-block">' +
                     '<h4><i class="fa fa-align-left"></i> Descripción</h4>' +
-                    '<div class="hd-det-text">' + esc(t.descripcion).replace(/\n/g, "<br>") + "</div>" +
+                    '<div class="hd-det-text">' + escPre(t.descripcion) + "</div>" +
                 "</div>" +
                 (t.pasos_reproducir
                     ? '<div class="hd-det-block hd-det-block-pasos">' +
                         '<h4><i class="fa fa-list-ol"></i> Pasos para reproducir</h4>' +
-                        '<div class="hd-det-text">' + esc(t.pasos_reproducir).replace(/\n/g, "<br>") + "</div>" +
+                        '<div class="hd-det-text">' + escPre(t.pasos_reproducir) + "</div>" +
                       "</div>"
                     : "") +
             "</div>"
