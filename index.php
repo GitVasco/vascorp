@@ -72,6 +72,8 @@ require_once "controladores/materiaprima.controlador.php";
 
 require_once "controladores/mp-reprocesos.controlador.php";
 
+require_once "controladores/sublineas-mp.controlador.php";
+
 require_once "controladores/tarjetas.controlador.php";
 
 require_once "controladores/movimientos.controlador.php";
@@ -242,6 +244,8 @@ require_once "modelos/articulos.modelo.php";
 require_once "modelos/materiaprima.modelo.php";
 
 require_once "modelos/mp-reprocesos.modelo.php";
+
+require_once "modelos/sublineas-mp.modelo.php";
 
 require_once "modelos/tarjetas.modelo.php";
 

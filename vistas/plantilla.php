@@ -91,6 +91,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Sincronización Vasco Online | Vasco System";
         } elseif ($_GET["ruta"] === "mp-reprocesos") {
             $__tituloVentana = "Reprocesos MP | Vasco System";
+        } elseif ($_GET["ruta"] === "sublineas-mp") {
+            $__tituloVentana = "Sublíneas MP | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
             $__tituloVentana = "NC / ND | Vasco System";
         } elseif ($_GET["ruta"] === "notas-credito") {
@@ -226,6 +228,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mp-reprocesos") : ?>
     <link rel="stylesheet" href="vistas/css/mp-reprocesos.css?v=4">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") : ?>
+    <link rel="stylesheet" href="vistas/css/sublineas-mp.css?v=8">
     <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
@@ -636,7 +641,8 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "crear-cuadros-prod" ||
                 $_GET["ruta"] == "crear-copas-prod" ||
                 $_GET["ruta"] == "tabla-produccion" ||
-                $_GET["ruta"] == "mp-reprocesos"
+                $_GET["ruta"] == "mp-reprocesos" ||
+                $_GET["ruta"] == "sublineas-mp"
             ) {
                 // Manejar rutas según la configuración
                 $tipoPaginacionMP = (defined('TIPO_PAGINACION_MATERIAPRIMA')) ? TIPO_PAGINACION_MATERIAPRIMA : "cliente";
@@ -1176,6 +1182,9 @@ CUERPO DOCUMENTO
     <script src="vistas/js/notas-ingresos-os.js"></script>
     <script src="vistas/js/orden-servicio.js"></script>
     <script src="vistas/js/mp-reprocesos.js?v=6"></script>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") { ?>
+    <script src="vistas/js/sublineas-mp.js?v=10"></script>
+    <?php } ?>
     <script src="vistas/js/kardex.js"></script>
     <script src="vistas/js/produccion-mp.js"></script>
     <script src="vistas/js/costos.js"></script>

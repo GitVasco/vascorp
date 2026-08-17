@@ -1268,7 +1268,8 @@
                                         $_GET["ruta"] == "mp-os-pendiente" ||
                                         $_GET["ruta"] == "almacen-01" ||
                                         $_GET["ruta"] == "crear-cuadros-prod" ||
-                                        $_GET["ruta"] == "mp-reprocesos"
+                                        $_GET["ruta"] == "mp-reprocesos" ||
+                                        $_GET["ruta"] == "sublineas-mp"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1288,6 +1289,17 @@
 
                                 <i class="fa fa-database text-blue"></i>
                                 <span> Maestras Mp</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "sublineas-mp") echo 'active'; ?>">
+
+                            <a href="sublineas-mp">
+
+                                <i class="fa fa-sitemap text-blue"></i>
+                                <span> Sublíneas MP</span>
 
                             </a>
 
