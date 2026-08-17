@@ -210,6 +210,7 @@ if (is_readable($archivoPaletaProy)) {
 								<li>
 									<a href="#tabFact" data-toggle="tab">
 										<span class="proy-tab-n">2</span> Factores
+										<small id="mdlRangoFact" class="text-muted"></small>
 									</a>
 								</li>
 								<li>
@@ -314,7 +315,8 @@ if (is_readable($archivoPaletaProy)) {
 
 								<div class="tab-pane" id="tabFact">
 									<p class="proy-hint">
-										Marcá lo que va a pasar en cada mes (campaña, falta de stock, precio, etc.).
+										Marcá lo que va a pasar en cada mes de este plan
+										(los mismos de Historial: campañas, falta de stock, precio, etc.).
 										El sistema suma o resta unidades a la sugerencia. Después lo confirmás en Cantidades.
 									</p>
 									<div class="proy-fact-meses" id="proyFactMeses"></div>
@@ -366,45 +368,68 @@ if (is_readable($archivoPaletaProy)) {
 
 								<div class="tab-pane" id="tabCant">
 									<p class="proy-hint">
-										Acá se decide cuánto proyectar cada mes. La sugerencia ya trae el historial;
-										los factores se marcan en la pestaña anterior. El oficial es la cifra que se publica.
+										El naranja es lo que publicás.
+										Vendió es el mismo mes del año anterior: si todavía no cerró, va en gris y no entra al vs ni al total.
 									</p>
-									<div class="proy-cant-resumen" id="proyCantResumen"></div>
-									<div class="table-responsive">
-										<table class="table table-hover table-condensed proy-table" id="tablaMesesModelo">
-											<thead>
-												<tr>
-													<th>Mes</th>
-													<th title="Mismo mes en los años previos">Vendió</th>
-													<th>Sugerencia</th>
-													<th>Factores</th>
-													<th title="% sobre sugerencia + factores">%</th>
-													<th>Oficial</th>
-													<th id="thCantVs" title="Oficial vs el mismo mes del último año cerrado">vs año</th>
-													<th title="Oficial × lista 9">Soles</th>
-													<th>Estado</th>
-												</tr>
-											</thead>
-											<tbody>
-												<tr><td colspan="9" class="text-muted text-center">Sin meses</td></tr>
-											</tbody>
-											<tfoot id="tablaMesesModeloFoot"></tfoot>
-										</table>
+									<div class="proy-cant-cols">
+										<div class="proy-cant-tabla">
+											<div class="table-responsive">
+												<table class="table table-hover table-condensed proy-table" id="tablaMesesModelo">
+													<thead>
+														<tr class="proy-hist-grupo">
+															<th rowspan="2">Mes</th>
+															<th colspan="2">Para decidir</th>
+															<th rowspan="2" class="proy-th-ofi">Oficial</th>
+															<th colspan="2">Qué implica</th>
+														</tr>
+														<tr>
+															<th id="thCantVendio">Vendió</th>
+															<th>Sugerencia</th>
+															<th id="thCantVs">vs año</th>
+															<th>Soles</th>
+														</tr>
+													</thead>
+													<tbody>
+														<tr><td colspan="6" class="text-muted text-center">Sin meses</td></tr>
+													</tbody>
+													<tfoot id="tablaMesesModeloFoot"></tfoot>
+												</table>
+											</div>
+											<p class="proy-hint">
+												<span class="proy-legenda proy-legenda-parcial"></span>
+												Los números en gris son meses que todavía no cerraron: sirven de referencia y no entran al vs ni al total.
+											</p>
+											<div class="proy-actions">
+												<?php if ($puedeEditar) { ?>
+												<button type="button" class="btn btn-default btn-sm" id="btnUsarBaseFactores">
+													Oficial = sug. + factores
+												</button>
+												<button type="button" class="btn btn-primary btn-sm" id="btnGuardarModelo">
+													<i class="fa fa-save"></i> Guardar
+												</button>
+												<?php } ?>
+												<?php if ($puedePublicar) { ?>
+												<button type="button" class="btn btn-warning btn-sm" id="btnPublicarModelo">
+													<i class="fa fa-check"></i> Publicar modelo
+												</button>
+												<?php } ?>
+											</div>
+										</div>
+										<aside class="proy-cant-lado">
+											<div class="proy-dec-head">
+												<strong>Este plan</strong>
+												<span class="proy-dec-sub">Totales de lo que vas a publicar</span>
+											</div>
+											<div class="proy-cant-resumen" id="proyCantResumen"></div>
+										</aside>
 									</div>
-									<div class="proy-actions">
-										<?php if ($puedeEditar) { ?>
-										<button type="button" class="btn btn-default btn-sm" id="btnUsarBaseFactores">
-											Oficial = sug. + factores
-										</button>
-										<button type="button" class="btn btn-primary btn-sm" id="btnGuardarModelo">
-											<i class="fa fa-save"></i> Guardar
-										</button>
-										<?php } ?>
-										<?php if ($puedePublicar) { ?>
-										<button type="button" class="btn btn-warning btn-sm" id="btnPublicarModelo">
-											<i class="fa fa-check"></i> Publicar modelo
-										</button>
-										<?php } ?>
+									<div class="proy-cant-graf">
+										<div class="proy-dec-label">Cómo se mueve mes a mes</div>
+										<p class="proy-hint" id="proyCantGrafHint">
+											La línea naranja es lo que publicás.
+										</p>
+										<div id="proyCantChartLegend" class="proy-dec-legend"></div>
+										<div id="proyCantChart" class="proy-cant-chart"></div>
 									</div>
 								</div>
 							</div>

@@ -182,7 +182,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], array("proyeccion-comercial-modelos", "proyeccion-comercial-masiva", "proyeccion-comercial-factores"), true)) : ?>
     <link rel="stylesheet" href="vistas/bower_components/select2/dist/css/select2.min.css">
-    <link rel="stylesheet" href="vistas/css/proyeccion-comercial-modelos.css?v=44">
+    <link rel="stylesheet" href="vistas/css/proyeccion-comercial-modelos.css?v=49">
     <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "categorias-modelos") : ?>
@@ -1068,7 +1068,7 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "proyeccion-comercial-modelos") { ?>
     <script src="vistas/bower_components/select2/dist/js/select2.full.min.js"></script>
-    <script src="vistas/js/proyeccion-comercial-modelos.js?v=58"></script>
+    <script src="vistas/js/proyeccion-comercial-modelos.js?v=63"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "proyeccion-comercial-masiva") { ?>
     <script src="vistas/js/proyeccion-comercial-masiva.js?v=2"></script>

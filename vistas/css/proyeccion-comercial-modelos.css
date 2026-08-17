@@ -1804,8 +1804,7 @@
 		grid-template-columns: 1fr;
 	}
 
-	.proyeccion-comercial-wrap .proy-factor-preview,
-	.proyeccion-comercial-wrap .proy-cant-resumen {
+	.proyeccion-comercial-wrap .proy-factor-preview {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
@@ -1865,19 +1864,156 @@
 	background: #eaf6ff !important;
 }
 
-.proyeccion-comercial-wrap .proy-cant-resumen {
+.proyeccion-comercial-wrap .proy-cant-cols {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 8px;
-	margin-bottom: 12px;
+	grid-template-columns: minmax(0, 8fr) minmax(260px, 4fr);
+	gap: 12px;
+	align-items: start;
 }
 
-.proyeccion-comercial-wrap .proy-cant-resumen .proy-stat-meta {
+.proyeccion-comercial-wrap .proy-cant-tabla {
+	min-width: 0;
+}
+
+.proyeccion-comercial-wrap .proy-cant-lado {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.proyeccion-comercial-wrap .proy-cant-resumen {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px;
+	margin: 0;
+}
+
+.proyeccion-comercial-wrap .proy-cant-resumen .proy-stat {
+	box-shadow: none;
+}
+
+.proyeccion-comercial-wrap .proy-cant-resumen .proy-stat-value {
+	font-size: 18px;
+}
+
+.proyeccion-comercial-wrap .proy-cant-resumen .proy-stat-value small {
+	font-size: 11px;
+	font-weight: 600;
+	color: #7a8692;
+}
+
+@media (max-width: 1199px) {
+	.proyeccion-comercial-wrap .proy-cant-cols {
+		grid-template-columns: 1fr;
+	}
+}
+
+.proyeccion-comercial-wrap .proy-cant-graf {
+	margin-top: 12px;
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	padding: 10px 12px 8px;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.proyeccion-comercial-wrap .proy-cant-graf .proy-dec-label {
+	margin-bottom: 2px;
+}
+
+.proyeccion-comercial-wrap .proy-cant-chart {
+	height: 220px;
+	margin: 4px -4px 0;
+}
+
+.proyeccion-comercial-wrap .proy-cant-chart.is-empty {
+	height: auto;
+	min-height: 48px;
+	display: flex;
+	align-items: center;
+	color: #94a3b8;
+	font-size: 12px;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo thead tr.proy-hist-grupo > th {
+	text-transform: none;
+	letter-spacing: 0;
+	font-size: 10px;
+	font-weight: 700;
+	text-align: center;
+	color: #5b6b7a !important;
+	background: #f4f7fa !important;
+	padding: 5px 8px !important;
+	border-bottom: 0 !important;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo thead tr.proy-hist-grupo > th:first-child {
+	text-align: left;
+	vertical-align: middle;
+	background: #e8eef3 !important;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	font-size: 11px;
+	color: #1f2d3d !important;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo thead tr.proy-hist-grupo > th.proy-th-ofi,
+.proyeccion-comercial-wrap #tablaMesesModelo thead th.proy-th-ofi,
+.proyeccion-comercial-wrap #tablaMesesModelo td.proy-td-ofi,
+.proyeccion-comercial-wrap #tablaMesesModelo tfoot td.proy-td-ofi {
+	background: #fff8f0 !important;
+	box-shadow: inset 3px 0 0 #e67e22;
+	text-align: right;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo thead tr.proy-hist-grupo > th.proy-th-ofi {
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	font-size: 12px;
+	font-weight: 800;
+	color: #c45c12 !important;
+	vertical-align: middle;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo thead tr:not(.proy-hist-grupo) > th {
+	text-transform: none;
+	letter-spacing: 0;
+	font-size: 12px;
+	text-align: right;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo thead th small {
 	display: block;
+	margin-top: 1px;
 	font-size: 10px;
 	font-weight: 600;
-	color: #73808c;
-	margin-top: 2px;
+	color: #7a8692;
+}
+
+.proyeccion-comercial-wrap #tablaMesesModelo tbody td:not(:first-child),
+.proyeccion-comercial-wrap #tablaMesesModelo tfoot td:not(:first-child) {
+	text-align: right;
+	vertical-align: middle;
+	font-variant-numeric: tabular-nums;
+}
+
+.proyeccion-comercial-wrap .proy-ofi-edit {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px;
+	white-space: nowrap;
+}
+
+.proyeccion-comercial-wrap .proy-ofi-hint {
+	font-size: 10px;
+	font-weight: 700;
+	min-width: 2.4em;
+	text-align: left;
 }
 
 .proyeccion-comercial-wrap .inpOficialModelo,
@@ -1888,16 +2024,11 @@
 }
 
 .proyeccion-comercial-wrap #tablaMesesModelo .inpOficialModelo {
-	width: 88px;
-}
-
-.proyeccion-comercial-wrap #tablaMesesModelo .inpPctMes {
-	width: 56px;
-}
-
-.proyeccion-comercial-wrap #tablaMesesModelo .tdOficial small {
-	display: block;
-	margin-top: 2px;
+	width: 72px;
+	height: 26px !important;
+	font-size: 13px !important;
+	font-weight: 700;
+	text-align: right;
 }
 
 .proyeccion-comercial-wrap #tablaMesesModelo .proy-hist-stack {
