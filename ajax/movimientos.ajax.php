@@ -28,18 +28,87 @@ class AjaxMovimientos{
 	}
 
 
-	public function ajaxActualizarTC(){
+	public $completarHastaHoy;
 
-		$fecha=$this->fecha;
-		$tipoCambioSunat = JsonPeApi::consultarTipoCambio($fecha);
+	private function resolverTcFecha($fecha)
+	{
+		$api = JsonPeApi::consultarTipoCambio($fecha);
+		$ventaApi = isset($api["venta"]) ? $api["venta"] : null;
+		$compraApi = isset($api["compra"]) ? $api["compra"] : 0;
 
-		if($tipoCambioSunat["venta"] == "Fuera de plazo permitido"){
-			$respuesta = "no";
-		}else{
-			$respuesta = ModeloMovimientos::mdlActualizarTipoCambio($tipoCambioSunat["compra"], $tipoCambioSunat["venta"], $fecha);
+		if (
+			$ventaApi !== null
+			&& $ventaApi !== "Fuera de plazo permitido"
+			&& is_numeric($ventaApi)
+			&& (float) $ventaApi > 0
+		) {
+			return array(
+				"compra" => is_numeric($compraApi) ? $compraApi : 0,
+				"venta" => $ventaApi
+			);
 		}
 
-		echo $respuesta;
+		if (!class_exists("ModeloUtilidades")) {
+			require_once "../modelos/utilidades.modelo.php";
+		}
+
+		$prev = ModeloUtilidades::mdlUltimoTipCambioTotalesAntes($fecha);
+		if ($prev && (float) $prev["cambio_venta"] > 0) {
+			return array(
+				"compra" => $prev["cambio_compra"],
+				"venta" => $prev["cambio_venta"]
+			);
+		}
+
+		return null;
+	}
+
+	public function ajaxActualizarTC(){
+
+		date_default_timezone_set("America/Lima");
+		$fecha = $this->fecha;
+		if (preg_match('/^(\d{4}-\d{2}-\d{2})/', (string) $fecha, $m)) {
+			$fecha = $m[1];
+		}
+
+		$fechas = array($fecha);
+		if (!empty($this->completarHastaHoy)) {
+			if (!class_exists("ModeloUtilidades")) {
+				require_once "../modelos/utilidades.modelo.php";
+			}
+			@set_time_limit(300);
+			$filas = ModeloUtilidades::mdlTotalesSinTipCambio((int) date("Y"));
+			$fechas = array();
+			if (is_array($filas)) {
+				foreach ($filas as $f) {
+					if (!empty($f["fecha"])) {
+						$fechas[] = $f["fecha"];
+					}
+				}
+			}
+			if (count($fechas) < 1) {
+				echo "ok";
+				return;
+			}
+		}
+
+		$ok = 0;
+		foreach ($fechas as $f) {
+			$tc = $this->resolverTcFecha($f);
+			if ($tc === null) {
+				continue;
+			}
+			$respuesta = ModeloMovimientos::mdlActualizarTipoCambio(
+				$tc["compra"],
+				$tc["venta"],
+				$f
+			);
+			if ($respuesta === "ok") {
+				$ok++;
+			}
+		}
+
+		echo $ok > 0 ? "ok" : "no";
 	}
 
 
@@ -55,5 +124,6 @@ if(isset($_POST["año"])){
 if(isset($_POST["fecha"])){
 	$actualizar=new AjaxMovimientos();
 	$actualizar->fecha=$_POST["fecha"];
+	$actualizar->completarHastaHoy = !empty($_POST["completarHastaHoy"]);
 	$actualizar->ajaxActualizarTC();
 }

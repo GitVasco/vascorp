@@ -547,7 +547,7 @@ class ModeloDecisionesCredito
                      linea_aprobada, linea_recomendada, linea_referencia,
                      deuda_actual, cupo_disponible, utilizacion_pct,
                      score_riesgo, score_comercial, score_fidelidad, etiqueta_linea,
-                     usuario_id, detalle)
+                     usuario_id, detalle, fecha)
                 VALUES
                     (:codigo_pedido, :codigo_cliente, :tipo_accion, :origen,
                      :pedido_total, :pedido_lista, :pedido_estado_resultado,
@@ -557,7 +557,7 @@ class ModeloDecisionesCredito
                      :linea_aprobada, :linea_recomendada, :linea_referencia,
                      :deuda_actual, :cupo_disponible, :utilizacion_pct,
                      :score_riesgo, :score_comercial, :score_fidelidad, :etiqueta_linea,
-                     :usuario_id, :detalle)";
+                     :usuario_id, :detalle, NOW())";
 
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":codigo_pedido", $codigoPedido, PDO::PARAM_INT);

@@ -50,7 +50,7 @@ $datos = ControladorDecisionesCredito::ctrListarHistorialAcciones(array(
     "limite" => 200,
 ));
 
-$filas = (!empty($datos["ok"]) && isset($datos["filas"])) ? $datos["filas"] : array();
+$filasMovimientos = (!empty($datos["ok"]) && isset($datos["filas"])) ? $datos["filas"] : array();
 $resumen = (!empty($datos["ok"]) && isset($datos["resumen"])) ? $datos["resumen"] : array(
     "APROBADO" => 0,
     "OBJECION" => 0,
@@ -66,6 +66,19 @@ function hcFmtMonto($lista, $monto)
     }
     $simbolo = ($lista === "precio1") ? "$ " : "S/ ";
     return $simbolo . number_format((float) $monto, 2);
+}
+
+function hcFmtFecha($fecha)
+{
+    if ($fecha === null || $fecha === "") {
+        return "—";
+    }
+    $ts = strtotime((string) $fecha);
+    if ($ts === false || $ts <= 0 || (int) date("Y", $ts) < 2000) {
+        return "—";
+    }
+
+    return date("d/m/Y H:i", $ts);
 }
 
 function hcDashAyuda($texto)
@@ -196,7 +209,7 @@ function hcDashAyuda($texto)
                             </thead>
                             <tbody id="hcBodyControles">
                                 <?php
-                                $filas = $filasControles;
+                                $filasTablaControles = $filasControles;
                                 include __DIR__ . "/historial-credito/tabla-controles.php";
                                 ?>
                             </tbody>
@@ -653,7 +666,7 @@ function hcDashAyuda($texto)
                                     </tr>
                                 </thead>
                                 <tbody id="hcTablaBody">
-                                    <?php if (empty($filas)) : ?>
+                                    <?php if (empty($filasMovimientos)) : ?>
                                         <tr class="hc-empty">
                                             <td colspan="7" class="text-center text-muted">
                                                 No hay movimientos en el rango seleccionado.
@@ -661,10 +674,10 @@ function hcDashAyuda($texto)
                                             </td>
                                         </tr>
                                     <?php else : ?>
-                                        <?php foreach ($filas as $row) : ?>
+                                        <?php foreach ($filasMovimientos as $row) : ?>
                                             <tr>
                                                 <td class="text-center hc-fecha-cell">
-                                                    <span class="hc-fecha"><?php echo htmlspecialchars(date("d/m/Y H:i", strtotime($row["fecha"]))); ?></span>
+                                                    <span class="hc-fecha"><?php echo htmlspecialchars(hcFmtFecha(isset($row["fecha"]) ? $row["fecha"] : "")); ?></span>
                                                 </td>
                                                 <td>
                                                     <span class="label label-<?php echo htmlspecialchars($row["tipo_clase"]); ?>">

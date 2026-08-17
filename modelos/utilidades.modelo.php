@@ -2822,7 +2822,7 @@ class ModeloUtilidades
 		$sql = "
 			SELECT
 				DATE(t.fecha) AS fecha,
-				t.ano,
+				t.año,
 				t.mes,
 				t.dia,
 				ROUND(COALESCE(t.cambio_compra, 0), 4) AS cambio_compra,

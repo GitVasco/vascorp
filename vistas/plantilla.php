@@ -213,7 +213,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") : ?>
-    <link rel="stylesheet" href="vistas/css/helpdesk.css?v=30">
+    <link rel="stylesheet" href="vistas/css/helpdesk.css?v=32">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "utilidades") : ?>
     <link rel="stylesheet" href="vistas/css/utilidades.css?v=24">
@@ -1012,7 +1012,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/materiaprima.js"></script>
     <script src="vistas/js/tarjetas.js"></script>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "recetas-modelo" || $_GET["ruta"] == "editar-receta-modelo")) { ?>
-    <script src="vistas/js/recetas-modelo.js?v=60"></script>
+    <script src="vistas/js/recetas-modelo.js?v=63"></script>
     <?php } ?>
     <script src="vistas/js/movimientos.js"></script>
     <script src="vistas/js/ordencorte.js"></script>
@@ -1052,7 +1052,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "historial-credito") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="vistas/js/dashboard-decisiones.js?v=26"></script>
-    <script src="vistas/js/historial-credito.js?v=18"></script>
+    <script src="vistas/js/historial-credito.js?v=19"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "metas-vendedor") { ?>
     <script src="vistas/js/metas-vendedor.js?v=1"></script>
@@ -1141,7 +1141,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "helpdesk") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="vistas/js/helpdesk.js?v=51"></script>
-    <script src="vistas/js/helpdesk-indicadores.js?v=5"></script>
+    <script src="vistas/js/helpdesk-indicadores.js?v=7"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "utilidades") { ?>
     <script src="vistas/js/utilidades.js?v=24"></script>

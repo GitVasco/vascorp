@@ -73,14 +73,13 @@ class ControladorRecetasModelo
 		return (string) $keys[0];
 	}
 
-	/** Una sola línea por sublínea o por la misma MP dominante (carga inicial + alta en el módulo). */
+	/** Fusiona solo la misma MP en la misma sublínea. Permite repetir tela (capa extra). */
 	static private function deduplicarLineasPorSublinea($lineas)
 	{
 		if (!is_array($lineas) || !count($lineas)) {
 			return $lineas;
 		}
 		$kept = array();
-		$seenSub = array();
 		$seenMp = array();
 		foreach ($lineas as $l) {
 			if (!is_array($l)) {
@@ -91,23 +90,15 @@ class ControladorRecetasModelo
 				$l["codigo_sublinea"] = substr($sub, 0, 6);
 			}
 			$mp = self::mpDominanteLinea($l);
-			$idxMerge = null;
-			if ($sub !== "" && isset($seenSub[$sub])) {
-				$idxMerge = $seenSub[$sub];
-			} elseif ($mp !== "" && isset($seenMp[$mp])) {
-				$idxMerge = $seenMp[$mp];
-			}
-			if ($idxMerge !== null) {
-				self::fusionarVariantesLineaReceta($kept[$idxMerge], $l);
+			$claveMp = ($sub !== "" && $mp !== "") ? ($sub . "|" . $mp) : "";
+			if ($claveMp !== "" && isset($seenMp[$claveMp])) {
+				self::fusionarVariantesLineaReceta($kept[$seenMp[$claveMp]], $l);
 				continue;
 			}
 			$idx = count($kept);
 			$kept[] = $l;
-			if ($sub !== "") {
-				$seenSub[$sub] = $idx;
-			}
-			if ($mp !== "") {
-				$seenMp[$mp] = $idx;
+			if ($claveMp !== "") {
+				$seenMp[$claveMp] = $idx;
 			}
 		}
 		return $kept;
@@ -479,7 +470,6 @@ class ControladorRecetasModelo
 		$lineas = array();
 		$telas = 0;
 		$ordenAuto = 1;
-		$sublineasVistas = array();
 
 		foreach ($lineasRaw as $idx => $raw) {
 			if (!is_array($raw)) {
@@ -512,11 +502,6 @@ class ControladorRecetasModelo
 				$sublinea = null;
 			} else {
 				$sublinea = substr($sublinea, 0, 6);
-				$subKey = strtoupper($sublinea);
-				if (isset($sublineasVistas[$subKey])) {
-					continue;
-				}
-				$sublineasVistas[$subKey] = true;
 			}
 
 			if ($esTela && $activo) {
@@ -755,21 +740,14 @@ class ControladorRecetasModelo
 				$estructura["mp_info"]
 			);
 			$insumos = isset($resArt["insumos"]) && is_array($resArt["insumos"]) ? $resArt["insumos"] : array();
-			$seenSub = array();
 			$seenMp = array();
 			foreach ($insumos as $ins) {
 				$sub = self::normalizarCodigoSublinea(
 					isset($ins["codigo_sublinea_esperada"]) ? $ins["codigo_sublinea_esperada"] : ""
 				);
 				$mp = trim((string) (isset($ins["mp_codigo"]) ? $ins["mp_codigo"] : ""));
-				if ($sub !== "" && isset($seenSub[$sub])) {
-					continue;
-				}
 				if ($mp !== "" && isset($seenMp[$mp])) {
 					continue;
-				}
-				if ($sub !== "") {
-					$seenSub[$sub] = true;
 				}
 				if ($mp !== "") {
 					$seenMp[$mp] = true;
@@ -1048,7 +1026,7 @@ class ControladorRecetasModelo
 	Decisiones:
 	- Agrupa por sublínea (LEFT CodFab,6); sin sublínea → por MP
 	- Regla COLOR_TALLA (compatible con el editor actual)
-	- Por artículo/sublínea: prioriza fila tej_princ=si
+	- Por artículo/sublínea: misma MP suma consumo; distinta MP arma capa extra
 	- consumo_base = moda de consumos del grupo
 	- Sublíneas con tej_princ=si quedan como tela principal (una por color al explotar)
 	=============================================*/
@@ -1107,12 +1085,69 @@ class ControladorRecetasModelo
 		));
 	}
 
+	static private function grupoTarjetaVacio($codigoSublinea, $nombreSublinea)
+	{
+		return array(
+			"codigo_sublinea" => $codigoSublinea,
+			"nombre_sublinea" => $nombreSublinea,
+			"tej_count" => 0,
+			"variantes" => array(),
+			"consumos" => array(),
+			"unidades" => array(),
+			"nombres_mp" => array(),
+		);
+	}
+
+	/** Misma MP: suma consumo. Distinta MP: capa extra de la misma tela. */
+	static private function colocarVarianteEnCapasTarjeta(
+		&$grupos,
+		$sub,
+		$claveVar,
+		$candidato,
+		&$sumados,
+		&$capasExtra
+	) {
+		$capa = 1;
+		while ($capa < 12) {
+			$k = ($capa === 1) ? $sub : ($sub . "#" . $capa);
+			if (!isset($grupos[$k])) {
+				$base = isset($grupos[$sub]) ? $grupos[$sub] : array();
+				$grupos[$k] = self::grupoTarjetaVacio(
+					isset($base["codigo_sublinea"]) ? $base["codigo_sublinea"] : null,
+					isset($base["nombre_sublinea"]) ? $base["nombre_sublinea"] : ""
+				);
+			}
+			if (!isset($grupos[$k]["variantes"][$claveVar])) {
+				$grupos[$k]["variantes"][$claveVar] = $candidato;
+				if (!empty($candidato["es_tela"])) {
+					$grupos[$k]["tej_count"]++;
+				}
+				if ($capa > 1) {
+					$capasExtra++;
+				}
+				return;
+			}
+			$prev = $grupos[$k]["variantes"][$claveVar];
+			if ($prev["mp_codigo"] === $candidato["mp_codigo"]) {
+				$prev["consumo"] = self::sumarConsumosImport($prev["consumo"], $candidato["consumo"]);
+				if (!empty($candidato["es_tela"])) {
+					$prev["es_tela"] = 1;
+					$grupos[$k]["tej_count"]++;
+				}
+				$grupos[$k]["variantes"][$claveVar] = $prev;
+				$sumados++;
+				return;
+			}
+			$capa++;
+		}
+	}
+
 	static private function construirLineasDesdeTarjetas($filas)
 	{
 		$grupos = array();
 		$avisos = array();
-		$dupes = 0;
 		$sumados = 0;
+		$capasExtra = 0;
 
 		foreach ($filas as $f) {
 			$mp = self::normalizarMp(isset($f["mp_codigo"]) ? $f["mp_codigo"] : "");
@@ -1139,19 +1174,10 @@ class ControladorRecetasModelo
 			}
 
 			if (!isset($grupos[$sub])) {
-				$grupos[$sub] = array(
-					"codigo_sublinea" => (strpos($sub, "MP:") === 0) ? null : $sub,
-					"nombre_sublinea" => trim((string) (isset($f["nombre_sublinea"]) ? $f["nombre_sublinea"] : "")),
-					"tej_count" => 0,
-					"variantes" => array(),
-					"consumos" => array(),
-					"unidades" => array(),
-					"nombres_mp" => array(),
+				$grupos[$sub] = self::grupoTarjetaVacio(
+					(strpos($sub, "MP:") === 0) ? null : $sub,
+					trim((string) (isset($f["nombre_sublinea"]) ? $f["nombre_sublinea"] : ""))
 				);
-			}
-
-			if ($esTela) {
-				$grupos[$sub]["tej_count"]++;
 			}
 
 			$candidato = array(
@@ -1164,31 +1190,21 @@ class ControladorRecetasModelo
 				"unidad" => trim((string) (isset($f["unidad"]) ? $f["unidad"] : "")),
 			);
 
-			if (isset($grupos[$sub]["variantes"][$claveVar])) {
-				$prev = $grupos[$sub]["variantes"][$claveVar];
-				if ($prev["mp_codigo"] === $candidato["mp_codigo"]) {
-					// Misma MP repetida: sumar consumos
-					$prev["consumo"] = self::sumarConsumosImport($prev["consumo"], $candidato["consumo"]);
-					if ($candidato["es_tela"]) {
-						$prev["es_tela"] = 1;
-					}
-					$grupos[$sub]["variantes"][$claveVar] = $prev;
-					$sumados++;
-				} elseif (!$prev["es_tela"] && $candidato["es_tela"]) {
-					$grupos[$sub]["variantes"][$claveVar] = $candidato;
-				} else {
-					$dupes++;
-				}
-			} else {
-				$grupos[$sub]["variantes"][$claveVar] = $candidato;
-			}
+			self::colocarVarianteEnCapasTarjeta(
+				$grupos,
+				$sub,
+				$claveVar,
+				$candidato,
+				$sumados,
+				$capasExtra
+			);
 		}
 
 		if ($sumados > 0) {
 			$avisos[] = "Se sumaron consumos en $sumados detalle(s) con la misma MP repetida (misma sublínea/color/talla).";
 		}
-		if ($dupes > 0) {
-			$avisos[] = "Hubo $dupes detalles con distinta MP en la misma sublínea/color/talla; se priorizó tej_princ=si.";
+		if ($capasExtra > 0) {
+			$avisos[] = "Se armó capa extra en $capasExtra detalle(s) porque la misma tela entra en otro color (copa).";
 		}
 
 		if (!count($grupos)) {
@@ -1870,6 +1886,7 @@ class ControladorRecetasModelo
 			$filasConError = 0;
 			$dupes = 0;
 			$sumados = 0;
+			$capasExtra = 0;
 
 			foreach ($bloque["filas"] as $f) {
 				if (!empty($f["errores"])) {
@@ -1927,7 +1944,6 @@ class ControladorRecetasModelo
 					$idx = $g["claves_var"][$claveVar];
 					$prev = $g["variantes"][$idx];
 					if ($prev["mp_codigo"] === $candidato["mp_codigo"]) {
-						// Misma MP repetida: sumar consumos
 						$prev["consumo"] = self::sumarConsumosImport($prev["consumo"], $candidato["consumo"]);
 						if ($candidato["es_tela"]) {
 							$prev["es_tela"] = 1;
@@ -1937,11 +1953,62 @@ class ControladorRecetasModelo
 						}
 						$g["variantes"][$idx] = $prev;
 						$sumados++;
-					} elseif (!$prev["es_tela"] && $candidato["es_tela"]) {
-						$g["variantes"][$idx] = $candidato;
-						$dupes++;
 					} else {
-						$dupes++;
+						$capa = 2;
+						$placed = false;
+						while ($capa < 12 && !$placed) {
+							$gkCapa = $gk . "#" . $capa;
+							if (!isset($grupos[$gkCapa])) {
+								$grupos[$gkCapa] = array(
+									"nombre_rol" => $g["nombre_rol"],
+									"orden" => ((int) $g["orden"]) + ($capa - 1),
+									"es_tela_principal" => 0,
+									"tej_count" => 0,
+									"codigo_sublinea" => $g["codigo_sublinea"],
+									"unidad" => $g["unidad"],
+									"regla_variante" => "COLOR_TALLA",
+									"consumo_base" => null,
+									"mp_base_codigo" => null,
+									"activo" => 1,
+									"variantes" => array(),
+									"claves_var" => array(),
+									"nombres_mp" => isset($g["nombres_mp"]) ? $g["nombres_mp"] : array(),
+									"consumos" => array(),
+								);
+							}
+							$gc = &$grupos[$gkCapa];
+							if (!isset($gc["claves_var"][$claveVar])) {
+								$gc["claves_var"][$claveVar] = count($gc["variantes"]);
+								$gc["variantes"][] = $candidato;
+								if ($candidato["es_tela"]) {
+									$gc["tej_count"]++;
+								}
+								$variantesCount++;
+								$capasExtra++;
+								$placed = true;
+							} else {
+								$idxC = $gc["claves_var"][$claveVar];
+								$prevC = $gc["variantes"][$idxC];
+								if ($prevC["mp_codigo"] === $candidato["mp_codigo"]) {
+									$prevC["consumo"] = self::sumarConsumosImport(
+										$prevC["consumo"],
+										$candidato["consumo"]
+									);
+									if ($candidato["es_tela"]) {
+										$prevC["es_tela"] = 1;
+										$gc["tej_count"]++;
+									}
+									$gc["variantes"][$idxC] = $prevC;
+									$sumados++;
+									$placed = true;
+								}
+							}
+							unset($gc);
+							$capa++;
+						}
+						if (!$placed) {
+							$dupes++;
+						}
 					}
 				} else {
 					$g["claves_var"][$claveVar] = count($g["variantes"]);
@@ -1964,6 +2031,9 @@ class ControladorRecetasModelo
 
 			if ($sumados > 0) {
 				$erroresModelo[] = "Se sumaron consumos en $sumados fila(s) con la misma MP repetida.";
+			}
+			if ($capasExtra > 0) {
+				$erroresModelo[] = "Se armó capa extra en $capasExtra fila(s) porque la misma tela entra en otro color.";
 			}
 			if ($dupes > 0) {
 				$erroresModelo[] = "Hubo $dupes filas con distinta MP en el mismo color/talla; se conservó una.";
@@ -2013,6 +2083,9 @@ class ControladorRecetasModelo
 					continue;
 				}
 				if (strpos($msg, "Se sumaron consumos") === 0) {
+					continue;
+				}
+				if (strpos($msg, "Se armó capa extra") === 0) {
 					continue;
 				}
 				$avisosBloqueantes[] = $msg;
@@ -2073,7 +2146,8 @@ class ControladorRecetasModelo
 					? array_values(array_filter($erroresModelo, function ($msg) {
 						return strpos($msg, "Hubo ") === 0
 							|| strpos($msg, "Se omitirán ") === 0
-							|| strpos($msg, "Se sumaron consumos") === 0;
+							|| strpos($msg, "Se sumaron consumos") === 0
+							|| strpos($msg, "Se armó capa extra") === 0;
 					}))
 					: $avisosBloqueantes,
 				"accion" => $okModelo ? "crear_borrador" : "",

@@ -21,13 +21,39 @@
         );
     }
 
-    function fmtFecha(fecha) {
+    function parseFechaLocal(fecha) {
         if (!fecha) {
-            return "—";
+            return null;
         }
-        var d = new Date(String(fecha).replace(" ", "T"));
-        if (isNaN(d.getTime())) {
-            return escapeHtml(fecha);
+        var s = String(fecha).trim();
+        var m = s.match(
+            /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/
+        );
+        if (m) {
+            var y = Number(m[1]);
+            if (y < 2000) {
+                return null;
+            }
+            return new Date(
+                y,
+                Number(m[2]) - 1,
+                Number(m[3]),
+                Number(m[4] || 0),
+                Number(m[5] || 0),
+                Number(m[6] || 0)
+            );
+        }
+        var d = new Date(s.replace(" ", "T"));
+        if (isNaN(d.getTime()) || d.getFullYear() < 2000) {
+            return null;
+        }
+        return d;
+    }
+
+    function fmtFecha(fecha) {
+        var d = parseFechaLocal(fecha);
+        if (!d) {
+            return "—";
         }
         var pad = function (n) {
             return n < 10 ? "0" + n : String(n);
@@ -549,11 +575,8 @@
     }
 
     function fmtRelativo(fecha) {
-        if (!fecha) {
-            return "—";
-        }
-        var d = new Date(String(fecha).replace(" ", "T"));
-        if (isNaN(d.getTime())) {
+        var d = parseFechaLocal(fecha);
+        if (!d) {
             return "—";
         }
         var mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));

@@ -61,7 +61,7 @@ if ($accion === "listar") {
     ));
 
     ob_start();
-    $filas = (!empty($datos["ok"]) && isset($datos["filas"])) ? $datos["filas"] : array();
+    $filasTablaControles = (!empty($datos["ok"]) && isset($datos["filas"])) ? $datos["filas"] : array();
     $puedeLiberar = !empty($datos["puede_liberar"]);
     include __DIR__ . "/../../vistas/modulos/historial-credito/tabla-controles.php";
     $html = ob_get_clean();

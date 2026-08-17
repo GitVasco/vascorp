@@ -829,8 +829,10 @@ $(".tablaDatosDia").on("click", ".btnActualizarMes", function () {
         processData: false,
         success: function (respuesta) {
             if (respuesta == "ok") {
-                //toast de confirmacion
                 Command: toastr["success"]("Se actualizo el TC: " + fecha);
+                if ($.fn.DataTable.isDataTable(".tablaDatosDia")) {
+                    $(".tablaDatosDia").DataTable().ajax.reload(null, false);
+                }
 
                 // swal({
                 //     type: "success",
@@ -953,10 +955,10 @@ $(".box").on("click", ".btnMontoAno", function () {
 
 function actualizarTC() {
     let fecha = $("#btnActTC").attr("fecha");
-    //console.log(fecha);
 
     var datos = new FormData();
     datos.append("fecha", fecha);
+    datos.append("completarHastaHoy", "1");
 
     $.ajax({
         url: "ajax/movimientos.ajax.php",
@@ -968,7 +970,7 @@ function actualizarTC() {
         success: function (respuesta) {
             if (respuesta == "ok") {
                 Command: toastr["success"](
-                    "Se actualizo el TC de hoy: " + fecha
+                    "Se actualizó el T/C de los días pendientes hasta hoy"
                 );
             } else {
                 Command: toastr["error"]("No se encontro el tipo de cambio");

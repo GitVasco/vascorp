@@ -66,12 +66,23 @@ class JsonPeApi
         return self::post('/ruc', array('ruc' => $ruc));
     }
 
+    private static function normalizarFecha($fecha)
+    {
+        if ($fecha === null || $fecha === '') {
+            date_default_timezone_set('America/Lima');
+            return date('Y-m-d');
+        }
+
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})/', (string) $fecha, $m)) {
+            return $m[1];
+        }
+
+        return (string) $fecha;
+    }
+
     public static function consultarTipoCambio($fecha = null)
     {
-        if ($fecha === null) {
-            date_default_timezone_set('America/Lima');
-            $fecha = date('Y-m-d');
-        }
+        $fecha = self::normalizarFecha($fecha);
 
         $response = self::post('/tipo_de_cambio', array('fecha' => $fecha));
 

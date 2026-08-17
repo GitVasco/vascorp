@@ -1,6 +1,6 @@
 <?php
-if (!isset($filas) || !is_array($filas)) {
-    $filas = array();
+if (!isset($filasTablaControles) || !is_array($filasTablaControles)) {
+    $filasTablaControles = array();
 }
 if (!isset($puedeLiberar)) {
     $puedeLiberar = function_exists("dcUsuarioPuedeLiberarControlPostAprobacion")
@@ -25,14 +25,14 @@ if (!function_exists("hcEtiquetaEstadoPedidoControl")) {
     }
 }
 
-if (empty($filas)) {
+if (empty($filasTablaControles)) {
     echo '<tr><td colspan="10" class="text-center text-muted">'
         . 'No hay controles post-aprobación pendientes.'
         . '</td></tr>';
     return;
 }
 
-foreach ($filas as $row) {
+foreach ($filasTablaControles as $row) {
     $bloquea = (int) (isset($row["bloquea_apt"]) ? $row["bloquea_apt"] : 1) === 1;
     echo '<tr class="hc-row-control' . ($bloquea ? " hc-row-control--bloquea" : "") . '">';
     echo '<td><strong>' . htmlspecialchars($row["codigo_pedido"]) . '</strong>';

@@ -106,6 +106,207 @@ function rmIdxLineaPorSublinea(cod) {
 	return found;
 }
 
+function rmConteoSublinea(cod) {
+	var needle = rmNormSublinea(cod);
+	if (!needle || !RM.estado) return 0;
+	var n = 0;
+	(RM.estado.lineas || []).forEach(function (l) {
+		if (Number(l.activo) === 0) return;
+		if (rmNormSublinea(l.codigo_sublinea) === needle) n++;
+	});
+	return n;
+}
+
+/** Número de capa (1, 2…) si la misma sublínea está más de una vez. */
+function rmCapaDeLinea(linea, idx) {
+	var needle = rmNormSublinea(linea && linea.codigo_sublinea);
+	var total = 0;
+	var nro = 0;
+	if (!needle) return { total: 1, nro: 1 };
+	(RM.estado && RM.estado.lineas || []).forEach(function (l, i) {
+		if (Number(l.activo) === 0) return;
+		if (rmNormSublinea(l.codigo_sublinea) !== needle) return;
+		total++;
+		if (idx != null && i === idx) nro = total;
+		else if ((idx == null || idx === undefined) && l === linea) nro = total;
+	});
+	return { total: total, nro: nro || 1 };
+}
+
+function rmEtiquetaLineaConCapa(linea, idx) {
+	var base = rmEtiquetaLinea(linea);
+	var capa = rmCapaDeLinea(linea, idx);
+	if (capa.total < 2) return base;
+	return base + " · " + capa.nro;
+}
+
+/** Tela principal u otra capa de la misma tela: vacío = ese color no la usa. */
+function rmLineaEsCapaOpcional(linea) {
+	if (!linea) return false;
+	if (Number(linea.es_tela_principal) === 1) return true;
+	return rmConteoSublinea(linea.codigo_sublinea) > 1;
+}
+
+function rmLineasMismaSublinea(linea) {
+	var sub = rmNormSublinea(linea && linea.codigo_sublinea);
+	var out = [];
+	(RM.estado && RM.estado.lineas || []).forEach(function (l, i) {
+		if (Number(l.activo) === 0) return;
+		if (sub && rmNormSublinea(l.codigo_sublinea) !== sub) return;
+		if (!sub && l !== linea) return;
+		out.push({ linea: l, idx: i });
+	});
+	return out;
+}
+
+function rmMpsEnCelda(codColor, codTalla, lineaBase) {
+	var mps = [];
+	var seen = {};
+	rmLineasMismaSublinea(lineaBase || rmLineaActual()).forEach(function (item) {
+		rmAsegurarVariantesArticulos(item.linea);
+		(item.linea.variantes || []).forEach(function (v) {
+			if (String(v.cod_color || "") !== String(codColor)) return;
+			if (String(v.cod_talla || "") !== String(codTalla)) return;
+			var mp = String(v.mp_codigo || "").replace(/\s+/g, "");
+			if (!mp || seen[mp]) return;
+			seen[mp] = true;
+			mps.push({ mp: mp, idx: item.idx });
+		});
+	});
+	return mps;
+}
+
+function rmCrearCapaExtra(origen) {
+	rmSincronizarConsumoEnVariantes();
+	var linea = {
+		orden: rmSiguienteOrdenLinea(),
+		nombre_rol: (origen && origen.nombre_rol) || "",
+		es_tela_principal: 0,
+		codigo_sublinea: origen && origen.codigo_sublinea,
+		nombre_sublinea: origen && origen.nombre_sublinea,
+		regla_variante: "COLOR_TALLA",
+		unidad: (origen && origen.unidad) || "",
+		consumo_base: (origen && origen.consumo_base) || $("#rmConsumoLinea").val() || "1",
+		mp_base_codigo: "",
+		activo: 1,
+		variantes: []
+	};
+	rmAsegurarVariantesArticulos(linea);
+	RM.estado.lineas.push(linea);
+	return RM.estado.lineas.length - 1;
+}
+
+function rmIdxCapaLibreParaCelda(codColor, codTalla, mp) {
+	var capas = rmLineasMismaSublinea(rmLineaActual());
+	var i;
+	for (i = 0; i < capas.length; i++) {
+		var item = capas[i];
+		rmAsegurarVariantesArticulos(item.linea);
+		var tiene = "";
+		(item.linea.variantes || []).forEach(function (v) {
+			if (String(v.cod_color || "") !== String(codColor)) return;
+			if (String(v.cod_talla || "") !== String(codTalla)) return;
+			tiene = String(v.mp_codigo || "").replace(/\s+/g, "");
+		});
+		if (tiene && tiene === String(mp || "")) return -2;
+		if (!tiene) return item.idx;
+	}
+	return -1;
+}
+
+function rmAsignarMpEnLineaIdx(idx, key, mp) {
+	var linea = RM.estado && RM.estado.lineas ? RM.estado.lineas[idx] : null;
+	if (!linea || !mp) return;
+	rmAsegurarVariantesArticulos(linea);
+	var consumo = linea.consumo_base || "1";
+	if (idx === RM.lineaIdx) {
+		consumo = $("#rmConsumoLinea").val() || consumo;
+		linea.consumo_base = consumo;
+		if (RM.mpActivaUnd) rmHeredarUnidadDeMp(RM.mpActivaUnd);
+	} else if (RM.mpActivaUnd && !linea.unidad) {
+		linea.unidad = RM.mpActivaUnd;
+	}
+	(linea.variantes || []).forEach(function (v) {
+		if (String(v.cod_color || "") + "|" + String(v.cod_talla || "") === String(key)) {
+			v.mp_codigo = String(mp);
+			v.consumo = consumo;
+		}
+	});
+	rmMarcarDirty(true);
+}
+
+function rmCeldaYaTieneMp(codColor, codTalla, mp, lineaBase) {
+	var ya = rmMpsEnCelda(codColor, codTalla, lineaBase);
+	var i;
+	for (i = 0; i < ya.length; i++) {
+		if (String(ya[i].mp) === String(mp)) return true;
+	}
+	return false;
+}
+
+function rmAgregarMpExtraAKey(key, mp, silencioso) {
+	var linea = rmLineaActual();
+	if (!linea || !mp || !key) return false;
+	var parts = String(key).split("|");
+	var codColor = parts[0] || "";
+	var codTalla = parts[1] || "";
+	if (rmCeldaYaTieneMp(codColor, codTalla, mp, linea)) {
+		if (!silencioso) rmAlerta("info", "MP", "Esa tela ya está en esta celda");
+		return false;
+	}
+	var idx = rmIdxCapaLibreParaCelda(codColor, codTalla, mp);
+	if (idx === -2) {
+		if (!silencioso) rmAlerta("info", "MP", "Esa tela ya está en esta celda");
+		return false;
+	}
+	if (idx < 0) idx = rmCrearCapaExtra(linea);
+	rmAsignarMpEnLineaIdx(idx, key, mp);
+	return true;
+}
+
+function rmAgregarMpExtraAColor(codColor, mp) {
+	var n = 0;
+	(RM.articulos || []).forEach(function (art) {
+		if (String(art.cod_color || "") !== String(codColor)) return;
+		if (rmAgregarMpExtraAKey(rmClaveArt(art), mp, true)) n++;
+	});
+	if (!n) rmAlerta("info", "MP", "Esa tela ya está en todas las tallas de este color");
+	return n;
+}
+
+function rmQuitarMpDeCapa(idx, key) {
+	var linea = RM.estado && RM.estado.lineas ? RM.estado.lineas[idx] : null;
+	if (!linea) return;
+	(linea.variantes || []).forEach(function (v) {
+		if (String(v.cod_color || "") + "|" + String(v.cod_talla || "") === String(key)) {
+			v.mp_codigo = "";
+		}
+	});
+	rmMarcarDirty(true);
+	rmLimpiarCapasExtraVacias();
+}
+
+function rmLimpiarCapasExtraVacias() {
+	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return;
+	var actual = rmLineaActual();
+	var sub = rmNormSublinea(actual && actual.codigo_sublinea);
+	var kept = [];
+	RM.estado.lineas.forEach(function (l, i) {
+		if (i === RM.lineaIdx || Number(l.es_tela_principal) === 1 || Number(l.activo) === 0) {
+			kept.push(l);
+			return;
+		}
+		if (sub && rmNormSublinea(l.codigo_sublinea) === sub && !rmLineaTieneMp(l)) {
+			return;
+		}
+		kept.push(l);
+	});
+	if (kept.length === RM.estado.lineas.length) return;
+	var ni = kept.indexOf(actual);
+	RM.estado.lineas = kept;
+	RM.lineaIdx = ni >= 0 ? ni : (kept.length ? 0 : null);
+}
+
 function rmNombrePickSublinea(sub, nom) {
 	nom = $.trim(nom || "");
 	if (!nom || nom === "\u00a0"
@@ -157,10 +358,10 @@ function rmActualizarAccionesSublinea() {
 	if (!$("#rmNuevaSublinea").val()) {
 		if (reemplazable) {
 			$("#rmNuevaSublineaCod").text("Buscar para cambiar o agregar otra…").addClass("empty");
-			$("#rmNuevaSublineaNom").text("Cambiar reemplaza la sublínea vacía; Agregar suma otra");
+			$("#rmNuevaSublineaNom").text("Cambiar reemplaza la vacía; Agregar suma otra (misma tela = capa extra)");
 		} else {
 			$("#rmNuevaSublineaCod").text("Buscar y agregar otra sublínea…").addClass("empty");
-			$("#rmNuevaSublineaNom").text("Solo agrega; la edición es del chip seleccionado a la derecha");
+			$("#rmNuevaSublineaNom").text("Agregar la misma tela otra vez suma una capa (otro color de copa)");
 		}
 	}
 }
@@ -274,11 +475,10 @@ function rmFusionarVariantesLinea(destino, origen) {
 	if (!destino.unidad && origen.unidad) destino.unidad = origen.unidad;
 }
 
-/** Quita sublíneas o la misma MP cargada dos veces (import + módulo). Devuelve cuántas se fusionaron. */
+/** Fusiona solo la misma MP en la misma sublínea. Permite repetir tela (capa extra de copa). */
 function rmDeduplicarLineasEstado() {
 	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return 0;
 	var actual = rmLineaActual();
-	var seenSub = {};
 	var seenMp = {};
 	var kept = [];
 	var removed = 0;
@@ -290,18 +490,15 @@ function rmDeduplicarLineasEstado() {
 		}
 		var c = rmNormSublinea(l.codigo_sublinea);
 		var mp = rmMpDominanteLinea(l);
-		var idxMerge = (c && seenSub[c] !== undefined)
-			? seenSub[c]
-			: (mp && seenMp[mp] !== undefined ? seenMp[mp] : undefined);
-		if (idxMerge !== undefined) {
-			rmFusionarVariantesLinea(kept[idxMerge], l);
+		var claveMp = (c && mp) ? (c + "|" + mp) : "";
+		if (claveMp && seenMp[claveMp] !== undefined) {
+			rmFusionarVariantesLinea(kept[seenMp[claveMp]], l);
 			removed++;
 			return;
 		}
 		var idx = kept.length;
 		kept.push(l);
-		if (c) seenSub[c] = idx;
-		if (mp) seenMp[mp] = idx;
+		if (claveMp) seenMp[claveMp] = idx;
 	});
 	if (!removed) return 0;
 	RM.estado.lineas = kept;
@@ -683,19 +880,11 @@ function rmSiguienteOrdenLinea() {
 	return max + 1;
 }
 
-/** Sublíneas activas en orden de receta (las nuevas van al final de cada color × talla). */
+/** Sublíneas activas en orden de receta (incluye capas extra de la misma tela). */
 function rmLineasActivasPorOrden() {
 	var out = [];
-	var seenSub = {};
-	var seenMp = {};
 	(RM.estado && RM.estado.lineas || []).forEach(function (linea, idx) {
 		if (Number(linea.activo) === 0) return;
-		var sub = rmNormSublinea(linea.codigo_sublinea);
-		var mp = rmMpDominanteLinea(linea);
-		if (sub && seenSub[sub]) return;
-		if (mp && seenMp[mp]) return;
-		if (sub) seenSub[sub] = true;
-		if (mp) seenMp[mp] = true;
 		out.push({ linea: linea, idx: idx });
 	});
 	out.sort(function (a, b) {
@@ -731,7 +920,7 @@ function rmRenderChips() {
 		}
 		var esTela = Number(linea.es_tela_principal) === 1;
 		var html = "<div class='rm2-chip" + (active ? " active" : "") + "' data-idx='" + idx + "'>"
-			+ "<strong>" + rmEsc(rmEtiquetaLinea(linea)) + "</strong>";
+			+ "<strong>" + rmEsc(rmEtiquetaLineaConCapa(linea, idx)) + "</strong>";
 		if (active) {
 			html += "<span class='rm2-chip-editando'>EDITANDO</span>";
 		}
@@ -831,17 +1020,7 @@ function rmAgregarLineaSublinea(sub, nom) {
 	nom = rmNombrePickSublinea(sub, nom);
 
 	var idxExistente = rmIdxLineaPorSublinea(sub);
-	if (idxExistente >= 0) {
-		rmSincronizarConsumoEnVariantes();
-		RM.lineaAnteriorIdx = null;
-		RM.lineaIdx = idxExistente;
-		rmResetMpEnMano();
-		rmLimpiarPickSublinea();
-		rmRefrescarPaso2(true);
-		rmActualizarContextoLineaActiva("Esa sublínea ya está en la receta");
-		rmEnfocarPanelLinea();
-		return true;
-	}
+	var esCapaExtra = idxExistente >= 0;
 
 	rmSincronizarConsumoEnVariantes();
 	var lineaAnteriorIdx = RM.lineaIdx;
@@ -869,7 +1048,9 @@ function rmAgregarLineaSublinea(sub, nom) {
 	rmMarcarDirty(true);
 	rmRefrescarPaso2(true);
 	rmActualizarContextoLineaActiva(
-		"Ahora estás configurando: " + rmEtiquetaLinea(linea),
+		esCapaExtra
+			? "Capa extra de la misma tela. Asigna el otro color. Vacío = ese color no usa esta capa. No la marques tela principal."
+			: ("Ahora estás configurando: " + rmEtiquetaLinea(linea)),
 		{ mostrarVolver: RM.lineaAnteriorIdx !== null }
 	);
 	rmEnfocarPanelLinea();
@@ -962,21 +1143,25 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 		return;
 	}
 
-	var etiqueta = rmEtiquetaLinea(linea);
+	var etiqueta = rmEtiquetaLineaConCapa(linea, RM.lineaIdx);
 	var nArts = (RM.articulos || []).length;
 	var und = linea.unidad ? String(linea.unidad) : "—";
+	var capa = rmCapaDeLinea(linea, RM.lineaIdx);
+	var opcional = rmLineaEsCapaOpcional(linea);
 
 	$ctx.show();
 	// El nombre completo solo aquí (evitar repetirlo en título / consumo / matriz)
 	$("#rmCtxNombre").text(etiqueta);
 	$("#rmCtxMeta").text(
-		"Consumo único para esta sublínea · se aplica a " + nArts
-		+ " combinación" + (nArts === 1 ? "" : "es") + " color × talla"
+		capa.total > 1
+			? ("Capa " + capa.nro + " de " + capa.total + " · mismo insumo, otro color si hace falta · consumo de esta capa")
+			: ("Consumo único para esta sublínea · se aplica a " + nArts
+				+ " combinación" + (nArts === 1 ? "" : "es") + " color × talla")
 	);
 	$("#rmConsumoLineaLabel").text("Consumo");
 	$("#rmUnidadLineaAddon").text(und);
 	$("#rmMatrizContexto").text(
-		(Number(linea.es_tela_principal) === 1 || rmLineaCoberturaParcial(linea))
+		(opcional || rmLineaCoberturaParcial(linea))
 			? "Asignar MP · color × talla · vacío = este color no usa esta tela"
 			: "Asignar MP · color × talla"
 	);
@@ -1085,10 +1270,12 @@ function rmRenderMpsAsignadas() {
 		return;
 	}
 	var mapa = {};
-	(linea.variantes || []).forEach(function (v) {
-		if (!v.mp_codigo) return;
-		if (!mapa[v.mp_codigo]) mapa[v.mp_codigo] = 0;
-		mapa[v.mp_codigo]++;
+	rmLineasMismaSublinea(linea).forEach(function (item) {
+		(item.linea.variantes || []).forEach(function (v) {
+			if (!v.mp_codigo) return;
+			if (!mapa[v.mp_codigo]) mapa[v.mp_codigo] = 0;
+			mapa[v.mp_codigo]++;
+		});
 	});
 	var keys = Object.keys(mapa);
 	if (!keys.length) {
@@ -1144,12 +1331,10 @@ function rmSetMpActiva(mp, und, color, desc) {
 			+ " <span class='text-muted'>(" + rmEsc(mp) + ")</span>"
 		);
 		$("#rmMpActivaUndTxt").text(und ? (" · " + und) : "");
-		$("#rmMpActivaAcciones").show();
 	} else {
 		$("#rmMpActivaBox").removeClass("visible");
 		$("#rmMpActivaTxt").text("—");
 		$("#rmMpActivaUndTxt").text("");
-		$("#rmMpActivaAcciones").hide();
 	}
 	$("#rmTablaMp tr").removeClass("activa");
 	if (mp) {
@@ -1184,12 +1369,8 @@ function rmResolverMpLinea(linea, art) {
 }
 
 function rmLineasParaTarjetas() {
-	var seenLinea = {};
 	var lineas = [];
 	rmLineasActivasPorOrden().forEach(function (item) {
-		var k = rmClaveLineaTarjeta(item.linea);
-		if (seenLinea[k]) return;
-		seenLinea[k] = true;
 		lineas.push(item.linea);
 	});
 	return lineas;
@@ -1209,17 +1390,13 @@ function rmArticulosParaTarjetas() {
 }
 
 function rmFilasTarjetaDeArticulo(art, lineas) {
-	var seenSub = {};
 	var seenMp = {};
 	var filas = [];
 	(lineas || []).forEach(function (linea) {
 		var res = rmResolverMpLinea(linea, art);
-		var sub = rmNormSublinea(linea.codigo_sublinea);
 		var mp = String(res.mp_codigo || "").replace(/\s+/g, "");
 		if (!mp) return;
-		if (sub && seenSub[sub]) return;
 		if (seenMp[mp]) return;
-		if (sub) seenSub[sub] = true;
 		seenMp[mp] = true;
 		filas.push({ linea: linea, res: res });
 	});
@@ -1396,7 +1573,6 @@ function rmRenderMatriz() {
 	rmActualizarContextoLineaActiva();
 
 	rmAsegurarVariantesArticulos(linea);
-	var mapa = rmMapaVariantes(linea);
 	var colores = rmColoresOrdenados();
 	var tallas = rmTallasOrdenadas();
 	var editable = rmEsBorradorEditable();
@@ -1444,23 +1620,44 @@ function rmRenderMatriz() {
 				return;
 			}
 			var key = rmClaveArt(art);
-			var v = mapa[key] || {};
-			var ok = !!v.mp_codigo;
-			var vacioOk = !ok && (Number(linea.es_tela_principal) === 1 || rmLineaCoberturaParcial(linea));
-			var etiqueta = ok ? rmEtiquetaMp(v.mp_codigo) : (vacioOk ? "No usa" : "—");
+			var mps = rmMpsEnCelda(col.cod_color, tal.cod_talla, linea);
+			var ok = mps.length > 0;
+			var vacioOk = !ok && (rmLineaEsCapaOpcional(linea) || rmLineaCoberturaParcial(linea));
+			var etiqueta = ok ? rmEtiquetaMp(mps[0].mp) : (vacioOk ? "No usa" : "—");
 			var celdaClase = ok ? "ok" : (vacioOk ? "na" : "falta");
+			var inner = "";
+			if (ok) {
+				inner += "<div class='rm2-celda-mps'>";
+				mps.forEach(function (item) {
+					inner += "<span class='rm2-celda-mp' title='" + rmEsc(item.mp) + "'>"
+						+ rmEsc(rmEtiquetaMp(item.mp));
+					if (editable) {
+						inner += "<a href='javascript:;' class='rmQuitarMpCapa' data-idx='" + item.idx
+							+ "' data-key='" + rmEsc(key) + "' title='Quitar esta MP'>&times;</a>";
+					}
+					inner += "</span>";
+				});
+				inner += "</div>";
+			} else {
+				inner += "<div class='rm2-celda-color'>" + rmEsc(etiqueta) + "</div>";
+			}
+			if (editable) {
+				inner += "<button type='button' class='rm2-celda-add rmAgregarMpCelda' data-key='" + rmEsc(key)
+					+ "' title='Sumar otra MP sin reemplazar la que ya está'>+</button>";
+			}
+			inner += "<div class='rm2-celda-art'>" + rmEsc(art.articulo) + "</div>";
 			row += "<td class='rm2-celda " + celdaClase + "' data-articulo='" + rmEsc(art.articulo)
 				+ "' data-color='" + rmEsc(col.cod_color) + "' data-talla='" + rmEsc(tal.cod_talla) + "' data-key='" + rmEsc(key) + "'"
-				+ " title='" + rmEsc(art.articulo + (ok ? " · MP " + v.mp_codigo : (vacioOk ? " · no usa esta tela" : "")) + " — clic: asignar · Alt+clic: quitar") + "'"
+				+ " title='" + rmEsc(art.articulo + (ok ? " · " + mps.map(function (x) { return rmEtiquetaMp(x.mp); }).join(" + ") : (vacioOk ? " · no usa esta tela" : "")) + " — clic: reemplazar esta capa · +: sumar otra") + "'"
 				+ (editable ? "" : " style='cursor:default;'") + ">"
-				+ "<div class='rm2-celda-color'>" + rmEsc(etiqueta) + "</div>"
-				+ "<div class='rm2-celda-art'>" + rmEsc(art.articulo) + "</div>"
+				+ inner
 				+ "</td>";
 		});
 		row += "<td>"
 			+ (editable
 				? "<div class='btn-group btn-group-xs'>"
-					+ "<button type='button' class='btn btn-primary rmAplicarColor' data-color='" + rmEsc(col.cod_color) + "' title='MP en mano → todas las tallas de este color'><i class='fa fa-arrows-h'></i> Tallas</button>"
+					+ "<button type='button' class='btn btn-primary rmAplicarColor' data-color='" + rmEsc(col.cod_color) + "' title='MP en mano → reemplaza en todas las tallas de este color'><i class='fa fa-arrows-h'></i> Tallas</button>"
+					+ "<button type='button' class='btn btn-success rmAgregarMpColor' data-color='" + rmEsc(col.cod_color) + "' title='Suma la MP en mano a este color, sin pisar la que ya está'><i class='fa fa-plus'></i> Otra</button>"
 					+ "<button type='button' class='btn btn-default rmQuitarColor' data-color='" + rmEsc(col.cod_color) + "' title='Quitar MP en todas las tallas de este color'><i class='fa fa-times'></i></button>"
 					+ "</div>"
 				: "")
@@ -2528,6 +2725,30 @@ $(document).ready(function () {
 		if (!rmEsBorradorEditable() || !rmExigirMpEnMano()) return;
 		rmAplicarMpAColor(String($(this).attr("data-color") || ""), RM.mpActiva);
 		rmRefrescarPaso2(false);
+	});
+
+	$(document).on("click", ".rmAgregarMpColor", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!rmEsBorradorEditable() || !rmExigirMpEnMano()) return;
+		rmAgregarMpExtraAColor(String($(this).attr("data-color") || ""), RM.mpActiva);
+		rmRefrescarPaso2(true);
+	});
+
+	$(document).on("click", ".rmAgregarMpCelda", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!rmEsBorradorEditable() || !rmExigirMpEnMano()) return;
+		rmAgregarMpExtraAKey(String($(this).attr("data-key") || ""), RM.mpActiva);
+		rmRefrescarPaso2(true);
+	});
+
+	$(document).on("click", ".rmQuitarMpCapa", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!rmEsBorradorEditable()) return;
+		rmQuitarMpDeCapa(Number($(this).attr("data-idx")), String($(this).attr("data-key") || ""));
+		rmRefrescarPaso2(true);
 	});
 
 	$(document).on("click", ".rmQuitarColor", function () {

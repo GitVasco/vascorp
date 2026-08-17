@@ -9,6 +9,7 @@
     var API = "ajax/helpdesk.ajax.php";
     var charts = {};
     var cargado = false;
+    var slaHoras = { ALTA: 4, MEDIA: 24, BAJA: 72 };
     var PASTEL = [
         "#A8D5E5", "#F9C5A1", "#B8E0D2", "#F5B7B1", "#D2B4DE",
         "#FAD7A0", "#AED6F1", "#D5F5E3", "#F5CBA7", "#D7BDE2"
@@ -155,13 +156,52 @@
         }
     }
 
+    function fmtHorasRes(h) {
+        if (h == null || h === "") {
+            return "—";
+        }
+        var n = Number(h);
+        if (isNaN(n)) {
+            return "—";
+        }
+        if (n > 0 && n < 1) {
+            return Math.max(1, Math.round(n * 60)) + " min";
+        }
+        if (n % 1 === 0) {
+            return n + " h";
+        }
+        return n.toFixed(1) + " h";
+    }
+
     function renderResolucion(rows) {
         var $box = $("#hdIndResolucionPri").empty();
         (rows || []).forEach(function (r) {
-            var txt = r.horas == null ? "Sin datos" : (r.horas + " h · " + r.n + " tickets");
+            var pri = r.prioridad || "MEDIA";
+            var sla = Number(slaHoras[pri]) || 24;
+            var n = Number(r.n) || 0;
+            var horas = r.horas == null || r.horas === "" ? null : Number(r.horas);
+            var pct = (horas == null || sla <= 0) ? 0 : Math.round((horas / sla) * 100);
+            var barPct = n === 0 ? 0 : Math.max(4, Math.min(pct < 1 ? 4 : pct, 100));
+            var over = horas != null && horas > sla;
+            var txt = n === 0
+                ? "Sin datos"
+                : (fmtHorasRes(horas) + " · " + n + (n === 1 ? " ticket" : " tickets"));
+            var title = n === 0
+                ? ("Sin cierres · plazo " + sla + " h")
+                : (pct + "% del SLA de " + sla + " h" + (over ? " · sobre el plazo" : ""));
+            var cls = "hd-ind-res-row hd-ind-res-" + pri;
+            if (over) {
+                cls += " is-over";
+            }
+            if (n === 0) {
+                cls += " is-empty";
+            }
             $box.append(
-                '<div class="hd-ind-res-row">' +
-                    '<span class="label label-prioridad-' + esc(r.prioridad) + '">' + esc(r.prioridad) + "</span>" +
+                '<div class="' + cls + '" title="' + esc(title) + '">' +
+                    '<span class="label label-prioridad-' + esc(pri) + '">' + esc(pri) + "</span>" +
+                    '<div class="hd-ind-res-track">' +
+                        '<div class="hd-ind-res-bar" style="width:' + barPct + '%"></div>' +
+                    "</div>" +
                     "<strong>" + esc(txt) + "</strong>" +
                 "</div>"
             );
@@ -409,6 +449,7 @@
                 }
                 cargado = true;
                 if (res.sla_horas) {
+                    slaHoras = res.sla_horas;
                     $("#hdIndSlaHint").text(
                         "SLA laboral · Alta " + res.sla_horas.ALTA + "h · Media " +
                         res.sla_horas.MEDIA + "h · Baja " + res.sla_horas.BAJA + "h" +

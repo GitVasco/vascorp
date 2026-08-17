@@ -161,6 +161,23 @@ class ServicioRecetasModeloResolucion
 		$lineasCompletas = 0;
 		$lineasTotales = 0;
 
+		$conteoSub = array();
+		foreach ($lineasActivas as $lineaCnt) {
+			if (isset($lineaCnt["activo"]) && (int) $lineaCnt["activo"] !== 1) {
+				continue;
+			}
+			$s = isset($lineaCnt["codigo_sublinea"])
+				? strtoupper(trim((string) $lineaCnt["codigo_sublinea"]))
+				: "";
+			if ($s === "") {
+				continue;
+			}
+			if (!isset($conteoSub[$s])) {
+				$conteoSub[$s] = 0;
+			}
+			$conteoSub[$s]++;
+		}
+
 		foreach ($lineasActivas as $linea) {
 			if (isset($linea["activo"]) && (int) $linea["activo"] !== 1) {
 				continue;
@@ -178,9 +195,14 @@ class ServicioRecetasModeloResolucion
 			$res["cod_color"] = $codColor;
 			$res["cod_talla"] = $codTalla;
 			$esTelaLinea = !empty($linea["es_tela_principal"]);
+			$subKey = !empty($res["codigo_sublinea_esperada"])
+				? strtoupper(trim((string) $res["codigo_sublinea_esperada"]))
+				: "";
+			$capaOpcional = $esTelaLinea
+				|| ($subKey !== "" && isset($conteoSub[$subKey]) && $conteoSub[$subKey] > 1);
 
-			// Tela principal de otra sublínea: este color no la usa. No es error ni insumo.
-			if ($esTelaLinea && empty($res["completo"])) {
+			// Tela principal u otra capa de la misma tela: este color no la usa.
+			if ($capaOpcional && empty($res["completo"])) {
 				continue;
 			}
 

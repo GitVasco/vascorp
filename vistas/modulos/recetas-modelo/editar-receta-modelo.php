@@ -165,6 +165,20 @@ if ($idReceta <= 0) {
 .rm2-celda.na .rm2-celda-color { font-weight:500; color:#999; }
 .rm2-celda .rm2-celda-color { font-weight:700; font-size:12px; line-height:1.2; }
 .rm2-celda .rm2-celda-art { font-size:10px; color:#999; margin-top:2px; }
+.rm2-celda-mps { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; align-items:center; }
+.rm2-celda-mp {
+	display:inline-flex; align-items:center; gap:3px;
+	background:#dff0d8; border:1px solid #b2dba1; border-radius:10px;
+	padding:1px 6px; font-size:11px; font-weight:700; color:#3c763d; line-height:1.4;
+}
+.rm2-celda-mp .rmQuitarMpCapa { color:#dd4b39; font-weight:700; text-decoration:none; line-height:1; }
+.rm2-celda-mp .rmQuitarMpCapa:hover { color:#a9302a; }
+.rm2-celda-add {
+	display:inline-block; margin-top:3px; padding:0 7px; line-height:18px;
+	border:1px dashed #3c8dbc; background:#fff; color:#3c8dbc; border-radius:10px;
+	font-size:12px; font-weight:700; cursor:pointer;
+}
+.rm2-celda-add:hover { background:#e8f4fc; }
 .rm2-scroll { max-height:520px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }
 .rm2-mp-list { max-height:380px; overflow:auto; border:1px solid #e5e5e5; border-radius:4px; }
 .rm2-paso2-stack { display:flex; flex-direction:column; gap:10px; }
@@ -286,7 +300,7 @@ if ($idReceta <= 0) {
 							<input type="hidden" id="rmNuevaSublinea" value="">
 							<div class="rm2-sub-info" id="rmBtnBuscarSublineaTop" title="Buscar sublínea" role="button">
 								<div class="cod empty" id="rmNuevaSublineaCod">Buscar y agregar otra sublínea…</div>
-								<div class="nom" id="rmNuevaSublineaNom">Solo agrega; la edición es del chip seleccionado a la derecha</div>
+								<div class="nom" id="rmNuevaSublineaNom">Agregar la misma tela otra vez suma una capa (otro color de copa)</div>
 							</div>
 							<button type="button" class="btn rm2-sub-search" id="rmBtnBuscarSublineaIcon" title="Buscar">
 								<i class="fa fa-search"></i>
@@ -294,7 +308,7 @@ if ($idReceta <= 0) {
 							<button type="button" class="btn rm2-sub-change" id="rmBtnCambiarSublinea" title="Reemplazar la sublínea actual (aún no tiene MP)">
 								<i class="fa fa-exchange"></i> Cambiar
 							</button>
-							<button type="button" class="btn rm2-sub-add" id="rmBtnAgregarSublinea" title="Agregar sublínea">
+							<button type="button" class="btn rm2-sub-add" id="rmBtnAgregarSublinea" title="Agregar sublínea. Si ya está, suma una capa extra (copa interior de otro color).">
 								<i class="fa fa-plus"></i> Agregar
 							</button>
 						</div>
@@ -352,16 +366,8 @@ if ($idReceta <= 0) {
 									<span id="rmMpActivaTxt">—</span>
 									<span class="text-muted" id="rmMpActivaUndTxt"></span>
 									<button type="button" class="btn btn-xs btn-default pull-right" id="rmBtnLimpiarMpActiva">Soltar MP</button>
-									<div id="rmMpActivaAcciones" style="margin-top:8px; display:none;">
-										<button type="button" class="btn btn-xs btn-success rmAplicarTodos">
-											<i class="fa fa-th"></i> Aplicar a todos
-										</button>
-										<button type="button" class="btn btn-xs btn-danger rmQuitarTodos">
-											<i class="fa fa-eraser"></i> Quitar de todos
-										</button>
-									</div>
 									<div class="text-muted" style="margin-top:6px; font-size:12px;">
-										Clic celda = asignar · <kbd>Alt</kbd>+clic = quitar · columna/fila = alcance · chips de «MPs ya usadas» = poner en mano.
+										Clic celda = reemplazar esta capa · <strong>+</strong> o <strong>Otra</strong> = sumar MP sin pisar · <kbd>Alt</kbd>+clic = quitar.
 									</div>
 								</div>
 								<div>
