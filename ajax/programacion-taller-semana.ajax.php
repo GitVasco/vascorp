@@ -200,4 +200,26 @@ if ($accion === "devolverPrioridadLote") {
 	return;
 }
 
+if ($accion === "articulosEnviar") {
+	$filtros = array(
+		"anio" => isset($_POST["anio"]) ? (int) $_POST["anio"] : 0,
+		"semana" => isset($_POST["semana"]) ? (int) $_POST["semana"] : 0,
+		"cod_sector" => isset($_POST["cod_sector"]) ? $_POST["cod_sector"] : "",
+		"nivel" => isset($_POST["nivel"]) ? $_POST["nivel"] : "",
+		"modelo" => isset($_POST["modelo"]) ? $_POST["modelo"] : ""
+	);
+	$lista = ControladorProgramacionTallerSemana::ctrListarArticulosEnviar($filtros);
+	echo json_encode(array(
+		"ok" => true,
+		"data" => $lista,
+		"total" => count($lista)
+	));
+	return;
+}
+
+if ($accion === "mandarTallerLote") {
+	echo json_encode(ControladorProgramacionTallerSemana::ctrMandarTallerLoteAjax($_POST));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no reconocida"));

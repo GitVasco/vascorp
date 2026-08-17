@@ -1228,4 +1228,252 @@ class ControladorProgramacionTallerSemana
 			"errores" => $errores
 		);
 	}
+
+	static public function ctrListarArticulosEnviar($filtros = array())
+	{
+		$anio = isset($filtros["anio"]) ? (int) $filtros["anio"] : 0;
+		$semana = isset($filtros["semana"]) ? (int) $filtros["semana"] : 0;
+		if ($anio < 1 || $semana < 1) {
+			return array();
+		}
+		$lista = ModeloProgramacionTallerSemana::mdlListarArticulosEnviarSemana($anio, $semana, $filtros);
+		if (!is_array($lista)) {
+			return array();
+		}
+		$map = self::ctrMapaNiveles();
+		$out = array();
+		foreach ($lista as $fila) {
+			$nid = isset($fila["nivel"]) ? $fila["nivel"] : "";
+			$fila["nivel_nombre"] = isset($map[$nid]["nombre"]) ? $map[$nid]["nombre"] : $nid;
+			$fila["nivel_color"] = isset($map[$nid]["color"]) ? $map[$nid]["color"] : "#CCCCCC";
+			$tipo = isset($fila["tipo_sector"]) ? (int) $fila["tipo_sector"] : 0;
+			$fila["es_interno"] = ($tipo === 0) ? 1 : 0;
+			$out[] = $fila;
+		}
+		return $out;
+	}
+
+	static private function ctrAsegurarDepsMandarTaller()
+	{
+		$base = dirname(__FILE__) . "/..";
+		$autoload = $base . "/extensiones/vendor/autoload.php";
+		if (is_file($autoload)) {
+			require_once $autoload;
+		}
+		if (!class_exists("ModeloCortes")) {
+			require_once $base . "/modelos/cortes.modelo.php";
+		}
+		if (!class_exists("ModeloArticulos")) {
+			require_once $base . "/modelos/articulos.modelo.php";
+		}
+		if (!class_exists("ModeloServicios")) {
+			require_once $base . "/modelos/servicio.modelo.php";
+		}
+		if (!class_exists("ControladorCortes")) {
+			require_once dirname(__FILE__) . "/cortes.controlador.php";
+		}
+	}
+
+	/**
+	 * Envío a taller desde programación semanal (artículos con check).
+	 * Reutiliza el mismo pipeline de stock que en-cortes, sin tocar esa pantalla.
+	 */
+	static public function ctrMandarTallerLoteAjax($post)
+	{
+		if (!self::ctrPuedeProduccion()) {
+			return array("ok" => false, "mensaje" => "Sin permiso de producción");
+		}
+
+		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
+		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
+		$guia = isset($post["guia"]) ? trim((string) $post["guia"]) : "";
+		$itemsRaw = isset($post["items"]) ? $post["items"] : "[]";
+		$items = is_array($itemsRaw) ? $itemsRaw : json_decode($itemsRaw, true);
+
+		if ($anio < 1 || $semana < 1) {
+			return array("ok" => false, "mensaje" => "Semana no válida");
+		}
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay artículos seleccionados");
+		}
+
+		$permitidos = self::ctrListarArticulosEnviar(array(
+			"anio" => $anio,
+			"semana" => $semana
+		));
+		$porArticulo = array();
+		foreach ($permitidos as $fila) {
+			$art = trim((string) $fila["articulo"]);
+			if ($art === "") {
+				continue;
+			}
+			$idProg = isset($fila["id_programacion"]) ? (int) $fila["id_programacion"] : 0;
+			$clave = $art . "|" . $idProg;
+			$porArticulo[$clave] = $fila;
+			if (!isset($porArticulo[$art])) {
+				$porArticulo[$art] = $fila;
+			}
+		}
+
+		$usuario = isset($_SESSION["id"]) ? (string) $_SESSION["id"] : self::ctrUsuarioSesion();
+		$procesados = 0;
+		$errores = array();
+		$necesitaGuia = false;
+
+		$pendientes = array();
+		foreach ($items as $item) {
+			$articulo = trim(isset($item["articulo"]) ? (string) $item["articulo"] : "");
+			$cantidad = isset($item["cantidad"]) ? (int) $item["cantidad"] : 0;
+			$idProg = isset($item["id_programacion"]) ? (int) $item["id_programacion"] : 0;
+			if ($articulo === "" || $cantidad < 1) {
+				continue;
+			}
+			$clave = $idProg > 0 ? ($articulo . "|" . $idProg) : $articulo;
+			$fila = isset($porArticulo[$clave]) ? $porArticulo[$clave] : (isset($porArticulo[$articulo]) ? $porArticulo[$articulo] : null);
+			if (!$fila) {
+				$errores[] = $articulo . ": no está programado en esta semana o no tiene saldo en corte";
+				continue;
+			}
+			$taller = trim((string) $fila["cod_sector"]);
+			if ($taller === "") {
+				$errores[] = $articulo . ": sin taller programado";
+				continue;
+			}
+			if (!empty($fila["es_interno"])) {
+				$necesitaGuia = true;
+			}
+			$pendientes[] = array(
+				"articulo" => $articulo,
+				"cantidad" => $cantidad,
+				"fila" => $fila,
+				"taller" => $taller
+			);
+		}
+
+		if (!count($pendientes)) {
+			return array(
+				"ok" => false,
+				"mensaje" => count($errores) ? implode("; ", $errores) : "No hay artículos válidos para enviar",
+				"errores" => $errores
+			);
+		}
+		if ($necesitaGuia && $guia === "") {
+			return array("ok" => false, "mensaje" => "La guía es obligatoria para talleres internos");
+		}
+
+		self::ctrAsegurarDepsMandarTaller();
+
+		foreach ($pendientes as $pend) {
+			$resp = self::ctrMandarUnArticuloPts($pend["articulo"], $pend["cantidad"], $pend["taller"], $guia, $usuario);
+			if (!empty($resp["ok"])) {
+				$procesados++;
+				if (!empty($resp["aviso"])) {
+					$errores[] = $pend["articulo"] . ": " . $resp["aviso"];
+				}
+			} else {
+				$msg = isset($resp["mensaje"]) ? $resp["mensaje"] : "no se pudo enviar";
+				$errores[] = $pend["articulo"] . ": " . $msg;
+			}
+		}
+
+		if ($procesados < 1) {
+			return array(
+				"ok" => false,
+				"mensaje" => count($errores) ? implode("; ", $errores) : "No se pudo enviar ningún artículo",
+				"errores" => $errores,
+				"ok_count" => 0
+			);
+		}
+
+		$mensaje = $procesados . " talla(s) enviada(s) a taller";
+		if (count($errores)) {
+			$mensaje .= "; " . count($errores) . " con aviso";
+		}
+		return array(
+			"ok" => true,
+			"mensaje" => $mensaje,
+			"ok_count" => $procesados,
+			"errores" => $errores
+		);
+	}
+
+	static private function ctrMandarUnArticuloPts($articulo, $cantidadPedida, $taller, $guia, $usuario)
+	{
+		$esExterno = !ControladorSectores::ctrEsInterno($taller);
+		$imprimirTickets = ControladorSectores::ctrDebeImprimirTickets($taller);
+		$cantidadPedida = (int) $cantidadPedida;
+
+		$datosCab = array(
+			"articulo" => $articulo,
+			"usuario" => $usuario,
+			"cantidad" => $cantidadPedida,
+			"saldo" => $cantidadPedida,
+			"estado" => "0",
+			"guia" => $guia,
+			"taller" => $taller,
+			"es_servicio_externo" => $esExterno
+		);
+
+		$respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);
+		$ok = (is_array($respuestaCab) && isset($respuestaCab["status"]) && $respuestaCab["status"] === "ok");
+		$cantidadUsada = $ok ? (int) $respuestaCab["cantidad_usada"] : 0;
+		if (!$ok || $cantidadUsada <= 0) {
+			$msg = is_string($respuestaCab) ? $respuestaCab : "sin saldo disponible";
+			return array("ok" => false, "mensaje" => $msg);
+		}
+
+		$ult = ModeloCortes::mdlUltCodigo();
+		$cod = isset($ult["ult_codigo"]) ? $ult["ult_codigo"] : null;
+		if (!$cod) {
+			return array("ok" => false, "mensaje" => "no se obtuvo la cabecera de taller");
+		}
+
+		$respuesta = ModeloCortes::mdlMandarTaller(array(
+			"usuario" => $usuario,
+			"articulo" => $articulo,
+			"cantidad" => $cantidadUsada,
+			"codigo" => $cod
+		));
+		if ($respuesta != "ok") {
+			return array("ok" => false, "mensaje" => "error al registrar en taller");
+		}
+
+		$aviso = "";
+		if ($cantidadUsada < $cantidadPedida) {
+			$aviso = "se enviaron $cantidadUsada de $cantidadPedida (saldo insuficiente)";
+		}
+
+		if ($imprimirTickets) {
+			try {
+				ControladorCortes::ctrImprimirTicketsPorCabecera($cod);
+			} catch (Exception $e) {
+				$aviso = trim($aviso . " error al imprimir tickets");
+			}
+		} else {
+			ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);
+			$codigoServicio = ModeloServicios::mdlObtenerOCrearServicioDelDia($taller, $usuario);
+			if ($codigoServicio) {
+				$detalle = ModeloServicios::mdlGuardarDetallesServicios("servicios_detallejf", array(
+					"articulo" => $articulo,
+					"cantidad" => $cantidadUsada,
+					"codigo" => $codigoServicio,
+					"saldo" => $cantidadUsada,
+					"cabecera_taller" => $cod
+				));
+				if ($detalle == "ok") {
+					ModeloServicios::mdlSumarTotalServicio($codigoServicio, $cantidadUsada);
+				} else {
+					$aviso = trim($aviso . " no se pudo guardar el detalle de servicio");
+				}
+			} else {
+				$aviso = trim($aviso . " no se pudo crear el servicio del día");
+			}
+		}
+
+		return array(
+			"ok" => true,
+			"cantidad_usada" => $cantidadUsada,
+			"aviso" => $aviso
+		);
+	}
 }

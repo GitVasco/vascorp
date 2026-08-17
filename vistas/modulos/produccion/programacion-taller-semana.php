@@ -20,7 +20,7 @@ $tabUrl = isset($_GET["tab"]) ? trim((string) $_GET["tab"]) : "priorizar";
 if ($tabUrl === "programar") {
     $tabUrl = "priorizar";
 }
-if (!in_array($tabUrl, array("priorizar", "destinar", "programado", "no_ejecutado"), true)) {
+if (!in_array($tabUrl, array("priorizar", "destinar", "programado", "enviar", "no_ejecutado"), true)) {
     $tabUrl = "priorizar";
 }
 $modeloUrl = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : "";
@@ -38,7 +38,7 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
     <section class="content-header" style="padding:8px 10px 0;">
         <h1 style="margin:0 0 4px;font-size:22px;">
             Programación semanal por taller
-            <small>Priorizar · Destinar · seguimiento</small>
+            <small>Priorizar · Destinar · Enviar a taller</small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
@@ -139,6 +139,9 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                     </li>
                     <li class="<?php echo $tabUrl === 'programado' ? 'active' : ''; ?>">
                         <a href="#tabProgramadoPts" data-toggle="tab" data-tab-pts="programado"><i class="fa fa-list"></i> Ya programado</a>
+                    </li>
+                    <li class="<?php echo $tabUrl === 'enviar' ? 'active' : ''; ?>">
+                        <a href="#tabEnviarPts" data-toggle="tab" data-tab-pts="enviar"><i class="fa fa-paper-plane"></i> Enviar a taller</a>
                     </li>
                     <li class="<?php echo $tabUrl === 'no_ejecutado' ? 'active' : ''; ?>">
                         <a href="#tabNoEjecutadoPts" data-toggle="tab" data-tab-pts="no_ejecutado">
@@ -348,6 +351,89 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                         <th>Ord. corte</th>
                                         <th>Cobertura</th>
                                         <th style="width:90px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane <?php echo $tabUrl === 'enviar' ? 'active' : ''; ?>" id="tabEnviarPts">
+                        <div id="barraEnviarPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
+                            <div class="pts-filtros">
+                                <div class="pts-filtro pts-filtro-anio">
+                                    <label>Año</label>
+                                    <input type="number" class="form-control input-sm" id="envAnioPts"
+                                        value="<?php echo (int) $infoActual['anio']; ?>" min="2000" max="2100">
+                                </div>
+                                <div class="pts-filtro pts-filtro-semana">
+                                    <label>Semana</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnEnvSemAntPts" title="Semana anterior">&laquo;</button>
+                                        </span>
+                                        <input type="number" class="form-control" id="envSemanaPts"
+                                            value="<?php echo (int) $infoActual['semana']; ?>" min="1" max="53">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnEnvSemSigPts" title="Semana siguiente">&raquo;</button>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="pts-filtro pts-filtro-rango">
+                                    <label>Rango</label>
+                                    <p class="pts-rango-txt" id="textoRangoEnvPts">
+                                        <?php echo htmlspecialchars($infoActual['fecha_inicio'] . ' → ' . $infoActual['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </p>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Nivel</label>
+                                    <select class="form-control selectpicker" id="envFiltroNivelPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Taller</label>
+                                    <select class="form-control selectpicker" id="envFiltroTallerPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro pts-filtro-grow">
+                                    <label>Modelo</label>
+                                    <select class="form-control selectpicker" id="envFiltroModeloPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="pts-filtro" style="min-width:140px;max-width:180px;">
+                                    <label>Guía</label>
+                                    <input type="text" class="form-control input-sm" id="envGuiaPts" placeholder="Obligatoria si es interno" maxlength="40">
+                                </div>
+                                <div class="pts-filtro pts-filtro-acciones">
+                                    <label>&nbsp;</label>
+                                    <button type="button" class="btn btn-success btn-sm" id="btnMandarEnvPts" disabled>
+                                        Mandar seleccionados <span id="nSelEnvPts">(0)</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="help-block" style="margin:10px 0 0;font-size:12px;">
+                                Marca <strong>tallas sueltas</strong> o el check del color para mandar <strong>todas las tallas</strong> de ese color.
+                                Sale del almacén de corte al taller ya programado. No usa la pantalla Alm. Corte.
+                            </p>
+                        </div>
+                        <div class="table-responsive pts-tabla-scroll">
+                            <table class="table table-bordered table-striped table-condensed table-hover" id="tablaEnviarPts" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px;">
+                                            <input type="checkbox" id="chkTodosEnvPts" title="Seleccionar todos">
+                                        </th>
+                                        <th>Nivel</th>
+                                        <th>Taller</th>
+                                        <th>Modelo</th>
+                                        <th>Color</th>
+                                        <th>Talla</th>
+                                        <th>Artículo</th>
+                                        <th>Alm. corte</th>
+                                        <th style="width:90px;">Enviar</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -593,10 +679,27 @@ body .bootstrap-select .dropdown-menu { z-index: 2060 !important; }
     white-space: nowrap;
 }
 #tablaDisponiblesPts thead th,
-#tablaProgramadoPts thead th {
+#tablaProgramadoPts thead th,
+#tablaEnviarPts thead th {
     background: #3c8dbc;
     color: #fff;
     border-color: #367fa9 !important;
+}
+#tablaEnviarPts tr.pts-grupo-env td {
+    background: #eef4f8;
+    font-weight: 600;
+}
+#tablaEnviarPts tr.pts-grupo-env .chkGrupoEnvPts {
+    margin: 0;
+}
+#tablaEnviarPts .qtyEnvPts {
+    width: 72px;
+    padding: 2px 6px;
+    text-align: right;
+}
+#tablaEnviarPts tr.programando-pts {
+    opacity: 0.5;
+    pointer-events: none;
 }
 .badge-nivel-pts {
     display: inline-block;

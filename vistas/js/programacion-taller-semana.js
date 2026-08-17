@@ -5,6 +5,7 @@ var ptsProgramadosCache = [];
 var ptsDisponiblesCache = [];
 var ptsPriorizadosCache = [];
 var ptsNoEjecCache = [];
+var ptsEnviarCache = [];
 var ptsStatsCache = null;
 var ptsToastTimer = null;
 var ptsUrlSyncLock = false;
@@ -65,6 +66,14 @@ function semanaProgPts() {
     return parseInt($("#progSemanaPts").val(), 10) || semanaPts();
 }
 
+function anioEnvPts() {
+    return parseInt($("#envAnioPts").val(), 10) || anioPts();
+}
+
+function semanaEnvPts() {
+    return parseInt($("#envSemanaPts").val(), 10) || semanaPts();
+}
+
 function sincronizarCabeceraConProgPts() {
     var anio = anioProgPts();
     var semana = semanaProgPts();
@@ -75,7 +84,7 @@ function sincronizarCabeceraConProgPts() {
 
 function tabActivaPts() {
     var tab = $("#tabsPts li.active a").attr("data-tab-pts");
-    if (tab === "programado" || tab === "destinar" || tab === "priorizar" || tab === "no_ejecutado") {
+    if (tab === "programado" || tab === "destinar" || tab === "priorizar" || tab === "no_ejecutado" || tab === "enviar") {
         return tab;
     }
     if (tab === "programar") {
@@ -190,10 +199,12 @@ function cargarNivelesPts() {
         var $filtro = $("#filtroNivelPts");
         var $destNivel = $("#destFiltroNivelPts");
         var $progNivel = $("#progFiltroNivelPts");
+        var $envNivel = $("#envFiltroNivelPts");
         var $modalNivel = $("#ptsNivel");
         $filtro.find("option:not(:first)").remove();
         $destNivel.find("option:not(:first)").remove();
         $progNivel.find("option:not(:first)").remove();
+        $envNivel.find("option:not(:first)").remove();
         $modalNivel.find("option:not(:first)").remove();
         var chips = ['<strong style="margin-right:4px;">Niveles:</strong>'];
         nivelesOrdenadosPts().forEach(function (n) {
@@ -202,11 +213,13 @@ function cargarNivelesPts() {
             $filtro.append($("<option>").val(n.id).text(n.nombre));
             $destNivel.append($("<option>").val(n.id).text(n.nombre));
             $progNivel.append($("<option>").val(n.id).text(n.nombre));
+            $envNivel.append($("<option>").val(n.id).text(n.nombre));
             $modalNivel.append($("<option>").val(n.id).text(n.nombre));
         });
         $leyenda.html(chips.join(" "));
         refrescarSelectPts($destNivel);
         refrescarSelectPts($progNivel);
+        refrescarSelectPts($envNivel);
         pintarChkNivelesLotePts();
     }, "json");
 }
@@ -259,20 +272,24 @@ function cargarModelosPts() {
         var $filtro = $("#filtroModeloPts");
         var $destModelo = $("#destFiltroModeloPts");
         var $progModelo = $("#progFiltroModeloPts");
+        var $envModelo = $("#envFiltroModeloPts");
         $filtro.find("option:not(:first)").remove();
         $destModelo.find("option:not(:first)").remove();
         $progModelo.find("option:not(:first)").remove();
+        $envModelo.find("option:not(:first)").remove();
         if (resp && resp.ok && resp.data) {
             resp.data.forEach(function (m) {
                 var txt = m.etiqueta || m.modelo;
                 $filtro.append($("<option>").val(m.modelo).text(txt));
                 $destModelo.append($("<option>").val(m.modelo).text(txt));
                 $progModelo.append($("<option>").val(m.modelo).text(txt));
+                $envModelo.append($("<option>").val(m.modelo).text(txt));
             });
         }
         refrescarSelectPts($filtro);
         refrescarSelectPts($destModelo);
         refrescarSelectPts($progModelo);
+        refrescarSelectPts($envModelo);
     }, "json");
 }
 
@@ -282,21 +299,25 @@ function cargarSectoresPts() {
         var $filtro = $("#filtroTallerPts");
         var $destTaller = $("#destFiltroTallerPts");
         var $progTaller = $("#progFiltroTallerPts");
+        var $envTaller = $("#envFiltroTallerPts");
         var $modal = $("#ptsTaller");
         $filtro.find("option:not(:first)").remove();
         $destTaller.find("option:not(:first)").remove();
         $progTaller.find("option:not(:first)").remove();
+        $envTaller.find("option:not(:first)").remove();
         $modal.find("option:not(:first)").remove();
         ptsSectores.forEach(function (s) {
             var txt = s.cod_sector + " — " + (s.nom_sector || "");
             $filtro.append($("<option>").val(s.cod_sector).text(txt));
             $destTaller.append($("<option>").val(s.cod_sector).text(txt));
             $progTaller.append($("<option>").val(s.cod_sector).text(txt));
+            $envTaller.append($("<option>").val(s.cod_sector).text(txt));
             $modal.append($("<option>").val(s.cod_sector).text(txt));
         });
         refrescarSelectPts($filtro);
         refrescarSelectPts($destTaller);
         refrescarSelectPts($progTaller);
+        refrescarSelectPts($envTaller);
         refrescarSelectPts($modal);
     }, "json");
 }
@@ -369,6 +390,28 @@ function actualizarRangoProgPts() {
     }, "json");
 }
 
+function actualizarRangoEnvPts() {
+    var anio = anioEnvPts();
+    var semana = semanaEnvPts();
+    if (!anio || !semana) {
+        $("#textoRangoEnvPts").text("—");
+        return $.Deferred().resolve().promise();
+    }
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana",
+        anio: anio,
+        semana: semana
+    }, function (resp) {
+        if (resp && resp.ok && resp.data) {
+            $("#envAnioPts").val(resp.data.anio);
+            $("#envSemanaPts").val(resp.data.semana);
+            $("#textoRangoEnvPts").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
+        } else {
+            $("#textoRangoEnvPts").text("Semana no válida");
+        }
+    }, "json");
+}
+
 function moverSemanaProgPts(delta) {
     var anio = anioProgPts();
     var semana = semanaProgPts() + delta;
@@ -388,6 +431,23 @@ function moverSemanaProgPts(delta) {
         cargarProgramadosPts({ stats: false });
         programarRefreshStatsPts();
         sincronizarUrlPts();
+    });
+}
+
+function moverSemanaEnvPts(delta) {
+    var anio = anioEnvPts();
+    var semana = semanaEnvPts() + delta;
+    if (semana < 1) {
+        anio -= 1;
+        semana = 52;
+    } else if (semana > 53) {
+        anio += 1;
+        semana = 1;
+    }
+    $("#envAnioPts").val(anio);
+    $("#envSemanaPts").val(semana);
+    actualizarRangoEnvPts().always(function () {
+        cargarArticulosEnviarPts();
     });
 }
 
@@ -1411,6 +1471,211 @@ function cargarDisponiblesPts() {
     }, "json");
 }
 
+function claveGrupoEnvPts(r) {
+    return String(r.id_programacion || "") + "|" + String(r.modelo || "") + "|" + String(r.cod_color || "");
+}
+
+function actualizarContadorSelEnvPts() {
+    var n = 0;
+    $("#tablaEnviarPts tbody .chkEnvPts:checked").each(function () {
+        var qty = parseInt($(this).closest("tr").find(".qtyEnvPts").val(), 10) || 0;
+        if (qty > 0) n += 1;
+    });
+    $("#nSelEnvPts").text("(" + n + ")");
+    $("#btnMandarEnvPts").prop("disabled", n < 1);
+    $("#tablaEnviarPts tbody tr.pts-grupo-env").each(function () {
+        var grupo = String($(this).attr("data-grupo") || "");
+        var $chks = $("#tablaEnviarPts tbody .chkEnvPts").filter(function () {
+            return String($(this).attr("data-grupo") || "") === grupo;
+        });
+        var total = $chks.length;
+        var marcados = $chks.filter(":checked").length;
+        $(this).find(".chkGrupoEnvPts").prop("checked", total > 0 && marcados === total);
+    });
+}
+
+function pintarTablaEnviarPts() {
+    var $tb = $("#tablaEnviarPts tbody").empty();
+    $("#chkTodosEnvPts").prop("checked", false);
+    var data = ptsEnviarCache || [];
+    if (!data.length) {
+        $tb.html('<tr><td colspan="9" class="text-center text-muted">Nada programado con saldo en almacén de corte en esta semana.</td></tr>');
+        actualizarContadorSelEnvPts();
+        return;
+    }
+
+    var grupos = [];
+    var mapa = {};
+    data.forEach(function (r) {
+        var g = String(r.id_programacion || claveGrupoEnvPts(r));
+        if (!mapa[g]) {
+            mapa[g] = { key: g, row: r, items: [] };
+            grupos.push(mapa[g]);
+        }
+        mapa[g].items.push(r);
+    });
+
+    grupos.forEach(function (g) {
+        var r = g.row;
+        var totalAlm = 0;
+        g.items.forEach(function (it) {
+            totalAlm += parseInt(it.alm_corte, 10) || 0;
+        });
+        var taller = (r.cod_sector || "") + (r.nom_sector ? " — " + r.nom_sector : "");
+        var estiloFila = estiloFilaTallerPts(r);
+        var $h = $('<tr class="pts-grupo-env" data-grupo="' + escaparPts(g.key) + '"'
+            + (estiloFila ? ' style="' + estiloFila + '"' : "") + ">");
+        $h.append(
+            '<td><input type="checkbox" class="chkGrupoEnvPts" data-grupo="'
+            + escaparPts(g.key) + '" title="Todas las tallas de este color"></td>'
+            + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
+            + celdaTallerHtmlPts(r, taller)
+            + "<td>" + escaparPts(r.modelo) + "</td>"
+            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+            + '<td colspan="4"><span class="text-muted">'
+            + g.items.length + " talla(s) · " + totalAlm + " uds en corte</span>"
+            + (r.nombre_modelo ? ' <span class="text-muted">· ' + escaparPts(r.nombre_modelo) + "</span>" : "")
+            + "</td>"
+        );
+        $tb.append($h);
+
+        g.items.forEach(function (it) {
+            var alm = parseInt(it.alm_corte, 10) || 0;
+            var $tr = $('<tr data-grupo="' + escaparPts(g.key) + '">');
+            $tr.append(
+                '<td><input type="checkbox" class="chkEnvPts" data-grupo="' + escaparPts(g.key) + '"></td>'
+                + "<td></td><td></td><td></td><td></td>"
+                + "<td>" + escaparPts(it.talla || it.cod_talla || "—") + "</td>"
+                + "<td>" + escaparPts(it.articulo) + "</td>"
+                + "<td>" + escaparPts(alm) + "</td>"
+                + '<td><input type="number" class="form-control input-sm qtyEnvPts" min="1" max="'
+                + alm + '" value="' + alm + '"></td>'
+            );
+            $tr.data("row", it);
+            $tb.append($tr);
+        });
+    });
+    actualizarContadorSelEnvPts();
+}
+
+function cargarArticulosEnviarPts() {
+    var $tb = $("#tablaEnviarPts tbody");
+    $tb.html(
+        '<tr><td colspan="9" class="text-center text-muted">'
+        + '<i class="fa fa-spinner fa-spin"></i> Cargando artículos…</td></tr>'
+    );
+    return $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "articulosEnviar",
+        anio: anioEnvPts(),
+        semana: semanaEnvPts(),
+        cod_sector: $("#envFiltroTallerPts").val() || "",
+        nivel: $("#envFiltroNivelPts").val() || "",
+        modelo: $("#envFiltroModeloPts").val() || ""
+    }, function (resp) {
+        if (!resp || !resp.ok) {
+            ptsEnviarCache = [];
+            $tb.html('<tr><td colspan="9" class="text-center text-muted">No se pudo cargar</td></tr>');
+            actualizarContadorSelEnvPts();
+            return;
+        }
+        ptsEnviarCache = resp.data || [];
+        pintarTablaEnviarPts();
+    }, "json").fail(function () {
+        ptsEnviarCache = [];
+        $tb.html('<tr><td colspan="9" class="text-center text-muted">Error de comunicación</td></tr>');
+        actualizarContadorSelEnvPts();
+    });
+}
+
+function itemsEnviarSeleccionadosPts() {
+    var items = [];
+    $("#tablaEnviarPts tbody .chkEnvPts:checked").each(function () {
+        var $tr = $(this).closest("tr");
+        var row = $tr.data("row");
+        if (!row || !row.articulo) return;
+        var $qty = $tr.find(".qtyEnvPts");
+        var qty = parseInt($qty.val(), 10) || 0;
+        var max = parseInt($qty.attr("max"), 10) || 0;
+        if (qty < 1) return;
+        if (max > 0 && qty > max) qty = max;
+        items.push({
+            articulo: row.articulo,
+            cantidad: qty,
+            id_programacion: row.id_programacion || 0
+        });
+    });
+    return items;
+}
+
+function mandarLoteEnvPts() {
+    var items = itemsEnviarSeleccionadosPts();
+    if (!items.length) {
+        toastPts("Marca al menos una talla", "warning");
+        return;
+    }
+    var necesitaGuia = false;
+    $("#tablaEnviarPts tbody .chkEnvPts:checked").each(function () {
+        var row = $(this).closest("tr").data("row");
+        if (row && parseInt(row.es_interno, 10) === 1) {
+            necesitaGuia = true;
+        }
+    });
+    var guia = $.trim($("#envGuiaPts").val() || "");
+    if (necesitaGuia && !guia) {
+        toastPts("Indica la guía (taller interno)", "warning");
+        $("#envGuiaPts").focus();
+        return;
+    }
+
+    var go = function () {
+        $("#btnMandarEnvPts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Mandando…');
+        $("#tablaEnviarPts tbody .chkEnvPts:checked").closest("tr").addClass("programando-pts");
+        $.post("ajax/programacion-taller-semana.ajax.php", {
+            accion: "mandarTallerLote",
+            anio: anioEnvPts(),
+            semana: semanaEnvPts(),
+            guia: guia,
+            items: JSON.stringify(items)
+        }, function (resp) {
+            $("#btnMandarEnvPts").html('Mandar seleccionados <span id="nSelEnvPts">(0)</span>');
+            if (resp && resp.ok) {
+                toastPts(resp.mensaje || "Enviado a taller", "success");
+                if (resp.errores && resp.errores.length) {
+                    console.warn("Avisos envío PTS", resp.errores);
+                }
+                cargarArticulosEnviarPts();
+                cargarProgramadosPts({ stats: false });
+                cargarEstadisticasPts();
+            } else {
+                toastPts((resp && resp.mensaje) ? resp.mensaje : "No se pudo mandar a taller", "danger");
+                $("#tablaEnviarPts tbody tr").removeClass("programando-pts");
+                actualizarContadorSelEnvPts();
+            }
+        }, "json").fail(function () {
+            $("#btnMandarEnvPts").html('Mandar seleccionados <span id="nSelEnvPts">(0)</span>');
+            toastPts("Error de comunicación", "danger");
+            $("#tablaEnviarPts tbody tr").removeClass("programando-pts");
+            actualizarContadorSelEnvPts();
+        });
+    };
+
+    if (typeof swal === "function") {
+        swal({
+            title: "¿Mandar a taller?",
+            text: items.length + " talla(s) saldrán del almacén de corte al taller programado.",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#00a65a",
+            confirmButtonText: "Sí, mandar",
+            cancelButtonText: "Cancelar"
+        }).then(function (result) {
+            if (result && result.value) go();
+        });
+        return;
+    }
+    if (window.confirm("¿Mandar " + items.length + " talla(s) a taller?")) go();
+}
+
 function recargarPts(opts) {
     opts = opts || {};
     var pProg = cargarProgramadosPts({ stats: false });
@@ -1419,10 +1684,13 @@ function recargarPts(opts) {
     var pNe = (tabActivaPts() === "no_ejecutado")
         ? cargarNoEjecutadosPts()
         : refrescarBadgeNoEjecPts();
+    var pEnv = (tabActivaPts() === "enviar")
+        ? cargarArticulosEnviarPts()
+        : $.Deferred().resolve().promise();
     var pStats = opts.stats === false
         ? $.Deferred().resolve().promise()
         : cargarEstadisticasPts();
-    return $.when(pProg, pDisp, pPri, pNe, pStats).always(function () {
+    return $.when(pProg, pDisp, pPri, pNe, pEnv, pStats).always(function () {
         if (ptsInicializado) {
             sincronizarUrlPts();
         }
@@ -1798,10 +2066,13 @@ if ($("#filtroAnioPts").length) {
         // Alinear selector de Ya programado con cabecera al iniciar
         $("#progAnioPts").val(anioPts());
         $("#progSemanaPts").val(semanaPts());
+        $("#envAnioPts").val(anioPts());
+        $("#envSemanaPts").val(semanaPts());
         $.when(
             actualizarRangoPts(),
             actualizarRangoDestPts(),
             actualizarRangoProgPts(),
+            actualizarRangoEnvPts(),
             actualizarRangoNePts(),
             refrescarBadgeNoEjecPts()
         ).always(function () {
@@ -1832,6 +2103,30 @@ function limpiarFiltrosProgramadoPts(silencio) {
     pintarTablaProgramadosPts();
     if (!silencio) {
         toastPts("Filtros de Ya programado limpiados", "success");
+    }
+}
+
+function limpiarFiltrosEnviarPts(silencio) {
+    var $nivel = $("#envFiltroNivelPts");
+    var $taller = $("#envFiltroTallerPts");
+    var $modelo = $("#envFiltroModeloPts");
+    $nivel.val("");
+    $taller.val("");
+    $modelo.val("");
+    try {
+        if ($nivel.data("selectpicker")) $nivel.selectpicker("val", "");
+        if ($taller.data("selectpicker")) $taller.selectpicker("val", "");
+        if ($modelo.data("selectpicker")) $modelo.selectpicker("val", "");
+    } catch (e) {
+        refrescarSelectPts($nivel);
+        refrescarSelectPts($taller);
+        refrescarSelectPts($modelo);
+    }
+    if (tabActivaPts() === "enviar") {
+        cargarArticulosEnviarPts();
+    }
+    if (!silencio) {
+        toastPts("Filtros de Enviar a taller limpiados", "success");
     }
 }
 
@@ -1883,6 +2178,7 @@ function limpiarFiltrosPts() {
     ptsUrlSyncLock = false;
     limpiarFiltrosDestinarPts(true);
     limpiarFiltrosProgramadoPts(true);
+    limpiarFiltrosEnviarPts(true);
     recargarPts();
     toastPts("Filtros limpiados", "success");
 }
@@ -1944,6 +2240,17 @@ $("#progAnioPts, #progSemanaPts").on("change", function () {
 });
 $("#btnProgSemAntPts").on("click", function () { moverSemanaProgPts(-1); });
 $("#btnProgSemSigPts").on("click", function () { moverSemanaProgPts(1); });
+$("#envAnioPts, #envSemanaPts").on("change", function () {
+    actualizarRangoEnvPts().always(function () {
+        cargarArticulosEnviarPts();
+    });
+});
+$("#btnEnvSemAntPts").on("click", function () { moverSemanaEnvPts(-1); });
+$("#btnEnvSemSigPts").on("click", function () { moverSemanaEnvPts(1); });
+$("#envFiltroNivelPts, #envFiltroTallerPts, #envFiltroModeloPts").on("changed.bs.select change", function () {
+    if (ptsUrlSyncLock) return;
+    cargarArticulosEnviarPts();
+});
 $("#filtroTallerPts, #filtroModeloPts, #filtroNivelPts").on("changed.bs.select change", function () {
     if (ptsUrlSyncLock) return;
     recargarPts();
@@ -1971,6 +2278,12 @@ $("#tabsPts a[data-toggle='tab']").on("shown.bs.tab", function () {
         refrescarSelectPts($("#progFiltroNivelPts"));
         refrescarSelectPts($("#progFiltroTallerPts"));
         refrescarSelectPts($("#progFiltroModeloPts"));
+    } else if (tab === "enviar") {
+        actualizarRangoEnvPts();
+        cargarArticulosEnviarPts();
+        refrescarSelectPts($("#envFiltroNivelPts"));
+        refrescarSelectPts($("#envFiltroTallerPts"));
+        refrescarSelectPts($("#envFiltroModeloPts"));
     } else if (tab === "no_ejecutado") {
         actualizarRangoNePts();
         cargarNoEjecutadosPts();
@@ -2266,3 +2579,20 @@ $("#formMoverNePts").on("submit", function (e) {
     if ($tr) $tr.addClass("programando-pts");
     moverNoEjecutadoPts(id, anio, semana, $tr);
 });
+
+$("#chkTodosEnvPts").on("change", function () {
+    var on = $(this).is(":checked");
+    $("#tablaEnviarPts tbody .chkEnvPts, #tablaEnviarPts tbody .chkGrupoEnvPts").prop("checked", on);
+    actualizarContadorSelEnvPts();
+});
+$(document).on("change", "#tablaEnviarPts .chkGrupoEnvPts", function () {
+    var on = $(this).is(":checked");
+    var grupo = String($(this).attr("data-grupo") || "");
+    $("#tablaEnviarPts tbody .chkEnvPts").filter(function () {
+        return String($(this).attr("data-grupo") || "") === grupo;
+    }).prop("checked", on);
+    actualizarContadorSelEnvPts();
+});
+$(document).on("change", "#tablaEnviarPts .chkEnvPts", actualizarContadorSelEnvPts);
+$(document).on("change", "#tablaEnviarPts .qtyEnvPts", actualizarContadorSelEnvPts);
+$("#btnMandarEnvPts").on("click", mandarLoteEnvPts);

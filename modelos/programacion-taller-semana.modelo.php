@@ -874,6 +874,75 @@ class ModeloProgramacionTallerSemana
 		return $stmt->fetchAll();
 	}
 
+	/**
+	 * Artículos (talla) programados en la semana con saldo en almacén de corte.
+	 * Exclusivo de la pestaña Enviar a taller (no altera en-cortes).
+	 */
+	static public function mdlListarArticulosEnviarSemana($anio, $semana, $filtros = array())
+	{
+		$sql = "SELECT
+				p.id AS id_programacion,
+				p.anio,
+				p.semana,
+				p.nivel,
+				p.cantidad AS cant_programada,
+				p.cod_sector,
+				IFNULL(s.nom_sector, p.cod_sector) AS nom_sector,
+				IFNULL(s.color, '#A8D5E5') AS color_taller,
+				IFNULL(s.tipo, 0) AS tipo_sector,
+				TRIM(p.modelo) AS modelo,
+				TRIM(IFNULL(p.cod_color, '')) AS cod_color,
+				IFNULL(p.color, a.color) AS color,
+				IFNULL(mj.nombre, IFNULL(p.nombre, a.nombre)) AS nombre_modelo,
+				a.articulo,
+				a.cod_talla,
+				a.talla,
+				a.estado AS estado_articulo,
+				IFNULL(a.alm_corte, 0) AS alm_corte,
+				IFNULL(a.ord_corte, 0) AS ord_corte
+			FROM programacion_taller_semanajf p
+			LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
+			LEFT JOIN modelojf mj ON TRIM(mj.modelo) = TRIM(p.modelo)
+			INNER JOIN articulojf a
+				ON TRIM(a.modelo) = TRIM(p.modelo)
+				AND TRIM(IFNULL(a.cod_color, '')) = TRIM(IFNULL(p.cod_color, ''))
+			WHERE p.estado = 1
+			  AND p.anio = :anio
+			  AND p.semana = :semana
+			  AND IFNULL(a.alm_corte, 0) > 0
+			  AND (
+					LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
+					OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
+				)";
+
+		$params = array(
+			":anio" => (int) $anio,
+			":semana" => (int) $semana
+		);
+
+		if (!empty($filtros["cod_sector"])) {
+			$sql .= " AND p.cod_sector = :cod_sector";
+			$params[":cod_sector"] = trim((string) $filtros["cod_sector"]);
+		}
+		if (!empty($filtros["modelo"])) {
+			$sql .= " AND TRIM(p.modelo) = :modelo";
+			$params[":modelo"] = trim((string) $filtros["modelo"]);
+		}
+		if (!empty($filtros["nivel"])) {
+			$sql .= " AND p.nivel = :nivel";
+			$params[":nivel"] = trim((string) $filtros["nivel"]);
+		}
+
+		$sql .= " ORDER BY p.cod_sector ASC, p.modelo ASC, p.cod_color ASC, a.cod_talla ASC, a.talla ASC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($params as $k => $v) {
+			$stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+		}
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
 	/** Claves modelo|color activas en bandeja de prioridad. */
 	static public function mdlClavesPrioridadActivas()
 	{

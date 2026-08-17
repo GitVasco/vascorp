@@ -65,6 +65,11 @@ class ControladorCortes
     /*
     * Imprimir tickets de una cabecera entaller (solo internos)
     */
+    static public function ctrImprimirTicketsPorCabecera($codCabecera)
+    {
+        self::imprimirTicketsPorCabecera($codCabecera);
+    }
+
     static private function imprimirTicketsPorCabecera($codCabecera)
     {
         $nombre_impresora = "Star BSC10";
