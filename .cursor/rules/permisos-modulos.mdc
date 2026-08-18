@@ -37,6 +37,7 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `dashboard_gerencial` | `ver` | Dashboard Gerencial (ventas + cobranzas) |
 | `dashboard_cxc` | `ver` | Dashboard CxC |
 | `estado_cuenta_gerencia` | `ver` | Informes Excel gerencia desde cuentas (estado de cuenta, clasificación de morosidad) |
+| `auditoria_cuentas` | `ver` | Historial de cambios en `/ver-cuentas` (ficha debajo de la cuenta) |
 | `centro_decisiones` | `ver`, `registrar`, `solicitar`, `resolver`, `anular`, `aprobar`, `historial` | Decisiones de crédito / anular / aprobar / historial |
 | `metas_vendedor` | `ver`, `editar` | Metas vendedor + Metas/retos (Fase 3) |
 | `linea_credito` | `ver`, `editar`, `cerrar_mes` | Línea de crédito (`editar` = aprobar/cambiar) |

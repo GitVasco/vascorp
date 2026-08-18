@@ -1,0 +1,182 @@
+/* Ficha de cancelaciones — /ver-cuentas */
+
+.vc-page {
+    padding-top: 8px;
+}
+
+.vc-card > .box-body {
+    padding: 12px 14px 14px;
+}
+
+.vc-card > .box-header.vc-card__bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 8px;
+    padding: 8px 12px;
+}
+
+.vc-card__bar .btn {
+    margin: 0;
+    float: none;
+}
+
+.vc-kpis {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.vc-kpi,
+.vc-grid > div {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #f4f7fa;
+    border: 1px solid #e4e9ef;
+    border-radius: 4px;
+    padding: 8px 10px;
+    line-height: 1.2;
+}
+
+.vc-kpi__lbl,
+.vc-grid dt {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #6b7785;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.vc-kpi strong,
+.vc-grid dd {
+    display: block;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1f2d3d;
+    word-break: break-word;
+}
+
+.vc-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    line-height: 1.4;
+}
+
+.vc-badge--pend {
+    background: #fdecea;
+    color: #c23321;
+}
+
+.vc-badge--ok {
+    background: #e8f5e9;
+    color: #1b7a3d;
+}
+
+.vc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0;
+}
+
+.vc-grid__wide {
+    grid-column: 1 / -1;
+}
+
+.vc-mono {
+    font-family: Consolas, "Courier New", monospace;
+}
+
+.vc-grid__sep {
+    color: #9aa5b1;
+    padding: 0 4px;
+}
+
+.vc-hist {
+    margin-top: 0;
+}
+
+.vc-hist > .box-header {
+    padding: 8px 12px;
+}
+
+.vc-hist .box-title {
+    font-size: 15px;
+}
+
+.vc-hist > .box-body {
+    padding: 8px 12px 10px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.vc-hist__vacio {
+    margin: 4px 0;
+    color: #6b7785;
+    font-size: 13px;
+}
+
+.vc-hist__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.vc-hist__list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eef1f4;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.vc-hist__list li:last-child {
+    border-bottom: 0;
+}
+
+.vc-hist__cuando,
+.vc-hist__quien {
+    color: #6b7785;
+    margin-right: 8px;
+}
+
+.vc-hist__accion {
+    display: inline-block;
+    font-weight: 700;
+    color: #3c8dbc;
+    margin-right: 6px;
+}
+
+.vc-hist__cambio {
+    display: block;
+    margin-top: 2px;
+    color: #1f2d3d;
+    word-break: break-word;
+}
+
+.vc-movs .box-title {
+    font-size: 15px;
+}
+
+@media (max-width: 767px) {
+    .vc-kpis,
+    .vc-grid {
+        grid-template-columns: 1fr;
+        display: grid;
+    }
+
+    .vc-kpis {
+        display: grid;
+    }
+
+    .vc-card__bar {
+        flex-wrap: wrap;
+    }
+}

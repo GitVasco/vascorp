@@ -41,6 +41,7 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 | [`regularizaciones/`](comercial/regularizaciones/) | Regularizaciones comerciales |
 | [`dashboard-cxc/`](comercial/dashboard-cxc/) | Dashboard CxC |
 | [`comercial/PLAN_PROYECCION_COMERCIAL_MODELOS.md`](comercial/PLAN_PROYECCION_COMERCIAL_MODELOS.md) | Proyección oficial de ventas por modelo |
+| [`comercial/ROLLBACK_ELIMINAR_CANCELACION.md`](comercial/ROLLBACK_ELIMINAR_CANCELACION.md) | Rollback: borrar abono/renovación en `/ver-cuentas` |
 
 ---
 

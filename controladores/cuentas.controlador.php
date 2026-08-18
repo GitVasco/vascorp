@@ -62,6 +62,15 @@ class ControladorCuentas
 			$respuesta = ModeloCuentas::mdlIngresarCuenta($tabla, $datos);
 
 			if ($respuesta == "ok") {
+				ControladorCuentas::ctrAuditarMovimientoCuenta(array(
+					"accion" => "CREAR_CUENTA",
+					"tipo_doc" => $_POST["nuevoCodigo"],
+					"num_cta" => $_POST["nuevoDocumento"],
+					"monto" => $_POST["nuevoMonto"],
+					"saldo_despues" => $_POST["nuevoSaldo"],
+					"estado_despues" => $_POST["nuevoEstado1"],
+					"detalle" => "alta de cuenta"
+				));
 				if ($_POST["ruta"] == "cuentas-pendientes") {
 					echo '<script>
 
@@ -141,6 +150,91 @@ class ControladorCuentas
 		$respuesta = ModeloCuentas::mdlMostrarCuentasV2($numCta, $tipoDocr);
 
 		return $respuesta;
+	}
+
+	static public function ctrAuditarMovimientoCuenta($datos)
+	{
+		try {
+			if (!isset($datos["usuario"])) {
+				$datos["usuario"] = isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "";
+			}
+			if (!isset($datos["pc"])) {
+				$datos["pc"] = isset($_SERVER["REMOTE_ADDR"]) ? gethostbyaddr($_SERVER["REMOTE_ADDR"]) : "";
+			}
+			ModeloCuentas::mdlRegistrarAuditoriaCuenta($datos);
+		} catch (Exception $e) {
+			return;
+		}
+	}
+
+	static public function ctrAuditarCambiosCuenta($antes, $despues, $meta)
+	{
+		if (!is_array($antes) || !is_array($despues) || !is_array($meta)) {
+			return;
+		}
+
+		$campos = array(
+			"cliente",
+			"vendedor",
+			"protesta",
+			"renovacion",
+			"estado",
+			"saldo",
+			"monto",
+			"tipo_doc",
+			"num_cta",
+			"fecha",
+			"fecha_ven",
+			"banco",
+			"num_unico",
+			"notas",
+			"estado_doc",
+			"doc_origen"
+		);
+		$numericos = array("saldo" => true, "monto" => true, "protesta" => true, "renovacion" => true);
+
+		foreach ($campos as $campo) {
+			$valorAntes = isset($antes[$campo]) ? $antes[$campo] : "";
+			$valorNuevo = isset($despues[$campo]) ? $despues[$campo] : "";
+
+			if (isset($numericos[$campo])) {
+				if ((float) $valorAntes == (float) $valorNuevo) {
+					continue;
+				}
+			} elseif (trim((string) $valorAntes) === trim((string) $valorNuevo)) {
+				continue;
+			}
+
+			$fila = $meta;
+			$fila["accion"] = "EDITAR_CUENTA";
+			$fila["campo"] = $campo;
+			$fila["valor_anterior"] = substr((string) $valorAntes, 0, 255);
+			$fila["valor_nuevo"] = substr((string) $valorNuevo, 0, 255);
+			$fila["detalle"] = substr($campo . ": " . $valorAntes . " -> " . $valorNuevo, 0, 255);
+
+			if ($campo === "saldo") {
+				$fila["saldo_antes"] = $valorAntes;
+				$fila["saldo_despues"] = $valorNuevo;
+			}
+			if ($campo === "estado") {
+				$fila["estado_antes"] = $valorAntes;
+				$fila["estado_despues"] = $valorNuevo;
+			}
+			if ($campo === "monto") {
+				$fila["monto"] = $valorNuevo;
+			}
+
+			ControladorCuentas::ctrAuditarMovimientoCuenta($fila);
+		}
+	}
+
+	static public function ctrMostrarAuditoriaCuenta($tipoDoc, $numCta)
+	{
+		try {
+			return ModeloCuentas::mdlMostrarAuditoriaCuenta($tipoDoc, $numCta);
+		} catch (Exception $e) {
+			return array();
+		}
 	}
 
 	static public function ctrNotificacionesPendientes()
@@ -357,6 +451,7 @@ class ControladorCuentas
 			);
 
 
+			$antes = ControladorCuentas::ctrMostrarCuentas("id", $_POST["idCuenta"]);
 			$respuesta = ModeloCuentas::mdlEditarCuenta($tabla, $datos);
 
 			date_default_timezone_set('America/Lima');
@@ -381,6 +476,11 @@ class ControladorCuentas
 			// var_dump($auditoria);
 
 			if ($respuesta == "ok") {
+				ControladorCuentas::ctrAuditarCambiosCuenta($antes, $datos, array(
+					"id_cuenta" => $_POST["idCuenta"],
+					"tipo_doc" => $_POST["editarCodigo"],
+					"num_cta" => $_POST["editarDocumento"]
+				));
 
 				if ($_POST["editarRuta"] == "cuentas-pendientes") {
 					echo '<script>
@@ -678,6 +778,20 @@ class ControladorCuentas
 
 				$ultimo_pago = ModeloCuentas::mdlEditarUltPago($_POST["docEditar"], $_POST["tipEditar"]);
 
+				ControladorCuentas::ctrAuditarMovimientoCuenta(array(
+					"accion" => "EDITAR_ABONO",
+					"id_movimiento" => $_POST["idCuenta2"],
+					"id_cuenta" => $idOrigen,
+					"tipo_doc" => $_POST["tipEditar"],
+					"num_cta" => $_POST["docEditar"],
+					"monto" => $_POST["cancelarMonto2"],
+					"saldo_antes" => isset($origen["saldo"]) ? $origen["saldo"] : null,
+					"saldo_despues" => $saldoNuevo,
+					"estado_antes" => isset($origen["estado"]) ? $origen["estado"] : null,
+					"estado_despues" => ($saldoNuevo > 0) ? "PENDIENTE" : "CANCELADO",
+					"detalle" => "monto " . $_POST["cancelarMontoAntiguo"] . " -> " . $_POST["cancelarMonto2"]
+				));
+
 				echo '<script>
 
 					swal({
@@ -713,10 +827,77 @@ class ControladorCuentas
 			$fecha = new DateTime();
 			$cancelacion = ModeloCuentas::mdlMostrarCancelacion($tabla, "id", $datos);
 
-			$rutas = $_GET["rutas"];
-			// Ajustar ruta según configuración si es "cuentas"
+			$rutas = isset($_GET["rutas"]) ? $_GET["rutas"] : "";
 			if ($rutas == "cuentas") {
 				$rutas = obtenerRutaCuentas();
+			}
+
+			$redirigirVerCuentas = function ($tipo, $titulo, $texto, $numCta, $tipoDoc) use ($rutas) {
+				$destino = ($numCta !== "" && $tipoDoc !== "")
+					? "index.php?ruta=ver-cuentas&numCta=" . rawurlencode((string) $numCta) . "&codCuenta=" . rawurlencode((string) $tipoDoc) . "&rutas=" . rawurlencode((string) $rutas)
+					: "index.php?ruta=" . rawurlencode($rutas !== "" ? $rutas : obtenerRutaCuentas());
+
+				echo '<script>
+				swal({
+					  type: ' . json_encode($tipo) . ',
+					  title: ' . json_encode($titulo) . ',
+					  text: ' . json_encode($texto) . ',
+					  showConfirmButton: true,
+					  confirmButtonText: "Cerrar"
+					  }).then(function(result){
+								if (result.value) {
+								window.location = ' . json_encode($destino) . ';
+								}
+							})
+				</script>';
+			};
+
+			if (!$cancelacion) {
+				$redirigirVerCuentas(
+					"error",
+					"No se eliminó el movimiento",
+					"No se encontró la cancelación. No se modificó saldo ni estado.",
+					isset($_GET["numCta"]) ? $_GET["numCta"] : "",
+					isset($_GET["codCuenta"]) ? $_GET["codCuenta"] : ""
+				);
+				return;
+			}
+
+			$origen = false;
+			if (!empty($_GET["idOrigen"])) {
+				$candidato = ControladorCuentas::ctrMostrarCuentas("id", $_GET["idOrigen"]);
+				if (
+					$candidato
+					&& isset($candidato["id"])
+					&& (string) $candidato["num_cta"] === (string) $cancelacion["num_cta"]
+					&& (string) $candidato["tipo_doc"] === (string) $cancelacion["tipo_doc"]
+				) {
+					$origen = $candidato;
+				} else {
+					$redirigirVerCuentas(
+						"error",
+						"No se eliminó el movimiento",
+						"No se pudo identificar la cuenta original. No se modificó saldo ni estado.",
+						$cancelacion["num_cta"],
+						$cancelacion["tipo_doc"]
+					);
+					return;
+				}
+			}
+
+			if (!$origen) {
+				$origen = ControladorCuentas::ctrMostrarCuentasV2($cancelacion["num_cta"], $cancelacion["tipo_doc"]);
+			}
+
+			if (!$origen || empty($origen["id"])) {
+				$redirigirVerCuentas(
+					"error",
+					"No se eliminó el movimiento",
+					"No se encontró el cargo original de la cuenta. No se modificó saldo ni estado.",
+					$cancelacion["num_cta"],
+					$cancelacion["tipo_doc"]
+				);
+				return;
 			}
 
 			$usuario = $_SESSION["nombre"];
@@ -735,22 +916,13 @@ class ControladorCuentas
 				);
 				$auditoria = ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", $datos2);
 			}
-			$origen = ControladorCuentas::ctrMostrarCuentasV2($cancelacion["num_cta"], $cancelacion["tipo_doc"]);
-			#var_dump($origen);
+
 			$idOrigen = $origen["id"];
-			#var_dump($idOrigen);
-			$saldoNuevo = $cancelacion["monto"] + $origen["saldo"];
-			#var_dump($saldoNuevo);
+			$saldoNuevo = (float) $cancelacion["monto"] + (float) $origen["saldo"];
+			$estado = ($saldoNuevo >= -0.5 && $saldoNuevo <= 0.5) ? "CANCELADO" : "PENDIENTE";
 
-			if ($saldoNuevo > 0) {
-
-				$estado = ModeloCuentas::mdlActualizarEstado($idOrigen);
-				#var_dump($estado);
-
-			}
-
-			$actualizacion = ModeloCuentas::mdlActualizarUnDato($tabla, "saldo", $saldoNuevo, $idOrigen);
-			var_dump($actualizacion);
+			ModeloCuentas::mdlActualizarUnDato($tabla, "estado", $estado, $idOrigen);
+			ModeloCuentas::mdlActualizarUnDato($tabla, "saldo", $saldoNuevo, $idOrigen);
 
 			$datos3 = array(
 				"id" => $cancelacion["id"],
@@ -760,33 +932,34 @@ class ControladorCuentas
 			);
 
 			$ingreso_bkp = ModeloCuentas::mdlIngresarCuentaBckp2("cuenta_cte_bkpjf", $datos3);
-			#var_dump($ingreso_bkp);
 
-			//Despues de realizar el bkp eliminamos
 			$respuesta = ModeloCuentas::mdlEliminarCuenta($tabla, $datos);
-
 
 			if ($respuesta == "ok") {
 
 				$ultimo_pago = ModeloCuentas::mdlEditarUltPago($origen["num_cta"], $cancelacion["tipo_doc"]);
 
-				echo '<script>
+				ControladorCuentas::ctrAuditarMovimientoCuenta(array(
+					"accion" => "ELIMINAR_ABONO",
+					"id_movimiento" => $cancelacion["id"],
+					"id_cuenta" => $idOrigen,
+					"tipo_doc" => $cancelacion["tipo_doc"],
+					"num_cta" => $origen["num_cta"],
+					"monto" => $cancelacion["monto"],
+					"saldo_antes" => $origen["saldo"],
+					"saldo_despues" => $saldoNuevo,
+					"estado_antes" => isset($origen["estado"]) ? $origen["estado"] : null,
+					"estado_despues" => $estado,
+					"detalle" => isset($cancelacion["cod_pago"]) ? ("cod_pago " . $cancelacion["cod_pago"]) : null
+				));
 
-				swal({
-					  type: "success",
-					  title: "La cancelación ha sido borrada correctamente",
-					  showConfirmButton: true,
-					  confirmButtonText: "Cerrar",
-					  closeOnConfirm: false
-					  }).then(function(result){
-								if (result.value) {
-
-								window.location = "index.php?ruta=ver-cuentas&numCta=' . $origen["num_cta"] . '&codCuenta=' . $cancelacion["tipo_doc"] . '&rutas=' . $rutas . '";
-
-								}
-							})
-
-				</script>';
+				$redirigirVerCuentas(
+					"success",
+					"La cancelación ha sido borrada correctamente",
+					"",
+					$origen["num_cta"],
+					$cancelacion["tipo_doc"]
+				);
 			}
 		}
 	}
@@ -1137,6 +1310,19 @@ class ControladorCuentas
 
 				$ultimo_pago = ModeloCuentas::mdlEditarUltPago($_POST["cancelarDocumentoOriginal2"], $_POST["cancelarTipoDocumento2"]);
 
+				ControladorCuentas::ctrAuditarMovimientoCuenta(array(
+					"accion" => "ABONO",
+					"id_cuenta" => $id,
+					"tipo_doc" => $_POST["cancelarTipoDocumento2"],
+					"num_cta" => $_POST["cancelarDocumentoOriginal2"],
+					"monto" => $_POST["cancelarMonto3"],
+					"saldo_antes" => isset($_POST["cancelarSaldoAntiguo2"]) ? $_POST["cancelarSaldoAntiguo2"] : null,
+					"saldo_despues" => $saldoNuevo,
+					"estado_antes" => isset($_POST["cancelarEstado2"]) ? $_POST["cancelarEstado2"] : null,
+					"estado_despues" => $estado,
+					"detalle" => "cod_pago " . $_POST["cancelarCodigo2"]
+				));
+
 				echo '<script>	
 
 					swal({
@@ -1223,6 +1409,17 @@ class ControladorCuentas
 			$respuesta2 = ModeloCuentas::mdlIngresarCuenta($tabla, $datos2);
 
 			if ($respuesta == "ok") {
+
+				ControladorCuentas::ctrAuditarMovimientoCuenta(array(
+					"accion" => "RENOVAR",
+					"id_cuenta" => $_POST["idCuenta4"],
+					"tipo_doc" => $_POST["dividirDocumento"],
+					"num_cta" => $_POST["dividirNroDocumento"],
+					"monto" => $_POST["dividirMonto"],
+					"saldo_antes" => $_POST["dividirSaldo"],
+					"saldo_despues" => $saldoNuevo,
+					"detalle" => "nueva letra " . $_POST["dividirNroDocumento2"]
+				));
 
 				echo '<script>	
 

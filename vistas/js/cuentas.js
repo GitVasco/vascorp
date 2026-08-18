@@ -892,8 +892,14 @@ ELIMINAR TIPO DE PAGO
 =============================================*/
 $(".tablaVerCuentas").on("click", ".btnEliminarCancelacion", function () {
     var idCancelacion = $(this).attr("idCancelacion");
-    const rutas = document.getElementById("rutas").value;
-    console.log("🚀 ~ rutas:", rutas);
+    const rutasEl = document.getElementById("rutas");
+    const rutas = rutasEl ? rutasEl.value : "";
+    const idOrigenEl = document.getElementById("idCuentaOrigen");
+    const idOrigen = idOrigenEl ? idOrigenEl.value : "";
+    const numCtaEl = document.getElementById("verCuentasNumCta");
+    const numCta = numCtaEl ? numCtaEl.value : "";
+    const codCuentaEl = document.getElementById("verCuentasCodCuenta");
+    const codCuenta = codCuentaEl ? codCuentaEl.value : "";
 
     swal({
         title: "¿Está seguro de borrar la cancelación?",
@@ -908,9 +914,15 @@ $(".tablaVerCuentas").on("click", ".btnEliminarCancelacion", function () {
         if (result.value) {
             window.location =
                 "index.php?ruta=ver-cuentas&idCancelacion=" +
-                idCancelacion +
+                encodeURIComponent(idCancelacion) +
+                "&idOrigen=" +
+                encodeURIComponent(idOrigen) +
+                "&numCta=" +
+                encodeURIComponent(numCta) +
+                "&codCuenta=" +
+                encodeURIComponent(codCuenta) +
                 "&rutas=" +
-                rutas;
+                encodeURIComponent(rutas);
         }
     });
 });
@@ -1775,6 +1787,9 @@ function cargarTablaVerCuentas(numCta, codCta) {
         retrieve: true,
         processing: true,
         order: [[2, "asc"]],
+        columnDefs: [
+            { targets: 4, className: "text-right", type: "num-fmt" },
+        ],
         pageLength: 20,
         lengthMenu: [
             [20, 40, 60, -1],

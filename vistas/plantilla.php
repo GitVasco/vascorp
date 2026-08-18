@@ -232,6 +232,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") : ?>
     <link rel="stylesheet" href="vistas/css/sublineas-mp.css?v=9">
     <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ver-cuentas") : ?>
+    <link rel="stylesheet" href="vistas/css/ver-cuentas.css?v=4">
+    <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
     <link rel="stylesheet" href="vistas/plugins/iCheck/all.css">

@@ -43,12 +43,14 @@ class TablaVerCuentas2
                 =============================================*/
                 // $botones = "<div class='btn-group'><button class='btn btn-xs btn-warning btnEditarCancelacion' idCancelacion='" . $Cuenta[$i]["id"] . "' data-toggle='modal' data-target='#modalEditarCancelacion'><i class='fa fa-pencil'></i></button><button class='btn btn-xs btn-danger btnEliminarCancelacion' idCancelacion='" . $Cuenta[$i]["id"] . "' ><i class='fa fa-times'></i></button></div>";
 
+                $montoFmt = number_format((float) $Cuenta[$i]["monto"], 2, ".", ",");
+
                 $datosJson .= '[
             "' . $Cuenta[$i]["cod_pago"] . '",
             "' . $Cuenta[$i]["doc_origen"] . '",
             "' . $Cuenta[$i]["fecha"] . '",
             "' . $Cuenta[$i]["notas"] . '",
-            "' . $Cuenta[$i]["monto"] . '",
+            "' . $montoFmt . '",
             "' . $botones . '"
             ],';
             }

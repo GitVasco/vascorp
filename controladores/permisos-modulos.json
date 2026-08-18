@@ -12,6 +12,9 @@
     "estado_cuenta_gerencia": {
       "ver": [6, 32]
     },
+    "auditoria_cuentas": {
+      "ver": [6]
+    },
     "centro_decisiones": {
       "ver": [6, 32, 105],
       "registrar": [6, 32],

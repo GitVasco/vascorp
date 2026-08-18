@@ -176,6 +176,77 @@ class ModeloCuentas
 		$stmt = null;
 	}
 
+	static public function mdlRegistrarAuditoriaCuenta($datos)
+	{
+		try {
+			$stmt = Conexion::conectar()->prepare(
+				"INSERT INTO cuenta_cte_auditoriajf (
+					accion, campo, valor_anterior, valor_nuevo,
+					id_movimiento, id_cuenta, tipo_doc, num_cta,
+					monto, saldo_antes, saldo_despues, estado_antes, estado_despues,
+					usuario, pc, fecha, detalle
+				) VALUES (
+					:accion, :campo, :valor_anterior, :valor_nuevo,
+					:id_movimiento, :id_cuenta, :tipo_doc, :num_cta,
+					:monto, :saldo_antes, :saldo_despues, :estado_antes, :estado_despues,
+					:usuario, :pc, :fecha, :detalle
+				)"
+			);
+
+			$fecha = date("Y-m-d H:i:s");
+			$vacio = function ($clave) use ($datos) {
+				return !isset($datos[$clave]) || $datos[$clave] === "" || $datos[$clave] === null;
+			};
+
+			$stmt->bindValue(":accion", isset($datos["accion"]) ? $datos["accion"] : "", PDO::PARAM_STR);
+			$stmt->bindValue(":campo", $vacio("campo") ? null : $datos["campo"], $vacio("campo") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":valor_anterior", $vacio("valor_anterior") ? null : $datos["valor_anterior"], $vacio("valor_anterior") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":valor_nuevo", $vacio("valor_nuevo") ? null : $datos["valor_nuevo"], $vacio("valor_nuevo") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":id_movimiento", $vacio("id_movimiento") ? null : $datos["id_movimiento"], $vacio("id_movimiento") ? PDO::PARAM_NULL : PDO::PARAM_INT);
+			$stmt->bindValue(":id_cuenta", $vacio("id_cuenta") ? null : $datos["id_cuenta"], $vacio("id_cuenta") ? PDO::PARAM_NULL : PDO::PARAM_INT);
+			$stmt->bindValue(":tipo_doc", $vacio("tipo_doc") ? null : $datos["tipo_doc"], $vacio("tipo_doc") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":num_cta", $vacio("num_cta") ? null : $datos["num_cta"], $vacio("num_cta") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":monto", $vacio("monto") ? null : $datos["monto"], $vacio("monto") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":saldo_antes", $vacio("saldo_antes") ? null : $datos["saldo_antes"], $vacio("saldo_antes") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":saldo_despues", $vacio("saldo_despues") ? null : $datos["saldo_despues"], $vacio("saldo_despues") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":estado_antes", $vacio("estado_antes") ? null : $datos["estado_antes"], $vacio("estado_antes") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":estado_despues", $vacio("estado_despues") ? null : $datos["estado_despues"], $vacio("estado_despues") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+			$stmt->bindValue(":usuario", isset($datos["usuario"]) ? $datos["usuario"] : "", PDO::PARAM_STR);
+			$stmt->bindValue(":pc", isset($datos["pc"]) ? $datos["pc"] : "", PDO::PARAM_STR);
+			$stmt->bindValue(":fecha", $fecha, PDO::PARAM_STR);
+			$stmt->bindValue(":detalle", $vacio("detalle") ? null : $datos["detalle"], $vacio("detalle") ? PDO::PARAM_NULL : PDO::PARAM_STR);
+
+			$stmt->execute();
+			return "ok";
+		} catch (Exception $e) {
+			return "error";
+		}
+	}
+
+	static public function mdlMostrarAuditoriaCuenta($tipoDoc, $numCta)
+	{
+		try {
+			$stmt = Conexion::conectar()->prepare(
+				"SELECT accion, campo, valor_anterior, valor_nuevo, monto,
+					saldo_antes, saldo_despues, estado_antes, estado_despues,
+					usuario, fecha, detalle
+				 FROM cuenta_cte_auditoriajf
+				 WHERE tipo_doc = :tipoDoc AND num_cta = :numCta
+				 ORDER BY fecha DESC, id DESC
+				 LIMIT 80"
+			);
+			$stmt->bindValue(":tipoDoc", $tipoDoc, PDO::PARAM_STR);
+			$stmt->bindValue(":numCta", $numCta, PDO::PARAM_STR);
+			if (!$stmt->execute()) {
+				return array();
+			}
+			$filas = $stmt->fetchAll();
+			return $filas ? $filas : array();
+		} catch (Exception $e) {
+			return array();
+		}
+	}
+
 
 	/*=============================================
 	MOSTRAR CUENTAS
