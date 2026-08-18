@@ -875,15 +875,32 @@ class ModeloProgramacionTallerSemana
 	}
 
 	/**
-	 * Artículos (talla) programados en la semana con saldo en almacén de corte.
+	 * Artículos (talla) programados en un rango de semanas con saldo en almacén de corte.
 	 * Exclusivo de la pestaña Enviar a taller (no altera en-cortes).
 	 */
 	static public function mdlListarArticulosEnviarSemana($anio, $semana, $filtros = array())
 	{
+		$anioHasta = isset($filtros["anio_hasta"]) ? (int) $filtros["anio_hasta"] : (int) $anio;
+		$semanaHasta = isset($filtros["semana_hasta"]) ? (int) $filtros["semana_hasta"] : (int) $semana;
+		$desde = self::mdlRangoSemana($anio, $semana);
+		$hasta = self::mdlRangoSemana($anioHasta, $semanaHasta);
+		if (!$desde || !$hasta) {
+			return array();
+		}
+		$fechaDesde = $desde["fecha_inicio"];
+		$fechaHasta = $hasta["fecha_inicio"];
+		if (strcmp($fechaDesde, $fechaHasta) > 0) {
+			$tmp = $fechaDesde;
+			$fechaDesde = $fechaHasta;
+			$fechaHasta = $tmp;
+		}
+
 		$sql = "SELECT
 				p.id AS id_programacion,
 				p.anio,
 				p.semana,
+				p.fecha_inicio,
+				p.fecha_fin,
 				p.nivel,
 				p.cantidad AS cant_programada,
 				p.cod_sector,
@@ -907,8 +924,8 @@ class ModeloProgramacionTallerSemana
 				ON TRIM(a.modelo) = TRIM(p.modelo)
 				AND TRIM(IFNULL(a.cod_color, '')) = TRIM(IFNULL(p.cod_color, ''))
 			WHERE p.estado = 1
-			  AND p.anio = :anio
-			  AND p.semana = :semana
+			  AND p.fecha_inicio >= :fecha_desde
+			  AND p.fecha_inicio <= :fecha_hasta
 			  AND IFNULL(a.alm_corte, 0) > 0
 			  AND (
 					LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
@@ -916,8 +933,8 @@ class ModeloProgramacionTallerSemana
 				)";
 
 		$params = array(
-			":anio" => (int) $anio,
-			":semana" => (int) $semana
+			":fecha_desde" => $fechaDesde,
+			":fecha_hasta" => $fechaHasta
 		);
 
 		if (!empty($filtros["cod_sector"])) {
@@ -933,11 +950,11 @@ class ModeloProgramacionTallerSemana
 			$params[":nivel"] = trim((string) $filtros["nivel"]);
 		}
 
-		$sql .= " ORDER BY p.cod_sector ASC, p.modelo ASC, p.cod_color ASC, a.cod_talla ASC, a.talla ASC";
+		$sql .= " ORDER BY p.fecha_inicio ASC, p.cod_sector ASC, p.modelo ASC, p.cod_color ASC, a.cod_talla ASC, a.talla ASC";
 
 		$stmt = Conexion::conectar()->prepare($sql);
 		foreach ($params as $k => $v) {
-			$stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+			$stmt->bindValue($k, $v, PDO::PARAM_STR);
 		}
 		$stmt->execute();
 		return $stmt->fetchAll();

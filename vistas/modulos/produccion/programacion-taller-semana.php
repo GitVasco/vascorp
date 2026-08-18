@@ -27,6 +27,19 @@ $modeloUrl = isset($_GET["modelo"]) ? trim((string) $_GET["modelo"]) : "";
 $tallerUrl = isset($_GET["taller"]) ? trim((string) $_GET["taller"]) : "";
 $nivelUrl = isset($_GET["nivel"]) ? trim((string) $_GET["nivel"]) : "";
 $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["ocultar_consumidos"] !== "0";
+$envHasta = array("anio" => (int) $semanaActual["anio"], "semana" => (int) $semanaActual["semana"]);
+$dtEnvDesde = new DateTime();
+$dtEnvDesde->setISODate($envHasta["anio"], $envHasta["semana"], 1);
+$dtEnvDesde->modify("-21 days");
+$envDesde = array("anio" => (int) $dtEnvDesde->format("o"), "semana" => (int) $dtEnvDesde->format("W"));
+$infoEnvDesde = ModeloProgramacionTallerSemana::mdlRangoSemana($envDesde["anio"], $envDesde["semana"]);
+$infoEnvHasta = ModeloProgramacionTallerSemana::mdlRangoSemana($envHasta["anio"], $envHasta["semana"]);
+if (!$infoEnvDesde) {
+    $infoEnvDesde = $infoActual;
+}
+if (!$infoEnvHasta) {
+    $infoEnvHasta = $infoActual;
+}
 ?>
 <div class="content-wrapper pts-full-page"
      data-tab-inicial="<?php echo htmlspecialchars($tabUrl, ENT_QUOTES, 'UTF-8'); ?>"
@@ -362,29 +375,57 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                         <div id="barraEnviarPts" class="well well-sm" style="margin-bottom:10px;padding:10px 12px;">
                             <div class="pts-filtros">
                                 <div class="pts-filtro pts-filtro-anio">
-                                    <label>Año</label>
-                                    <input type="number" class="form-control input-sm" id="envAnioPts"
-                                        value="<?php echo (int) $infoActual['anio']; ?>" min="2000" max="2100">
+                                    <label>Desde año</label>
+                                    <input type="number" class="form-control input-sm" id="envAnioDesdePts"
+                                        value="<?php echo (int) $envDesde['anio']; ?>" min="2000" max="2100">
                                 </div>
                                 <div class="pts-filtro pts-filtro-semana">
-                                    <label>Semana</label>
+                                    <label>Desde semana</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-btn">
-                                            <button type="button" class="btn btn-default" id="btnEnvSemAntPts" title="Semana anterior">&laquo;</button>
+                                            <button type="button" class="btn btn-default" id="btnEnvDesdeAntPts" title="Semana anterior">&laquo;</button>
                                         </span>
-                                        <input type="number" class="form-control" id="envSemanaPts"
-                                            value="<?php echo (int) $infoActual['semana']; ?>" min="1" max="53">
+                                        <input type="number" class="form-control" id="envSemanaDesdePts"
+                                            value="<?php echo (int) $envDesde['semana']; ?>" min="1" max="53">
                                         <span class="input-group-btn">
-                                            <button type="button" class="btn btn-default" id="btnEnvSemSigPts" title="Semana siguiente">&raquo;</button>
+                                            <button type="button" class="btn btn-default" id="btnEnvDesdeSigPts" title="Semana siguiente">&raquo;</button>
                                         </span>
                                     </div>
                                 </div>
-                                <div class="pts-filtro pts-filtro-rango">
-                                    <label>Rango</label>
+                                <div class="pts-filtro pts-filtro-anio">
+                                    <label>Hasta año</label>
+                                    <input type="number" class="form-control input-sm" id="envAnioHastaPts"
+                                        value="<?php echo (int) $envHasta['anio']; ?>" min="2000" max="2100">
+                                </div>
+                                <div class="pts-filtro pts-filtro-semana">
+                                    <label>Hasta semana</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnEnvHastaAntPts" title="Semana anterior">&laquo;</button>
+                                        </span>
+                                        <input type="number" class="form-control" id="envSemanaHastaPts"
+                                            value="<?php echo (int) $envHasta['semana']; ?>" min="1" max="53">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-default" id="btnEnvHastaSigPts" title="Semana siguiente">&raquo;</button>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="pts-filtro pts-filtro-rango" style="min-width:170px;">
+                                    <label>Periodo</label>
                                     <p class="pts-rango-txt" id="textoRangoEnvPts">
-                                        <?php echo htmlspecialchars($infoActual['fecha_inicio'] . ' → ' . $infoActual['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
+                                        <?php echo htmlspecialchars($infoEnvDesde['fecha_inicio'] . ' → ' . $infoEnvHasta['fecha_fin'], ENT_QUOTES, 'UTF-8'); ?>
                                     </p>
                                 </div>
+                                <div class="pts-filtro pts-filtro-acciones">
+                                    <label>&nbsp;</label>
+                                    <div class="pts-acciones-btns">
+                                        <button type="button" class="btn btn-default btn-sm btnPresetEnvPts" data-semanas="0" title="Solo la semana actual">Esta</button>
+                                        <button type="button" class="btn btn-primary btn-sm btnPresetEnvPts" data-semanas="3" title="Semana actual y las 3 anteriores">4 sem</button>
+                                        <button type="button" class="btn btn-default btn-sm btnPresetEnvPts" data-semanas="7" title="Semana actual y las 7 anteriores">8 sem</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pts-filtros" style="margin-top:8px;">
                                 <div class="pts-filtro pts-filtro-grow">
                                     <label>Nivel</label>
                                     <select class="form-control selectpicker" id="envFiltroNivelPts" data-live-search="true" data-container="body" data-size="8" data-width="100%" title="Todos">
@@ -414,10 +455,11 @@ $ocultarConsumidosUrl = !isset($_GET["ocultar_consumidos"]) || (string) $_GET["o
                                     </button>
                                 </div>
                             </div>
-                            <p class="help-block" style="margin:10px 0 0;font-size:12px;">
-                                Marca <strong>tallas sueltas</strong> o el check del color para mandar <strong>todas las tallas</strong> de ese color.
-                                Sale del almacén de corte al taller ya programado. No usa la pantalla Alm. Corte.
+                            <p class="help-block" style="margin:10px 0 4px;font-size:12px;">
+                                Elige un <strong>rango de semanas</strong>. Marca una <strong>semana</strong>, un <strong>color</strong> (todas sus tallas) o tallas sueltas.
+                                Sale al taller ya programado. No usa Alm. Corte.
                             </p>
+                            <p id="resumenEnvPts" class="text-muted" style="margin:0;font-size:12px;"></p>
                         </div>
                         <div class="table-responsive pts-tabla-scroll">
                             <table class="table table-bordered table-striped table-condensed table-hover" id="tablaEnviarPts" width="100%">
@@ -684,6 +726,15 @@ body .bootstrap-select .dropdown-menu { z-index: 2060 !important; }
     background: #3c8dbc;
     color: #fff;
     border-color: #367fa9 !important;
+}
+#tablaEnviarPts tr.pts-semana-env td {
+    background: #3c8dbc;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+}
+#tablaEnviarPts tr.pts-semana-env .chkSemanaEnvPts {
+    margin: 0;
 }
 #tablaEnviarPts tr.pts-grupo-env td {
     background: #eef4f8;

@@ -66,12 +66,33 @@ function semanaProgPts() {
     return parseInt($("#progSemanaPts").val(), 10) || semanaPts();
 }
 
-function anioEnvPts() {
-    return parseInt($("#envAnioPts").val(), 10) || anioPts();
+function anioEnvDesdePts() {
+    return parseInt($("#envAnioDesdePts").val(), 10) || anioPts();
 }
 
-function semanaEnvPts() {
-    return parseInt($("#envSemanaPts").val(), 10) || semanaPts();
+function semanaEnvDesdePts() {
+    return parseInt($("#envSemanaDesdePts").val(), 10) || semanaPts();
+}
+
+function anioEnvHastaPts() {
+    return parseInt($("#envAnioHastaPts").val(), 10) || anioPts();
+}
+
+function semanaEnvHastaPts() {
+    return parseInt($("#envSemanaHastaPts").val(), 10) || semanaPts();
+}
+
+function moverIsoPts(anio, semana, delta) {
+    semana = (parseInt(semana, 10) || 1) + (parseInt(delta, 10) || 0);
+    anio = parseInt(anio, 10) || 0;
+    if (semana < 1) {
+        anio -= 1;
+        semana = 52;
+    } else if (semana > 53) {
+        anio += 1;
+        semana = 1;
+    }
+    return { anio: anio, semana: semana };
 }
 
 function sincronizarCabeceraConProgPts() {
@@ -391,25 +412,80 @@ function actualizarRangoProgPts() {
 }
 
 function actualizarRangoEnvPts() {
-    var anio = anioEnvPts();
-    var semana = semanaEnvPts();
-    if (!anio || !semana) {
+    var dAnio = anioEnvDesdePts();
+    var dSem = semanaEnvDesdePts();
+    var hAnio = anioEnvHastaPts();
+    var hSem = semanaEnvHastaPts();
+    if (!dAnio || !dSem || !hAnio || !hSem) {
         $("#textoRangoEnvPts").text("—");
         return $.Deferred().resolve().promise();
     }
-    return $.post("ajax/programacion-taller-semana.ajax.php", {
-        accion: "infoSemana",
-        anio: anio,
-        semana: semana
-    }, function (resp) {
-        if (resp && resp.ok && resp.data) {
-            $("#envAnioPts").val(resp.data.anio);
-            $("#envSemanaPts").val(resp.data.semana);
-            $("#textoRangoEnvPts").text(resp.data.fecha_inicio + " → " + resp.data.fecha_fin);
-        } else {
-            $("#textoRangoEnvPts").text("Semana no válida");
+    var pDesde = $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana", anio: dAnio, semana: dSem
+    }, null, "json");
+    var pHasta = $.post("ajax/programacion-taller-semana.ajax.php", {
+        accion: "infoSemana", anio: hAnio, semana: hSem
+    }, null, "json");
+    return $.when(pDesde, pHasta).done(function (a, b) {
+        var respD = a && a[0] ? a[0] : a;
+        var respH = b && b[0] ? b[0] : b;
+        var dIni = (respD && respD.ok && respD.data) ? respD.data.fecha_inicio : "—";
+        var dFin = (respD && respD.ok && respD.data) ? respD.data.fecha_fin : "—";
+        var hIni = (respH && respH.ok && respH.data) ? respH.data.fecha_inicio : "—";
+        var hFin = (respH && respH.ok && respH.data) ? respH.data.fecha_fin : "—";
+        if (respD && respD.ok && respD.data) {
+            $("#envAnioDesdePts").val(respD.data.anio);
+            $("#envSemanaDesdePts").val(respD.data.semana);
         }
-    }, "json");
+        if (respH && respH.ok && respH.data) {
+            $("#envAnioHastaPts").val(respH.data.anio);
+            $("#envSemanaHastaPts").val(respH.data.semana);
+        }
+        if (dIni !== "—" && hIni !== "—" && String(dIni) > String(hIni)) {
+            var tmpA = $("#envAnioDesdePts").val();
+            var tmpS = $("#envSemanaDesdePts").val();
+            $("#envAnioDesdePts").val($("#envAnioHastaPts").val());
+            $("#envSemanaDesdePts").val($("#envSemanaHastaPts").val());
+            $("#envAnioHastaPts").val(tmpA);
+            $("#envSemanaHastaPts").val(tmpS);
+            $("#textoRangoEnvPts").text(hIni + " → " + dFin);
+        } else {
+            $("#textoRangoEnvPts").text(dIni + " → " + hFin);
+        }
+    });
+}
+
+function moverSemanaEnvDesdePts(delta) {
+    var n = moverIsoPts(anioEnvDesdePts(), semanaEnvDesdePts(), delta);
+    $("#envAnioDesdePts").val(n.anio);
+    $("#envSemanaDesdePts").val(n.semana);
+    actualizarRangoEnvPts().always(function () {
+        cargarArticulosEnviarPts();
+    });
+}
+
+function moverSemanaEnvHastaPts(delta) {
+    var n = moverIsoPts(anioEnvHastaPts(), semanaEnvHastaPts(), delta);
+    $("#envAnioHastaPts").val(n.anio);
+    $("#envSemanaHastaPts").val(n.semana);
+    actualizarRangoEnvPts().always(function () {
+        cargarArticulosEnviarPts();
+    });
+}
+
+function aplicarPresetEnvPts(semanasAtras) {
+    semanasAtras = parseInt(semanasAtras, 10) || 0;
+    $(".btnPresetEnvPts").removeClass("btn-primary").addClass("btn-default");
+    $(".btnPresetEnvPts[data-semanas='" + semanasAtras + "']").removeClass("btn-default").addClass("btn-primary");
+    var hasta = { anio: anioPts(), semana: semanaPts() };
+    var desde = moverIsoPts(hasta.anio, hasta.semana, -semanasAtras);
+    $("#envAnioHastaPts").val(hasta.anio);
+    $("#envSemanaHastaPts").val(hasta.semana);
+    $("#envAnioDesdePts").val(desde.anio);
+    $("#envSemanaDesdePts").val(desde.semana);
+    actualizarRangoEnvPts().always(function () {
+        cargarArticulosEnviarPts();
+    });
 }
 
 function moverSemanaProgPts(delta) {
@@ -431,23 +507,6 @@ function moverSemanaProgPts(delta) {
         cargarProgramadosPts({ stats: false });
         programarRefreshStatsPts();
         sincronizarUrlPts();
-    });
-}
-
-function moverSemanaEnvPts(delta) {
-    var anio = anioEnvPts();
-    var semana = semanaEnvPts() + delta;
-    if (semana < 1) {
-        anio -= 1;
-        semana = 52;
-    } else if (semana > 53) {
-        anio += 1;
-        semana = 1;
-    }
-    $("#envAnioPts").val(anio);
-    $("#envSemanaPts").val(semana);
-    actualizarRangoEnvPts().always(function () {
-        cargarArticulosEnviarPts();
     });
 }
 
@@ -1471,6 +1530,10 @@ function cargarDisponiblesPts() {
     }, "json");
 }
 
+function claveSemanaEnvPts(r) {
+    return String(r.anio || "") + "-" + String(r.semana || "");
+}
+
 function claveGrupoEnvPts(r) {
     return String(r.id_programacion || "") + "|" + String(r.modelo || "") + "|" + String(r.cod_color || "");
 }
@@ -1492,6 +1555,15 @@ function actualizarContadorSelEnvPts() {
         var marcados = $chks.filter(":checked").length;
         $(this).find(".chkGrupoEnvPts").prop("checked", total > 0 && marcados === total);
     });
+    $("#tablaEnviarPts tbody tr.pts-semana-env").each(function () {
+        var sem = String($(this).attr("data-semana") || "");
+        var $chks = $("#tablaEnviarPts tbody .chkEnvPts").filter(function () {
+            return String($(this).attr("data-semana") || "") === sem;
+        });
+        var total = $chks.length;
+        var marcados = $chks.filter(":checked").length;
+        $(this).find(".chkSemanaEnvPts").prop("checked", total > 0 && marcados === total);
+    });
 }
 
 function pintarTablaEnviarPts() {
@@ -1499,63 +1571,111 @@ function pintarTablaEnviarPts() {
     $("#chkTodosEnvPts").prop("checked", false);
     var data = ptsEnviarCache || [];
     if (!data.length) {
-        $tb.html('<tr><td colspan="9" class="text-center text-muted">Nada programado con saldo en almacén de corte en esta semana.</td></tr>');
+        $tb.html('<tr><td colspan="9" class="text-center text-muted">Nada programado con saldo en almacén de corte en ese rango de semanas.</td></tr>');
+        $("#resumenEnvPts").text("");
         actualizarContadorSelEnvPts();
         return;
     }
 
-    var grupos = [];
-    var mapa = {};
+    var semanas = [];
+    var mapaSem = {};
     data.forEach(function (r) {
-        var g = String(r.id_programacion || claveGrupoEnvPts(r));
-        if (!mapa[g]) {
-            mapa[g] = { key: g, row: r, items: [] };
-            grupos.push(mapa[g]);
+        var sKey = claveSemanaEnvPts(r);
+        if (!mapaSem[sKey]) {
+            mapaSem[sKey] = { key: sKey, row: r, grupos: [], mapaG: {} };
+            semanas.push(mapaSem[sKey]);
         }
-        mapa[g].items.push(r);
+        var sem = mapaSem[sKey];
+        var gKey = String(r.id_programacion || claveGrupoEnvPts(r));
+        if (!sem.mapaG[gKey]) {
+            sem.mapaG[gKey] = { key: gKey, row: r, items: [] };
+            sem.grupos.push(sem.mapaG[gKey]);
+        }
+        sem.mapaG[gKey].items.push(r);
     });
 
-    grupos.forEach(function (g) {
-        var r = g.row;
-        var totalAlm = 0;
-        g.items.forEach(function (it) {
-            totalAlm += parseInt(it.alm_corte, 10) || 0;
+    var nColores = 0;
+    var nTallas = data.length;
+    semanas.forEach(function (sem) {
+        nColores += sem.grupos.length;
+        var totalAlmSem = 0;
+        var nTallasSem = 0;
+        sem.grupos.forEach(function (g) {
+            g.items.forEach(function (it) {
+                totalAlmSem += parseInt(it.alm_corte, 10) || 0;
+                nTallasSem += 1;
+            });
         });
-        var taller = (r.cod_sector || "") + (r.nom_sector ? " — " + r.nom_sector : "");
-        var estiloFila = estiloFilaTallerPts(r);
-        var $h = $('<tr class="pts-grupo-env" data-grupo="' + escaparPts(g.key) + '"'
-            + (estiloFila ? ' style="' + estiloFila + '"' : "") + ">");
-        $h.append(
-            '<td><input type="checkbox" class="chkGrupoEnvPts" data-grupo="'
-            + escaparPts(g.key) + '" title="Todas las tallas de este color"></td>'
-            + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
-            + celdaTallerHtmlPts(r, taller)
-            + "<td>" + escaparPts(r.modelo) + "</td>"
-            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
-            + '<td colspan="4"><span class="text-muted">'
-            + g.items.length + " talla(s) · " + totalAlm + " uds en corte</span>"
-            + (r.nombre_modelo ? ' <span class="text-muted">· ' + escaparPts(r.nombre_modelo) + "</span>" : "")
-            + "</td>"
+        var r0 = sem.row;
+        var $sem = $('<tr class="pts-semana-env" data-semana="' + escaparPts(sem.key) + '">');
+        $sem.append(
+            '<td><input type="checkbox" class="chkSemanaEnvPts" data-semana="'
+            + escaparPts(sem.key) + '" title="Toda esta semana"></td>'
+            + '<td colspan="8">Semana ' + escaparPts(r0.semana)
+            + " · " + escaparPts(r0.anio)
+            + (r0.fecha_inicio ? " · " + escaparPts(r0.fecha_inicio) + " → " + escaparPts(r0.fecha_fin || "") : "")
+            + " · " + sem.grupos.length + " color(es) · " + nTallasSem + " talla(s) · " + totalAlmSem + " uds</td>"
         );
-        $tb.append($h);
+        $tb.append($sem);
 
-        g.items.forEach(function (it) {
-            var alm = parseInt(it.alm_corte, 10) || 0;
-            var $tr = $('<tr data-grupo="' + escaparPts(g.key) + '">');
-            $tr.append(
-                '<td><input type="checkbox" class="chkEnvPts" data-grupo="' + escaparPts(g.key) + '"></td>'
-                + "<td></td><td></td><td></td><td></td>"
-                + "<td>" + escaparPts(it.talla || it.cod_talla || "—") + "</td>"
-                + "<td>" + escaparPts(it.articulo) + "</td>"
-                + "<td>" + escaparPts(alm) + "</td>"
-                + '<td><input type="number" class="form-control input-sm qtyEnvPts" min="1" max="'
-                + alm + '" value="' + alm + '"></td>'
+        sem.grupos.forEach(function (g) {
+            var r = g.row;
+            var totalAlm = 0;
+            g.items.forEach(function (it) {
+                totalAlm += parseInt(it.alm_corte, 10) || 0;
+            });
+            var taller = (r.cod_sector || "") + (r.nom_sector ? " — " + r.nom_sector : "");
+            var estiloFila = estiloFilaTallerPts(r);
+            var $h = $('<tr class="pts-grupo-env" data-grupo="' + escaparPts(g.key)
+                + '" data-semana="' + escaparPts(sem.key) + '"'
+                + (estiloFila ? ' style="' + estiloFila + '"' : "") + ">");
+            $h.append(
+                '<td><input type="checkbox" class="chkGrupoEnvPts" data-grupo="'
+                + escaparPts(g.key) + '" data-semana="' + escaparPts(sem.key)
+                + '" title="Todas las tallas de este color"></td>'
+                + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
+                + celdaTallerHtmlPts(r, taller)
+                + "<td>" + escaparPts(r.modelo) + "</td>"
+                + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+                + '<td colspan="4"><span class="text-muted">'
+                + g.items.length + " talla(s) · " + totalAlm + " uds en corte</span>"
+                + (r.nombre_modelo ? ' <span class="text-muted">· ' + escaparPts(r.nombre_modelo) + "</span>" : "")
+                + "</td>"
             );
-            $tr.data("row", it);
-            $tb.append($tr);
+            $tb.append($h);
+
+            g.items.forEach(function (it) {
+                var alm = parseInt(it.alm_corte, 10) || 0;
+                var $tr = $('<tr data-grupo="' + escaparPts(g.key) + '" data-semana="' + escaparPts(sem.key) + '">');
+                $tr.append(
+                    '<td><input type="checkbox" class="chkEnvPts" data-grupo="' + escaparPts(g.key)
+                    + '" data-semana="' + escaparPts(sem.key) + '"></td>'
+                    + "<td></td><td></td><td></td><td></td>"
+                    + "<td>" + escaparPts(it.talla || it.cod_talla || "—") + "</td>"
+                    + "<td>" + escaparPts(it.articulo) + "</td>"
+                    + "<td>" + escaparPts(alm) + "</td>"
+                    + '<td><input type="number" class="form-control input-sm qtyEnvPts" min="1" max="'
+                    + alm + '" value="' + alm + '"></td>'
+                );
+                $tr.data("row", it);
+                $tb.append($tr);
+            });
         });
     });
+
+    $("#resumenEnvPts").text(
+        semanas.length + " semana(s) · " + nColores + " color(es) · " + nTallas + " talla(s) con saldo"
+    );
     actualizarContadorSelEnvPts();
+}
+
+function payloadRangoEnvPts() {
+    return {
+        anio_desde: anioEnvDesdePts(),
+        semana_desde: semanaEnvDesdePts(),
+        anio_hasta: anioEnvHastaPts(),
+        semana_hasta: semanaEnvHastaPts()
+    };
 }
 
 function cargarArticulosEnviarPts() {
@@ -1564,17 +1684,16 @@ function cargarArticulosEnviarPts() {
         '<tr><td colspan="9" class="text-center text-muted">'
         + '<i class="fa fa-spinner fa-spin"></i> Cargando artículos…</td></tr>'
     );
-    return $.post("ajax/programacion-taller-semana.ajax.php", {
-        accion: "articulosEnviar",
-        anio: anioEnvPts(),
-        semana: semanaEnvPts(),
-        cod_sector: $("#envFiltroTallerPts").val() || "",
-        nivel: $("#envFiltroNivelPts").val() || "",
-        modelo: $("#envFiltroModeloPts").val() || ""
-    }, function (resp) {
+    var payload = payloadRangoEnvPts();
+    payload.accion = "articulosEnviar";
+    payload.cod_sector = $("#envFiltroTallerPts").val() || "";
+    payload.nivel = $("#envFiltroNivelPts").val() || "";
+    payload.modelo = $("#envFiltroModeloPts").val() || "";
+    return $.post("ajax/programacion-taller-semana.ajax.php", payload, function (resp) {
         if (!resp || !resp.ok) {
             ptsEnviarCache = [];
             $tb.html('<tr><td colspan="9" class="text-center text-muted">No se pudo cargar</td></tr>');
+            $("#resumenEnvPts").text("");
             actualizarContadorSelEnvPts();
             return;
         }
@@ -1583,6 +1702,7 @@ function cargarArticulosEnviarPts() {
     }, "json").fail(function () {
         ptsEnviarCache = [];
         $tb.html('<tr><td colspan="9" class="text-center text-muted">Error de comunicación</td></tr>');
+        $("#resumenEnvPts").text("");
         actualizarContadorSelEnvPts();
     });
 }
@@ -1614,10 +1734,14 @@ function mandarLoteEnvPts() {
         return;
     }
     var necesitaGuia = false;
+    var semanas = {};
     $("#tablaEnviarPts tbody .chkEnvPts:checked").each(function () {
         var row = $(this).closest("tr").data("row");
         if (row && parseInt(row.es_interno, 10) === 1) {
             necesitaGuia = true;
+        }
+        if (row && row.semana) {
+            semanas[String(row.anio) + "-" + String(row.semana)] = true;
         }
     });
     var guia = $.trim($("#envGuiaPts").val() || "");
@@ -1627,16 +1751,20 @@ function mandarLoteEnvPts() {
         return;
     }
 
+    var nSem = 0;
+    for (var k in semanas) {
+        if (semanas.hasOwnProperty(k)) nSem += 1;
+    }
+    var textoConfirm = items.length + " talla(s) de " + nSem + " semana(s) saldrán del almacén de corte al taller programado.";
+
     var go = function () {
         $("#btnMandarEnvPts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Mandando…');
         $("#tablaEnviarPts tbody .chkEnvPts:checked").closest("tr").addClass("programando-pts");
-        $.post("ajax/programacion-taller-semana.ajax.php", {
-            accion: "mandarTallerLote",
-            anio: anioEnvPts(),
-            semana: semanaEnvPts(),
-            guia: guia,
-            items: JSON.stringify(items)
-        }, function (resp) {
+        var payload = payloadRangoEnvPts();
+        payload.accion = "mandarTallerLote";
+        payload.guia = guia;
+        payload.items = JSON.stringify(items);
+        $.post("ajax/programacion-taller-semana.ajax.php", payload, function (resp) {
             $("#btnMandarEnvPts").html('Mandar seleccionados <span id="nSelEnvPts">(0)</span>');
             if (resp && resp.ok) {
                 toastPts(resp.mensaje || "Enviado a taller", "success");
@@ -1662,7 +1790,7 @@ function mandarLoteEnvPts() {
     if (typeof swal === "function") {
         swal({
             title: "¿Mandar a taller?",
-            text: items.length + " talla(s) saldrán del almacén de corte al taller programado.",
+            text: textoConfirm,
             type: "warning",
             showCancelButton: true,
             confirmButtonColor: "#00a65a",
@@ -1673,7 +1801,7 @@ function mandarLoteEnvPts() {
         });
         return;
     }
-    if (window.confirm("¿Mandar " + items.length + " talla(s) a taller?")) go();
+    if (window.confirm(textoConfirm)) go();
 }
 
 function recargarPts(opts) {
@@ -2066,8 +2194,6 @@ if ($("#filtroAnioPts").length) {
         // Alinear selector de Ya programado con cabecera al iniciar
         $("#progAnioPts").val(anioPts());
         $("#progSemanaPts").val(semanaPts());
-        $("#envAnioPts").val(anioPts());
-        $("#envSemanaPts").val(semanaPts());
         $.when(
             actualizarRangoPts(),
             actualizarRangoDestPts(),
@@ -2240,13 +2366,19 @@ $("#progAnioPts, #progSemanaPts").on("change", function () {
 });
 $("#btnProgSemAntPts").on("click", function () { moverSemanaProgPts(-1); });
 $("#btnProgSemSigPts").on("click", function () { moverSemanaProgPts(1); });
-$("#envAnioPts, #envSemanaPts").on("change", function () {
+$("#envAnioDesdePts, #envSemanaDesdePts, #envAnioHastaPts, #envSemanaHastaPts").on("change", function () {
+    $(".btnPresetEnvPts").removeClass("btn-primary").addClass("btn-default");
     actualizarRangoEnvPts().always(function () {
         cargarArticulosEnviarPts();
     });
 });
-$("#btnEnvSemAntPts").on("click", function () { moverSemanaEnvPts(-1); });
-$("#btnEnvSemSigPts").on("click", function () { moverSemanaEnvPts(1); });
+$("#btnEnvDesdeAntPts").on("click", function () { moverSemanaEnvDesdePts(-1); });
+$("#btnEnvDesdeSigPts").on("click", function () { moverSemanaEnvDesdePts(1); });
+$("#btnEnvHastaAntPts").on("click", function () { moverSemanaEnvHastaPts(-1); });
+$("#btnEnvHastaSigPts").on("click", function () { moverSemanaEnvHastaPts(1); });
+$(document).on("click", ".btnPresetEnvPts", function () {
+    aplicarPresetEnvPts($(this).attr("data-semanas"));
+});
 $("#envFiltroNivelPts, #envFiltroTallerPts, #envFiltroModeloPts").on("changed.bs.select change", function () {
     if (ptsUrlSyncLock) return;
     cargarArticulosEnviarPts();
@@ -2582,7 +2714,15 @@ $("#formMoverNePts").on("submit", function (e) {
 
 $("#chkTodosEnvPts").on("change", function () {
     var on = $(this).is(":checked");
-    $("#tablaEnviarPts tbody .chkEnvPts, #tablaEnviarPts tbody .chkGrupoEnvPts").prop("checked", on);
+    $("#tablaEnviarPts tbody .chkEnvPts, #tablaEnviarPts tbody .chkGrupoEnvPts, #tablaEnviarPts tbody .chkSemanaEnvPts").prop("checked", on);
+    actualizarContadorSelEnvPts();
+});
+$(document).on("change", "#tablaEnviarPts .chkSemanaEnvPts", function () {
+    var on = $(this).is(":checked");
+    var sem = String($(this).attr("data-semana") || "");
+    $("#tablaEnviarPts tbody .chkEnvPts, #tablaEnviarPts tbody .chkGrupoEnvPts").filter(function () {
+        return String($(this).attr("data-semana") || "") === sem;
+    }).prop("checked", on);
     actualizarContadorSelEnvPts();
 });
 $(document).on("change", "#tablaEnviarPts .chkGrupoEnvPts", function () {

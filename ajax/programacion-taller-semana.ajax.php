@@ -202,8 +202,10 @@ if ($accion === "devolverPrioridadLote") {
 
 if ($accion === "articulosEnviar") {
 	$filtros = array(
-		"anio" => isset($_POST["anio"]) ? (int) $_POST["anio"] : 0,
-		"semana" => isset($_POST["semana"]) ? (int) $_POST["semana"] : 0,
+		"anio" => isset($_POST["anio_desde"]) ? (int) $_POST["anio_desde"] : (isset($_POST["anio"]) ? (int) $_POST["anio"] : 0),
+		"semana" => isset($_POST["semana_desde"]) ? (int) $_POST["semana_desde"] : (isset($_POST["semana"]) ? (int) $_POST["semana"] : 0),
+		"anio_hasta" => isset($_POST["anio_hasta"]) ? (int) $_POST["anio_hasta"] : 0,
+		"semana_hasta" => isset($_POST["semana_hasta"]) ? (int) $_POST["semana_hasta"] : 0,
 		"cod_sector" => isset($_POST["cod_sector"]) ? $_POST["cod_sector"] : "",
 		"nivel" => isset($_POST["nivel"]) ? $_POST["nivel"] : "",
 		"modelo" => isset($_POST["modelo"]) ? $_POST["modelo"] : ""

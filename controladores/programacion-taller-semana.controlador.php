@@ -1233,9 +1233,17 @@ class ControladorProgramacionTallerSemana
 	{
 		$anio = isset($filtros["anio"]) ? (int) $filtros["anio"] : 0;
 		$semana = isset($filtros["semana"]) ? (int) $filtros["semana"] : 0;
+		$anioHasta = isset($filtros["anio_hasta"]) ? (int) $filtros["anio_hasta"] : $anio;
+		$semanaHasta = isset($filtros["semana_hasta"]) ? (int) $filtros["semana_hasta"] : $semana;
 		if ($anio < 1 || $semana < 1) {
 			return array();
 		}
+		if ($anioHasta < 1 || $semanaHasta < 1) {
+			$anioHasta = $anio;
+			$semanaHasta = $semana;
+		}
+		$filtros["anio_hasta"] = $anioHasta;
+		$filtros["semana_hasta"] = $semanaHasta;
 		$lista = ModeloProgramacionTallerSemana::mdlListarArticulosEnviarSemana($anio, $semana, $filtros);
 		if (!is_array($lista)) {
 			return array();
@@ -1284,14 +1292,16 @@ class ControladorProgramacionTallerSemana
 			return array("ok" => false, "mensaje" => "Sin permiso de producción");
 		}
 
-		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
-		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
+		$anio = isset($post["anio_desde"]) ? (int) $post["anio_desde"] : (isset($post["anio"]) ? (int) $post["anio"] : 0);
+		$semana = isset($post["semana_desde"]) ? (int) $post["semana_desde"] : (isset($post["semana"]) ? (int) $post["semana"] : 0);
+		$anioHasta = isset($post["anio_hasta"]) ? (int) $post["anio_hasta"] : $anio;
+		$semanaHasta = isset($post["semana_hasta"]) ? (int) $post["semana_hasta"] : $semana;
 		$guia = isset($post["guia"]) ? trim((string) $post["guia"]) : "";
 		$itemsRaw = isset($post["items"]) ? $post["items"] : "[]";
 		$items = is_array($itemsRaw) ? $itemsRaw : json_decode($itemsRaw, true);
 
 		if ($anio < 1 || $semana < 1) {
-			return array("ok" => false, "mensaje" => "Semana no válida");
+			return array("ok" => false, "mensaje" => "Rango de semanas no válido");
 		}
 		if (!is_array($items) || count($items) < 1) {
 			return array("ok" => false, "mensaje" => "No hay artículos seleccionados");
@@ -1299,7 +1309,9 @@ class ControladorProgramacionTallerSemana
 
 		$permitidos = self::ctrListarArticulosEnviar(array(
 			"anio" => $anio,
-			"semana" => $semana
+			"semana" => $semana,
+			"anio_hasta" => $anioHasta,
+			"semana_hasta" => $semanaHasta
 		));
 		$porArticulo = array();
 		foreach ($permitidos as $fila) {
@@ -1331,7 +1343,7 @@ class ControladorProgramacionTallerSemana
 			$clave = $idProg > 0 ? ($articulo . "|" . $idProg) : $articulo;
 			$fila = isset($porArticulo[$clave]) ? $porArticulo[$clave] : (isset($porArticulo[$articulo]) ? $porArticulo[$articulo] : null);
 			if (!$fila) {
-				$errores[] = $articulo . ": no está programado en esta semana o no tiene saldo en corte";
+				$errores[] = $articulo . ": no está programado en el rango o no tiene saldo en corte";
 				continue;
 			}
 			$taller = trim((string) $fila["cod_sector"]);
