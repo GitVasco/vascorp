@@ -227,6 +227,17 @@
     background: #dceef8 !important;
 }
 
+.smp-tabla tr.smp-row-inactiva > td {
+    color: #8a949e;
+    background: #f7f8fa;
+}
+
+.smp-tabla tr.smp-row-inactiva .smp-cod,
+.smp-tabla tr.smp-row-inactiva .smp-nom {
+    text-decoration: line-through;
+    text-decoration-color: #c5ccd3;
+}
+
 .smp-mp-placeholder {
     flex: 1 1 auto;
     padding: 16px 12px;

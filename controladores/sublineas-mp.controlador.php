@@ -247,6 +247,7 @@ class ControladorSublineasMp
 				"talla" => isset($row["talla"]) ? trim((string) $row["talla"]) : "",
 				"unidad" => isset($row["unidad"]) ? trim((string) $row["unidad"]) : "",
 				"stock" => isset($row["stock"]) ? (float) $row["stock"] : 0,
+				"activa" => isset($row["estado"]) && (string) $row["estado"] === "1",
 				"n_oc" => isset($row["n_oc"]) ? (int) $row["n_oc"] : 0,
 				"n_os" => isset($row["n_os"]) ? (int) $row["n_os"] : 0
 			);

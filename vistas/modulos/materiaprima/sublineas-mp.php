@@ -104,6 +104,7 @@
                                                 <th>Descripción</th>
                                                 <th>Color</th>
                                                 <th class="text-right">Stock</th>
+                                                <th>Estado</th>
                                                 <th>OC / OS</th>
                                                 <th></th>
                                             </tr>
@@ -112,7 +113,7 @@
                                     </table>
                                 </div>
                                 <div class="smp-empty" id="smpMpEmpty" style="display:none;">
-                                    <p>Esta sublínea no tiene materias primas activas.</p>
+                                    <p>Esta sublínea no tiene materias primas.</p>
                                 </div>
                             </div>
                         </div>

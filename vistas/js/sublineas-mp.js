@@ -322,8 +322,11 @@
 
         var filas = "";
         lista.forEach(function (mp) {
+            var activa = mp.activa !== false;
             filas +=
-                "<tr>" +
+                '<tr' +
+                (activa ? "" : ' class="smp-row-inactiva"') +
+                ">" +
                 '<td class="smp-cod">' +
                 escapar(mp.codfab || mp.codpro) +
                 "</td>" +
@@ -337,6 +340,11 @@
                 "</td>" +
                 '<td class="smp-num">' +
                 escapar(formatoStock(mp.stock)) +
+                "</td>" +
+                "<td>" +
+                (activa
+                    ? '<span class="label label-success">Activa</span>'
+                    : '<span class="label label-default">Inactiva</span>') +
                 "</td>" +
                 '<td class="smp-ocos-cell">' +
                 '<button type="button" class="btn btn-link btn-xs smp-btn-ordenes" data-codpro="' +

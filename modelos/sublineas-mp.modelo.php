@@ -340,12 +340,11 @@ class ModeloSublineasMp
 				) x
 				GROUP BY x.codpro
 			) os ON os.codpro = p.CodPro
-			WHERE p.EstPro = '1'
-			  AND (
+			WHERE (
 				TRIM(IFNULL(p.FamPro, '')) = :cod
 				OR LEFT(TRIM(IFNULL(p.CodFab, '')), CHAR_LENGTH(:cod2)) = :cod3
 			  )
-			ORDER BY p.CodFab ASC, p.CodPro ASC"
+			ORDER BY CASE WHEN p.EstPro = '1' THEN 0 ELSE 1 END, p.CodFab ASC, p.CodPro ASC"
 		);
 		$stmt->bindParam(":cod", $codigoSublinea, PDO::PARAM_STR);
 		$stmt->bindParam(":cod2", $codigoSublinea, PDO::PARAM_STR);

@@ -230,7 +230,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/mp-reprocesos.css?v=4">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") : ?>
-    <link rel="stylesheet" href="vistas/css/sublineas-mp.css?v=8">
+    <link rel="stylesheet" href="vistas/css/sublineas-mp.css?v=9">
     <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
@@ -1183,7 +1183,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/orden-servicio.js"></script>
     <script src="vistas/js/mp-reprocesos.js?v=6"></script>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") { ?>
-    <script src="vistas/js/sublineas-mp.js?v=10"></script>
+    <script src="vistas/js/sublineas-mp.js?v=11"></script>
     <?php } ?>
     <script src="vistas/js/kardex.js"></script>
     <script src="vistas/js/produccion-mp.js"></script>
