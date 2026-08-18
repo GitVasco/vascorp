@@ -131,6 +131,15 @@ if ($idReceta <= 0) {
 .rm2-ctx-fields label { margin-bottom:3px; font-size:12px; font-weight:600; }
 .rm2-ctx-fields .rm2-asignados { max-height:56px; padding:2px 0 0; }
 .rm2-chip .rm2-chip-x { color:#dd4b39; margin-left:auto; font-size:14px; line-height:1; }
+.rm2-chip-ord {
+	display:inline-flex; flex-direction:column; flex:0 0 auto; margin:-2px 0 -2px -4px;
+}
+.rm2-chip-ord .rmMoverLinea {
+	border:0; background:transparent; color:#888; padding:0 4px; line-height:1;
+	font-size:12px; cursor:pointer;
+}
+.rm2-chip-ord .rmMoverLinea:hover { color:#3c8dbc; }
+.rm2-chip-ord .rmMoverLinea:disabled { color:#ccc; cursor:default; }
 .rm2-chip .label { margin:0; }
 .rm2-chip .rm2-btn-tela {
 	border:1px solid #ddd; background:#fff; color:#888; border-radius:10px;
@@ -146,17 +155,48 @@ if ($idReceta <= 0) {
 	background:#dff0d8; border:1px solid #b2dba1; font-size:13px;
 }
 .rm2-mp-activa.visible { display:block; }
-.rm2-matriz { width:100%; border-collapse:separate; border-spacing:0; }
+.rm2-matriz { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; }
 .rm2-matriz th, .rm2-matriz td { border:1px solid #ddd; padding:6px 8px; vertical-align:middle; }
 .rm2-matriz thead th { background:#f4f4f4; text-align:center; position:sticky; top:0; z-index:2; }
 .rm2-matriz .rm2-color-th {
-	background:#eee; text-align:left; min-width:120px; white-space:nowrap;
+	background:#eee; text-align:left; width:158px; min-width:158px; max-width:158px;
 	position:sticky; left:0; z-index:1;
+	white-space:normal;
 }
+.rm2-matriz .rm2-talla-th,
+.rm2-matriz thead th.rm2-talla-th { width:auto; min-width:72px; }
+.rm2-matriz .rm2-color-th > strong {
+	display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.rm2-atajos-fila {
+	display:flex; flex-wrap:wrap; gap:3px; margin-top:6px;
+}
+.rm2-atajos-fila .btn { margin:0; padding:2px 6px; font-size:11px; line-height:1.3; }
+.rm2-matriz .rm2-color-th.especial { background:#fff8e6; }
+.rm2-cons-color {
+	display:flex; align-items:center; gap:4px; margin-top:4px;
+}
+.rm2-cons-color input.rmConsumoColor {
+	width:72px; height:24px; padding:2px 6px; font-size:12px;
+}
+.rm2-cons-color.especial input.rmConsumoColor {
+	border-color:#f39c12; background:#fff8e6; font-weight:700;
+}
+.rm2-cons-color .rm2-esp-tag,
+.rm2-cons-txt .rm2-esp-tag {
+	font-size:9px; font-weight:700; text-transform:uppercase;
+	color:#c87f0a; letter-spacing:.02em;
+}
+.rm2-cons-color .rmQuitarConsumoColor {
+	border:0; background:transparent; color:#dd4b39; font-weight:700;
+	font-size:14px; line-height:1; padding:0 2px; cursor:pointer;
+}
+.rm2-cons-color .rmQuitarConsumoColor:hover { color:#a9302a; }
+.rm2-cons-txt { font-size:12px; color:#555; }
 .rm2-matriz thead .rm2-color-th { z-index:3; }
 .rm2-celda {
-	min-width:80px; text-align:center; cursor:pointer; background:#fff;
-	transition: background .12s;
+	min-width:0; text-align:center; cursor:pointer; background:#fff;
+	transition: background .12s; overflow:hidden;
 }
 .rm2-celda:hover { background:#e8f4fc; }
 .rm2-celda.ok { background:#e8f8ef; }
@@ -167,9 +207,17 @@ if ($idReceta <= 0) {
 .rm2-celda .rm2-celda-art { font-size:10px; color:#999; margin-top:2px; }
 .rm2-celda-mps { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; align-items:center; }
 .rm2-celda-mp {
-	display:inline-flex; align-items:center; gap:3px;
+	display:inline-flex; align-items:center; gap:3px; max-width:100%;
 	background:#dff0d8; border:1px solid #b2dba1; border-radius:10px;
 	padding:1px 6px; font-size:11px; font-weight:700; color:#3c763d; line-height:1.4;
+	cursor:pointer;
+}
+.rm2-celda-mp.activa {
+	border-color:#3c8dbc; background:#eaf5fb; color:#367fa9;
+	box-shadow:0 0 0 2px rgba(60,141,188,.25);
+}
+.rm2-celda-mp .rm2-celda-cons {
+	font-size:10px; font-weight:600; opacity:.85;
 }
 .rm2-celda-mp .rmQuitarMpCapa { color:#dd4b39; font-weight:700; text-decoration:none; line-height:1; }
 .rm2-celda-mp .rmQuitarMpCapa:hover { color:#a9302a; }
@@ -323,16 +371,8 @@ if ($idReceta <= 0) {
 							<div class="rm2-ctx-nombre" id="rmCtxNombre">—</div>
 							<div class="rm2-ctx-meta" id="rmCtxMeta"></div>
 							<div class="row rm2-ctx-fields">
-								<div class="col-sm-3">
-									<label id="rmConsumoLineaLabel">Consumo</label>
-									<div class="input-group input-group-sm">
-										<input type="number" step="any" class="form-control" id="rmConsumoLinea" min="0">
-										<span class="input-group-addon" id="rmUnidadLineaAddon">—</span>
-									</div>
-									<small class="text-muted">Igual para todos los artículos de esta sublínea.</small>
-								</div>
-								<div class="col-sm-9">
-									<label>MPs ya usadas <small class="text-muted">(color MP · cuántas celdas)</small></label>
+								<div class="col-sm-12">
+									<label>MPs ya usadas <small class="text-muted">(<span id="rmUnidadLineaAddon"></span>color MP · cuántas celdas)</small></label>
 									<div class="rm2-asignados" id="rmMpsAsignadas">
 										<span class="text-muted">Ninguna aún</span>
 									</div>
@@ -367,7 +407,7 @@ if ($idReceta <= 0) {
 									<span class="text-muted" id="rmMpActivaUndTxt"></span>
 									<button type="button" class="btn btn-xs btn-default pull-right" id="rmBtnLimpiarMpActiva">Soltar MP</button>
 									<div class="text-muted" style="margin-top:6px; font-size:12px;">
-										Clic celda = reemplazar esta capa · <strong>+</strong> o <strong>Otra</strong> = sumar MP sin pisar · <kbd>Alt</kbd>+clic = quitar.
+										Clic en un color = ver su consumo · clic celda = reemplazar · <strong>+</strong> o <strong>Otra</strong> = sumar MP · <kbd>Alt</kbd>+clic = quitar.
 									</div>
 								</div>
 								<div>

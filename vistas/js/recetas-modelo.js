@@ -16,7 +16,9 @@ var RM = {
 	dirty: false,
 	_ctxFlashTimer: null,
 	_mpReqSeq: 0,
-	_mpFiltroTimer: null
+	_mpFiltroTimer: null,
+	_enRender: false,
+	consumoMpPendiente: {}
 };
 
 function rmEsc(v) {
@@ -170,14 +172,100 @@ function rmMpsEnCelda(codColor, codTalla, lineaBase) {
 			var mp = String(v.mp_codigo || "").replace(/\s+/g, "");
 			if (!mp || seen[mp]) return;
 			seen[mp] = true;
-			mps.push({ mp: mp, idx: item.idx });
+			mps.push({
+				mp: mp,
+				idx: item.idx,
+				consumo: rmConsumoDeColor(item.linea, codColor)
+			});
 		});
 	});
 	return mps;
 }
 
-function rmCrearCapaExtra(origen) {
-	rmSincronizarConsumoEnVariantes();
+function rmIdxCapaDeMp(mp, lineaBase) {
+	if (!mp) return -1;
+	var found = -1;
+	rmLineasMismaSublinea(lineaBase || rmLineaActual()).forEach(function (item) {
+		if (found >= 0) return;
+		(item.linea.variantes || []).forEach(function (v) {
+			if (found >= 0) return;
+			if (String(v.mp_codigo || "").replace(/\s+/g, "") === String(mp)) found = item.idx;
+		});
+	});
+	return found;
+}
+
+function rmInputConsumoColor(codColor) {
+	return $(".rmConsumoColor").filter(function () {
+		return String($(this).attr("data-color") || "") === String(codColor || "");
+	});
+}
+
+function rmGuardarConsumoPendiente(mp, codColor, valor) {
+	if (!mp) return;
+	var k = String(mp);
+	if (!RM.consumoMpPendiente[k]) RM.consumoMpPendiente[k] = {};
+	RM.consumoMpPendiente[k][String(codColor || "")] = rmNormCons(valor);
+}
+
+function rmConsumoPendienteDe(mp, codColor) {
+	var map = RM.consumoMpPendiente[String(mp || "")];
+	if (!map) return "";
+	return map[String(codColor || "")] || "";
+}
+
+function rmLimpiarConsumoPendiente(mp, codColor) {
+	var map = RM.consumoMpPendiente[String(mp || "")];
+	if (!map) return;
+	delete map[String(codColor || "")];
+}
+
+function rmConsumoDesdeUi(mp, codColor, lineaDestino) {
+	if (String(RM.mpActiva || "") === String(mp || "")) {
+		var vivo = rmNormCons(rmInputConsumoColor(codColor).val());
+		if (vivo) return vivo;
+	}
+	var pend = rmConsumoPendienteDe(mp, codColor);
+	if (pend) return pend;
+	if (lineaDestino) return rmNormCons(rmConsumoDeColor(lineaDestino, codColor));
+	return "";
+}
+
+function rmLineaDeMp(mp) {
+	var idx = rmIdxCapaDeMp(mp);
+	if (idx < 0 || !RM.estado || !RM.estado.lineas) return null;
+	return RM.estado.lineas[idx] || null;
+}
+
+function rmPintarInputConsumoColor($inp, valor, especial) {
+	if (!$inp || !$inp.length) return;
+	$inp.val(rmFmtNum(valor));
+	var $wrap = $inp.closest(".rm2-cons-color");
+	var $th = $inp.closest("th");
+	$wrap.toggleClass("especial", !!especial);
+	$th.toggleClass("especial", !!especial);
+	$wrap.find(".rm2-esp-tag, .rmQuitarConsumoColor").toggle(!!especial);
+}
+
+function rmRefrescarInputsConsumoSegunMp() {
+	var mp = RM.mpActiva;
+	var linea = mp ? rmLineaDeMp(mp) : rmLineaActual();
+	$(".rmConsumoColor").each(function () {
+		var $inp = $(this);
+		var c = String($inp.attr("data-color") || "");
+		if (linea) {
+			rmPintarInputConsumoColor($inp, rmConsumoDeColor(linea, c), rmColorTieneConsumoEspecial(linea, c));
+			return;
+		}
+		var pend = rmConsumoPendienteDe(mp, c);
+		var val = pend || "1";
+		rmPintarInputConsumoColor($inp, val, !!(pend && !rmMismoConsumo(pend, "1")));
+	});
+}
+
+function rmCrearCapaExtra(origen, consumoInicial) {
+	var cons = rmNormCons(consumoInicial);
+	if (!cons) cons = "1";
 	var linea = {
 		orden: rmSiguienteOrdenLinea(),
 		nombre_rol: (origen && origen.nombre_rol) || "",
@@ -186,7 +274,8 @@ function rmCrearCapaExtra(origen) {
 		nombre_sublinea: origen && origen.nombre_sublinea,
 		regla_variante: "COLOR_TALLA",
 		unidad: (origen && origen.unidad) || "",
-		consumo_base: (origen && origen.consumo_base) || $("#rmConsumoLinea").val() || "1",
+		consumo_base: cons,
+		consumo_color: {},
 		mp_base_codigo: "",
 		activo: 1,
 		variantes: []
@@ -218,10 +307,10 @@ function rmAsignarMpEnLineaIdx(idx, key, mp) {
 	var linea = RM.estado && RM.estado.lineas ? RM.estado.lineas[idx] : null;
 	if (!linea || !mp) return;
 	rmAsegurarVariantesArticulos(linea);
-	var consumo = linea.consumo_base || "1";
+	var parts = String(key).split("|");
+	var cons = rmConsumoDesdeUi(mp, parts[0] || "", linea);
+	if (cons) rmSetConsumoColor(linea, parts[0] || "", cons);
 	if (idx === RM.lineaIdx) {
-		consumo = $("#rmConsumoLinea").val() || consumo;
-		linea.consumo_base = consumo;
 		if (RM.mpActivaUnd) rmHeredarUnidadDeMp(RM.mpActivaUnd);
 	} else if (RM.mpActivaUnd && !linea.unidad) {
 		linea.unidad = RM.mpActivaUnd;
@@ -229,9 +318,10 @@ function rmAsignarMpEnLineaIdx(idx, key, mp) {
 	(linea.variantes || []).forEach(function (v) {
 		if (String(v.cod_color || "") + "|" + String(v.cod_talla || "") === String(key)) {
 			v.mp_codigo = String(mp);
-			v.consumo = consumo;
+			v.consumo = rmConsumoDeColor(linea, v.cod_color);
 		}
 	});
+	rmLimpiarConsumoPendiente(mp, parts[0] || "");
 	rmMarcarDirty(true);
 }
 
@@ -259,18 +349,25 @@ function rmAgregarMpExtraAKey(key, mp, silencioso) {
 		if (!silencioso) rmAlerta("info", "MP", "Esa tela ya está en esta celda");
 		return false;
 	}
-	if (idx < 0) idx = rmCrearCapaExtra(linea);
+	var cons = rmConsumoDesdeUi(mp, codColor, idx >= 0 ? RM.estado.lineas[idx] : null);
+	if (idx < 0) idx = rmCrearCapaExtra(linea, cons);
+	else if (cons) rmSetConsumoColor(RM.estado.lineas[idx], codColor, cons);
 	rmAsignarMpEnLineaIdx(idx, key, mp);
-	return true;
+	return idx;
 }
 
 function rmAgregarMpExtraAColor(codColor, mp) {
 	var n = 0;
+	var lastIdx = -1;
 	(RM.articulos || []).forEach(function (art) {
 		if (String(art.cod_color || "") !== String(codColor)) return;
-		if (rmAgregarMpExtraAKey(rmClaveArt(art), mp, true)) n++;
+		var idx = rmAgregarMpExtraAKey(rmClaveArt(art), mp, true);
+		if (idx === false || idx < 0) return;
+		n++;
+		lastIdx = idx;
 	});
 	if (!n) rmAlerta("info", "MP", "Esa tela ya está en todas las tallas de este color");
+	else if (lastIdx >= 0) RM.lineaIdx = lastIdx;
 	return n;
 }
 
@@ -287,24 +384,42 @@ function rmQuitarMpDeCapa(idx, key) {
 }
 
 function rmLimpiarCapasExtraVacias() {
-	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return;
+	rmLimpiarLineasSinMp({ keepActual: true });
+}
+
+/** Quita sublíneas sin MP (consultadas y no puestas en ninguna tarjeta). */
+function rmLimpiarLineasSinMp(opts) {
+	opts = opts || {};
+	var keepActual = opts.keepActual !== false;
+	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return 0;
 	var actual = rmLineaActual();
-	var sub = rmNormSublinea(actual && actual.codigo_sublinea);
 	var kept = [];
+	var removed = 0;
 	RM.estado.lineas.forEach(function (l, i) {
-		if (i === RM.lineaIdx || Number(l.es_tela_principal) === 1 || Number(l.activo) === 0) {
+		if (Number(l.activo) === 0) {
 			kept.push(l);
 			return;
 		}
-		if (sub && rmNormSublinea(l.codigo_sublinea) === sub && !rmLineaTieneMp(l)) {
+		if (keepActual && i === RM.lineaIdx) {
+			kept.push(l);
+			return;
+		}
+		if (!rmLineaTieneMp(l)) {
+			removed++;
 			return;
 		}
 		kept.push(l);
 	});
-	if (kept.length === RM.estado.lineas.length) return;
-	var ni = kept.indexOf(actual);
+	if (!removed) return 0;
 	RM.estado.lineas = kept;
-	RM.lineaIdx = ni >= 0 ? ni : (kept.length ? 0 : null);
+	if (actual && kept.indexOf(actual) >= 0) {
+		RM.lineaIdx = kept.indexOf(actual);
+	} else {
+		RM.lineaIdx = kept.length ? 0 : null;
+	}
+	RM.lineaAnteriorIdx = null;
+	if (!opts.silent) rmMarcarDirty(true);
+	return removed;
 }
 
 function rmNombrePickSublinea(sub, nom) {
@@ -343,7 +458,8 @@ function rmEnfocarPanelLinea() {
 		$ctx[0].scrollIntoView({ behavior: "smooth", block: "start" });
 	}
 	setTimeout(function () {
-		$("#rmConsumoLinea").focus().select();
+		var $c = $(".rmConsumoColor").first();
+		if ($c.length) $c.focus().select();
 	}, 120);
 }
 
@@ -428,7 +544,128 @@ function rmConsumoLinea(linea) {
 	if (linea && linea.consumo_base != null && linea.consumo_base !== "") {
 		return linea.consumo_base;
 	}
-	return $("#rmConsumoLinea").val() || "1";
+	return "1";
+}
+
+function rmNormCons(v) {
+	return rmFmtNum(v);
+}
+
+function rmMismoConsumo(a, b) {
+	return rmNormCons(a) === rmNormCons(b);
+}
+
+function rmInferirConsumoColor(linea) {
+	var map = {};
+	var general = rmNormCons(rmConsumoLinea(linea));
+	var porColor = {};
+	(linea && linea.variantes || []).forEach(function (v) {
+		var c = String(v.cod_color || "");
+		if (!c || v.consumo == null || v.consumo === "") return;
+		if (!porColor[c]) porColor[c] = [];
+		porColor[c].push(rmNormCons(v.consumo));
+	});
+	Object.keys(porColor).forEach(function (c) {
+		var vals = porColor[c];
+		var first = vals[0];
+		var i;
+		for (i = 1; i < vals.length; i++) {
+			if (vals[i] !== first) return;
+		}
+		if (first !== "" && first !== general) map[c] = first;
+	});
+	return map;
+}
+
+function rmAsegurarConsumoColor(linea) {
+	if (!linea) return;
+	if (!linea.consumo_color || typeof linea.consumo_color !== "object" || Array.isArray(linea.consumo_color)) {
+		linea.consumo_color = rmInferirConsumoColor(linea);
+	}
+}
+
+function rmColorTieneConsumoEspecial(linea, codColor) {
+	rmAsegurarConsumoColor(linea);
+	var v = linea && linea.consumo_color ? linea.consumo_color[String(codColor || "")] : null;
+	return v != null && v !== "";
+}
+
+function rmConsumoDeColor(linea, codColor) {
+	rmAsegurarConsumoColor(linea);
+	if (rmColorTieneConsumoEspecial(linea, codColor)) {
+		return linea.consumo_color[String(codColor || "")];
+	}
+	return rmConsumoLinea(linea);
+}
+
+function rmConteoConsumoEspecial(linea) {
+	rmAsegurarConsumoColor(linea);
+	return Object.keys(linea && linea.consumo_color ? linea.consumo_color : {}).length;
+}
+
+function rmConsumosAsignadosLinea(linea) {
+	var vals = [];
+	(linea && linea.variantes || []).forEach(function (v) {
+		if (!v.mp_codigo) return;
+		var c = rmNormCons(v.consumo != null && v.consumo !== "" ? v.consumo : rmConsumoDeColor(linea, v.cod_color));
+		if (c) vals.push(c);
+	});
+	return vals;
+}
+
+/** Consumo que se ve en el chip: el que más se usa en esta capa, sin desglosar colores. */
+function rmConsumoResumenLinea(linea) {
+	var vals = rmConsumosAsignadosLinea(linea);
+	if (!vals.length) return rmNormCons(rmConsumoLinea(linea));
+	var counts = {};
+	var best = vals[0];
+	var bestN = 0;
+	vals.forEach(function (c) {
+		counts[c] = (counts[c] || 0) + 1;
+		if (counts[c] > bestN) {
+			bestN = counts[c];
+			best = c;
+		}
+	});
+	return best;
+}
+
+function rmHayConsumosMixtosLinea(linea) {
+	var seen = {};
+	rmConsumosAsignadosLinea(linea).forEach(function (c) {
+		seen[c] = true;
+	});
+	return Object.keys(seen).length > 1;
+}
+
+function rmSetConsumoColor(linea, codColor, valor) {
+	if (!linea) return;
+	rmAsegurarConsumoColor(linea);
+	var c = String(codColor || "");
+	if (!c) return;
+	var general = rmConsumoLinea(linea);
+	var n = rmNormCons(valor);
+	if (n === "" || rmMismoConsumo(n, general)) {
+		delete linea.consumo_color[c];
+		n = rmNormCons(general) || general;
+	} else {
+		linea.consumo_color[c] = n;
+	}
+	(linea.variantes || []).forEach(function (v) {
+		if (String(v.cod_color || "") === c) v.consumo = n;
+	});
+}
+
+function rmAplicarConsumosLinea(linea) {
+	if (!linea) return;
+	rmAsegurarConsumoColor(linea);
+	var general = rmNormCons(rmConsumoLinea(linea));
+	Object.keys(linea.consumo_color || {}).forEach(function (c) {
+		if (rmMismoConsumo(linea.consumo_color[c], general)) delete linea.consumo_color[c];
+	});
+	(linea.variantes || []).forEach(function (v) {
+		v.consumo = rmConsumoDeColor(linea, v.cod_color);
+	});
 }
 
 function rmClaveColorTallaNorm(art) {
@@ -523,6 +760,7 @@ function rmDeduplicarLineasEstado() {
 
 function rmAsegurarVariantesArticulos(linea) {
 	var mapa = rmMapaVariantes(linea);
+	rmAsegurarConsumoColor(linea);
 	var consumoDefault = rmConsumoLinea(linea);
 	var nuevas = [];
 	var seenArt = {};
@@ -537,7 +775,9 @@ function rmAsegurarVariantesArticulos(linea) {
 		if (seenCT[ct]) return;
 		seenCT[ct] = true;
 		var prev = rmBuscarVarianteEnMapa(mapa, art);
-		var consumoPrev = prev.consumo != null && prev.consumo !== "" ? prev.consumo : consumoDefault;
+		var consumo = rmColorTieneConsumoEspecial(linea, art.cod_color)
+			? rmConsumoDeColor(linea, art.cod_color)
+			: (prev.consumo != null && prev.consumo !== "" ? prev.consumo : consumoDefault);
 		nuevas.push({
 			cod_color: art.cod_color || "",
 			cod_talla: art.cod_talla || "",
@@ -545,7 +785,7 @@ function rmAsegurarVariantesArticulos(linea) {
 			talla: art.talla || "",
 			articulo: art.articulo,
 			mp_codigo: prev.mp_codigo || "",
-			consumo: consumoPrev,
+			consumo: consumo,
 			observacion: prev.observacion || ""
 		});
 	});
@@ -867,7 +1107,6 @@ function rmRenderCabecera() {
 	$("#rmTituloCabecera").text(c.modelo + " v" + c.version);
 	var editable = rmEsBorradorEditable();
 	$("#rmBtnGuardar, #rmBtnPublicar, #rmBtnAgregarSublinea, #rmBtnCambiarSublinea").prop("disabled", !editable);
-	$("#rmConsumoLinea").prop("disabled", !editable);
 	$("#rmMsgEstado").text(editable ? "" : "Solo lectura — crea «Nueva versión»");
 }
 
@@ -898,6 +1137,42 @@ function rmLineasActivasPorOrden() {
 	return out;
 }
 
+function rmRenumerarOrdenLineas() {
+	var n = 0;
+	(RM.estado && RM.estado.lineas || []).forEach(function (l) {
+		if (Number(l.activo) === 0) return;
+		n++;
+		l.orden = n;
+	});
+}
+
+function rmMoverLinea(idx, dir) {
+	dir = dir < 0 ? -1 : 1;
+	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return false;
+	var vis = rmLineasActivasPorOrden();
+	var pos = -1;
+	vis.forEach(function (it, i) {
+		if (it.idx === idx) pos = i;
+	});
+	var dest = pos + dir;
+	if (pos < 0 || dest < 0 || dest >= vis.length) return false;
+	var actual = rmLineaActual();
+	var ordenadas = vis.map(function (it) { return it.linea; });
+	var tmp = ordenadas[pos];
+	ordenadas[pos] = ordenadas[dest];
+	ordenadas[dest] = tmp;
+	(RM.estado.lineas || []).forEach(function (l) {
+		if (Number(l.activo) === 0) ordenadas.push(l);
+	});
+	RM.estado.lineas = ordenadas;
+	rmRenumerarOrdenLineas();
+	RM.lineaIdx = actual ? RM.estado.lineas.indexOf(actual) : RM.lineaIdx;
+	rmMarcarDirty(true);
+	rmRenderChips();
+	rmRenderTarjetasPorArticulo();
+	return true;
+}
+
 function rmRenderChips() {
 	var $box = $("#rmChipsInsumos").empty();
 	var lineasActivas = rmLineasActivasPorOrden();
@@ -906,32 +1181,39 @@ function rmRenderChips() {
 		return;
 	}
 	$box.addClass("has-chips");
-	lineasActivas.forEach(function (item) {
+	lineasActivas.forEach(function (item, pos) {
 		var linea = item.linea;
 		var idx = item.idx;
 		rmAsegurarVariantesArticulos(linea);
 		var cont = rmContarOk(linea);
 		var active = RM.lineaIdx === idx;
-		var cons = linea.consumo_base != null ? linea.consumo_base : "";
-		// Si es la línea activa, preferir el valor del input (aún no sincronizado)
-		if (active) {
-			var consInput = $("#rmConsumoLinea").val();
-			if (consInput !== undefined && consInput !== null && consInput !== "") cons = consInput;
-		}
+		var cons = rmConsumoResumenLinea(linea);
 		var esTela = Number(linea.es_tela_principal) === 1;
-		var html = "<div class='rm2-chip" + (active ? " active" : "") + "' data-idx='" + idx + "'>"
-			+ "<strong>" + rmEsc(rmEtiquetaLineaConCapa(linea, idx)) + "</strong>";
+		var editable = rmEsBorradorEditable();
+		var html = "<div class='rm2-chip" + (active ? " active" : "") + "' data-idx='" + idx + "'>";
+		if (editable && lineasActivas.length > 1) {
+			html += "<span class='rm2-chip-ord'>"
+				+ "<button type='button' class='rmMoverLinea' data-idx='" + idx + "' data-dir='-1'"
+				+ (pos === 0 ? " disabled" : "") + " title='Subir'><i class='fa fa-caret-up'></i></button>"
+				+ "<button type='button' class='rmMoverLinea' data-idx='" + idx + "' data-dir='1'"
+				+ (pos === lineasActivas.length - 1 ? " disabled" : "") + " title='Bajar'><i class='fa fa-caret-down'></i></button>"
+				+ "</span>";
+		}
+		html += "<strong>" + rmEsc(rmEtiquetaLineaConCapa(linea, idx)) + "</strong>";
 		if (active) {
 			html += "<span class='rm2-chip-editando'>EDITANDO</span>";
 		}
 		if (cons !== "") {
 			html += "<span class='label label-default'>" + rmEsc(rmFmtNum(cons)) + (linea.unidad ? " " + rmEsc(linea.unidad) : "") + "</span>";
 		}
+		if (rmHayConsumosMixtosLinea(linea)) {
+			html += "<span class='label label-warning' title='Hay colores con consumo distinto en esta capa'>mixto</span>";
+		}
 		html += "<span class='label " + (esTela
 			? (cont.ok ? "label-primary" : "label-warning")
 			: (cont.ok === cont.total && cont.total ? "label-success" : "label-warning")) + "'>"
 			+ cont.ok + "/" + cont.total + "</span>";
-		if (rmEsBorradorEditable()) {
+		if (editable) {
 			html += "<button type='button' class='rm2-btn-tela rmToggleTela" + (esTela ? " on" : "") + "' data-idx='" + idx + "'"
 				+ " title='" + (esTela ? "Es tela principal (clic para quitar). Puede haber varias; cada color usa una sola." : "Marcar como tela principal (puede haber más de una)") + "'>"
 				+ (esTela ? "★ Tela principal" : "Hacer tela") + "</button>";
@@ -1033,6 +1315,7 @@ function rmAgregarLineaSublinea(sub, nom) {
 		regla_variante: "COLOR_TALLA",
 		unidad: "",
 		consumo_base: "1",
+		consumo_color: {},
 		mp_base_codigo: "",
 		activo: 1,
 		variantes: []
@@ -1043,6 +1326,7 @@ function rmAgregarLineaSublinea(sub, nom) {
 		? lineaAnteriorIdx
 		: null;
 	RM.lineaIdx = RM.estado.lineas.length - 1;
+	rmLimpiarLineasSinMp({ keepActual: true });
 	rmResetMpEnMano();
 	rmLimpiarPickSublinea();
 	rmMarcarDirty(true);
@@ -1136,8 +1420,7 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 		$hint.hide().empty();
 		$("#rmCtxFlash").removeClass("visible").hide();
 		$("#rmBtnVolverLineaAnterior").hide();
-		$("#rmConsumoLineaLabel").text("Consumo");
-		$("#rmUnidadLineaAddon").text("—");
+		$("#rmUnidadLineaAddon").text("");
 		$("#rmMatrizContexto").text("Asignar · color artículo × talla");
 		$("#rmTituloArticulos").text("2. Asignar materia prima");
 		return;
@@ -1149,21 +1432,25 @@ function rmActualizarContextoLineaActiva(mensajeTemporal, opts) {
 	var capa = rmCapaDeLinea(linea, RM.lineaIdx);
 	var opcional = rmLineaEsCapaOpcional(linea);
 
+	var nEsp = rmConteoConsumoEspecial(linea);
+	var txtEsp = nEsp
+		? (" · " + nEsp + " color" + (nEsp === 1 ? "" : "es") + " con consumo distinto")
+		: "";
 	$ctx.show();
 	// El nombre completo solo aquí (evitar repetirlo en título / consumo / matriz)
 	$("#rmCtxNombre").text(etiqueta);
 	$("#rmCtxMeta").text(
 		capa.total > 1
-			? ("Capa " + capa.nro + " de " + capa.total + " · mismo insumo, otro color si hace falta · consumo de esta capa")
-			: ("Consumo único para esta sublínea · se aplica a " + nArts
-				+ " combinación" + (nArts === 1 ? "" : "es") + " color × talla")
+			? ("Capa " + capa.nro + " de " + capa.total + " · mismo insumo, otro color si hace falta · consumo por color" + (und !== "—" ? " · " + und : "") + txtEsp)
+			: ("Consumo por color en la matriz · " + nArts
+				+ " combinación" + (nArts === 1 ? "" : "es") + " color × talla"
+				+ (und !== "—" ? " · " + und : "") + txtEsp)
 	);
-	$("#rmConsumoLineaLabel").text("Consumo");
-	$("#rmUnidadLineaAddon").text(und);
+	$("#rmUnidadLineaAddon").text(und !== "—" ? und + " · " : "");
 	$("#rmMatrizContexto").text(
 		(opcional || rmLineaCoberturaParcial(linea))
-			? "Asignar MP · color × talla · vacío = este color no usa esta tela"
-			: "Asignar MP · color × talla"
+			? "Asignar MP · color × talla · vacío = este color no usa esta tela · consumo en la fila del color"
+			: "Asignar MP · color × talla · consumo distinto en la fila del color"
 	);
 	$("#rmTituloArticulos").text("2. Asignar materia prima");
 	$hint.hide().empty();
@@ -1293,7 +1580,7 @@ function rmRenderMpsAsignadas() {
 			+ " data-und='" + rmEsc(info.unidad || "") + "'"
 			+ " data-color='" + rmEsc(info.color || "") + "'"
 			+ " data-desc='" + rmEsc(info.descripcion || "") + "'"
-			+ " title='Clic: poner en mano · " + rmEsc(cod) + "'>"
+			+ " title='Clic: ver y editar el consumo de este color · " + rmEsc(cod) + "'>"
 			+ "<strong>" + rmEsc(rmEtiquetaMp(cod)) + "</strong>"
 			+ "<span class='n'>" + mapa[cod] + "</span>"
 			+ "</button>"
@@ -1314,7 +1601,7 @@ function rmHeredarUnidadDeMp(und) {
 	var next = String(und);
 	if (String(linea.unidad || "") !== next) rmMarcarDirty(true);
 	linea.unidad = next;
-	$("#rmUnidadLineaAddon").text(next || "—");
+	$("#rmUnidadLineaAddon").text(next ? next + " · " : "");
 	$("#rmMpActivaUndTxt").text(next ? (" · " + next) : "");
 }
 
@@ -1323,7 +1610,6 @@ function rmSetMpActiva(mp, und, color, desc) {
 	RM.mpActivaUnd = und || "";
 	RM.mpActivaColor = color || rmColorMp(mp) || "";
 	if (mp) {
-		if (und) rmHeredarUnidadDeMp(und);
 		$("#rmMpActivaBox").addClass("visible");
 		$("#rmMpActivaTxt").html(
 			"<strong>" + rmEsc(RM.mpActivaColor || mp) + "</strong>"
@@ -1343,6 +1629,29 @@ function rmSetMpActiva(mp, und, color, desc) {
 	$("#rmMpsAsignadas .rm2-asig-chip").removeClass("activa");
 	if (mp) {
 		$("#rmMpsAsignadas .rm2-asig-chip[data-mp='" + String(mp).replace(/'/g, "\\'") + "']").addClass("activa");
+	}
+	$("#rmMatriz .rm2-celda-mp").removeClass("activa");
+	if (mp) {
+		$("#rmMatriz .rm2-celda-mp[data-mp='" + String(mp).replace(/'/g, "\\'") + "']").addClass("activa");
+	}
+	if (RM._enRender) return;
+	if (mp) {
+		var idx = rmIdxCapaDeMp(mp);
+		if (idx >= 0 && idx !== RM.lineaIdx) {
+			rmSincronizarConsumoEnVariantes();
+			RM.lineaIdx = idx;
+			if (und) rmHeredarUnidadDeMp(und);
+			rmRenderChips();
+			rmActualizarAccionesSublinea();
+			rmActualizarContextoLineaActiva("Consumo de «" + (RM.mpActivaColor || rmEtiquetaMp(mp) || mp) + "»");
+			rmRenderMatriz();
+			return;
+		}
+		if (und) rmHeredarUnidadDeMp(und);
+	}
+	if (mp && rmIdxCapaDeMp(mp) < 0) {
+		rmRefrescarInputsConsumoSegunMp();
+		rmActualizarContextoLineaActiva("Consumo para «" + (RM.mpActivaColor || rmEtiquetaMp(mp) || mp) + "» al asignar");
 	}
 }
 
@@ -1568,8 +1877,8 @@ function rmRenderMatriz() {
 	}
 	$("#rmAyudaPaso2").hide();
 	$("#rmPanelPaso2").show();
+	RM._enRender = true;
 
-	$("#rmConsumoLinea").val(linea.consumo_base != null && linea.consumo_base !== "" ? linea.consumo_base : "1");
 	rmActualizarContextoLineaActiva();
 
 	rmAsegurarVariantesArticulos(linea);
@@ -1590,13 +1899,13 @@ function rmRenderMatriz() {
 			: "")
 		+ "</th>";
 	tallas.forEach(function (t) {
-		head1 += "<th>" + rmEsc(t.talla || t.cod_talla) + "</th>";
+		head1 += "<th class='rm2-talla-th'>" + rmEsc(t.talla || t.cod_talla) + "</th>";
 	});
-	head1 += "<th rowspan='2' style='min-width:140px;'>Atajos</th></tr>";
+	head1 += "</tr>";
 
 	var head2 = "<tr>";
 	tallas.forEach(function (t) {
-		head2 += "<th style='background:#e8f4fc; padding:4px;'>"
+		head2 += "<th class='rm2-talla-th' style='background:#e8f4fc; padding:4px;'>"
 			+ (editable
 				? "<div class='btn-group btn-group-xs'>"
 					+ "<button type='button' class='btn btn-info rmAplicarTalla' data-talla='" + rmEsc(t.cod_talla) + "' title='MP en mano → todos los colores de esta talla'><i class='fa fa-arrows-v'></i></button>"
@@ -1610,8 +1919,32 @@ function rmRenderMatriz() {
 
 	var $tbody = $("#rmMatriz tbody").empty();
 	colores.forEach(function (col) {
-		var row = "<tr><th class='rm2-color-th'>"
+		var especial = rmColorTieneConsumoEspecial(linea, col.cod_color);
+		var consColor = rmConsumoDeColor(linea, col.cod_color);
+		var row = "<tr><th class='rm2-color-th" + (especial ? " especial" : "") + "'>"
 			+ "<strong>" + rmEsc(col.color || col.cod_color) + "</strong>"
+			+ "<div class='rm2-cons-color" + (especial ? " especial" : "") + "'>"
+			+ (editable
+				? "<input type='number' step='any' min='0' class='form-control rmConsumoColor' data-color='"
+					+ rmEsc(col.cod_color) + "' value='" + rmEsc(rmFmtNum(consColor)) + "'"
+					+ " title='" + (especial
+						? "Consumo distinto de este color. No se pisa al cambiar el general."
+						: "Consumo de este color. Si lo cambiás, queda como especial.") + "'>"
+					+ "<span class='rm2-esp-tag'" + (especial ? "" : " style='display:none;'") + ">especial</span>"
+					+ "<button type='button' class='rmQuitarConsumoColor' data-color='" + rmEsc(col.cod_color) + "'"
+					+ (especial ? "" : " style='display:none;'")
+					+ " title='Volver al consumo general'>&times;</button>"
+				: "<span class='rm2-cons-txt'>" + rmEsc(rmFmtNum(consColor))
+					+ (especial ? " <span class='rm2-esp-tag'>especial</span>" : "")
+					+ "</span>")
+			+ "</div>"
+			+ (editable
+				? "<div class='rm2-atajos-fila'>"
+					+ "<button type='button' class='btn btn-xs btn-primary rmAplicarColor' data-color='" + rmEsc(col.cod_color) + "' title='MP en mano → todas las tallas de este color'><i class='fa fa-arrows-h'></i> Tallas</button>"
+					+ "<button type='button' class='btn btn-xs btn-success rmAgregarMpColor' data-color='" + rmEsc(col.cod_color) + "' title='Suma la MP en mano a este color, sin pisar'><i class='fa fa-plus'></i> Otra</button>"
+					+ "<button type='button' class='btn btn-xs btn-default rmQuitarColor' data-color='" + rmEsc(col.cod_color) + "' title='Quitar MP en todas las tallas de este color'><i class='fa fa-times'></i></button>"
+					+ "</div>"
+				: "")
 			+ "</th>";
 		tallas.forEach(function (tal) {
 			var art = rmArtPorColorTalla(col.cod_color, tal.cod_talla);
@@ -1629,8 +1962,11 @@ function rmRenderMatriz() {
 			if (ok) {
 				inner += "<div class='rm2-celda-mps'>";
 				mps.forEach(function (item) {
-					inner += "<span class='rm2-celda-mp' title='" + rmEsc(item.mp) + "'>"
-						+ rmEsc(rmEtiquetaMp(item.mp));
+					var esActiva = String(item.mp) === String(RM.mpActiva || "");
+					inner += "<span class='rm2-celda-mp" + (esActiva ? " activa" : "") + "' data-mp='" + rmEsc(item.mp) + "'"
+						+ " title='" + rmEsc(rmEtiquetaMp(item.mp) + " · consumo " + rmFmtNum(item.consumo) + " · clic para editar este color") + "'>"
+						+ rmEsc(rmEtiquetaMp(item.mp))
+						+ "<span class='rm2-celda-cons'>" + rmEsc(rmFmtNum(item.consumo)) + "</span>";
 					if (editable) {
 						inner += "<a href='javascript:;' class='rmQuitarMpCapa' data-idx='" + item.idx
 							+ "' data-key='" + rmEsc(key) + "' title='Quitar esta MP'>&times;</a>";
@@ -1653,21 +1989,14 @@ function rmRenderMatriz() {
 				+ inner
 				+ "</td>";
 		});
-		row += "<td>"
-			+ (editable
-				? "<div class='btn-group btn-group-xs'>"
-					+ "<button type='button' class='btn btn-primary rmAplicarColor' data-color='" + rmEsc(col.cod_color) + "' title='MP en mano → reemplaza en todas las tallas de este color'><i class='fa fa-arrows-h'></i> Tallas</button>"
-					+ "<button type='button' class='btn btn-success rmAgregarMpColor' data-color='" + rmEsc(col.cod_color) + "' title='Suma la MP en mano a este color, sin pisar la que ya está'><i class='fa fa-plus'></i> Otra</button>"
-					+ "<button type='button' class='btn btn-default rmQuitarColor' data-color='" + rmEsc(col.cod_color) + "' title='Quitar MP en todas las tallas de este color'><i class='fa fa-times'></i></button>"
-					+ "</div>"
-				: "")
-			+ "</td></tr>";
+		row += "</tr>";
 		$tbody.append(row);
 	});
 
 	rmRenderMpsAsignadas();
 	rmRenderTarjetasPorArticulo();
 	rmSetMpActiva(RM.mpActiva, RM.mpActivaUnd, RM.mpActivaColor, RM.mpActiva ? (RM.mpCache[RM.mpActiva] || {}).descripcion : "");
+	RM._enRender = false;
 }
 
 function rmRefrescarPaso2(reloadCatalogo) {
@@ -1680,44 +2009,46 @@ function rmRefrescarPaso2(reloadCatalogo) {
 function rmAplicarMpAKey(key, mp) {
 	var linea = rmLineaActual();
 	if (!linea || !mp) return;
-	var consumo = $("#rmConsumoLinea").val() || linea.consumo_base || "1";
-	linea.consumo_base = consumo;
+	var parts = String(key).split("|");
+	var cons = rmConsumoDesdeUi(mp, parts[0] || "", linea);
+	if (cons) rmSetConsumoColor(linea, parts[0] || "", cons);
 	if (RM.mpActivaUnd) rmHeredarUnidadDeMp(RM.mpActivaUnd);
 	(linea.variantes || []).forEach(function (v) {
 		if (String(v.cod_color || "") + "|" + String(v.cod_talla || "") === String(key)) {
 			v.mp_codigo = String(mp);
-			v.consumo = consumo;
+			v.consumo = rmConsumoDeColor(linea, v.cod_color);
 		}
 	});
+	rmLimpiarConsumoPendiente(mp, parts[0] || "");
 	rmMarcarDirty(true);
 }
 
 function rmAplicarMpAColor(codColor, mp) {
 	var linea = rmLineaActual();
 	if (!linea || !mp) return;
-	var consumo = $("#rmConsumoLinea").val() || linea.consumo_base || "1";
-	linea.consumo_base = consumo;
+	var cons = rmConsumoDesdeUi(mp, codColor, linea);
+	if (cons) rmSetConsumoColor(linea, codColor, cons);
 	if (RM.mpActivaUnd) rmHeredarUnidadDeMp(RM.mpActivaUnd);
 	(linea.variantes || []).forEach(function (v) {
 		if (String(v.cod_color || "") === String(codColor)) {
 			v.mp_codigo = String(mp);
-			v.consumo = consumo;
+			v.consumo = rmConsumoDeColor(linea, v.cod_color);
 		}
 	});
+	rmLimpiarConsumoPendiente(mp, codColor);
 	rmMarcarDirty(true);
 }
 
 function rmAplicarMpATalla(codTalla, mp) {
 	var linea = rmLineaActual();
 	if (!linea || !mp) return;
-	var consumo = $("#rmConsumoLinea").val() || linea.consumo_base || "1";
-	linea.consumo_base = consumo;
 	if (RM.mpActivaUnd) rmHeredarUnidadDeMp(RM.mpActivaUnd);
 	(linea.variantes || []).forEach(function (v) {
-		if (String(v.cod_talla || "") === String(codTalla)) {
-			v.mp_codigo = String(mp);
-			v.consumo = consumo;
-		}
+		if (String(v.cod_talla || "") !== String(codTalla)) return;
+		var cons = rmConsumoDesdeUi(mp, v.cod_color, linea);
+		if (cons) rmSetConsumoColor(linea, v.cod_color, cons);
+		v.mp_codigo = String(mp);
+		v.consumo = rmConsumoDeColor(linea, v.cod_color);
 	});
 	rmMarcarDirty(true);
 }
@@ -1725,12 +2056,12 @@ function rmAplicarMpATalla(codTalla, mp) {
 function rmAplicarMpTodos(mp) {
 	var linea = rmLineaActual();
 	if (!linea || !mp) return;
-	var consumo = $("#rmConsumoLinea").val() || linea.consumo_base || "1";
-	linea.consumo_base = consumo;
 	if (RM.mpActivaUnd) rmHeredarUnidadDeMp(RM.mpActivaUnd);
 	(linea.variantes || []).forEach(function (v) {
+		var cons = rmConsumoDesdeUi(mp, v.cod_color, linea);
+		if (cons) rmSetConsumoColor(linea, v.cod_color, cons);
 		v.mp_codigo = String(mp);
-		v.consumo = consumo;
+		v.consumo = rmConsumoDeColor(linea, v.cod_color);
 	});
 	rmMarcarDirty(true);
 }
@@ -1821,11 +2152,7 @@ function rmExigirMpEnMano() {
 function rmSincronizarConsumoEnVariantes() {
 	var linea = rmLineaActual();
 	if (!linea) return;
-	var consumo = $("#rmConsumoLinea").val() || "1";
-	linea.consumo_base = consumo;
-	(linea.variantes || []).forEach(function (v) {
-		v.consumo = consumo;
-	});
+	rmAplicarConsumosLinea(linea);
 	rmRenderChips();
 	rmRenderTarjetasPorArticulo();
 }
@@ -1949,12 +2276,14 @@ function rmAplicarFiltroMp() {
 function rmPayloadLineas() {
 	rmNormalizarNombresTela();
 	rmDeduplicarLineasEstado();
-	return (RM.estado.lineas || []).map(function (linea, idx) {
-		var consumo = (RM.lineaIdx === idx)
-			? ($("#rmConsumoLinea").val() || linea.consumo_base || "1")
-			: (linea.consumo_base || "1");
+	rmLimpiarLineasSinMp({ keepActual: false });
+	return (RM.estado.lineas || []).filter(function (linea) {
+		return rmLineaTieneMp(linea);
+	}).map(function (linea, idx) {
+		var consumo = linea.consumo_base || "1";
 		linea.consumo_base = consumo;
 		rmAsegurarVariantesArticulos(linea);
+		rmAplicarConsumosLinea(linea);
 		var variantes = [];
 		(linea.variantes || []).forEach(function (v) {
 			if (!v.mp_codigo) return;
@@ -1962,7 +2291,7 @@ function rmPayloadLineas() {
 				cod_color: v.cod_color || "",
 				cod_talla: v.cod_talla || "",
 				mp_codigo: v.mp_codigo,
-				consumo: consumo,
+				consumo: (v.consumo != null && v.consumo !== "") ? v.consumo : consumo,
 				observacion: null
 			});
 		});
@@ -2025,7 +2354,8 @@ function rmCargarEditor() {
 			});
 			var dupsLineas = rmDeduplicarLineasEstado();
 			RM.estado.lineas.forEach(rmAsegurarVariantesArticulos);
-			if (rmNormalizarNombresTela() || needsRemap || dupsLineas) rmMarcarDirty(true);
+			var vacias = rmLimpiarLineasSinMp({ keepActual: false, silent: true });
+			if (rmNormalizarNombresTela() || needsRemap || dupsLineas || vacias) rmMarcarDirty(true);
 			else rmMarcarDirty(false);
 			rmEnriquecerNombresSublinea(function () {
 				rmRenderCabecera();
@@ -2563,12 +2893,13 @@ $(document).ready(function () {
 	});
 
 	$(document).on("click", ".rm2-chip", function (e) {
-		if ($(e.target).closest(".rmQuitarChip, .rmToggleTela").length) return;
+		if ($(e.target).closest(".rmQuitarChip, .rmToggleTela, .rmMoverLinea, .rm2-chip-ord").length) return;
 		rmSincronizarConsumoEnVariantes();
 		var nuevoIdx = Number($(this).attr("data-idx"));
 		if (nuevoIdx === RM.lineaIdx) return;
 		RM.lineaAnteriorIdx = null;
 		RM.lineaIdx = nuevoIdx;
+		rmLimpiarLineasSinMp({ keepActual: true });
 		RM.mpActiva = null;
 		RM.mpActivaUnd = "";
 		RM.mpActivaColor = "";
@@ -2630,11 +2961,69 @@ $(document).ready(function () {
 		rmRefrescarPaso2(true);
 	});
 
-	$("#rmConsumoLinea").on("change", function () {
-		rmSincronizarConsumoEnVariantes();
+	$(document).on("click", ".rmMoverLinea", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!rmEsBorradorEditable()) return;
+		if ($(this).prop("disabled")) return;
+		rmMoverLinea(Number($(this).attr("data-idx")), Number($(this).attr("data-dir")));
+	});
+
+	$(document).on("click", ".rmConsumoColor", function (e) {
+		e.stopPropagation();
+	});
+	$(document).on("keydown", ".rmConsumoColor", function (e) {
+		if (e.which === 13) {
+			e.preventDefault();
+			$(this).blur();
+		}
+	});
+	$(document).on("change", ".rmConsumoColor", function () {
+		if (!rmEsBorradorEditable()) return;
+		var $inp = $(this);
+		var codColor = String($inp.attr("data-color") || "");
+		var valor = $inp.val();
+		var mp = RM.mpActiva;
+		var idx = mp ? rmIdxCapaDeMp(mp) : RM.lineaIdx;
+		if (mp && idx < 0) {
+			rmGuardarConsumoPendiente(mp, codColor, valor);
+			rmMarcarDirty(true);
+			rmPintarInputConsumoColor($inp, valor, !rmMismoConsumo(valor, "1"));
+			return;
+		}
+		var linea = (idx != null && idx >= 0 && RM.estado && RM.estado.lineas[idx])
+			? RM.estado.lineas[idx]
+			: rmLineaActual();
+		if (!linea) return;
+		rmSetConsumoColor(linea, codColor, valor);
+		rmMarcarDirty(true);
+		var especial = rmColorTieneConsumoEspecial(linea, codColor);
+		rmPintarInputConsumoColor($inp, especial ? rmConsumoDeColor(linea, codColor) : rmConsumoLinea(linea), especial);
+		rmRenderChips();
+		rmRenderTarjetasPorArticulo();
+		rmActualizarContextoLineaActiva();
+	});
+	$(document).on("click", ".rmQuitarConsumoColor", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!rmEsBorradorEditable()) return;
+		var codColor = String($(this).attr("data-color") || "");
+		var mp = RM.mpActiva;
+		var idx = mp ? rmIdxCapaDeMp(mp) : RM.lineaIdx;
+		if (mp && idx < 0) {
+			rmLimpiarConsumoPendiente(mp, codColor);
+			rmPintarInputConsumoColor(rmInputConsumoColor(codColor), "1", false);
+			rmMarcarDirty(true);
+			return;
+		}
+		var linea = (idx != null && idx >= 0 && RM.estado && RM.estado.lineas[idx])
+			? RM.estado.lineas[idx]
+			: rmLineaActual();
+		if (!linea) return;
+		rmSetConsumoColor(linea, codColor, "");
 		rmMarcarDirty(true);
 		rmRenderChips();
-		rmActualizarContextoLineaActiva();
+		rmRenderMatriz();
 	});
 
 	$("#rmBtnFiltroMp").on("click", function () {
@@ -2653,6 +3042,15 @@ $(document).ready(function () {
 		}
 	});
 
+	$(document).on("click", ".rm2-celda-mp", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		var mp = String($(this).attr("data-mp") || "");
+		if (!mp) return;
+		var info = RM.mpCache[mp] || {};
+		rmSetMpActiva(mp, info.unidad || "", info.color || "", info.descripcion || "");
+	});
+
 	$(document).on("click", ".rmElegirMpActiva", function () {
 		var $btn = $(this);
 		rmSetMpActiva(
@@ -2664,7 +3062,6 @@ $(document).ready(function () {
 	});
 
 	$(document).on("click", ".rm2-asig-chip", function () {
-		if (!rmEsBorradorEditable()) return;
 		var $btn = $(this);
 		rmSetMpActiva(
 			String($btn.attr("data-mp") || ""),
@@ -2739,7 +3136,8 @@ $(document).ready(function () {
 		e.preventDefault();
 		e.stopPropagation();
 		if (!rmEsBorradorEditable() || !rmExigirMpEnMano()) return;
-		rmAgregarMpExtraAKey(String($(this).attr("data-key") || ""), RM.mpActiva);
+		var idx = rmAgregarMpExtraAKey(String($(this).attr("data-key") || ""), RM.mpActiva);
+		if (idx !== false && idx >= 0) RM.lineaIdx = idx;
 		rmRefrescarPaso2(true);
 	});
 

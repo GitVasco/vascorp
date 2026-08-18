@@ -1021,7 +1021,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/materiaprima.js"></script>
     <script src="vistas/js/tarjetas.js"></script>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "recetas-modelo" || $_GET["ruta"] == "editar-receta-modelo")) { ?>
-    <script src="vistas/js/recetas-modelo.js?v=63"></script>
+    <script src="vistas/js/recetas-modelo.js?v=72"></script>
     <?php } ?>
     <script src="vistas/js/movimientos.js"></script>
     <script src="vistas/js/ordencorte.js"></script>
