@@ -4,48 +4,48 @@
       "ver": []
     },
     "dashboard_gerencial": {
-      "ver": [6, 9, 32, 66, 105, 107]
+      "ver": [6, 9, 32, 66, 74, 105, 107]
     },
     "dashboard_cxc": {
-      "ver": [6, 32, 105]
+      "ver": [6, 32, 74, 105]
     },
     "estado_cuenta_gerencia": {
-      "ver": [6, 32]
+      "ver": [6, 32, 74]
     },
     "auditoria_cuentas": {
       "ver": [6]
     },
     "centro_decisiones": {
-      "ver": [6, 32, 105],
-      "registrar": [6, 32],
+      "ver": [6, 32, 74, 105],
+      "registrar": [6, 32, 74],
       "solicitar": [6, 105],
-      "resolver": [6, 32],
-      "anular": [6, 32],
-      "aprobar": [6, 32],
-      "historial": [6, 32]
+      "resolver": [6, 32, 74],
+      "anular": [6, 32, 74],
+      "aprobar": [6, 32, 74],
+      "historial": [6, 32, 74]
     },
     "metas_vendedor": {
       "ver": [6, 105],
       "editar": [6, 105]
     },
     "linea_credito": {
-      "ver": [6, 32],
-      "editar": [6, 32],
-      "cerrar_mes": [6, 32]
+      "ver": [6, 32, 74],
+      "editar": [6, 32, 74],
+      "cerrar_mes": [6, 32, 74]
     },
     "inteligencia_comercial": {
-      "ver": [6, 32, 105]
+      "ver": [6, 32, 74, 105]
     },
     "categorias_comerciales": {
       "ver": [6, 105],
       "editar": [6, 105]
     },
     "categorias_por_revisar": {
-      "ver": [6, 9, 32, 66, 105, 107],
-      "editar": [6, 9, 32, 66, 105, 107]
+      "ver": [6, 9, 32, 66, 74, 105, 107],
+      "editar": [6, 9, 32, 66, 74, 105, 107]
     },
     "zonas_comerciales": {
-      "ver": [6, 9, 32, 66, 105, 107],
+      "ver": [6, 9, 32, 66, 74, 105, 107],
       "editar": [6, 105]
     },
     "grupos_marcas": {
@@ -79,8 +79,8 @@
   },
   "vasco_online": {
     "sincronizacion": {
-      "ver": [6, 32],
-      "ejecutar": [6, 32]
+      "ver": [6, 32, 74],
+      "ejecutar": [6, 32, 74]
     },
     "rendicion_cobranzas": {
       "ver": [6, 28],
