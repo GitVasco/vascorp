@@ -262,6 +262,16 @@
     opacity: 0.7;
 }
 
+#panelHelpdesk .hd-pulir-bar .bootstrap-select {
+    width: 240px !important;
+}
+
+#panelHelpdesk .hd-pulir-bar .bootstrap-select > .btn {
+    height: 30px;
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
 #panelHelpdesk .hd-dropzone {
     position: relative;
     border: 2px dashed #c5d0da;
@@ -1053,6 +1063,10 @@
     margin-bottom: 12px;
 }
 
+#panelHelpdesk .hd-side-badges .label {
+    color: #fff;
+}
+
 #panelHelpdesk .hd-side-asignar {
     padding: 10px;
     background: #f4f9fc;
@@ -1083,9 +1097,14 @@
     text-align: center;
 }
 
-#panelHelpdesk .hd-side-meta span {
+#panelHelpdesk .hd-side-meta > div > span {
     color: #888;
     min-width: 64px;
+}
+
+#panelHelpdesk .hd-side-meta .label {
+    color: #fff;
+    min-width: 0;
 }
 
 #panelHelpdesk .hd-historial {
@@ -1281,6 +1300,26 @@
 #panelHelpdesk .label-prioridad-ALTA { background: #dd4b39; }
 #panelHelpdesk .label-prioridad-MEDIA { background: #f39c12; }
 #panelHelpdesk .label-prioridad-BAJA { background: #00a65a; }
+
+/* Colores de prioridad también fuera de #panelHelpdesk (selectpicker va a body) */
+.label-prioridad-ALTA,
+.label-prioridad-MEDIA,
+.label-prioridad-BAJA {
+    color: #fff !important;
+    font-weight: 700;
+}
+.label-prioridad-ALTA { background-color: #dd4b39 !important; }
+.label-prioridad-MEDIA { background-color: #f39c12 !important; }
+.label-prioridad-BAJA { background-color: #00a65a !important; }
+
+.bootstrap-select .dropdown-menu .label-prioridad-ALTA,
+.bootstrap-select .dropdown-menu .label-prioridad-MEDIA,
+.bootstrap-select .dropdown-menu .label-prioridad-BAJA,
+.bootstrap-select .filter-option .label-prioridad-ALTA,
+.bootstrap-select .filter-option .label-prioridad-MEDIA,
+.bootstrap-select .filter-option .label-prioridad-BAJA {
+    display: inline-block;
+}
 
 @media (max-width: 991px) {
     #panelHelpdesk .hd-tipo-grid.hd-tipo-fila {

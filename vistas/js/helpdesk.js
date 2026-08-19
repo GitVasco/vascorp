@@ -223,7 +223,9 @@ $(function () {
     }
 
     function badgePrioridad(p) {
-        return '<span class="label label-prioridad-' + esc(p) + '">' + esc(p) + "</span>";
+        var map = { BAJA: "Baja", MEDIA: "Media", ALTA: "Alta" };
+        var txt = map[p] || p;
+        return '<span class="label label-prioridad-' + esc(p) + '">' + esc(txt) + "</span>";
     }
 
     function iconoTipo(tipo) {
@@ -290,14 +292,15 @@ $(function () {
         if (!$sel.length || !$.fn.selectpicker) {
             return;
         }
+        var opts = {
+            container: "body",
+            sanitize: false,
+            showContent: true
+        };
         if ($sel.data("selectpicker")) {
-            $sel.selectpicker("refresh");
-        } else {
-            $sel.selectpicker({
-                container: "body",
-                sanitize: false
-            });
+            $sel.selectpicker("destroy");
         }
+        $sel.selectpicker(opts);
     }
 
     function valPicker($sel, value) {
@@ -322,7 +325,7 @@ $(function () {
     }
 
     function refrescarPickersGestion() {
-        ["#hdGestTipo", "#hdGestEstado", "#hdGestPrioridad", "#hdGestSolicitante", "#hdGestAsignado", "#hdRespEstado"].forEach(initPicker);
+        ["#hdGestTipo", "#hdGestEstado", "#hdGestPrioridad", "#hdGestSolicitante", "#hdGestAsignado", "#hdRespEstado", "#hdRespRapida"].forEach(initPicker);
     }
 
     function leerFiltroEstadoGuardado() {
@@ -599,7 +602,10 @@ $(function () {
         $("#hdPasosLabel").html(g.pasosLabel);
         $("#hdEjemploTipoTitulo").html('<i class="fa fa-tag"></i> ' + esc(tipoLabel));
         $("#hdInfoIntro").text(g.intro);
-        $("#hdInfoPrioridad").html("<strong>Prioridad elegida:</strong><br>" + esc(notaPri));
+        $("#hdInfoPrioridad").html(
+            "<strong>Prioridad elegida:</strong><br>" +
+            badgePrioridad(pri) + " " + esc(notaPri)
+        );
         $("#hdEjemploAsunto").text(g.ejemploAsunto);
         $("#hdEjemploDesc").text(g.ejemploDesc);
 
@@ -732,6 +738,11 @@ $(function () {
         return s;
     }
 
+    function filaMetaCreado(t) {
+        return '<div><i class="fa fa-clock-o"></i> <span>Creado</span> <strong>' +
+            esc(fmtFechaCorta(t && t.creado_en)) + "</strong></div>";
+    }
+
     function antiguedadTxt(fecha) {
         if (!fecha) {
             return "—";
@@ -846,7 +857,8 @@ $(function () {
                             return fe ? "<br>" + fe : "";
                         })() +
                     "</td>" +
-                    '<td class="hd-antiguedad' + antCls + '">' + esc(antiguedadTxt(t.creado_en)) + "</td>" +
+                    '<td class="hd-antiguedad' + antCls + '">' + esc(antiguedadTxt(t.creado_en)) +
+                        "<br><small class=\"text-muted\">" + esc(fmtFechaCorta(t.creado_en)) + "</small></td>" +
                     '<td><button type="button" class="btn btn-xs btn-info hd-btn-ver"><i class="fa fa-eye"></i></button></td>' +
                 "</tr>"
             );
@@ -1196,7 +1208,7 @@ $(function () {
                     '<div class="text-muted hd-conv-meta">' +
                         "Creado por <strong>" + esc(t.solicitante_nombre || ("#" + t.solicitante_id)) + "</strong>" +
                         (t.area ? " · " + esc(t.area) : "") +
-                        " · " + esc(t.creado_en) +
+                        " · " + esc(fmtFechaCorta(t.creado_en)) +
                         (sla && sla.horas_limite
                             ? " · SLA " + esc(String(sla.horas_limite)) + "h"
                             : "") +
@@ -1263,7 +1275,7 @@ $(function () {
                     '<div class="hd-det-info-item"><i class="fa fa-user text-blue"></i> ' +
                         '<span>Asignado</span><strong>' + esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
                     '<div class="hd-det-info-item"><i class="fa fa-clock-o text-muted"></i> ' +
-                        '<span>Creado</span><strong>' + esc(t.creado_en || "—") + "</strong></div>" +
+                        '<span>Creado</span><strong>' + esc(fmtFechaCorta(t.creado_en)) + "</strong></div>" +
                 "</div>" +
                 '<div class="hd-det-block">' +
                     '<h4><i class="fa fa-align-left"></i> Descripción</h4>' +
@@ -1392,6 +1404,7 @@ $(function () {
                               'placeholder="Ej.: pendiente autorización Gerencia / Seguridad">' +
                               esc(motivoEx) + "</textarea></div></div>") +
                     '<div class="hd-side-meta">' +
+                        filaMetaCreado(t) +
                         '<div><i class="fa fa-building"></i> <span>Área</span> <strong>' + esc(t.area || "—") + "</strong></div>" +
                         '<div><i class="fa fa-desktop"></i> <span>Sistema</span> <strong>' +
                             esc(LABELS_SISTEMA[t.sistema] || t.sistema || "—") + "</strong></div>" +
@@ -1430,6 +1443,7 @@ $(function () {
                         '<select class="form-control selectpicker" id="hdGestEstado" data-width="100%">' +
                         optsEstado + "</select></div>" +
                     '<div class="hd-side-meta">' +
+                        filaMetaCreado(t) +
                         '<div><i class="fa fa-user"></i> <span>Asignado</span> <strong>' +
                             esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
                         '<div><i class="fa fa-flag"></i> <span>Prioridad</span> ' + badgePrioridad(t.prioridad) + "</div>" +
@@ -1450,6 +1464,7 @@ $(function () {
                     : "") +
                 '<div class="hd-side-badges">' + badgeEstado(t.estado) + " " + badgePrioridad(t.prioridad) + "</div>" +
                 '<div class="hd-side-meta">' +
+                    filaMetaCreado(t) +
                     '<div><i class="fa fa-user"></i> <span>Asignado</span> <strong>' +
                         esc(t.asignado_nombre || "Sin asignar") + "</strong></div>" +
                     (tipoUsaFechaEstimada(t.tipo) || t.fecha_estimada
@@ -1499,7 +1514,8 @@ $(function () {
         );
 
         $("#hdComentario").val("");
-        $("#hdRespEstado").val("");
+        valPicker("#hdRespRapida", "");
+        valPicker("#hdRespEstado", "");
         limpiarArchivosResp();
         $("#hdReabrirSolicitanteBox").remove();
         if (cerrado) {
@@ -1947,6 +1963,15 @@ $(function () {
             .always(function () {
                 $("#hdBtnEnviarResp").prop("disabled", false);
             });
+    });
+
+    $("#hdRespRapida").on("changed.bs.select change", function () {
+        var txt = $.trim($(this).val());
+        if (!txt) {
+            return;
+        }
+        $("#hdComentario").val(txt).focus();
+        valPicker("#hdRespRapida", "");
     });
 
     $(document).on("click", ".hd-btn-reabrir-solicitante", function () {

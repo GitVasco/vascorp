@@ -613,6 +613,16 @@
                                             <form id="hdFormComentar">
                                                 <div class="hd-pulir-bar">
                                                     <label style="margin:0;">Responder</label>
+                                                    <select class="form-control input-sm selectpicker hd-resp-rapida" id="hdRespRapida"
+                                                            data-width="240px" data-container="body"
+                                                            title="Respuesta rápida…">
+                                                        <option value="">Respuesta rápida…</option>
+                                                        <option value="Recibido, lo reviso.">Recibido, lo reviso</option>
+                                                        <option value="Listo, ya quedó resuelto.">Ya quedó resuelto</option>
+                                                        <option value="Quedó aplicado. ¿Confirmas que ya te funciona?">Quedó aplicado, confirma</option>
+                                                        <option value="Necesito una captura de pantalla para avanzar.">Pido captura</option>
+                                                        <option value="Cualquier cosa avísame.">Cualquier cosa avísame</option>
+                                                    </select>
                                                     <button type="button" class="btn btn-default btn-sm" id="hdBtnPulirResp"
                                                             style="display:none;"
                                                             title="Corregir ortografía y redacción con IA">
