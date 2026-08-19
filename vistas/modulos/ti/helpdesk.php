@@ -136,7 +136,7 @@
                                                             data-live-search="true" data-width="100%"
                                                             data-container="body"
                                                             title="Seleccionar área">
-                                                        <option value="">Seleccionar área</option>
+                                                        <option value="" data-hidden="true">Seleccionar área</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -147,7 +147,7 @@
                                                             data-live-search="true" data-width="100%"
                                                             data-container="body"
                                                             title="Seleccionar módulo">
-                                                        <option value="">Seleccionar módulo</option>
+                                                        <option value="" data-hidden="true">Seleccionar módulo</option>
                                                     </select>
                                                 </div>
                                             </div>

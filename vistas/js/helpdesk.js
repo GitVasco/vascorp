@@ -292,13 +292,18 @@ $(function () {
         if (!$sel.length || !$.fn.selectpicker) {
             return;
         }
+        var showContent = $sel.attr("data-show-content") === "true" ||
+            $sel.find("option[data-content]").length > 0;
         var opts = {
             container: "body",
-            sanitize: false,
-            showContent: true
+            sanitize: false
         };
+        if (showContent) {
+            opts.showContent = true;
+        }
         if ($sel.data("selectpicker")) {
-            $sel.selectpicker("destroy");
+            $sel.selectpicker("refresh");
+            return;
         }
         $sel.selectpicker(opts);
     }
@@ -413,7 +418,7 @@ $(function () {
         var current = $sel.val();
         $sel.empty();
         if (placeholder !== null) {
-            $sel.append('<option value="">' + esc(placeholder) + "</option>");
+            $sel.append('<option value="" data-hidden="true">' + esc(placeholder) + "</option>");
         }
         (items || []).forEach(function (it) {
             var val = it[valueKey];
@@ -496,10 +501,14 @@ $(function () {
     }
 
     function fillOptions($sel, items, placeholder) {
+        var $sel = $($sel);
         var current = $sel.val();
         $sel.empty();
-        $sel.append('<option value="">' + esc(placeholder) + "</option>");
+        $sel.append('<option value="" data-hidden="true">' + esc(placeholder) + "</option>");
         (items || []).forEach(function (v) {
+            if (v == null || String(v).trim() === "") {
+                return;
+            }
             $sel.append('<option value="' + esc(v) + '">' + esc(v) + "</option>");
         });
         if (current) {
@@ -509,13 +518,17 @@ $(function () {
     }
 
     function fillModulosGrouped($sel, grupos, placeholder) {
+        var $sel = $($sel);
         var current = $sel.val();
         $sel.empty();
-        $sel.append('<option value="">' + esc(placeholder) + "</option>");
+        $sel.append('<option value="" data-hidden="true">' + esc(placeholder) + "</option>");
         (grupos || []).forEach(function (g) {
             var seccion = (g && g.seccion) ? String(g.seccion) : "Otros";
             var $og = $('<optgroup>').attr("label", seccion);
             (g.items || []).forEach(function (item) {
+                if (item == null || String(item).trim() === "") {
+                    return;
+                }
                 $og.append('<option value="' + esc(item) + '">' + esc(item) + "</option>");
             });
             $sel.append($og);
