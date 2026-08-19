@@ -717,6 +717,41 @@ Notas de débito `S05` por protesto (vendedor **no** contiene `08`) → cuenta s
 
 ---
 
+## Botón: Vendedor de última venta
+
+### Qué resuelve
+
+En el maestro de clientes el vendedor asignado a veces no es quien realmente hizo la última venta. Esta utilidad lista esas diferencias y actualiza el maestro.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista clientes activos cuyo vendedor actual no coincide con el de la última venta (últimos 2 años).
+2. El modal muestra cliente, grupo, vendedor actual, vendedor propuesto, documento de la última venta y si el alcance es cliente o grupo.
+3. **Actualizar seleccionados** deja en el maestro el vendedor propuesto.
+
+### Reglas
+
+| Regla | Detalle |
+|-------|---------|
+| Ventas | facturas/boletas `S02`, `S03`, `S70`, no anuladas, **últimos 2 años** |
+| Última venta | la más reciente por fecha en esa ventana (si empatan, el documento mayor) |
+| Sin venta reciente | el cliente no aparece; conserva su vendedor actual |
+| Cliente suelto | vendedor propuesto = vendedor de su última venta |
+| Grupo empresarial | vendedor propuesto = última venta de **cualquier local** del grupo; se aplica a todos los miembros |
+| Exclusión 06 / 08 | no toma ventas de vendedores `06*` ni `08*`; no modifica clientes que ya tienen esos vendedores |
+| Exclusión 30 / 33 / 18 / 18a / 22 / 26 | no ganan el maestro (el otro código manda). Sí se puede cambiar un cliente que hoy tiene esos códigos si hay venta del vendedor más importante |
+| Filtro | solo filas donde el vendedor actual ≠ propuesto |
+| Actualización | solo `clientesjf.vendedor` |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `clientesVendedorUltimaVenta` | Lista diferencias (requiere `ver`) |
+| `actualizarVendedorUltimaVenta` | Actualiza vendedor de los seleccionados (requiere `ejecutar`) |
+
+---
+
 ## UX de carga
 
 - Al pulsar **Cuadrar** / **Analizar** / **Revisar**: el botón pasa a spinner y hay overlay a pantalla completa; el modal se abre al terminar.

@@ -179,4 +179,14 @@ if ($accion === "completarTipCambioTotales") {
 	return;
 }
 
+if ($accion === "clientesVendedorUltimaVenta") {
+	echo json_encode(ControladorUtilidades::ctrClientesVendedorUltimaVenta());
+	return;
+}
+
+if ($accion === "actualizarVendedorUltimaVenta") {
+	echo json_encode(ControladorUtilidades::ctrActualizarVendedorUltimaVenta($_POST));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no reconocida"));

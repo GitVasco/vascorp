@@ -152,6 +152,18 @@ $infoTracking = "Ingresa el código de modelo (ej. 10400) y analiza\n"
     . "• Cortes sin orden / envíos o servicios sin vínculo\n\n"
     . "• Corregir saldos: solo actualiza columnas de articulojf.\n"
     . "• No toca documentos ni ingresos E20.";
+
+$infoVendedorUltima = "Deja en el maestro el vendedor de la última venta\n"
+    . "de los últimos 2 años (facturas/boletas S02, S03, S70; no anuladas).\n\n"
+    . "• Si el cliente está en un grupo empresarial, toma la última\n"
+    . "  venta de cualquier local del grupo y propone ese vendedor\n"
+    . "  para todos los miembros.\n"
+    . "• Sin venta en esos 2 años, no se toca (sigue con su vendedor).\n"
+    . "• No considera ventas de vendedores 06* ni 08*.\n"
+    . "• 30, 33, 18, 18a, 22 y 26 no entran al maestro (el otro código es el que manda).\n"
+    . "• No toca clientes que ya tienen vendedor 06* o 08*.\n"
+    . "• Solo lista los que hoy tienen otro vendedor.\n\n"
+    . "Al confirmar, actualiza el vendedor en el maestro.";
 ?>
 <div class="content-wrapper ut-page">
 
@@ -257,6 +269,39 @@ $infoTracking = "Ingresa el código de modelo (ej. 10400) y analiza\n"
                         <button type="button" class="btn btn-primary" id="btnUtTrackingModelo">
                             <i class="fa fa-search"></i> Analizar
                         </button>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <div class="ut-block">
+            <h2 class="ut-block__title">Clientes</h2>
+            <div class="ut-grid">
+                <article class="ut-card">
+                    <div class="ut-card__top">
+                        <h3 class="ut-card__title">Vendedor de última venta</h3>
+                        <button type="button"
+                            class="ut-info"
+                            tabindex="0"
+                            data-toggle="popover"
+                            data-trigger="hover focus"
+                            data-placement="left"
+                            title="Detalle"
+                            data-content="<?php echo htmlspecialchars($infoVendedorUltima, ENT_QUOTES, 'UTF-8'); ?>">
+                            <i class="fa fa-info-circle"></i>
+                        </button>
+                    </div>
+                    <p class="ut-card__desc">
+                        Asigna al maestro el vendedor de la última venta (últimos 2 años). En grupos, el mismo a todos los locales. No toca 06 ni 08. 30, 33, 18, 18a, 22 y 26 no entran.
+                    </p>
+                    <div class="ut-card__actions">
+                        <?php if ($puedeEjecutar) { ?>
+                        <button type="button" class="btn btn-primary" id="btnUtVendedorUltima">
+                            <i class="fa fa-user"></i> Revisar
+                        </button>
+                        <?php } else { ?>
+                        <span class="text-muted">Sin permiso</span>
+                        <?php } ?>
                     </div>
                 </article>
             </div>
@@ -1714,6 +1759,60 @@ $infoTracking = "Ingresa el código de modelo (ej. 10400) y analiza\n"
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
                 <button type="button" class="btn btn-success" id="btnUtCompletarVentaNdProtesto" disabled>
                     <i class="fa fa-check"></i> Completar seleccionados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modalUtVendedorUltima" class="modal fade ut-modal" role="dialog">
+    <div class="modal-dialog modal-lg" style="width:1100px;max-width:98vw;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    Vendedor de última venta
+                    <small id="utVendedorUltimaMeta" class="text-muted"></small>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div id="utVendedorUltimaLoading" class="ut-empty" style="display:none;">
+                    <i class="fa fa-spinner fa-spin"></i> Consultando…
+                </div>
+                <div id="utVendedorUltimaEmpty" class="ut-empty" style="display:none;">
+                    No hay clientes para actualizar. El maestro ya coincide con la última venta.
+                </div>
+                <div id="utVendedorUltimaTableWrap" style="display:none;">
+                    <div class="ut-modal-toolbar">
+                        <label class="ut-check-all">
+                            <input type="checkbox" id="utVendedorUltimaCheckAll" checked>
+                            Seleccionar todos
+                        </label>
+                        <span id="utVendedorUltimaCount" class="text-muted"></span>
+                    </div>
+                    <div class="table-responsive ut-table-scroll">
+                        <table class="table table-bordered table-striped table-condensed" id="utVendedorUltimaTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:36px;"></th>
+                                    <th>Cliente</th>
+                                    <th>Nombre</th>
+                                    <th>Grupo</th>
+                                    <th>Vendedor actual</th>
+                                    <th>Vendedor propuesto</th>
+                                    <th>Última venta</th>
+                                    <th>Alcance</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" id="btnUtActualizarVendedorUltima" disabled>
+                    <i class="fa fa-check"></i> Actualizar seleccionados
                 </button>
             </div>
         </div>

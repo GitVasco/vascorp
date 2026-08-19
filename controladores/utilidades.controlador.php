@@ -1790,4 +1790,124 @@ class ControladorUtilidades
 			"mensaje" => "Totales: {$actualizados} actualizado(s), {$omitidos} omitido(s)"
 		);
 	}
+
+	/**
+	 * Clientes cuyo vendedor del maestro no coincide con el de la última venta
+	 * de los últimos 2 años (en grupo: última venta de cualquier local).
+	 * No toca 06* ni 08*. Sin venta en esa ventana, no se lista.
+	 */
+	static public function ctrClientesVendedorUltimaVenta()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		$filas = ModeloUtilidades::mdlClientesVendedorUltimaVenta();
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar última venta", "data" => array());
+		}
+
+		$vistos = array();
+		$data = array();
+		foreach ($filas as $f) {
+			$cliente = trim((string) $f["cliente"]);
+			if ($cliente === "" || isset($vistos[$cliente])) {
+				continue;
+			}
+			$vistos[$cliente] = true;
+			$alcance = (isset($f["alcance"]) && (string) $f["alcance"] === "grupo")
+				? "grupo"
+				: "cliente";
+			$data[] = array(
+				"cliente" => $cliente,
+				"cliente_nombre" => (string) $f["cliente_nombre"],
+				"grupo" => (string) $f["grupo"],
+				"grupo_nombre" => (string) $f["grupo_nombre"],
+				"vendedor_actual" => (string) $f["vendedor_actual"],
+				"vendedor_actual_nombre" => (string) $f["vendedor_actual_nombre"],
+				"vendedor_propuesto" => (string) $f["vendedor_propuesto"],
+				"vendedor_propuesto_nombre" => (string) $f["vendedor_propuesto_nombre"],
+				"fecha_ultima" => (string) $f["fecha_ultima"],
+				"tipo" => (string) $f["tipo"],
+				"documento" => (string) $f["documento"],
+				"alcance" => $alcance
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "El maestro ya coincide con la última venta"
+				: ("Se encontraron " . count($data) . " cliente(s) para actualizar")
+		);
+	}
+
+	/**
+	 * Actualiza clientesjf.vendedor con el de la última venta (seleccionados).
+	 */
+	static public function ctrActualizarVendedorUltimaVenta($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay clientes para actualizar");
+		}
+
+		$limpios = array();
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$cliente = isset($item["cliente"]) ? trim((string) $item["cliente"]) : "";
+			$vendedor = isset($item["vendedor_propuesto"])
+				? trim((string) $item["vendedor_propuesto"])
+				: "";
+			if ($cliente === "" || $vendedor === "") {
+				continue;
+			}
+			$limpios[] = array(
+				"cliente" => $cliente,
+				"vendedor_propuesto" => $vendedor
+			);
+		}
+
+		if (count($limpios) < 1) {
+			return array("ok" => false, "mensaje" => "No hay clientes válidos");
+		}
+
+		$resultado = ModeloUtilidades::mdlActualizarVendedorUltimaVenta($limpios);
+		if (empty($resultado["ok"])) {
+			return $resultado;
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$descripcion = "Utilidades: {$usuario} actualizó vendedor de última venta en {$actualizados} cliente(s).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return $resultado;
+	}
 }

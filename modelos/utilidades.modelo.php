@@ -2902,4 +2902,264 @@ class ModeloUtilidades
 			return array("ok" => false, "mensaje" => "Error al actualizar totales");
 		}
 	}
+
+	static private function sqlFiltroVentaComercial($alias = "v")
+	{
+		return "
+			UPPER(IFNULL({$alias}.estado, '')) <> 'ANULADO'
+			AND UPPER({$alias}.tipo) IN ('S02', 'S03', 'S70')
+			AND TRIM(IFNULL({$alias}.vendedor, '')) <> ''
+			AND IFNULL({$alias}.vendedor, '') NOT LIKE '06%'
+			AND IFNULL({$alias}.vendedor, '') NOT LIKE '08%'
+			AND LOWER(TRIM(IFNULL({$alias}.vendedor, ''))) NOT IN ('30', '33', '18', '18a', '22', '26')
+			AND {$alias}.fecha IS NOT NULL
+			AND {$alias}.fecha > '0000-00-00'
+			AND {$alias}.fecha >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR)
+			AND TRIM(IFNULL({$alias}.cliente, '')) <> ''
+		";
+	}
+
+	static private function sqlClaveUltimaVenta($alias = "v")
+	{
+		return "CONCAT(DATE_FORMAT({$alias}.fecha, '%Y%m%d%H%i%s'), LPAD(IFNULL({$alias}.documento, ''), 20, '0'))";
+	}
+
+	static private function mdlEsVendedorIgnorado($codigo)
+	{
+		$c = trim((string) $codigo);
+		if ($c === "") {
+			return false;
+		}
+		return (strpos($c, "06") === 0)
+			|| (strpos($c, "08") === 0)
+			|| $c === "30"
+			|| $c === "33"
+			|| strtolower($c) === "18"
+			|| strtolower($c) === "18a"
+			|| $c === "22"
+			|| $c === "26";
+	}
+
+	/**
+	 * Clientes activos cuyo vendedor del maestro difiere del de la última venta
+	 * de los últimos 2 años. En grupo: última venta de cualquier local del grupo.
+	 * Sin venta en esa ventana, el cliente no aparece (conserva su vendedor).
+	 * No lista clientes con vendedor 06* / 08* ni ventas de esos vendedores.
+	 * 30, 33, 18, 18a, 22 y 26 no ganan el maestro (el otro código manda); el cliente sí puede
+	 * pasar de esos códigos al vendedor más importante si hay venta de ese en 2 años.
+	 */
+	static public function mdlClientesVendedorUltimaVenta()
+	{
+		$filtroV = self::sqlFiltroVentaComercial("v");
+		$filtroV2 = self::sqlFiltroVentaComercial("v2");
+		$claveV = self::sqlClaveUltimaVenta("v");
+		$claveV2 = self::sqlClaveUltimaVenta("v2");
+
+		$sqlUltimaCli = "
+			SELECT
+				v.cliente,
+				v.vendedor,
+				v.fecha,
+				v.tipo,
+				v.documento
+			FROM ventajf v
+			INNER JOIN (
+				SELECT
+					v2.cliente,
+					MAX({$claveV2}) AS k
+				FROM ventajf v2
+				WHERE {$filtroV2}
+				GROUP BY v2.cliente
+			) u ON u.cliente = v.cliente
+				AND {$claveV} = u.k
+			WHERE {$filtroV}
+		";
+
+		$sqlUltimaGrp = "
+			SELECT
+				c2.grupo,
+				v.vendedor,
+				v.fecha,
+				v.tipo,
+				v.documento
+			FROM ventajf v
+			INNER JOIN clientesjf c2
+				ON c2.codigo = v.cliente
+				AND c2.estado = 1
+				AND TRIM(IFNULL(c2.grupo, '')) <> ''
+			INNER JOIN (
+				SELECT
+					c3.grupo,
+					MAX({$claveV2}) AS k
+				FROM ventajf v2
+				INNER JOIN clientesjf c3
+					ON c3.codigo = v2.cliente
+					AND c3.estado = 1
+					AND TRIM(IFNULL(c3.grupo, '')) <> ''
+				WHERE {$filtroV2}
+				GROUP BY c3.grupo
+			) ug ON ug.grupo = c2.grupo
+				AND {$claveV} = ug.k
+			WHERE {$filtroV}
+		";
+
+		$sql = "
+			SELECT
+				c.codigo AS cliente,
+				COALESCE(c.nombre, '') AS cliente_nombre,
+				COALESCE(c.grupo, '') AS grupo,
+				COALESCE(g.nombre, '') AS grupo_nombre,
+				COALESCE(c.vendedor, '') AS vendedor_actual,
+				COALESCE(va.descripcion, '') AS vendedor_actual_nombre,
+				TRIM(CASE
+					WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN ugr.vendedor
+					ELSE uc.vendedor
+				END) AS vendedor_propuesto,
+				COALESCE(
+					CASE
+						WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN vp_grp.descripcion
+						ELSE vp_cli.descripcion
+					END,
+					''
+				) AS vendedor_propuesto_nombre,
+				COALESCE(
+					CASE
+						WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN ugr.fecha
+						ELSE uc.fecha
+					END,
+					''
+				) AS fecha_ultima,
+				COALESCE(
+					CASE
+						WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN ugr.tipo
+						ELSE uc.tipo
+					END,
+					''
+				) AS tipo,
+				COALESCE(
+					CASE
+						WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN ugr.documento
+						ELSE uc.documento
+					END,
+					''
+				) AS documento,
+				CASE
+					WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN 'grupo'
+					ELSE 'cliente'
+				END AS alcance
+			FROM clientesjf c
+			LEFT JOIN grupos_empresarialesjf g ON g.codigo = c.grupo
+			LEFT JOIN ({$sqlUltimaCli}) uc ON uc.cliente = c.codigo
+			LEFT JOIN ({$sqlUltimaGrp}) ugr
+				ON ugr.grupo = c.grupo
+				AND TRIM(IFNULL(c.grupo, '')) <> ''
+			LEFT JOIN maestrajf va
+				ON va.codigo = c.vendedor
+				AND va.tipo_dato = 'TVEND'
+			LEFT JOIN maestrajf vp_cli
+				ON vp_cli.codigo = uc.vendedor
+				AND vp_cli.tipo_dato = 'TVEND'
+			LEFT JOIN maestrajf vp_grp
+				ON vp_grp.codigo = ugr.vendedor
+				AND vp_grp.tipo_dato = 'TVEND'
+			WHERE c.estado = 1
+				AND IFNULL(c.vendedor, '') NOT LIKE '06%'
+				AND IFNULL(c.vendedor, '') NOT LIKE '08%'
+				AND TRIM(CASE
+					WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN IFNULL(ugr.vendedor, '')
+					ELSE IFNULL(uc.vendedor, '')
+				END) <> ''
+				AND CASE
+					WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN IFNULL(ugr.vendedor, '')
+					ELSE IFNULL(uc.vendedor, '')
+				END NOT LIKE '06%'
+				AND CASE
+					WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN IFNULL(ugr.vendedor, '')
+					ELSE IFNULL(uc.vendedor, '')
+				END NOT LIKE '08%'
+				AND TRIM(IFNULL(c.vendedor, '')) <> TRIM(CASE
+					WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN IFNULL(ugr.vendedor, '')
+					ELSE IFNULL(uc.vendedor, '')
+				END)
+			ORDER BY
+				CASE WHEN TRIM(IFNULL(c.grupo, '')) <> '' THEN 0 ELSE 1 END,
+				COALESCE(g.nombre, c.grupo, ''),
+				c.nombre,
+				c.codigo
+		";
+
+		try {
+			$stmt = Conexion::conectar()->prepare($sql);
+			$stmt->execute();
+			return $stmt->fetchAll(PDO::FETCH_ASSOC);
+		} catch (Exception $e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Actualiza clientesjf.vendedor. No toca 06* / 08* ni escribe esos códigos.
+	 * $items: [ ['cliente' => ..., 'vendedor_propuesto' => ...], ... ]
+	 */
+	static public function mdlActualizarVendedorUltimaVenta($items)
+	{
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "actualizados" => 0, "mensaje" => "Sin clientes");
+		}
+
+		$db = Conexion::conectar();
+		$db->beginTransaction();
+
+		try {
+			$stmt = $db->prepare("
+				UPDATE clientesjf
+				SET vendedor = :vendedor
+				WHERE codigo = :cliente
+					AND estado = 1
+					AND IFNULL(vendedor, '') NOT LIKE '06%'
+					AND IFNULL(vendedor, '') NOT LIKE '08%'
+					AND TRIM(IFNULL(vendedor, '')) <> :vendedor2
+			");
+
+			$actualizados = 0;
+			$omitidos = 0;
+			foreach ($items as $item) {
+				$cliente = isset($item["cliente"]) ? trim((string) $item["cliente"]) : "";
+				$vendedor = isset($item["vendedor_propuesto"])
+					? trim((string) $item["vendedor_propuesto"])
+					: "";
+				if ($cliente === "" || $vendedor === "" || self::mdlEsVendedorIgnorado($vendedor)) {
+					$omitidos++;
+					continue;
+				}
+
+				$stmt->bindValue(":vendedor", $vendedor, PDO::PARAM_STR);
+				$stmt->bindValue(":vendedor2", $vendedor, PDO::PARAM_STR);
+				$stmt->bindValue(":cliente", $cliente, PDO::PARAM_STR);
+				$stmt->execute();
+				if ($stmt->rowCount() > 0) {
+					$actualizados++;
+				} else {
+					$omitidos++;
+				}
+			}
+
+			$db->commit();
+			return array(
+				"ok" => true,
+				"actualizados" => $actualizados,
+				"omitidos" => $omitidos,
+				"mensaje" => "Se actualizaron {$actualizados} cliente(s)"
+			);
+		} catch (Exception $e) {
+			if ($db->inTransaction()) {
+				$db->rollBack();
+			}
+			return array(
+				"ok" => false,
+				"actualizados" => 0,
+				"mensaje" => "Error al actualizar vendedor"
+			);
+		}
+	}
 }

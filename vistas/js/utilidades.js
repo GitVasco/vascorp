@@ -3954,3 +3954,238 @@ $(document).on("click", "#btnUtCorregirSaldosModelo", function () {
         });
     });
 });
+
+/* ---- Vendedor de última venta ---- */
+
+var utVendedorUltimaItems = [];
+
+function utFmtVendedor(cod, nombre) {
+    var c = String(cod || "").trim();
+    var n = String(nombre || "").trim();
+    if (!c && !n) {
+        return "—";
+    }
+    if (!n) {
+        return c;
+    }
+    if (!c) {
+        return n;
+    }
+    return c + " — " + n;
+}
+
+function utFmtGrupo(cod, nombre) {
+    var c = String(cod || "").trim();
+    var n = String(nombre || "").trim();
+    if (!c && !n) {
+        return "—";
+    }
+    if (!n) {
+        return c;
+    }
+    if (!c) {
+        return n;
+    }
+    return c + " — " + n;
+}
+
+function utActualizarBotonVendedorUltima() {
+    var n = $("#utVendedorUltimaTable tbody input.ut-vendult-chk:checked").length;
+    $("#btnUtActualizarVendedorUltima").prop("disabled", n < 1);
+    $("#utVendedorUltimaCount").text(n + " seleccionado(s)");
+}
+
+function utRenderVendedorUltima(rows) {
+    utVendedorUltimaItems = rows || [];
+    var $tb = $("#utVendedorUltimaTable tbody");
+    $tb.empty();
+
+    if (!utVendedorUltimaItems.length) {
+        $("#utVendedorUltimaEmpty").show();
+        $("#utVendedorUltimaTableWrap").hide();
+        $("#btnUtActualizarVendedorUltima").prop("disabled", true);
+        $("#utVendedorUltimaCount").text("");
+        return;
+    }
+
+    $("#utVendedorUltimaEmpty").hide();
+    $("#utVendedorUltimaTableWrap").show();
+
+    var html = "";
+    for (var i = 0; i < utVendedorUltimaItems.length; i++) {
+        var r = utVendedorUltimaItems[i];
+        var doc = [r.tipo, r.documento].filter(function (x) {
+            return String(x || "").trim() !== "";
+        }).join(" ");
+        var ultima = utFmtFechaCorta(r.fecha_ultima);
+        if (doc) {
+            ultima = ultima ? (ultima + " · " + doc) : doc;
+        }
+        var alcance = r.alcance === "grupo" ? "Grupo" : "Cliente";
+        html += "<tr data-idx=\"" + i + "\">";
+        html += "<td><input type=\"checkbox\" class=\"ut-vendult-chk\" checked></td>";
+        html += "<td>" + utEscape(r.cliente || "") + "</td>";
+        html += "<td class=\"ut-nombre\">" + utEscape(r.cliente_nombre || "") + "</td>";
+        html += "<td>" + utEscape(utFmtGrupo(r.grupo, r.grupo_nombre)) + "</td>";
+        html += "<td>" + utEscape(utFmtVendedor(r.vendedor_actual, r.vendedor_actual_nombre)) + "</td>";
+        html += "<td><strong>" + utEscape(utFmtVendedor(r.vendedor_propuesto, r.vendedor_propuesto_nombre)) + "</strong></td>";
+        html += "<td>" + utEscape(ultima) + "</td>";
+        html += "<td>" + utEscape(alcance) + "</td>";
+        html += "</tr>";
+    }
+    $tb.html(html);
+    $("#utVendedorUltimaCheckAll").prop("checked", true);
+    utActualizarBotonVendedorUltima();
+}
+
+function utCargarVendedorUltima(opts) {
+    opts = opts || {};
+    var $btn = $("#btnUtVendedorUltima");
+    var silencioso = !!opts.silencioso;
+
+    if (!silencioso) {
+        utSetBtnLoading($btn, true, '<i class="fa fa-user"></i> Revisar');
+        utMostrarCarga("Buscando clientes con vendedor distinto a la última venta (2 años)…");
+    } else {
+        $("#utVendedorUltimaLoading").show();
+        $("#utVendedorUltimaEmpty").hide();
+        $("#utVendedorUltimaTableWrap").hide();
+        $("#btnUtActualizarVendedorUltima").prop("disabled", true);
+    }
+
+    $("#utVendedorUltimaMeta").text("");
+
+    $.post("ajax/utilidades.ajax.php", { accion: "clientesVendedorUltimaVenta" }, function (resp) {
+        if (!silencioso) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-user"></i> Revisar');
+        } else {
+            $("#utVendedorUltimaLoading").hide();
+        }
+
+        if (!resp || !resp.ok) {
+            swal({
+                type: "error",
+                title: "Error",
+                text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo consultar",
+                confirmButtonText: "Cerrar"
+            });
+            return;
+        }
+
+        $("#utVendedorUltimaMeta").text("· " + (resp.total || 0) + " cliente(s)");
+        utRenderVendedorUltima(resp.data || []);
+        $("#modalUtVendedorUltima").modal("show");
+    }, "json").fail(function () {
+        if (!silencioso) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-user"></i> Revisar');
+        } else {
+            $("#utVendedorUltimaLoading").hide();
+        }
+        swal({
+            type: "error",
+            title: "Error",
+            text: "No se pudo comunicar con el servidor",
+            confirmButtonText: "Cerrar"
+        });
+    });
+}
+
+function utItemsSeleccionadosVendedorUltima() {
+    var out = [];
+    $("#utVendedorUltimaTable tbody tr").each(function () {
+        var $tr = $(this);
+        if (!$tr.find("input.ut-vendult-chk").is(":checked")) {
+            return;
+        }
+        var idx = parseInt($tr.attr("data-idx"), 10);
+        if (isNaN(idx) || !utVendedorUltimaItems[idx]) {
+            return;
+        }
+        var r = utVendedorUltimaItems[idx];
+        out.push({
+            cliente: r.cliente,
+            vendedor_propuesto: r.vendedor_propuesto
+        });
+    });
+    return out;
+}
+
+$(document).on("click", "#btnUtVendedorUltima", function () {
+    utCargarVendedorUltima();
+});
+
+$(document).on("change", "#utVendedorUltimaCheckAll", function () {
+    var on = $(this).is(":checked");
+    $("#utVendedorUltimaTable tbody input.ut-vendult-chk").prop("checked", on);
+    utActualizarBotonVendedorUltima();
+});
+
+$(document).on("change", "#utVendedorUltimaTable tbody input.ut-vendult-chk", function () {
+    var total = $("#utVendedorUltimaTable tbody input.ut-vendult-chk").length;
+    var checked = $("#utVendedorUltimaTable tbody input.ut-vendult-chk:checked").length;
+    $("#utVendedorUltimaCheckAll").prop("checked", total > 0 && total === checked);
+    utActualizarBotonVendedorUltima();
+});
+
+$(document).on("click", "#btnUtActualizarVendedorUltima", function () {
+    var items = utItemsSeleccionadosVendedorUltima();
+    if (!items.length) {
+        return;
+    }
+
+    var $btn = $("#btnUtActualizarVendedorUltima");
+    swal({
+        title: "¿Actualizar vendedor en el maestro?",
+        text: "Se asignará el vendedor de la última venta (últimos 2 años) en " + items.length + " cliente(s). No se tocan 06 ni 08. 30, 33, 18, 18a, 22 y 26 no entran.",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#1e8449",
+        confirmButtonText: "Sí, actualizar",
+        cancelButtonText: "Cancelar"
+    }).then(function (result) {
+        if (!result.value) {
+            return;
+        }
+        utSetBtnLoading($btn, true, '<i class="fa fa-check"></i> Actualizar seleccionados');
+        utMostrarCarga("Actualizando vendedor en el maestro…");
+
+        $.post("ajax/utilidades.ajax.php", {
+            accion: "actualizarVendedorUltimaVenta",
+            items: JSON.stringify(items)
+        }, function (resp) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-check"></i> Actualizar seleccionados');
+            utActualizarBotonVendedorUltima();
+
+            if (!resp || !resp.ok) {
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo actualizar",
+                    confirmButtonText: "Cerrar"
+                });
+                return;
+            }
+
+            swal({
+                type: "success",
+                title: "Listo",
+                text: resp.mensaje || "Actualizado",
+                confirmButtonText: "Cerrar"
+            });
+            utCargarVendedorUltima({ silencioso: true });
+        }, "json").fail(function () {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-check"></i> Actualizar seleccionados');
+            utActualizarBotonVendedorUltima();
+            swal({
+                type: "error",
+                title: "Error",
+                text: "No se pudo comunicar con el servidor",
+                confirmButtonText: "Cerrar"
+            });
+        });
+    });
+});
