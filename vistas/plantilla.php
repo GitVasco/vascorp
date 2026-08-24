@@ -81,6 +81,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Recetas por modelo | Vasco System";
         } elseif ($_GET["ruta"] === "editar-receta-modelo") {
             $__tituloVentana = "Editor de receta | Vasco System";
+        } elseif ($_GET["ruta"] === "cuadre-ventas") {
+            $__tituloVentana = "Cuadre de ventas del día | Vasco System";
         } elseif ($_GET["ruta"] === "regularizaciones-comerciales") {
             $__tituloVentana = "Regularizaciones comerciales | Vasco System";
         } elseif ($_GET["ruta"] === "helpdesk") {
@@ -210,6 +212,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "solicitudes-atencion-vasco") : ?>
     <link rel="stylesheet" href="vistas/css/vasco-solicitud-atencion.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") : ?>
+    <link rel="stylesheet" href="vistas/css/cuadre-ventas.css?v=36">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
@@ -871,6 +876,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/cuentas-corrientes/solicitudes-atencion-vasco.php";
                 }
+            } else if ($_GET["ruta"] == "cuadre-ventas") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/cuentas-corrientes/cuadre-ventas.php";
+                }
             } else if ($_GET["ruta"] == "regularizaciones-comerciales") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("vasco_online", "regularizaciones_comerciales")) {
@@ -1143,6 +1155,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "solicitudes-atencion-vasco") { ?>
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
+    <script src="vistas/js/cuadre-ventas.js?v=37"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
     <script src="vistas/js/regularizaciones-comerciales.js?v=2"></script>

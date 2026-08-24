@@ -32,6 +32,10 @@ class TablaCancelarAbonos
         for ($i = 0; $i < count($abono); $i++) {
 
             $id = (int) $abono[$i]["id"];
+            $idCuadreReserva = isset($abono[$i]["id_cuadre"]) ? (int) $abono[$i]["id_cuadre"] : 0;
+            if ($idCuadreReserva > 0) {
+                continue;
+            }
             $codigoMotivo = isset($abono[$i]["motivo_pendiente"]) ? $abono[$i]["motivo_pendiente"] : "";
             $etiquetaMotivo = ControladorAbonos::ctrEtiquetaMotivoPendiente($codigoMotivo);
 

@@ -205,15 +205,10 @@ class ControladorFacturacion
     }
 
     /**
-     * NC/ND: editar solo usuarios 32 y 6, y solo si está GENERADO (facturacion = 0).
+     * NC/ND: editar mientras el documento esté GENERADO (facturacion = 0).
      */
     static public function ctrPuedeEditarNotaCD($facturacion)
     {
-        $id = isset($_SESSION["id"]) ? (int) $_SESSION["id"] : 0;
-        if ($id !== 32 && $id !== 6) {
-            return false;
-        }
-
         return (string) $facturacion === "0";
     }
 

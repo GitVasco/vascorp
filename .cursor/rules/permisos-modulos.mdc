@@ -51,6 +51,7 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `costos_modelo` | `ver`, `editar`, `aprobar` | Costos mensuales por modelo |
 | `ficha_modelos` | `ver`, `conciliar` | Ficha / resumen / comparación gerencial de modelos |
 | `proyeccion_comercial_modelos` | `ver`, `editar`, `publicar`, `cerrar`, `reabrir` | Proyección comercial de ventas por modelo–mes (+ vista Factores de proyección) |
+| `cuadre_ventas` | `ver`, `registrar`, `validar`, `procesar` | Cuadre de ventas del día (`/cuadre-ventas`): cajero arma el suyo (`registrar`); Cuentas corrientes confirma (`validar`); otros entran a cte (`procesar`, fase posterior) |
 
 ### vasco_online
 

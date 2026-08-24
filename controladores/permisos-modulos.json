@@ -75,6 +75,12 @@
       "publicar": [6],
       "cerrar": [6],
       "reabrir": [6]
+    },
+    "cuadre_ventas": {
+      "ver": [6],
+      "registrar": [6],
+      "validar": [6],
+      "procesar": [6]
     }
   },
   "vasco_online": {

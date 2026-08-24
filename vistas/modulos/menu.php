@@ -110,6 +110,8 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
             $puedeVerProyeccionComercial = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos");
+            $puedeVerCuadreVentas = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardGerencial
                 || $puedeVerDashboardCxc
@@ -1744,7 +1746,8 @@
                                         $_GET["ruta"] == "reportes-generales" ||
                                         $_GET["ruta"] == "notificaciones" ||
                                         $_GET["ruta"] == "letras-plazo-protesto" ||
-                                        $_GET["ruta"] == "credipagos"
+                                        $_GET["ruta"] == "credipagos" ||
+                                        $_GET["ruta"] == "cuadre-ventas"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1883,6 +1886,17 @@
                             </a>
                         </li>
 
+                        <?php if (!empty($puedeVerCuadreVentas)) { ?>
+                        <li class="<?php if ($_GET["ruta"] == "cuadre-ventas") echo 'active'; ?>">
+                            <a href="cuadre-ventas">
+
+                                <i class="fa fa-balance-scale"></i>
+                                <span>Cuadre de ventas</span>
+
+                            </a>
+                        </li>
+                        <?php } ?>
+
                         <li class="<?php if ($_GET["ruta"] == "consultar-cuentas") echo 'active'; ?>">
                             <a href="consultar-cuentas">
 
@@ -1930,6 +1944,19 @@
                     </ul>
                 </li>
 
+            <?php
+            }
+            if (
+                (!isset($_SESSION["cuenta"]) || (int) $_SESSION["cuenta"] !== 1)
+                && !empty($puedeVerCuadreVentas)
+            ) {
+            ?>
+                <li class="<?php if ($_GET["ruta"] == "cuadre-ventas") echo 'active'; ?>">
+                    <a href="cuadre-ventas">
+                        <i class="fa fa-balance-scale text-green"></i>
+                        <span>Cuadre de ventas</span>
+                    </a>
+                </li>
             <?php
             }
             ?>
