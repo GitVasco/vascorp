@@ -514,6 +514,10 @@ class ControladorModelos
 	{
 
 		if (isset($_POST["modelo"])) {
+			if (!function_exists("usuarioPuedeModulo")
+				|| !usuarioPuedeModulo("gestion_comercial", "ficha_modelos", "precios")) {
+				return;
+			}
 
 			$tabla = "preciojf";
 			$datos = array(

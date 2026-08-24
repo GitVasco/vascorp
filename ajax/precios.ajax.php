@@ -1,5 +1,10 @@
 <?php
 
+if (!isset($_SESSION)) {
+	session_start();
+}
+
+require_once "../controladores/permisos-modulos.config.php";
 require_once "../controladores/modelos.controlador.php";
 require_once "../modelos/modelos.modelo.php";
 require_once "../controladores/pedidos.controlador.php";
@@ -46,6 +51,12 @@ VER PRECIO
 =============================================*/
 
 if (isset($_POST["modelo"])) {
+	if (!function_exists("usuarioPuedeModulo")
+		|| !usuarioPuedeModulo("gestion_comercial", "ficha_modelos", "precios")) {
+		http_response_code(403);
+		echo json_encode(array("error" => "Sin permiso"));
+		return;
+	}
 
 	$modelos = new AjaxPrecios();
 	$modelos->modelo = $_POST["modelo"];

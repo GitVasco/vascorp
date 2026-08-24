@@ -112,13 +112,15 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos");
             $puedeVerCuadreVentas = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas");
+            $puedeVerInformeSemanalVendedor = function_exists("usuarioPuedeVerModulo")
+                && usuarioPuedeVerModulo("gestion_comercial", "informe_semanal_vendedor");
 
             $mostrarCreditoCobranzas = $puedeVerDashboardGerencial
                 || $puedeVerDashboardCxc
                 || $puedeVerCentroDecisiones
                 || $puedeVerHistorialCredito
                 || $puedeVerLineaCredito;
-            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor || $puedeVerFichaModelos || $puedeVerProyeccionComercial;
+            $mostrarMetasInteligencia = $puedeVerInteligenciaComercial || $puedeVerMetasVendedor || $puedeVerFichaModelos || $puedeVerProyeccionComercial || $puedeVerInformeSemanalVendedor;
             $mostrarCostosRentabilidad = $puedeVerCostosModelo;
             $mostrarCatalogosComerciales = $puedeVerCategoriasComerciales
                 || $puedeVerCategoriasPorRevisar
@@ -146,6 +148,9 @@
             $rutasActivasMetasInteligencia = array();
             if ($puedeVerInteligenciaComercial) {
                 $rutasActivasMetasInteligencia[] = "inteligencia-comercial";
+            }
+            if ($puedeVerInformeSemanalVendedor) {
+                $rutasActivasMetasInteligencia[] = "informe-semanal-vendedor";
             }
             if ($puedeVerMetasVendedor) {
                 $rutasActivasMetasInteligencia[] = "metas-vendedor";
@@ -288,6 +293,14 @@
                                     <a href="index.php?ruta=inteligencia-comercial">
                                         <i class="fa fa-lightbulb-o"></i>
                                         <span>Inteligencia comercial</span>
+                                    </a>
+                                </li>
+                                <?php } ?>
+                                <?php if ($puedeVerInformeSemanalVendedor) { ?>
+                                <li class="<?php if ($_GET["ruta"] == "informe-semanal-vendedor") echo 'active'; ?>">
+                                    <a href="index.php?ruta=informe-semanal-vendedor">
+                                        <i class="fa fa-file-text-o"></i>
+                                        <span>Informe semanal vendedor</span>
                                     </a>
                                 </li>
                                 <?php } ?>

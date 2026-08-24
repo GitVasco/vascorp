@@ -11,6 +11,7 @@ Planes y especificaciones de módulos comerciales de **vascorp** (no son contrat
 | [`regularizaciones/`](regularizaciones/) | Regularizaciones comerciales |
 | [`dashboard-cxc/`](dashboard-cxc/) | Dashboard CxC |
 | [`dashboard-gerencial/`](dashboard-gerencial/) | Dashboard gerencial (ventas + cobranzas) |
+| [`informe-semanal-vendedor.md`](informe-semanal-vendedor.md) | Informe semanal imprimible por vendedor |
 | [`PLAN_PROYECCION_COMERCIAL_MODELOS.md`](PLAN_PROYECCION_COMERCIAL_MODELOS.md) | Proyección oficial de ventas por modelo |
 | [`PLAN_APLICACION_PAGOS.md`](PLAN_APLICACION_PAGOS.md) | Cuadre de ventas del día: docs del cajero + OP/efectivo/Yape, sin tocar cte hasta validar |
 

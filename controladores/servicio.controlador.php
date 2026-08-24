@@ -880,4 +880,42 @@ class ControladorServicios
 			}
 		}
 	}
+
+	static public function ctrAniosHistorialServicios()
+	{
+		$anios = ModeloServicios::mdlAniosHistorialServicios();
+		if (!is_array($anios)) {
+			$anios = array();
+		}
+
+		$actual = (int) date("Y");
+		if (!in_array($actual, $anios, true)) {
+			array_unshift($anios, $actual);
+		}
+
+		if (count($anios) === 0) {
+			return array($actual);
+		}
+
+		rsort($anios, SORT_NUMERIC);
+
+		return $anios;
+	}
+
+	static public function ctrHistorialAnualServicios($anio)
+	{
+		return ModeloServicios::mdlHistorialAnualServicios($anio);
+	}
+
+	static public function ctrHistorialCabeceraServicios($anio)
+	{
+		$data = ModeloServicios::mdlHistorialAnualServicios($anio);
+		return $data["cabeceras"];
+	}
+
+	static public function ctrHistorialDetalleServicios($anio)
+	{
+		$data = ModeloServicios::mdlHistorialAnualServicios($anio);
+		return $data["detalles"];
+	}
 }

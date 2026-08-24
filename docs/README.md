@@ -40,6 +40,7 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 | [`recetas-modelos/`](comercial/recetas-modelos/) | Recetas, ficha, costos, categorías |
 | [`regularizaciones/`](comercial/regularizaciones/) | Regularizaciones comerciales |
 | [`dashboard-cxc/`](comercial/dashboard-cxc/) | Dashboard CxC |
+| [`informe-semanal-vendedor.md`](comercial/informe-semanal-vendedor.md) | Informe semanal por vendedor (imprimir / PDF) |
 | [`comercial/PLAN_PROYECCION_COMERCIAL_MODELOS.md`](comercial/PLAN_PROYECCION_COMERCIAL_MODELOS.md) | Proyección oficial de ventas por modelo |
 | [`comercial/PLAN_APLICACION_PAGOS.md`](comercial/PLAN_APLICACION_PAGOS.md) | Cuadre de ventas del día: docs del cajero + OP/efectivo/Yape, sin tocar cte hasta validar |
 | [`comercial/ROLLBACK_ELIMINAR_CANCELACION.md`](comercial/ROLLBACK_ELIMINAR_CANCELACION.md) | Rollback: borrar abono/renovación en `/ver-cuentas` |

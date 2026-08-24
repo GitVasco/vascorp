@@ -49,9 +49,10 @@ Si ya viene el detalle (“al 32 cerrar mes y resolver”), aplicar directo y re
 | `asignacion_grupos_marcas` | `ver`, `editar` | Asignación vendedor–grupo con vigencia |
 | `series_documentos` | `ver`, `editar` | Series fiscales (`talonariosjf`) + amarre a marcas |
 | `costos_modelo` | `ver`, `editar`, `aprobar` | Costos mensuales por modelo |
-| `ficha_modelos` | `ver`, `conciliar` | Ficha / resumen / comparación gerencial de modelos |
+| `ficha_modelos` | `ver`, `conciliar`, `precios` | Ficha / resumen / comparación gerencial de modelos; `precios` = ver/editar listas de precio en Maestros → Modelos |
 | `proyeccion_comercial_modelos` | `ver`, `editar`, `publicar`, `cerrar`, `reabrir` | Proyección comercial de ventas por modelo–mes (+ vista Factores de proyección) |
 | `cuadre_ventas` | `ver`, `registrar`, `validar`, `procesar` | Cuadre de ventas del día (`/cuadre-ventas`): cajero arma el suyo (`registrar`); Cuentas corrientes confirma (`validar`); otros entran a cte (`procesar`, fase posterior) |
+| `informe_semanal_vendedor` | `ver` | Informe semanal de gestión comercial por vendedor (vista imprimible / PDF) |
 
 ### vasco_online
 

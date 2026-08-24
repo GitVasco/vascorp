@@ -30,6 +30,22 @@
                 <button class="btn btn-info btnServicioDeta" data-toggle='modal' data-target='#modalVerServicioDeta' codigoServicio><i class="fa fa-eye"></i> Ver servicios</button>
                 <button class="btn btn-outline-success  btnReporteServicios" style="border:green 1px solid">
                     <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte Servicios </button>
+                <select id="anioHistorialServicios" class="form-control input-sm" style="width:90px; display:inline-block; height:34px; vertical-align:middle; margin:0 4px 0 8px;">
+                    <?php
+                    $anioActualHist = (int) date("Y");
+                    $aniosHist = ControladorServicios::ctrAniosHistorialServicios();
+                    $anioSelHist = isset($_GET["anio"]) ? (int) $_GET["anio"] : $anioActualHist;
+                    if (!in_array($anioSelHist, $aniosHist, true)) {
+                        $anioSelHist = $anioActualHist;
+                    }
+                    foreach ($aniosHist as $anioOpt) {
+                        $sel = ((int) $anioOpt === $anioSelHist) ? " selected" : "";
+                        echo '<option value="' . (int) $anioOpt . '"' . $sel . '>' . (int) $anioOpt . '</option>';
+                    }
+                    ?>
+                </select>
+                <button class="btn btn-outline-success btnReporteHistorialServicios" style="border:green 1px solid" title="Envíos y cierres del año para análisis">
+                    <img src="vistas/img/plantilla/excel.png" width="20px"> Historial anual </button>
                 <button type="button" class="btn btn-default pull-right" id="daterange-btnServicios">
                     <span>
                         <i class="fa fa-calendar"></i>

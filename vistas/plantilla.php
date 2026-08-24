@@ -77,6 +77,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Descuentos Compuestos ESSO | Vasco System";
         } elseif ($_GET["ruta"] === "inteligencia-comercial") {
             $__tituloVentana = "Inteligencia Comercial | Vasco System";
+        } elseif ($_GET["ruta"] === "informe-semanal-vendedor") {
+            $__tituloVentana = "Informe semanal vendedor | Vasco System";
         } elseif ($_GET["ruta"] === "recetas-modelo") {
             $__tituloVentana = "Recetas por modelo | Vasco System";
         } elseif ($_GET["ruta"] === "editar-receta-modelo") {
@@ -215,6 +217,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") : ?>
     <link rel="stylesheet" href="vistas/css/cuadre-ventas.css?v=36">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "informe-semanal-vendedor") : ?>
+    <link rel="stylesheet" href="vistas/css/informe-semanal-vendedor.css?v=10">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
@@ -565,6 +570,13 @@ CUERPO DOCUMENTO
                     denegarAccesoModulo();
                 } else {
                     include "modulos/inteligencia-comercial/inteligencia-comercial.php";
+                }
+            } else if ($_GET["ruta"] == "informe-semanal-vendedor") {
+
+                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "informe_semanal_vendedor")) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/informe-semanal-vendedor.php";
                 }
             } else if ($_GET["ruta"] == "usuarios") {
 
@@ -1143,6 +1155,10 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "inteligencia-comercial") { ?>
     <script src="vistas/js/inteligencia-comercial.js?v=24"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "informe-semanal-vendedor") { ?>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="vistas/js/informe-semanal-vendedor.js?v=10"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") { ?>
     <script src="vistas/js/vasco-online-sync.js?v=<?php echo rand(); ?>"></script>

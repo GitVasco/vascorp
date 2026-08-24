@@ -1,0 +1,502 @@
+.isv-page .content-header h1 {
+    margin-bottom: 8px;
+}
+.isv-filtros .form-group {
+    margin-right: 14px;
+    vertical-align: bottom;
+}
+.isv-filtros label {
+    display: block;
+    font-size: 12px;
+}
+.isv-hoja {
+    background: #fff;
+    color: #1a2332;
+    padding: 16px 20px 10px;
+    border: 1px solid #d9e2ec;
+    max-width: 980px;
+    margin: 0 auto 20px;
+}
+.isv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 3px solid #9eb8d4;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+.isv-logo {
+    font-weight: 800;
+    font-size: 17px;
+    line-height: 1;
+    color: #4a6d8c;
+}
+.isv-titulo {
+    text-align: center;
+    flex: 1;
+}
+.isv-titulo h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #4a6d8c;
+}
+.isv-titulo p {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #5b6b7f;
+    letter-spacing: 0.8px;
+}
+.isv-meta {
+    text-align: right;
+    font-size: 11px;
+}
+.isv-meta span {
+    display: block;
+    color: #6b7c93;
+}
+.isv-meta strong {
+    color: #4a6d8c;
+}
+.isv-kpis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.isv-kpi {
+    flex: 1 1 140px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid #d5e4f0;
+    border-radius: 8px;
+    padding: 8px 9px;
+    min-height: 62px;
+    background: #eef5fb;
+}
+.isv-kpi small {
+    display: block;
+    font-size: 10px;
+    color: #6b7c93;
+    text-transform: uppercase;
+}
+.isv-kpi strong {
+    display: block;
+    font-size: 15px;
+    color: #3d5a73;
+    line-height: 1.15;
+}
+.isv-kpi em {
+    display: block;
+    font-style: normal;
+    font-size: 10px;
+    color: #7a8899;
+}
+.isv-kpi-ico {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #c5d9ec;
+    color: #3d5a73;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.isv-kpi-ico--green { background: #c8e6d4; color: #3d7a58; }
+.isv-kpi-ico--purple { background: #ddd0ef; color: #6a5488; }
+.isv-kpi-ico--orange { background: #f5dcc0; color: #a06a3a; }
+.isv-kpi-ico--blue { background: #c5dcf5; color: #3d6a9a; }
+.isv-kpi-ico--teal { background: #c5e8e4; color: #3a7a74; }
+.isv-grid-2 {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.isv-grid-charts {
+    grid-template-columns: 1fr 1fr;
+}
+.isv-grid-2 .isv-card {
+    margin-bottom: 0;
+}
+.isv-card {
+    border: 1px solid #e4ebf2;
+    border-radius: 8px;
+    padding: 10px 12px 8px;
+    margin-bottom: 10px;
+}
+.isv-card h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4a6d8c;
+}
+.isv-chart-line {
+    height: 168px;
+    position: relative;
+}
+.isv-tabla-dias {
+    margin-top: 6px;
+}
+.isv-tabla-dias th,
+.isv-tabla-dias td {
+    text-align: right;
+    font-size: 10px;
+    padding: 3px 5px;
+}
+.isv-tabla-dias th:first-child,
+.isv-tabla-dias td:first-child {
+    text-align: left;
+}
+#isvDiasActual th,
+#isvDiasActual td {
+    background: #cfe8f4;
+    color: #3a6a82;
+}
+#isvDiasActual th:first-child {
+    border-left: 4px solid #7eb8d4;
+}
+#isvDiasAnterior th,
+#isvDiasAnterior td {
+    background: #e8dff0;
+    color: #6a5a7a;
+}
+#isvDiasAnterior th:first-child {
+    border-left: 4px solid #c4b5d4;
+}
+#isvDiasCobActual th,
+#isvDiasCobActual td {
+    background: #cfeee6;
+    color: #3a6e64;
+}
+#isvDiasCobActual th:first-child {
+    border-left: 4px solid #7ec8b8;
+}
+#isvDiasCobAnterior th,
+#isvDiasCobAnterior td {
+    background: #e8eed8;
+    color: #5a6a40;
+}
+#isvDiasCobAnterior th:first-child {
+    border-left: 4px solid #c5d4a8;
+}
+.isv-chart-nota {
+    margin: 4px 0 0;
+    font-size: 10px;
+    color: #6b7c93;
+}
+.isv-resumen-venta {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 10px;
+    color: #5b6b7f;
+    text-align: center;
+}
+.isv-resumen-venta > div {
+    flex: 1;
+    background: #e8f1f8;
+    border-radius: 6px;
+    padding: 6px 4px;
+}
+.isv-resumen-venta b {
+    color: #3d5a73;
+    font-size: 12px;
+}
+.isv-tabla {
+    width: 100%;
+    font-size: 11px;
+    border-collapse: collapse;
+}
+.isv-tabla th {
+    background: #cfe0f0;
+    color: #3d5a73;
+    padding: 5px 6px;
+    font-weight: 600;
+}
+.isv-tabla td {
+    padding: 5px 6px;
+    border-bottom: 1px solid #edf2f7;
+}
+.isv-tabla tbody tr:nth-child(even) {
+    background: #eef5fb;
+}
+.isv-var-up { color: #5a9a72; font-weight: 700; }
+.isv-var-down { color: #c47a7a; font-weight: 700; }
+.isv-cartera-body {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    gap: 12px;
+    align-items: center;
+}
+.isv-donut-wrap {
+    position: relative;
+    height: 188px;
+}
+.isv-donut-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+.isv-donut-center span {
+    display: block;
+    font-size: 9px;
+    color: #6b7c93;
+}
+.isv-donut-center strong {
+    font-size: 13px;
+    color: #4a6d8c;
+}
+.isv-cartera-foot {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+.isv-cartera-foot div {
+    flex: 1;
+    text-align: center;
+    font-size: 10px;
+    background: #e8f1f8;
+    border-radius: 6px;
+    padding: 6px 4px;
+    color: #5b6b7f;
+}
+.isv-cartera-foot b {
+    display: block;
+    color: #3d5a73;
+    font-size: 12px;
+}
+.isv-lista {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.isv-lista--ok {
+    list-style: none;
+    padding-left: 0;
+}
+.isv-lista--ok li {
+    position: relative;
+    padding-left: 18px;
+    margin-bottom: 6px;
+}
+.isv-lista--ok li:before {
+    content: "\2713";
+    position: absolute;
+    left: 0;
+    color: #5a9a72;
+    font-weight: 700;
+}
+.isv-obs {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #334155;
+}
+.isv-swatch {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.isv-swatch--por_vencer { background: #A8D5BA !important; }
+.isv-swatch--0_30 { background: #F5E6A8 !important; }
+.isv-swatch--31_60 { background: #F5C4A0 !important; }
+.isv-swatch--61_90 { background: #F0B0B0 !important; }
+.isv-swatch--mas_90 { background: #D8B4C8 !important; }
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 8mm 8mm 10mm;
+    }
+    html, body {
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    *,
+    *::before,
+    *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    .isv-kpi {
+        background: #eef5fb !important;
+        border-color: #d5e4f0 !important;
+    }
+    .isv-kpi-ico { background: #c5d9ec !important; color: #3d5a73 !important; }
+    .isv-kpi-ico--green { background: #c8e6d4 !important; color: #3d7a58 !important; }
+    .isv-kpi-ico--purple { background: #ddd0ef !important; color: #6a5488 !important; }
+    .isv-kpi-ico--orange { background: #f5dcc0 !important; color: #a06a3a !important; }
+    .isv-kpi-ico--blue { background: #c5dcf5 !important; color: #3d6a9a !important; }
+    .isv-kpi-ico--teal { background: #c5e8e4 !important; color: #3a7a74 !important; }
+    .isv-tabla th {
+        background: #cfe0f0 !important;
+        color: #3d5a73 !important;
+    }
+    #isvDiasActual th,
+    #isvDiasActual td {
+        background: #cfe8f4 !important;
+        color: #3a6a82 !important;
+    }
+    #isvDiasAnterior th,
+    #isvDiasAnterior td {
+        background: #e8dff0 !important;
+        color: #6a5a7a !important;
+    }
+    #isvDiasCobActual th,
+    #isvDiasCobActual td {
+        background: #cfeee6 !important;
+        color: #3a6e64 !important;
+    }
+    #isvDiasCobAnterior th,
+    #isvDiasCobAnterior td {
+        background: #e8eed8 !important;
+        color: #5a6a40 !important;
+    }
+    .isv-tabla tbody tr:nth-child(even) { background: #eef5fb !important; }
+    .isv-resumen-venta > div,
+    .isv-cartera-foot div { background: #e8f1f8 !important; }
+    .wrapper,
+    .content-wrapper,
+    .right-side,
+    .isv-page,
+    section.content {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        background: #fff !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+    }
+    .main-header,
+    .main-sidebar,
+    .left-side,
+    .main-footer,
+    .content-header,
+    .control-sidebar,
+    .isv-no-print {
+        display: none !important;
+    }
+    .isv-hoja {
+        border: none !important;
+        max-width: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+    .isv-header {
+        gap: 6px;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    .isv-titulo h2 { font-size: 12px; }
+    .isv-titulo p,
+    .isv-meta,
+    .isv-logo { font-size: 9px; }
+    .isv-kpis {
+        display: grid !important;
+        grid-template-columns: repeat(6, 1fr) !important;
+        gap: 4px !important;
+        flex-wrap: nowrap !important;
+        margin-bottom: 8px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .isv-kpi {
+        flex: none !important;
+        min-height: 0 !important;
+        padding: 4px 5px !important;
+        gap: 4px;
+        border-radius: 4px;
+    }
+    .isv-kpi-ico {
+        width: 18px;
+        height: 18px;
+        font-size: 9px;
+    }
+    .isv-kpi small { font-size: 7px; }
+    .isv-kpi strong { font-size: 10px; }
+    .isv-kpi em { font-size: 7px; }
+    .isv-grid-2 {
+        display: grid !important;
+        grid-template-columns: 1.25fr 1fr !important;
+        gap: 6px !important;
+        margin-bottom: 6px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .isv-grid-charts {
+        grid-template-columns: 1fr 1fr !important;
+    }
+    .isv-card {
+        padding: 6px 8px 5px;
+        border-radius: 4px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .isv-card h3 { font-size: 11px; margin-bottom: 5px; }
+    .isv-chart-line {
+        height: 105px !important;
+        max-height: 105px !important;
+    }
+    .isv-donut-wrap {
+        height: 120px !important;
+        max-height: 120px !important;
+    }
+    .isv-cartera-body {
+        grid-template-columns: 140px 1fr !important;
+        gap: 8px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .isv-tabla { font-size: 8px; }
+    .isv-tabla th,
+    .isv-tabla td { padding: 3px 4px; }
+    .isv-tabla-dias th,
+    .isv-tabla-dias td { font-size: 7.5px; padding: 2px 3px; }
+    .isv-resumen-venta,
+    .isv-cartera-foot { gap: 4px; margin-top: 4px; }
+    .isv-resumen-venta > div,
+    .isv-cartera-foot div { padding: 4px 3px; font-size: 8px; }
+    .isv-resumen-venta b,
+    .isv-cartera-foot b { font-size: 10px; }
+    .isv-lista,
+    .isv-obs { font-size: 9px; line-height: 1.35; }
+    .isv-chart-nota { display: none; }
+    .isv-print-p2 {
+        page-break-before: auto;
+        break-before: auto;
+    }
+    .isv-swatch--por_vencer { background: #A8D5BA !important; }
+    .isv-swatch--0_30 { background: #F5E6A8 !important; }
+    .isv-swatch--31_60 { background: #F5C4A0 !important; }
+    .isv-swatch--61_90 { background: #F0B0B0 !important; }
+    .isv-swatch--mas_90 { background: #D8B4C8 !important; }
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+}

@@ -1972,4 +1972,284 @@ class ModeloServicios
 
 		$stmt = null;
 	}
+
+	static public function mdlAniosHistorialServicios()
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT DISTINCT LEFT(fecha, 4) AS anio
+			FROM serviciosjf
+			WHERE fecha IS NOT NULL AND fecha <> '' AND LEFT(fecha, 4) BETWEEN '2000' AND '2100'
+			ORDER BY anio DESC"
+		);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$stmt = null;
+
+		$anios = array();
+		foreach ($filas as $fila) {
+			$anios[] = (int) $fila["anio"];
+		}
+
+		return $anios;
+	}
+
+	static public function mdlHistorialAnualServicios($anio)
+	{
+		$anio = (int) $anio;
+		$ini = $anio . "-01-01";
+		$fin = ($anio + 1) . "-01-01";
+
+		$pdo = Conexion::conectar();
+
+		$stmt = $pdo->prepare(
+			"SELECT
+				se.codigo,
+				se.guia,
+				se.taller,
+				se.usuario,
+				se.fecha,
+				s.nom_sector,
+				u.nombre AS usuario_nombre
+			FROM serviciosjf se
+			LEFT JOIN sectorjf s ON se.taller = s.cod_sector
+			LEFT JOIN usuariosjf u ON se.usuario = u.id
+			WHERE se.fecha >= :ini AND se.fecha < :fin
+			ORDER BY se.fecha, se.codigo"
+		);
+		$stmt->bindValue(":ini", $ini, PDO::PARAM_STR);
+		$stmt->bindValue(":fin", $fin, PDO::PARAM_STR);
+		$stmt->execute();
+		$servicios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$stmt = null;
+
+		if (count($servicios) === 0) {
+			return array("cabeceras" => array(), "detalles" => array());
+		}
+
+		$codigos = array();
+		$porCodigo = array();
+		foreach ($servicios as $s) {
+			$cod = (string) $s["codigo"];
+			$codigos[] = $cod;
+			$porCodigo[$cod] = $s;
+		}
+
+		$ph = implode(",", array_fill(0, count($codigos), "?"));
+		$stmt = $pdo->prepare(
+			"SELECT id, codigo, articulo, cantidad, saldo
+			FROM servicios_detallejf
+			WHERE codigo IN ($ph) AND cantidad > 0"
+		);
+		$stmt->execute($codigos);
+		$lineas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$stmt = null;
+
+		$artIds = array();
+		$detIds = array();
+		foreach ($lineas as $ln) {
+			$artIds[(string) $ln["articulo"]] = true;
+			$detIds[(string) $ln["id"]] = true;
+		}
+
+		$articulos = array();
+		$artKeys = array_keys($artIds);
+		if (count($artKeys) > 0) {
+			$phArt = implode(",", array_fill(0, count($artKeys), "?"));
+			$stmt = $pdo->prepare(
+				"SELECT articulo, modelo, nombre, color, talla
+				FROM articulojf
+				WHERE articulo IN ($phArt)"
+			);
+			$stmt->execute($artKeys);
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $a) {
+				$articulos[(string) $a["articulo"]] = $a;
+			}
+			$stmt = null;
+		}
+
+		$cierresCab = $pdo->query("SELECT codigo, LEFT(fecha, 10) AS fecha FROM cierresjf")->fetchAll(PDO::FETCH_ASSOC);
+		$mapaCierreFecha = array();
+		foreach ($cierresCab as $c) {
+			$mapaCierreFecha[(string) $c["codigo"]] = $c["fecha"];
+		}
+
+		$cierresDet = $pdo->query("SELECT codigo, cod_servicio FROM cierres_detallejf")->fetchAll(PDO::FETCH_ASSOC);
+		$fechasPorDetalle = array();
+		foreach ($cierresDet as $cd) {
+			$idDet = trim((string) $cd["cod_servicio"]);
+			if ($idDet === "" || !isset($detIds[$idDet])) {
+				continue;
+			}
+			$f = isset($mapaCierreFecha[(string) $cd["codigo"]]) ? $mapaCierreFecha[(string) $cd["codigo"]] : null;
+			if ($f === null || $f === "" || $f === "0000-00-00") {
+				continue;
+			}
+			$f = substr($f, 0, 10);
+			if (!isset($fechasPorDetalle[$idDet])) {
+				$fechasPorDetalle[$idDet] = array("primero" => $f, "ultimo" => $f);
+			} else {
+				if ($f < $fechasPorDetalle[$idDet]["primero"]) {
+					$fechasPorDetalle[$idDet]["primero"] = $f;
+				}
+				if ($f > $fechasPorDetalle[$idDet]["ultimo"]) {
+					$fechasPorDetalle[$idDet]["ultimo"] = $f;
+				}
+			}
+		}
+
+		$hoy = date("Y-m-d");
+		$detalles = array();
+		$aggCab = array();
+
+		foreach ($lineas as $ln) {
+			$cod = (string) $ln["codigo"];
+			if (!isset($porCodigo[$cod])) {
+				continue;
+			}
+			$cab = $porCodigo[$cod];
+			$art = isset($articulos[(string) $ln["articulo"]]) ? $articulos[(string) $ln["articulo"]] : array();
+			$idDet = (string) $ln["id"];
+			$enviado = (int) $ln["cantidad"];
+			$saldo = (int) $ln["saldo"];
+			$cerrado = $enviado - $saldo;
+			$fechaEnvio = substr((string) $cab["fecha"], 0, 10);
+			$primer = isset($fechasPorDetalle[$idDet]) ? $fechasPorDetalle[$idDet]["primero"] : null;
+			$ultimo = isset($fechasPorDetalle[$idDet]) ? $fechasPorDetalle[$idDet]["ultimo"] : null;
+
+			if ($saldo <= 0) {
+				$estado = "Cerrado";
+				$fechaFin = $ultimo;
+				$diasRef = $fechaFin;
+			} elseif ($cerrado > 0) {
+				$estado = "Parcial";
+				$fechaFin = null;
+				$diasRef = $hoy;
+			} else {
+				$estado = "Pendiente";
+				$fechaFin = null;
+				$diasRef = $hoy;
+			}
+
+			$dias = null;
+			if ($fechaEnvio && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEnvio) && $diasRef && preg_match('/^\d{4}-\d{2}-\d{2}$/', $diasRef)) {
+				$dias = (int) round((strtotime($diasRef) - strtotime($fechaEnvio)) / 86400);
+			}
+
+			$tallerNom = $cab["taller"] . " - " . (isset($cab["nom_sector"]) ? $cab["nom_sector"] : "");
+
+			$detalles[] = array(
+				"codigo" => $cod,
+				"guia" => $cab["guia"],
+				"taller" => $tallerNom,
+				"usuario" => $cab["usuario_nombre"],
+				"fecha_envio" => $fechaEnvio,
+				"anio_envio" => (int) substr($fechaEnvio, 0, 4),
+				"mes_envio" => (int) substr($fechaEnvio, 5, 2),
+				"articulo" => $ln["articulo"],
+				"modelo" => isset($art["modelo"]) ? $art["modelo"] : "",
+				"nombre" => isset($art["nombre"]) ? $art["nombre"] : "",
+				"color" => isset($art["color"]) ? $art["color"] : "",
+				"talla" => isset($art["talla"]) ? $art["talla"] : "",
+				"enviado" => $enviado,
+				"cerrado" => $cerrado,
+				"saldo" => $saldo,
+				"fecha_primer_cierre" => $primer,
+				"fecha_ultimo_cierre" => $ultimo,
+				"fecha_fin" => $fechaFin,
+				"dias" => $dias,
+				"estado" => $estado
+			);
+
+			if (!isset($aggCab[$cod])) {
+				$aggCab[$cod] = array(
+					"codigo" => $cod,
+					"guia" => $cab["guia"],
+					"taller" => $tallerNom,
+					"usuario" => $cab["usuario_nombre"],
+					"fecha_envio" => $fechaEnvio,
+					"anio_envio" => (int) substr($fechaEnvio, 0, 4),
+					"mes_envio" => (int) substr($fechaEnvio, 5, 2),
+					"enviado" => 0,
+					"cerrado" => 0,
+					"saldo" => 0,
+					"fecha_primer_cierre" => null,
+					"fecha_ultimo_cierre" => null
+				);
+			}
+			$aggCab[$cod]["enviado"] += $enviado;
+			$aggCab[$cod]["cerrado"] += $cerrado;
+			$aggCab[$cod]["saldo"] += $saldo;
+			if ($primer) {
+				if ($aggCab[$cod]["fecha_primer_cierre"] === null || $primer < $aggCab[$cod]["fecha_primer_cierre"]) {
+					$aggCab[$cod]["fecha_primer_cierre"] = $primer;
+				}
+			}
+			if ($ultimo) {
+				if ($aggCab[$cod]["fecha_ultimo_cierre"] === null || $ultimo > $aggCab[$cod]["fecha_ultimo_cierre"]) {
+					$aggCab[$cod]["fecha_ultimo_cierre"] = $ultimo;
+				}
+			}
+		}
+
+		$cabeceras = array();
+		foreach ($servicios as $s) {
+			$cod = (string) $s["codigo"];
+			if (!isset($aggCab[$cod])) {
+				continue;
+			}
+			$row = $aggCab[$cod];
+			if ($row["saldo"] <= 0) {
+				$row["estado"] = "Cerrado";
+				$row["fecha_fin"] = $row["fecha_ultimo_cierre"];
+				$diasRef = $row["fecha_fin"];
+			} elseif ($row["cerrado"] > 0) {
+				$row["estado"] = "Parcial";
+				$row["fecha_fin"] = null;
+				$diasRef = $hoy;
+			} else {
+				$row["estado"] = "Pendiente";
+				$row["fecha_fin"] = null;
+				$diasRef = $hoy;
+			}
+			$row["dias"] = null;
+			if ($row["fecha_envio"] && preg_match('/^\d{4}-\d{2}-\d{2}$/', $row["fecha_envio"]) && $diasRef && preg_match('/^\d{4}-\d{2}-\d{2}$/', $diasRef)) {
+				$row["dias"] = (int) round((strtotime($diasRef) - strtotime($row["fecha_envio"])) / 86400);
+			}
+			$cabeceras[] = $row;
+		}
+
+		usort($detalles, function ($a, $b) {
+			$cmp = strcmp((string) $a["fecha_envio"], (string) $b["fecha_envio"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["codigo"], (string) $b["codigo"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["modelo"], (string) $b["modelo"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["color"], (string) $b["color"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			return strcmp((string) $a["talla"], (string) $b["talla"]);
+		});
+
+		return array("cabeceras" => $cabeceras, "detalles" => $detalles);
+	}
+
+	static public function mdlHistorialCabeceraServicios($anio)
+	{
+		$data = self::mdlHistorialAnualServicios($anio);
+		return $data["cabeceras"];
+	}
+
+	static public function mdlHistorialDetalleServicios($anio)
+	{
+		$data = self::mdlHistorialAnualServicios($anio);
+		return $data["detalles"];
+	}
 }

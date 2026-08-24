@@ -1432,3 +1432,12 @@ $(".tablaPagoServicios").on("click", ".btnVerEtiqueta", function () {
 $(".box").on("click", ".btnReporteServicios", function () {
     window.location = "vistas/reportes_excel/rpt_servicios.php";
 });
+
+$(".box").on("click", ".btnReporteHistorialServicios", function () {
+    var anio = $("#anioHistorialServicios").val();
+    if (!anio) {
+        anio = new Date().getFullYear();
+    }
+    window.location =
+        "vistas/reportes_excel/rpt_historial_servicios.php?anio=" + anio;
+});
