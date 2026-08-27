@@ -103,21 +103,22 @@ class ModeloMovimientos
 
    /* 
    * total unidades producidas por año y mes específicos
+   * (ingresos E20 en vivo; no usar totalesjf, que queda desfasado)
    */
    static public function mdlTotUndProdMesEspecifico($año, $mes)
    {
 
       $año = intval($año);
       $mes = intval($mes);
+      $tabla = "movimientosjf_" . $año;
 
       $stmt = Conexion::conectar()->prepare("SELECT 
-         SUM(t.total_produccion) AS total_produccion 
+         COALESCE(SUM(m.cantidad), 0) AS total_produccion 
       FROM
-         totalesjf t 
-      WHERE t.año = :anio 
-         AND t.mes = :mes");
+         $tabla m 
+      WHERE m.tipo = 'E20'
+         AND MONTH(m.fecha) = :mes");
 
-      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
       $stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
 
       $stmt->execute();
@@ -126,7 +127,6 @@ class ModeloMovimientos
 
       $stmt = null;
 
-      // Si no hay resultados, devolver 0
       if ($resultado && isset($resultado["total_produccion"])) {
          return array("total_produccion" => $resultado["total_produccion"] ? $resultado["total_produccion"] : 0);
       } else {
@@ -4492,21 +4492,22 @@ class ModeloMovimientos
 
    /* 
    * Obtener totales de producción por mes de un año específico
+   * (ingresos E20 en vivo; no usar totalesjf, que queda desfasado)
    */
    static public function mdlTotalMesProdPorAño($año)
    {
       $año = intval($año);
+      $tabla = "movimientosjf_" . $año;
 
       $stmt = Conexion::conectar()->prepare("SELECT 
-            t.mes,
-            COALESCE(SUM(t.total_produccion), 0) as total_mesP
+            MONTH(m.fecha) as mes,
+            COALESCE(SUM(m.cantidad), 0) as total_mesP
          FROM
-            totalesjf t 
-         WHERE t.año = :anio
-         GROUP BY t.mes
-         ORDER BY t.mes");
+            $tabla m 
+         WHERE m.tipo = 'E20'
+         GROUP BY MONTH(m.fecha)
+         ORDER BY mes");
 
-      $stmt->bindParam(":anio", $año, PDO::PARAM_INT);
       $stmt->execute();
 
       $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);

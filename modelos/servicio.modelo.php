@@ -2252,4 +2252,100 @@ class ModeloServicios
 		$data = self::mdlHistorialAnualServicios($anio);
 		return $data["detalles"];
 	}
+
+	static public function mdlPendienteRetornoServicios()
+	{
+		$pdo = Conexion::conectar();
+
+		$lineas = $pdo->query(
+			"SELECT id, codigo, articulo, saldo
+			FROM servicios_detallejf
+			WHERE saldo > 0 AND cerrar = 0
+			ORDER BY codigo, articulo"
+		)->fetchAll(PDO::FETCH_ASSOC);
+
+		if (count($lineas) === 0) {
+			return array();
+		}
+
+		$codigos = array();
+		$artIds = array();
+		foreach ($lineas as $ln) {
+			$codigos[(string) $ln["codigo"]] = true;
+			$artIds[(string) $ln["articulo"]] = true;
+		}
+
+		$codKeys = array_keys($codigos);
+		$ph = implode(",", array_fill(0, count($codKeys), "?"));
+		$stmt = $pdo->prepare(
+			"SELECT se.codigo, se.taller, se.fecha, s.nom_sector
+			FROM serviciosjf se
+			LEFT JOIN sectorjf s ON se.taller = s.cod_sector
+			WHERE se.codigo IN ($ph)"
+		);
+		$stmt->execute($codKeys);
+		$servicios = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+			$servicios[(string) $s["codigo"]] = $s;
+		}
+		$stmt = null;
+
+		$artKeys = array_keys($artIds);
+		$articulos = array();
+		if (count($artKeys) > 0) {
+			$phArt = implode(",", array_fill(0, count($artKeys), "?"));
+			$stmt = $pdo->prepare(
+				"SELECT articulo, modelo, color, talla
+				FROM articulojf
+				WHERE articulo IN ($phArt)"
+			);
+			$stmt->execute($artKeys);
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $a) {
+				$articulos[(string) $a["articulo"]] = $a;
+			}
+			$stmt = null;
+		}
+
+		$filas = array();
+		foreach ($lineas as $ln) {
+			$cod = (string) $ln["codigo"];
+			$cab = isset($servicios[$cod]) ? $servicios[$cod] : array();
+			$art = isset($articulos[(string) $ln["articulo"]]) ? $articulos[(string) $ln["articulo"]] : array();
+			$fecha = isset($cab["fecha"]) ? substr((string) $cab["fecha"], 0, 10) : "";
+
+			$filas[] = array(
+				"taller" => isset($cab["taller"]) ? $cab["taller"] : "",
+				"nom_sector" => isset($cab["nom_sector"]) ? $cab["nom_sector"] : "",
+				"codigo" => $cod,
+				"fecha_emision" => $fecha,
+				"articulo" => $ln["articulo"],
+				"modelo" => isset($art["modelo"]) ? $art["modelo"] : "",
+				"color" => isset($art["color"]) ? $art["color"] : "",
+				"talla" => isset($art["talla"]) ? $art["talla"] : "",
+				"cantidad" => (int) $ln["saldo"]
+			);
+		}
+
+		usort($filas, function ($a, $b) {
+			$cmp = strcmp((string) $a["taller"], (string) $b["taller"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["fecha_emision"], (string) $b["fecha_emision"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["codigo"], (string) $b["codigo"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			$cmp = strcmp((string) $a["articulo"], (string) $b["articulo"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			return strcmp((string) $a["talla"], (string) $b["talla"]);
+		});
+
+		return $filas;
+	}
 }

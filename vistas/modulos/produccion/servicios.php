@@ -46,6 +46,8 @@
                 </select>
                 <button class="btn btn-outline-success btnReporteHistorialServicios" style="border:green 1px solid" title="Envíos y cierres del año para análisis">
                     <img src="vistas/img/plantilla/excel.png" width="20px"> Historial anual </button>
+                <button class="btn btn-outline-success btnReportePendienteRetorno" style="border:green 1px solid" title="Lo que aún no ha vuelto del servicio">
+                    <img src="vistas/img/plantilla/excel.png" width="20px"> Pendiente retorno </button>
                 <button type="button" class="btn btn-default pull-right" id="daterange-btnServicios">
                     <span>
                         <i class="fa fa-calendar"></i>

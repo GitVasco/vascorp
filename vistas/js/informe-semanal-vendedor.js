@@ -100,13 +100,13 @@
         $("isvCarteraTotal").textContent = fmtSoles(car.total);
 
         $("isvTablaComp").innerHTML = (inf.comparativo || []).map(function (fila) {
-            return "<tr><td>" + fila.indicador + "</td><td>" + celda(fila, "actual") +
-                "</td><td>" + celda(fila, "anterior") + "</td><td>" + fmtVar(fila.variacion) + "</td></tr>";
+            return "<tr><td>" + fila.indicador + "</td><td class='isv-num'>" + celda(fila, "actual") +
+                "</td><td class='isv-num'>" + celda(fila, "anterior") + "</td><td>" + fmtVar(fila.variacion) + "</td></tr>";
         }).join("");
 
         $("isvTablaCartera").innerHTML = (car.tramos || []).map(function (t) {
             return "<tr><td><span class='isv-swatch isv-swatch--" + t.id +
-                "'></span></td><td>" + t.label + "</td><td>" + fmtSoles(t.monto) +
+                "'></span></td><td>" + t.label + "</td><td class='isv-num'>" + fmtSoles(t.monto) +
                 "</td><td>" + Number(t.pct).toFixed(1) + "%</td></tr>";
         }).join("");
 
@@ -120,7 +120,7 @@
         var top = inf.top_clientes || [];
         $("isvTablaTop").innerHTML = top.length
             ? top.map(function (c) {
-                return "<tr><td>" + c.puesto + "</td><td>" + c.nombre + "</td><td>" + fmtSoles(c.venta) + "</td></tr>";
+                return "<tr><td>" + c.puesto + "</td><td>" + c.nombre + "</td><td class='isv-num'>" + fmtSoles(c.venta) + "</td></tr>";
             }).join("")
             : "<tr><td colspan='3'>Sin ventas en la semana</td></tr>";
 
@@ -191,8 +191,8 @@
         var i;
         for (i = 0; i < labels.length; i++) {
             head += "<th>" + labels[i] + "</th>";
-            rowA += "<td>" + fmtSoles(actual[i] || 0) + "</td>";
-            rowB += "<td>" + fmtSoles(anterior[i] || 0) + "</td>";
+            rowA += "<td class='isv-num'>" + fmtSoles(actual[i] || 0) + "</td>";
+            rowB += "<td class='isv-num'>" + fmtSoles(anterior[i] || 0) + "</td>";
         }
         if ($(idHead)) {
             $(idHead).innerHTML = head;
@@ -247,8 +247,9 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
+                layout: { padding: { top: 14 } },
                 plugins: {
-                    legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } }
+                    legend: { display: false }
                 },
                 scales: {
                     y: {
@@ -308,8 +309,9 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
+                layout: { padding: { top: 14 } },
                 plugins: {
-                    legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } }
+                    legend: { display: false }
                 },
                 scales: {
                     y: {

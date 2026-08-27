@@ -131,6 +131,10 @@ if ($filtros["vendedor"] === "" && count($vendedores) > 0) {
                     <div class="isv-chart-line">
                         <canvas id="isvChartVentas"></canvas>
                     </div>
+                    <div class="isv-chart-legend">
+                        <span class="isv-leg-item isv-leg-ventas-act"><i></i> Semana actual</span>
+                        <span class="isv-leg-item isv-leg-ventas-ant"><i></i> Semana ant.</span>
+                    </div>
                     <table class="isv-tabla isv-tabla-dias">
                         <thead>
                             <tr id="isvDiasHead"></tr>
@@ -151,6 +155,10 @@ if ($filtros["vendedor"] === "" && count($vendedores) > 0) {
                     <h3>Evolución diaria de cobranza</h3>
                     <div class="isv-chart-line">
                         <canvas id="isvChartCobranzas"></canvas>
+                    </div>
+                    <div class="isv-chart-legend">
+                        <span class="isv-leg-item isv-leg-cob-act"><i></i> Semana actual</span>
+                        <span class="isv-leg-item isv-leg-cob-ant"><i></i> Semana ant.</span>
                     </div>
                     <table class="isv-tabla isv-tabla-dias">
                         <thead>

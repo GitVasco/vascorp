@@ -8,17 +8,8 @@ header('Content-Type: text/html; charset=ISO-8859-1');
 * LLAMAMOS A LA LIBRERIA PHPEXCEL
 */
 include "../reportes_excel/Classes/PHPExcel.php";
-require_once "../../controladores/usuarios.controlador.php";
-require_once "../../modelos/usuarios.modelo.php";
 require_once "../../controladores/servicio.controlador.php";
 require_once "../../modelos/servicio.modelo.php";
-/* 
-* LLAMAMOS A LA CONEXION
-*/
-$con=ControladorUsuarios::ctrMostrarConexiones("id",1);
-
-$conexion = mysql_connect($con["ip"], $con["user"], $con["pwd"]) or die("No se pudo conectar: " . mysql_error());
-mysql_select_db($con["db"], $conexion);
 
 /* 
 * CONFIGURAMOS LA FECHA ACTUAL

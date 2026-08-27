@@ -137,6 +137,43 @@
 .isv-chart-line {
     height: 168px;
     position: relative;
+    overflow: hidden;
+}
+.isv-chart-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 4px 0 2px;
+    font-size: 10px;
+    color: #5b6b7f;
+}
+.isv-leg-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+.isv-leg-item i {
+    display: inline-block;
+    width: 14px;
+    height: 3px;
+    border-radius: 1px;
+    background: currentColor;
+}
+.isv-leg-ventas-act { color: #5a8eaa; }
+.isv-leg-ventas-act i { background: #7eb8d4; }
+.isv-leg-ventas-ant { color: #7a6a8a; }
+.isv-leg-ventas-ant i {
+    background: repeating-linear-gradient(90deg, #c4b5d4 0 6px, transparent 6px 10px);
+    height: 2px;
+}
+.isv-leg-cob-act { color: #3a7a74; }
+.isv-leg-cob-act i { background: #7ec8b8; }
+.isv-leg-cob-ant { color: #5a6a40; }
+.isv-leg-cob-ant i {
+    background: repeating-linear-gradient(90deg, #c5d4a8 0 6px, transparent 6px 10px);
+    height: 2px;
 }
 .isv-tabla-dias {
     margin-top: 6px;
@@ -146,6 +183,10 @@
     text-align: right;
     font-size: 10px;
     padding: 3px 5px;
+}
+.isv-tabla-dias td,
+.isv-tabla .isv-num {
+    font-weight: 700;
 }
 .isv-tabla-dias th:first-child,
 .isv-tabla-dias td:first-child {
@@ -459,9 +500,18 @@
     }
     .isv-card h3 { font-size: 11px; margin-bottom: 5px; }
     .isv-chart-line {
-        height: 105px !important;
-        max-height: 105px !important;
+        height: 92px !important;
+        max-height: 92px !important;
+        overflow: hidden !important;
     }
+    .isv-chart-legend {
+        margin: 2px 0 1px;
+        font-size: 8px;
+        gap: 10px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .isv-leg-item i { width: 12px; }
     .isv-donut-wrap {
         height: 120px !important;
         max-height: 120px !important;
@@ -477,6 +527,8 @@
     .isv-tabla td { padding: 3px 4px; }
     .isv-tabla-dias th,
     .isv-tabla-dias td { font-size: 7.5px; padding: 2px 3px; }
+    .isv-tabla-dias td,
+    .isv-tabla .isv-num { font-weight: 700 !important; }
     .isv-resumen-venta,
     .isv-cartera-foot { gap: 4px; margin-top: 4px; }
     .isv-resumen-venta > div,
@@ -495,8 +547,12 @@
     .isv-swatch--31_60 { background: #F5C4A0 !important; }
     .isv-swatch--61_90 { background: #F0B0B0 !important; }
     .isv-swatch--mas_90 { background: #D8B4C8 !important; }
-    canvas {
+    .isv-chart-line canvas,
+    .isv-donut-wrap canvas {
         max-width: 100% !important;
-        height: auto !important;
+        max-height: 100% !important;
+        height: 100% !important;
+        width: 100% !important;
+        display: block;
     }
 }

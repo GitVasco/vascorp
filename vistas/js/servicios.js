@@ -1441,3 +1441,7 @@ $(".box").on("click", ".btnReporteHistorialServicios", function () {
     window.location =
         "vistas/reportes_excel/rpt_historial_servicios.php?anio=" + anio;
 });
+
+$(".box").on("click", ".btnReportePendienteRetorno", function () {
+    window.location = "vistas/reportes_excel/rpt_pendiente_retorno_servicios.php";
+});

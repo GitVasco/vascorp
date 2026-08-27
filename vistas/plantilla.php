@@ -219,7 +219,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/cuadre-ventas.css?v=36">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "informe-semanal-vendedor") : ?>
-    <link rel="stylesheet" href="vistas/css/informe-semanal-vendedor.css?v=10">
+    <link rel="stylesheet" href="vistas/css/informe-semanal-vendedor.css?v=11">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") : ?>
     <link rel="stylesheet" href="vistas/css/regularizaciones-comerciales.css?v=3">
@@ -1158,7 +1158,7 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "informe-semanal-vendedor") { ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="vistas/js/informe-semanal-vendedor.js?v=10"></script>
+    <script src="vistas/js/informe-semanal-vendedor.js?v=11"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sync-vasco") { ?>
     <script src="vistas/js/vasco-online-sync.js?v=<?php echo rand(); ?>"></script>

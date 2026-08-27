@@ -918,4 +918,9 @@ class ControladorServicios
 		$data = ModeloServicios::mdlHistorialAnualServicios($anio);
 		return $data["detalles"];
 	}
+
+	static public function ctrPendienteRetornoServicios()
+	{
+		return ModeloServicios::mdlPendienteRetornoServicios();
+	}
 }
