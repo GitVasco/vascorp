@@ -29,8 +29,17 @@ require_once "../../modelos/articulos.modelo.php";
 */
 $con=ControladorUsuarios::ctrMostrarConexiones("id",1);
 
-$conexion = mysql_connect($con["ip"], $con["user"], $con["pwd"]) or die("No se pudo conectar: " . mysql_error());
-mysql_select_db($con["db"], $conexion);
+try {
+  $conexion = new PDO(
+    "mysql:host=" . $con["ip"] . ";dbname=" . $con["db"],
+    $con["user"],
+    $con["pwd"],
+    array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+  );
+  $conexion->exec("set names utf8");
+} catch (PDOException $e) {
+  die("No se pudo conectar a la base de datos.");
+}
 
 /* 
 * CONFIGURAMOS LA FECHA ACTUAL
@@ -272,6 +281,113 @@ $borde_8->applyFromArray(
     )
 ));
 
+#solo verticales: agrupa tallas del mismo color / modelo / taller
+$borde_2v = new PHPExcel_Style();
+$borde_2v->applyFromArray(
+  array('alignment' => array(
+      'wrap' => false
+    ),
+    'borders' => array(
+        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
+    ),
+    'font' => array(
+      'bold' => true,
+      'underline' =>false,
+      'color' => array('rgb' => '0400FF'),
+      'size' => 8
+    )
+));
+
+$borde_3v = new PHPExcel_Style();
+$borde_3v->applyFromArray(
+  array('alignment' => array(
+      'wrap' => false
+    ),
+    'borders' => array(
+        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
+    ),
+    'font' => array(
+      'bold' => true,
+      'underline' =>false,
+      'color' => array('rgb' => '000000'),
+      'size' => 8
+    )
+));
+
+$borde_6v = new PHPExcel_Style();
+$borde_6v->applyFromArray(
+  array('alignment' => array(
+      'wrap' => false
+    ),
+    'borders' => array(
+        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
+    ),
+    'font' => array(
+      'bold' => false,
+      'underline' =>false,
+      'color' => array('rgb' => '000000'),
+      'size' => 8
+    )
+));
+
+#cierre de grupo (linea inferior)
+$borde_2b = new PHPExcel_Style();
+$borde_2b->applyFromArray(
+  array('alignment' => array(
+      'wrap' => false
+    ),
+    'borders' => array(
+        'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
+    ),
+    'font' => array(
+      'bold' => true,
+      'underline' =>false,
+      'color' => array('rgb' => '0400FF'),
+      'size' => 8
+    )
+));
+
+$borde_3b = new PHPExcel_Style();
+$borde_3b->applyFromArray(
+  array('alignment' => array(
+      'wrap' => false
+    ),
+    'borders' => array(
+        'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
+    ),
+    'font' => array(
+      'bold' => true,
+      'underline' =>false,
+      'color' => array('rgb' => '000000'),
+      'size' => 8
+    )
+));
+
+$borde_6b = new PHPExcel_Style();
+$borde_6b->applyFromArray(
+  array('alignment' => array(
+      'wrap' => false
+    ),
+    'borders' => array(
+        'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
+        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
+    ),
+    'font' => array(
+      'bold' => false,
+      'underline' =>false,
+      'color' => array('rgb' => '000000'),
+      'size' => 8
+    )
+));
+
 /* 
 * FIN DE ESTILOS
 */
@@ -322,7 +438,7 @@ todo: INICIO CABECERA
 */
 
 #query para sacar los datos de la cabecera
-$sqlCabecera = mysql_query("SELECT DISTINCT 
+$sqlCabecera = $conexion->query("SELECT DISTINCT 
                                     ROUND(urgencia, 0) AS urgencia,
                                     p.pedidos,
                                     f.faltantes,
@@ -341,9 +457,17 @@ $sqlCabecera = mysql_query("SELECT DISTINCT
                                     FROM
                                         articulojf a 
                                     WHERE a.pedidos > a.stock 
-                                        AND a.estado = 'activo') AS f") or die(mysql_error());
+                                        AND a.estado = 'activo') AS f");
 
-$respCabecera = mysql_fetch_array($sqlCabecera);
+$respCabecera = $sqlCabecera->fetch(PDO::FETCH_ASSOC);
+if (!$respCabecera) {
+  $respCabecera = array(
+    "urgencia" => 0,
+    "faltantes" => 0,
+    "quiebre" => 0,
+    "pedidos" => 0
+  );
+}
 
 $fila = 2;
 $objPHPExcel->getActiveSheet()->SetCellValue("C$fila", 'STOCK POR DEBAJO DEL '.utf8_encode($respCabecera["urgencia"]).'% DE LAS VENTAS DE LOS ULTIMOS');
@@ -591,12 +715,18 @@ for ($i=0; $i < count($articulos)-1; $i++) {
     $objPHPExcel->getActiveSheet()->SetCellValue("M$fila", utf8_encode($articulos[$i]["ord_corte"]));
     $objPHPExcel->getActiveSheet()->SetCellValue("N$fila", utf8_encode($articulos[$i]["ult_mes"]));
 
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde_3, "A$fila");
+    $esUltimo = ($i >= count($articulos) - 2);
+    $sig = $esUltimo ? null : $articulos[$i + 1];
+    $cambioTaller = $esUltimo || ($articulos[$i]["nom_taller"] != $sig["nom_taller"]);
+    $cambioModelo = $cambioTaller || ($articulos[$i]["modelo"] != $sig["modelo"]);
+    $cambioColor = $cambioModelo || ($articulos[$i]["color"] != $sig["color"]) || ($articulos[$i]["nombre"] != $sig["nombre"]);
+
+    $objPHPExcel->getActiveSheet()->setSharedStyle($cambioTaller ? $borde_3b : $borde_3v, "A$fila");
     $objPHPExcel->getActiveSheet()->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "B$fila");
+    $objPHPExcel->getActiveSheet()->setSharedStyle($cambioModelo ? $borde_2b : $borde_2v, "B$fila");
     $objPHPExcel->getActiveSheet()->getStyle("B$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde_6, "C$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde_6, "D$fila");
+    $objPHPExcel->getActiveSheet()->setSharedStyle($cambioModelo ? $borde_6b : $borde_6v, "C$fila");
+    $objPHPExcel->getActiveSheet()->setSharedStyle($cambioColor ? $borde_6b : $borde_6v, "D$fila");
     $objPHPExcel->getActiveSheet()->setSharedStyle($borde_6, "E$fila");
     $objPHPExcel->getActiveSheet()->getStyle("E$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
     $objPHPExcel->getActiveSheet()->setSharedStyle($borde_5, "F$fila");
