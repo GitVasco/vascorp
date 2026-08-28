@@ -37,7 +37,7 @@ foreach ($corte_mes as $value) {
             <canvas id="corprodChart" style="height:350px"></canvas>
         </div>
 
-        <table class="table table-bordered" style="margin-top: 20px;">
+        <table class="table table-bordered" id="tabla-corte-prod" style="margin-top: 20px;">
             <thead>
                 <tr>
                     <th>Mes</th>
@@ -204,21 +204,21 @@ foreach ($corte_mes as $value) {
     // Función para actualizar la tabla
     function actualizarTablaCorteProd(datos) {
         // Actualizar encabezados de meses
-        var thead = $('.table thead tr');
+        var thead = $('#tabla-corte-prod thead tr');
         thead.html('<th>Mes</th>');
         datos.meses.forEach(function(mes) {
             thead.append('<th>' + mes + '</th>');
         });
 
         // Actualizar fila de producción
-        var filaProd = $('.table tbody tr').eq(0);
+        var filaProd = $('#tabla-corte-prod tbody tr').eq(0);
         filaProd.html('<td style="background-color: rgba(75,192,192,0.2);">Producción</td>');
         datos.produccion.forEach(function(prod) {
             filaProd.append('<td>' + number_format(prod, 0) + '</td>');
         });
 
         // Actualizar fila de corte
-        var filaCorte = $('.table tbody tr').eq(1);
+        var filaCorte = $('#tabla-corte-prod tbody tr').eq(1);
         filaCorte.html('<td style="background-color: rgba(255,159,64,0.2);">Corte</td>');
         datos.corte.forEach(function(corte) {
             filaCorte.append('<td>' + number_format(corte, 0) + '</td>');

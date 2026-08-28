@@ -6,6 +6,8 @@ require_once '../controladores/movimientos.controlador.php';
 require_once '../modelos/movimientos.modelo.php';
 require_once '../controladores/articulos.controlador.php';
 require_once '../modelos/articulos.modelo.php';
+require_once '../modelos/dashboard-flujo-corte.modelo.php';
+require_once '../controladores/dashboard-flujo-corte.controlador.php';
 
 class AjaxInicio
 {
@@ -224,6 +226,22 @@ class AjaxInicio
 
         echo json_encode($respuesta);
     }
+
+    public function ajaxObtenerFlujoCorte()
+    {
+        $mes = isset($_POST["mes"]) ? $_POST["mes"] : null;
+        $año = isset($_POST["año"]) ? $_POST["año"] : null;
+
+        if ($mes == null || $mes == "null" || $mes == "" || $mes == "0") {
+            $añoConsulta = date('Y');
+            $mesConsulta = date('n');
+        } else {
+            $añoConsulta = ($año == null || $año == "") ? date('Y') : intval($año);
+            $mesConsulta = intval($mes);
+        }
+
+        echo json_encode(ControladorDashboardFlujoCorte::ctrDatos($añoConsulta, $mesConsulta));
+    }
 }
 
 if (isset($_POST["mes"])) {
@@ -236,6 +254,8 @@ if (isset($_POST["mes"])) {
         $obtenerDatos->ajaxObtenerDatosGraficoProdTaller();
     } else if (isset($_POST["accion"]) && $_POST["accion"] == "graficoVtasProd") {
         $obtenerDatos->ajaxObtenerDatosGraficoVtasProd();
+    } else if (isset($_POST["accion"]) && $_POST["accion"] == "flujoCorte") {
+        $obtenerDatos->ajaxObtenerFlujoCorte();
     } else {
         $obtenerDatos->ajaxObtenerDatosCajas();
     }

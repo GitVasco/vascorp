@@ -156,6 +156,8 @@ require_once "controladores/dashboard-cxc.config.php";
 
 require_once "controladores/dashboard-cxc.controlador.php";
 
+require_once "controladores/dashboard-flujo-corte.controlador.php";
+
 require_once "controladores/dashboard-decisiones.controlador.php";
 
 require_once "controladores/decisiones-credito.config.php";
@@ -310,6 +312,8 @@ require_once "modelos/dashboard-gerencial.modelo.php";
 require_once "modelos/informe-semanal-vendedor.modelo.php";
 
 require_once "modelos/dashboard-cxc.modelo.php";
+
+require_once "modelos/dashboard-flujo-corte.modelo.php";
 
 require_once "modelos/dashboard-decisiones.modelo.php";
 

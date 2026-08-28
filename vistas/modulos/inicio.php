@@ -269,6 +269,20 @@
 
         </div>
 
+        <div class="row">
+
+            <div class="col-lg-12">
+
+                <?php
+
+                include "inicio/flujo-corte.php";
+
+                ?>
+
+            </div>
+
+        </div>
+
 
     </section>
 

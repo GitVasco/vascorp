@@ -338,7 +338,7 @@ $arrayProduccion = $arrayProduccionFormateado;
     // Función para actualizar la tabla completa
     function actualizarTablaCompleta(datos) {
         // Actualizar encabezados de meses
-        var thead = $('.table thead tr');
+        var thead = $('#produccionTable thead tr');
         thead.html('<th>Mes</th>');
         datos.meses.forEach(function(mes) {
             thead.append('<th>' + mes + '</th>');
