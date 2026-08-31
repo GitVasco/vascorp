@@ -2474,11 +2474,22 @@ $(".box").on("change", ".optradio", function () {
     if (consulta == "pagos") {
         $(".campoCancelacion").removeClass("hidden");
         $(".campoDocumento").addClass("hidden");
+        $(".campoCliente").removeClass("hidden");
         $(".btnGenerarReporteCuenta").attr("tip_doc", "");
+        if (!$(".btnGenerarReporteCuenta").attr("canc")) {
+            $(".btnGenerarReporteCuenta").attr("canc", "todo");
+        }
     } else {
         $(".campoDocumento").removeClass("hidden");
         $(".campoCancelacion").addClass("hidden");
         $(".btnGenerarReporteCuenta").attr("canc", "");
+        if (consulta != "fechaActualSaldo") {
+            var ordenActual = $(".btnGenerarReporteCuenta").attr("orden1");
+            if (ordenActual != "cliente") {
+                $(".campoCliente").addClass("hidden");
+                $(".btnGenerarReporteCuenta").attr("cli", "");
+            }
+        }
     }
 
     if (consulta == "fechaActualSaldo") {
@@ -2493,6 +2504,15 @@ $(".box").on("change", ".radioOrd1", function () {
     console.log(orden1);
     $(".btnGenerarReporteCuenta").attr("orden1", orden1);
     if (consulta == "fechaActualSaldo") {
+        return;
+    }
+    if (consulta == "pagos") {
+        if (orden1 == "vendedor") {
+            $(".campoVendedor").removeClass("hidden");
+        } else {
+            $(".campoVendedor").addClass("hidden");
+            $(".btnGenerarReporteCuenta").attr("vend", "");
+        }
         return;
     }
     if (orden1 == "vendedor") {
@@ -2672,6 +2692,8 @@ $(".btnGenerarReporteCuenta").click(function () {
                     orden2 +
                     "&canc=" +
                     canc +
+                    "&cli=" +
+                    cli +
                     "&vend=" +
                     vend +
                     "&inicio=" +
@@ -2728,6 +2750,8 @@ $(".btnGenerarReporteCuenta").click(function () {
                     orden2 +
                     "&canc=" +
                     canc +
+                    "&cli=" +
+                    cli +
                     "&vend=" +
                     vend +
                     "&inicio=" +

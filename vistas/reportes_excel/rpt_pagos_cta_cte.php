@@ -26,6 +26,8 @@ $fechaactual = getdate();
 
 $fechaInicial = $_GET["inicio"];
 $fechaFinal = $_GET["fin"];
+$cli = isset($_GET["cli"]) ? $_GET["cli"] : "";
+$filtroCli = ($cli != "") ? " AND cc.cliente = '" . mysql_real_escape_string($cli) . "' " : "";
 
 $fecha = date("d-m-Y");
 
@@ -326,7 +328,8 @@ $sqlDetalle = mysql_query("SELECT
                             ON cc.cliente = c.codigo 
                             WHERE cc.tip_mov = '-' 
                             AND cc.fecha BETWEEN '$fechaInicial' 
-                            AND '$fechaFinal'") or die(mysql_error());
+                            AND '$fechaFinal'
+                            $filtroCli") or die(mysql_error());
 
 
 while($respDetalle = mysql_fetch_array($sqlDetalle)){

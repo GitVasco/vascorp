@@ -3244,10 +3244,15 @@ class ModeloCuentas
 		$stmt = null;
 	}
 
-	static public function mdlMostrarReportePagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin)
+	static public function mdlMostrarReportePagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin, $cli = "")
 	{
 
-		if ($orden1 == "fecha_pag" && $orden2 == "ordNumCuenta" && $canc == "todo") {
+		$filtroCli = "";
+		if ($cli != "") {
+			$filtroCli = " AND cc.cliente = '" . str_replace(array("\\", "'"), array("\\\\", "''"), $cli) . "' ";
+		}
+
+		if (($orden1 == "fecha_pag" || $orden1 == "cliente") && $orden2 == "ordNumCuenta" && $canc == "todo") {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
 							'-1' AS tipo_doc,
@@ -3277,6 +3282,7 @@ class ModeloCuentas
 							cc.fecha BETWEEN '$inicio' 
 							AND '$fin'
 							) 
+							$filtroCli
 						GROUP BY cc.fecha 
 						UNION
 						SELECT 
@@ -3315,6 +3321,7 @@ class ModeloCuentas
 							cc.fecha BETWEEN '$inicio' 
 							AND '$fin'
 							) 
+							$filtroCli
 							UNION
 							SELECT 
 							'999' AS tipo_doc,
@@ -3362,6 +3369,7 @@ class ModeloCuentas
 								cc.fecha BETWEEN '$inicio' 
 								AND '$fin'
 							) 
+							$filtroCli
 							GROUP BY cc.fecha 
 							ORDER BY fecha,
 							tipo_doc");
@@ -3421,6 +3429,7 @@ class ModeloCuentas
 							AND '$fin'
 							) 
 							AND cc.vendedor = '$vend'  
+							$filtroCli
 				UNION
 						SELECT 
 							'999' AS tipo_doc,
@@ -3469,6 +3478,7 @@ class ModeloCuentas
 							AND '$fin'
 							) 
 							AND cc.vendedor = '$vend' 
+							$filtroCli
 						GROUP BY cc.cod_pago 
 						ORDER BY cod_pago,
 							tipo_doc,
@@ -3512,7 +3522,7 @@ class ModeloCuentas
 					cc.fecha BETWEEN '$inicio' 
 					AND '$fin'
 					) 
-					AND cc.cod_pago = '$canc' 
+					AND cc.cod_pago = '$canc' $filtroCli 
 				UNION ALL
 				SELECT 
 					'-1' AS tipo_doc,
@@ -3542,7 +3552,7 @@ class ModeloCuentas
 					cc.fecha BETWEEN '$inicio' 
 					AND '$fin'
 					) 
-					AND cc.cod_pago = '$canc' 
+					AND cc.cod_pago = '$canc' $filtroCli 
 				GROUP BY cc.fecha 
 				UNION ALL
 				SELECT 
@@ -3591,12 +3601,12 @@ class ModeloCuentas
 					cc.fecha BETWEEN '$inicio' 
 					AND '$fin'
 					) 
-					AND cc.cod_pago = '$canc' 
+					AND cc.cod_pago = '$canc' $filtroCli 
 					GROUP BY cc.fecha 
 					ORDER BY fecha,
 					tipo_doc,
 					num_cta");
-		} else if ($orden1 == "fecha_pag" && $orden2 == "ordNumCuenta" && $canc != "todo") {
+		} else if (($orden1 == "fecha_pag" || $orden1 == "cliente") && $orden2 == "ordNumCuenta" && $canc != "todo") {
 
 			$stmt = Conexion::conectar()->prepare("SELECT 
 					cc.tipo_doc,
@@ -3634,7 +3644,7 @@ class ModeloCuentas
 					cc.fecha BETWEEN '$inicio' 
 					AND '$fin'
 					) 
-					AND cc.cod_pago = '$canc' 
+					AND cc.cod_pago = '$canc' $filtroCli 
 				UNION ALL
 				SELECT 
 					'-1' AS tipo_doc,
@@ -3664,7 +3674,7 @@ class ModeloCuentas
 					cc.fecha BETWEEN '$inicio' 
 					AND '$fin'
 					) 
-					AND cc.cod_pago = '$canc' 
+					AND cc.cod_pago = '$canc' $filtroCli 
 				GROUP BY cc.fecha 
 				UNION ALL
 				SELECT 
@@ -3713,7 +3723,7 @@ class ModeloCuentas
 					cc.fecha BETWEEN '$inicio' 
 					AND '$fin'
 					) 
-					AND cc.cod_pago = '$canc' 
+					AND cc.cod_pago = '$canc' $filtroCli 
 					GROUP BY cc.fecha 
 					ORDER BY fecha,
 					tipo_doc,
@@ -3860,10 +3870,16 @@ class ModeloCuentas
 		$stmt = null;
 	}
 
-	static public function mdlMostrarReporteTotalPagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin)
+	static public function mdlMostrarReporteTotalPagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin, $cli = "")
 	{
 
-		if ($orden1 == "fecha_pag" && $orden2 == "ordNumCuenta") {
+		$filtroCli = "";
+		if ($cli != "") {
+			$filtroCli = " AND cc.cliente = '" . str_replace(array("\\", "'"), array("\\\\", "''"), $cli) . "' ";
+		}
+		$filtroCanc = ($canc != "" && $canc != "todo") ? " AND cc.cod_pago = '" . str_replace(array("\\", "'"), array("\\\\", "''"), $canc) . "' " : "";
+
+		if (($orden1 == "fecha_pag" || $orden1 == "cliente") && $orden2 == "ordNumCuenta") {
 			$stmt = Conexion::conectar()->prepare("SELECT 
 					'Total General' AS total_gral,
 					FORMAT(
@@ -3901,7 +3917,7 @@ class ModeloCuentas
 					AND (
 					  cc.fecha BETWEEN '" . $inicio . "' 
 					 AND '" . $fin . "'
-					) AND cc.cod_pago = '" . $canc . "' ");
+					) " . $filtroCanc . $filtroCli);
 			// $stmt -> bindParam(":cliente", $valor, PDO::PARAM_STR);
 
 			$stmt->execute();
@@ -3947,6 +3963,7 @@ class ModeloCuentas
 					  cc.fecha BETWEEN '" . $inicio . "' 
 					 AND '" . $fin . "'
 					) AND cc.vendedor= '" . $vend . "'  
+					" . $filtroCli . "
 				  GROUP BY cc.vendedor ");
 			// $stmt -> bindParam(":cliente", $valor, PDO::PARAM_STR);
 

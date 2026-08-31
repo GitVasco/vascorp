@@ -27,7 +27,8 @@ class MYPDF extends TCPDF
         $this->Cell(0, 8, $fechaCabecera, 0, false, 'R', 0, '', 0, false, false, false);
 
         $this->Ln(2);
-        $this->Cell(0, 15, 'PAGOS EFECTUADOS  - ' . $_GET["inicio"] . ' al ' . $_GET["fin"], 0, false, 'C', 0, '', 0, false, false, false);
+        $cliCab = (isset($_GET["cli"]) && $_GET["cli"] != "") ? ' - Cliente ' . $_GET["cli"] : '';
+        $this->Cell(0, 15, 'PAGOS EFECTUADOS  - ' . $_GET["inicio"] . ' al ' . $_GET["fin"] . $cliCab, 0, false, 'C', 0, '', 0, false, false, false);
         $this->Ln(7);
         $this->Cell(0, 9, 'Tip    Nro. doc.                Fecha               Cliente       Razon social / Nombre cliente                      Cob            Notas                  Fact. S/                   Letra S/           ', 0, 1, 'C', 0, '', 0, false, false, false);
 
@@ -82,6 +83,7 @@ $vend = $_GET["vend"];
 // echo '<pre>vend ';
 // print_r($vend);
 // echo '</pre>';
+$cli = isset($_GET["cli"]) ? $_GET["cli"] : "";
 
 // convert TTF font to TCPDF format and store it on the fonts folder
 $fontname = TCPDF_FONTS::addTTFfont('../../lucida-console.ttf', 'TrueTypeUnicode', '', 96);
@@ -95,9 +97,9 @@ $pdf->SetFont($fontname, '', 8, '', false);
 
 
 
-$cuentas = ControladorCuentas::ctrMostrarReportePagos($orden1, $orden2, $canc, $vend, $inicio, $fin);
+$cuentas = ControladorCuentas::ctrMostrarReportePagos($orden1, $orden2, $canc, $vend, $inicio, $fin, $cli);
 
-$total = ControladorCuentas::ctrMostrarReporteTotalPagos($orden1, $orden2, $canc, $vend, $inicio, $fin);
+$total = ControladorCuentas::ctrMostrarReporteTotalPagos($orden1, $orden2, $canc, $vend, $inicio, $fin, $cli);
 
 
 foreach ($cuentas as $key => $value) {

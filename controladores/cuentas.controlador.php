@@ -1637,10 +1637,10 @@ class ControladorCuentas
 	MOSTRAR REPORTES PAGOS
 	=============================================*/
 
-	static public function ctrMostrarReportePagos($orden1, $orden2, $canc, $vend, $inicio, $fin)
+	static public function ctrMostrarReportePagos($orden1, $orden2, $canc, $vend, $inicio, $fin, $cli = "")
 	{
 		$tabla = "cuenta_ctejf";
-		$respuesta = ModeloCuentas::mdlMostrarReportePagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin);
+		$respuesta = ModeloCuentas::mdlMostrarReportePagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin, $cli);
 
 		return $respuesta;
 	}
@@ -1709,10 +1709,10 @@ class ControladorCuentas
 	MOSTRAR REPORTES TOTAL PAGOS
 	=============================================*/
 
-	static public function ctrMostrarReporteTotalPagos($orden1, $orden2, $canc, $vend, $inicio, $fin)
+	static public function ctrMostrarReporteTotalPagos($orden1, $orden2, $canc, $vend, $inicio, $fin, $cli = "")
 	{
 		$tabla = "cuenta_ctejf";
-		$respuesta = ModeloCuentas::mdlMostrarReporteTotalPagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin);
+		$respuesta = ModeloCuentas::mdlMostrarReporteTotalPagos($tabla, $orden1, $orden2, $canc, $vend, $inicio, $fin, $cli);
 
 		return $respuesta;
 	}
