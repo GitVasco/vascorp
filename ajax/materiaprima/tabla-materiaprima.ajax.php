@@ -14,8 +14,9 @@ class TablaMateriaPrima
     {
 
         $valor = null;
+        $sublinea = isset($_GET["sublinea"]) ? $_GET["sublinea"] : "";
 
-        $materiaprima = ControladorMateriaPrima::ctrMostrarMateriaPrima2($valor);
+        $materiaprima = ControladorMateriaPrima::ctrMostrarMateriaPrima2($valor, $sublinea);
         if (count($materiaprima) > 0) {
 
             $datosJson = '{

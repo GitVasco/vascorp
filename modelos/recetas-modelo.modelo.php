@@ -252,6 +252,7 @@ class ModeloRecetasModelo
 			"SELECT
 				a.articulo,
 				a.modelo,
+				a.nombre,
 				a.cod_color,
 				a.color,
 				a.cod_talla,
@@ -746,6 +747,62 @@ class ModeloRecetasModelo
 			}
 		}
 		return $mapa;
+	}
+
+	/*=============================================
+	Recetas BORRADOR/PUBLICADA que mencionan una MP (base o variante)
+	=============================================*/
+	static public function mdlRecetasQueUsanMp($mpCodigo)
+	{
+		$mp = substr(trim((string) $mpCodigo), 0, 5);
+		if ($mp === "") {
+			return array();
+		}
+
+		$candidatos = array($mp);
+		if (ctype_digit($mp) && strlen($mp) < 5) {
+			$candidatos[] = str_pad($mp, 5, "0", STR_PAD_LEFT);
+		}
+
+		$placeholders = array();
+		foreach ($candidatos as $i => $c) {
+			$placeholders[] = ":mp" . $i;
+		}
+		$in = implode(", ", $placeholders);
+
+		$sql = "SELECT
+				r.id,
+				r.modelo,
+				r.version,
+				r.estado,
+				IFNULL(NULLIF(TRIM(m.nombre), ''), r.modelo) AS nombre_modelo
+			FROM recetas_modelo r
+			LEFT JOIN modelojf m ON m.modelo = r.modelo
+			WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+			  AND EXISTS (
+				SELECT 1
+				FROM recetas_modelo_detalles d
+				LEFT JOIN recetas_modelo_variantes v
+				  ON v.id_receta_modelo_detalle = d.id
+				WHERE d.id_receta_modelo = r.id
+				  AND d.activo = 1
+				  AND (
+					TRIM(IFNULL(d.mp_base_codigo, '')) IN ($in)
+					OR TRIM(IFNULL(v.mp_codigo, '')) IN ($in)
+				  )
+			  )
+			ORDER BY r.modelo ASC,
+				CASE r.estado WHEN 'PUBLICADA' THEN 0 ELSE 1 END ASC,
+				r.version DESC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		foreach ($candidatos as $i => $c) {
+			$stmt->bindValue(":mp" . $i, $c, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $filas ? $filas : array();
 	}
 
 	/*=============================================

@@ -1,9 +1,51 @@
 //MATERIA PRIMA CON PAGINACIÓN CLIENTE (ORIGINAL)
+function mpSublineaFiltro() {
+    return String($("#filtroSublineaMp").val() || "").trim().toUpperCase();
+}
+
+function mpActualizarUrlSublinea() {
+    if (!window.history || !window.history.replaceState) {
+        return;
+    }
+    var params;
+    try {
+        params = new URLSearchParams(window.location.search || "");
+    } catch (e) {
+        return;
+    }
+    var sub = mpSublineaFiltro();
+    if (sub) {
+        params.set("sublinea", sub);
+    } else {
+        params.delete("sublinea");
+    }
+    var qs = params.toString();
+    var url = window.location.pathname + (qs ? "?" + qs : "") + (window.location.hash || "");
+    window.history.replaceState({}, "", url);
+}
+
+function mpRecargarTablaFiltro() {
+    if ($.fn.DataTable.isDataTable(".tablaMateriaPrima")) {
+        $(".tablaMateriaPrima").DataTable().ajax.reload();
+    }
+    if ($.fn.DataTable.isDataTable(".tablaMateriaPrimaPaginado")) {
+        $(".tablaMateriaPrimaPaginado").DataTable().ajax.reload();
+    }
+}
+
 function cargarTablaMateriaPrima() {
+    if ($.fn.DataTable.isDataTable(".tablaMateriaPrima")) {
+        $(".tablaMateriaPrima").DataTable().destroy();
+    }
+
     $(".tablaMateriaPrima").DataTable({
-        ajax: "ajax/materiaprima/tabla-materiaprima.ajax.php",
+        ajax: {
+            url: "ajax/materiaprima/tabla-materiaprima.ajax.php",
+            data: function (d) {
+                d.sublinea = mpSublineaFiltro();
+            },
+        },
         deferRender: true,
-        retrieve: true,
         processing: true,
         order: [[0, "desc"]],
         pageLength: 20,
@@ -64,6 +106,7 @@ function cargarTablaMateriaPrimaPaginado() {
             url: "ajax/materiaprima/tabla-materiaprima-paginado.ajax.php",
             type: "GET",
             data: function (d) {
+                d.sublinea = mpSublineaFiltro();
                 // Opción 1: Mínimo de caracteres para buscar (recomendado para tablas grandes)
                 // Solo buscar si tiene al menos 3 caracteres o está vacío (para limpiar)
                 var minChars = 3;
@@ -117,6 +160,13 @@ function cargarTablaMateriaPrimaPaginado() {
         },
     });
 }
+
+$(document)
+    .off("change.mpSublinea", "#filtroSublineaMp")
+    .on("change.mpSublinea", "#filtroSublineaMp", function () {
+        mpActualizarUrlSublinea();
+        mpRecargarTablaFiltro();
+    });
 
 /*
  * tabla paraa cargar la lista de materia - URGENCIA
@@ -315,6 +365,8 @@ $(".tablaMateriaPrimaPaginado tbody").on(
  */
 // Función común para visualizar artículos
 function visualizarArticulos(articuloMP) {
+    $(".detalleMP").remove();
+
     var datos = new FormData();
     datos.append("articuloMP", articuloMP);
 
@@ -371,36 +423,46 @@ function visualizarArticulos(articuloMP) {
         processData: false,
         dataType: "json",
         success: function (respuestaDetalle) {
-            /* console.log("respuestaDetalle", respuestaDetalle); */
-
             $(".detalleMP").remove();
 
-            for (var id of respuestaDetalle) {
+            if (!respuestaDetalle || !$.isArray(respuestaDetalle)) {
+                return;
+            }
+
+            var modeloAnterior = "";
+            for (var i = 0; i < respuestaDetalle.length; i++) {
+                var id = respuestaDetalle[i];
+                var modeloActual = String(id.modelo || "");
+                var claseFila = "detalleMP";
+                if (i > 0 && modeloActual !== modeloAnterior) {
+                    claseFila += " detalleMP-cambio-modelo";
+                }
+                modeloAnterior = modeloActual;
                 $(".tablaDetalleArticulo").append(
-                    '<tr class="detalleMP">' +
+                    '<tr class="' + claseFila + '">' +
                         "<td>" +
-                        id.articulo +
+                        (id.articulo || "") +
                         " </td>" +
                         "<td>" +
-                        id.modelo +
+                        (id.modelo || "") +
                         " </td>" +
                         "<td>" +
-                        id.nombre +
+                        (id.nombre || "") +
                         " </td>" +
                         "<td>" +
-                        id.color +
+                        (id.color || "") +
                         " </td>" +
                         "<td>" +
-                        id.talla +
+                        (id.talla || "") +
                         " </td>" +
                         "<td>" +
-                        id.estado +
+                        (id.estado || "") +
                         " </td>" +
                         "<td>" +
-                        id.consumo +
+                        (id.consumo != null ? id.consumo : "") +
                         " </td>" +
                         "<td>" +
-                        id.tej_princ +
+                        (id.tej_princ || "") +
                         " </td>" +
                         "</tr>"
                 );
@@ -1199,8 +1261,12 @@ function anularMateriaPrima(idMateriaPrima) {
         if (result.value) {
             // Determinar la ruta según la configuración
             var ruta = window.RUTA_MATERIAPRIMA || "materiaprima";
-            window.location =
-                "index.php?ruta=" + ruta + "&idMateriaPrima=" + idMateriaPrima;
+            var url = "index.php?ruta=" + ruta + "&idMateriaPrima=" + idMateriaPrima;
+            var sub = mpSublineaFiltro();
+            if (sub) {
+                url += "&sublinea=" + encodeURIComponent(sub);
+            }
+            window.location = url;
         }
     });
 }

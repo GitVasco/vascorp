@@ -19,6 +19,7 @@ class TablaMateriaPrimaPaginado
         $search = isset($_GET['search']['value']) ? $_GET['search']['value'] : '';
         $orderColumn = isset($_GET['order'][0]['column']) ? intval($_GET['order'][0]['column']) : 0;
         $orderDir = isset($_GET['order'][0]['dir']) ? $_GET['order'][0]['dir'] : 'desc';
+        $sublinea = isset($_GET['sublinea']) ? $_GET['sublinea'] : '';
 
         // Obtener datos paginados
         $resultado = ControladorMateriaPrima::ctrMostrarMateriaPrimaPaginado(
@@ -26,7 +27,8 @@ class TablaMateriaPrimaPaginado
             $length,
             $search,
             $orderColumn,
-            $orderDir
+            $orderDir,
+            $sublinea
         );
 
         $materiaprima = $resultado['data'];

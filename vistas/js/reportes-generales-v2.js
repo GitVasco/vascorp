@@ -261,9 +261,13 @@
         }).join('');
         $('#rgv2Tbody').html(body);
         if (res.kpis && res.kpis.length) {
-            $('#rgv2Kpis').html(res.kpis.map(function (k) {
+            var kpiHtml = res.kpis.map(function (k) {
                 return '<span class="rgv2-kpi"><strong>' + escapeHtml(k.label) + ':</strong> ' + escapeHtml(k.value) + '</span>';
-            }).join(''));
+            }).join('');
+            if (res.truncated) {
+                kpiHtml += '<span class="rgv2-kpi rgv2-kpi--warn"><strong>Vista previa parcial</strong> (máx. 500 filas)</span>';
+            }
+            $('#rgv2Kpis').html(kpiHtml);
         }
     }
 

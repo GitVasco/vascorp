@@ -17,10 +17,10 @@ class ControladorMateriaPrima
 	/* 
 	* MOSTRAR DATOS DE LA MATERIA PRIMA
 	*/
-	static public function ctrMostrarMateriaPrima2($valor)
+	static public function ctrMostrarMateriaPrima2($valor, $sublinea = "")
 	{
 
-		$respuesta = ModeloMateriaPrima::mdlMostrarMateriaPrima2($valor);
+		$respuesta = ModeloMateriaPrima::mdlMostrarMateriaPrima2($valor, $sublinea);
 
 		return $respuesta;
 	}
@@ -50,9 +50,9 @@ class ControladorMateriaPrima
 	/*=============================================
 	MOSTRAR MATERIA PRIMA CON PAGINACIÓN SERVIDOR
 	=============================================*/
-	static public function ctrMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir)
+	static public function ctrMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir, $sublinea = "")
 	{
-		$respuesta = ModeloMateriaPrima::mdlMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir);
+		$respuesta = ModeloMateriaPrima::mdlMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir, $sublinea);
 
 		return $respuesta;
 	}
@@ -89,6 +89,55 @@ class ControladorMateriaPrima
 		$respuesta = ModeloMateriaPrima::mdlMostrarSubLineas($valor);
 
 		return $respuesta;
+	}
+
+	static public function ctrOpcionesSublineaFiltro()
+	{
+		$filas = ModeloMateriaPrima::mdlMostrarSubLineas(null);
+		$out = array();
+		$vistos = array();
+		if (!$filas) {
+			return $out;
+		}
+		foreach ($filas as $sl) {
+			$linea = "";
+			$sub = "";
+			$nombre = "";
+			$estado = "1";
+			if (isset($sl["Des_Corta"])) {
+				$linea = trim((string) $sl["Des_Corta"]);
+			} elseif (isset($sl["des_corta"])) {
+				$linea = trim((string) $sl["des_corta"]);
+			}
+			if (isset($sl["Valor_3"])) {
+				$sub = trim((string) $sl["Valor_3"]);
+			} elseif (isset($sl["valor_3"])) {
+				$sub = trim((string) $sl["valor_3"]);
+			}
+			if (isset($sl["Des_Larga"])) {
+				$nombre = trim((string) $sl["Des_Larga"]);
+			} elseif (isset($sl["des_larga"])) {
+				$nombre = trim((string) $sl["des_larga"]);
+			}
+			if (isset($sl["Estado"])) {
+				$estado = trim((string) $sl["Estado"]);
+			} elseif (isset($sl["estado"])) {
+				$estado = trim((string) $sl["estado"]);
+			}
+			$codigo = strtoupper($linea . $sub);
+			if ($codigo === "" || isset($vistos[$codigo])) {
+				continue;
+			}
+			if ($estado !== "" && $estado !== "1") {
+				continue;
+			}
+			$vistos[$codigo] = true;
+			$out[] = array("codigo" => $codigo, "nombre" => $nombre);
+		}
+		usort($out, function ($a, $b) {
+			return strnatcasecmp($a["codigo"], $b["codigo"]);
+		});
+		return $out;
 	}
 
 	/* 
@@ -354,9 +403,10 @@ class ControladorMateriaPrima
 	static public function ctrVisualizarMateriaPrimaDetalle($valor)
 	{
 
-		$respuesta = ModeloMateriaPrima::mdlVisualizarMateriaPrimaDetalle($valor);
+		require_once dirname(__FILE__) . "/recetas-modelo.controlador.php";
+		require_once dirname(__FILE__) . "/../modelos/recetas-modelo.modelo.php";
 
-		return $respuesta;
+		return ControladorRecetasModelo::ctrArticulosQueUsanMp($valor);
 	}
 
 	/*

@@ -29,6 +29,29 @@
 
                 </button>
 
+                <div class="mp-filtro-sublinea">
+                    <label for="filtroSublineaMp">Sublínea</label>
+                    <select class="form-control selectpicker" id="filtroSublineaMp" data-live-search="true" data-width="280px" title="Todas">
+                        <option value="">Todas</option>
+                        <?php
+                        $filtroSublineaSel = isset($_GET["sublinea"])
+                            ? ModeloMateriaPrima::mdlNormalizarSublineaFiltro($_GET["sublinea"])
+                            : "";
+                        $opcionesSublinea = ControladorMateriaPrima::ctrOpcionesSublineaFiltro();
+                        foreach ($opcionesSublinea as $opSub) {
+                            $sel = ($filtroSublineaSel === $opSub["codigo"]) ? " selected" : "";
+                            $eti = $opSub["codigo"];
+                            if ($opSub["nombre"] !== "") {
+                                $eti .= " - " . $opSub["nombre"];
+                            }
+                            echo '<option value="' . htmlspecialchars($opSub["codigo"], ENT_QUOTES, "UTF-8") . '"' . $sel . '>'
+                                . htmlspecialchars($eti, ENT_QUOTES, "UTF-8")
+                                . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+
                 <div class="pull-right">
 
                     <button class="btn btn-outline-success btnReporteMateria" style="border:green 1px solid">
@@ -77,6 +100,18 @@
                     table.tablaMateriaPrimaPaginado th:last-child {
                         white-space: nowrap;
                         width: 1%;
+                    }
+                    .mp-filtro-sublinea {
+                        display: inline-block;
+                        margin-left: 14px;
+                        vertical-align: middle;
+                    }
+                    .mp-filtro-sublinea label {
+                        margin-right: 6px;
+                        font-weight: 600;
+                    }
+                    .mp-filtro-sublinea .bootstrap-select {
+                        vertical-align: middle;
                     }
                 </style>
 

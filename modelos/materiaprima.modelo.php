@@ -126,7 +126,17 @@ class ModeloMateriaPrima
 	/* 
 	* MOSTRAR DATOS DE LA MATERIA PRIMA
 	*/
-	static public function mdlMostrarMateriaPrima2($valor)
+	static public function mdlNormalizarSublineaFiltro($valor)
+	{
+		$valor = strtoupper(trim((string) $valor));
+		$valor = preg_replace('/[^A-Z0-9]/', '', $valor);
+		if (!is_string($valor) || $valor === "") {
+			return "";
+		}
+		return substr($valor, 0, 6);
+	}
+
+	static public function mdlMostrarMateriaPrima2($valor, $sublinea = "")
 	{
 
 		if ($valor != null) {
@@ -179,6 +189,12 @@ class ModeloMateriaPrima
 
 			return $stmt->fetch();
 		} else {
+
+			$sublinea = self::mdlNormalizarSublineaFiltro($sublinea);
+			$filtroSub = "";
+			if ($sublinea !== "") {
+				$filtroSub = " WHERE (TRIM(IFNULL(pro.FamPro, '')) = :sublinea OR LEFT(TRIM(pro.CodFab), 6) = :sublinea) ";
+			}
 
 			$stmt = Conexion::conectar()->prepare("SELECT DISTINCT 
 					'MP' AS Mp,
@@ -248,9 +264,14 @@ class ModeloMateriaPrima
 					INNER JOIN Tabla_M_Detalle AS TbTal 
 					ON pro.TalPro = TbTal.Cod_Argumento 
 					AND (TbTal.Cod_Tabla = 'TTAL') 
+				$filtroSub
 				GROUP BY pro.CodPro 
 				ORDER BY pro.CodPro DESC
 				");
+
+			if ($sublinea !== "") {
+				$stmt->bindValue(":sublinea", $sublinea, PDO::PARAM_STR);
+			}
 
 			$stmt->execute();
 
@@ -2312,10 +2333,15 @@ class ModeloMateriaPrima
 	MOSTRAR MATERIA PRIMA CON PAGINACIÓN SERVIDOR
 	=============================================*/
 
-	static public function mdlMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir)
+	static public function mdlMostrarMateriaPrimaPaginado($start, $length, $search, $orderColumn, $orderDir, $sublinea = "")
 	{
+		$sublinea = self::mdlNormalizarSublineaFiltro($sublinea);
+
 		// Construir WHERE clause base
 		$where = "1=1";
+		if ($sublinea !== "") {
+			$where .= " AND (TRIM(IFNULL(pro.FamPro, '')) = :sublinea OR LEFT(TRIM(pro.CodFab), 6) = :sublinea)";
+		}
 
 		// Construir búsqueda
 		$searchWhere = "";
@@ -2400,6 +2426,9 @@ class ModeloMateriaPrima
 			WHERE $where";
 
 		$stmtTotal = Conexion::conectar()->prepare($sqlTotal);
+		if ($sublinea !== "") {
+			$stmtTotal->bindValue(":sublinea", $sublinea, PDO::PARAM_STR);
+		}
 		$stmtTotal->execute();
 		$totalRecords = $stmtTotal->fetch(PDO::FETCH_ASSOC)["total"];
 
@@ -2456,6 +2485,9 @@ class ModeloMateriaPrima
 			WHERE $where $searchWhere";
 
 		$stmtFiltered = Conexion::conectar()->prepare($sqlFiltered);
+		if ($sublinea !== "") {
+			$stmtFiltered->bindValue(":sublinea", $sublinea, PDO::PARAM_STR);
+		}
 		if (!empty($search)) {
 			$searchParam = "%$search%";
 			$stmtFiltered->bindParam(":search1", $searchParam, PDO::PARAM_STR);
@@ -2544,6 +2576,10 @@ class ModeloMateriaPrima
 			LIMIT :start, :length";
 
 		$stmt = Conexion::conectar()->prepare($sql);
+
+		if ($sublinea !== "") {
+			$stmt->bindValue(":sublinea", $sublinea, PDO::PARAM_STR);
+		}
 
 		if (!empty($search)) {
 			$searchParam = "%$search%";

@@ -290,6 +290,123 @@ class ControladorRecetasModelo
 	}
 
 	/*=============================================
+	Artículos activos que resuelven una MP (recetas, no tarjetas)
+	Una fila por artículo; si la MP está en varios roles, suma consumo.
+	PUBLICADA gana sobre BORRADOR del mismo artículo.
+	=============================================*/
+	static public function ctrArticulosQueUsanMp($mpCodigo)
+	{
+		require_once dirname(__FILE__) . "/../modelos/recetas-modelo.resolucion.php";
+
+		$mpNorm = self::normalizarMp($mpCodigo);
+		if ($mpNorm === "") {
+			return array();
+		}
+		$mpPad = (ctype_digit($mpNorm) && strlen($mpNorm) < 5)
+			? str_pad($mpNorm, 5, "0", STR_PAD_LEFT)
+			: $mpNorm;
+
+		$recetas = ModeloRecetasModelo::mdlRecetasQueUsanMp($mpNorm);
+		if (!$recetas) {
+			return array();
+		}
+
+		$cacheArts = array();
+		$porArticulo = array();
+
+		foreach ($recetas as $rec) {
+			$idReceta = isset($rec["id"]) ? (int) $rec["id"] : 0;
+			$modelo = isset($rec["modelo"]) ? trim((string) $rec["modelo"]) : "";
+			if ($idReceta <= 0 || $modelo === "") {
+				continue;
+			}
+
+			$estructura = self::cargarEstructuraReceta($idReceta, true);
+			if (!$estructura || empty($estructura["lineas"])) {
+				continue;
+			}
+
+			if (!isset($cacheArts[$modelo])) {
+				$arts = ModeloRecetasModelo::mdlArticulosActivosModelo($modelo);
+				$cacheArts[$modelo] = $arts ? $arts : array();
+			}
+
+			$nombreModelo = isset($rec["nombre_modelo"]) ? $rec["nombre_modelo"] : $modelo;
+
+			foreach ($cacheArts[$modelo] as $art) {
+				$codigoArt = isset($art["articulo"]) ? trim((string) $art["articulo"]) : "";
+				if ($codigoArt === "" || isset($porArticulo[$codigoArt])) {
+					continue;
+				}
+
+				$resArt = ServicioRecetasModeloResolucion::resolverArticulo(
+					$estructura["lineas"],
+					$estructura["variantes_por_detalle"],
+					$art,
+					1.0,
+					$estructura["mp_info"]
+				);
+				$insumos = isset($resArt["insumos"]) && is_array($resArt["insumos"])
+					? $resArt["insumos"]
+					: array();
+
+				$consumo = 0.0;
+				$usaMp = false;
+				$esTela = false;
+				foreach ($insumos as $ins) {
+					if (empty($ins["completo"])) {
+						continue;
+					}
+					$mpIns = self::normalizarMp(isset($ins["mp_codigo"]) ? $ins["mp_codigo"] : "");
+					if ($mpIns === "" || ($mpIns !== $mpNorm && $mpIns !== $mpPad)) {
+						continue;
+					}
+					$usaMp = true;
+					$consumo += isset($ins["consumo"]) ? (float) $ins["consumo"] : 0.0;
+					if (!empty($ins["es_tela_principal"])) {
+						$esTela = true;
+					}
+				}
+
+				if (!$usaMp) {
+					continue;
+				}
+
+				$nombre = isset($art["nombre"]) ? trim((string) $art["nombre"]) : "";
+				if ($nombre === "") {
+					$nombre = $nombreModelo;
+				}
+
+				$porArticulo[$codigoArt] = array(
+					"articulo" => $codigoArt,
+					"modelo" => $modelo,
+					"nombre" => $nombre,
+					"color" => (isset($art["color"]) && trim((string) $art["color"]) !== "")
+						? $art["color"]
+						: (isset($art["cod_color"]) ? $art["cod_color"] : ""),
+					"talla" => (isset($art["talla"]) && trim((string) $art["talla"]) !== "")
+						? $art["talla"]
+						: (isset($art["cod_talla"]) ? $art["cod_talla"] : ""),
+					"estado" => isset($art["estado"]) ? $art["estado"] : "Activo",
+					"consumo" => round($consumo, 6),
+					"tej_princ" => $esTela ? "SI" : "",
+				);
+			}
+		}
+
+		$filas = array_values($porArticulo);
+		usort($filas, function ($a, $b) {
+			$cmp = strcasecmp((string) $a["modelo"], (string) $b["modelo"]);
+			if ($cmp !== 0) {
+				return $cmp;
+			}
+			return strcasecmp((string) $a["articulo"], (string) $b["articulo"]);
+		});
+
+		return $filas;
+	}
+
+	/*=============================================
 	Buscar materia prima
 	=============================================*/
 	static public function ctrBuscarMp($q = "", $codigoSublinea = "", $limit = 30)

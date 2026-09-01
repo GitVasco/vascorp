@@ -1,20 +1,34 @@
 # Estado actual — Reportes generales v2
 
 **Última actualización:** 2026-09-01  
-**Pausado en:** Fase 0 completada · Fase 1 no iniciada  
-**Motivo pausa:** bug urgente en otro módulo
-
-Documento de handoff para retomar sin perder contexto.
+**En curso:** Fase 1 parcial — 4 reportes cobranza básica con datos reales
 
 ---
 
 ## Resumen en una línea
 
-Esqueleto v2 operativo en `/reportes-generales-v2` (catálogo, filtros dinámicos, vista previa con mensaje “en construcción”); **ningún reporte devuelve datos aún**. v1 legacy intacto.
+v2 operativo en `/reportes-generales-v2`. **Listos (preview + PDF):** Doc. por cobrar, vencidos, no vencidos, protestados. **Pendientes Fase 1:** pagos, estado de cuenta, saldos a fecha. Acceso beta solo id **6**.
 
 ---
 
 ## Qué está hecho
+
+### Fase 1 — parcial ✅ (4 de 7)
+
+| id v2 | Vista previa | PDF | Excel |
+|-------|--------------|-----|-------|
+| `doc_por_cobrar` | ✅ | ✅ legacy | ✅ `rpt_ctas_ctes.php` (sin filtros, paridad v1) |
+| `doc_vencidos` | ✅ | ✅ legacy | — (v1 no tenía) |
+| `doc_no_vencidos` | ✅ | ✅ legacy | — |
+| `doc_protestados` | ✅ | ✅ legacy | — |
+
+- Servicio: `controladores/reportes-generales-v2.servicio.php` (reutiliza `ControladorCuentas` v1)
+- Preview limitada a **500 filas** con aviso si hay más
+- KPIs: cantidad de registros + total saldo
+
+### Pendiente Fase 1
+
+- `pagos`, `estado_cuenta`, `saldos_fecha`
 
 ### Documentación (v1 inventariado)
 
@@ -94,15 +108,10 @@ feat(reportes-generales): filtrar el reporte de Pagos por cliente
 
 ## Próximo paso al retomar (Fase 1)
 
-Orden sugerido en [`PLAN_REPORTES_GENERALES_V2.md`](PLAN_REPORTES_GENERALES_V2.md):
-
-1. Crear capa de servicio v2 (ej. `reportes-generales-v2.servicio.php`) que envuelva consultas v1 probadas
-2. Implementar **`doc_por_cobrar`**: preview tabla + Excel + PDF + todos los filtros
-3. Implementar **`pagos`** (ya tiene filtro cliente en v1 como referencia)
-4. Seguir con vencidos, no vencidos, protestados, estado_cuenta, saldos_fecha
-5. Por cada reporte: cambiar `estado` a `listo` en config + checklist manual del plan
-
-**Regla:** no tocar v1 salvo bug crítico.
+1. Implementar **`pagos`** (preview + PDF + Excel; referencia filtro cliente en v1)
+2. **`estado_cuenta`** y **`saldos_fecha`**
+3. Pulir filtros UI (ocultar los que v1 no aplica según orden1)
+4. Excel v2 con filtros donde v1 no los tenía (mejora opcional post-paridad)
 
 ---
 

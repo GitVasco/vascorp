@@ -44,16 +44,21 @@ class ControladorReportesGeneralesV2
             );
         }
 
-        return array('ok' => false, 'error' => 'Sin implementar.');
+        require_once __DIR__ . '/reportes-generales-v2.servicio.php';
+        return ReportesGeneralesV2Servicio::preview($filtros['reporte'], $filtros);
     }
 
     public static function ctrExport($formato, $filtros)
     {
-        $preview = self::ctrPreview($filtros);
-        $previewOk = isset($preview['ok']) ? $preview['ok'] : false;
-        if ($previewOk !== true) {
-            return $preview;
+        $tpl = ReportesGeneralesV2Config::find($filtros['reporte']);
+        if ($tpl === null) {
+            return array('ok' => false, 'error' => 'Plantilla de reporte no encontrada.');
         }
-        return array('ok' => false, 'error' => 'Exportación sin implementar.');
+        if ($tpl['estado'] !== 'listo') {
+            return array('ok' => false, 'error' => 'Reporte aún no disponible para exportar.');
+        }
+
+        require_once __DIR__ . '/reportes-generales-v2.servicio.php';
+        return ReportesGeneralesV2Servicio::exportUrl($formato, $filtros['reporte'], $filtros);
     }
 }
