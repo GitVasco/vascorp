@@ -337,6 +337,9 @@ if ($idReceta <= 0) {
 					<button type="button" class="btn btn-success btn-sm" id="rmBtnExcelTarjetas" title="Descargar las tarjetas armadas en Excel">
 						<i class="fa fa-file-excel-o"></i> Excel
 					</button>
+					<button type="button" class="btn btn-info btn-sm" id="rmBtnPreviewExplosion" title="Cantidades por color y talla y explosión de materiales">
+						<i class="fa fa-th"></i> Explosión
+					</button>
 					<a href="recetas-modelo" class="btn btn-default btn-sm" title="Listado"><i class="fa fa-arrow-left"></i></a>
 				</div>
 			</div>
@@ -509,3 +512,4 @@ if ($idReceta <= 0) {
 		</div>
 	</div>
 </div>
+<?php include __DIR__ . "/modal-preview-explosion.php"; ?>

@@ -14,6 +14,10 @@ var RM = {
 	mpCatalogoSub: "",
 	sublineaCache: {},
 	dirty: false,
+	previewArts: [],
+	previewColores: [],
+	previewTallas: [],
+	previewQtyCache: {},
 	_ctxFlashTimer: null,
 	_mpReqSeq: 0,
 	_mpFiltroTimer: null,
@@ -929,7 +933,7 @@ function rmCargarListado() {
 			var id = Number(r.id);
 			var botones = "<div class='btn-group' style='display:inline-flex; flex-wrap:nowrap; white-space:nowrap;'>"
 				+ "<a class='btn btn-xs btn-primary' href='index.php?ruta=editar-receta-modelo&idReceta=" + id + "' title='Editar'><i class='fa fa-pencil'></i></a>"
-				+ "<button type='button' class='btn btn-xs btn-info btnPreviewRecetaLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' title='Previsualizar'><i class='fa fa-eye'></i></button>"
+				+ "<button type='button' class='btn btn-xs btn-info btnPreviewRecetaLista' data-id='" + id + "' data-modelo='" + rmEsc(r.modelo) + "' title='Explosión por color y talla'><i class='fa fa-eye'></i></button>"
 				+ "<a class='btn btn-xs btn-success' href='ajax/recetas-modelo-excel.php?id_receta=" + id + "' title='Descargar tarjetas en Excel'><i class='fa fa-file-excel-o'></i></a>"
 				+ "<button type='button' class='btn btn-xs btn-warning btnDuplicarRecetaLista' data-id='" + id + "' title='Duplicar'><i class='fa fa-copy'></i></button>";
 			if (r.estado === "BORRADOR") {
@@ -1011,40 +1015,222 @@ function rmCargarTablaModelosSinReceta() {
 	});
 }
 
-function rmCargarSelectPreviewArticulos(modelo) {
-	var $sel = $("#previewArticulo");
-	$sel.prop("disabled", true);
-	$sel.html("");
-	if (typeof $sel.selectpicker === "function") {
-		$sel.selectpicker("refresh");
-	}
+function rmAbrirPreviewExplosion(idReceta, modelo) {
+	idReceta = String(idReceta || "");
+	modelo = String(modelo || "");
+	$("#previewIdReceta").val(idReceta);
+	$("#previewModeloReceta").val(modelo);
+	$("#previewExplosionResultado").empty();
+	$("#previewCantidadTodas").val("");
+	$("#btnDescargarExplosionExcel").prop("disabled", true);
+	$("#previewExplosionSubtitulo").text(modelo ? " · " + modelo : "");
+	$("#previewTotalPrendas").text("0");
+	$("#modalPreviewExplosionReceta").modal("show");
+	rmCargarMatrizPreview(modelo, idReceta);
+}
+
+function rmCargarMatrizPreview(modelo, idReceta) {
+	var $tabla = $("#previewMatrizCantidades");
+	var $vacio = $("#previewMatrizVacio");
+	$tabla.hide();
+	$vacio.text("Cargando colores y tallas…").show();
+	RM.previewArts = [];
+	RM.previewColores = [];
+	RM.previewTallas = [];
 	if (!modelo) {
-		$sel.html("<option value=''>Sin modelo</option>");
-		$sel.prop("disabled", false);
-		if (typeof $sel.selectpicker === "function") $sel.selectpicker("refresh");
+		$vacio.text("Sin modelo");
 		return;
 	}
 	rmPost({ accion: "articulosModelo", modelo: modelo }).done(function (resp) {
-		$sel.empty();
-		var arts = (resp && resp.ok && resp.data && resp.data.articulos) ? resp.data.articulos : [];
-		if (!arts.length) {
-			$sel.append("<option value=''>Sin artículos activos</option>");
-		} else {
-			arts.forEach(function (a) {
-				var label = (a.articulo || "")
-					+ " · " + (a.color || a.cod_color || "")
-					+ " · " + (a.talla || a.cod_talla || "");
-				$sel.append("<option value='" + rmEsc(a.articulo) + "'>" + rmEsc(label) + "</option>");
-			});
+		if (!resp || !resp.ok) {
+			$vacio.text((resp && resp.mensaje) || "No se pudieron cargar los artículos");
+			return;
 		}
+		RM.previewArts = (resp.data && resp.data.articulos) ? resp.data.articulos : [];
+		RM.previewColores = (resp.data && resp.data.colores) ? resp.data.colores : [];
+		RM.previewTallas = (resp.data && resp.data.tallas) ? resp.data.tallas : [];
+		rmRenderMatrizPreview(idReceta);
 	}).fail(function () {
-		$sel.html("<option value=''>Error al cargar</option>");
-	}).always(function () {
-		$sel.prop("disabled", false);
-		if (typeof $sel.selectpicker === "function") {
-			$sel.selectpicker("refresh");
-		}
+		$vacio.text("Error al cargar artículos del modelo");
 	});
+}
+
+function rmArtPreviewPorColorTalla(codColor, codTalla) {
+	var c = String(codColor || "");
+	var t = String(codTalla || "");
+	for (var i = 0; i < RM.previewArts.length; i++) {
+		var a = RM.previewArts[i];
+		if (String(a.cod_color || "") === c && String(a.cod_talla || "") === t) return a;
+	}
+	return null;
+}
+
+function rmRenderMatrizPreview(idReceta) {
+	var colores = RM.previewColores || [];
+	var tallas = RM.previewTallas || [];
+	var $tabla = $("#previewMatrizCantidades");
+	var $vacio = $("#previewMatrizVacio");
+	if (!colores.length || !tallas.length) {
+		$tabla.hide();
+		$vacio.text("Este modelo no tiene colores y tallas activos").show();
+		return;
+	}
+	$vacio.hide();
+	var cache = RM.previewQtyCache[String(idReceta || "")] || {};
+	var head = "<tr><th class='rm-preview-color'>Color</th>";
+	tallas.forEach(function (t) {
+		head += "<th class='rm-preview-talla-th' title='Clic para aplicar a esta talla la cantidad de arriba'>" + rmEsc(t.talla || t.cod_talla) + "</th>";
+	});
+	head += "<th>Total</th></tr>";
+	$tabla.find("thead").html(head);
+
+	var body = "";
+	colores.forEach(function (col) {
+		body += "<tr><th class='rm-preview-color' title='Clic para aplicar a este color la cantidad de arriba'>" + rmEsc(col.color || col.cod_color) + "</th>";
+		tallas.forEach(function (tal) {
+			var art = rmArtPreviewPorColorTalla(col.cod_color, tal.cod_talla);
+			if (!art) {
+				body += "<td class='rm-preview-vacio'>—</td>";
+				return;
+			}
+			var artCod = String(art.articulo || "");
+			var val = cache[artCod] != null ? cache[artCod] : "";
+			body += "<td><input type='number' min='0' step='1' class='form-control input-sm previewQty'"
+				+ " data-articulo='" + rmEsc(artCod) + "'"
+				+ " data-color='" + rmEsc(col.cod_color) + "'"
+				+ " data-talla='" + rmEsc(tal.cod_talla) + "'"
+				+ " title='" + rmEsc(artCod) + "'"
+				+ " value='" + rmEsc(val) + "'></td>";
+		});
+		body += "<th class='rm-preview-fila-total'>0</th></tr>";
+	});
+	$tabla.find("tbody").html(body);
+
+	var foot = "<tr><th class='rm-preview-color'>Total</th>";
+	tallas.forEach(function () {
+		foot += "<th class='rm-preview-col-total'>0</th>";
+	});
+	foot += "<th class='rm-preview-col-total' id='previewGranTotal'>0</th></tr>";
+	$tabla.find("tfoot").html(foot);
+	$tabla.show();
+	rmActualizarTotalesPreview();
+}
+
+function rmPreviewCantidades() {
+	var out = [];
+	$("#previewMatrizCantidades .previewQty").each(function () {
+		var n = Number($(this).val());
+		if (!isFinite(n) || n <= 0) return;
+		out.push({
+			articulo: String($(this).attr("data-articulo") || ""),
+			cod_color: String($(this).attr("data-color") || ""),
+			cod_talla: String($(this).attr("data-talla") || ""),
+			cantidad: n
+		});
+	});
+	return out;
+}
+
+function rmGuardarCachePreview() {
+	var id = String($("#previewIdReceta").val() || "");
+	if (!id) return;
+	var cache = {};
+	$("#previewMatrizCantidades .previewQty").each(function () {
+		var art = String($(this).attr("data-articulo") || "");
+		var n = Number($(this).val());
+		if (art && isFinite(n) && n > 0) cache[art] = n;
+	});
+	RM.previewQtyCache[id] = cache;
+}
+
+function rmFmtEntero(v) {
+	var n = Number(v);
+	if (!isFinite(n)) return "0";
+	if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+	return rmFmtNum(n);
+}
+
+function rmActualizarTotalesPreview() {
+	var $tabla = $("#previewMatrizCantidades");
+	var nTallas = RM.previewTallas.length;
+	var totCol = [];
+	for (var i = 0; i < nTallas; i++) totCol[i] = 0;
+	var gran = 0;
+	$tabla.find("tbody tr").each(function () {
+		var fila = 0;
+		$(this).find(".previewQty").each(function (idx) {
+			var n = Number($(this).val());
+			if (!isFinite(n) || n < 0) n = 0;
+			$(this).toggleClass("has-qty", n > 0);
+			fila += n;
+			totCol[idx] += n;
+		});
+		$(this).find(".rm-preview-fila-total").text(rmFmtEntero(fila));
+		gran += fila;
+	});
+	$tabla.find("tfoot .rm-preview-col-total").each(function (idx) {
+		if (idx < nTallas) $(this).text(rmFmtEntero(totCol[idx]));
+	});
+	$("#previewGranTotal").text(rmFmtEntero(gran));
+	$("#previewTotalPrendas").text(rmFmtEntero(gran));
+	$("#btnDescargarExplosionExcel").prop("disabled", gran <= 0);
+}
+
+function rmPintarResultadoExplosion(resp) {
+	var $out = $("#previewExplosionResultado");
+	var data = resp && resp.data ? resp.data : null;
+	var consolidados = data && data.consolidados ? data.consolidados : null;
+	if (!resp || (!resp.ok && !consolidados)) {
+		$out.html("<div class='alert alert-danger'>" + rmEsc((resp && resp.mensaje) || "Error") + "</div>");
+		return;
+	}
+	var html = "<div class='rm-preview-resumen'>";
+	html += "<strong>" + rmEsc(rmFmtEntero(data.cantidad_total || 0)) + "</strong> prendas"
+		+ " en <strong>" + rmEsc(data.combinaciones || 0) + "</strong> combinaciones.";
+	html += "</div>";
+	html += "<div class='table-responsive'><table class='table table-bordered table-condensed rm-preview-tabla-mp'><thead><tr>"
+		+ "<th>MP</th><th>Descripción</th><th>Color</th><th>Und</th><th>Total</th><th>Tela</th>"
+		+ "</tr></thead><tbody>";
+	(consolidados || []).forEach(function (c) {
+		html += "<tr" + (c.es_tela_principal ? " class='tela'" : "") + ">"
+			+ "<td>" + rmEsc(c.mp_codigo) + "</td>"
+			+ "<td>" + rmEsc(c.mp_descripcion || "") + "</td>"
+			+ "<td>" + rmEsc(c.mp_color || "") + "</td>"
+			+ "<td>" + rmEsc(c.unidad || "") + "</td>"
+			+ "<td class='num'>" + rmEsc(rmFmtNum(c.consumo_total)) + "</td>"
+			+ "<td>" + (c.es_tela_principal ? "SI" : "") + "</td>"
+			+ "</tr>";
+	});
+	html += "</tbody></table></div>";
+	$out.html(html);
+	if (!resp.ok || (data.errores && data.errores.length)) {
+		var avisos = (data.errores || []).map(function (e) {
+			return rmEsc((e.mensaje || e.tipo || "") + (e.rol ? " (" + e.rol + ")" : ""));
+		}).join("<br>");
+		$out.prepend(
+			"<div class='alert alert-warning'>"
+			+ rmEsc(resp.mensaje || "Explosión incompleta")
+			+ (avisos ? "<br>" + avisos : "")
+			+ "</div>"
+		);
+	}
+}
+
+function rmDescargarExplosionExcel() {
+	var cants = rmPreviewCantidades();
+	if (!cants.length) {
+		rmAlerta("warning", "Cantidades", "Ingresa al menos una cantidad mayor a cero");
+		return;
+	}
+	rmGuardarCachePreview();
+	var $f = $("<form>", {
+		method: "POST",
+		action: "ajax/recetas-modelo-explosion-excel.php"
+	});
+	$f.append($("<input>", { type: "hidden", name: "id_receta", value: $("#previewIdReceta").val() }));
+	$f.append($("<input>", { type: "hidden", name: "modelo", value: $("#previewModeloReceta").val() }));
+	$f.append($("<input>", { type: "hidden", name: "cantidades", value: JSON.stringify(cants) }));
+	$f.appendTo("body").submit().remove();
 }
 
 function rmEjecutarImportModelo(modelo, $btn) {
@@ -2777,68 +2963,96 @@ $(document).ready(function () {
 		});
 
 		$(document).on("click", ".btnPreviewRecetaLista", function () {
-			var id = $(this).attr("data-id") || $(this).data("id");
-			var modelo = String($(this).attr("data-modelo") || "");
-			$("#previewIdReceta").val(id);
-			$("#previewModeloReceta").val(modelo);
-			$("#previewExplosionResultado").empty();
-			$("#previewCantidad").val("1");
-			$("#modalPreviewExplosionReceta").modal("show");
-			rmCargarSelectPreviewArticulos(modelo);
-		});
-		$("#modalPreviewExplosionReceta").on("shown.bs.modal", function () {
-			var $sel = $("#previewArticulo");
-			if (typeof $sel.selectpicker === "function") {
-				$sel.selectpicker("refresh");
-			}
-		});
-		$("#btnEjecutarPreviewReceta").on("click", function () {
-			var articulo = $.trim($("#previewArticulo").val() || "");
-			if (!articulo) {
-				rmAlerta("warning", "Artículo", "Selecciona un artículo del modelo");
-				return;
-			}
-			rmPost({
-				accion: "previsualizarExplosion",
-				id_receta: $("#previewIdReceta").val(),
-				articulo: articulo,
-				cantidad: $("#previewCantidad").val() || 1
-			}).done(function (resp) {
-				var $out = $("#previewExplosionResultado");
-				var data = resp && resp.data ? resp.data : null;
-				var consolidados = data && data.consolidados ? data.consolidados : null;
-				if (!resp || (!resp.ok && !consolidados)) {
-					$out.html("<div class='alert alert-danger'>" + rmEsc((resp && resp.mensaje) || "Error") + "</div>");
-					return;
-				}
-				var html = "<table class='table table-bordered table-condensed'><thead><tr>"
-					+ "<th>MP</th><th>Descripción</th><th>Color</th><th>Und</th><th>Total</th><th>Tela</th>"
-					+ "</tr></thead><tbody>";
-				(consolidados || []).forEach(function (c) {
-					html += "<tr>"
-						+ "<td>" + rmEsc(c.mp_codigo) + "</td>"
-						+ "<td>" + rmEsc(c.mp_descripcion || "") + "</td>"
-						+ "<td>" + rmEsc(c.mp_color || "") + "</td>"
-						+ "<td>" + rmEsc(c.unidad || "") + "</td>"
-						+ "<td>" + rmEsc(c.consumo_total) + "</td>"
-						+ "<td>" + (c.es_tela_principal ? "SI" : "") + "</td>"
-						+ "</tr>";
-				});
-				$out.html(html + "</tbody></table>");
-				if (!resp.ok || (data.errores && data.errores.length)) {
-					var avisos = (data.errores || []).map(function (e) {
-						return rmEsc((e.mensaje || e.tipo || "") + (e.rol ? " (" + e.rol + ")" : ""));
-					}).join("<br>");
-					$out.prepend(
-						"<div class='alert alert-warning'>"
-						+ rmEsc(resp.mensaje || "Explosión incompleta")
-						+ (avisos ? "<br>" + avisos : "")
-						+ "</div>"
-					);
-				}
-			});
+			rmAbrirPreviewExplosion(
+				$(this).attr("data-id") || $(this).data("id"),
+				String($(this).attr("data-modelo") || "")
+			);
 		});
 	}
+
+	if ($("#modalPreviewExplosionReceta").length) {
+		$(document).on("input change", "#previewMatrizCantidades .previewQty", function () {
+			rmActualizarTotalesPreview();
+			rmGuardarCachePreview();
+			$("#previewExplosionResultado").empty();
+		});
+		$(document).on("focus", "#previewMatrizCantidades .previewQty", function () {
+			this.select();
+		});
+		$("#btnPreviewAplicarTodas").on("click", function () {
+			var n = Number($("#previewCantidadTodas").val());
+			if (!isFinite(n) || n < 0) n = 0;
+			$("#previewMatrizCantidades .previewQty").val(n > 0 ? n : "");
+			rmActualizarTotalesPreview();
+			rmGuardarCachePreview();
+			$("#previewExplosionResultado").empty();
+		});
+		$("#btnPreviewLimpiarMatriz").on("click", function () {
+			$("#previewMatrizCantidades .previewQty").val("");
+			$("#previewCantidadTodas").val("");
+			rmActualizarTotalesPreview();
+			rmGuardarCachePreview();
+			$("#previewExplosionResultado").empty();
+		});
+		$("#previewCantidadTodas").on("keydown", function (e) {
+			if (e.which === 13) {
+				e.preventDefault();
+				$("#btnPreviewAplicarTodas").click();
+			}
+		});
+		$(document).on("click", "#previewMatrizCantidades tbody .rm-preview-color", function () {
+			var n = Number($("#previewCantidadTodas").val());
+			if (!isFinite(n) || n < 0) n = 0;
+			$(this).closest("tr").find(".previewQty").val(n > 0 ? n : "");
+			rmActualizarTotalesPreview();
+			rmGuardarCachePreview();
+			$("#previewExplosionResultado").empty();
+		});
+		$(document).on("click", "#previewMatrizCantidades thead .rm-preview-talla-th", function () {
+			var idx = $(this).index();
+			if (idx < 1) return;
+			var n = Number($("#previewCantidadTodas").val());
+			if (!isFinite(n) || n < 0) n = 0;
+			$("#previewMatrizCantidades tbody tr").each(function () {
+				$(this).find("td").eq(idx - 1).find(".previewQty").val(n > 0 ? n : "");
+			});
+			rmActualizarTotalesPreview();
+			rmGuardarCachePreview();
+			$("#previewExplosionResultado").empty();
+		});
+		$("#btnEjecutarPreviewReceta").on("click", function () {
+			var cants = rmPreviewCantidades();
+			if (!cants.length) {
+				rmAlerta("warning", "Cantidades", "Ingresa al menos una cantidad mayor a cero");
+				return;
+			}
+			rmGuardarCachePreview();
+			var $btn = $("#btnEjecutarPreviewReceta").prop("disabled", true);
+			rmPost({
+				accion: "previsualizarExplosionMatriz",
+				id_receta: $("#previewIdReceta").val(),
+				modelo: $("#previewModeloReceta").val(),
+				cantidades: JSON.stringify(cants)
+			}).done(function (resp) {
+				rmPintarResultadoExplosion(resp);
+			}).fail(function () {
+				$("#previewExplosionResultado").html("<div class='alert alert-danger'>No se pudo calcular la explosión</div>");
+			}).always(function () {
+				$btn.prop("disabled", false);
+			});
+		});
+		$("#btnDescargarExplosionExcel").on("click", rmDescargarExplosionExcel);
+	}
+
+	$("#rmBtnPreviewExplosion").on("click", function () {
+		var id = $("#rmIdReceta").val() || (RM.estado && RM.estado.cabecera ? RM.estado.cabecera.id : "");
+		var modelo = (RM.estado && RM.estado.cabecera) ? RM.estado.cabecera.modelo : $("#rmModelo").text();
+		if (!id) {
+			rmAlerta("warning", "Receta", "No hay receta cargada");
+			return;
+		}
+		rmAbrirPreviewExplosion(id, modelo);
+	});
 
 	if (!$("#rmIdReceta").length) return;
 

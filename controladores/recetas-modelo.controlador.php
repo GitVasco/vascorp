@@ -995,6 +995,136 @@ class ControladorRecetasModelo
 	}
 
 	/*=============================================
+	Explosión matricial: cantidades por color × talla
+	=============================================*/
+	static public function ctrPrevisualizarExplosionMatriz($datos)
+	{
+		require_once dirname(__FILE__) . "/../modelos/recetas-modelo.resolucion.php";
+
+		$idReceta = isset($datos["id_receta"]) ? (int) $datos["id_receta"] : 0;
+		$cantidadesIn = self::parseCantidadesExplosion($datos);
+
+		if (!count($cantidadesIn)) {
+			return self::respuesta(false, "Ingresa al menos una cantidad mayor a cero");
+		}
+
+		$usarPublicada = !empty($datos["usar_publicada"]);
+		$modeloHint = isset($datos["modelo"]) ? trim((string) $datos["modelo"]) : "";
+
+		if ($usarPublicada || $idReceta <= 0) {
+			if ($modeloHint === "") {
+				return self::respuesta(false, "Falta receta o modelo");
+			}
+			$pub = ModeloRecetasModelo::mdlRecetaPublicadaModelo($modeloHint);
+			if (!$pub) {
+				return self::respuesta(false, "El modelo no tiene receta PUBLICADA vigente", array(
+					"modelo" => $modeloHint,
+					"fallback_tarjetas" => true,
+				));
+			}
+			$idReceta = (int) $pub["id"];
+		}
+
+		$estructura = self::cargarEstructuraReceta($idReceta, true);
+		if (!$estructura) {
+			return self::respuesta(false, "Receta no encontrada");
+		}
+
+		$cab = $estructura["cabecera"];
+		$modelo = isset($cab["modelo"]) ? $cab["modelo"] : "";
+		$articulos = ModeloRecetasModelo::mdlArticulosActivosModelo($modelo);
+		if (!$articulos) {
+			$articulos = array();
+		}
+
+		$porCodigo = array();
+		$porCT = array();
+		foreach ($articulos as $a) {
+			$cod = trim((string) (isset($a["articulo"]) ? $a["articulo"] : ""));
+			if ($cod !== "") {
+				$porCodigo[$cod] = $a;
+			}
+			$c = trim((string) (isset($a["cod_color"]) ? $a["cod_color"] : ""));
+			$t = trim((string) (isset($a["cod_talla"]) ? $a["cod_talla"] : ""));
+			$porCT[$c . "|" . $t] = $a;
+		}
+
+		$agrupado = array();
+		foreach ($cantidadesIn as $c) {
+			$art = null;
+			if ($c["articulo"] !== "" && isset($porCodigo[$c["articulo"]])) {
+				$art = $porCodigo[$c["articulo"]];
+			} elseif (isset($porCT[$c["cod_color"] . "|" . $c["cod_talla"]])) {
+				$art = $porCT[$c["cod_color"] . "|" . $c["cod_talla"]];
+			}
+			if (!$art) {
+				continue;
+			}
+			$k = trim((string) $art["articulo"]);
+			if (!isset($agrupado[$k])) {
+				$agrupado[$k] = array("articulo" => $art, "cantidad" => 0.0);
+			}
+			$agrupado[$k]["cantidad"] += $c["cantidad"];
+		}
+
+		$conCantidad = array_values($agrupado);
+		if (!count($conCantidad)) {
+			return self::respuesta(false, "Ninguna cantidad corresponde a un artículo activo del modelo");
+		}
+
+		$resultado = ServicioRecetasModeloResolucion::resolverMatriz(
+			$estructura["lineas"],
+			$estructura["variantes_por_detalle"],
+			$conCantidad,
+			$estructura["mp_info"]
+		);
+
+		$resultado["id_receta_modelo"] = $idReceta;
+		$resultado["version"] = (int) $cab["version"];
+		$resultado["estado_receta"] = $cab["estado"];
+		$resultado["modelo"] = $modelo;
+		$resultado["nombre_modelo"] = isset($cab["nombre_modelo"]) ? $cab["nombre_modelo"] : "";
+		$resultado["colores"] = ModeloRecetasModelo::mdlColoresModelo($modelo);
+		$resultado["tallas"] = ModeloRecetasModelo::mdlTallasModelo($modelo);
+
+		if (!$resultado["ok"]) {
+			return self::respuesta(false, "Explosión incompleta", $resultado);
+		}
+
+		return self::respuesta(true, "", $resultado);
+	}
+
+	static private function parseCantidadesExplosion($datos)
+	{
+		$raw = isset($datos["cantidades"]) ? $datos["cantidades"] : array();
+		if (is_string($raw)) {
+			$decoded = json_decode($raw, true);
+			$raw = is_array($decoded) ? $decoded : array();
+		}
+		if (!is_array($raw)) {
+			return array();
+		}
+
+		$out = array();
+		foreach ($raw as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$qty = isset($item["cantidad"]) ? $item["cantidad"] : 0;
+			if (!is_numeric($qty) || (float) $qty <= 0) {
+				continue;
+			}
+			$out[] = array(
+				"articulo" => isset($item["articulo"]) ? trim((string) $item["articulo"]) : "",
+				"cod_color" => isset($item["cod_color"]) ? trim((string) $item["cod_color"]) : "",
+				"cod_talla" => isset($item["cod_talla"]) ? trim((string) $item["cod_talla"]) : "",
+				"cantidad" => (float) $qty,
+			);
+		}
+		return $out;
+	}
+
+	/*=============================================
 	Publicar borrador (bloquea si cobertura incompleta)
 	=============================================*/
 	static public function ctrPublicar($idReceta, $bloquearComplementarios = true)

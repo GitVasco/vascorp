@@ -432,6 +432,119 @@ class ServicioRecetasModeloResolucion
 	}
 
 	/**
+	 * Explota varios artículos con cantidad (matriz color × talla).
+	 *
+	 * @param array $lineasActivas
+	 * @param array $variantesPorDetalle
+	 * @param array $articulosConCantidad  cada item: articulo (fila), cantidad
+	 * @param array $mpInfoPorCodigo
+	 * @return array
+	 */
+	static public function resolverMatriz(
+		$lineasActivas,
+		$variantesPorDetalle,
+		$articulosConCantidad,
+		$mpInfoPorCodigo = array()
+	) {
+		$todosInsumos = array();
+		$detalle = array();
+		$errores = array();
+		$filasCantidad = array();
+		$articulosOk = 0;
+		$articulosError = 0;
+		$cantidadTotal = 0.0;
+
+		foreach ($articulosConCantidad as $item) {
+			$art = isset($item["articulo"]) && is_array($item["articulo"]) ? $item["articulo"] : array();
+			$cantidad = isset($item["cantidad"]) ? (float) $item["cantidad"] : 0;
+			if ($cantidad <= 0 || empty($art)) {
+				continue;
+			}
+
+			$res = self::resolverArticulo(
+				$lineasActivas,
+				$variantesPorDetalle,
+				$art,
+				$cantidad,
+				$mpInfoPorCodigo
+			);
+
+			$cantidadTotal += $cantidad;
+			$filasCantidad[] = array(
+				"articulo" => isset($art["articulo"]) ? $art["articulo"] : "",
+				"cod_color" => isset($art["cod_color"]) ? $art["cod_color"] : "",
+				"color" => isset($art["color"]) ? $art["color"] : "",
+				"cod_talla" => isset($art["cod_talla"]) ? $art["cod_talla"] : "",
+				"talla" => isset($art["talla"]) ? $art["talla"] : "",
+				"cantidad" => $cantidad,
+				"ok" => !empty($res["ok"]),
+			);
+
+			if (!empty($res["ok"])) {
+				$articulosOk++;
+			} else {
+				$articulosError++;
+			}
+
+			$insumos = isset($res["insumos"]) && is_array($res["insumos"]) ? $res["insumos"] : array();
+			foreach ($insumos as $ins) {
+				$todosInsumos[] = $ins;
+				if (empty($ins["completo"])) {
+					continue;
+				}
+				$detalle[] = array(
+					"articulo" => isset($art["articulo"]) ? $art["articulo"] : "",
+					"color" => isset($art["color"]) ? $art["color"] : "",
+					"talla" => isset($art["talla"]) ? $art["talla"] : "",
+					"cantidad" => $cantidad,
+					"mp_codigo" => isset($ins["mp_codigo"]) ? $ins["mp_codigo"] : "",
+					"mp_descripcion" => isset($ins["mp_descripcion"]) ? $ins["mp_descripcion"] : "",
+					"mp_color" => isset($ins["mp_color"]) ? $ins["mp_color"] : "",
+					"unidad" => !empty($ins["mp_unidad"]) ? $ins["mp_unidad"] : (isset($ins["unidad"]) ? $ins["unidad"] : ""),
+					"consumo_unitario" => isset($ins["consumo"]) ? $ins["consumo"] : null,
+					"consumo_total" => isset($ins["consumo_total"]) ? $ins["consumo_total"] : null,
+					"es_tela_principal" => !empty($ins["es_tela_principal"]) ? 1 : 0,
+					"nombre_rol" => isset($ins["nombre_rol"]) ? $ins["nombre_rol"] : "",
+				);
+			}
+
+			if (!empty($res["errores"]) && is_array($res["errores"])) {
+				foreach ($res["errores"] as $err) {
+					$errores[] = $err;
+				}
+			}
+		}
+
+		$consolidados = self::consolidarPorMp($todosInsumos);
+		usort($consolidados, function ($a, $b) {
+			$ta = !empty($a["es_tela_principal"]) ? 0 : 1;
+			$tb = !empty($b["es_tela_principal"]) ? 0 : 1;
+			if ($ta !== $tb) {
+				return $ta - $tb;
+			}
+			return strcmp(
+				isset($a["mp_codigo"]) ? $a["mp_codigo"] : "",
+				isset($b["mp_codigo"]) ? $b["mp_codigo"] : ""
+			);
+		});
+
+		$completo = ($articulosError === 0 && $articulosOk > 0);
+
+		return array(
+			"ok" => $completo,
+			"completo" => $completo,
+			"cantidad_total" => $cantidadTotal,
+			"combinaciones" => $articulosOk + $articulosError,
+			"articulos_ok" => $articulosOk,
+			"articulos_error" => $articulosError,
+			"consolidados" => $consolidados,
+			"detalle" => $detalle,
+			"cantidades" => $filasCantidad,
+			"errores" => $errores,
+		);
+	}
+
+	/**
 	 * Consolida por MP conservando si alguna fila es tela principal.
 	 */
 	static public function consolidarPorMp($insumos)

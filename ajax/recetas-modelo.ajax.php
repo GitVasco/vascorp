@@ -97,6 +97,11 @@ if ($accion === "previsualizarExplosion") {
 	return;
 }
 
+if ($accion === "previsualizarExplosionMatriz") {
+	echo json_encode(ControladorRecetasModelo::ctrPrevisualizarExplosionMatriz($_POST));
+	return;
+}
+
 if ($accion === "publicar") {
 	$id = isset($_POST["id_receta"]) ? (int) $_POST["id_receta"] : 0;
 	$bloquear = !isset($_POST["bloquear_complementarios"]) || (int) $_POST["bloquear_complementarios"] === 1;

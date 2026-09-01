@@ -59,3 +59,133 @@
 #panelRecetasModelo .rm-kpi-archivada.active { border-left: 3px solid #777; }
 #panelRecetasModelo .rm-kpi-sin-tela.active { border-left: 3px solid #dd4b39; }
 #panelRecetasModelo .rm-kpi-sin-receta.active { border-left: 3px solid #f39c12; }
+
+/* Previsualizar explosión: matriz color × talla */
+.rm-modal-explosion {
+	width: 96%;
+	max-width: 1100px;
+}
+.rm-preview-atajos {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+.rm-preview-atajos label {
+	margin: 0;
+	font-weight: 600;
+	font-size: 12px;
+	color: #666;
+}
+.rm-preview-atajos #previewCantidadTodas {
+	width: 90px;
+}
+.rm-preview-total-live {
+	margin-left: auto;
+	font-size: 13px;
+	color: #555;
+}
+.rm-preview-matriz-wrap {
+	max-height: 320px;
+	overflow: auto;
+	border: 1px solid #eee;
+	margin-bottom: 12px;
+}
+.rm-preview-matriz {
+	margin: 0;
+	min-width: 100%;
+}
+#modalPreviewExplosionReceta .rm-preview-matriz thead th,
+#modalPreviewExplosionReceta .rm-preview-matriz tfoot th,
+.rm-preview-matriz thead th,
+.rm-preview-matriz tfoot th {
+	background: #e8eef3;
+	color: #1a1a1a !important;
+	-webkit-text-fill-color: #1a1a1a;
+	text-align: center;
+	white-space: nowrap;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	font-weight: 700;
+}
+.rm-preview-matriz tfoot th {
+	top: auto;
+	bottom: 0;
+	z-index: 2;
+}
+.rm-preview-matriz th.rm-preview-color {
+	text-align: left;
+	min-width: 140px;
+	position: sticky;
+	left: 0;
+	z-index: 3;
+	background: #f7f7f7;
+	color: #1a1a1a !important;
+	-webkit-text-fill-color: #1a1a1a;
+}
+.rm-preview-matriz thead th.rm-preview-color,
+.rm-preview-matriz tfoot th.rm-preview-color {
+	z-index: 4;
+	background: #dce4ea;
+	color: #1a1a1a !important;
+	-webkit-text-fill-color: #1a1a1a;
+}
+.rm-preview-matriz td {
+	padding: 2px 4px;
+	text-align: center;
+	min-width: 64px;
+}
+.rm-preview-matriz td.rm-preview-vacio {
+	background: #fafafa;
+	color: #ccc;
+}
+.rm-preview-matriz .previewQty {
+	width: 64px;
+	height: 28px;
+	padding: 2px 4px;
+	text-align: center;
+	margin: 0 auto;
+	display: inline-block;
+}
+.rm-preview-matriz .previewQty.has-qty {
+	background: #e8f4fc;
+	font-weight: 600;
+}
+.rm-preview-matriz thead th.rm-preview-talla-th {
+	cursor: pointer;
+}
+.rm-preview-matriz tbody th.rm-preview-color {
+	cursor: pointer;
+}
+#previewExplosionSubtitulo {
+	font-size: 13px;
+	font-weight: 400;
+	color: #888;
+	margin-left: 6px;
+}
+.rm-preview-matriz .rm-preview-fila-total,
+.rm-preview-matriz .rm-preview-col-total {
+	font-weight: 700;
+	background: #e8eef3;
+	color: #1a1a1a !important;
+	-webkit-text-fill-color: #1a1a1a;
+}
+.rm-preview-acciones {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.rm-preview-resumen {
+	margin-bottom: 8px;
+	font-size: 13px;
+}
+.rm-preview-tabla-mp td.num {
+	text-align: right;
+	white-space: nowrap;
+}
+.rm-preview-tabla-mp tr.tela {
+	background: #dff0d8;
+}
