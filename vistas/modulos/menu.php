@@ -1757,6 +1757,7 @@
                                         $_GET["ruta"] == "ver-envio-letras" ||
                                         $_GET["ruta"] == "envio-letras" ||
                                         $_GET["ruta"] == "reportes-generales" ||
+                                        $_GET["ruta"] == "reportes-generales-v2" ||
                                         $_GET["ruta"] == "notificaciones" ||
                                         $_GET["ruta"] == "letras-plazo-protesto" ||
                                         $_GET["ruta"] == "credipagos" ||
@@ -1789,6 +1790,7 @@
                                                 $_GET["ruta"] == "estado-cuenta" ||
                                                 $_GET["ruta"] == "ver-envio-letras" ||
                                                 $_GET["ruta"] == "reportes-generales" ||
+                                        $_GET["ruta"] == "reportes-generales-v2" ||
                                                 $_GET["ruta"] == "notificaciones" ||
                                                 $_GET["ruta"] == "letras-plazo-protesto" ||
                                                 $_GET["ruta"] == "credipagos"
@@ -1954,6 +1956,22 @@
 
                             </a>
                         </li>
+
+                        <?php
+                        if (!class_exists('ReportesGeneralesV2Config')) {
+                            require_once 'controladores/reportes-generales-v2.config.php';
+                        }
+                        if (ReportesGeneralesV2Config::puedeAcceder()) {
+                        ?>
+                        <li class="<?php if ($_GET["ruta"] == "reportes-generales-v2") echo 'active'; ?>">
+                            <a href="reportes-generales-v2">
+
+                                <i class="fa fa-circle-o text-aqua"></i>
+                                <span>Reportes generales v2 (beta)</span>
+
+                            </a>
+                        </li>
+                        <?php } ?>
                     </ul>
                 </li>
 

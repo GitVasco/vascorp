@@ -55,6 +55,18 @@ Planes de módulos comerciales: [`comercial/`](comercial/).
 
 ---
 
+## Cuentas corrientes / Cobranzas
+
+| Doc | Tema |
+|-----|------|
+| [`cuentas-corrientes/README.md`](cuentas-corrientes/README.md) | Índice del módulo |
+| [`cuentas-corrientes/ESTADO_REPORTES_GENERALES_V2.md`](cuentas-corrientes/ESTADO_REPORTES_GENERALES_V2.md) | Handoff v2 — estado y próximo paso |
+| [`cuentas-corrientes/REPORTES_GENERALES_V1_CATALOGO_COMPLETO.md`](cuentas-corrientes/REPORTES_GENERALES_V1_CATALOGO_COMPLETO.md) | Inventario exhaustivo de los 16 reportes v1 |
+| [`cuentas-corrientes/REPORTES_GENERALES_V1_AUDIT.md`](cuentas-corrientes/REPORTES_GENERALES_V1_AUDIT.md) | Auditoría del legacy `/reportes-generales` |
+| [`cuentas-corrientes/PLAN_REPORTES_GENERALES_V2.md`](cuentas-corrientes/PLAN_REPORTES_GENERALES_V2.md) | Plan v2 (`/reportes-generales-v2`) sin tocar v1 |
+
+---
+
 ## TI (interno)
 
 | Doc | Tema |
