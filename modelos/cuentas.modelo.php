@@ -3970,13 +3970,54 @@ class ModeloCuentas
 			$stmt->execute();
 
 			return $stmt->fetch();
+		} else if ($orden1 == "vendedor" && $orden2 == "ordNumCuenta") {
+			$filtroVend = ($vend != "") ? " AND cc.vendedor = '" . str_replace(array("\\", "'"), array("\\\\", "''"), $vend) . "' " : "";
+			$stmt = Conexion::conectar()->prepare("SELECT 
+					'Total General' AS total_gral,
+					FORMAT(
+					  SUM(
+						CASE
+						  WHEN cc.tipo_doc IN ('01', '03', '09', '08', '07') 
+						  THEN cc.monto 
+						  ELSE '' 
+						END
+					  ),
+					  2
+					) AS fact,
+					FORMAT(
+					  SUM(
+						CASE
+						  WHEN cc.tipo_doc IN ('85') 
+						  THEN cc.monto 
+						  ELSE '' 
+						END
+					  ),
+					  2
+					) AS letra 
+				  FROM
+					cuenta_ctejf cc 
+					LEFT JOIN clientesjf c 
+					  ON cc.cliente = c.codigo 
+					LEFT JOIN 
+					  (SELECT 
+						* 
+					  FROM
+						maestrajf 
+					  WHERE tipo_dato = 'tvend') v 
+					  ON cc.vendedor = v.codigo 
+				  WHERE cc.tip_mov = '-' 
+					AND (
+					  cc.fecha BETWEEN '" . $inicio . "' 
+					 AND '" . $fin . "'
+					) " . $filtroVend . $filtroCanc . $filtroCli);
+			$stmt->execute();
+
+			return $stmt->fetch();
 		}
 
 
 
-		$stmt->close();
-
-		$stmt = null;
+		return array('total_gral' => '', 'fact' => '', 'letra' => '');
 	}
 
 	static public function mdlMostrarReporteNombre($tabla, $cli, $vend)

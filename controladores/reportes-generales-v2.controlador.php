@@ -6,7 +6,7 @@ class ControladorReportesGeneralesV2
     {
         return array(
             'groups' => ReportesGeneralesV2Config::grupos(),
-            'templates' => ReportesGeneralesV2Config::plantillas(),
+            'templates' => ReportesGeneralesV2Config::plantillasConExport(),
             'filterDefs' => ReportesGeneralesV2Config::filterDefs(),
         );
     }

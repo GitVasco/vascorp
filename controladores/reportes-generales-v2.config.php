@@ -33,7 +33,7 @@ class ReportesGeneralesV2Config
                 'fase' => 1,
                 'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('orden1', 'orden2', 'tip_doc', 'cli', 'vend', 'banco'),
+                'filters' => array('tip_doc', 'cli', 'vend', 'banco'),
                 'columns' => array(),
             ),
             array(
@@ -46,7 +46,7 @@ class ReportesGeneralesV2Config
                 'fase' => 1,
                 'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('orden1', 'orden2', 'tip_doc', 'cli', 'vend', 'banco'),
+                'filters' => array('tip_doc', 'cli', 'vend', 'banco'),
                 'columns' => array(),
             ),
             array(
@@ -59,7 +59,7 @@ class ReportesGeneralesV2Config
                 'fase' => 1,
                 'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('orden1', 'orden2', 'tip_doc', 'cli', 'vend', 'banco'),
+                'filters' => array('tip_doc', 'cli', 'vend', 'banco'),
                 'columns' => array(),
             ),
             array(
@@ -72,7 +72,7 @@ class ReportesGeneralesV2Config
                 'fase' => 1,
                 'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('orden1', 'orden2', 'tip_doc', 'cli', 'vend', 'banco'),
+                'filters' => array('tip_doc', 'cli', 'vend', 'banco'),
                 'columns' => array(),
             ),
             array(
@@ -80,10 +80,10 @@ class ReportesGeneralesV2Config
                 'v1' => 'option5',
                 'group' => 'letras',
                 'title' => 'Letras por imprimir',
-                'hint' => 'Letras pendientes de impresión.',
+                'hint' => 'Letras 85 sin nro. único, estado 01, banco BCP (02).',
                 'icon' => 'fa-print',
                 'fase' => 2,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
                 'filters' => array('cli', 'vend', 'banco'),
                 'columns' => array(),
@@ -93,12 +93,13 @@ class ReportesGeneralesV2Config
                 'v1' => 'estadoEnvioVacio',
                 'group' => 'letras',
                 'title' => 'Letras por aceptar',
-                'hint' => 'Letras sin número único / por aceptar en banco.',
+                'hint' => 'Letras pendientes sin número único (excl. BCP y protestadas).',
                 'icon' => 'fa-envelope-o',
                 'fase' => 2,
-                'estado' => 'pendiente',
-                'modo_ux' => 'preview_informe',
-                'filters' => array('vend', 'inicio', 'fin'),
+                'estado' => 'listo',
+                'modo_ux' => 'preview_tabla',
+                'filters' => array('vend', 'inicio', 'fin', 'cli'),
+                'required' => array('vend'),
                 'columns' => array(),
             ),
             array(
@@ -109,7 +110,7 @@ class ReportesGeneralesV2Config
                 'hint' => 'Letras con número único en cartera.',
                 'icon' => 'fa-briefcase',
                 'fase' => 2,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
                 'filters' => array('cli', 'vend', 'banco'),
                 'columns' => array(),
@@ -122,7 +123,7 @@ class ReportesGeneralesV2Config
                 'hint' => 'Agrupado por banco y estado del documento.',
                 'icon' => 'fa-university',
                 'fase' => 3,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_informe',
                 'filters' => array('tip_doc', 'banco'),
                 'columns' => array(),
@@ -132,10 +133,10 @@ class ReportesGeneralesV2Config
                 'v1' => 'option9',
                 'group' => 'cobranza',
                 'title' => 'Doc. por estado/banco',
-                'hint' => 'Agrupado por estado y banco.',
+                'hint' => 'Pendientes agrupados por estado de documento y banco.',
                 'icon' => 'fa-list-alt',
                 'fase' => 3,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_informe',
                 'filters' => array('tip_doc', 'banco'),
                 'columns' => array(),
@@ -145,12 +146,12 @@ class ReportesGeneralesV2Config
                 'v1' => 'cancelado',
                 'group' => 'cobranza',
                 'title' => 'Doc. cancelados',
-                'hint' => 'Documentos cancelados.',
+                'hint' => 'Documentos con estado cancelado.',
                 'icon' => 'fa-times-circle',
                 'fase' => 2,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('orden1', 'orden2', 'cli', 'vend', 'inicio', 'fin'),
+                'filters' => array('cli', 'vend', 'inicio', 'fin'),
                 'columns' => array(),
             ),
             array(
@@ -158,12 +159,13 @@ class ReportesGeneralesV2Config
                 'v1' => 'option11',
                 'group' => 'movimientos_saldos',
                 'title' => 'Movimientos en Ctas.ctes.',
-                'hint' => 'Cargos y abonos en un rango de fechas.',
+                'hint' => 'Cargos (+) y abonos (-) en el rango de fechas.',
                 'icon' => 'fa-exchange',
                 'fase' => 3,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla_pesada',
-                'filters' => array('cli', 'vend', 'inicio', 'fin'),
+                'filters' => array('inicio', 'fin', 'cli', 'vend'),
+                'required' => array('inicio', 'fin'),
                 'columns' => array(),
             ),
             array(
@@ -171,12 +173,13 @@ class ReportesGeneralesV2Config
                 'v1' => 'fechaSaldo',
                 'group' => 'movimientos_saldos',
                 'title' => 'Saldos a una fecha',
-                'hint' => 'Detalle de saldos al cierre indicado.',
+                'hint' => 'Saldo pendiente por documento al cierre (fecha fin). Emisión entre inicio y fin.',
                 'icon' => 'fa-calendar',
                 'fase' => 1,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('cli', 'inicio', 'fin'),
+                'filters' => array('fin', 'inicio', 'cli'),
+                'required' => array('fin'),
                 'columns' => array(),
             ),
             array(
@@ -187,9 +190,10 @@ class ReportesGeneralesV2Config
                 'hint' => 'Pagos efectuados en el periodo.',
                 'icon' => 'fa-money',
                 'fase' => 1,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('orden1', 'orden2', 'canc', 'cli', 'vend', 'inicio', 'fin'),
+                'filters' => array('inicio', 'fin', 'canc', 'cli', 'vend'),
+                'required' => array('inicio', 'fin'),
                 'columns' => array(),
             ),
             array(
@@ -200,10 +204,10 @@ class ReportesGeneralesV2Config
                 'hint' => 'Extracto por cliente con cargos, abonos y saldo.',
                 'icon' => 'fa-book',
                 'fase' => 1,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_tabla',
-                'filters' => array('cli', 'vend', 'inicio', 'fin'),
-                'required' => array('cli'),
+                'filters' => array('cli', 'inicio', 'fin', 'vend'),
+                'required' => array('cli', 'inicio'),
                 'columns' => array(),
             ),
             array(
@@ -211,12 +215,13 @@ class ReportesGeneralesV2Config
                 'v1' => 'option15',
                 'group' => 'movimientos_saldos',
                 'title' => 'Rsm saldos a una fecha (S/)',
-                'hint' => 'Resumen de saldos en soles a la fecha.',
+                'hint' => 'Total saldo por cliente al cierre (fecha fin).',
                 'icon' => 'fa-calculator',
                 'fase' => 3,
-                'estado' => 'pendiente',
+                'estado' => 'listo',
                 'modo_ux' => 'preview_informe',
-                'filters' => array('inicio', 'fin'),
+                'filters' => array('fin', 'inicio', 'cli'),
+                'required' => array('fin'),
                 'columns' => array(),
             ),
             array(
@@ -271,25 +276,38 @@ class ReportesGeneralesV2Config
     }
 
     /**
-     * Acceso beta v2 — ampliar esta lista al abrir a más usuarios.
-     * @return int[]
+     * Mismo criterio que el menú Cuentas corrientes: permiso general `cuenta` en sesión.
      */
-    public static function idsAccesoBeta()
-    {
-        return array(6);
-    }
-
     public static function puedeAcceder()
     {
-        if (!isset($_SESSION['id'])) {
-            return false;
+        return isset($_SESSION['cuenta']) && (int) $_SESSION['cuenta'] === 1;
+    }
+
+    /**
+     * Exportación estándar v2: todos los reportes listos admiten Excel y PDF.
+     * @param array $tpl
+     * @return array{excel:bool,pdf:bool}
+     */
+    public static function exportCapacidades($tpl)
+    {
+        if (!is_array($tpl) || !isset($tpl['estado']) || $tpl['estado'] !== 'listo') {
+            return array('excel' => false, 'pdf' => false);
         }
-        $id = (int) $_SESSION['id'];
-        foreach (self::idsAccesoBeta() as $uid) {
-            if ((int) $uid === $id) {
-                return true;
-            }
+        return array('excel' => true, 'pdf' => true);
+    }
+
+    /**
+     * Plantillas con metadatos de exportación para el catálogo JS.
+     * @return array
+     */
+    public static function plantillasConExport()
+    {
+        $out = array();
+        foreach (self::plantillas() as $tpl) {
+            $row = $tpl;
+            $row['export'] = self::exportCapacidades($tpl);
+            $out[] = $row;
         }
-        return false;
+        return $out;
     }
 }

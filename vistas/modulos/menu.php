@@ -1948,6 +1948,7 @@
                             </a>
                         </li>
 
+                        <?php if (reportesGeneralesMenuMuestraV1()) { ?>
                         <li class="<?php if ($_GET["ruta"] == "reportes-generales") echo 'active'; ?>">
                             <a href="reportes-generales">
 
@@ -1956,13 +1957,9 @@
 
                             </a>
                         </li>
+                        <?php } ?>
 
-                        <?php
-                        if (!class_exists('ReportesGeneralesV2Config')) {
-                            require_once 'controladores/reportes-generales-v2.config.php';
-                        }
-                        if (ReportesGeneralesV2Config::puedeAcceder()) {
-                        ?>
+                        <?php if (reportesGeneralesMenuMuestraV2()) { ?>
                         <li class="<?php if ($_GET["ruta"] == "reportes-generales-v2") echo 'active'; ?>">
                             <a href="reportes-generales-v2">
 

@@ -174,7 +174,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "estado-cuenta") : ?>
     <link rel="stylesheet" href="vistas/css/estado-cuenta.css?v=11">
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "reportes-generales-v2") { ?>
-    <link rel="stylesheet" href="vistas/css/reportes-generales-v2.css?v=4">
+    <link rel="stylesheet" href="vistas/css/reportes-generales-v2.css?v=9">
     <?php } ?>
     <?php endif; ?>
 
@@ -1191,7 +1191,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/utilidades.js?v=30"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "reportes-generales-v2") { ?>
-    <script src="vistas/js/reportes-generales-v2.js?v=4"></script>
+    <script src="vistas/js/reportes-generales-v2.js?v=16"></script>
     <?php } ?>
     <script src="vistas/js/sectores.js?v=2"></script>
     <script src="vistas/js/paras.js"></script>

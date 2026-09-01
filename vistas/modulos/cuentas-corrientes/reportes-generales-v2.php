@@ -29,6 +29,7 @@ $bancos = ControladorBancos::ctrMostrarBancos(null, null);
 
 ?>
 <div class="content-wrapper rgv2-page" id="rgv2Page">
+<link rel="stylesheet" href="vistas/css/reportes-generales-v2.css?v=7">
 
     <section class="content-header">
         <h1>
@@ -46,7 +47,7 @@ $bancos = ControladorBancos::ctrMostrarBancos(null, null);
         <div class="callout callout-info">
             <p class="mb-0">
                 Versión nueva en desarrollo. El menú <strong>Reportes Generales</strong> anterior sigue igual.
-                Elija una plantilla, aplique filtros y use <strong>Vista previa</strong>; Excel y PDF se habilitan cuando el reporte esté listo.
+                Elija una plantilla, aplique filtros y use <strong>Vista previa</strong>; luego puede exportar a <strong>Excel</strong> o <strong>PDF</strong> con los mismos filtros.
             </p>
         </div>
 
@@ -57,7 +58,7 @@ $bancos = ControladorBancos::ctrMostrarBancos(null, null);
                         <h3 class="box-title"><i class="fa fa-th-list"></i> Plantillas</h3>
                     </div>
                     <div class="box-body">
-                        <div class="rgv2-group-nav" id="rgv2GroupToggle" role="tablist" aria-label="Grupo de plantillas"></div>
+                        <div class="rgv2-group-nav" id="rgv2GroupToggle" role="tablist"></div>
                         <div class="form-group rgv2-search-wrap">
                             <div class="input-group input-group-sm">
                                 <span class="input-group-addon"><i class="fa fa-search"></i></span>
@@ -80,25 +81,33 @@ $bancos = ControladorBancos::ctrMostrarBancos(null, null);
                         </div>
 
                         <div id="rgv2Panel" class="hidden">
-                            <div class="rgv2-toolbar clearfix">
-                                <div class="pull-left">
-                                    <h4 class="rgv2-title" id="rgv2Title">—</h4>
-                                    <span class="label label-default" id="rgv2GroupBadge">—</span>
-                                    <span class="label label-warning" id="rgv2EstadoBadge">Pendiente</span>
+                            <div class="rgv2-toolbar">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-7 col-md-8">
+                                        <h4 class="rgv2-title" id="rgv2Title">—</h4>
+                                        <div class="rgv2-badges">
+                                            <span class="label label-default" id="rgv2GroupBadge">—</span>
+                                            <span class="label label-warning" id="rgv2EstadoBadge">Pendiente</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-5 col-md-4">
+                                        <div class="rgv2-actions-wrap">
+                                            <div class="btn-group rgv2-actions" role="group">
+                                                <button type="submit" form="rgv2Filters" class="btn btn-primary btn-sm" id="rgv2PreviewBtn">
+                                                    <i class="fa fa-eye"></i> Vista previa
+                                                </button>
+                                                <button type="button" class="btn btn-default btn-sm" id="rgv2ExcelBtn" disabled>
+                                                    <i class="fa fa-file-excel-o text-green"></i> Excel
+                                                </button>
+                                                <button type="button" class="btn btn-default btn-sm" id="rgv2PdfBtn" disabled>
+                                                    <i class="fa fa-file-pdf-o text-red"></i> PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="pull-right rgv2-actions">
-                                    <button type="submit" form="rgv2Filters" class="btn btn-primary btn-sm" id="rgv2PreviewBtn">
-                                        <i class="fa fa-eye"></i> Vista previa
-                                    </button>
-                                    <button type="button" class="btn btn-success btn-sm" id="rgv2ExcelBtn" disabled>
-                                        <i class="fa fa-file-excel-o"></i> Excel
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-sm" id="rgv2PdfBtn" disabled>
-                                        <i class="fa fa-file-pdf-o"></i> PDF
-                                    </button>
-                                </div>
+                                <p class="text-muted small rgv2-hint" id="rgv2Hint"></p>
                             </div>
-                            <p class="text-muted small" id="rgv2Hint"></p>
 
                             <form id="rgv2Filters" class="rgv2-filters">
                                 <div class="row" id="rgv2FilterFields"></div>
