@@ -161,6 +161,12 @@ function rmLineasMismaSublinea(linea) {
 	return out;
 }
 
+function rmConsumoVariante(v, linea, codColor) {
+	var vc = rmNormCons(v && v.consumo != null && v.consumo !== "" ? v.consumo : "");
+	if (vc) return vc;
+	return rmConsumoDeColor(linea, codColor);
+}
+
 function rmMpsEnCelda(codColor, codTalla, lineaBase) {
 	var mps = [];
 	var seen = {};
@@ -175,24 +181,48 @@ function rmMpsEnCelda(codColor, codTalla, lineaBase) {
 			mps.push({
 				mp: mp,
 				idx: item.idx,
-				consumo: rmConsumoDeColor(item.linea, codColor)
+				consumo: rmConsumoVariante(v, item.linea, codColor)
 			});
 		});
 	});
 	return mps;
 }
 
-function rmIdxCapaDeMp(mp, lineaBase) {
+function rmIndicesCapasDeMp(mp, lineaBase) {
+	if (!mp) return [];
+	var indices = [];
+	rmLineasMismaSublinea(lineaBase || rmLineaActual()).forEach(function (item) {
+		var tiene = false;
+		(item.linea.variantes || []).forEach(function (v) {
+			if (tiene) return;
+			if (String(v.mp_codigo || "").replace(/\s+/g, "") === String(mp)) tiene = true;
+		});
+		if (tiene) indices.push(item.idx);
+	});
+	return indices;
+}
+
+/** Capa que usa esta MP en el color producto indicado (p. ej. FLAMENGO solo en BLANCO vs en PALO ROSA). */
+function rmIdxCapaDeMpColor(mp, codColor, lineaBase) {
 	if (!mp) return -1;
 	var found = -1;
 	rmLineasMismaSublinea(lineaBase || rmLineaActual()).forEach(function (item) {
 		if (found >= 0) return;
 		(item.linea.variantes || []).forEach(function (v) {
 			if (found >= 0) return;
+			if (String(v.cod_color || "") !== String(codColor || "")) return;
 			if (String(v.mp_codigo || "").replace(/\s+/g, "") === String(mp)) found = item.idx;
 		});
 	});
 	return found;
+}
+
+function rmIdxCapaDeMp(mp, lineaBase) {
+	var indices = rmIndicesCapasDeMp(mp, lineaBase);
+	if (!indices.length) return -1;
+	if (indices.length === 1) return indices[0];
+	if (RM.lineaIdx != null && indices.indexOf(RM.lineaIdx) >= 0) return RM.lineaIdx;
+	return indices[0];
 }
 
 function rmInputConsumoColor(codColor) {
@@ -712,50 +742,13 @@ function rmFusionarVariantesLinea(destino, origen) {
 	if (!destino.unidad && origen.unidad) destino.unidad = origen.unidad;
 }
 
-/** Fusiona solo la misma MP en la misma sublínea. Permite repetir tela (capa extra de copa). */
+/** Normaliza sublíneas; no fusiona capas (varias líneas con la misma MP son válidas). */
 function rmDeduplicarLineasEstado() {
 	if (!RM.estado || !Array.isArray(RM.estado.lineas)) return 0;
-	var actual = rmLineaActual();
-	var seenMp = {};
-	var kept = [];
-	var removed = 0;
 	RM.estado.lineas.forEach(function (l) {
 		if (l.codigo_sublinea) l.codigo_sublinea = String(l.codigo_sublinea).trim();
-		if (Number(l.activo) === 0) {
-			kept.push(l);
-			return;
-		}
-		var c = rmNormSublinea(l.codigo_sublinea);
-		var mp = rmMpDominanteLinea(l);
-		var claveMp = (c && mp) ? (c + "|" + mp) : "";
-		if (claveMp && seenMp[claveMp] !== undefined) {
-			rmFusionarVariantesLinea(kept[seenMp[claveMp]], l);
-			removed++;
-			return;
-		}
-		var idx = kept.length;
-		kept.push(l);
-		if (claveMp) seenMp[claveMp] = idx;
 	});
-	if (!removed) return 0;
-	RM.estado.lineas = kept;
-	if (actual) {
-		var ni = -1;
-		kept.forEach(function (l, i) {
-			if (l === actual) ni = i;
-		});
-		if (ni < 0) {
-			var cod = rmNormSublinea(actual.codigo_sublinea);
-			var mpAct = rmMpDominanteLinea(actual);
-			kept.forEach(function (l, i) {
-				if (ni >= 0) return;
-				if (cod && rmNormSublinea(l.codigo_sublinea) === cod) ni = i;
-				else if (mpAct && rmMpDominanteLinea(l) === mpAct) ni = i;
-			});
-		}
-		RM.lineaIdx = ni >= 0 ? ni : (kept.length ? 0 : null);
-	}
-	return removed;
+	return 0;
 }
 
 function rmAsegurarVariantesArticulos(linea) {
@@ -1605,7 +1598,7 @@ function rmHeredarUnidadDeMp(und) {
 	$("#rmMpActivaUndTxt").text(next ? (" · " + next) : "");
 }
 
-function rmSetMpActiva(mp, und, color, desc) {
+function rmSetMpActiva(mp, und, color, desc, lineaIdxForzado) {
 	RM.mpActiva = mp || null;
 	RM.mpActivaUnd = und || "";
 	RM.mpActivaColor = color || rmColorMp(mp) || "";
@@ -1636,7 +1629,9 @@ function rmSetMpActiva(mp, und, color, desc) {
 	}
 	if (RM._enRender) return;
 	if (mp) {
-		var idx = rmIdxCapaDeMp(mp);
+		var idx = (lineaIdxForzado != null && lineaIdxForzado >= 0)
+			? lineaIdxForzado
+			: rmIdxCapaDeMp(mp);
 		if (idx >= 0 && idx !== RM.lineaIdx) {
 			rmSincronizarConsumoEnVariantes();
 			RM.lineaIdx = idx;
@@ -1963,8 +1958,8 @@ function rmRenderMatriz() {
 				inner += "<div class='rm2-celda-mps'>";
 				mps.forEach(function (item) {
 					var esActiva = String(item.mp) === String(RM.mpActiva || "");
-					inner += "<span class='rm2-celda-mp" + (esActiva ? " activa" : "") + "' data-mp='" + rmEsc(item.mp) + "'"
-						+ " title='" + rmEsc(rmEtiquetaMp(item.mp) + " · consumo " + rmFmtNum(item.consumo) + " · clic para editar este color") + "'>"
+					inner += "<span class='rm2-celda-mp" + (esActiva ? " activa" : "") + "' data-mp='" + rmEsc(item.mp) + "' data-idx='" + item.idx + "'"
+						+ " title='" + rmEsc(rmEtiquetaMp(item.mp) + " · consumo " + rmFmtNum(item.consumo) + " · clic para editar esta capa") + "'>"
 						+ rmEsc(rmEtiquetaMp(item.mp))
 						+ "<span class='rm2-celda-cons'>" + rmEsc(rmFmtNum(item.consumo)) + "</span>";
 					if (editable) {
@@ -2155,6 +2150,7 @@ function rmSincronizarConsumoEnVariantes() {
 	rmAplicarConsumosLinea(linea);
 	rmRenderChips();
 	rmRenderTarjetasPorArticulo();
+	rmRenderMatriz();
 }
 
 function rmCargarTablaMp() {
@@ -2984,7 +2980,8 @@ $(document).ready(function () {
 		var codColor = String($inp.attr("data-color") || "");
 		var valor = $inp.val();
 		var mp = RM.mpActiva;
-		var idx = mp ? rmIdxCapaDeMp(mp) : RM.lineaIdx;
+		var idx = mp ? rmIdxCapaDeMpColor(mp, codColor) : RM.lineaIdx;
+		if (mp && idx < 0) idx = RM.lineaIdx;
 		if (mp && idx < 0) {
 			rmGuardarConsumoPendiente(mp, codColor, valor);
 			rmMarcarDirty(true);
@@ -3000,6 +2997,7 @@ $(document).ready(function () {
 		var especial = rmColorTieneConsumoEspecial(linea, codColor);
 		rmPintarInputConsumoColor($inp, especial ? rmConsumoDeColor(linea, codColor) : rmConsumoLinea(linea), especial);
 		rmRenderChips();
+		rmRenderMatriz();
 		rmRenderTarjetasPorArticulo();
 		rmActualizarContextoLineaActiva();
 	});
@@ -3009,7 +3007,8 @@ $(document).ready(function () {
 		if (!rmEsBorradorEditable()) return;
 		var codColor = String($(this).attr("data-color") || "");
 		var mp = RM.mpActiva;
-		var idx = mp ? rmIdxCapaDeMp(mp) : RM.lineaIdx;
+		var idx = mp ? rmIdxCapaDeMpColor(mp, codColor) : RM.lineaIdx;
+		if (mp && idx < 0) idx = RM.lineaIdx;
 		if (mp && idx < 0) {
 			rmLimpiarConsumoPendiente(mp, codColor);
 			rmPintarInputConsumoColor(rmInputConsumoColor(codColor), "1", false);
@@ -3048,7 +3047,14 @@ $(document).ready(function () {
 		var mp = String($(this).attr("data-mp") || "");
 		if (!mp) return;
 		var info = RM.mpCache[mp] || {};
-		rmSetMpActiva(mp, info.unidad || "", info.color || "", info.descripcion || "");
+		var idxCapa = Number($(this).attr("data-idx"));
+		rmSetMpActiva(
+			mp,
+			info.unidad || "",
+			info.color || "",
+			info.descripcion || "",
+			isFinite(idxCapa) && idxCapa >= 0 ? idxCapa : null
+		);
 	});
 
 	$(document).on("click", ".rmElegirMpActiva", function () {

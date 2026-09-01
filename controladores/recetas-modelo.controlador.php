@@ -73,15 +73,13 @@ class ControladorRecetasModelo
 		return (string) $keys[0];
 	}
 
-	/** Fusiona solo la misma MP en la misma sublínea. Permite repetir tela (capa extra). */
+	/** Normaliza sublíneas; cada fila de detalle es una capa independiente (no fusionar). */
 	static private function deduplicarLineasPorSublinea($lineas)
 	{
 		if (!is_array($lineas) || !count($lineas)) {
 			return $lineas;
 		}
-		$kept = array();
-		$seenMp = array();
-		foreach ($lineas as $l) {
+		foreach ($lineas as &$l) {
 			if (!is_array($l)) {
 				continue;
 			}
@@ -89,19 +87,9 @@ class ControladorRecetasModelo
 			if ($sub !== "") {
 				$l["codigo_sublinea"] = substr($sub, 0, 6);
 			}
-			$mp = self::mpDominanteLinea($l);
-			$claveMp = ($sub !== "" && $mp !== "") ? ($sub . "|" . $mp) : "";
-			if ($claveMp !== "" && isset($seenMp[$claveMp])) {
-				self::fusionarVariantesLineaReceta($kept[$seenMp[$claveMp]], $l);
-				continue;
-			}
-			$idx = count($kept);
-			$kept[] = $l;
-			if ($claveMp !== "") {
-				$seenMp[$claveMp] = $idx;
-			}
 		}
-		return $kept;
+		unset($l);
+		return $lineas;
 	}
 
 	static private function normalizarCodigoCorto($valor, $maxLen = 2)
