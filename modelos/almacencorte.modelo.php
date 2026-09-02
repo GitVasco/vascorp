@@ -798,7 +798,7 @@ class ModeloAlmacenCorte
 			LEFT JOIN articulojf a 
 			  ON dac.articulo = a.articulo
 			LEFT JOIN almacencortejf da
- 			  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
+ 			  ON ((CAST(da.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR) OR (CAST(da.guia AS CHAR) = CAST(dac.almacencorte AS CHAR) AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE CAST(x.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR)))) AND YEAR(IFNULL(dac.fecha, da.fecha)) = YEAR(da.fecha))
 			  where year(da.fecha)=YEAR(NOW())
 		  GROUP BY dac.almacencorte,
 			a.modelo,
@@ -879,7 +879,7 @@ class ModeloAlmacenCorte
 			LEFT JOIN articulojf a 
 			  ON dac.articulo = a.articulo 
 			LEFT JOIN almacencortejf da
- 			  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
+ 			  ON ((CAST(da.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR) OR (CAST(da.guia AS CHAR) = CAST(dac.almacencorte AS CHAR) AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE CAST(x.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR)))) AND YEAR(IFNULL(dac.fecha, da.fecha)) = YEAR(da.fecha))
 			WHERE DATE(da.fecha) like '%$fechaFinal%'
 		  GROUP BY dac.almacencorte,
 			a.modelo,
@@ -972,7 +972,7 @@ class ModeloAlmacenCorte
 				LEFT JOIN articulojf a 
 				  ON dac.articulo = a.articulo
 				LEFT JOIN almacencortejf da
- 			  	  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
+ 			  	  ON ((CAST(da.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR) OR (CAST(da.guia AS CHAR) = CAST(dac.almacencorte AS CHAR) AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE CAST(x.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR)))) AND YEAR(IFNULL(dac.fecha, da.fecha)) = YEAR(da.fecha))
 				WHERE DATE(da.fecha) BETWEEN '$fechaInicial' AND '$fechaFinalMasUno'
 			  GROUP BY dac.almacencorte,
 				a.modelo,
@@ -1050,7 +1050,7 @@ class ModeloAlmacenCorte
 				LEFT JOIN articulojf a 
 				  ON dac.articulo = a.articulo 
 				LEFT JOIN almacencortejf da
- 				  ON (da.codigo = dac.almacencorte OR (da.guia = dac.almacencorte AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE x.codigo = dac.almacencorte)))
+ 				  ON ((CAST(da.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR) OR (CAST(da.guia AS CHAR) = CAST(dac.almacencorte AS CHAR) AND NOT EXISTS (SELECT 1 FROM almacencortejf x WHERE CAST(x.codigo AS CHAR) = CAST(dac.almacencorte AS CHAR)))) AND YEAR(IFNULL(dac.fecha, da.fecha)) = YEAR(da.fecha))
 				WHERE DATE(da.fecha) BETWEEN '$fechaInicial' AND '$fechaFinal'
 			  GROUP BY dac.almacencorte,
 				a.modelo,
