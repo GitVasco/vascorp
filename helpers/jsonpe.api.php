@@ -22,7 +22,8 @@ class JsonPeApi
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 12,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
@@ -90,7 +91,9 @@ class JsonPeApi
             return array(
                 'compra' => 0,
                 'venta' => 'Fuera de plazo permitido',
-                'fecha' => $fecha
+                'fecha' => $fecha,
+                '_ok' => false,
+                '_error' => isset($response['message']) ? (string) $response['message'] : 'Sin respuesta válida de API'
             );
         }
 
@@ -99,7 +102,8 @@ class JsonPeApi
         return array(
             'compra' => $data['compra'],
             'venta' => $data['venta'],
-            'fecha' => isset($data['fecha_sunat']) ? $data['fecha_sunat'] : (isset($data['date']) ? $data['date'] : $fecha)
+            'fecha' => isset($data['fecha_sunat']) ? $data['fecha_sunat'] : (isset($data['date']) ? $data['date'] : $fecha),
+            '_ok' => true
         );
     }
 }

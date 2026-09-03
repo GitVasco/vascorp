@@ -1188,7 +1188,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/helpdesk-indicadores.js?v=7"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "utilidades") { ?>
-    <script src="vistas/js/utilidades.js?v=30"></script>
+    <script src="vistas/js/utilidades.js?v=31"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "reportes-generales-v2") { ?>
     <script src="vistas/js/reportes-generales-v2.js?v=16"></script>

@@ -1703,15 +1703,30 @@ class ControladorUtilidades
 		$actualizados = 0;
 		$omitidos = 0;
 		$detalle = array();
+		$fallasApiConsecutivas = 0;
+		$saltarApi = false;
 
 		foreach ($limpias as $fecha) {
 			$compra = null;
 			$venta = null;
 			$fuente = "api";
 
-			$api = JsonPeApi::consultarTipoCambio($fecha);
-			$ventaApi = isset($api["venta"]) ? $api["venta"] : null;
-			$compraApi = isset($api["compra"]) ? $api["compra"] : null;
+			$ventaApi = null;
+			$compraApi = null;
+			if (!$saltarApi) {
+				$api = JsonPeApi::consultarTipoCambio($fecha);
+				$ventaApi = isset($api["venta"]) ? $api["venta"] : null;
+				$compraApi = isset($api["compra"]) ? $api["compra"] : null;
+				$apiOk = !isset($api["_ok"]) || $api["_ok"] === true;
+				if ($apiOk) {
+					$fallasApiConsecutivas = 0;
+				} else {
+					$fallasApiConsecutivas++;
+					if ($fallasApiConsecutivas >= 3) {
+						$saltarApi = true;
+					}
+				}
+			}
 
 			if (
 				$ventaApi !== null
@@ -1726,7 +1741,7 @@ class ControladorUtilidades
 				if ($prev && (float) $prev["cambio_venta"] > 0) {
 					$compra = (float) $prev["cambio_compra"];
 					$venta = (float) $prev["cambio_venta"];
-					$fuente = "previo:" . $prev["fecha"];
+					$fuente = $saltarApi ? "previo:api_lenta" : ("previo:" . $prev["fecha"]);
 				}
 			}
 

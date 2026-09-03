@@ -29,6 +29,12 @@ class ControladorOrdenCorte
         return $respuesta;
     }
 
+    static public function ctrSiguienteCodigoOC()
+    {
+
+        return ModeloOrdenCorte::mdlSiguienteCodigoOC();
+    }
+
     /* 
     * CREAR ORDEN DE CORTE
     */
@@ -72,13 +78,19 @@ class ControladorOrdenCorte
                     */
 
                 $listaArticulos = json_decode($_POST["listaArticulosOC"], true);
+
+                $codigo = ModeloOrdenCorte::mdlSiguienteCodigoOC();
+                while (ModeloOrdenCorte::mdlExisteCodigoOC($codigo)) {
+                    $codigo++;
+                }
+
                 /* 
                     * GUARDAR LA ORDEN DE CORTE
                     */
 
                 $datos = array(
                     "usuario" => $_POST["idUsuario"],
-                    "codigo" => $_POST["nuevaOrdenCorte"],
+                    "codigo" => $codigo,
                     "configuracion" => $_POST["configuracion"],
                     "total" => $_POST["totalOrdenCorte"],
                     "saldo" => $_POST["totalOrdenCorte"],
@@ -95,13 +107,10 @@ class ControladorOrdenCorte
                         * GUARDAR DETALLE DE ORDEN DE CORTE
                         */
 
-                    $ultimoId = ModeloOrdenCorte::mdlUltimoId();
-                    #var_dump("ultimoId", $ultimoId[0]["ult_codigo"]);
-
                     foreach ($listaArticulos as $key => $value) {
 
                         $datosD = array(
-                            "ordencorte" => $ultimoId[0]["ult_codigo"],
+                            "ordencorte" => $codigo,
                             "articulo" => $value["articulo"],
                             "cantidad" => $value["cantidad"],
                             "saldo" => $value["cantidad"]
@@ -166,8 +175,10 @@ class ControladorOrdenCorte
         $configuracion = controladorArticulos::ctrConfiguracion();
         $urgencia = isset($configuracion["urgencia"]) ? $configuracion["urgencia"] : 0;
 
-        $ult_codigo = ModeloOrdenCorte::mdlUltimoCodigoOC("ordencortejf");
-        $codigo = $ult_codigo ? (int)$ult_codigo[0]["ultimo_codigo"] + 1 : 1001;
+        $codigo = ModeloOrdenCorte::mdlSiguienteCodigoOC();
+        while (ModeloOrdenCorte::mdlExisteCodigoOC($codigo)) {
+            $codigo++;
+        }
 
         $total = 0;
         $listaValida = array();
@@ -212,12 +223,9 @@ class ControladorOrdenCorte
             return "Error al guardar la orden de corte.";
         }
 
-        $ultimoId = ModeloOrdenCorte::mdlUltimoId();
-        $idOrden = (int)$ultimoId[0]["ult_codigo"];
-
         foreach ($listaValida as $value) {
             $datosD = array(
-                "ordencorte" => $idOrden,
+                "ordencorte" => $codigo,
                 "articulo" => $value["articulo"],
                 "cantidad" => $value["cantidad"],
                 "saldo" => $value["cantidad"]

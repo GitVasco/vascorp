@@ -69,26 +69,9 @@
                                         <?php
 
 
-                                        $ult_codigo = ControladorOrdenCorte::ctrUltimoCodigoOC();
+                                        $codigo = ControladorOrdenCorte::ctrSiguienteCodigoOC();
 
-                                        /* var_dump("ult_codigo", $ult_codigo); */
-
-                                        if (!$ult_codigo) {
-
-                                            echo '<input type="text" class="form-control" id="nuevaOrdenCorte" name="nuevaOrdenCorte" value="1001" readonly>';
-                                        } else {
-
-                                            foreach ($ult_codigo as $key => $value) {
-                                            }
-
-                                            /* var_dump("prueba", $value["ultimo_codigo"]); */
-
-                                            $codigo = $value["ultimo_codigo"] + 1;
-
-                                            /* var_dump("codigo", $codigo); */
-
-                                            echo '<input type="text" class="form-control" id="nuevaOrdenCorte" name="nuevaOrdenCorte" value="' . $codigo . '" readonly>';
-                                        }
+                                        echo '<input type="text" class="form-control" id="nuevaOrdenCorte" name="nuevaOrdenCorte" value="' . $codigo . '" readonly title="Se confirma al guardar (máximo + 1)">';
 
                                         ?>
 

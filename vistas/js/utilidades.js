@@ -53,6 +53,28 @@ function utSetBtnLoading($btn, loading, htmlIdle) {
     }
 }
 
+function utMensajeAjaxError(jqXHR, textStatus, errorThrown) {
+    if (textStatus === "timeout") {
+        return "Se agotó el tiempo de espera";
+    }
+
+    if (textStatus === "parsererror") {
+        var raw = (jqXHR && jqXHR.responseText) ? String(jqXHR.responseText) : "";
+        raw = raw.replace(/\s+/g, " ").trim();
+        if (raw.length > 140) {
+            raw = raw.substring(0, 140) + "...";
+        }
+        return raw ? ("Respuesta inválida del servidor: " + raw) : "Respuesta inválida del servidor (JSON malformado)";
+    }
+
+    var status = (jqXHR && jqXHR.status) ? jqXHR.status : 0;
+    var msg = errorThrown || textStatus || "Error de comunicación";
+    if (status > 0) {
+        return "HTTP " + status + ": " + msg;
+    }
+    return msg;
+}
+
 /* ---- Stock almacén 01 ---- */
 
 function utActualizarBotonStock01() {
@@ -1735,13 +1757,13 @@ $(document).on("click", "#btnUtCompletarTotalesTipCambio", function () {
             }).then(function () {
                 utCargarTotalesSinTipCambio({ silencioso: true });
             });
-        }).fail(function () {
+        }).fail(function (jqXHR, textStatus, errorThrown) {
             utOcultarCarga();
             utSetBtnLoading($btn, false, '<i class="fa fa-check"></i> Completar seleccionados');
             swal({
                 type: "error",
                 title: "Error",
-                text: "No se pudo comunicar con el servidor (o se agotó el tiempo)",
+                text: utMensajeAjaxError(jqXHR, textStatus, errorThrown),
                 confirmButtonText: "Cerrar"
             });
         });

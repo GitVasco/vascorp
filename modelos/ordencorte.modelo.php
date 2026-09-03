@@ -86,6 +86,36 @@ class ModeloOrdenCorte
 		$stmt = null;
 	}
 
+	static public function mdlSiguienteCodigoOC()
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT IFNULL(MAX(codigo), 1000) + 1 AS siguiente FROM ordencortejf");
+
+		$stmt->execute();
+
+		$fila = $stmt->fetch();
+
+		$stmt = null;
+
+		return $fila ? (int) $fila["siguiente"] : 1001;
+	}
+
+	static public function mdlExisteCodigoOC($codigo)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT id FROM ordencortejf WHERE codigo = :codigo LIMIT 1");
+
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_INT);
+
+		$stmt->execute();
+
+		$fila = $stmt->fetch();
+
+		$stmt = null;
+
+		return !empty($fila);
+	}
+
 	/* 
 	* Guardar cabecera de ORDENES DE CORTE
 	*/
@@ -928,7 +958,8 @@ class ModeloOrdenCorte
 			ON doc.articulo = a.articulo 
 			LEFT JOIN ordencortejf oc 
    			ON doc.ordencorte = oc.codigo 
-			   WHERE doc.estado=0 
+			   WHERE YEAR(oc.fecha) = YEAR(NOW())
+			   AND doc.estado=0 
 		GROUP BY doc.ordencorte,
 			a.modelo,
 			a.nombre,
@@ -1008,11 +1039,11 @@ class ModeloOrdenCorte
 			ON doc.articulo = a.articulo 
 			LEFT JOIN ordencortejf oc 
    			ON doc.ordencorte = oc.codigo 
-			WHERE DATE(oc.fecha) like '%$fechaFinal% and doc.estado=0 
+			WHERE DATE(oc.fecha) = '$fechaFinal' AND doc.estado=0 
 		GROUP BY doc.ordencorte,
 			a.modelo,
 			a.nombre,
-			a.color  '");
+			a.color");
 
 			$stmt->bindParam(":fecha", $fechaFinal, PDO::PARAM_STR);
 
@@ -1345,11 +1376,11 @@ class ModeloOrdenCorte
 			ON doc.articulo = a.articulo 
 			LEFT JOIN ordencortejf oc 
    			ON doc.ordencorte = oc.codigo 
-			WHERE DATE(oc.fecha) like '%$fechaFinal%
+			WHERE DATE(oc.fecha) = '$fechaFinal'
 		GROUP BY doc.ordencorte,
 			a.modelo,
 			a.nombre,
-			a.color  '");
+			a.color");
 
 			$stmt->bindParam(":fecha", $fechaFinal, PDO::PARAM_STR);
 
