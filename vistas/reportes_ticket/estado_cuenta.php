@@ -60,6 +60,7 @@
         '28'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
         '30'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
         '32'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
+        '33'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
     ];
 
     $logosLinea = [
