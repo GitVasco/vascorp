@@ -419,42 +419,13 @@ while($respDetalle = mysql_fetch_array($sqlDetalle)){
     $objPHPExcel->getActiveSheet()->SetCellValue("J$fila", utf8_encode($respDetalle["stock"]));
 
     $objPHPExcel->getActiveSheet()->SetCellValue("K$fila", utf8_encode($respDetalle["tarjeta"]));
-                
-    
-    
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "A$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
 
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "B$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("B$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+}
 
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "C$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("C$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "D$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("D$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-    
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "E$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("E$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "F$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("F$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "G$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("G$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "H$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "I$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "J$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "K$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("K$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
+if($cont > 0){
+    $rangoDetalle = "A8:K$fila";
+    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, $rangoDetalle);
+    $objPHPExcel->getActiveSheet()->getStyle($rangoDetalle)->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
 }
 
 # Ajustar el tamaño de las columnas
