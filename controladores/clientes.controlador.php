@@ -32,11 +32,38 @@ class ControladorClientes
 			$pcreg				= gethostbyaddr($_SERVER['REMOTE_ADDR']);
 			$usureg				= $_SESSION["nombre"];
 
+			$codigoCliente = trim($codigo);
+			$documentoCliente = trim($_POST["documento"]);
+
+			// Evita dobles altas por doble click/reintento de red:
+			// si el código o documento ya existe, no vuelve a insertar.
+			$clienteExistenteCodigo = ModeloClientes::mdlMostrarClientes($tabla, "codigo", $codigoCliente);
+			$clienteExistenteDocumento = null;
+			if ($documentoCliente !== "") {
+				$clienteExistenteDocumento = ModeloClientes::mdlMostrarClientes($tabla, "documento", $documentoCliente);
+			}
+
+			if ($clienteExistenteCodigo || $clienteExistenteDocumento) {
+				echo '<script>
+					swal({
+						type: "error",
+						title: "El cliente ya existe (código o documento duplicado)",
+						showConfirmButton: true,
+						confirmButtonText: "Cerrar"
+					}).then(function(result){
+						if (result.value) {
+							window.location = "clientes";
+						}
+					})
+				</script>';
+				return;
+			}
+
 			$datos = array(
-				"codigoCliente"		=> trim($codigo),
+				"codigoCliente"		=> $codigoCliente,
 				"nombre"			=> trim($nombre),
 				"tipo_documento"	=> $_POST["tipo_documento"],
-				"documento"			=> trim($_POST["documento"]),
+				"documento"			=> $documentoCliente,
 				"tipo_persona"		=> $_POST["tipo_persona"],
 				"ape_paterno"		=> trim($ape_pat),
 				"ape_materno"		=> trim($ape_mat),

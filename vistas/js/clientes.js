@@ -676,6 +676,16 @@ $("#modalAgregarCliente").on("shown.bs.modal", function () {
     refrescarSelectCategoria($("#categoriaComercialNueva"));
 });
 
+// Previene doble envío del alta (doble click/lag en una PC específica).
+$("#modalAgregarCliente form").on("submit", function () {
+    var $form = $(this);
+    if ($form.data("submitting") === true) {
+        return false;
+    }
+    $form.data("submitting", true);
+    $form.find('button[type="submit"]').prop("disabled", true).text("Guardando...");
+});
+
 // Si el select está deshabilitado (cliente en grupo), habilitarlo al enviar para no perder el POST,
 // pero el backend ignora categoría individual cuando hay grupo.
 $("#modalEditarCliente form").on("submit", function () {
