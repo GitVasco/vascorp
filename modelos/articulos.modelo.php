@@ -1972,6 +1972,396 @@ class ModeloArticulos
 		$stmt = null;
 	}
 
+	static public function mdlMostrarSeguimientoPorReceta($linea, $sublinea, $mp)
+	{
+		$linea = trim((string) $linea);
+		$sublinea = strtoupper(trim((string) $sublinea));
+		$mp = trim((string) $mp);
+
+		if ($linea === "" && $sublinea === "" && $mp === "") {
+			return array();
+		}
+
+		if ($mp !== "" && ctype_digit($mp) && strlen($mp) < 5) {
+			$mp = str_pad($mp, 5, "0", STR_PAD_LEFT);
+		}
+
+		$joinTsub = "";
+		$whereReceta = " WHERE r.estado IN ('BORRADOR', 'PUBLICADA')";
+		if ($linea !== "") {
+			$joinTsub = "
+				INNER JOIN Tabla_M_Detalle t
+				  ON t.Cod_Tabla = 'TSUB'
+				 AND t.Estado = '1'
+				 AND UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) = UPPER(TRIM(IFNULL(d.codigo_sublinea, '')))";
+			$whereReceta .= " AND TRIM(t.Des_Corta) = :linea";
+		}
+		if ($sublinea !== "") {
+			$whereReceta .= " AND UPPER(TRIM(d.codigo_sublinea)) = :sublinea";
+		}
+		if ($mp !== "") {
+			$whereReceta .= " AND (
+				TRIM(IFNULL(d.mp_base_codigo, '')) = :mp0
+				OR EXISTS (
+					SELECT 1
+					FROM recetas_modelo_variantes vx
+					WHERE vx.id_receta_modelo_detalle = d.id
+					  AND TRIM(vx.mp_codigo) = :mp0b
+				)
+			)";
+		}
+
+		$sql = "SELECT
+			a.articulo,
+			a.marca,
+			a.modelo,
+			a.nombre,
+			a.cod_color,
+			a.color,
+			a.cod_talla,
+			a.talla,
+			a.ord_corte,
+			a.proyeccion,
+			ROUND(IFNULL(a.prod, 0), 0) AS prod,
+			IFNULL(
+			  ROUND(
+				((ROUND(a.prod, 0) / a.proyeccion) * 100),
+				2
+			  ),
+			  0
+			) AS avance,
+			a.stock,
+			a.pedidos,
+			(a.stock - a.pedidos) AS stockB,
+			a.alm_corte,
+			a.taller,
+			a.servicio,
+			a.arreglos,
+			IFNULL(ROUND(a.ult_mes, 0), 0) AS ventas,
+			a.urgencia,
+			ROUND(
+			  (
+				(
+				  IFNULL((a.stock - a.pedidos) / a.ult_mes, 0)
+				) * 100
+			  ),
+			  2
+			) AS xprog,
+			ROUND(
+			  (
+				IFNULL(a.ult_mes, 0) * a.urgencia / 100
+			  ),
+			  0
+			) AS configuracion,
+			a.mes,
+			ROUND(
+				((a.ult_mes * a.urgencia / 100) * 3) - (
+				(a.stock - a.pedidos) + a.alm_corte + a.servicio + a.taller + a.arreglos
+				),
+				0
+			) AS faltantes,
+			ROUND(
+				(
+				(a.stock - a.pedidos) + a.taller + servicio + a.alm_corte + a.arreglos
+				) / (a.ult_mes * a.urgencia / 100),
+				1
+			) AS dura_tc,
+			a.mp_faltante,
+			a.ult_mes,
+			a.estado,
+			a.alerta
+		  FROM articulojf a
+		  INNER JOIN (
+			SELECT DISTINCT r.modelo
+			FROM recetas_modelo r
+			INNER JOIN recetas_modelo_detalles d
+			  ON d.id_receta_modelo = r.id AND d.activo = 1
+			" . $joinTsub . "
+			" . $whereReceta . "
+		  ) rec ON rec.modelo = a.modelo
+		  WHERE a.estado = 'ACTIVO'
+			AND a.marca IN ('JACKYFORM', 'VASCO', 'GUAPITAS','ROSALINDA','ROSITAS','JOSXX')
+			AND IFNULL(a.ord_corte, 0) > 0";
+
+		if ($mp !== "") {
+			$sql .= " AND (
+				EXISTS (
+					SELECT 1
+					FROM recetas_modelo r2
+					INNER JOIN recetas_modelo_detalles d2
+					  ON d2.id_receta_modelo = r2.id AND d2.activo = 1
+					INNER JOIN recetas_modelo_variantes v
+					  ON v.id_receta_modelo_detalle = d2.id
+					WHERE r2.modelo = a.modelo
+					  AND r2.estado IN ('BORRADOR', 'PUBLICADA')
+					  AND TRIM(v.mp_codigo) = :mp1
+					  AND (v.cod_color = '' OR v.cod_color = a.cod_color)
+					  AND (v.cod_talla = '' OR v.cod_talla = a.cod_talla)
+				)
+				OR EXISTS (
+					SELECT 1
+					FROM recetas_modelo r3
+					INNER JOIN recetas_modelo_detalles d3
+					  ON d3.id_receta_modelo = r3.id AND d3.activo = 1
+					WHERE r3.modelo = a.modelo
+					  AND r3.estado IN ('BORRADOR', 'PUBLICADA')
+					  AND TRIM(IFNULL(d3.mp_base_codigo, '')) = :mp2
+					  AND NOT EXISTS (
+						SELECT 1
+						FROM recetas_modelo_variantes v2
+						WHERE v2.id_receta_modelo_detalle = d3.id
+						  AND (v2.cod_color = '' OR v2.cod_color = a.cod_color)
+						  AND (v2.cod_talla = '' OR v2.cod_talla = a.cod_talla)
+						  AND TRIM(v2.mp_codigo) <> :mp3
+					  )
+				)
+			)";
+		}
+
+		$sql .= " ORDER BY a.articulo ASC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		if ($linea !== "") {
+			$stmt->bindValue(":linea", $linea, PDO::PARAM_STR);
+		}
+		if ($sublinea !== "") {
+			$stmt->bindValue(":sublinea", $sublinea, PDO::PARAM_STR);
+		}
+		if ($mp !== "") {
+			$stmt->bindValue(":mp0", $mp, PDO::PARAM_STR);
+			$stmt->bindValue(":mp0b", $mp, PDO::PARAM_STR);
+			$stmt->bindValue(":mp1", $mp, PDO::PARAM_STR);
+			$stmt->bindValue(":mp2", $mp, PDO::PARAM_STR);
+			$stmt->bindValue(":mp3", $mp, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+
+		$filas = $stmt->fetchAll();
+		return $filas ? $filas : array();
+	}
+
+	static public function mdlExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp)
+	{
+		require_once dirname(__FILE__) . "/recetas-modelo.modelo.php";
+		require_once dirname(__FILE__) . "/recetas-modelo.resolucion.php";
+		require_once dirname(__FILE__) . "/../controladores/recetas-modelo.controlador.php";
+
+		$mp = trim((string) $mp);
+		if ($mp === "") {
+			return array(
+				"ok" => true,
+				"consolidados" => array(),
+				"resumen" => array(
+					"articulos" => 0,
+					"unidades_ord_corte" => 0,
+					"modelos" => 0,
+					"mps" => 0,
+					"errores" => 0,
+				),
+				"errores" => array(),
+			);
+		}
+		if (ctype_digit($mp) && strlen($mp) < 5) {
+			$mp = str_pad($mp, 5, "0", STR_PAD_LEFT);
+		}
+		$mpFiltro = strtoupper($mp);
+
+		$articulos = self::mdlMostrarSeguimientoPorReceta($linea, $sublinea, $mp);
+		return self::mdlExplosionMpOrdCorteDesdeArticulos($articulos, $mpFiltro);
+	}
+
+	static public function mdlExplosionMpOrdCorteDesdeArticulos($articulos, $mp)
+	{
+		require_once dirname(__FILE__) . "/recetas-modelo.modelo.php";
+		require_once dirname(__FILE__) . "/recetas-modelo.resolucion.php";
+		require_once dirname(__FILE__) . "/../controladores/recetas-modelo.controlador.php";
+
+		$mp = trim((string) $mp);
+		if ($mp === "") {
+			return array(
+				"ok" => true,
+				"consolidados" => array(),
+				"resumen" => array(
+					"articulos" => 0,
+					"unidades_ord_corte" => 0,
+					"modelos" => 0,
+					"mps" => 0,
+					"errores" => 0,
+				),
+				"errores" => array(),
+			);
+		}
+		if (ctype_digit($mp) && strlen($mp) < 5) {
+			$mp = str_pad($mp, 5, "0", STR_PAD_LEFT);
+		}
+		$mpFiltro = strtoupper($mp);
+
+		if (empty($articulos)) {
+			return array(
+				"ok" => true,
+				"consolidados" => array(),
+				"resumen" => array(
+					"articulos" => 0,
+					"unidades_ord_corte" => 0,
+					"modelos" => 0,
+					"mps" => 0,
+					"errores" => 0,
+				),
+				"errores" => array(),
+			);
+		}
+
+		$porModelo = array();
+		foreach ($articulos as $a) {
+			$modelo = isset($a["modelo"]) ? trim((string) $a["modelo"]) : "";
+			if ($modelo === "") {
+				continue;
+			}
+			if (!isset($porModelo[$modelo])) {
+				$porModelo[$modelo] = array();
+			}
+			$porModelo[$modelo][] = $a;
+		}
+
+		$mapaGlobal = array();
+		$errores = array();
+		$unidadesOc = 0.0;
+		$articulosProcesados = 0;
+
+		foreach ($porModelo as $modelo => $arts) {
+			$receta = ModeloRecetasModelo::mdlRecetaPreferidaModelo($modelo);
+			if (!$receta) {
+				foreach ($arts as $a) {
+					$errores[] = array(
+						"articulo" => isset($a["articulo"]) ? $a["articulo"] : "",
+						"modelo" => $modelo,
+						"mensaje" => "Sin receta publicada ni borrador",
+					);
+				}
+				continue;
+			}
+
+			$estructura = ControladorRecetasModelo::ctrEstructuraReceta((int) $receta["id"]);
+			if (!$estructura) {
+				foreach ($arts as $a) {
+					$errores[] = array(
+						"articulo" => isset($a["articulo"]) ? $a["articulo"] : "",
+						"modelo" => $modelo,
+						"mensaje" => "No se pudo cargar la receta del modelo",
+					);
+				}
+				continue;
+			}
+
+			$conCantidad = array();
+			foreach ($arts as $a) {
+				$qty = isset($a["ord_corte"]) ? (float) $a["ord_corte"] : 0.0;
+				if ($qty <= 0) {
+					continue;
+				}
+				$unidadesOc += $qty;
+				$articulosProcesados++;
+				$conCantidad[] = array(
+					"articulo" => array(
+						"articulo" => isset($a["articulo"]) ? $a["articulo"] : "",
+						"modelo" => $modelo,
+						"cod_color" => isset($a["cod_color"]) ? $a["cod_color"] : "",
+						"color" => isset($a["color"]) ? $a["color"] : "",
+						"cod_talla" => isset($a["cod_talla"]) ? $a["cod_talla"] : "",
+						"talla" => isset($a["talla"]) ? $a["talla"] : "",
+					),
+					"cantidad" => $qty,
+				);
+			}
+
+			if (empty($conCantidad)) {
+				continue;
+			}
+
+			$resultado = ServicioRecetasModeloResolucion::resolverMatriz(
+				$estructura["lineas"],
+				$estructura["variantes_por_detalle"],
+				$conCantidad,
+				$estructura["mp_info"]
+			);
+
+			if (!empty($resultado["errores"]) && is_array($resultado["errores"])) {
+				foreach ($resultado["errores"] as $err) {
+					$errores[] = $err;
+				}
+			}
+
+			$consolidados = isset($resultado["consolidados"]) && is_array($resultado["consolidados"])
+				? $resultado["consolidados"]
+				: array();
+			foreach ($consolidados as $c) {
+				$mpCod = isset($c["mp_codigo"]) ? trim((string) $c["mp_codigo"]) : "";
+				if ($mpCod === "" || strtoupper($mpCod) !== $mpFiltro) {
+					continue;
+				}
+				if (!isset($mapaGlobal[$mpCod])) {
+					$mapaGlobal[$mpCod] = array(
+						"mp_codigo" => $mpCod,
+						"mp_descripcion" => isset($c["mp_descripcion"]) ? $c["mp_descripcion"] : "",
+						"mp_color" => isset($c["mp_color"]) ? $c["mp_color"] : "",
+						"unidad" => isset($c["unidad"]) ? $c["unidad"] : "",
+						"consumo_total" => 0.0,
+						"es_tela_principal" => !empty($c["es_tela_principal"]) ? 1 : 0,
+						"roles" => array(),
+					);
+				}
+				$mapaGlobal[$mpCod]["consumo_total"] = round(
+					$mapaGlobal[$mpCod]["consumo_total"] + (float) $c["consumo_total"],
+					6
+				);
+				if (!empty($c["es_tela_principal"])) {
+					$mapaGlobal[$mpCod]["es_tela_principal"] = 1;
+				}
+				if (empty($mapaGlobal[$mpCod]["mp_descripcion"]) && !empty($c["mp_descripcion"])) {
+					$mapaGlobal[$mpCod]["mp_descripcion"] = $c["mp_descripcion"];
+				}
+				if (empty($mapaGlobal[$mpCod]["mp_color"]) && !empty($c["mp_color"])) {
+					$mapaGlobal[$mpCod]["mp_color"] = $c["mp_color"];
+				}
+				if (empty($mapaGlobal[$mpCod]["unidad"]) && !empty($c["unidad"])) {
+					$mapaGlobal[$mpCod]["unidad"] = $c["unidad"];
+				}
+				$roles = isset($c["roles"]) && is_array($c["roles"]) ? $c["roles"] : array();
+				foreach ($roles as $rol) {
+					if ($rol !== "" && !in_array($rol, $mapaGlobal[$mpCod]["roles"], true)) {
+						$mapaGlobal[$mpCod]["roles"][] = $rol;
+					}
+				}
+			}
+		}
+
+		$consolidados = array_values($mapaGlobal);
+		usort($consolidados, function ($a, $b) {
+			$ta = !empty($a["es_tela_principal"]) ? 0 : 1;
+			$tb = !empty($b["es_tela_principal"]) ? 0 : 1;
+			if ($ta !== $tb) {
+				return $ta - $tb;
+			}
+			return strcmp(
+				isset($a["mp_codigo"]) ? $a["mp_codigo"] : "",
+				isset($b["mp_codigo"]) ? $b["mp_codigo"] : ""
+			);
+		});
+
+		return array(
+			"ok" => true,
+			"consolidados" => $consolidados,
+			"resumen" => array(
+				"articulos" => $articulosProcesados,
+				"unidades_ord_corte" => round($unidadesOc, 0),
+				"modelos" => count($porModelo),
+				"mps" => count($consolidados),
+				"errores" => count($errores),
+			),
+			"errores" => array_slice($errores, 0, 100),
+		);
+	}
+
 	/* 
 	* MOSTRAR EL DETALLE DE LAS URGENCIAS
 	*/

@@ -25,7 +25,9 @@
         "activityBarTop.inactiveForeground": "#15202b99",
         "commandCenter.foreground": "#595959",
         "statusBar.debuggingBackground": "#6fa8dc",
-        "statusBar.debuggingForeground": "#15202b"
+        "statusBar.debuggingForeground": "#15202b",
+        "activityBar.activeBorder": "#15202b",
+        "activityBarTop.activeBorder": "#15202b"
     },
     "peacock.color": "#6fa8dc",
     "editor.defaultFormatter": "esbenp.prettier-vscode",

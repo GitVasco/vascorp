@@ -1,0 +1,46 @@
+<?php
+
+if (!isset($_SESSION)) {
+	session_start();
+}
+
+require_once "../modelos/recetas-modelo.modelo.php";
+
+header("Content-Type: application/json; charset=utf-8");
+
+if (!isset($_SESSION["id"])) {
+	echo json_encode(array("ok" => false, "mensaje" => "Sin sesión"));
+	return;
+}
+
+$accion = isset($_POST["accion"]) ? trim((string) $_POST["accion"]) : "";
+
+if ($accion === "lineas") {
+	echo json_encode(array("ok" => true, "data" => ModeloRecetasModelo::mdlFiltrosSeguimientoLineas()));
+	return;
+}
+
+if ($accion === "sublineas") {
+	$linea = isset($_POST["linea"]) ? $_POST["linea"] : "";
+	echo json_encode(array("ok" => true, "data" => ModeloRecetasModelo::mdlFiltrosSeguimientoSublineas($linea)));
+	return;
+}
+
+if ($accion === "mps") {
+	$linea = isset($_POST["linea"]) ? $_POST["linea"] : "";
+	$sublinea = isset($_POST["sublinea"]) ? $_POST["sublinea"] : "";
+	echo json_encode(array("ok" => true, "data" => ModeloRecetasModelo::mdlFiltrosSeguimientoMps($linea, $sublinea)));
+	return;
+}
+
+if ($accion === "explosionMp") {
+	require_once "../controladores/articulos.controlador.php";
+	require_once "../modelos/articulos.modelo.php";
+	$linea = isset($_POST["linea"]) ? $_POST["linea"] : "";
+	$sublinea = isset($_POST["sublinea"]) ? $_POST["sublinea"] : "";
+	$mp = isset($_POST["mp"]) ? $_POST["mp"] : "";
+	echo json_encode(controladorArticulos::ctrExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp));
+	return;
+}
+
+echo json_encode(array("ok" => false, "mensaje" => "Acción no válida"));

@@ -763,6 +763,11 @@ class ControladorRecetasModelo
 	/*=============================================
 	Carga estructura interna de una receta para resolución
 	=============================================*/
+	static public function ctrEstructuraReceta($idReceta, $soloActivos = true)
+	{
+		return self::cargarEstructuraReceta((int) $idReceta, $soloActivos);
+	}
+
 	static private function cargarEstructuraReceta($idReceta, $soloActivos = true)
 	{
 		$cabecera = ModeloRecetasModelo::mdlObtenerCabecera($idReceta);

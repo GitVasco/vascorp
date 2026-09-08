@@ -835,6 +835,26 @@ class ModeloRecetasModelo
 	}
 
 	/*=============================================
+	Receta preferida para explosión (PUBLICADA > BORRADOR)
+	=============================================*/
+	static public function mdlRecetaPreferidaModelo($modelo)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT r.id, r.modelo, r.version, r.estado
+			 FROM recetas_modelo r
+			 WHERE r.modelo = :modelo
+			   AND r.estado IN ('BORRADOR', 'PUBLICADA')
+			 ORDER BY CASE r.estado WHEN 'PUBLICADA' THEN 0 ELSE 1 END ASC,
+			          r.version DESC
+			 LIMIT 1"
+		);
+		$stmt->bindValue(":modelo", $modelo, PDO::PARAM_STR);
+		$stmt->execute();
+
+		return $stmt->fetch(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
 	Info de MPs por lote de códigos
 	=============================================*/
 	static public function mdlInfoMps(array $codigos)
@@ -1123,6 +1143,125 @@ class ModeloRecetasModelo
 	/*=============================================
 	Eliminar TODAS las recetas del módulo
 	=============================================*/
+	/*=============================================
+	Filtros de seguimiento por receta (línea / sublínea / MP)
+	Solo recetas BORRADOR y PUBLICADA
+	=============================================*/
+	static public function mdlFiltrosSeguimientoLineas()
+	{
+		$sql = "SELECT DISTINCT TRIM(t.Des_Corta) AS linea
+			FROM recetas_modelo r
+			INNER JOIN recetas_modelo_detalles d
+			  ON d.id_receta_modelo = r.id AND d.activo = 1
+			INNER JOIN Tabla_M_Detalle t
+			  ON t.Cod_Tabla = 'TSUB'
+			 AND t.Estado = '1'
+			 AND UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) = UPPER(TRIM(IFNULL(d.codigo_sublinea, '')))
+			WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+			  AND TRIM(IFNULL(t.Des_Corta, '')) <> ''
+			ORDER BY linea ASC";
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $filas ? $filas : array();
+	}
+
+	static public function mdlFiltrosSeguimientoSublineas($linea = "")
+	{
+		$linea = trim((string) $linea);
+		$sql = "SELECT DISTINCT
+				UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) AS codigo_sublinea,
+				TRIM(t.Des_Larga) AS nombre,
+				TRIM(t.Des_Corta) AS linea
+			FROM recetas_modelo r
+			INNER JOIN recetas_modelo_detalles d
+			  ON d.id_receta_modelo = r.id AND d.activo = 1
+			INNER JOIN Tabla_M_Detalle t
+			  ON t.Cod_Tabla = 'TSUB'
+			 AND t.Estado = '1'
+			 AND UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) = UPPER(TRIM(IFNULL(d.codigo_sublinea, '')))
+			WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+			  AND TRIM(IFNULL(d.codigo_sublinea, '')) <> ''";
+		if ($linea !== "") {
+			$sql .= " AND TRIM(t.Des_Corta) = :linea";
+		}
+		$sql .= " ORDER BY linea ASC, codigo_sublinea ASC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		if ($linea !== "") {
+			$stmt->bindValue(":linea", $linea, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $filas ? $filas : array();
+	}
+
+	static public function mdlFiltrosSeguimientoMps($linea = "", $sublinea = "")
+	{
+		$linea = trim((string) $linea);
+		$sublinea = strtoupper(trim((string) $sublinea));
+
+		$joinTsub = "";
+		$whereVar = "";
+		$whereBase = "";
+		if ($linea !== "") {
+			$joinTsub = "INNER JOIN Tabla_M_Detalle t
+			  ON t.Cod_Tabla = 'TSUB'
+			 AND t.Estado = '1'
+			 AND UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) = UPPER(TRIM(IFNULL(d.codigo_sublinea, '')))";
+			$whereVar .= " AND TRIM(t.Des_Corta) = :linea1";
+			$whereBase .= " AND TRIM(t.Des_Corta) = :linea2";
+		}
+		if ($sublinea !== "") {
+			$whereVar .= " AND UPPER(TRIM(d.codigo_sublinea)) = :sublinea1";
+			$whereBase .= " AND UPPER(TRIM(d.codigo_sublinea)) = :sublinea2";
+		}
+
+		$sql = "SELECT
+				TRIM(x.mp_codigo) AS mp_codigo,
+				IFNULL(p.DesPro, '') AS descripcion,
+				IFNULL(tc.Des_Larga, '') AS color
+			FROM (
+				SELECT TRIM(v.mp_codigo) AS mp_codigo
+				FROM recetas_modelo r
+				INNER JOIN recetas_modelo_detalles d
+				  ON d.id_receta_modelo = r.id AND d.activo = 1
+				INNER JOIN recetas_modelo_variantes v
+				  ON v.id_receta_modelo_detalle = d.id
+				" . $joinTsub . "
+				WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+				  AND TRIM(IFNULL(v.mp_codigo, '')) <> ''
+				  " . $whereVar . "
+				UNION
+				SELECT TRIM(d.mp_base_codigo) AS mp_codigo
+				FROM recetas_modelo r
+				INNER JOIN recetas_modelo_detalles d
+				  ON d.id_receta_modelo = r.id AND d.activo = 1
+				" . $joinTsub . "
+				WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+				  AND TRIM(IFNULL(d.mp_base_codigo, '')) <> ''
+				  " . $whereBase . "
+			) x
+			LEFT JOIN producto p ON TRIM(p.CodPro) = TRIM(x.mp_codigo)
+			LEFT JOIN Tabla_M_Detalle tc
+			  ON tc.Cod_Tabla = 'TCOL'
+			 AND TRIM(tc.Cod_Argumento) = TRIM(p.ColPro)
+			ORDER BY mp_codigo ASC";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		if ($linea !== "") {
+			$stmt->bindValue(":linea1", $linea, PDO::PARAM_STR);
+			$stmt->bindValue(":linea2", $linea, PDO::PARAM_STR);
+		}
+		if ($sublinea !== "") {
+			$stmt->bindValue(":sublinea1", $sublinea, PDO::PARAM_STR);
+			$stmt->bindValue(":sublinea2", $sublinea, PDO::PARAM_STR);
+		}
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $filas ? $filas : array();
+	}
+
 	static public function mdlEliminarTodasRecetas()
 	{
 		$pdo = Conexion::conectar();

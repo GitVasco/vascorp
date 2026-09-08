@@ -13,14 +13,26 @@ class TablaUrgencias
     public function mostrarUrgencias()
     {
 
-        $valor = $_GET["articuloUrgencia"];
-        $articulos = controladorArticulos::ctrMostrarSeguimiento($valor);
+        $filtroReceta = isset($_GET["filtroReceta"]) ? $_GET["filtroReceta"] : "";
+        $esSeguimientoRecetas = ($filtroReceta === "1");
+        $mpFiltroReceta = "";
+        if ($esSeguimientoRecetas) {
+            $linea = isset($_GET["linea"]) ? $_GET["linea"] : "";
+            $sublinea = isset($_GET["sublinea"]) ? $_GET["sublinea"] : "";
+            $mp = isset($_GET["mp"]) ? $_GET["mp"] : "";
+            $mpFiltroReceta = trim((string) $mp);
+            $articulos = controladorArticulos::ctrMostrarSeguimientoPorReceta($linea, $sublinea, $mp);
+        } else {
+            $valor = isset($_GET["articuloUrgencia"]) ? $_GET["articuloUrgencia"] : "null";
+            $articulos = controladorArticulos::ctrMostrarSeguimiento($valor);
+        }
         if (count($articulos) > 0) {
 
             #var_dump("articulos", $articulos);
 
             $datosJson = '{
         "data": [';
+            $filasSeguimientoRecetas = array();
 
             for ($i = 0; $i < count($articulos); $i++) {
 
@@ -395,11 +407,48 @@ class TablaUrgencias
                 "' . $alm_corte . '",
                 "' . $ord_corte . '",
                 "' . $ult_mes . '",                
-                "' . $dura_tc . '",
+                "' . $dura_tc . '"';
+                if ($esSeguimientoRecetas) {
+                    $filasSeguimientoRecetas[] = array(
+                        $modelo,
+                        $articulos[$i]["nombre"],
+                        $colores,
+                        $articulos[$i]["talla"],
+                        $estado,
+                        $proyeccion,
+                        $avance,
+                        $stock,
+                        $pedidos,
+                        $taller,
+                        $servicio,
+                        $arreglos,
+                        $alm_corte,
+                        $ord_corte,
+                        $ult_mes,
+                        $dura_tc,
+                    );
+                }
+                if (!$esSeguimientoRecetas) {
+                    $datosJson .= ',
                 "' . $faltantes . '",
                 "' . $articulos[$i]["mp_faltante"] . '",
-                "' . $botones . '"
+                "' . $botones . '"';
+                }
+                $datosJson .= '
                 ],';
+            }
+
+            if ($esSeguimientoRecetas) {
+                header("Content-Type: application/json; charset=utf-8");
+                $respuesta = array("data" => $filasSeguimientoRecetas);
+                if ($mpFiltroReceta !== "") {
+                    $respuesta["explosion"] = ModeloArticulos::mdlExplosionMpOrdCorteDesdeArticulos(
+                        $articulos,
+                        $mpFiltroReceta
+                    );
+                }
+                echo json_encode($respuesta);
+                return;
             }
 
             $datosJson = substr($datosJson, 0, -1);
@@ -410,6 +459,16 @@ class TablaUrgencias
 
             echo $datosJson;
         } else {
+
+            if ($esSeguimientoRecetas) {
+                header("Content-Type: application/json; charset=utf-8");
+                $respuesta = array("data" => array());
+                if ($mpFiltroReceta !== "") {
+                    $respuesta["explosion"] = ModeloArticulos::mdlExplosionMpOrdCorteDesdeArticulos(array(), $mpFiltroReceta);
+                }
+                echo json_encode($respuesta);
+                return;
+            }
 
             echo '{
                 "data":[]

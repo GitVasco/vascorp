@@ -682,6 +682,16 @@ class controladorArticulos
 		return $respuesta;
 	}
 
+	static public function ctrMostrarSeguimientoPorReceta($linea, $sublinea, $mp)
+	{
+		return ModeloArticulos::mdlMostrarSeguimientoPorReceta($linea, $sublinea, $mp);
+	}
+
+	static public function ctrExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp)
+	{
+		return ModeloArticulos::mdlExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp);
+	}
+
 	/* 
 	* MOSTRAR MP DETALLE PARA LA TABLA URGENCIA
 	*/

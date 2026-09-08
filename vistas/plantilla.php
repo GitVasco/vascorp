@@ -97,6 +97,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Reprocesos MP | Vasco System";
         } elseif ($_GET["ruta"] === "sublineas-mp") {
             $__tituloVentana = "Sublíneas MP | Vasco System";
+        } elseif ($_GET["ruta"] === "seguimiento-recetas") {
+            $__tituloVentana = "Seguimiento recetas | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
             $__tituloVentana = "NC / ND | Vasco System";
         } elseif ($_GET["ruta"] === "notas-credito") {
@@ -755,7 +757,8 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "cerrar-arreglos" ||
                 $_GET["ruta"] == "en-talleres" ||
                 $_GET["ruta"] == "modelo-color-taller" ||
-                $_GET["ruta"] == "programacion-taller-semana"
+                $_GET["ruta"] == "programacion-taller-semana" ||
+                $_GET["ruta"] == "seguimiento-recetas"
             ) {
 
                 include "modulos/produccion/" . $_GET["ruta"] . ".php";
@@ -1133,6 +1136,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "programacion-taller-semana") { ?>
     <script src="vistas/js/programacion-taller-semana.js?v=26"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "seguimiento-recetas") { ?>
+    <script src="vistas/js/seguimiento-recetas.js?v=6"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "series-documentos") { ?>
     <script src="vistas/js/series-documentos.js?v=3"></script>

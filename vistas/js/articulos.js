@@ -264,7 +264,7 @@ $(".tablaArticulos").on("click", ".btnActivarArt", function () {
 });
 
 // ACTIVANDO-DESACTIVANDO ARTICULO
-$(".tablaSeguimiento").on("click", ".btnCorteI", function () {
+$(".tablaSeguimiento, .tablaSeguimientoRecetas").on("click", ".btnCorteI", function () {
     var codigo = $(this).attr("codigo");
     var estadoCorte = $(this).attr("estado");
 

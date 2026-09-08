@@ -221,7 +221,7 @@ $(".tablaUrgenciasAMP").on("click", ".btnVerUrgenciasAMP", function () {
 /*
  * BOTON VISUALIZAR URGENCIAS APT
  */
-$(".tablaUrgencias, .tablaSeguimiento").on(
+$(".tablaUrgencias, .tablaSeguimiento, .tablaSeguimientoRecetas").on(
     "click",
     ".btnMpFaltante",
     function () {

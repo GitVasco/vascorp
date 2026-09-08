@@ -942,7 +942,7 @@
                     "seguimiento", "enviados-taller", "listar-documento", "ajuste-taller",
                     "urgencias-produccion", "urgencias-almacen", "urgencias-corte", "urgencias-plan",
                     "urgencias-maestro", "transferencias-apt", "crear-transferencias-apt", "estampado", "tampografia", "prehormado", "arreglos", "crear-arreglos", "cerrar-arreglos", "en-talleres",
-                    "programacion-taller-semana"
+                    "programacion-taller-semana", "seguimiento-recetas"
                 ];
 
                 $isActiveProduccion = in_array($_GET["ruta"], $rutasActivasProduccion) ? 'active' : '';
@@ -958,7 +958,7 @@
                     <ul class="treeview-menu">
 
                         <?php
-                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "programacion-taller-semana"];
+                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "programacion-taller-semana", "seguimiento-recetas"];
                         $isActiveProgramación = in_array($_GET["ruta"], $rutasActivasProgramación) ? 'active' : '';
                         ?>
 
@@ -1003,6 +1003,10 @@
 
                                 <li class="<?= $_GET['ruta'] == 'programacion-taller-semana' ? 'active' : '' ?>">
                                     <a href="programacion-taller-semana"><i class="fa fa-circle-o"></i> Prog. semana</a>
+                                </li>
+
+                                <li class="<?= $_GET['ruta'] == 'seguimiento-recetas' ? 'active' : '' ?>">
+                                    <a href="seguimiento-recetas"><i class="fa fa-circle-o"></i> Seguim. recetas</a>
                                 </li>
 
                             </ul>
