@@ -1138,7 +1138,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/programacion-taller-semana.js?v=26"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "seguimiento-recetas") { ?>
-    <script src="vistas/js/seguimiento-recetas.js?v=6"></script>
+    <script src="vistas/js/seguimiento-recetas.js?v=12"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "series-documentos") { ?>
     <script src="vistas/js/series-documentos.js?v=3"></script>

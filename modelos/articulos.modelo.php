@@ -1972,13 +1972,12 @@ class ModeloArticulos
 		$stmt = null;
 	}
 
-	static public function mdlMostrarSeguimientoPorReceta($linea, $sublinea, $mp)
+	static public function mdlMostrarSeguimientoPorReceta($sublinea, $mp)
 	{
-		$linea = trim((string) $linea);
 		$sublinea = strtoupper(trim((string) $sublinea));
 		$mp = trim((string) $mp);
 
-		if ($linea === "" && $sublinea === "" && $mp === "") {
+		if ($sublinea === "" && $mp === "") {
 			return array();
 		}
 
@@ -1986,16 +1985,8 @@ class ModeloArticulos
 			$mp = str_pad($mp, 5, "0", STR_PAD_LEFT);
 		}
 
-		$joinTsub = "";
-		$whereReceta = " WHERE r.estado IN ('BORRADOR', 'PUBLICADA')";
-		if ($linea !== "") {
-			$joinTsub = "
-				INNER JOIN Tabla_M_Detalle t
-				  ON t.Cod_Tabla = 'TSUB'
-				 AND t.Estado = '1'
-				 AND UPPER(CONCAT(TRIM(t.Des_Corta), TRIM(t.Valor_3))) = UPPER(TRIM(IFNULL(d.codigo_sublinea, '')))";
-			$whereReceta .= " AND TRIM(t.Des_Corta) = :linea";
-		}
+		$whereReceta = " WHERE r.estado IN ('BORRADOR', 'PUBLICADA')
+			AND d.es_tela_principal = 1";
 		if ($sublinea !== "") {
 			$whereReceta .= " AND UPPER(TRIM(d.codigo_sublinea)) = :sublinea";
 		}
@@ -2075,8 +2066,7 @@ class ModeloArticulos
 			SELECT DISTINCT r.modelo
 			FROM recetas_modelo r
 			INNER JOIN recetas_modelo_detalles d
-			  ON d.id_receta_modelo = r.id AND d.activo = 1
-			" . $joinTsub . "
+			  ON d.id_receta_modelo = r.id AND d.activo = 1 AND d.es_tela_principal = 1
 			" . $whereReceta . "
 		  ) rec ON rec.modelo = a.modelo
 		  WHERE a.estado = 'ACTIVO'
@@ -2089,7 +2079,7 @@ class ModeloArticulos
 					SELECT 1
 					FROM recetas_modelo r2
 					INNER JOIN recetas_modelo_detalles d2
-					  ON d2.id_receta_modelo = r2.id AND d2.activo = 1
+					  ON d2.id_receta_modelo = r2.id AND d2.activo = 1 AND d2.es_tela_principal = 1
 					INNER JOIN recetas_modelo_variantes v
 					  ON v.id_receta_modelo_detalle = d2.id
 					WHERE r2.modelo = a.modelo
@@ -2102,7 +2092,7 @@ class ModeloArticulos
 					SELECT 1
 					FROM recetas_modelo r3
 					INNER JOIN recetas_modelo_detalles d3
-					  ON d3.id_receta_modelo = r3.id AND d3.activo = 1
+					  ON d3.id_receta_modelo = r3.id AND d3.activo = 1 AND d3.es_tela_principal = 1
 					WHERE r3.modelo = a.modelo
 					  AND r3.estado IN ('BORRADOR', 'PUBLICADA')
 					  AND TRIM(IFNULL(d3.mp_base_codigo, '')) = :mp2
@@ -2121,9 +2111,6 @@ class ModeloArticulos
 		$sql .= " ORDER BY a.articulo ASC";
 
 		$stmt = Conexion::conectar()->prepare($sql);
-		if ($linea !== "") {
-			$stmt->bindValue(":linea", $linea, PDO::PARAM_STR);
-		}
 		if ($sublinea !== "") {
 			$stmt->bindValue(":sublinea", $sublinea, PDO::PARAM_STR);
 		}
@@ -2137,10 +2124,133 @@ class ModeloArticulos
 		$stmt->execute();
 
 		$filas = $stmt->fetchAll();
-		return $filas ? $filas : array();
+		if (!$filas) {
+			return array();
+		}
+
+		return self::mdlEnriquecerConsumoTelaSeguimientoRecetas($filas, $mp);
 	}
 
-	static public function mdlExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp)
+	static public function mdlEnriquecerConsumoTelaSeguimientoRecetas(array $articulos, $mpFiltro = "")
+	{
+		require_once dirname(__FILE__) . "/recetas-modelo.modelo.php";
+		require_once dirname(__FILE__) . "/recetas-modelo.resolucion.php";
+		require_once dirname(__FILE__) . "/../controladores/recetas-modelo.controlador.php";
+
+		$mpFiltro = strtoupper(trim((string) $mpFiltro));
+		if (empty($articulos)) {
+			return $articulos;
+		}
+
+		$porModelo = array();
+		foreach ($articulos as $a) {
+			$modelo = isset($a["modelo"]) ? trim((string) $a["modelo"]) : "";
+			if ($modelo === "") {
+				continue;
+			}
+			if (!isset($porModelo[$modelo])) {
+				$porModelo[$modelo] = array();
+			}
+			$porModelo[$modelo][] = $a;
+		}
+
+		$consumoPorArticulo = array();
+		foreach ($porModelo as $modelo => $arts) {
+			$receta = ModeloRecetasModelo::mdlRecetaPreferidaModelo($modelo);
+			if (!$receta) {
+				continue;
+			}
+
+			$estructura = ControladorRecetasModelo::ctrEstructuraReceta((int) $receta["id"]);
+			if (!$estructura || empty($estructura["lineas"]) || !is_array($estructura["lineas"])) {
+				continue;
+			}
+
+			$lineasTela = array();
+			foreach ($estructura["lineas"] as $linea) {
+				if (isset($linea["activo"]) && (int) $linea["activo"] !== 1) {
+					continue;
+				}
+				if (empty($linea["es_tela_principal"])) {
+					continue;
+				}
+				$lineasTela[] = $linea;
+			}
+			if (empty($lineasTela)) {
+				continue;
+			}
+
+			foreach ($arts as $a) {
+				$codArt = isset($a["articulo"]) ? trim((string) $a["articulo"]) : "";
+				if ($codArt === "") {
+					continue;
+				}
+
+				$ordCorte = isset($a["ord_corte"]) ? (float) $a["ord_corte"] : 0.0;
+				$cantidad = $ordCorte > 0 ? $ordCorte : 1.0;
+				$res = ServicioRecetasModeloResolucion::resolverArticulo(
+					$lineasTela,
+					$estructura["variantes_por_detalle"],
+					array(
+						"articulo" => $codArt,
+						"modelo" => $modelo,
+						"cod_color" => isset($a["cod_color"]) ? $a["cod_color"] : "",
+						"color" => isset($a["color"]) ? $a["color"] : "",
+						"cod_talla" => isset($a["cod_talla"]) ? $a["cod_talla"] : "",
+						"talla" => isset($a["talla"]) ? $a["talla"] : "",
+					),
+					$cantidad,
+					$estructura["mp_info"]
+				);
+
+				$tela = isset($res["tela_principal"]) && is_array($res["tela_principal"])
+					? $res["tela_principal"]
+					: null;
+				if (!$tela || empty($tela["completo"]) || empty($tela["mp_codigo"])) {
+					$consumoPorArticulo[$codArt] = array(
+						"consumo_unitario" => null,
+						"consumo_ord_corte" => null,
+					);
+					continue;
+				}
+
+				$mpCod = strtoupper(trim((string) $tela["mp_codigo"]));
+				if ($mpFiltro !== "" && $mpCod !== $mpFiltro) {
+					$consumoPorArticulo[$codArt] = array(
+						"consumo_unitario" => null,
+						"consumo_ord_corte" => null,
+					);
+					continue;
+				}
+
+				$consumoUnit = isset($tela["consumo"]) ? (float) $tela["consumo"] : null;
+				$consumoTotal = isset($tela["consumo_total"]) ? (float) $tela["consumo_total"] : null;
+				if ($consumoTotal === null && $consumoUnit !== null) {
+					$consumoTotal = round($consumoUnit * $cantidad, 4);
+				}
+
+				$consumoPorArticulo[$codArt] = array(
+					"consumo_unitario" => $consumoUnit !== null ? round($consumoUnit, 4) : null,
+					"consumo_ord_corte" => $consumoTotal !== null ? round($consumoTotal, 4) : null,
+				);
+			}
+		}
+
+		foreach ($articulos as $idx => $a) {
+			$codArt = isset($a["articulo"]) ? trim((string) $a["articulo"]) : "";
+			if ($codArt !== "" && isset($consumoPorArticulo[$codArt])) {
+				$articulos[$idx]["consumo_unitario"] = $consumoPorArticulo[$codArt]["consumo_unitario"];
+				$articulos[$idx]["consumo_ord_corte"] = $consumoPorArticulo[$codArt]["consumo_ord_corte"];
+			} else {
+				$articulos[$idx]["consumo_unitario"] = null;
+				$articulos[$idx]["consumo_ord_corte"] = null;
+			}
+		}
+
+		return $articulos;
+	}
+
+	static public function mdlExplosionMpOrdCorteSeguimientoReceta($sublinea, $mp)
 	{
 		require_once dirname(__FILE__) . "/recetas-modelo.modelo.php";
 		require_once dirname(__FILE__) . "/recetas-modelo.resolucion.php";
@@ -2166,7 +2276,7 @@ class ModeloArticulos
 		}
 		$mpFiltro = strtoupper($mp);
 
-		$articulos = self::mdlMostrarSeguimientoPorReceta($linea, $sublinea, $mp);
+		$articulos = self::mdlMostrarSeguimientoPorReceta($sublinea, $mp);
 		return self::mdlExplosionMpOrdCorteDesdeArticulos($articulos, $mpFiltro);
 	}
 
@@ -2347,6 +2457,25 @@ class ModeloArticulos
 				isset($b["mp_codigo"]) ? $b["mp_codigo"] : ""
 			);
 		});
+
+		if (!empty($consolidados)) {
+			$codigosMp = array();
+			foreach ($consolidados as $row) {
+				if (!empty($row["mp_codigo"])) {
+					$codigosMp[] = $row["mp_codigo"];
+				}
+			}
+			$infoMp = ModeloRecetasModelo::mdlInfoMps($codigosMp);
+			foreach ($consolidados as $idx => $row) {
+				$cod = isset($row["mp_codigo"]) ? trim((string) $row["mp_codigo"]) : "";
+				$stock = ($cod !== "" && isset($infoMp[$cod]["stock"]))
+					? (float) $infoMp[$cod]["stock"]
+					: 0.0;
+				$necesario = isset($row["consumo_total"]) ? (float) $row["consumo_total"] : 0.0;
+				$consolidados[$idx]["mp_stock"] = $stock;
+				$consolidados[$idx]["mp_alcanza"] = ($stock >= $necesario) ? 1 : 0;
+			}
+		}
 
 		return array(
 			"ok" => true,

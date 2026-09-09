@@ -682,14 +682,14 @@ class controladorArticulos
 		return $respuesta;
 	}
 
-	static public function ctrMostrarSeguimientoPorReceta($linea, $sublinea, $mp)
+	static public function ctrMostrarSeguimientoPorReceta($sublinea, $mp)
 	{
-		return ModeloArticulos::mdlMostrarSeguimientoPorReceta($linea, $sublinea, $mp);
+		return ModeloArticulos::mdlMostrarSeguimientoPorReceta($sublinea, $mp);
 	}
 
-	static public function ctrExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp)
+	static public function ctrExplosionMpOrdCorteSeguimientoReceta($sublinea, $mp)
 	{
-		return ModeloArticulos::mdlExplosionMpOrdCorteSeguimientoReceta($linea, $sublinea, $mp);
+		return ModeloArticulos::mdlExplosionMpOrdCorteSeguimientoReceta($sublinea, $mp);
 	}
 
 	/* 

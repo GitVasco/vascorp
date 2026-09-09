@@ -32,20 +32,16 @@
     function leerFiltrosUrl() {
         var params = new URLSearchParams(window.location.search);
         return {
-            linea: (params.get("linea") || "").trim(),
             sublinea: (params.get("sublinea") || "").trim().toUpperCase(),
             mp: (params.get("mp") || "").trim(),
         };
     }
 
-    function escribirFiltrosUrl(linea, sublinea, mp) {
+    function escribirFiltrosUrl(sublinea, mp) {
         var url = new URL(window.location.href);
         url.searchParams.delete("linea");
         url.searchParams.delete("sublinea");
         url.searchParams.delete("mp");
-        if (linea) {
-            url.searchParams.set("linea", linea);
-        }
         if (sublinea) {
             url.searchParams.set("sublinea", sublinea);
         }
@@ -57,7 +53,6 @@
 
     function filtrosActuales() {
         return {
-            linea: ($("#selSegRecetaLinea").val() || "").trim(),
             sublinea: ($("#selSegRecetaSublinea").val() || "").trim().toUpperCase(),
             mp: ($("#selSegRecetaMp").val() || "").trim(),
         };
@@ -65,7 +60,7 @@
 
     function hayFiltro(f) {
         f = f || filtrosActuales();
-        return !!(f.linea || f.sublinea || f.mp);
+        return !!(f.sublinea || f.mp);
     }
 
     function postFiltro(accion, extra) {
@@ -84,19 +79,11 @@
         var html = '<option value="">' + placeholder + "</option>";
         (items || []).forEach(function (item) {
             var val = item[valueKey] || "";
-            var attrs = "";
-            if (opts.dataFn) {
-                var data = opts.dataFn(item) || {};
-                Object.keys(data).forEach(function (k) {
-                    attrs += ' data-' + k + '="' + esc(data[k]) + '"';
-                });
-            }
             var selected = seleccion && String(val).toUpperCase() === seleccion.toUpperCase() ? " selected" : "";
             html +=
                 '<option value="' +
                 esc(val) +
                 '"' +
-                attrs +
                 selected +
                 ">" +
                 esc(labelFn(item)) +
@@ -107,71 +94,41 @@
     }
 
     function limpiarMpSelect(mensaje) {
-        llenarSelect($("#selSegRecetaMp"), [], mensaje || "-------- Materia prima -------", "mp_codigo", function () {
+        llenarSelect($("#selSegRecetaMp"), [], mensaje || "-------- Materia prima (tela) -------", "mp_codigo", function () {
             return "";
         });
         return $.Deferred().resolve().promise();
     }
 
-    function cargarLineas(seleccion) {
-        return postFiltro("lineas").done(function (res) {
-            if (!res || !res.ok) {
-                return;
-            }
-            llenarSelect(
-                $("#selSegRecetaLinea"),
-                res.data,
-                "-------- Línea -------",
-                "linea",
-                function (item) {
-                    return item.linea;
-                },
-                { seleccion: seleccion }
-            );
-        });
-    }
-
     function cargarSublineas(seleccion) {
-        var linea = $("#selSegRecetaLinea").val() || "";
-        return postFiltro("sublineas", { linea: linea }).done(function (res) {
+        return postFiltro("sublineas").done(function (res) {
             if (!res || !res.ok) {
                 return;
             }
             llenarSelect(
                 $("#selSegRecetaSublinea"),
                 res.data,
-                "-------- Sublínea -------",
+                "-------- Sublínea tela -------",
                 "codigo_sublinea",
                 function (item) {
                     var nom = item.nombre ? " — " + item.nombre : "";
                     return (item.codigo_sublinea || "") + nom;
                 },
-                {
-                    seleccion: seleccion,
-                    dataFn: function (item) {
-                        return { linea: item.linea || "" };
-                    },
-                }
+                { seleccion: seleccion }
             );
         });
     }
 
     function cargarMps(seleccion) {
         var f = filtrosActuales();
-
-        if (!f.sublinea && !f.linea && !seleccion) {
-            limpiarMpSelect("-------- Elija línea o sublínea -------");
-            return $.Deferred().resolve().promise();
-        }
-
-        return postFiltro("mps", { linea: f.linea, sublinea: f.sublinea }).done(function (res) {
+        return postFiltro("mps", { sublinea: f.sublinea }).done(function (res) {
             if (!res || !res.ok) {
                 return;
             }
             llenarSelect(
                 $("#selSegRecetaMp"),
                 res.data,
-                "-------- Materia prima -------",
+                "-------- Materia prima (tela) -------",
                 "mp_codigo",
                 function (item) {
                     var extra = [];
@@ -188,28 +145,11 @@
         });
     }
 
-    function sincronizarLineaDesdeSublinea() {
-        var $opt = $("#selSegRecetaSublinea option:selected");
-        var lineaSub = ($opt.data("linea") || "").toString().trim();
-        if (!lineaSub) {
-            return $.Deferred().resolve().promise();
-        }
-        var lineaActual = ($("#selSegRecetaLinea").val() || "").trim();
-        if (lineaActual === lineaSub) {
-            return $.Deferred().resolve().promise();
-        }
-        $("#selSegRecetaLinea").val(lineaSub);
-        $("#selSegRecetaLinea").selectpicker("refresh");
-        return cargarSublineas($("#selSegRecetaSublinea").val());
-    }
-
     function urlExportExcel(f) {
         f = f || filtrosActuales();
         return (
             "vistas/reportes_excel/rpt_seguimiento_recetas.php?" +
-            "linea=" +
-            encodeURIComponent(f.linea) +
-            "&sublinea=" +
+            "sublinea=" +
             encodeURIComponent(f.sublinea) +
             "&mp=" +
             encodeURIComponent(f.mp)
@@ -231,8 +171,6 @@
             "ajax/maestros/tabla-seguimiento.ajax.php?perfil=" +
             encodeURIComponent($("#perfilOculto").val() || "") +
             "&filtroReceta=1" +
-            "&linea=" +
-            encodeURIComponent(f.linea) +
             "&sublinea=" +
             encodeURIComponent(f.sublinea) +
             "&mp=" +
@@ -251,6 +189,14 @@
         });
     }
 
+    function fmtNum4(valor) {
+        var n = parseFloat(valor);
+        if (isNaN(n)) {
+            return "0.0000";
+        }
+        return n.toFixed(4);
+    }
+
     function hayMpFiltro(f) {
         f = f || filtrosActuales();
         return !!(f.mp || "").trim();
@@ -261,6 +207,26 @@
         $(".tablaExplosionMpOrdCorte tbody").empty();
         $("#lblExplosionMpResumen").text("");
         $("#alertExplosionMpErrores").hide().empty();
+    }
+
+    function limpiarTotalesArticulos() {
+        $("#segRecetasTotalesFoot").hide();
+    }
+
+    function pintarTotalesArticulos(totales) {
+        if (!totales) {
+            limpiarTotalesArticulos();
+            return;
+        }
+        $("#segRecTotStock").html("<strong>" + esc(fmtNum(totales.stock)) + "</strong>");
+        $("#segRecTotPedidos").html("<strong>" + esc(fmtNum(totales.pedidos)) + "</strong>");
+        $("#segRecTotTaller").html("<strong>" + esc(fmtNum(totales.taller)) + "</strong>");
+        $("#segRecTotServicio").html("<strong>" + esc(fmtNum(totales.servicio)) + "</strong>");
+        $("#segRecTotArreglos").html("<strong>" + esc(fmtNum(totales.arreglos)) + "</strong>");
+        $("#segRecTotAlmCorte").html("<strong>" + esc(fmtNum(totales.alm_corte)) + "</strong>");
+        $("#segRecTotOrdCorte").html("<strong>" + esc(fmtNum(totales.ord_corte)) + "</strong>");
+        $("#segRecTotMpOrdCorte").html("<strong>" + esc(fmtNum4(totales.consumo_ord_corte)) + "</strong>");
+        $("#segRecetasTotalesFoot").show();
     }
 
     function pintarExplosionMp(res, f) {
@@ -275,7 +241,7 @@
         if (!res || !res.ok) {
             $("#lblExplosionMpResumen").text("");
             $(".tablaExplosionMpOrdCorte tbody").html(
-                '<tr><td colspan="6" class="text-center text-danger">No se pudo calcular la explosión</td></tr>'
+                '<tr><td colspan="8" class="text-center text-danger">No se pudo calcular la explosión</td></tr>'
             );
             return;
         }
@@ -294,7 +260,7 @@
         var filas = res.consolidados || [];
         if (!filas.length) {
             $(".tablaExplosionMpOrdCorte tbody").html(
-                '<tr><td colspan="6" class="text-center text-muted">Sin materia prima calculada</td></tr>'
+                '<tr><td colspan="8" class="text-center text-muted">Sin materia prima calculada</td></tr>'
             );
         } else {
             var html = "";
@@ -303,6 +269,10 @@
                 if (row.es_tela_principal) {
                     roles = (roles !== "—" ? roles + " · " : "") + "Tela principal";
                 }
+                var alcanza = Number(row.mp_alcanza) === 1;
+                var alcanzaHtml = alcanza
+                    ? '<span class="label label-success">Sí</span>'
+                    : '<span class="label label-danger">No</span>';
                 html +=
                     "<tr>" +
                     "<td><strong>" +
@@ -318,8 +288,14 @@
                     esc(row.unidad || "") +
                     "</td>" +
                     '<td class="text-right"><strong>' +
-                    esc(fmtNum(row.consumo_total)) +
+                    esc(fmtNum4(row.consumo_total)) +
                     "</strong></td>" +
+                    '<td class="text-right">' +
+                    esc(fmtNum(row.mp_stock)) +
+                    "</td>" +
+                    '<td class="text-center">' +
+                    alcanzaHtml +
+                    "</td>" +
                     "<td>" +
                     esc(roles) +
                     "</td>" +
@@ -357,6 +333,7 @@
                 dt = null;
             }
             limpiarExplosionMp();
+            limpiarTotalesArticulos();
             return;
         }
 
@@ -365,11 +342,13 @@
             dt = null;
         }
 
+        limpiarTotalesArticulos();
+
         if (hayMpFiltro(f)) {
             $("#boxExplosionMpOrdCorte").show();
             $("#lblExplosionMpResumen").text("Calculando materia prima…");
             $(".tablaExplosionMpOrdCorte tbody").html(
-                '<tr><td colspan="6" class="text-center text-muted"><i class="fa fa-spinner fa-spin"></i> Calculando…</td></tr>'
+                '<tr><td colspan="8" class="text-center text-muted"><i class="fa fa-spinner fa-spin"></i> Calculando…</td></tr>'
             );
         } else {
             limpiarExplosionMp();
@@ -386,6 +365,11 @@
                         pintarExplosionMp(json.explosion, f);
                     } else {
                         limpiarExplosionMp();
+                    }
+                    if (json && json.totales) {
+                        pintarTotalesArticulos(json.totales);
+                    } else {
+                        limpiarTotalesArticulos();
                     }
                     ocultarCarga();
                     return json && json.data ? json.data : [];
@@ -434,11 +418,11 @@
     function aplicarBusqueda(actualizarHistorial) {
         var f = filtrosActuales();
         if (!hayFiltro(f)) {
-            Command: toastr["warning"]("Elige línea, sublínea o materia prima");
+            Command: toastr["warning"]("Elige sublínea o materia prima de tela");
             return;
         }
         if (actualizarHistorial !== false) {
-            escribirFiltrosUrl(f.linea, f.sublinea, f.mp);
+            escribirFiltrosUrl(f.sublinea, f.mp);
         }
         actualizarExportExcel(f);
         cargarTabla(f);
@@ -449,17 +433,9 @@
         restaurando = true;
         mostrarCarga("Preparando filtros…");
 
-        return $.when(cargarLineas(f.linea), cargarSublineas(f.sublinea))
+        return cargarSublineas(f.sublinea)
             .then(function () {
-                if (f.sublinea && !f.linea) {
-                    return sincronizarLineaDesdeSublinea();
-                }
-            })
-            .then(function () {
-                if (hayFiltro(f)) {
-                    return cargarMps(f.mp);
-                }
-                return limpiarMpSelect();
+                return cargarMps(f.mp);
             })
             .always(function () {
                 restaurando = false;
@@ -474,23 +450,8 @@
     $("#btnExportSeguimientoRecetas").on("click", function (e) {
         if (!hayFiltro()) {
             e.preventDefault();
-            Command: toastr["warning"]("Elige línea, sublínea o materia prima antes de exportar");
+            Command: toastr["warning"]("Elige sublínea o materia prima antes de exportar");
         }
-    });
-
-    $("#selSegRecetaLinea").on("changed.bs.select", function () {
-        if (restaurando) {
-            return;
-        }
-        $("#selSegRecetaSublinea").val("");
-        $("#selSegRecetaMp").val("");
-        cargarSublineas("").always(function () {
-            limpiarMpSelect("-------- Elija sublínea o busque por línea -------");
-            var ff = filtrosActuales();
-            if (ff.linea) {
-                cargarMps("");
-            }
-        });
     });
 
     $("#selSegRecetaSublinea").on("changed.bs.select", function () {
@@ -498,9 +459,7 @@
             return;
         }
         $("#selSegRecetaMp").val("");
-        $.when(sincronizarLineaDesdeSublinea()).always(function () {
-            cargarMps("");
-        });
+        cargarMps("");
     });
 
     $(".btnBuscarSeguimientoRecetas").on("click", function () {
@@ -509,17 +468,15 @@
 
     $(".btnLimpiarSeguimientoRecetas").on("click", function () {
         restaurando = true;
-        $("#selSegRecetaLinea").val("");
         $("#selSegRecetaSublinea").val("");
         $("#selSegRecetaMp").val("");
-        escribirFiltrosUrl("", "", "");
+        escribirFiltrosUrl("", "");
         actualizarExportExcel();
         $.when(cargarSublineas(""))
             .then(function () {
                 return limpiarMpSelect();
             })
             .always(function () {
-                $("#selSegRecetaLinea").selectpicker("refresh");
                 restaurando = false;
                 cargarTabla();
             });

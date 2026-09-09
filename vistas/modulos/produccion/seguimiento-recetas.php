@@ -4,7 +4,7 @@
 
         <h1>
 
-            Seguimiento recetas
+            Seguimiento recetas <small class="text-muted">Tela</small>
 
         </h1>
 
@@ -31,21 +31,15 @@
 
             <div class="box-header with-border">
 
-                <div class="col-lg-2">
-                    <select name="selSegRecetaLinea" id="selSegRecetaLinea" class="form-control input-lg selectpicker" data-live-search="true" data-size="10">
-                        <option value="">-------- Línea -------</option>
-                    </select>
-                </div>
-
-                <div class="col-lg-3">
+                <div class="col-lg-4">
                     <select name="selSegRecetaSublinea" id="selSegRecetaSublinea" class="form-control input-lg selectpicker" data-live-search="true" data-size="10">
-                        <option value="">-------- Sublínea -------</option>
+                        <option value="">-------- Sublínea tela -------</option>
                     </select>
                 </div>
 
-                <div class="col-lg-3">
+                <div class="col-lg-4">
                     <select name="selSegRecetaMp" id="selSegRecetaMp" class="form-control input-lg selectpicker" data-live-search="true" data-size="10">
-                        <option value="">-------- Materia prima -------</option>
+                        <option value="">-------- Materia prima (tela) -------</option>
                     </select>
                 </div>
 
@@ -75,17 +69,17 @@
                             <th>Color</th>
                             <th>Talla</th>
                             <th>Estado</th>
-                            <th>Proyección</th>
-                            <th>% Avance</th>
-                            <th>Stock</th>
-                            <th>Pedidos</th>
-                            <th>En Taller</th>
-                            <th>En Servicio</th>
-                            <th>En Arreglos</th>
-                            <th>Alm. Corte</th>
-                            <th>Ord. Corte</th>
-                            <th>Ult 30d</th>
-                            <th>Duración Mes</th>
+                            <th class="text-right">Stock</th>
+                            <th class="text-right">Pedidos</th>
+                            <th class="text-right">En Taller</th>
+                            <th class="text-right">En Servicio</th>
+                            <th class="text-right">En Arreglos</th>
+                            <th class="text-right">Alm. Corte</th>
+                            <th class="text-right">Ord. Corte</th>
+                            <th class="text-right">Consumo</th>
+                            <th class="text-right">MP ord. corte</th>
+                            <th class="text-right">Ult 30d</th>
+                            <th class="text-right">Duración Mes</th>
 
                         </tr>
 
@@ -95,6 +89,22 @@
 
 
                     </tbody>
+
+                    <tfoot id="segRecetasTotalesFoot" style="display:none;">
+                        <tr class="bg-gray">
+                            <th colspan="5" class="text-right"><strong>Total</strong></th>
+                            <th class="text-right" id="segRecTotStock"></th>
+                            <th class="text-right" id="segRecTotPedidos"></th>
+                            <th class="text-right" id="segRecTotTaller"></th>
+                            <th class="text-right" id="segRecTotServicio"></th>
+                            <th class="text-right" id="segRecTotArreglos"></th>
+                            <th class="text-right" id="segRecTotAlmCorte"></th>
+                            <th class="text-right" id="segRecTotOrdCorte"></th>
+                            <th></th>
+                            <th class="text-right" id="segRecTotMpOrdCorte"></th>
+                            <th colspan="2"></th>
+                        </tr>
+                    </tfoot>
 
                 </table>
 
@@ -121,7 +131,9 @@
                             <th>Descripción</th>
                             <th>Color</th>
                             <th>Unidad</th>
-                            <th>Cantidad necesaria</th>
+                            <th class="text-right">Cantidad necesaria</th>
+                            <th class="text-right">Stock MP</th>
+                            <th class="text-center">Alcanza</th>
                             <th>Rol</th>
                         </tr>
                     </thead>
@@ -170,5 +182,16 @@
 
     .seg-recetas-overlay__panel p {
         margin: 12px 0 0;
+    }
+
+    .seg-recetas-content .tablaSeguimientoRecetas td:nth-child(n+6),
+    .seg-recetas-content .tablaSeguimientoRecetas tfoot th.text-right {
+        text-align: right !important;
+    }
+
+    .seg-recetas-content .tablaExplosionMpOrdCorte td:nth-child(5),
+    .seg-recetas-content .tablaExplosionMpOrdCorte td:nth-child(6),
+    .seg-recetas-content .tablaExplosionMpOrdCorte th.text-right {
+        text-align: right !important;
     }
 </style>

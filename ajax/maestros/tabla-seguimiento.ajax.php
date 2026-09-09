@@ -17,11 +17,10 @@ class TablaUrgencias
         $esSeguimientoRecetas = ($filtroReceta === "1");
         $mpFiltroReceta = "";
         if ($esSeguimientoRecetas) {
-            $linea = isset($_GET["linea"]) ? $_GET["linea"] : "";
             $sublinea = isset($_GET["sublinea"]) ? $_GET["sublinea"] : "";
             $mp = isset($_GET["mp"]) ? $_GET["mp"] : "";
             $mpFiltroReceta = trim((string) $mp);
-            $articulos = controladorArticulos::ctrMostrarSeguimientoPorReceta($linea, $sublinea, $mp);
+            $articulos = controladorArticulos::ctrMostrarSeguimientoPorReceta($sublinea, $mp);
         } else {
             $valor = isset($_GET["articuloUrgencia"]) ? $_GET["articuloUrgencia"] : "null";
             $articulos = controladorArticulos::ctrMostrarSeguimiento($valor);
@@ -33,6 +32,19 @@ class TablaUrgencias
             $datosJson = '{
         "data": [';
             $filasSeguimientoRecetas = array();
+            $totalesSegReceta = null;
+            if ($esSeguimientoRecetas) {
+                $totalesSegReceta = array(
+                    "stock" => 0,
+                    "pedidos" => 0,
+                    "taller" => 0,
+                    "servicio" => 0,
+                    "arreglos" => 0,
+                    "alm_corte" => 0,
+                    "ord_corte" => 0,
+                    "consumo_ord_corte" => 0,
+                );
+            }
 
             for ($i = 0; $i < count($articulos); $i++) {
 
@@ -409,24 +421,69 @@ class TablaUrgencias
                 "' . $ult_mes . '",                
                 "' . $dura_tc . '"';
                 if ($esSeguimientoRecetas) {
+                    $segRecNum = function ($html) {
+                        return '<div class="text-right">' . str_replace(array("<center>", "</center>"), "", $html) . "</div>";
+                    };
+
+                    $consumoUnitario = "—";
+                    if (
+                        isset($articulos[$i]["consumo_unitario"])
+                        && $articulos[$i]["consumo_unitario"] !== null
+                        && $articulos[$i]["consumo_unitario"] !== ""
+                    ) {
+                        $consumoUnitario = number_format((float) $articulos[$i]["consumo_unitario"], 4, ".", "");
+                        $consumoUnitario = '<div class="text-right"><b>' . $consumoUnitario . "</b></div>";
+                    } else {
+                        $consumoUnitario = '<div class="text-right">—</div>';
+                    }
+
+                    $consumoOrdCorte = "—";
+                    if (
+                        isset($articulos[$i]["consumo_ord_corte"])
+                        && $articulos[$i]["consumo_ord_corte"] !== null
+                        && $articulos[$i]["consumo_ord_corte"] !== ""
+                    ) {
+                        $consumoOrdCorte = number_format((float) $articulos[$i]["consumo_ord_corte"], 4, ".", "");
+                        $consumoOrdCorte = '<div class="text-right"><b>' . $consumoOrdCorte . "</b></div>";
+                    } else {
+                        $consumoOrdCorte = '<div class="text-right">—</div>';
+                    }
+
                     $filasSeguimientoRecetas[] = array(
                         $modelo,
                         $articulos[$i]["nombre"],
                         $colores,
                         $articulos[$i]["talla"],
                         $estado,
-                        $proyeccion,
-                        $avance,
-                        $stock,
-                        $pedidos,
-                        $taller,
-                        $servicio,
-                        $arreglos,
-                        $alm_corte,
-                        $ord_corte,
-                        $ult_mes,
-                        $dura_tc,
+                        $segRecNum($stock),
+                        $segRecNum($pedidos),
+                        $segRecNum($taller),
+                        $segRecNum($servicio),
+                        $segRecNum($arreglos),
+                        $segRecNum($alm_corte),
+                        $segRecNum($ord_corte),
+                        $consumoUnitario,
+                        $consumoOrdCorte,
+                        $segRecNum($ult_mes),
+                        $segRecNum($dura_tc),
                     );
+
+                    if (is_array($totalesSegReceta)) {
+                        $totalesSegReceta["stock"] += (float) $articulos[$i]["stockB"];
+                        $totalesSegReceta["pedidos"] += (float) $articulos[$i]["pedidos"];
+                        $totalesSegReceta["taller"] += (float) $articulos[$i]["taller"];
+                        $totalesSegReceta["servicio"] += (float) $articulos[$i]["servicio"];
+                        $totalesSegReceta["arreglos"] += (float) $articulos[$i]["arreglos"];
+                        $totalesSegReceta["alm_corte"] += (float) $articulos[$i]["alm_corte"];
+                        $totalesSegReceta["ord_corte"] += (float) $articulos[$i]["ord_corte"];
+                        if (
+                            isset($articulos[$i]["consumo_ord_corte"])
+                            && $articulos[$i]["consumo_ord_corte"] !== null
+                            && $articulos[$i]["consumo_ord_corte"] !== ""
+                        ) {
+                            $totalesSegReceta["consumo_ord_corte"] += (float) $articulos[$i]["consumo_ord_corte"];
+                        }
+                    }
                 }
                 if (!$esSeguimientoRecetas) {
                     $datosJson .= ',
@@ -440,7 +497,10 @@ class TablaUrgencias
 
             if ($esSeguimientoRecetas) {
                 header("Content-Type: application/json; charset=utf-8");
-                $respuesta = array("data" => $filasSeguimientoRecetas);
+                $respuesta = array(
+                    "data" => $filasSeguimientoRecetas,
+                    "totales" => $totalesSegReceta,
+                );
                 if ($mpFiltroReceta !== "") {
                     $respuesta["explosion"] = ModeloArticulos::mdlExplosionMpOrdCorteDesdeArticulos(
                         $articulos,
@@ -462,7 +522,10 @@ class TablaUrgencias
 
             if ($esSeguimientoRecetas) {
                 header("Content-Type: application/json; charset=utf-8");
-                $respuesta = array("data" => array());
+                $respuesta = array(
+                    "data" => array(),
+                    "totales" => null,
+                );
                 if ($mpFiltroReceta !== "") {
                     $respuesta["explosion"] = ModeloArticulos::mdlExplosionMpOrdCorteDesdeArticulos(array(), $mpFiltroReceta);
                 }
