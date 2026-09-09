@@ -752,6 +752,39 @@ En el maestro de clientes el vendedor asignado a veces no es quien realmente hiz
 
 ---
 
+## Botón: Costo de última compra
+
+### Qué resuelve
+
+El costo de la ficha de materia prima no se actualizaba al comprar. Desde la mejora, cada nota de ingreso nueva deja el último costo. Esta utilidad empareja lo histórico sin esperar otra compra.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista materias primas activas cuyo costo de ficha no coincide con el de su última nota de ingreso (compra).
+2. El modal muestra código, fábrica, descripción, costo actual, costo propuesto y la última nota (número y fecha).
+3. **Actualizar seleccionados** deja en la ficha el costo propuesto.
+
+### Reglas
+
+| Regla | Detalle |
+|-------|---------|
+| Fuente | notas de ingreso de compra (`nea` / `neadet`), no anuladas |
+| Última nota | la más reciente por fecha de emisión; si empatan, el número mayor |
+| Costo propuesto | promedio ponderado (cantidad × precio) de esa nota |
+| Precio de línea | `coscompra`, si no `p_unitario`, si no `presol`; 0 no cuenta |
+| Notas de servicio | no guardan precio; no entran (si una línea nueva trae precio válido, sí se toma al registrar) |
+| Filtro | solo activas y con costo actual ≠ propuesto |
+| Actualización | solo el costo de la ficha de materia prima |
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `descuadresCostoMp` | Lista diferencias (requiere `ver`) |
+| `actualizarCostoMp` | Actualiza costo de los seleccionados (requiere `ejecutar`) |
+
+---
+
 ## UX de carga
 
 - Al pulsar **Cuadrar** / **Analizar** / **Revisar**: el botón pasa a spinner y hay overlay a pantalla completa; el modal se abre al terminar.

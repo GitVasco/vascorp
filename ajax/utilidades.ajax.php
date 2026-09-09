@@ -189,4 +189,14 @@ if ($accion === "actualizarVendedorUltimaVenta") {
 	return;
 }
 
+if ($accion === "descuadresCostoMp") {
+	echo json_encode(ControladorUtilidades::ctrDescuadresCostoMp());
+	return;
+}
+
+if ($accion === "actualizarCostoMp") {
+	echo json_encode(ControladorUtilidades::ctrActualizarCostoMp($_POST));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no reconocida"));

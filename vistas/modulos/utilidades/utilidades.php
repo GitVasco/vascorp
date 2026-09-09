@@ -153,6 +153,15 @@ $infoTracking = "Ingresa el código de modelo (ej. 10400) y analiza\n"
     . "• Corregir saldos: solo actualiza columnas de articulojf.\n"
     . "• No toca documentos ni ingresos E20.";
 
+$infoCostoMp = "Compara el costo de la ficha de materia prima\n"
+    . "con el de su última nota de ingreso (compra) no anulada.\n\n"
+    . "• Toma el precio de esa nota (promedio ponderado si hay varias líneas).\n"
+    . "• Precio 0 o vacío no cuenta.\n"
+    . "• Notas de servicio: solo si traen precio válido (hoy no lo guardan).\n"
+    . "• Solo materias primas activas cuyo costo actual es distinto.\n\n"
+    . "Al confirmar, actualiza solo el costo de la ficha.\n"
+    . "Las notas nuevas ya actualizan solas al registrarlas.";
+
 $infoVendedorUltima = "Deja en el maestro el vendedor de la última venta\n"
     . "de los últimos 2 años (facturas/boletas S02, S03, S70; no anuladas).\n\n"
     . "• Si el cliente está en un grupo empresarial, toma la última\n"
@@ -269,6 +278,39 @@ $infoVendedorUltima = "Deja en el maestro el vendedor de la última venta\n"
                         <button type="button" class="btn btn-primary" id="btnUtTrackingModelo">
                             <i class="fa fa-search"></i> Analizar
                         </button>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <div class="ut-block">
+            <h2 class="ut-block__title">Materia prima</h2>
+            <div class="ut-grid">
+                <article class="ut-card">
+                    <div class="ut-card__top">
+                        <h3 class="ut-card__title">Costo de última compra</h3>
+                        <button type="button"
+                            class="ut-info"
+                            tabindex="0"
+                            data-toggle="popover"
+                            data-trigger="hover focus"
+                            data-placement="left"
+                            title="Detalle"
+                            data-content="<?php echo htmlspecialchars($infoCostoMp, ENT_QUOTES, 'UTF-8'); ?>">
+                            <i class="fa fa-info-circle"></i>
+                        </button>
+                    </div>
+                    <p class="ut-card__desc">
+                        Deja en la ficha el costo de la última nota de ingreso. Sirve para emparejar lo histórico; las notas nuevas ya lo actualizan solas.
+                    </p>
+                    <div class="ut-card__actions">
+                        <?php if ($puedeEjecutar) { ?>
+                        <button type="button" class="btn btn-primary" id="btnUtCostoMp">
+                            <i class="fa fa-tags"></i> Revisar
+                        </button>
+                        <?php } else { ?>
+                        <span class="text-muted">Sin permiso</span>
+                        <?php } ?>
                     </div>
                 </article>
             </div>
@@ -1812,6 +1854,59 @@ $infoVendedorUltima = "Deja en el maestro el vendedor de la última venta\n"
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
                 <button type="button" class="btn btn-success" id="btnUtActualizarVendedorUltima" disabled>
+                    <i class="fa fa-check"></i> Actualizar seleccionados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modalUtCostoMp" class="modal fade ut-modal" role="dialog">
+    <div class="modal-dialog modal-lg" style="width:1100px;max-width:98vw;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    Costo de última compra
+                    <small id="utCostoMpMeta" class="text-muted"></small>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div id="utCostoMpLoading" class="ut-empty" style="display:none;">
+                    <i class="fa fa-spinner fa-spin"></i> Consultando…
+                </div>
+                <div id="utCostoMpEmpty" class="ut-empty" style="display:none;">
+                    No hay materias primas para actualizar. El costo de ficha ya coincide con la última nota.
+                </div>
+                <div id="utCostoMpTableWrap" style="display:none;">
+                    <div class="ut-modal-toolbar">
+                        <label class="ut-check-all">
+                            <input type="checkbox" id="utCostoMpCheckAll" checked>
+                            Seleccionar todos
+                        </label>
+                        <span id="utCostoMpCount" class="text-muted"></span>
+                    </div>
+                    <div class="table-responsive ut-table-scroll">
+                        <table class="table table-bordered table-striped table-condensed" id="utCostoMpTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:36px;"></th>
+                                    <th>Código</th>
+                                    <th>Fábrica</th>
+                                    <th>Descripción</th>
+                                    <th>Costo actual</th>
+                                    <th>Costo propuesto</th>
+                                    <th>Última nota</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" id="btnUtActualizarCostoMp" disabled>
                     <i class="fa fa-check"></i> Actualizar seleccionados
                 </button>
             </div>

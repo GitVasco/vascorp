@@ -227,6 +227,8 @@ class ControladorNotasIngresos{
 
 						}
 
+						self::ctrSincronizarCostosMpDesdeLista($listaNotaIngreso, "codpro");
+
 						# Mostramos una alerta suave
 						echo '<script>
 								swal({
@@ -550,6 +552,8 @@ class ControladorNotasIngresos{
 
 					}
 
+						self::ctrAplicarCostoOsSiValido($listaNotaIngreso);
+
 						# Mostramos una alerta suave
 						echo '<script>
 								swal({
@@ -592,6 +596,97 @@ class ControladorNotasIngresos{
 
 		return $respuesta;
 		
-	}		
+	}
+
+	/**
+	 * Recalcula el costo de ficha de las MP con la última nota de ingreso válida.
+	 */
+	static public function ctrSincronizarCostosMp($codpros)
+	{
+		if (!is_array($codpros) || count($codpros) < 1) {
+			return array("ok" => true, "actualizados" => 0);
+		}
+
+		$filas = ModeloNotasIngresos::mdlUltimosCostosNotaIngreso($codpros);
+		if ($filas === false) {
+			return array("ok" => false, "actualizados" => 0);
+		}
+
+		$actualizados = 0;
+		foreach ($filas as $f) {
+			$codpro = isset($f["codpro"]) ? trim((string) $f["codpro"]) : "";
+			$costo = isset($f["costo_propuesto"]) ? (float) $f["costo_propuesto"] : 0;
+			if ($codpro === "" || $costo <= 0) {
+				continue;
+			}
+			$ok = ModeloMateriaPrima::mdlActualizarCostoFicha(
+				$codpro,
+				number_format($costo, 6, ".", "")
+			);
+			if ($ok === "ok") {
+				$actualizados++;
+			}
+		}
+
+		return array("ok" => true, "actualizados" => $actualizados);
+	}
+
+	static private function ctrSincronizarCostosMpDesdeLista($lista, $campoCod)
+	{
+		$codigos = array();
+		if (!is_array($lista)) {
+			return;
+		}
+		foreach ($lista as $value) {
+			if (!is_array($value) || !isset($value[$campoCod])) {
+				continue;
+			}
+			$cod = trim((string) $value[$campoCod]);
+			if ($cod !== "") {
+				$codigos[$cod] = $cod;
+			}
+		}
+		self::ctrSincronizarCostosMp(array_values($codigos));
+	}
+
+	/**
+	 * La nota de servicio no guarda precio. Si la línea trae uno válido, se toma
+	 * como costo de la MP destino (promedio ponderado de esa nota).
+	 */
+	static private function ctrAplicarCostoOsSiValido($lista)
+	{
+		if (!is_array($lista)) {
+			return;
+		}
+
+		$porDestino = array();
+		foreach ($lista as $value) {
+			if (!is_array($value)) {
+				continue;
+			}
+			$dest = isset($value["coddes"]) ? trim((string) $value["coddes"]) : "";
+			$precio = isset($value["precio"]) ? (float) $value["precio"] : 0;
+			$cant = isset($value["cantidadRe"]) ? (float) $value["cantidadRe"] : 0;
+			if ($dest === "" || $precio <= 0 || $cant <= 0) {
+				continue;
+			}
+			if (!isset($porDestino[$dest])) {
+				$porDestino[$dest] = array("cant" => 0.0, "imp" => 0.0);
+			}
+			$porDestino[$dest]["cant"] += $cant;
+			$porDestino[$dest]["imp"] += $cant * $precio;
+		}
+
+		foreach ($porDestino as $codpro => $t) {
+			if ($t["cant"] <= 0) {
+				continue;
+			}
+			$costo = $t["imp"] / $t["cant"];
+			ModeloMateriaPrima::mdlActualizarCostoFicha(
+				$codpro,
+				number_format($costo, 6, ".", "")
+			);
+		}
+	}
 
 }

@@ -1942,4 +1942,141 @@ class ModeloNotasIngresos
 
         $stmt = null;
     }
+
+    /**
+     * Precio unitario válido de una línea de nota de ingreso (compra).
+     */
+    static private function sqlPrecioLineaNi($alias = "d")
+    {
+        return "CASE
+            WHEN IFNULL({$alias}.coscompra, 0) > 0 THEN {$alias}.coscompra
+            WHEN IFNULL({$alias}.p_unitario, 0) > 0 THEN {$alias}.p_unitario
+            WHEN IFNULL({$alias}.presol, 0) > 0 THEN {$alias}.presol
+            ELSE 0
+        END";
+    }
+
+    static private function sqlFiltroNiCostoValida($n = "n", $d = "d")
+    {
+        $precio = self::sqlPrecioLineaNi($d);
+        return "IFNULL({$n}.estreg, '') <> 'A'
+            AND IFNULL({$d}.estreg, '') <> 'A'
+            AND {$d}.cansol > 0
+            AND ({$precio}) > 0";
+    }
+
+    /**
+     * Último costo por MP: promedio ponderado de la última nota de ingreso
+     * no anulada con precio válido (fecha de emisión, luego número).
+     * Las notas de servicio no guardan precio; no entran.
+     *
+     * @param array|null $codpros Si viene, limita a esos códigos.
+     */
+    static public function mdlUltimosCostosNotaIngreso($codpros = null)
+    {
+        $precio = self::sqlPrecioLineaNi("d");
+        $filtro = self::sqlFiltroNiCostoValida("n", "d");
+        $filtro2 = self::sqlFiltroNiCostoValida("n2", "d2");
+
+        $whereIn2 = "";
+        $params = array();
+        if (is_array($codpros)) {
+            $limpios = array();
+            foreach ($codpros as $cod) {
+                $cod = trim((string) $cod);
+                if ($cod !== "") {
+                    $limpios[$cod] = $cod;
+                }
+            }
+            $limpios = array_values($limpios);
+            if (count($limpios) < 1) {
+                return array();
+            }
+            $ph = array();
+            foreach ($limpios as $i => $cod) {
+                $key = ":c" . $i;
+                $ph[] = $key;
+                $params[$key] = $cod;
+            }
+            $whereIn2 = " AND d2.codpro IN (" . implode(",", $ph) . ")";
+        }
+
+        $sql = "SELECT
+                p.codpro,
+                IFNULL(p.despro, '') AS despro,
+                IFNULL(p.codfab, '') AS codfab,
+                IFNULL(p.cospro, 0) AS costo_actual,
+                u.costo_propuesto,
+                u.nnea,
+                u.fecemi,
+                u.cantidad
+            FROM (
+                SELECT
+                    d.codpro,
+                    n.nnea,
+                    DATE(n.fecemi) AS fecemi,
+                    SUM(d.cansol) AS cantidad,
+                    SUM(d.cansol * ({$precio})) / SUM(d.cansol) AS costo_propuesto
+                FROM neadet d
+                INNER JOIN nea n
+                    ON n.tnea = d.tnea
+                    AND n.snea = d.snea
+                    AND n.nnea = d.nnea
+                INNER JOIN (
+                    SELECT
+                        d2.codpro,
+                        MAX(CONCAT(DATE_FORMAT(n2.fecemi, '%Y%m%d'), LPAD(n2.nnea, 6, '0'))) AS k
+                    FROM neadet d2
+                    INNER JOIN nea n2
+                        ON n2.tnea = d2.tnea
+                        AND n2.snea = d2.snea
+                        AND n2.nnea = d2.nnea
+                    WHERE {$filtro2}
+                        {$whereIn2}
+                    GROUP BY d2.codpro
+                ) ult
+                    ON ult.codpro = d.codpro
+                    AND CONCAT(DATE_FORMAT(n.fecemi, '%Y%m%d'), LPAD(n.nnea, 6, '0')) = ult.k
+                WHERE {$filtro}
+                GROUP BY d.codpro, n.nnea, DATE(n.fecemi)
+            ) u
+            INNER JOIN producto p
+                ON p.codpro = u.codpro
+            WHERE IFNULL(p.estpro, '1') = '1'
+            ORDER BY p.codpro";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        foreach ($params as $key => $valor) {
+            $stmt->bindValue($key, $valor, PDO::PARAM_STR);
+        }
+
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * MPs activas cuyo costo de ficha no coincide con el de su última nota.
+     */
+    static public function mdlDescuadresCostoMp()
+    {
+        $filas = self::mdlUltimosCostosNotaIngreso(null);
+        if ($filas === false) {
+            return false;
+        }
+
+        $out = array();
+        foreach ($filas as $f) {
+            $actual = (float) $f["costo_actual"];
+            $propuesto = (float) $f["costo_propuesto"];
+            if (abs($actual - $propuesto) <= 0.00005) {
+                continue;
+            }
+            $out[] = $f;
+        }
+
+        return $out;
+    }
 }

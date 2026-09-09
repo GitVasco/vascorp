@@ -361,6 +361,24 @@ class ModeloMateriaPrima
 		$stmt = null;
 	}
 
+	/**
+	 * Actualiza solo el costo de ficha (CosPro) de una MP activa.
+	 */
+	static public function mdlActualizarCostoFicha($codpro, $cospro)
+	{
+		$stmt = Conexion::conectar()->prepare(
+			"UPDATE producto SET CosPro = :cospro WHERE CodPro = :codpro AND EstPro = '1'"
+		);
+		$stmt->bindValue(":cospro", $cospro, PDO::PARAM_STR);
+		$stmt->bindValue(":codpro", $codpro, PDO::PARAM_STR);
+
+		if ($stmt->execute()) {
+			return "ok";
+		}
+
+		return "error";
+	}
+
 	/* 
 	* MOSTRAR MATERIA PRIMA PARA LA TABLA URGENCIA
 	*/

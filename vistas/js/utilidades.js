@@ -4211,3 +4211,206 @@ $(document).on("click", "#btnUtActualizarVendedorUltima", function () {
         });
     });
 });
+
+var utCostoMpItems = [];
+
+function utFmtCosto(n) {
+    var x = Number(n);
+    if (isNaN(x)) {
+        return "0.0000";
+    }
+    return x.toLocaleString("es-PE", {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 6
+    });
+}
+
+function utActualizarBotonCostoMp() {
+    var n = $("#utCostoMpTable tbody input.ut-costomp-chk:checked").length;
+    $("#utCostoMpCount").text(n ? (n + " seleccionada(s)") : "");
+    $("#btnUtActualizarCostoMp").prop("disabled", n < 1);
+}
+
+function utRenderCostoMp(rows) {
+    utCostoMpItems = rows || [];
+    var $tb = $("#utCostoMpTable tbody");
+    $tb.empty();
+
+    if (!utCostoMpItems.length) {
+        $("#utCostoMpEmpty").show();
+        $("#utCostoMpTableWrap").hide();
+        $("#btnUtActualizarCostoMp").prop("disabled", true);
+        return;
+    }
+
+    $("#utCostoMpEmpty").hide();
+    $("#utCostoMpTableWrap").show();
+
+    var html = "";
+    for (var i = 0; i < utCostoMpItems.length; i++) {
+        var r = utCostoMpItems[i];
+        var nota = (r.nnea || "") + (r.fecemi ? (" · " + r.fecemi) : "");
+        html += "<tr data-idx=\"" + i + "\">";
+        html += "<td><input type=\"checkbox\" class=\"ut-costomp-chk\" checked></td>";
+        html += "<td>" + utEscape(r.codpro || "") + "</td>";
+        html += "<td>" + utEscape(r.codfab || "") + "</td>";
+        html += "<td class=\"ut-nombre\">" + utEscape(r.despro || "") + "</td>";
+        html += "<td class=\"text-right\">" + utEscape(utFmtCosto(r.costo_actual)) + "</td>";
+        html += "<td class=\"text-right\"><strong>" + utEscape(utFmtCosto(r.costo_propuesto)) + "</strong></td>";
+        html += "<td>" + utEscape(nota) + "</td>";
+        html += "</tr>";
+    }
+    $tb.html(html);
+    $("#utCostoMpCheckAll").prop("checked", true);
+    utActualizarBotonCostoMp();
+}
+
+function utCargarCostoMp(opts) {
+    opts = opts || {};
+    var $btn = $("#btnUtCostoMp");
+    var silencioso = !!opts.silencioso;
+
+    if (!silencioso) {
+        utSetBtnLoading($btn, true, '<i class="fa fa-tags"></i> Revisar');
+        utMostrarCarga("Comparando costo de ficha con la última nota de ingreso…");
+    } else {
+        $("#utCostoMpLoading").show();
+        $("#utCostoMpEmpty").hide();
+        $("#utCostoMpTableWrap").hide();
+        $("#btnUtActualizarCostoMp").prop("disabled", true);
+    }
+
+    $("#utCostoMpMeta").text("");
+
+    $.post("ajax/utilidades.ajax.php", { accion: "descuadresCostoMp" }, function (resp) {
+        if (!silencioso) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-tags"></i> Revisar');
+        } else {
+            $("#utCostoMpLoading").hide();
+        }
+
+        if (!resp || !resp.ok) {
+            swal({
+                type: "error",
+                title: "Error",
+                text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo consultar",
+                confirmButtonText: "Cerrar"
+            });
+            return;
+        }
+
+        $("#utCostoMpMeta").text("· " + (resp.total || 0) + " materia(s) prima(s)");
+        utRenderCostoMp(resp.data || []);
+        $("#modalUtCostoMp").modal("show");
+    }, "json").fail(function () {
+        if (!silencioso) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-tags"></i> Revisar');
+        } else {
+            $("#utCostoMpLoading").hide();
+        }
+        swal({
+            type: "error",
+            title: "Error",
+            text: "No se pudo comunicar con el servidor",
+            confirmButtonText: "Cerrar"
+        });
+    });
+}
+
+function utItemsSeleccionadosCostoMp() {
+    var out = [];
+    $("#utCostoMpTable tbody tr").each(function () {
+        var $tr = $(this);
+        if (!$tr.find("input.ut-costomp-chk").is(":checked")) {
+            return;
+        }
+        var idx = parseInt($tr.attr("data-idx"), 10);
+        if (isNaN(idx) || !utCostoMpItems[idx]) {
+            return;
+        }
+        out.push({
+            codpro: utCostoMpItems[idx].codpro
+        });
+    });
+    return out;
+}
+
+$(document).on("click", "#btnUtCostoMp", function () {
+    utCargarCostoMp();
+});
+
+$(document).on("change", "#utCostoMpCheckAll", function () {
+    var on = $(this).is(":checked");
+    $("#utCostoMpTable tbody input.ut-costomp-chk").prop("checked", on);
+    utActualizarBotonCostoMp();
+});
+
+$(document).on("change", "#utCostoMpTable tbody input.ut-costomp-chk", function () {
+    var total = $("#utCostoMpTable tbody input.ut-costomp-chk").length;
+    var checked = $("#utCostoMpTable tbody input.ut-costomp-chk:checked").length;
+    $("#utCostoMpCheckAll").prop("checked", total > 0 && total === checked);
+    utActualizarBotonCostoMp();
+});
+
+$(document).on("click", "#btnUtActualizarCostoMp", function () {
+    var items = utItemsSeleccionadosCostoMp();
+    if (!items.length) {
+        return;
+    }
+
+    var $btn = $("#btnUtActualizarCostoMp");
+    swal({
+        title: "¿Actualizar costo en la ficha?",
+        text: "Se dejará el costo de la última nota de ingreso en " + items.length + " materia(s) prima(s).",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#1e8449",
+        confirmButtonText: "Sí, actualizar",
+        cancelButtonText: "Cancelar"
+    }).then(function (result) {
+        if (!result.value) {
+            return;
+        }
+        utSetBtnLoading($btn, true, '<i class="fa fa-check"></i> Actualizar seleccionados');
+        utMostrarCarga("Actualizando costo de ficha…");
+
+        $.post("ajax/utilidades.ajax.php", {
+            accion: "actualizarCostoMp",
+            items: JSON.stringify(items)
+        }, function (resp) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-check"></i> Actualizar seleccionados');
+            utActualizarBotonCostoMp();
+
+            if (!resp || !resp.ok) {
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo actualizar",
+                    confirmButtonText: "Cerrar"
+                });
+                return;
+            }
+
+            swal({
+                type: "success",
+                title: "Listo",
+                text: resp.mensaje || "Actualizado",
+                confirmButtonText: "Cerrar"
+            });
+            utCargarCostoMp({ silencioso: true });
+        }, "json").fail(function () {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, '<i class="fa fa-check"></i> Actualizar seleccionados');
+            utActualizarBotonCostoMp();
+            swal({
+                type: "error",
+                title: "Error",
+                text: "No se pudo comunicar con el servidor",
+                confirmButtonText: "Cerrar"
+            });
+        });
+    });
+});

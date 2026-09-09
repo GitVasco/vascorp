@@ -1925,4 +1925,125 @@ class ControladorUtilidades
 
 		return $resultado;
 	}
+
+	/**
+	 * MPs cuyo costo de ficha no coincide con el de su última nota de ingreso.
+	 */
+	static public function ctrDescuadresCostoMp()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		if (!class_exists("ModeloNotasIngresos")) {
+			require_once __DIR__ . "/../modelos/notas-ingresos.modelo.php";
+		}
+
+		$filas = ModeloNotasIngresos::mdlDescuadresCostoMp();
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar el último costo", "data" => array());
+		}
+
+		$data = array();
+		foreach ($filas as $f) {
+			$actual = (float) $f["costo_actual"];
+			$propuesto = (float) $f["costo_propuesto"];
+			$data[] = array(
+				"codpro" => (string) $f["codpro"],
+				"despro" => (string) $f["despro"],
+				"codfab" => (string) $f["codfab"],
+				"costo_actual" => $actual,
+				"costo_propuesto" => $propuesto,
+				"diferencia" => $propuesto - $actual,
+				"nnea" => (string) $f["nnea"],
+				"fecemi" => (string) $f["fecemi"],
+				"cantidad" => (float) $f["cantidad"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "El costo de ficha ya coincide con la última nota de ingreso"
+				: ("Se encontraron " . count($data) . " materia(s) prima(s) para actualizar")
+		);
+	}
+
+	/**
+	 * Deja en la ficha el costo de la última nota de ingreso (seleccionados).
+	 */
+	static public function ctrActualizarCostoMp($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para actualizar");
+		}
+
+		$raw = isset($post["items"]) ? $post["items"] : "";
+		if (is_string($raw)) {
+			$items = json_decode($raw, true);
+		} else {
+			$items = $raw;
+		}
+
+		if (!is_array($items) || count($items) < 1) {
+			return array("ok" => false, "mensaje" => "No hay materias primas para actualizar");
+		}
+
+		$codpros = array();
+		foreach ($items as $item) {
+			$cod = "";
+			if (is_array($item) && isset($item["codpro"])) {
+				$cod = trim((string) $item["codpro"]);
+			} elseif (is_string($item) || is_numeric($item)) {
+				$cod = trim((string) $item);
+			}
+			if ($cod !== "") {
+				$codpros[] = $cod;
+			}
+		}
+
+		if (count($codpros) < 1) {
+			return array("ok" => false, "mensaje" => "No hay materias primas válidas");
+		}
+
+		if (!class_exists("ControladorNotasIngresos")) {
+			require_once __DIR__ . "/notas-ingresos.controlador.php";
+		}
+		if (!class_exists("ModeloNotasIngresos")) {
+			require_once __DIR__ . "/../modelos/notas-ingresos.modelo.php";
+		}
+		if (!class_exists("ModeloMateriaPrima")) {
+			require_once __DIR__ . "/../modelos/materiaprima.modelo.php";
+		}
+
+		$resultado = ControladorNotasIngresos::ctrSincronizarCostosMp($codpros);
+		if (empty($resultado["ok"])) {
+			return array("ok" => false, "mensaje" => "No se pudo actualizar el costo");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$fecha = new DateTime();
+		$usuario = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : "Usuario";
+		$actualizados = isset($resultado["actualizados"]) ? (int) $resultado["actualizados"] : 0;
+		$descripcion = "Utilidades: {$usuario} actualizó costo de ficha MP desde última nota de ingreso en {$actualizados} código(s).";
+
+		if (isset($_SESSION["datos"]) && (int) $_SESSION["datos"] === 1) {
+			if (!class_exists("ModeloUsuarios")) {
+				require_once __DIR__ . "/../modelos/usuarios.modelo.php";
+			}
+			ModeloUsuarios::mdlIngresarAuditoria("auditoriajf", array(
+				"usuario" => $usuario,
+				"concepto" => $descripcion,
+				"fecha" => $fecha->format("Y-m-d H:i:s"),
+			));
+		}
+
+		return array(
+			"ok" => true,
+			"actualizados" => $actualizados,
+			"mensaje" => "Se actualizaron {$actualizados} materia(s) prima(s)"
+		);
+	}
 }
