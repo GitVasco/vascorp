@@ -350,6 +350,90 @@ class ModeloHelpdesk
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Eventos (comentarios / cambios) de un usuario en el período.
+     */
+    public static function mdlEventosUsuarioPeriodo($usuarioId, $desde, $hastaExcl)
+    {
+        $sql = "SELECT
+                    c.id,
+                    c.ticket_id,
+                    c.usuario_id,
+                    c.tipo_evento,
+                    c.mensaje,
+                    c.estado_anterior,
+                    c.estado_nuevo,
+                    c.creado_en,
+                    t.titulo,
+                    t.tipo,
+                    t.prioridad,
+                    t.estado,
+                    t.modulo,
+                    t.sistema,
+                    t.area,
+                    t.solicitante_id,
+                    t.asignado_id,
+                    t.creado_por_id,
+                    t.creado_en AS ticket_creado_en,
+                    t.cerrado_en,
+                    t.sla_exento,
+                    t.sla_exento_motivo,
+                    sol.nombre AS solicitante_nombre
+                FROM helpdesk_comentariojf c
+                INNER JOIN helpdesk_ticketjf t ON t.id = c.ticket_id
+                LEFT JOIN usuariosjf sol ON sol.id = t.solicitante_id
+                WHERE c.usuario_id = :uid
+                  AND c.creado_en >= :desde
+                  AND c.creado_en < :hasta
+                ORDER BY c.creado_en ASC, c.id ASC
+                LIMIT 4000";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":uid", (int) $usuarioId, PDO::PARAM_INT);
+        $stmt->bindValue(":desde", $desde);
+        $stmt->bindValue(":hasta", $hastaExcl);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Tickets que el usuario registró en el período (aunque el solicitante sea otro).
+     */
+    public static function mdlTicketsCreadosPorUsuario($usuarioId, $desde, $hastaExcl)
+    {
+        $sql = "SELECT
+                    t.id,
+                    t.titulo,
+                    t.tipo,
+                    t.prioridad,
+                    t.estado,
+                    t.modulo,
+                    t.sistema,
+                    t.area,
+                    t.solicitante_id,
+                    t.asignado_id,
+                    t.creado_por_id,
+                    t.creado_en,
+                    t.cerrado_en,
+                    t.sla_exento,
+                    t.sla_exento_motivo,
+                    sol.nombre AS solicitante_nombre
+                FROM helpdesk_ticketjf t
+                LEFT JOIN usuariosjf sol ON sol.id = t.solicitante_id
+                WHERE t.creado_por_id = :uid
+                  AND t.creado_en >= :desde
+                  AND t.creado_en < :hasta
+                ORDER BY t.creado_en ASC
+                LIMIT 2000";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":uid", (int) $usuarioId, PDO::PARAM_INT);
+        $stmt->bindValue(":desde", $desde);
+        $stmt->bindValue(":hasta", $hastaExcl);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public static function mdlObtener($id)
     {
         $id = (int) $id;

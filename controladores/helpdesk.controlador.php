@@ -2103,6 +2103,683 @@ class ControladorHelpdesk
         return array("ok" => true, "msg" => "Ticket #" . $id . " eliminado.");
     }
 
+    /**
+     * PDF de actividad personal en Helpdesk (filtro por fechas).
+     * Abre en el navegador para guardar o enviar a gerencia.
+     */
+    public static function ctrReportePdf()
+    {
+        if (!self::ctrPuede("ver")) {
+            header("Content-Type: text/plain; charset=utf-8");
+            echo "Sin permiso.";
+            return;
+        }
+
+        $datos = self::ctrDatosReporteActividad();
+        if (empty($datos["ok"])) {
+            header("Content-Type: text/plain; charset=utf-8");
+            echo isset($datos["msg"]) ? $datos["msg"] : "No se pudo armar el reporte.";
+            return;
+        }
+
+        $tcpdf = dirname(__DIR__) . "/extensiones/tcpdf/tcpdf.php";
+        $pdfHelper = __DIR__ . "/helpdesk-actividad-pdf.php";
+        if (!is_readable($tcpdf) || !is_readable($pdfHelper)) {
+            header("Content-Type: text/plain; charset=utf-8");
+            echo "No se encontró el generador de PDF.";
+            return;
+        }
+        require_once $tcpdf;
+        require_once $pdfHelper;
+
+        $html = self::htmlReporteActividad($datos);
+        $nombreArchivo = $datos["archivo"];
+
+        $pdf = new HelpdeskActividadPdf("P", "mm", "A4", true, "UTF-8", false);
+        $pdf->SetCreator("Vascorp");
+        $pdf->SetAuthor("Helpdesk TI");
+        $pdf->SetTitle($datos["titulo"]);
+        $pdf->SetSubject("Actividad de soporte en el período");
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(true);
+        $pdf->SetFooterMargin(12);
+        $pdf->SetMargins(12, 12, 12);
+        $pdf->SetAutoPageBreak(true, 16);
+        $pdf->AddPage();
+        $pdf->SetFont("helvetica", "", 9);
+        $pdf->writeHTML($html, true, false, true, false, "");
+        $pdf->Output($nombreArchivo, "I");
+    }
+
+    /**
+     * Datos del reporte de actividad de un colaborador en el período.
+     */
+    public static function ctrDatosReporteActividad()
+    {
+        if (!self::ctrPuede("ver")) {
+            return array("ok" => false, "msg" => "Sin permiso.");
+        }
+
+        $rango = self::parseRangoFechasReporte();
+        $desde = $rango["desde"];
+        $hasta = $rango["hasta"];
+        $hastaExcl = $rango["hasta_excl"];
+
+        $uidSesion = self::ctrUsuarioSesionId();
+        $uid = $uidSesion;
+        $pedido = 0;
+        if (isset($_GET["usuario_id"])) {
+            $pedido = (int) $_GET["usuario_id"];
+        } elseif (isset($_POST["usuario_id"])) {
+            $pedido = (int) $_POST["usuario_id"];
+        }
+        if ($pedido > 0 && $pedido !== $uidSesion) {
+            if (self::ctrEsControlTotal() && in_array($pedido, self::AGENTES_ASIGNABLES, true)) {
+                $uid = $pedido;
+            }
+        }
+
+        $nombre = isset($_SESSION["nombre"]) ? (string) $_SESSION["nombre"] : ("Usuario #" . $uid);
+        $filasUser = ModeloHelpdesk::mdlUsuariosPorIds(array($uid));
+        if (!empty($filasUser[0]["nombre"])) {
+            $nombre = $filasUser[0]["nombre"];
+        } elseif ($uid !== $uidSesion) {
+            $nombre = "Usuario #" . $uid;
+        }
+
+        $eventos = ModeloHelpdesk::mdlEventosUsuarioPeriodo($uid, $desde, $hastaExcl);
+        $creados = ModeloHelpdesk::mdlTicketsCreadosPorUsuario($uid, $desde, $hastaExcl);
+
+        $labelsTipo = array(
+            "INCIDENCIA" => "Incidencia",
+            "REQUERIMIENTO" => "Requerimiento",
+            "CONSULTA" => "Consulta",
+            "OTRO" => "Otro",
+            "DESARROLLO" => "Desarrollo",
+            "CORRECCION" => "Corrección",
+            "SOPORTE" => "Soporte",
+        );
+        $labelsEstado = array(
+            "ABIERTO" => "Abierto",
+            "EN_PROGRESO" => "En progreso",
+            "ESPERANDO_USUARIO" => "Esperando usuario/área",
+            "CERRADO" => "Cerrado",
+        );
+        $labelsSistema = array(
+            "VASCORP" => "Vascorp",
+            "SISTEMA_VASCO" => "Sistema Vasco",
+            "VASCOPRO" => "VascoPro",
+            "TI_EMPRESA" => "TI / Soporte",
+        );
+        $labelsEvento = array(
+            "COMENTARIO" => "Respuesta",
+            "CAMBIO_ESTADO" => "Cambio de estado",
+            "ASIGNACION" => "Asignación",
+            "ALTA" => "Alta de ticket",
+            "REAPERTURA_USUARIO" => "Reapertura",
+        );
+
+        $tickets = array();
+        $nRespuestas = 0;
+        $nCierres = 0;
+        $nAltasEv = 0;
+        $nAsignaciones = 0;
+        $nCambios = 0;
+        $resueltosIds = array();
+        $porDia = array();
+        $personas = array();
+
+        foreach ($eventos as $ev) {
+            $tid = (int) $ev["ticket_id"];
+            if (!isset($tickets[$tid])) {
+                $tickets[$tid] = self::ticketDesdeEventoReporte($ev);
+            }
+            $dia = substr((string) $ev["creado_en"], 0, 10);
+            if (!isset($porDia[$dia])) {
+                $porDia[$dia] = array(
+                    "dia" => $dia,
+                    "eventos" => 0,
+                    "respuestas" => 0,
+                    "cierres" => 0,
+                    "altas" => 0,
+                );
+            }
+            $porDia[$dia]["eventos"]++;
+
+            $tipoEv = isset($ev["tipo_evento"]) ? (string) $ev["tipo_evento"] : "";
+            if ($tipoEv === "COMENTARIO") {
+                $nRespuestas++;
+                $porDia[$dia]["respuestas"]++;
+            } elseif ($tipoEv === "CAMBIO_ESTADO") {
+                $nCambios++;
+                if (isset($ev["estado_nuevo"]) && $ev["estado_nuevo"] === "CERRADO") {
+                    $nCierres++;
+                    $resueltosIds[$tid] = true;
+                    $porDia[$dia]["cierres"]++;
+                }
+            } elseif ($tipoEv === "ALTA") {
+                $nAltasEv++;
+                $porDia[$dia]["altas"]++;
+            } elseif ($tipoEv === "ASIGNACION") {
+                $nAsignaciones++;
+            }
+
+            $sid = isset($ev["solicitante_id"]) ? (int) $ev["solicitante_id"] : 0;
+            if ($sid > 0 && $sid !== $uid) {
+                $snom = isset($ev["solicitante_nombre"]) && $ev["solicitante_nombre"] !== ""
+                    ? $ev["solicitante_nombre"]
+                    : ("#" . $sid);
+                $personas[$sid] = $snom;
+            }
+        }
+
+        foreach ($creados as $t) {
+            $tid = (int) $t["id"];
+            if (!isset($tickets[$tid])) {
+                $tickets[$tid] = $t;
+            }
+            $dia = substr((string) $t["creado_en"], 0, 10);
+            if (!isset($porDia[$dia])) {
+                $porDia[$dia] = array(
+                    "dia" => $dia,
+                    "eventos" => 0,
+                    "respuestas" => 0,
+                    "cierres" => 0,
+                    "altas" => 0,
+                );
+            }
+            $porDia[$dia]["altas"]++;
+            $sid = isset($t["solicitante_id"]) ? (int) $t["solicitante_id"] : 0;
+            if ($sid > 0 && $sid !== $uid) {
+                $snom = isset($t["solicitante_nombre"]) && $t["solicitante_nombre"] !== ""
+                    ? $t["solicitante_nombre"]
+                    : ("#" . $sid);
+                $personas[$sid] = $snom;
+            }
+        }
+
+        $nRegistrados = count($creados);
+        $nAtendidos = count($tickets);
+
+        $resueltos = array();
+        $enCurso = array();
+        foreach ($tickets as $tid => $t) {
+            if (isset($resueltosIds[$tid]) || (isset($t["estado"]) && $t["estado"] === "CERRADO"
+                && !empty($t["cerrado_en"]) && $t["cerrado_en"] >= $desde && $t["cerrado_en"] < $hastaExcl
+                && (int) $t["asignado_id"] === $uid)
+            ) {
+                $resueltos[] = $t;
+            } elseif (isset($t["estado"]) && $t["estado"] !== "CERRADO") {
+                $enCurso[] = $t;
+            }
+        }
+
+        usort($resueltos, function ($a, $b) {
+            $fa = isset($a["cerrado_en"]) ? (string) $a["cerrado_en"] : "";
+            $fb = isset($b["cerrado_en"]) ? (string) $b["cerrado_en"] : "";
+            return strcmp($fb, $fa);
+        });
+
+        $porTipo = array();
+        $porSistema = array();
+        $porArea = array();
+        $porPrioridad = array();
+        foreach ($tickets as $t) {
+            $tipo = isset($t["tipo"]) ? (string) $t["tipo"] : "OTRO";
+            $sis = isset($t["sistema"]) && $t["sistema"] !== "" ? (string) $t["sistema"] : "VASCORP";
+            $area = isset($t["area"]) && trim((string) $t["area"]) !== "" ? trim((string) $t["area"]) : "Sin área";
+            $pri = isset($t["prioridad"]) ? (string) $t["prioridad"] : "MEDIA";
+            if (!isset($porTipo[$tipo])) {
+                $porTipo[$tipo] = 0;
+            }
+            if (!isset($porSistema[$sis])) {
+                $porSistema[$sis] = 0;
+            }
+            if (!isset($porArea[$area])) {
+                $porArea[$area] = 0;
+            }
+            if (!isset($porPrioridad[$pri])) {
+                $porPrioridad[$pri] = 0;
+            }
+            $porTipo[$tipo]++;
+            $porSistema[$sis]++;
+            $porArea[$area]++;
+            $porPrioridad[$pri]++;
+        }
+        arsort($porTipo);
+        arsort($porSistema);
+        arsort($porArea);
+        arsort($porPrioridad);
+
+        ksort($porDia);
+        $diasActividad = 0;
+        foreach ($porDia as $d) {
+            if (($d["eventos"] + $d["altas"]) > 0) {
+                $diasActividad++;
+            }
+        }
+
+        $slaOk = 0;
+        $slaFuera = 0;
+        foreach ($resueltos as $t) {
+            $sla = self::ctrSlaDeTicket($t);
+            $codigo = isset($sla["codigo"]) ? $sla["codigo"] : "";
+            if ($codigo === "CUMPLIDO") {
+                $slaOk++;
+            } elseif ($codigo === "FUERA" || $codigo === "VENCIDO") {
+                $slaFuera++;
+            }
+        }
+        $slaBase = $slaOk + $slaFuera;
+        $slaPct = $slaBase > 0 ? (int) round(($slaOk / $slaBase) * 100) : null;
+
+        $promedioDia = $diasActividad > 0
+            ? round($nAtendidos / $diasActividad, 1)
+            : 0;
+
+        $eventosPorTicket = array();
+        foreach ($eventos as $ev) {
+            $tidEv = (int) $ev["ticket_id"];
+            if (!isset($eventosPorTicket[$tidEv])) {
+                $eventosPorTicket[$tidEv] = array();
+            }
+            $eventosPorTicket[$tidEv][] = $ev;
+        }
+
+        $detalleTickets = array();
+        foreach ($tickets as $tid => $t) {
+            $evs = isset($eventosPorTicket[$tid]) ? $eventosPorTicket[$tid] : array();
+            $ultima = "";
+            if (!empty($evs)) {
+                $ultima = (string) $evs[count($evs) - 1]["creado_en"];
+            } elseif (!empty($t["creado_en"])) {
+                $ultima = (string) $t["creado_en"];
+            }
+            $detalleTickets[] = array(
+                "ticket" => $t,
+                "eventos" => $evs,
+                "ultima" => $ultima,
+            );
+        }
+        usort($detalleTickets, function ($a, $b) {
+            return strcmp($b["ultima"], $a["ultima"]);
+        });
+
+        $slugFuente = $nombre;
+        if (function_exists("iconv")) {
+            $conv = @iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $nombre);
+            if ($conv !== false && $conv !== "") {
+                $slugFuente = $conv;
+            }
+        }
+        $slug = preg_replace('/[^a-zA-Z0-9_-]+/', "-", $slugFuente);
+        $slug = trim($slug, "-");
+        if ($slug === "") {
+            $slug = "colaborador";
+        }
+        $archivo = "helpdesk-" . $slug . "-" . $desde . "_" . $hasta . ".pdf";
+
+        return array(
+            "ok" => true,
+            "titulo" => "Reporte de actividad — Helpdesk TI",
+            "archivo" => $archivo,
+            "colaborador" => $nombre,
+            "usuario_id" => $uid,
+            "desde" => $desde,
+            "hasta" => $hasta,
+            "emitido" => date("Y-m-d H:i"),
+            "es_agente" => self::ctrPuede("gestionar") || in_array($uid, self::AGENTES_ASIGNABLES, true),
+            "kpis" => array(
+                "atendidos" => $nAtendidos,
+                "resueltos" => count($resueltos),
+                "respuestas" => $nRespuestas,
+                "registrados" => $nRegistrados,
+                "personas" => count($personas),
+                "dias" => $diasActividad,
+                "cambios" => $nCambios,
+                "asignaciones" => $nAsignaciones,
+                "altas_evento" => $nAltasEv,
+                "promedio_dia" => $promedioDia,
+                "sla_ok" => $slaOk,
+                "sla_fuera" => $slaFuera,
+                "sla_pct" => $slaPct,
+            ),
+            "labels" => array(
+                "tipo" => $labelsTipo,
+                "estado" => $labelsEstado,
+                "sistema" => $labelsSistema,
+                "evento" => $labelsEvento,
+            ),
+            "desglose" => array(
+                "tipo" => $porTipo,
+                "sistema" => $porSistema,
+                "area" => $porArea,
+                "prioridad" => $porPrioridad,
+            ),
+            "por_dia" => array_values($porDia),
+            "resueltos" => $resueltos,
+            "en_curso" => $enCurso,
+            "registrados" => $creados,
+            "personas" => array_values($personas),
+            "detalle_tickets" => $detalleTickets,
+        );
+    }
+
+    private static function ticketDesdeEventoReporte($ev)
+    {
+        return array(
+            "id" => isset($ev["ticket_id"]) ? (int) $ev["ticket_id"] : 0,
+            "titulo" => isset($ev["titulo"]) ? $ev["titulo"] : "",
+            "tipo" => isset($ev["tipo"]) ? $ev["tipo"] : "",
+            "prioridad" => isset($ev["prioridad"]) ? $ev["prioridad"] : "",
+            "estado" => isset($ev["estado"]) ? $ev["estado"] : "",
+            "modulo" => isset($ev["modulo"]) ? $ev["modulo"] : "",
+            "sistema" => isset($ev["sistema"]) ? $ev["sistema"] : "",
+            "area" => isset($ev["area"]) ? $ev["area"] : "",
+            "solicitante_id" => isset($ev["solicitante_id"]) ? $ev["solicitante_id"] : null,
+            "asignado_id" => isset($ev["asignado_id"]) ? $ev["asignado_id"] : null,
+            "creado_por_id" => isset($ev["creado_por_id"]) ? $ev["creado_por_id"] : null,
+            "creado_en" => isset($ev["ticket_creado_en"]) ? $ev["ticket_creado_en"] : "",
+            "cerrado_en" => isset($ev["cerrado_en"]) ? $ev["cerrado_en"] : null,
+            "sla_exento" => isset($ev["sla_exento"]) ? $ev["sla_exento"] : 0,
+            "sla_exento_motivo" => isset($ev["sla_exento_motivo"]) ? $ev["sla_exento_motivo"] : null,
+            "solicitante_nombre" => isset($ev["solicitante_nombre"]) ? $ev["solicitante_nombre"] : "",
+        );
+    }
+
+    private static function parseRangoFechasReporte()
+    {
+        $hoy = date("Y-m-d");
+        $desde = isset($_GET["desde"]) ? trim((string) $_GET["desde"]) : "";
+        if ($desde === "" && isset($_POST["desde"])) {
+            $desde = trim((string) $_POST["desde"]);
+        }
+        $hasta = isset($_GET["hasta"]) ? trim((string) $_GET["hasta"]) : "";
+        if ($hasta === "" && isset($_POST["hasta"])) {
+            $hasta = trim((string) $_POST["hasta"]);
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) {
+            $desde = date("Y-m-01");
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) {
+            $hasta = $hoy;
+        }
+        if ($desde > $hasta) {
+            $tmp = $desde;
+            $desde = $hasta;
+            $hasta = $tmp;
+        }
+        return array(
+            "desde" => $desde,
+            "hasta" => $hasta,
+            "hasta_excl" => date("Y-m-d", strtotime($hasta . " +1 day")),
+        );
+    }
+
+    private static function pdfEsc($s)
+    {
+        return htmlspecialchars((string) $s, ENT_QUOTES, "UTF-8");
+    }
+
+    private static function pdfFechaCorta($iso)
+    {
+        $iso = (string) $iso;
+        if ($iso === "") {
+            return "—";
+        }
+        $ts = strtotime($iso);
+        if ($ts === false) {
+            return self::pdfEsc($iso);
+        }
+        if (strlen($iso) > 10) {
+            return date("d/m/Y H:i", $ts);
+        }
+        return date("d/m/Y", $ts);
+    }
+
+    private static function htmlReporteActividad($d)
+    {
+        $e = function ($s) {
+            return self::pdfEsc($s);
+        };
+        $k = $d["kpis"];
+        $lb = $d["labels"];
+        $periodo = self::pdfFechaCorta($d["desde"]) . "  –  " . self::pdfFechaCorta($d["hasta"]);
+        $slaTxt = $k["sla_pct"] === null ? "—" : ($k["sla_pct"] . "%");
+
+        $html = '<style>
+            h1 { font-size: 16pt; color: #1f4e79; margin: 0 0 2px 0; }
+            h2 { font-size: 11pt; color: #1f4e79; border-bottom: 1px solid #9eb8d4; padding-bottom: 3px; margin: 12px 0 6px 0; }
+            .sub { font-size: 9pt; color: #5b6b7f; }
+            .meta { font-size: 8.5pt; color: #334; }
+            .kpi-n { font-size: 16pt; font-weight: bold; color: #1f4e79; }
+            .kpi-l { font-size: 7.5pt; color: #5b6b7f; }
+            .nota { font-size: 8pt; color: #5b6b7f; }
+            .th { background-color: #1f4e79; color: #ffffff; font-size: 8pt; font-weight: bold; }
+            .td { font-size: 8pt; }
+            .odd { background-color: #f4f8fb; }
+        </style>';
+
+        $html .= '<table cellpadding="6" cellspacing="0" border="0" width="100%" style="background-color:#1f4e79;">
+            <tr>
+                <td width="62%">
+                    <span style="color:#ffffff;font-size:11pt;"><b>CORPORACIÓN VASCO S.A.C.</b></span><br>
+                    <span style="color:#d6e6f5;font-size:8pt;">Portal de Soporte · Helpdesk TI</span>
+                </td>
+                <td width="38%" align="right">
+                    <span style="color:#ffffff;font-size:9pt;"><b>REPORTE DE ACTIVIDAD</b></span><br>
+                    <span style="color:#d6e6f5;font-size:8pt;">Para gerencia · período cerrado</span>
+                </td>
+            </tr>
+        </table>';
+
+        $html .= '<table cellpadding="4" cellspacing="0" border="0" width="100%" style="margin-top:6px;">
+            <tr>
+                <td width="50%" class="meta"><b>Colaborador:</b> ' . $e($d["colaborador"]) . '</td>
+                <td width="50%" class="meta" align="right"><b>Período:</b> ' . $e($periodo) . '</td>
+            </tr>
+            <tr>
+                <td class="meta"><b>Emitido:</b> ' . $e(self::pdfFechaCorta($d["emitido"])) . '</td>
+                <td class="meta" align="right">Actividad registrada en el sistema</td>
+            </tr>
+        </table>';
+
+        $html .= '<table cellpadding="6" cellspacing="2" border="0" width="100%">
+            <tr>
+                <td width="16.6%" bgcolor="#e8f1f8" align="center"><div class="kpi-n">' . (int) $k["atendidos"] . '</div><div class="kpi-l">Atendidos</div></td>
+                <td width="16.6%" bgcolor="#e6f4ea" align="center"><div class="kpi-n">' . (int) $k["resueltos"] . '</div><div class="kpi-l">Resueltos</div></td>
+                <td width="16.6%" bgcolor="#eef5fb" align="center"><div class="kpi-n">' . (int) $k["respuestas"] . '</div><div class="kpi-l">Respuestas</div></td>
+                <td width="16.6%" bgcolor="#f3eef8" align="center"><div class="kpi-n">' . (int) $k["registrados"] . '</div><div class="kpi-l">Registrados</div></td>
+                <td width="16.6%" bgcolor="#fff4e5" align="center"><div class="kpi-n">' . (int) $k["personas"] . '</div><div class="kpi-l">Personas</div></td>
+                <td width="16.6%" bgcolor="#e8f1f8" align="center"><div class="kpi-n">' . $e($slaTxt) . '</div><div class="kpi-l">SLA</div></td>
+            </tr>
+        </table>';
+
+        $html .= '<p class="nota">'
+            . (int) $k["dias"] . ' día(s) con actividad'
+            . ($k["promedio_dia"] > 0 ? ' · ' . $e($k["promedio_dia"]) . ' tickets/día' : '')
+            . ' · ' . (int) $k["cambios"] . ' cambios de estado'
+            . ((int) $k["asignaciones"] > 0 ? ' · ' . (int) $k["asignaciones"] . ' asignaciones' : '')
+            . '</p>';
+
+        $html .= '<h2>Cómo se reparte el trabajo</h2>';
+        $html .= '<table cellpadding="0" cellspacing="4" border="0" width="100%"><tr>';
+        $html .= '<td width="25%" valign="top">' . self::htmlTablaDesglose("Por tipo", $d["desglose"]["tipo"], $lb["tipo"]) . '</td>';
+        $html .= '<td width="25%" valign="top">' . self::htmlTablaDesglose("Por sistema", $d["desglose"]["sistema"], $lb["sistema"]) . '</td>';
+        $html .= '<td width="25%" valign="top">' . self::htmlTablaDesglose("Por prioridad", $d["desglose"]["prioridad"], array(
+            "ALTA" => "Alta", "MEDIA" => "Media", "BAJA" => "Baja",
+        )) . '</td>';
+        $html .= '<td width="25%" valign="top">' . self::htmlTablaDesglose("Por área", $d["desglose"]["area"], array()) . '</td>';
+        $html .= '</tr></table>';
+
+        $html .= '<h2>Actividad por día</h2>';
+        if (empty($d["por_dia"])) {
+            $html .= '<p class="nota">Sin movimientos en el período elegido.</p>';
+        } else {
+            $html .= '<table cellpadding="3" cellspacing="0" border="0.4" width="100%">
+                <tr class="th">
+                    <th width="22%" align="left"> Día</th>
+                    <th width="19%" align="center">Atenciones</th>
+                    <th width="20%" align="center">Respuestas</th>
+                    <th width="19%" align="center">Cierres</th>
+                    <th width="20%" align="center">Altas</th>
+                </tr>';
+            $i = 0;
+            foreach ($d["por_dia"] as $fila) {
+                $bg = ($i % 2 === 1) ? ' bgcolor="#f4f8fb"' : '';
+                $html .= '<tr' . $bg . '>
+                    <td class="td"> ' . $e(self::pdfFechaCorta($fila["dia"])) . '</td>
+                    <td class="td" align="center">' . (int) $fila["eventos"] . '</td>
+                    <td class="td" align="center">' . (int) $fila["respuestas"] . '</td>
+                    <td class="td" align="center">' . (int) $fila["cierres"] . '</td>
+                    <td class="td" align="center">' . (int) $fila["altas"] . '</td>
+                </tr>';
+                $i++;
+            }
+            $html .= '</table>';
+        }
+
+        if (!empty($d["personas"])) {
+            $html .= '<p class="nota" style="margin-top:8px;"><b>Personas:</b> ' . $e(implode(" · ", $d["personas"])) . '</p>';
+        }
+
+        $html .= self::htmlTicketsCompacto(
+            isset($d["detalle_tickets"]) ? $d["detalle_tickets"] : array(),
+            $lb
+        );
+
+        $html .= '<p class="nota" style="margin-top:10px;">Vascorp · Helpdesk TI · Solo la actividad de '
+            . $e($d["colaborador"]) . ' en las fechas indicadas.</p>';
+
+        return $html;
+    }
+
+    private static function htmlTablaDesglose($titulo, $mapa, $labels)
+    {
+        $e = function ($s) {
+            return self::pdfEsc($s);
+        };
+        $html = '<table cellpadding="3" cellspacing="0" border="0.4" width="100%">
+            <tr class="th"><th colspan="2" align="left"> ' . $e($titulo) . '</th></tr>';
+        if (empty($mapa)) {
+            $html .= '<tr><td class="td" colspan="2"> Sin datos</td></tr>';
+        } else {
+            $i = 0;
+            foreach ($mapa as $key => $n) {
+                $nom = isset($labels[$key]) ? $labels[$key] : $key;
+                $bg = ($i % 2 === 1) ? ' bgcolor="#f4f8fb"' : '';
+                $html .= '<tr' . $bg . '><td class="td" width="70%"> ' . $e($nom) . '</td>'
+                    . '<td class="td" width="30%" align="right"><b>' . (int) $n . '</b> </td></tr>';
+                $i++;
+                if ($i >= 8) {
+                    break;
+                }
+            }
+        }
+        $html .= '</table>';
+        return $html;
+    }
+
+    private static function resumenQueHiceTicket($eventos)
+    {
+        $nResp = 0;
+        $nCambio = 0;
+        $cerro = false;
+        $alta = false;
+        $asigno = false;
+        foreach ($eventos as $ev) {
+            $tipoEv = isset($ev["tipo_evento"]) ? (string) $ev["tipo_evento"] : "";
+            if ($tipoEv === "COMENTARIO") {
+                $nResp++;
+            } elseif ($tipoEv === "CAMBIO_ESTADO") {
+                $nCambio++;
+                if (isset($ev["estado_nuevo"]) && $ev["estado_nuevo"] === "CERRADO") {
+                    $cerro = true;
+                }
+            } elseif ($tipoEv === "ALTA") {
+                $alta = true;
+            } elseif ($tipoEv === "ASIGNACION") {
+                $asigno = true;
+            }
+        }
+        $partes = array();
+        if ($alta) {
+            $partes[] = "Registró";
+        }
+        if ($nResp > 0) {
+            $partes[] = $nResp === 1 ? "1 respuesta" : ($nResp . " respuestas");
+        }
+        if ($cerro) {
+            $partes[] = "Resolvió";
+        } elseif ($nCambio > 0) {
+            $partes[] = $nCambio === 1 ? "1 cambio de estado" : ($nCambio . " cambios");
+        }
+        if ($asigno) {
+            $partes[] = "Asignó";
+        }
+        if (empty($partes)) {
+            return "Registró";
+        }
+        return implode(" · ", $partes);
+    }
+
+    private static function htmlTicketsCompacto($items, $lb)
+    {
+        $e = function ($s) {
+            return self::pdfEsc($s);
+        };
+        $n = is_array($items) ? count($items) : 0;
+        $html = '<h2>Tickets <span class="sub">(' . $n . ')</span></h2>';
+        if (empty($items)) {
+            $html .= '<p class="nota">No hay tickets con actividad en este rango.</p>';
+            return $html;
+        }
+
+        $html .= '<table cellpadding="3" cellspacing="0" border="0.4" width="100%">
+            <tr class="th">
+                <th width="8%" align="left"> #</th>
+                <th width="34%" align="left"> Asunto</th>
+                <th width="16%" align="left"> Quién pidió</th>
+                <th width="26%" align="left"> Qué hice</th>
+                <th width="16%" align="left"> Estado</th>
+            </tr>';
+
+        $max = 200;
+        $i = 0;
+        foreach ($items as $bloque) {
+            if ($i >= $max) {
+                break;
+            }
+            $t = isset($bloque["ticket"]) ? $bloque["ticket"] : array();
+            $evs = isset($bloque["eventos"]) && is_array($bloque["eventos"]) ? $bloque["eventos"] : array();
+            $tid = isset($t["id"]) ? (int) $t["id"] : 0;
+            $asunto = isset($t["titulo"]) ? (string) $t["titulo"] : "";
+            if (function_exists("mb_substr") && mb_strlen($asunto, "UTF-8") > 52) {
+                $asunto = mb_substr($asunto, 0, 49, "UTF-8") . "…";
+            } elseif (strlen($asunto) > 52) {
+                $asunto = substr($asunto, 0, 49) . "...";
+            }
+            $sol = isset($t["solicitante_nombre"]) ? (string) $t["solicitante_nombre"] : "";
+            $est = isset($t["estado"]) ? (string) $t["estado"] : "";
+            $estTxt = isset($lb["estado"][$est]) ? $lb["estado"][$est] : $est;
+            $hice = self::resumenQueHiceTicket($evs);
+            $bg = ($i % 2 === 1) ? ' bgcolor="#f4f8fb"' : '';
+            $html .= '<tr' . $bg . '>
+                <td class="td">#' . $tid . '</td>
+                <td class="td">' . $e($asunto) . '</td>
+                <td class="td">' . $e($sol) . '</td>
+                <td class="td">' . $e($hice) . '</td>
+                <td class="td">' . $e($estTxt) . '</td>
+            </tr>';
+            $i++;
+        }
+        $html .= '</table>';
+        if ($n > $max) {
+            $html .= '<p class="nota">Se listan ' . $max . ' de ' . $n . ' tickets.</p>';
+        }
+        return $html;
+    }
+
     public static function ctrAgentes()
     {
         if (!self::ctrPuede("gestionar") && !self::ctrPuede("registrar") && !self::ctrPuede("ver")) {

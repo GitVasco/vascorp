@@ -1321,6 +1321,19 @@
     display: inline-block;
 }
 
+#hdModalReporte .help-block {
+    font-size: 13px;
+}
+
+#panelHelpdesk #hdVistaLista .box-header .box-title {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+#panelHelpdesk .hd-btn-reporte-pdf {
+    vertical-align: middle;
+}
+
 @media (max-width: 991px) {
     #panelHelpdesk .hd-tipo-grid.hd-tipo-fila {
         flex-wrap: wrap;

@@ -116,6 +116,10 @@ switch ($accion) {
         hdJson(ControladorHelpdesk::ctrEliminar());
         break;
 
+    case "reporte_pdf":
+        ControladorHelpdesk::ctrReportePdf();
+        exit;
+
     case "adjunto":
         $res = ControladorHelpdesk::ctrDescargarAdjunto();
         if (empty($res["ok"])) {

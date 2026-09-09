@@ -353,6 +353,10 @@
                 <div class="box box-primary">
                     <div class="box-header with-border">
                         <h3 class="box-title"><i class="fa fa-list"></i> <span id="hdListaTitulo">Mis tickets</span></h3>
+                        <button type="button" class="btn btn-danger btn-xs hd-btn-reporte-pdf" id="hdBtnReporteLista"
+                                title="PDF de lo que hice en un rango de fechas" style="margin-left:10px;">
+                            <i class="fa fa-file-pdf-o"></i> Mi reporte PDF
+                        </button>
                         <div class="box-tools pull-right hd-filtros">
                             <input type="text" class="form-control input-sm" id="hdFiltroQ"
                                    placeholder="Buscar…" style="width:140px;display:inline-block;">
@@ -435,6 +439,10 @@
                             <button type="button" class="btn btn-default btn-sm" id="hdIndMes">Mes</button>
                             <button type="button" class="btn btn-default btn-sm" id="hdInd30">30 días</button>
                             <button type="button" class="btn btn-default btn-sm" id="hdInd7">7 días</button>
+                            <button type="button" class="btn btn-danger btn-sm hd-btn-reporte-pdf" id="hdBtnReporteInd"
+                                    title="PDF de tu trabajo en el período elegido">
+                                <i class="fa fa-file-pdf-o"></i> PDF de mi trabajo
+                            </button>
                             <small class="text-muted" id="hdIndSlaHint"></small>
                         </div>
                     </div>
@@ -688,4 +696,52 @@
 
         </div>
     </section>
+</div>
+
+<div class="modal fade" id="hdModalReporte" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span>&times;</span></button>
+                <h4 class="modal-title"><i class="fa fa-file-pdf-o text-red"></i> Reporte de mi trabajo</h4>
+            </div>
+            <div class="modal-body">
+                <p class="help-block" style="margin-top:0;">
+                    Elige el rango de fechas. El PDF lista tickets atendidos, respuestas, cierres y altas
+                    para que gerencia vea el volumen de soporte.
+                </p>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label for="hdRepDesde">Desde</label>
+                            <input type="date" class="form-control" id="hdRepDesde">
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label for="hdRepHasta">Hasta</label>
+                            <input type="date" class="form-control" id="hdRepHasta">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" id="hdRepUsuarioWrap" style="display:none;">
+                    <label for="hdRepUsuario">Colaborador</label>
+                    <select class="form-control" id="hdRepUsuario">
+                        <option value="">Yo (sesión actual)</option>
+                    </select>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-default" id="hdRepMes">Este mes</button>
+                    <button type="button" class="btn btn-default" id="hdRep30">30 días</button>
+                    <button type="button" class="btn btn-default" id="hdRep7">7 días</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="hdRepGenerar">
+                    <i class="fa fa-file-pdf-o"></i> Generar PDF
+                </button>
+            </div>
+        </div>
+    </div>
 </div>

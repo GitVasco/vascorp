@@ -703,6 +703,7 @@ $(function () {
                 return (u.nombre || "") + (u.usuario ? " (" + u.usuario + ")" : "");
             });
             fillFiltrosPersonas();
+            fillReporteUsuarios();
             var guardado = leerFiltroEstadoGuardado();
             if (guardado !== null) {
                 $("#hdFiltroEstado").val(guardado);
@@ -1722,6 +1723,110 @@ $(function () {
 
     $("#hdBtnRefrescar").on("click", function () {
         cargarLista();
+    });
+
+    function fmtFechaInputHd(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1);
+        var day = String(d.getDate());
+        if (m.length < 2) {
+            m = "0" + m;
+        }
+        if (day.length < 2) {
+            day = "0" + day;
+        }
+        return y + "-" + m + "-" + day;
+    }
+
+    function setRangoReporteMes() {
+        var now = new Date();
+        var desde = new Date(now.getFullYear(), now.getMonth(), 1);
+        $("#hdRepDesde").val(fmtFechaInputHd(desde));
+        $("#hdRepHasta").val(fmtFechaInputHd(now));
+    }
+
+    function setRangoReporteDias(n) {
+        var hasta = new Date();
+        var desde = new Date();
+        desde.setDate(hasta.getDate() - (n - 1));
+        $("#hdRepDesde").val(fmtFechaInputHd(desde));
+        $("#hdRepHasta").val(fmtFechaInputHd(hasta));
+    }
+
+    function fillReporteUsuarios() {
+        var $sel = $("#hdRepUsuario");
+        if (!$sel.length) {
+            return;
+        }
+        $sel.find("option:not(:first)").remove();
+        (agentes || []).forEach(function (u) {
+            $sel.append(
+                $("<option>").val(u.id).text(u.nombre || ("#" + u.id))
+            );
+        });
+        if (permisos.control_total && agentes && agentes.length) {
+            $("#hdRepUsuarioWrap").show();
+        } else {
+            $("#hdRepUsuarioWrap").hide();
+        }
+    }
+
+    function abrirModalReporte() {
+        var desde = $("#hdIndDesde").val();
+        var hasta = $("#hdIndHasta").val();
+        if (desde && hasta) {
+            $("#hdRepDesde").val(desde);
+            $("#hdRepHasta").val(hasta);
+        } else if (!$("#hdRepDesde").val() || !$("#hdRepHasta").val()) {
+            setRangoReporteMes();
+        }
+        fillReporteUsuarios();
+        $("#hdModalReporte").modal("show");
+    }
+
+    function generarPdfReporte() {
+        var desde = $("#hdRepDesde").val();
+        var hasta = $("#hdRepHasta").val();
+        if (!desde || !hasta) {
+            if (window.toastr) {
+                toastr.warning("Elige fecha desde y hasta.");
+            } else {
+                alert("Elige fecha desde y hasta.");
+            }
+            return;
+        }
+        if (desde > hasta) {
+            var tmp = desde;
+            desde = hasta;
+            hasta = tmp;
+            $("#hdRepDesde").val(desde);
+            $("#hdRepHasta").val(hasta);
+        }
+        var url = API + "?accion=reporte_pdf&desde=" + encodeURIComponent(desde)
+            + "&hasta=" + encodeURIComponent(hasta);
+        if (permisos.control_total) {
+            var uid = $("#hdRepUsuario").val();
+            if (uid) {
+                url += "&usuario_id=" + encodeURIComponent(uid);
+            }
+        }
+        window.open(url, "_blank");
+    }
+
+    $(document).on("click", "#hdBtnReporteLista, #hdBtnReporteInd", function () {
+        abrirModalReporte();
+    });
+    $("#hdRepMes").on("click", function () {
+        setRangoReporteMes();
+    });
+    $("#hdRep30").on("click", function () {
+        setRangoReporteDias(30);
+    });
+    $("#hdRep7").on("click", function () {
+        setRangoReporteDias(7);
+    });
+    $("#hdRepGenerar").on("click", function () {
+        generarPdfReporte();
     });
 
     $("#hdFiltroTipo, #hdFiltroSolicitante, #hdFiltroAsignado").on("change", function () {
