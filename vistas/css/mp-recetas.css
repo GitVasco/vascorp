@@ -1,0 +1,139 @@
+.mpr-rec-page .box {
+    border-top: 3px solid #f39c12;
+}
+
+.mpr-rec-page .box-header {
+    padding: 10px 12px;
+}
+
+.mpr-rec-toolbar {
+    display: block;
+}
+
+.mpr-rec-filtros {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
+}
+
+.mpr-rec-filtro {
+    flex: 0 0 180px;
+    min-width: 160px;
+}
+
+.mpr-rec-filtro-sub {
+    flex: 0 0 240px;
+}
+
+.mpr-rec-filtro-mp {
+    flex: 1 1 280px;
+    min-width: 220px;
+}
+
+.mpr-rec-filtro-costo {
+    flex: 0 0 140px;
+    min-width: 130px;
+}
+
+.mpr-rec-acciones {
+    flex: 0 0 auto;
+    min-width: 210px;
+}
+
+.mpr-rec-acciones .btn-group {
+    display: flex;
+}
+
+.mpr-rec-filtro label {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+
+.mpr-rec-filtro .bootstrap-select {
+    width: 100% !important;
+}
+
+.mpr-rec-filtro .bootstrap-select > .dropdown-toggle {
+    padding-right: 24px;
+}
+
+.mpr-rec-tabla-wrap {
+    overflow-x: auto;
+}
+
+#tablaMpRecetas {
+    table-layout: auto;
+    white-space: nowrap;
+}
+
+#tablaMpRecetas th,
+#tablaMpRecetas td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+#tablaMpRecetas th:nth-child(1),
+#tablaMpRecetas td:nth-child(1) {
+    width: 70px;
+}
+
+#tablaMpRecetas th:nth-child(2),
+#tablaMpRecetas td:nth-child(2) {
+    width: 120px;
+}
+
+#tablaMpRecetas th:nth-child(3),
+#tablaMpRecetas td:nth-child(3) {
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#tablaMpRecetas th:nth-child(4),
+#tablaMpRecetas td:nth-child(4) {
+    width: 110px;
+}
+
+#tablaMpRecetas th:nth-child(5),
+#tablaMpRecetas td:nth-child(5) {
+    width: 70px;
+}
+
+#tablaMpRecetas th:nth-child(6),
+#tablaMpRecetas td:nth-child(6),
+#tablaMpRecetas th:nth-child(7),
+#tablaMpRecetas td:nth-child(7) {
+    width: 90px;
+}
+
+#tablaMpRecetas th:nth-child(8),
+#tablaMpRecetas td:nth-child(8) {
+    width: 80px;
+    text-align: center;
+}
+
+#tablaMpRecetas .mpr-rec-acc {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+#tablaMpRecetas .mpr-rec-acc .btn {
+    float: none !important;
+    margin: 0 !important;
+    display: inline-block;
+}
+
+@media (max-width: 1100px) {
+    .mpr-rec-filtros {
+        flex-wrap: wrap;
+    }
+}

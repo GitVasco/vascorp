@@ -97,6 +97,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Reprocesos MP | Vasco System";
         } elseif ($_GET["ruta"] === "sublineas-mp") {
             $__tituloVentana = "Sublíneas MP | Vasco System";
+        } elseif ($_GET["ruta"] === "mp-recetas") {
+            $__tituloVentana = "MP en recetas | Vasco System";
         } elseif ($_GET["ruta"] === "seguimiento-recetas") {
             $__tituloVentana = "Seguimiento recetas | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
@@ -246,6 +248,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") : ?>
     <link rel="stylesheet" href="vistas/css/sublineas-mp.css?v=9">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mp-recetas") : ?>
+    <link rel="stylesheet" href="vistas/css/mp-recetas.css?v=8">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "ver-cuentas") : ?>
     <link rel="stylesheet" href="vistas/css/ver-cuentas.css?v=4">
@@ -667,7 +672,8 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "crear-copas-prod" ||
                 $_GET["ruta"] == "tabla-produccion" ||
                 $_GET["ruta"] == "mp-reprocesos" ||
-                $_GET["ruta"] == "sublineas-mp"
+                $_GET["ruta"] == "sublineas-mp" ||
+                $_GET["ruta"] == "mp-recetas"
             ) {
                 // Manejar rutas según la configuración
                 $tipoPaginacionMP = (defined('TIPO_PAGINACION_MATERIAPRIMA')) ? TIPO_PAGINACION_MATERIAPRIMA : "cliente";
@@ -1231,6 +1237,9 @@ CUERPO DOCUMENTO
     <script src="vistas/js/mp-reprocesos.js?v=6"></script>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "sublineas-mp") { ?>
     <script src="vistas/js/sublineas-mp.js?v=11"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "mp-recetas") { ?>
+    <script src="vistas/js/mp-recetas.js?v=11"></script>
     <?php } ?>
     <script src="vistas/js/kardex.js"></script>
     <script src="vistas/js/produccion-mp.js"></script>

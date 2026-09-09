@@ -1288,7 +1288,8 @@
                                         $_GET["ruta"] == "almacen-01" ||
                                         $_GET["ruta"] == "crear-cuadros-prod" ||
                                         $_GET["ruta"] == "mp-reprocesos" ||
-                                        $_GET["ruta"] == "sublineas-mp"
+                                        $_GET["ruta"] == "sublineas-mp" ||
+                                        $_GET["ruta"] == "mp-recetas"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1319,6 +1320,17 @@
 
                                 <i class="fa fa-sitemap text-blue"></i>
                                 <span> Sublíneas MP</span>
+
+                            </a>
+
+                        </li>
+
+                        <li class="<?php if ($_GET["ruta"] == "mp-recetas") echo 'active'; ?>">
+
+                            <a href="mp-recetas">
+
+                                <i class="fa fa-book text-orange"></i>
+                                <span> MP en recetas</span>
 
                             </a>
 

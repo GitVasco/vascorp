@@ -1275,4 +1275,72 @@ class ModeloRecetasModelo
 			return array("ok" => false, "mensaje" => $e->getMessage());
 		}
 	}
+
+	/**
+	 * MP distintas usadas en recetas BORRADOR/PUBLICADA (o solo PUBLICADA).
+	 */
+	static public function mdlMpUsadasEnRecetas($soloPublicadas = false)
+	{
+		$filtroEstado = $soloPublicadas
+			? "r.estado = 'PUBLICADA'"
+			: "r.estado IN ('BORRADOR', 'PUBLICADA')";
+
+		$sql = "SELECT
+				p.codpro,
+				IFNULL(p.codfab, '') AS codfab,
+				IFNULL(p.despro, '') AS despro,
+				IFNULL(NULLIF(TRIM(p.fampro), ''), LEFT(TRIM(p.codfab), 6)) AS codigo_sublinea,
+				IFNULL(p.fampro, '') AS fampro,
+				IFNULL(tbcol.des_larga, '') AS color,
+				IFNULL(tbund.des_corta, '') AS unidad,
+				IFNULL(p.codalm01, 0) AS stock,
+				IFNULL(p.cospro, 0) AS costo,
+				IFNULL(p.estpro, '0') AS estpro,
+				u.modelos,
+				u.recetas_publicadas,
+				u.recetas_borrador,
+				u.modelos_lista
+			FROM (
+				SELECT
+					x.mp,
+					COUNT(DISTINCT r.modelo) AS modelos,
+					COUNT(DISTINCT CASE WHEN r.estado = 'PUBLICADA' THEN r.id END) AS recetas_publicadas,
+					COUNT(DISTINCT CASE WHEN r.estado = 'BORRADOR' THEN r.id END) AS recetas_borrador,
+					GROUP_CONCAT(DISTINCT r.modelo ORDER BY r.modelo SEPARATOR ', ') AS modelos_lista
+				FROM (
+					SELECT d.id_receta_modelo, TRIM(d.mp_base_codigo) AS mp
+					FROM recetas_modelo_detalles d
+					WHERE d.activo = 1
+					  AND TRIM(IFNULL(d.mp_base_codigo, '')) <> ''
+					UNION
+					SELECT d.id_receta_modelo, TRIM(v.mp_codigo) AS mp
+					FROM recetas_modelo_variantes v
+					INNER JOIN recetas_modelo_detalles d
+						ON d.id = v.id_receta_modelo_detalle
+						AND d.activo = 1
+					WHERE TRIM(IFNULL(v.mp_codigo, '')) <> ''
+				) x
+				INNER JOIN recetas_modelo r
+					ON r.id = x.id_receta_modelo
+					AND {$filtroEstado}
+				GROUP BY x.mp
+			) u
+			INNER JOIN producto p
+				ON p.codpro = u.mp
+			LEFT JOIN tabla_m_detalle tbund
+				ON p.undpro = tbund.cod_argumento
+				AND tbund.cod_tabla = 'TUND'
+			LEFT JOIN tabla_m_detalle tbcol
+				ON p.colpro = tbcol.cod_argumento
+				AND tbcol.cod_tabla = 'TCOL'
+			ORDER BY p.codpro";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		if (!$stmt->execute()) {
+			return false;
+		}
+
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $filas ? $filas : array();
+	}
 }
