@@ -2105,7 +2105,7 @@ class ControladorHelpdesk
 
     /**
      * PDF de actividad personal en Helpdesk (filtro por fechas).
-     * Abre en el navegador para guardar o enviar a gerencia.
+     * Abre en el navegador para guardar o imprimir.
      */
     public static function ctrReportePdf()
     {
@@ -2568,7 +2568,7 @@ class ControladorHelpdesk
                 </td>
                 <td width="38%" align="right">
                     <span style="color:#ffffff;font-size:9pt;"><b>REPORTE DE ACTIVIDAD</b></span><br>
-                    <span style="color:#d6e6f5;font-size:8pt;">Para gerencia · período cerrado</span>
+                    <span style="color:#d6e6f5;font-size:8pt;">Período seleccionado</span>
                 </td>
             </tr>
         </table>';

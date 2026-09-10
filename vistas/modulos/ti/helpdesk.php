@@ -707,8 +707,7 @@
             </div>
             <div class="modal-body">
                 <p class="help-block" style="margin-top:0;">
-                    Elige el rango de fechas. El PDF lista tickets atendidos, respuestas, cierres y altas
-                    para que gerencia vea el volumen de soporte.
+                    Elige el rango de fechas. El PDF lista tickets atendidos, respuestas, cierres y altas.
                 </p>
                 <div class="row">
                     <div class="col-sm-6">
