@@ -385,7 +385,18 @@ class ModeloMovimientos
    static public function mdlTotalesSolesVenta()
    {
 
-      $stmt = Conexion::conectar()->prepare("CALL sp_1009_ventas_ult_3annos()");
+      $stmt = Conexion::conectar()->prepare("SELECT 
+                                       m.mes AS codigo,
+                                       ROUND(COALESCE(SUM(CASE WHEN t.año = YEAR(NOW()) - 2 THEN t.total_ventas_soles ELSE 0 END), 0) / 1000, 0) AS ano1,
+                                       ROUND(COALESCE(SUM(CASE WHEN t.año = YEAR(NOW()) - 1 THEN t.total_ventas_soles ELSE 0 END), 0) / 1000, 0) AS ano2,
+                                       ROUND(COALESCE(SUM(CASE WHEN t.año = YEAR(NOW()) THEN t.total_ventas_soles ELSE 0 END), 0) / 1000, 0) AS ano3 
+                                    FROM
+                                       (SELECT 1 AS mes UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10 UNION SELECT 11 UNION SELECT 12) m 
+                                       LEFT JOIN totalesjf t 
+                                         ON t.mes = m.mes 
+                                         AND t.año IN (YEAR(NOW()) - 2, YEAR(NOW()) - 1, YEAR(NOW())) 
+                                    GROUP BY m.mes 
+                                    ORDER BY m.mes");
 
       $stmt->execute();
 
@@ -398,7 +409,18 @@ class ModeloMovimientos
    static public function mdlTotalesSolesPagos()
    {
 
-      $stmt = Conexion::conectar()->prepare("CALL sp_1010_pagos_ult_3annos()");
+      $stmt = Conexion::conectar()->prepare("SELECT 
+                                       m.mes AS codigo,
+                                       ROUND(COALESCE(SUM(CASE WHEN t.año = YEAR(NOW()) - 2 THEN t.total_pagos_soles ELSE 0 END), 0) / 1000, 0) AS ano1,
+                                       ROUND(COALESCE(SUM(CASE WHEN t.año = YEAR(NOW()) - 1 THEN t.total_pagos_soles ELSE 0 END), 0) / 1000, 0) AS ano2,
+                                       ROUND(COALESCE(SUM(CASE WHEN t.año = YEAR(NOW()) THEN t.total_pagos_soles ELSE 0 END), 0) / 1000, 0) AS ano3 
+                                    FROM
+                                       (SELECT 1 AS mes UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10 UNION SELECT 11 UNION SELECT 12) m 
+                                       LEFT JOIN totalesjf t 
+                                         ON t.mes = m.mes 
+                                         AND t.año IN (YEAR(NOW()) - 2, YEAR(NOW()) - 1, YEAR(NOW())) 
+                                    GROUP BY m.mes 
+                                    ORDER BY m.mes");
 
       $stmt->execute();
 

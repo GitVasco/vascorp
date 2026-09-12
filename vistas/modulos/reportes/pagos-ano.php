@@ -1,62 +1,22 @@
 <?php
-/* 
-    todo: sacamos los totales del 1er año
-    */
+$filasPagos = ControladorMovimientos::ctrTotalesSolesPagos();
 
-$ano1 = ControladorMovimientos::ctrTotalesSolesPagos();
+$arrayAno1 = array_fill(0, 12, 0);
+$arrayAno2 = array_fill(0, 12, 0);
+$arrayAno3 = array_fill(0, 12, 0);
 
-/* var_dump("ano1", $ano1); */
+foreach ($filasPagos as $value) {
 
-$arrayAno1 = array();
+    $idx = ((int) $value["codigo"]) - 1;
 
-foreach ($ano1 as $key => $value) {
+    if ($idx < 0 || $idx > 11) {
+        continue;
+    }
 
-    $a1 = $value["ano1"];
-
-    array_push($arrayAno1, $a1);
+    $arrayAno1[$idx] = $value["ano1"] !== null ? $value["ano1"] : 0;
+    $arrayAno2[$idx] = $value["ano2"] !== null ? $value["ano2"] : 0;
+    $arrayAno3[$idx] = $value["ano3"] !== null ? $value["ano3"] : 0;
 }
-
-/* var_dump("arrayAno1", $arrayAno1); */
-
-/* 
-    todo: sacamos los totales del 2do año
-    */
-
-$ano2 = ControladorMovimientos::ctrTotalesSolesPagos();
-
-/* var_dump("ano2", $ano2); */
-
-$arrayAno2 = array();
-
-foreach ($ano2 as $key => $value) {
-
-    $a2 = $value["ano2"];
-
-    array_push($arrayAno2, $a2);
-}
-
-/* var_dump("arrayAno2", $arrayAno2); */
-
-/* 
-    todo: sacamos los totales del 2do año
-    */
-
-$ano3 = ControladorMovimientos::ctrTotalesSolesPagos();
-
-/* var_dump("ano3", $ano3); */
-
-$arrayAno3 = array();
-
-foreach ($ano3 as $key => $value) {
-
-    $a2 = $value["ano3"];
-
-    array_push($arrayAno3, $a2);
-}
-
-/* var_dump("arrayAno3", $arrayAno3);  */
-
-
 ?>
 
 <div class="box box-primary" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px;">

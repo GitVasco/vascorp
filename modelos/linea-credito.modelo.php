@@ -72,8 +72,47 @@ class ModeloLineaCredito
     }
 
     /**
-     * Excluye canales de contado / showroom / digital (p. ej. 08, 08C, 08L).
-     * Reutiliza la config de IC si está cargada.
+     * Códigos de vendedor excluidos de cartera y ventas.
+     * El 23 sí entra en línea de crédito (en IC sigue fuera).
+     */
+    private static function codigosVendedoresExcluidosExactos()
+    {
+        $codigosExactos = array("99");
+        if (function_exists("icConfigMotor2")) {
+            $cfg = icConfigMotor2();
+            if (!empty($cfg["ventas_excluir_vendedores"]) && is_array($cfg["ventas_excluir_vendedores"])) {
+                $codigosExactos = $cfg["ventas_excluir_vendedores"];
+            }
+        }
+
+        $filtrados = array();
+        foreach ($codigosExactos as $codigo) {
+            $codigo = trim((string) $codigo);
+            if ($codigo === "" || $codigo === "23") {
+                continue;
+            }
+            $filtrados[] = $codigo;
+        }
+
+        return $filtrados;
+    }
+
+    private static function sqlNotInVendedoresExactos($campo)
+    {
+        $partesExactos = array();
+        foreach (self::codigosVendedoresExcluidosExactos() as $codigo) {
+            $codigoSql = str_replace(array("'", "\\"), "", $codigo);
+            $partesExactos[] = "'{$codigoSql}'";
+        }
+
+        return $partesExactos
+            ? " AND {$campo} NOT IN (" . implode(", ", $partesExactos) . ")"
+            : "";
+    }
+
+    /**
+     * Excluye canales de contado / showroom / digital (p. ej. 08, 08C, 08L) y el 99.
+     * Reutiliza la config de IC si está cargada, salvo el vendedor 23.
      */
     private static function sqlExcluirVendedoresContado($aliasCliente = "c")
     {
@@ -85,29 +124,7 @@ class ModeloLineaCredito
             $sqlPrefijos = "{$campo} NOT LIKE '08%'";
         }
 
-        $codigosExactos = array("99", "23");
-        if (function_exists("icConfigMotor2")) {
-            $cfg = icConfigMotor2();
-            if (!empty($cfg["ventas_excluir_vendedores"]) && is_array($cfg["ventas_excluir_vendedores"])) {
-                $codigosExactos = $cfg["ventas_excluir_vendedores"];
-            }
-        }
-
-        $partesExactos = array();
-        foreach ($codigosExactos as $codigo) {
-            $codigo = trim((string) $codigo);
-            if ($codigo === "") {
-                continue;
-            }
-            $codigoSql = str_replace(array("'", "\\"), "", $codigo);
-            $partesExactos[] = "'{$codigoSql}'";
-        }
-
-        $sqlExactos = $partesExactos
-            ? " AND {$campo} NOT IN (" . implode(", ", $partesExactos) . ")"
-            : "";
-
-        return " AND ({$sqlPrefijos}){$sqlExactos}";
+        return " AND ({$sqlPrefijos})" . self::sqlNotInVendedoresExactos($campo);
     }
 
     private static function sqlFiltroCarteraActiva($aliasCliente = "c")
@@ -1061,29 +1078,7 @@ class ModeloLineaCredito
             $sqlPrefijos = "{$campo} NOT LIKE '08%'";
         }
 
-        $codigosExactos = array("99", "23");
-        if (function_exists("icConfigMotor2")) {
-            $cfg = icConfigMotor2();
-            if (!empty($cfg["ventas_excluir_vendedores"]) && is_array($cfg["ventas_excluir_vendedores"])) {
-                $codigosExactos = $cfg["ventas_excluir_vendedores"];
-            }
-        }
-
-        $partesExactos = array();
-        foreach ($codigosExactos as $codigo) {
-            $codigo = trim((string) $codigo);
-            if ($codigo === "") {
-                continue;
-            }
-            $codigoSql = str_replace(array("'", "\\"), "", $codigo);
-            $partesExactos[] = "'{$codigoSql}'";
-        }
-
-        $sqlExactos = $partesExactos
-            ? " AND {$campo} NOT IN (" . implode(", ", $partesExactos) . ")"
-            : "";
-
-        return " AND ({$sqlPrefijos}){$sqlExactos}";
+        return " AND ({$sqlPrefijos})" . self::sqlNotInVendedoresExactos($campo);
     }
 
     private static function sqlVentaAnioSubquery($aliasCliente = "c")
