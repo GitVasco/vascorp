@@ -18,6 +18,8 @@ class ControladorDashboardStockCobertura
     {
         $hasta = date("Y-m-d");
         $desde = date("Y-m-d", strtotime("-" . (self::DIAS_VENTANA - 1) . " days"));
+        $urgenciaPorc = self::ctrUrgenciaPorc();
+        $factor = $urgenciaPorc / 100;
         $filas = ModeloDashboardStockCobertura::mdlArticulosConVenta($desde, $hasta);
 
         $base = array();
@@ -41,15 +43,17 @@ class ControladorDashboardStockCobertura
                 continue;
             }
 
+            $proyectado = $ventas * $factor;
             $disponible = $stock + $proceso - $comprometido;
             $base[$marca]["articulos"]++;
             $base[$marca]["almacen"] += $stock;
             $base[$marca]["proceso"] += $proceso;
             $base[$marca]["comprometido"] += $comprometido;
             $base[$marca]["facturado"] += $ventas;
+            $base[$marca]["proyectado"] += $proyectado;
             $base[$marca]["ritmos"][] = array(
                 "disponible" => $disponible,
-                "ritmo" => $ventas / self::DIAS_VENTANA,
+                "ritmo" => $proyectado / self::DIAS_VENTANA,
             );
         }
 
@@ -95,6 +99,7 @@ class ControladorDashboardStockCobertura
                 "comprometido" => $marca["comprometido"],
                 "disponible" => $marca["almacen"] + $marca["proceso"] - $marca["comprometido"],
                 "facturado" => $marca["facturado"],
+                "proyectado" => (int) round($marca["proyectado"]),
                 "articulos" => $total,
                 "alcanzan_30" => $alcanzan30,
                 "peligro_hoy" => $peligroHoy,
@@ -110,6 +115,7 @@ class ControladorDashboardStockCobertura
             "desde" => $desde,
             "hasta" => $hasta,
             "dias" => self::DIAS_VENTANA,
+            "urgencia" => $urgenciaPorc,
             "eje" => $eje,
             "series" => $series,
         );
@@ -118,6 +124,15 @@ class ControladorDashboardStockCobertura
     public static function ctrFmt($numero)
     {
         return number_format((float) $numero, 0, ".", ",");
+    }
+
+    public static function ctrFmtPorc($numero)
+    {
+        $n = (float) $numero;
+        if (abs($n - round($n)) < 0.01) {
+            return number_format($n, 0, ".", ",");
+        }
+        return number_format($n, 1, ".", ",");
     }
 
     public static function ctrFmtFechaCorta($fecha)
@@ -136,8 +151,25 @@ class ControladorDashboardStockCobertura
             "proceso" => 0,
             "comprometido" => 0,
             "facturado" => 0,
+            "proyectado" => 0,
             "ritmos" => array(),
         );
+    }
+
+    private static function ctrUrgenciaPorc()
+    {
+        $porc = 100;
+        if (!class_exists("controladorArticulos")) {
+            return $porc;
+        }
+        $cfg = controladorArticulos::ctrConfiguracion();
+        if (is_array($cfg) && isset($cfg["urgencia"])) {
+            $porc = (float) $cfg["urgencia"];
+        }
+        if ($porc < 0) {
+            $porc = 0;
+        }
+        return $porc;
     }
 
     private static function ctrAlerta($pct, $total)

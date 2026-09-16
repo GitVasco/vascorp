@@ -3,60 +3,61 @@ $stockCobertura = ControladorDashboardStockCobertura::ctrDatos();
 $stockCoberturaJson = json_encode($stockCobertura, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 $stockCoberturaDesde = ControladorDashboardStockCobertura::ctrFmtFechaCorta($stockCobertura["desde"]);
 $stockCoberturaHasta = ControladorDashboardStockCobertura::ctrFmtFechaCorta($stockCobertura["hasta"]);
+$stockCoberturaUrg = ControladorDashboardStockCobertura::ctrFmtPorc(isset($stockCobertura["urgencia"]) ? $stockCobertura["urgencia"] : 100);
 ?>
 
 <style>
-    #box-stock-cobertura > .box-header { padding: 8px 12px; }
-    #box-stock-cobertura > .box-body { padding: 8px 12px 10px; }
-    #box-stock-cobertura .stock-marcas {
+    #box-stock-cobertura > .box-header { padding: 6px 10px; }
+    #box-stock-cobertura > .box-header .box-title { font-size: 15px; }
+    #box-stock-cobertura > .box-body { padding: 6px 10px 8px; }
+    #box-stock-cobertura .stock-marca {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-    #box-stock-cobertura .stock-chip {
-        color: #fff;
-        border-radius: 3px;
-        padding: 7px 10px;
-        line-height: 1.2;
-    }
-    #box-stock-cobertura .stock-chip .stock-lbl {
-        display: block;
-        font-size: 11px;
-        opacity: 0.92;
-    }
-    #box-stock-cobertura .stock-chip strong {
-        font-size: 18px;
-        font-weight: 700;
-    }
-    #box-stock-cobertura .stock-chip .stock-sub {
-        display: block;
-        font-size: 10px;
-        opacity: 0.9;
-        margin-top: 1px;
-    }
-    #box-stock-cobertura .stock-metrica {
-        display: flex;
-        justify-content: space-between;
+        align-items: center;
         gap: 8px;
-        margin-top: 4px;
-        padding-top: 4px;
-        border-top: 1px solid rgba(255,255,255,0.22);
-        font-size: 10px;
-        line-height: 1.25;
+        margin-bottom: 0;
     }
-    #box-stock-cobertura .stock-metrica span { opacity: 0.92; }
-    #box-stock-cobertura .stock-metrica b { white-space: nowrap; font-weight: 700; }
-    #box-stock-cobertura .chart {
-        height: 360px;
+    #box-stock-cobertura .stock-dona-wrap {
+        height: 118px;
+        width: 118px;
+        flex: 0 0 118px;
         position: relative;
     }
-    #box-stock-cobertura .stock-chart-title {
-        font-weight: 600;
-        font-size: 12px;
-        margin: 0 0 4px;
+    #box-stock-cobertura .stock-chip {
+        flex: 1;
+        min-width: 0;
+        color: #fff;
+        border-radius: 3px;
+        padding: 5px 8px;
+        line-height: 1.15;
     }
+    #box-stock-cobertura .stock-chip .stock-lbl {
+        font-size: 10px;
+        opacity: 0.92;
+        margin-right: 6px;
+    }
+    #box-stock-cobertura .stock-chip strong {
+        font-size: 14px;
+        font-weight: 700;
+    }
+    #box-stock-cobertura .stock-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px 10px;
+        margin-top: 4px;
+        font-size: 10px;
+    }
+    #box-stock-cobertura .stock-grid > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+    }
+    #box-stock-cobertura .stock-grid span { opacity: 0.9; }
+    #box-stock-cobertura .stock-grid b { font-weight: 700; white-space: nowrap; }
     #box-stock-cobertura .stock-chip.alerta-warn { box-shadow: inset 0 0 0 2px rgba(255,235,59,0.85); }
     #box-stock-cobertura .stock-chip.alerta-danger { box-shadow: inset 0 0 0 2px rgba(255,205,210,0.95); }
+    @media (max-width: 991px) {
+        #box-stock-cobertura .stock-marca { margin-bottom: 6px; }
+    }
 </style>
 
 <div class="box box-info" id="box-stock-cobertura">
@@ -64,63 +65,44 @@ $stockCoberturaHasta = ControladorDashboardStockCobertura::ctrFmtFechaCorta($sto
         <h3 class="box-title">
             <i class="fa fa-balance-scale"></i>
             Artículos en peligro vs los que alcanzan
-            <small>— Si se vende igual que <?php echo htmlspecialchars($stockCoberturaDesde . " – " . $stockCoberturaHasta); ?> · Almacén + proceso − pedido</small>
+            <small>— Venta <?php echo htmlspecialchars($stockCoberturaDesde . " – " . $stockCoberturaHasta); ?> × <?php echo htmlspecialchars($stockCoberturaUrg); ?>% (urgencia OC) · Almacén + proceso − pedido</small>
         </h3>
     </div>
     <div class="box-body">
         <div class="row">
-            <div class="col-md-3">
-                <div class="stock-marcas">
-                    <?php foreach ($stockCobertura["series"] as $serie) { ?>
+            <?php foreach ($stockCobertura["series"] as $i => $serie) { ?>
+                <div class="col-md-6">
+                    <div class="stock-marca">
+                        <div class="stock-dona-wrap">
+                            <canvas id="stockCoberturaDona-<?php echo (int) $i; ?>"></canvas>
+                        </div>
                         <div class="stock-chip alerta-<?php echo htmlspecialchars($serie["alerta"]); ?>"
                              style="background: <?php echo htmlspecialchars($serie["hex"]); ?>;">
                             <span class="stock-lbl"><?php echo htmlspecialchars($serie["label"]); ?></span>
                             <strong><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["peligro_30"]); ?> en peligro</strong>
-                            <span class="stock-sub">
-                                de <?php echo ControladorDashboardStockCobertura::ctrFmt($serie["articulos"]); ?> con venta en 30 días
+                            <span style="font-size:10px; opacity:0.9;">
+                                / <?php echo ControladorDashboardStockCobertura::ctrFmt($serie["articulos"]); ?>
                                 (<?php echo (int) $serie["pct_peligro"]; ?>%)
                             </span>
-                            <div class="stock-metrica">
-                                <span>Alcanzan los 30 días</span>
-                                <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["alcanzan_30"]); ?></b>
-                            </div>
-                            <div class="stock-metrica">
-                                <span>Ya en peligro hoy</span>
-                                <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["peligro_hoy"]); ?></b>
-                            </div>
-                            <div class="stock-metrica">
-                                <span>Ya pedido (comprometido)</span>
-                                <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["comprometido"]); ?></b>
-                            </div>
-                            <div class="stock-metrica">
-                                <span>Disponible (alm + proceso − pedido)</span>
-                                <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["disponible"]); ?></b>
-                            </div>
-                            <div class="stock-metrica">
-                                <span>Facturado 30 días</span>
-                                <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["facturado"]); ?></b>
+                            <div class="stock-grid">
+                                <div><span>Alcanzan</span> <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["alcanzan_30"]); ?></b></div>
+                                <div><span>Peligro hoy</span> <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["peligro_hoy"]); ?></b></div>
+                                <div><span>Pedido</span> <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["comprometido"]); ?></b></div>
+                                <div><span>Disponible</span> <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["disponible"]); ?></b></div>
+                                <div><span>Fact. 30d</span> <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["facturado"]); ?></b></div>
+                                <div><span>Proy. <?php echo htmlspecialchars($stockCoberturaUrg); ?>%</span> <b><?php echo ControladorDashboardStockCobertura::ctrFmt($serie["proyectado"]); ?></b></div>
                             </div>
                         </div>
-                    <?php } ?>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-9">
-                <p class="stock-chart-title">Artículos en peligro si se vende igual que los últimos 30 días</p>
-                <p class="stock-sub" style="color:#666; margin: 0 0 8px; font-size: 11px; line-height: 1.35;">
-                    Solo el quiebre, para que se vea. Lo que sí alcanza está a la izquierda.
-                    El stock disponible ya descuenta lo pedido. Si la barra crece, se van quedando SKU sin cubrirse.
-                </p>
-                <div class="chart">
-                    <canvas id="stockCoberturaChart"></canvas>
-                </div>
-            </div>
+            <?php } ?>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
-    var stockCoberturaChart = null;
+    var stockCoberturaDonas = [];
     var stockCoberturaDatos = <?php echo $stockCoberturaJson; ?>;
 
     function stockCoberturaFmt(n) {
@@ -128,118 +110,103 @@ $stockCoberturaHasta = ControladorDashboardStockCobertura::ctrFmtFechaCorta($sto
         return n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-    function crearGraficoStockCobertura(datos) {
-        if (typeof Chart === "undefined" || !datos || !datos.eje || !datos.series || !datos.series.length) {
+    function stockCoberturaPluginCentro(chart) {
+        var cfg = chart.config.centro;
+        if (!cfg) {
+            return;
+        }
+        var area = chart.chartArea;
+        if (!area) {
+            return;
+        }
+        var ctx = chart.chart.ctx;
+        var cx = (area.left + area.right) / 2;
+        var cy = (area.top + area.bottom) / 2;
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = cfg.pct >= 20 ? "#e67e22" : "#333";
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillText(cfg.pct + "%", cx, cy - 6);
+        ctx.fillStyle = "#666";
+        ctx.font = "9px sans-serif";
+        ctx.fillText("peligro", cx, cy + 9);
+        ctx.restore();
+    }
+
+    function crearDonasStockCobertura(datos) {
+        if (typeof Chart === "undefined" || !datos || !datos.series || !datos.series.length) {
             return;
         }
 
-        var canvas = document.getElementById("stockCoberturaChart");
-        if (!canvas) {
-            return;
-        }
-
-        if (stockCoberturaChart && typeof stockCoberturaChart.destroy === "function") {
-            stockCoberturaChart.destroy();
-            stockCoberturaChart = null;
-        }
-
-        var cortes = [0, 10, 20, 30];
-        var labels = cortes.map(function(d) {
-            return d === 0 ? "Hoy" : "En " + d + " días";
-        });
-        var datasets = datos.series.map(function(serie) {
-            return {
-                label: serie.label,
-                data: cortes.map(function(d) {
-                    return serie.dataPeligro && serie.dataPeligro[d] != null ? serie.dataPeligro[d] : 0;
-                }),
-                backgroundColor: serie.hex,
-                borderColor: serie.border,
-                borderWidth: 1
-            };
-        });
-
-        stockCoberturaChart = new Chart(canvas.getContext("2d"), {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            plugins: [{
-                afterDatasetsDraw: function(chart) {
-                    var ctx = chart.chart.ctx;
-                    ctx.save();
-                    ctx.font = "11px sans-serif";
-                    ctx.fillStyle = "#333";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "bottom";
-                    chart.data.datasets.forEach(function(ds, i) {
-                        var meta = chart.getDatasetMeta(i);
-                        if (!meta || meta.hidden) {
-                            return;
-                        }
-                        meta.data.forEach(function(bar, index) {
-                            var val = ds.data[index];
-                            if (val === null || val === undefined) {
-                                return;
-                            }
-                            ctx.fillText(stockCoberturaFmt(val), bar._model.x, bar._model.y - 3);
-                        });
-                    });
-                    ctx.restore();
-                }
-            }],
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: { top: 16 }
-                },
-                legend: {
-                    display: true,
-                    position: "top",
-                    labels: {
-                        boxWidth: 10,
-                        fontSize: 10,
-                        padding: 6
-                    }
-                },
-                tooltips: {
-                    mode: "index",
-                    intersect: false,
-                    callbacks: {
-                        label: function(tooltipItem, chartData) {
-                            var nombre = chartData.datasets[tooltipItem.datasetIndex].label;
-                            return nombre + ": " + stockCoberturaFmt(tooltipItem.yLabel) + " en peligro";
-                        }
-                    }
-                },
-                scales: {
-                    xAxes: [{
-                        barPercentage: 0.7,
-                        categoryPercentage: 0.55,
-                        ticks: { fontSize: 11 }
-                    }],
-                    yAxes: [{
-                        ticks: {
-                            fontSize: 10,
-                            beginAtZero: true,
-                            callback: function(value) {
-                                return stockCoberturaFmt(value);
-                            }
-                        },
-                        scaleLabel: {
-                            display: true,
-                            fontSize: 10,
-                            labelString: "Artículos en peligro"
-                        }
-                    }]
-                }
+        stockCoberturaDonas.forEach(function(ch) {
+            if (ch && typeof ch.destroy === "function") {
+                ch.destroy();
             }
+        });
+        stockCoberturaDonas = [];
+
+        datos.series.forEach(function(serie, i) {
+            var canvas = document.getElementById("stockCoberturaDona-" + i);
+            if (!canvas) {
+                return;
+            }
+            var peligro = parseInt(serie.peligro_30, 10) || 0;
+            var alcanzan = parseInt(serie.alcanzan_30, 10) || 0;
+            var pct = parseInt(serie.pct_peligro, 10) || 0;
+            var dataPeligro = peligro;
+            var dataAlcanzan = alcanzan;
+            var colorAlcanzan = serie.hex;
+            var borderAlcanzan = serie.border;
+            if (peligro === 0 && alcanzan === 0) {
+                dataAlcanzan = 1;
+                colorAlcanzan = "#d2d6de";
+                borderAlcanzan = "#d2d6de";
+            }
+
+            var chart = new Chart(canvas.getContext("2d"), {
+                type: "doughnut",
+                data: {
+                    labels: ["En peligro", "Alcanzan"],
+                    datasets: [{
+                        data: [dataPeligro, dataAlcanzan],
+                        backgroundColor: ["#f39c12", colorAlcanzan],
+                        borderColor: ["#d68910", borderAlcanzan],
+                        borderWidth: 1
+                    }]
+                },
+                centro: {
+                    pct: pct
+                },
+                plugins: [{
+                    afterDraw: stockCoberturaPluginCentro
+                }],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutoutPercentage: 70,
+                    legend: {
+                        display: false
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, chartData) {
+                                var idx = tooltipItem.index;
+                                var nombre = chartData.labels[idx];
+                                var val = idx === 0 ? peligro : alcanzan;
+                                var tot = peligro + alcanzan;
+                                var p = tot > 0 ? Math.round(val * 100 / tot) : 0;
+                                return nombre + ": " + stockCoberturaFmt(val) + " (" + p + "%)";
+                            }
+                        }
+                    }
+                }
+            });
+            stockCoberturaDonas.push(chart);
         });
     }
 
     $(document).ready(function() {
-        crearGraficoStockCobertura(stockCoberturaDatos);
+        crearDonasStockCobertura(stockCoberturaDatos);
     });
 </script>

@@ -509,7 +509,10 @@ class ModeloIngresos
 			LEFT JOIN articulojf a 
 			  ON m.articulo = a.articulo 
 			LEFT JOIN sectorjf se 
-			  ON LEFT(m.documento, 2) = se.cod_sector 
+			  ON se.cod_sector = CASE
+				WHEN m.taller IS NOT NULL AND TRIM(m.taller) <> '' THEN TRIM(m.taller)
+				ELSE LEFT(m.documento, 2)
+			  END
 		  WHERE m.documento = :valor 
 		  GROUP BY m.documento,
 			a.modelo,
@@ -594,7 +597,10 @@ class ModeloIngresos
 			LEFT JOIN articulojf a 
 			  ON m.articulo = a.articulo 
 			LEFT JOIN sectorjf se 
-			  ON LEFT(m.documento, 2) = se.cod_sector 
+			  ON se.cod_sector = CASE
+				WHEN m.taller IS NOT NULL AND TRIM(m.taller) <> '' THEN TRIM(m.taller)
+				ELSE LEFT(m.documento, 2)
+			  END
 		  GROUP BY m.documento,
 			a.modelo,
 			a.nombre,

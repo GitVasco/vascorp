@@ -267,7 +267,7 @@ if (!function_exists("flujoCoberturaClase")) {
                         pointRadius: 1,
                         borderWidth: 2,
                         fill: false,
-                        lineTension: 0.15
+                        lineTension: 0.3
                     },
                     {
                         label: "Almacén de corte",
@@ -277,7 +277,7 @@ if (!function_exists("flujoCoberturaClase")) {
                         pointRadius: 1,
                         borderWidth: 2,
                         fill: false,
-                        lineTension: 0.15
+                        lineTension: 0.3
                     },
                     {
                         label: "Taller interno",
@@ -287,7 +287,7 @@ if (!function_exists("flujoCoberturaClase")) {
                         pointRadius: 1,
                         borderWidth: 2,
                         fill: false,
-                        lineTension: 0.15
+                        lineTension: 0.3
                     },
                     {
                         label: "Servicios",
@@ -297,7 +297,7 @@ if (!function_exists("flujoCoberturaClase")) {
                         pointRadius: 1,
                         borderWidth: 2,
                         fill: false,
-                        lineTension: 0.15
+                        lineTension: 0.3
                     }
                 ]
             },

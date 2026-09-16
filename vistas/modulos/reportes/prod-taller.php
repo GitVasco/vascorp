@@ -46,56 +46,236 @@ foreach ($arrayProduccion as $taller => $datos) {
 $arrayProduccion = $arrayProduccionFormateado;
 ?>
 
-<div class="box box-primary">
+<style>
+    #box-prod-taller > .box-header { padding: 5px 10px; }
+    #box-prod-taller > .box-body { padding: 6px 10px 8px; }
+    #box-prod-taller .box-title { font-size: 15px; }
+    #box-prod-taller .box-title small { font-size: 10px; }
+    #box-prod-taller .pt-filtros {
+        margin-bottom: 6px;
+        padding: 5px 8px;
+        background: #f9fafb;
+        border: 1px solid #e8ecf0;
+        border-radius: 3px;
+    }
+    #box-prod-taller .pt-filtros-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+        margin-bottom: 4px;
+    }
+    #box-prod-taller .pt-filtros-label {
+        font-weight: 600;
+        font-size: 10px;
+        color: #555;
+    }
+    #box-prod-taller .pt-filtros-count {
+        font-size: 10px;
+        color: #888;
+        margin-left: auto;
+    }
+    #box-prod-taller .pt-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 4px;
+    }
+    #box-prod-taller .pt-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin: 0;
+        padding: 1px 6px 1px 5px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #555;
+        background: #fff;
+        border: 1px solid #d2d6de;
+        border-radius: 10px;
+        cursor: pointer;
+        user-select: none;
+        transition: border-color 0.15s, box-shadow 0.15s, color 0.15s;
+    }
+    #box-prod-taller .pt-chip:hover {
+        border-color: #aaa;
+    }
+    #box-prod-taller .pt-chip input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    #box-prod-taller .pt-chip-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: #ccc;
+    }
+    #box-prod-taller .pt-chip.pt-chip--on {
+        color: #222;
+        border-color: #3c8dbc;
+        box-shadow: 0 0 0 1px rgba(60, 141, 188, 0.25);
+    }
+    #box-prod-taller .pt-chip.pt-chip--off {
+        opacity: 0.55;
+    }
+    #box-prod-taller .pt-chip.pt-chip--off .pt-chip-dot {
+        background: #bbb !important;
+    }
+    #box-prod-taller .pt-grid {
+        margin-left: -6px;
+        margin-right: -6px;
+    }
+    #box-prod-taller .pt-grid > [class*="col-"] {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    #box-prod-taller .pt-chart-wrap {
+        position: relative;
+        height: 240px;
+        padding: 2px 0 0;
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        border-radius: 3px;
+    }
+    #box-prod-taller .pt-table-wrap {
+        height: 240px;
+        max-height: 240px;
+        overflow: auto;
+        border: 1px solid #e8ecf0;
+        border-radius: 3px;
+    }
+    @media (max-width: 991px) {
+        #box-prod-taller .pt-chart-wrap {
+            height: 220px;
+            margin-bottom: 6px;
+        }
+        #box-prod-taller .pt-table-wrap {
+            height: 200px;
+            max-height: 200px;
+        }
+    }
+    #box-prod-taller .pt-table {
+        margin: 0;
+        font-size: 10px;
+        white-space: nowrap;
+    }
+    #box-prod-taller .pt-table thead th {
+        background: #3c8dbc;
+        color: #fff;
+        font-weight: 600;
+        border-color: #367fa9 !important;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        text-align: center;
+        padding: 3px 4px;
+        font-size: 10px;
+    }
+    #box-prod-taller .pt-table thead th.pt-col-taller {
+        left: 0;
+        z-index: 3;
+        text-align: left;
+        min-width: 72px;
+    }
+    #box-prod-taller .pt-table tbody td {
+        text-align: right;
+        padding: 2px 4px;
+        vertical-align: middle;
+    }
+    #box-prod-taller .pt-table tbody td.pt-col-taller {
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 1;
+        box-shadow: 2px 0 4px rgba(0,0,0,0.04);
+    }
+    #box-prod-taller .pt-table tbody tr:nth-child(even) td.pt-col-taller {
+        background: #f9f9f9;
+    }
+    #box-prod-taller .pt-table tbody tr:nth-child(even) td:not(.pt-col-taller) {
+        background: #fafafa;
+    }
+    #box-prod-taller .pt-table .pt-num-zero {
+        color: #bbb;
+    }
+</style>
+
+<div class="box box-primary" id="box-prod-taller">
     <div class="box-header with-border">
-        <h3 class="box-title">Producción Por Taller</h3>
+        <h3 class="box-title">
+            <i class="fa fa-industry"></i>
+            Producción por taller
+            <small>— Unidades por mes · <?php echo (int) $añoActual; ?></small>
+        </h3>
     </div>
     <div class="box-body">
 
-        <div class="form-inline" style="margin-bottom: 15px;">
-            <label for="selectAll">Seleccionar Todos</label>
-            <input type="checkbox" id="selectAll" checked>
-            <div class="row">
+        <div class="pt-filtros">
+            <div class="pt-filtros-bar">
+                <span class="pt-filtros-label">Comparar</span>
+                <button type="button" class="btn btn-xs btn-primary" id="ptSelectAll">Todos</button>
+                <button type="button" class="btn btn-xs btn-default" id="ptSelectNone">Ninguno</button>
+                <span class="pt-filtros-count" id="ptFiltrosCount"></span>
+            </div>
+            <div class="pt-chips" id="ptChipsRow">
                 <?php
                 foreach ($arrayTalleres as $taller => $sector) {
-                    echo "<div class='col-xs-6 col-sm-4 col-md-2'><label for='sector-$taller'>$sector</label><input type='checkbox' class='sector-checkbox' id='sector-$taller' value='$taller' checked></div>";
+                    $tallerEsc = htmlspecialchars((string) $taller, ENT_QUOTES, 'UTF-8');
+                    $sectorEsc = htmlspecialchars($sector, ENT_QUOTES, 'UTF-8');
+                    echo '<label class="pt-chip pt-chip--on" for="sector-' . $tallerEsc . '" data-taller="' . $tallerEsc . '">';
+                    echo '<input type="checkbox" class="sector-checkbox" id="sector-' . $tallerEsc . '" value="' . $tallerEsc . '" checked>';
+                    echo '<span class="pt-chip-dot"></span>';
+                    echo '<span class="pt-chip-text">' . $sectorEsc . '</span>';
+                    echo '</label>';
                 }
                 ?>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-lg-6">
-                <div class="chart" style="height: 100%;">
+        <div class="row pt-grid">
+            <div class="col-md-7 col-sm-12">
+                <div class="pt-chart-wrap">
                     <canvas id="prodtallerChart"></canvas>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <table class="table table-bordered" id="produccionTable">
-                    <thead>
-                        <tr>
-                            <th>Mes</th>
-                            <?php
-                            foreach ($arrayMeses as $mes) {
-                                echo "<th>$mes</th>";
-                            }
-                            ?>
-                        </tr>
-                    </thead>
-                    <tbody id="produccionTableBody">
+            <div class="col-md-5 col-sm-12">
+                <div class="pt-table-wrap">
+            <table class="table table-bordered table-condensed pt-table" id="produccionTable">
+                <thead>
+                    <tr>
+                        <th class="pt-col-taller">Taller</th>
                         <?php
-                        foreach ($arrayProduccion as $taller => $producciones) {
-                            echo "<tr class='produccion-row' data-taller='$taller'>";
-                            echo "<td>{$arrayTalleres[$taller]}</td>";
-                            foreach ($producciones as $produccion) {
-                                $produccion = number_format($produccion, 0);
-                                echo "<td>$produccion</td>";
-                            }
-                            echo "</tr>";
+                        foreach ($arrayMeses as $mes) {
+                            $mesEsc = htmlspecialchars($mes, ENT_QUOTES, 'UTF-8');
+                            $mesCorto = htmlspecialchars(mb_substr($mes, 0, 3, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+                            echo "<th title=\"$mesEsc\">$mesCorto</th>";
                         }
                         ?>
-                    </tbody>
-                </table>
+                    </tr>
+                </thead>
+                <tbody id="produccionTableBody">
+                    <?php
+                    foreach ($arrayProduccion as $taller => $producciones) {
+                        $tallerEsc = htmlspecialchars((string) $taller, ENT_QUOTES, 'UTF-8');
+                        $nombreEsc = htmlspecialchars($arrayTalleres[$taller], ENT_QUOTES, 'UTF-8');
+                        echo "<tr class='produccion-row' data-taller='$tallerEsc'>";
+                        echo "<td class='pt-col-taller'>$nombreEsc</td>";
+                        foreach ($producciones as $produccion) {
+                            $n = (float) $produccion;
+                            $cls = $n == 0 ? " class='pt-num-zero'" : "";
+                            echo "<td$cls>" . number_format($n, 0) . "</td>";
+                        }
+                        echo "</tr>";
+                    }
+                    ?>
+                </tbody>
+            </table>
+                </div>
             </div>
         </div>
     </div>
@@ -109,24 +289,156 @@ $arrayProduccion = $arrayProduccionFormateado;
     var arrayTalleresGlobal = <?php echo json_encode($arrayTalleres); ?>;
     var arrayMesesGlobal = <?php echo json_encode($arrayMeses); ?>;
 
-    var colors = [
-        'rgba(75,192,192,0.2)',
-        'rgba(255,159,64,0.2)',
-        'rgba(153,102,255,0.2)',
-        'rgba(255,205,86,0.2)',
-        'rgba(54,162,235,0.2)',
-        'rgba(255,99,132,0.2)',
-        'rgba(201,203,207,0.2)'
+    var ptPalette = [
+        '#3c8dbc', '#00a65a', '#f39c12', '#dd4b39', '#605ca8', '#00c0ef',
+        '#d81b60', '#39cccc', '#001f3f', '#ff851b', '#2ecc71', '#8e44ad',
+        '#795548', '#607d8b'
     ];
-    var borderColors = [
-        'rgba(75,192,192,1)',
-        'rgba(255,159,64,1)',
-        'rgba(153,102,255,1)',
-        'rgba(255,205,86,1)',
-        'rgba(54,162,235,1)',
-        'rgba(255,99,132,1)',
-        'rgba(201,203,207,1)'
-    ];
+    var ptColorPorTaller = {};
+
+    function ptOrdenTalleres(talleres) {
+        return Object.keys(talleres || {}).sort(function(a, b) {
+            var na = (talleres[a] || '').toString();
+            var nb = (talleres[b] || '').toString();
+            return na.localeCompare(nb, 'es', { sensitivity: 'base' });
+        });
+    }
+
+    function ptReconstruirMapaColores(talleres) {
+        ptColorPorTaller = {};
+        ptOrdenTalleres(talleres).forEach(function(taller, i) {
+            ptColorPorTaller[taller] = ptPalette[i % ptPalette.length];
+        });
+    }
+
+    function ptColorTaller(taller) {
+        return ptColorPorTaller[taller] || ptPalette[0];
+    }
+
+    function ptDatasetLinea(taller, label, datosTaller) {
+        var borderColor = ptColorTaller(taller);
+        var nActivos = $('.sector-checkbox:checked').length;
+        return {
+            _tallerKey: taller,
+            label: label,
+            backgroundColor: 'transparent',
+            borderColor: borderColor,
+            pointBackgroundColor: borderColor,
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: borderColor,
+            data: datosTaller,
+            lineTension: 0.3,
+            fill: false,
+            borderWidth: nActivos > 8 ? 1.5 : 2,
+            pointRadius: nActivos > 8 ? 2 : 3,
+            pointHoverRadius: 4
+        };
+    }
+
+    function ptOpcionesChart() {
+        var nActivos = $('.sector-checkbox:checked').length;
+        return {
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        callback: function(value) {
+                            if (value >= 1000) {
+                                return (value / 1000).toFixed(0) + 'k';
+                            }
+                            return value;
+                        }
+                    },
+                    gridLines: {
+                        color: 'rgba(0,0,0,0.06)'
+                    }
+                }],
+                xAxes: [{
+                    gridLines: {
+                        display: false
+                    }
+                }]
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            legend: {
+                display: false
+            },
+            tooltips: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        var ds = data.datasets[tooltipItem.datasetIndex];
+                        var val = tooltipItem.yLabel;
+                        return ds.label + ': ' + number_format(val, 0);
+                    },
+                }
+            },
+            layout: {
+                padding: { top: 4, right: 4, bottom: 0, left: 0 }
+            },
+            animation: {
+                duration: nActivos > 10 ? 0 : 400
+            }
+        };
+    }
+
+    function ptSincronizarChipConDataset(taller, visible) {
+        if (!taller) {
+            return;
+        }
+        var $chip = $('.pt-chip[data-taller="' + taller + '"]');
+        var $cb = $chip.find('.sector-checkbox');
+        $cb.prop('checked', visible);
+        $chip.toggleClass('pt-chip--on', visible).toggleClass('pt-chip--off', !visible);
+        var color = ptColorTaller(taller);
+        $chip.find('.pt-chip-dot').css('background', visible ? color : '');
+    }
+
+    function ptActualizarEstadoChips() {
+        $('.pt-chip').each(function() {
+            var $chip = $(this);
+            var on = $chip.find('.sector-checkbox').is(':checked');
+            var taller = $chip.data('taller');
+            $chip.toggleClass('pt-chip--on', on).toggleClass('pt-chip--off', !on);
+            $chip.find('.pt-chip-dot').css('background', on ? ptColorTaller(String(taller)) : '');
+        });
+        ptActualizarContador();
+    }
+
+    function ptMesCorto(nombreMes) {
+        return (nombreMes || '').substring(0, 3);
+    }
+
+    function ptActualizarContador() {
+        var total = $('.sector-checkbox').length;
+        var n = $('.sector-checkbox:checked').length;
+        $('#ptFiltrosCount').text(n + '/' + total);
+    }
+
+    function ptEnlazarEventosFiltros() {
+        $('.sector-checkbox').off('change.pt').on('change.pt', function() {
+            ptActualizarEstadoChips();
+            updateChart();
+            updateTable();
+        });
+
+        $('#ptSelectAll').off('click.pt').on('click.pt', function() {
+            $('.sector-checkbox').prop('checked', true);
+            ptActualizarEstadoChips();
+            updateChart();
+            updateTable();
+        });
+
+        $('#ptSelectNone').off('click.pt').on('click.pt', function() {
+            $('.sector-checkbox').prop('checked', false);
+            ptActualizarEstadoChips();
+            updateChart();
+            updateTable();
+        });
+    }
 
     // Función para crear/actualizar el gráfico
     function crearGrafico(datos) {
@@ -158,10 +470,10 @@ $arrayProduccion = $arrayProduccionFormateado;
         arrayProduccionGlobal = datos.produccion;
         arrayTalleresGlobal = datos.talleres;
         arrayMesesGlobal = datos.meses;
+        ptReconstruirMapaColores(datos.talleres);
 
         // Preparar datasets iniciales con todos los talleres seleccionados
         var datasetsIniciales = [];
-        var index = 0;
         
         for (var taller in datos.produccion) {
             // Verificar que el taller tenga datos válidos
@@ -184,55 +496,19 @@ $arrayProduccion = $arrayProduccionFormateado;
                 return parseFloat(val) || 0;
             });
 
-            var color = colors[index % colors.length];
-            var borderColor = borderColors[index % borderColors.length];
-            
-            datasetsIniciales.push({
-                label: datos.talleres[taller] || 'Taller ' + taller,
-                backgroundColor: color,
-                borderColor: borderColor,
-                pointBackgroundColor: borderColor,
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: borderColor,
-                data: datosTaller,
-                tension: 0.1,
-                fill: false,
-                borderWidth: 2
-            });
-            index++;
+            datasetsIniciales.push(ptDatasetLinea(
+                taller,
+                datos.talleres[taller] || 'Taller ' + taller,
+                datosTaller
+            ));
         }
-
-        console.log("Datasets creados:", datasetsIniciales.length, "talleres");
-        console.log("Meses:", datos.meses.length);
 
         var areaChartData = {
             labels: datos.meses,
             datasets: datasetsIniciales
         };
 
-        var areaChartOptions = {
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }]
-            },
-            responsive: true,
-            maintainAspectRatio: false,
-            legend: {
-                display: true,
-                position: 'top'
-            },
-            tooltips: {
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        return data.datasets[tooltipItem.datasetIndex].label + ' - ' + tooltipItem.yLabel;
-                    }
-                }
-            }
-        };
+        var areaChartOptions = ptOpcionesChart();
 
         // Verificar que Chart.js esté disponible
         if (typeof Chart === 'undefined') {
@@ -247,8 +523,8 @@ $arrayProduccion = $arrayProduccionFormateado;
                 data: areaChartData,
                 options: areaChartOptions
             });
-            console.log("Gráfico Producción por Taller creado exitosamente con", datasetsIniciales.length, "datasets");
-            console.log("Primer dataset:", datasetsIniciales[0]);
+            updateChart();
+            updateTable();
         } catch(e) {
             console.error("Error al crear el gráfico:", e);
             return;
@@ -259,11 +535,7 @@ $arrayProduccion = $arrayProduccionFormateado;
 
         // Actualizar checkboxes de talleres (esto también reasignará los eventos)
         actualizarCheckboxes(datos.talleres);
-        
-        // Ajustar altura del gráfico a la altura de la tabla
-        setTimeout(function() {
-            ajustarAlturaGrafico();
-        }, 100);
+        ptActualizarEstadoChips();
     }
 
     // Función para actualizar el gráfico según talleres seleccionados
@@ -291,47 +563,28 @@ $arrayProduccion = $arrayProduccionFormateado;
         // Limpiar y recrear datasets
         areaChart.data.datasets = [];
 
-        var index = 0;
         for (var taller in arrayProduccionGlobal) {
             if (selectedSectors.includes(taller)) {
-                var color = colors[index % colors.length];
-                var borderColor = borderColors[index % borderColors.length];
-                
                 // Verificar que los datos existan y sean válidos
                 if (arrayProduccionGlobal[taller] && Array.isArray(arrayProduccionGlobal[taller])) {
-                    // Asegurar que todos los valores sean números y que haya 12 elementos
                     var datosTaller = arrayProduccionGlobal[taller].map(function(val) {
                         return parseFloat(val) || 0;
                     });
                     
-                    // Rellenar con ceros si faltan meses
                     while (datosTaller.length < 12) {
                         datosTaller.push(0);
                     }
                     
-                    areaChart.data.datasets.push({
-                        label: arrayTalleresGlobal[taller] || 'Taller ' + taller,
-                        backgroundColor: color,
-                        borderColor: borderColor,
-                        pointBackgroundColor: borderColor,
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: borderColor,
-                        data: datosTaller,
-                        lineTension: 0.1,
-                        fill: false,
-                        borderWidth: 2
-                    });
-                    index++;
-                } else {
-                    console.warn("Datos inválidos para el taller:", taller, arrayProduccionGlobal[taller]);
+                    areaChart.data.datasets.push(ptDatasetLinea(
+                        taller,
+                        arrayTalleresGlobal[taller] || 'Taller ' + taller,
+                        datosTaller
+                    ));
                 }
             }
         }
 
-        console.log("Actualizando gráfico con", areaChart.data.datasets.length, "datasets");
-
-        // Actualizar el gráfico con animación suave
+        areaChart.options = ptOpcionesChart();
         areaChart.update('active');
     }
 
@@ -339,61 +592,45 @@ $arrayProduccion = $arrayProduccionFormateado;
     function actualizarTablaCompleta(datos) {
         // Actualizar encabezados de meses
         var thead = $('#produccionTable thead tr');
-        thead.html('<th>Mes</th>');
+        thead.html('<th class="pt-col-taller">Taller</th>');
         datos.meses.forEach(function(mes) {
-            thead.append('<th>' + mes + '</th>');
+            thead.append('<th title="' + mes + '">' + ptMesCorto(mes) + '</th>');
         });
 
-        // Actualizar cuerpo de la tabla
         var tbody = $('#produccionTableBody');
         tbody.html('');
         
         for (var taller in datos.produccion) {
             var row = $('<tr class="produccion-row" data-taller="' + taller + '"></tr>');
-            row.append('<td>' + datos.talleres[taller] + '</td>');
+            row.append('<td class="pt-col-taller">' + datos.talleres[taller] + '</td>');
             
             datos.produccion[taller].forEach(function(prod) {
-                row.append('<td>' + number_format(prod, 0) + '</td>');
+                var n = parseFloat(prod) || 0;
+                var cls = n === 0 ? ' class="pt-num-zero"' : '';
+                row.append('<td' + cls + '>' + number_format(n, 0) + '</td>');
             });
             
             tbody.append(row);
         }
-        
-        // Ajustar altura del gráfico después de actualizar la tabla
-        setTimeout(function() {
-            ajustarAlturaGrafico();
-        }, 100);
     }
 
     // Función para actualizar checkboxes de talleres
     function actualizarCheckboxes(talleres) {
-        var container = $('.form-inline .row');
+        var container = $('#ptChipsRow');
         container.html('');
-        
-        var talleresArray = Object.keys(talleres);
-        talleresArray.forEach(function(taller) {
-            var col = $('<div class="col-xs-6 col-sm-4 col-md-2"></div>');
-            var label = $('<label for="sector-' + taller + '">' + talleres[taller] + '</label>');
-            var checkbox = $('<input type="checkbox" class="sector-checkbox" id="sector-' + taller + '" value="' + taller + '" checked>');
-            
-            col.append(label);
-            col.append(checkbox);
-            container.append(col);
+        ptReconstruirMapaColores(talleres);
+
+        ptOrdenTalleres(talleres).forEach(function(taller) {
+            var nombre = talleres[taller];
+            var color = ptColorTaller(taller);
+            var chip = $('<label class="pt-chip pt-chip--on" for="sector-' + taller + '" data-taller="' + taller + '"></label>');
+            chip.append('<input type="checkbox" class="sector-checkbox" id="sector-' + taller + '" value="' + taller + '" checked>');
+            chip.append('<span class="pt-chip-dot" style="background:' + color + '"></span>');
+            chip.append($('<span class="pt-chip-text"></span>').text(nombre));
+            container.append(chip);
         });
 
-        // Reasignar eventos
-        $('.sector-checkbox').off('change').on('change', function() {
-            updateChart();
-            updateTable();
-        });
-
-        // Reasignar evento selectAll
-        $('#selectAll').off('change').on('change', function() {
-            var checked = this.checked;
-            $('.sector-checkbox').prop('checked', checked);
-            updateChart();
-            updateTable();
-        });
+        ptEnlazarEventosFiltros();
     }
 
     function updateTable() {
@@ -410,10 +647,6 @@ $arrayProduccion = $arrayProduccionFormateado;
             }
         });
         
-        // Ajustar altura del gráfico después de actualizar la tabla
-        setTimeout(function() {
-            ajustarAlturaGrafico();
-        }, 100);
     }
 
     // Función helper para formatear números
@@ -458,50 +691,23 @@ $arrayProduccion = $arrayProduccionFormateado;
         });
     }
 
-    // Función para ajustar la altura del gráfico a la altura de la tabla
-    function ajustarAlturaGrafico() {
-        var tabla = $('#produccionTable');
-        var chartContainer = $('.chart');
-        if (tabla.length > 0 && chartContainer.length > 0) {
-            var alturaTabla = tabla.outerHeight();
-            chartContainer.css('height', alturaTabla + 'px');
-            $('#prodtallerChart').css('height', alturaTabla + 'px');
-            // Actualizar el gráfico si existe
-            if (areaChart !== null) {
-                areaChart.resize();
-            }
-        }
-    }
-
     // Crear gráfico inicial con datos PHP
     $(document).ready(function() {
-        console.log("Inicializando gráfico con datos PHP");
-        console.log("Talleres disponibles:", Object.keys(arrayTalleresGlobal).length);
-        console.log("Meses:", arrayMesesGlobal.length);
-        
+        ptReconstruirMapaColores(arrayTalleresGlobal);
+        ptEnlazarEventosFiltros();
+        ptActualizarEstadoChips();
+
         var datosIniciales = {
             meses: arrayMesesGlobal,
             produccion: arrayProduccionGlobal,
             talleres: arrayTalleresGlobal
         };
         
-        // Verificar que los datos estén correctos
         if (datosIniciales.meses && datosIniciales.produccion && datosIniciales.talleres) {
             crearGrafico(datosIniciales);
-            // Ajustar altura después de crear el gráfico
-            setTimeout(function() {
-                ajustarAlturaGrafico();
-            }, 100);
         } else {
             console.error("Datos iniciales inválidos:", datosIniciales);
         }
-        
-        // Ajustar altura cuando se actualice la tabla
-        $(document).on('DOMSubtreeModified', '#produccionTableBody', function() {
-            setTimeout(function() {
-                ajustarAlturaGrafico();
-            }, 100);
-        });
 
         // Escuchar cambios en el select de mes
         $(document).on('change', '#selectMes', function() {
@@ -519,11 +725,5 @@ $arrayProduccion = $arrayProduccionFormateado;
             actualizarGraficoProdTaller(mesSeleccionado, añoParaGrafico);
         });
 
-        $('#selectAll').on('change', function() {
-            var checked = this.checked;
-            $('.sector-checkbox').prop('checked', checked);
-            updateChart();
-            updateTable();
-        });
     });
 </script>

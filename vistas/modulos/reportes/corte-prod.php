@@ -132,7 +132,7 @@ foreach ($corte_mes as $value) {
                             data: respuesta.produccion,
                             borderWidth: 2,
                             fill: false,
-                            lineTension: 0.1
+                            lineTension: 0.3
                         },
                         {
                             label: 'Corte',
@@ -145,7 +145,7 @@ foreach ($corte_mes as $value) {
                             data: respuesta.corte,
                             borderWidth: 2,
                             fill: false,
-                            lineTension: 0.1
+                            lineTension: 0.3
                         }
                     ]
                 };
@@ -264,7 +264,7 @@ foreach ($corte_mes as $value) {
                     pointHoverBorderColor: 'rgba(75,192,192,1)',
                     borderWidth: 2,
                     fill: false,
-                    lineTension: 0.1,
+                    lineTension: 0.3,
                     data: [
                         <?php
                         $conteoP = count($arrayProduccion);
@@ -288,7 +288,7 @@ foreach ($corte_mes as $value) {
                     pointHoverBorderColor: 'rgba(255,159,64,1)',
                     borderWidth: 2,
                     fill: false,
-                    lineTension: 0.1,
+                    lineTension: 0.3,
                     data: [
                         <?php
                         $conteoV = count($arrayCorte);

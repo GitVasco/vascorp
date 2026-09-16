@@ -69,7 +69,7 @@ if (count($produccion_mes) != 0) {
                         ?>
                     </tr>
                     <tr>
-                        <td style="background-color: rgba(210, 214, 222, 0.2);">Ventas</td>
+                        <td style="background-color: rgba(0, 166, 90, 0.15);">Ventas</td>
                         <?php
                         foreach ($arrayVentas as $venta) {
                             $venta = number_format($venta, 0);
@@ -139,12 +139,12 @@ if (count($produccion_mes) != 0) {
                 },
                 {
                     label: 'Ventas',
-                    backgroundColor: 'rgba(210, 214, 222, 0.2)',
-                    borderColor: 'rgba(210, 214, 222, 1)',
-                    pointBackgroundColor: 'rgba(210, 214, 222, 1)',
-                    pointBorderColor: '#c1c7d1',
+                    backgroundColor: 'rgba(0, 166, 90, 0.15)',
+                    borderColor: '#00a65a',
+                    pointBackgroundColor: '#00a65a',
+                    pointBorderColor: '#fff',
                     pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgba(220,220,220,1)',
+                    pointHoverBorderColor: '#008d4c',
                     data: datos.ventas,
                     borderWidth: 2,
                     fill: false,
@@ -213,7 +213,7 @@ if (count($produccion_mes) != 0) {
 
         // Actualizar fila de ventas
         var filaVtas = $('.box-body .table tbody tr').eq(1);
-        filaVtas.html('<td style="background-color: rgba(210, 214, 222, 0.2);">Ventas</td>');
+        filaVtas.html('<td style="background-color: rgba(0, 166, 90, 0.15);">Ventas</td>');
         datos.ventas.forEach(function(venta) {
             filaVtas.append('<td>' + number_format(venta, 0) + '</td>');
         });
