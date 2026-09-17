@@ -22,38 +22,34 @@
 
         <div class="box">
 
-            <div class="box-header with-border">
+            <div class="box-header with-border pedidos-cv-listado-header">
 
-                <div class="btn-toolbar pull-left" role="toolbar">
+                <div class="pedidos-cv-header-toolbar">
 
-                    <div class="btn-group mr-2">
+                    <div class="pedidos-cv-acciones-principales" role="toolbar" aria-label="Acciones de pedidos">
                         <?php
-
                         $pedido = "";
-                        echo '<button class="btn btn-primary  btnCrearPedido" pedido="' . $pedido . '" title="Crear Pedido">
-
-                            Crear Pedido
-
+                        echo '<button type="button" class="btn btn-primary btnCrearPedido pedidos-cv-btn-accion" pedido="' . $pedido . '" title="Abrir formulario para armar un pedido nuevo">
+                            <i class="fa fa-plus"></i> Crear pedido
                         </button>';
-
                         ?>
-
-
-                    </div>
-
-
-
-                    <div class="btn-group mr-2">
-
-                        <a href="escaneo-barcode-pedidocv" class="btn btn-warning" title="Crear pedido con código de barras">
-
-                            <i class="fa fa-barcode"></i> Crear pedido
-
+                        <a href="escaneo-barcode-pedidocv" class="btn btn-default pedidos-cv-btn-accion pedidos-cv-btn-barcode" title="Alta rápida escaneando códigos de barras">
+                            <i class="fa fa-barcode"></i> Código de barras
                         </a>
-
+                        <?php
+                        if (
+                            $_SESSION["id"] == "6" ||
+                            $_SESSION["id"] == "53" ||
+                            $_SESSION["id"] == "54" ||
+                            $_SESSION["id"] == "55" ||
+                            $_SESSION["id"] == "74"
+                        ) {
+                            echo '<button type="button" class="btn btn-success btnEnviarPedido pedidos-cv-btn-accion pedidos-cv-solo-desktop" data-toggle="modal" data-target="#modalEnviarPedido" title="Enviar pedidos al siguiente estado">
+                                <i class="fa fa-paper-plane"></i> Enviar pedidos
+                            </button>';
+                        }
+                        ?>
                     </div>
-
-
 
                     <?php
                     if (
@@ -63,19 +59,17 @@
                         $_SESSION["id"] == "55" ||
                         $_SESSION["id"] == "74"
                     ) {
-                        echo '<div class="btn-group mr-2">
-                            <button class="btn btn-success btnEnviarPedido" data-toggle="modal" data-target="#modalEnviarPedido">
-                                <i class="fa fa-plane"></i> Enviar Pedidos
-                            </button>
-                        </div>';
-
-                        echo '<div class="btn-group mr-2">
-                            <form role="form" class="form-inline" method="POST" enctype="multipart/form-data">
-                                <div class="form-group">
-                                    <input type="file" name="archivoPedTxt" id="archivoPedTxt" class="form-control" accept="text/plain">
+                        echo '<div class="pedidos-cv-import-inline pedidos-cv-solo-desktop">
+                            <form role="form" class="pedidos-cv-import-form" method="POST" enctype="multipart/form-data">
+                                <span class="pedidos-cv-import-hint"><i class="fa fa-file-text-o"></i> Importar .txt</span>
+                                <div class="input-group input-group-sm pedidos-cv-import-input">
+                                    <input type="file" name="archivoPedTxt" id="archivoPedTxt" class="form-control" accept="text/plain" title="Seleccionar archivo de texto">
+                                    <span class="input-group-btn">
+                                        <button type="submit" class="btn btn-info pedidos-cv-btn-accion" name="importPedTxt" title="Cargar archivo">
+                                            <i class="fa fa-upload"></i> Subir
+                                        </button>
+                                    </span>
                                 </div>
-                                <button type="submit" class="btn btn-info" name="importPedTxt"><i class="fa fa-upload"></i></button>
-
                             </form>';
 
                         $activar = new ControladorPedidos();
@@ -84,40 +78,63 @@
                         echo '</div>';
                     }
                     ?>
-                </div>
 
-                <div class="btn-group pull-right" role="group">
-                    <button class="btn btn-default btnInicioPed" title="Inicio"><i class="fa fa-home"></i></button>
-                    <button class="btn btn-basic btnGenerados" title="Generados">GENERADOS</button>
-                    <button class="btn btn-warning btnAprobados" title="Aprobados">APROBADOS</button>
-                    <button class="btn btn-default btnAPT" title="En APT">EN APT</button>
-                    <button class="btn btn-info btnConfirmados" title="Confirmados">CONFIRMADOS</button>
-                    <button class="btn btn-success btnFacturados" title="Facturados">FACTURADOS</button>
-                </div>
+                <nav class="pedidos-cv-estados-nav" aria-label="Filtrar por estado">
+                    <button type="button" class="btn btn-default pedidos-cv-filtro-estado btnInicioPed" title="Pedidos General — todos los estados">
+                        <i class="fa fa-home" aria-hidden="true"></i>
+                        <span class="pedidos-cv-filtro-label">Inicio</span>
+                    </button>
+                    <button type="button" class="btn btn-default pedidos-cv-filtro-estado btnGenerados" title="Ver pedidos generados">
+                        <i class="fa fa-file-text-o" aria-hidden="true"></i>
+                        <span class="pedidos-cv-filtro-label">Generados</span>
+                    </button>
+                    <button type="button" class="btn btn-warning pedidos-cv-filtro-estado btnAprobados" title="Ver pedidos aprobados">
+                        <i class="fa fa-check-circle" aria-hidden="true"></i>
+                        <span class="pedidos-cv-filtro-label">Aprobados</span>
+                    </button>
+                    <button type="button" class="btn btn-default pedidos-cv-filtro-estado btnAPT" title="Ver pedidos en APT">
+                        <i class="fa fa-cubes" aria-hidden="true"></i>
+                        <span class="pedidos-cv-filtro-label">En APT</span>
+                    </button>
+                    <button type="button" class="btn btn-info pedidos-cv-filtro-estado btnConfirmados" title="Ver pedidos confirmados">
+                        <i class="fa fa-flag-checkered" aria-hidden="true"></i>
+                        <span class="pedidos-cv-filtro-label">Confirmados</span>
+                    </button>
+                    <button type="button" class="btn btn-success pedidos-cv-filtro-estado btnFacturados" title="Ver pedidos facturados">
+                        <i class="fa fa-money" aria-hidden="true"></i>
+                        <span class="pedidos-cv-filtro-label">Facturados</span>
+                    </button>
+                </nav>
+
+                </div><!-- .pedidos-cv-header-toolbar -->
 
             </div>
 
-            <div class="box-body">
+            <div class="box-body pedidos-cv-tabla-wrap">
+
+                <div class="pedidos-cv-tabla-scroll">
 
                 <table class="table table-bordered table-striped tablaPedidosCV" width="100%">
 
                     <thead>
                         <tr>
-                            <th>Código</th>
-                            <th>Cod. Cliente</th>
-                            <th>Cliente</th>
-                            <th>Vendedor</th>
-                            <th>Total $</th>
-                            <th>Condición</th>
-                            <th>Estado</th>
-                            <th>Usuario</th>
-                            <th>Fecha</th>
-                            <th>F. Aprobación</th>
-                            <th width="320px">Acciones</th>
+                            <th title="Código del pedido">Pedido</th>
+                            <th title="Código de cliente">Cli.</th>
+                            <th title="Nombre del cliente">Cliente</th>
+                            <th title="Código de vendedor">Vend.</th>
+                            <th class="text-right" title="Total del pedido">Total</th>
+                            <th title="Condición de venta">Condición</th>
+                            <th title="Estado actual">Estado</th>
+                            <th title="Usuario que registró">Usuario</th>
+                            <th title="Fecha del pedido">Fecha</th>
+                            <th title="Fecha de aprobación">F.aprob.</th>
+                            <th title="Acciones disponibles">Acciones</th>
                         </tr>
                     </thead>
 
                 </table>
+
+                </div><!-- .pedidos-cv-tabla-scroll -->
 
             </div>
 

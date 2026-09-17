@@ -76,13 +76,14 @@ class TablaPedidosCV
 
                 $nombreCli = htmlspecialchars(isset($pedidos[$i]["nombre"]) ? $pedidos[$i]["nombre"] : "", ENT_QUOTES, "UTF-8");
                 $celdaCliente = "<span class='pedidosCvClienteNombre' title='" . $nombreCli . "'><b>" . $nombreCli . "</b></span>";
+                $totalFmt = number_format((float) $pedidos[$i]["total"], 2, ".", ",");
 
                 $datosJson .= '[
             "<b>' . $pedidos[$i]["codigo"] . '</b>",
             "' . $codigo . '",
             "' . $celdaCliente . '",
             "' . $pedidos[$i]["vendedor"] . '",
-            "<b>' . $moneda . $pedidos[$i]["total"] . '</b>",
+            "<b>' . $moneda . $totalFmt . '</b>",
             "' . $pedidos[$i]["descripcion"] . '",
             "' . $estado . '",
             "' . $pedidos[$i]["nom_usu"] . '",

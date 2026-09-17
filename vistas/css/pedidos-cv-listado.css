@@ -1,0 +1,236 @@
+/**
+ * Pedidos General (pedidoscv) — cabecera + listado (sin tocar botones de fila del AJAX).
+ */
+
+.pedidos-cv-listado-header {
+    padding: 10px 15px;
+}
+
+.pedidos-cv-listado-header .btn {
+    margin-left: 0 !important;
+    float: none !important;
+}
+
+.pedidos-cv-header-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    width: 100%;
+}
+
+.pedidos-cv-acciones-principales {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.pedidos-cv-listado-header .pedidos-cv-btn-accion {
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 3px;
+    min-height: 34px;
+    padding: 6px 12px;
+    white-space: nowrap;
+}
+
+.pedidos-cv-listado-header .pedidos-cv-btn-accion .fa {
+    margin-right: 5px;
+}
+
+.pedidos-cv-listado-header .pedidos-cv-btn-barcode {
+    border-color: #d4a017;
+    color: #8a6d0a;
+    background: #fffbf0;
+}
+
+.pedidos-cv-listado-header .pedidos-cv-btn-barcode:hover,
+.pedidos-cv-listado-header .pedidos-cv-btn-barcode:focus {
+    background: #fff3cd;
+    border-color: #c69500;
+    color: #6b5208;
+}
+
+.pedidos-cv-import-inline {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 340px;
+    min-width: 220px;
+    max-width: 400px;
+}
+
+.pedidos-cv-import-hint {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.pedidos-cv-import-hint .fa {
+    color: #3c8dbc;
+    margin-right: 4px;
+}
+
+.pedidos-cv-import-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pedidos-cv-import-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+
+.pedidos-cv-import-input .form-control {
+    height: 34px;
+    font-size: 12px;
+}
+
+.pedidos-cv-import-input .btn {
+    height: 34px;
+}
+
+.pedidos-cv-estados-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.pedidos-cv-filtro-estado {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 1.2;
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 3px;
+}
+
+.pedidos-cv-filtro-estado .fa {
+    flex-shrink: 0;
+    margin-right: 5px;
+    font-size: 14px;
+}
+
+.pedidos-cv-filtro-label {
+    white-space: nowrap;
+}
+
+@media (max-width: 991px) {
+    .pedidos-cv-solo-desktop {
+        display: none !important;
+    }
+
+    .pedidos-cv-header-toolbar {
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .pedidos-cv-estados-nav {
+        flex: 1 1 auto;
+        justify-content: flex-end;
+        margin-left: 0;
+        gap: 4px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 2px 0;
+    }
+
+    .pedidos-cv-filtro-label {
+        display: none;
+    }
+
+    .pedidos-cv-filtro-estado {
+        flex: 0 0 auto;
+        min-width: 38px;
+        padding: 7px 8px;
+    }
+
+    .pedidos-cv-filtro-estado .fa {
+        margin-right: 0;
+        font-size: 16px;
+    }
+
+    .pedidos-cv-listado-header .pedidos-cv-btn-accion {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+@media (min-width: 992px) {
+    .pedidos-cv-header-toolbar {
+        flex-wrap: nowrap;
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1399px) {
+    .pedidos-cv-filtro-label {
+        display: none;
+    }
+
+    .pedidos-cv-filtro-estado .fa {
+        margin-right: 0;
+    }
+
+    .pedidos-cv-filtro-estado {
+        min-width: 36px;
+        padding: 6px 8px;
+    }
+
+    .pedidos-cv-import-inline {
+        flex: 0 1 280px;
+        max-width: 320px;
+    }
+}
+
+@media (min-width: 1400px) {
+    .pedidos-cv-filtro-estado {
+        padding: 6px 12px;
+    }
+}
+
+/* Listado: scroll horizontal; botones de fila sin override (pedidos-tablas-acciones.css) */
+.pedidos-cv-tabla-wrap {
+    padding-top: 8px;
+}
+
+.pedidos-cv-tabla-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+.pedidos-cv-tabla-scroll table.dataTable.tablaPedidosCV {
+    min-width: 1120px;
+    margin-bottom: 0;
+}
+
+.pedidos-cv-tabla-scroll table.dataTable.tablaPedidosCV thead th {
+    font-size: 12px;
+    padding: 6px 8px !important;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.pedidos-cv-tabla-scroll table.dataTable.tablaPedidosCV td:nth-child(5) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

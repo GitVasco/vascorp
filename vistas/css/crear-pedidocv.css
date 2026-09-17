@@ -851,28 +851,32 @@
     margin-bottom: 0;
 }
 
-.crear-pedidocv-grilla-table > thead > tr > th,
-.crear-pedidocv-grilla-table > tbody > tr > td,
-.crear-pedidocv-grilla-table > tfoot > tr > th {
-    border-top: none;
-    border-left: none;
-    border-right: none;
-}
-
 .crear-pedidocv-grilla-table th,
 .crear-pedidocv-grilla-table td {
-    border: none;
     padding: 4px 3px;
     vertical-align: middle;
     font-size: 12px;
+    border-top: none;
+    border-bottom: none;
+    border-left: none;
+    border-right: 1px solid #e6ebf0;
+}
+
+.crear-pedidocv-grilla-table th:last-child,
+.crear-pedidocv-grilla-table td:last-child {
+    border-right: none;
 }
 
 .crear-pedidocv-grilla-table thead th {
     background: #3c8dbc;
     color: #fff;
     font-weight: 600;
-    border: none;
     line-height: 1.15;
+    border-right-color: rgba(255, 255, 255, 0.2);
+}
+
+.crear-pedidocv-grilla-table tfoot th {
+    border-right-color: #d8dee6;
 }
 
 .crear-pedidocv-grilla-table thead tr:first-child th,

@@ -153,6 +153,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/pedidos-tablas-acciones.css?v=<?php echo rand(); ?>">
     <link rel="stylesheet" href="vistas/css/modal-facturar.css?v=7">
     <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv") : ?>
+    <link rel="stylesheet" href="vistas/css/pedidos-cv-listado.css?v=6">
+    <?php endif; ?>
 
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "dashboard-decisiones") : ?>
     <link rel="stylesheet" href="vistas/css/dashboard-decisiones.css?v=<?php echo rand(); ?>">
@@ -256,7 +259,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/ver-cuentas.css?v=4">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-pedidocv") : ?>
-    <link rel="stylesheet" href="vistas/css/crear-pedidocv.css?v=20">
+    <link rel="stylesheet" href="vistas/css/crear-pedidocv.css?v=21">
     <?php endif; ?>
 
     <!-- iCheck for checkboxes and radio inputs -->
