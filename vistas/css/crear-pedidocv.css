@@ -1,0 +1,1101 @@
+/**
+ * Crear pedido CV — layout usable en ventana estrecha (p. ej. mitad de pantalla).
+ */
+
+.crear-pedidocv-page {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.crear-pedidocv-page .content {
+    padding-left: 10px;
+    padding-right: 10px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.crear-pedidocv-page .row.crear-pedidocv-main > [class*="col-"] {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.crear-pedidocv-page .row.crear-pedidocv-main {
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.crear-pedidocv-page .row.crear-pedidocv-main > [class*="col-"] {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+/* Columna formulario: detecta ancho real (pantalla dividida vs desktop ancho) */
+.crear-pedidocv-form-col {
+    container-type: inline-size;
+    container-name: pedidocv-form;
+}
+
+.crear-pedidocv-form-col .box.box-success,
+.crear-pedidocv-form-col .box-body,
+.crear-pedidocv-form-col .box-body > .box {
+    overflow: visible;
+}
+
+/* Lista de líneas: solo desktop (columna formulario ancha) */
+.crear-pedidocv-lista-bloque {
+    display: none !important;
+}
+
+.crear-pedidocv-hr-lista {
+    display: none;
+}
+
+.crear-pedidocv-detalle-scroll {
+    max-height: min(420px, 45vh);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 4px;
+    border: 1px solid #e8e8e8;
+    border-radius: 3px;
+}
+
+.crear-pedidocv-tabla-lineas {
+    margin-bottom: 0;
+    table-layout: fixed;
+    width: 100%;
+    font-size: 12px;
+}
+
+.crear-pedidocv-tabla-lineas col.crear-pedidocv-col-item,
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-item {
+    width: 38%;
+}
+
+.crear-pedidocv-tabla-lineas thead th {
+    background: #3c8dbc;
+    color: #fff;
+    border-bottom: none !important;
+    padding: 8px 10px;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.crear-pedidocv-tabla-lineas tbody td {
+    vertical-align: middle;
+    padding: 6px 10px;
+    border-top: 1px solid #eee !important;
+}
+
+.crear-pedidocv-tabla-lineas tbody tr:hover td {
+    background: #f5f9fc;
+}
+
+.crear-pedidocv-col-item {
+    width: auto;
+}
+
+.crear-pedidocv-col-cant {
+    width: 52px;
+}
+
+.crear-pedidocv-col-punit-sin {
+    width: 100px;
+}
+
+.crear-pedidocv-col-punit-con {
+    width: 100px;
+}
+
+.crear-pedidocv-col-total {
+    width: 80px;
+}
+
+.crear-pedidocv-col-total-igv {
+    width: 84px;
+}
+
+.crear-pedidocv-tabla-lineas thead th.crear-pedidocv-th-num {
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: -0.02em;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+@media (min-width: 1400px) {
+    .crear-pedidocv-tabla-lineas col.crear-pedidocv-col-item,
+    .crear-pedidocv-tabla-lineas th.crear-pedidocv-col-item {
+        width: 42%;
+    }
+
+    .crear-pedidocv-col-punit-sin,
+    .crear-pedidocv-col-punit-con,
+    .crear-pedidocv-tabla-lineas th.crear-pedidocv-col-punit-sin,
+    .crear-pedidocv-tabla-lineas th.crear-pedidocv-col-punit-con {
+        width: 108px;
+    }
+
+    .crear-pedidocv-col-total,
+    .crear-pedidocv-tabla-lineas th.crear-pedidocv-col-total {
+        width: 88px;
+    }
+
+    .crear-pedidocv-col-total-igv,
+    .crear-pedidocv-tabla-lineas th.crear-pedidocv-col-total-igv {
+        width: 92px;
+    }
+
+    .crear-pedidocv-tabla-lineas thead th.crear-pedidocv-th-num {
+        font-size: 12px;
+    }
+}
+
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-cant,
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-punit-sin,
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-punit-con,
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-total,
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-total-igv {
+    width: auto;
+}
+
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-cant {
+    width: 52px;
+}
+
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-punit-sin,
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-punit-con {
+    width: 100px;
+}
+
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-total {
+    width: 80px;
+}
+
+.crear-pedidocv-tabla-lineas th.crear-pedidocv-col-total-igv {
+    width: 84px;
+}
+
+.crear-pedidocv-celda-articulo {
+    overflow: hidden;
+}
+
+.crear-pedidocv-linea-desc {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    line-height: 1.35;
+}
+
+.crear-pedidocv-celda-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.crear-pedidocv-campo-sistema {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    border: 0 !important;
+}
+
+.crear-pedidocv-celda-articulo,
+.crear-pedidocv-celda-num {
+    position: relative;
+}
+
+.crear-pedidocv-buscador {
+    margin-bottom: 8px;
+    padding-bottom: 0 !important;
+}
+
+/*
+ * Lista solo en monitor ancho (pantalla completa). En dividida (<1400px) no se muestra:
+ * al apilar columnas el formulario ocupa todo el ancho y el container query fallaba.
+ */
+@media (min-width: 1400px) {
+    @container pedidocv-form (min-width: 600px) {
+        .crear-pedidocv-lista-bloque {
+            display: block !important;
+        }
+
+        .crear-pedidocv-hr-lista {
+            display: block !important;
+        }
+    }
+}
+
+@supports not (container-type: inline-size) {
+    @media (min-width: 1400px) {
+        .crear-pedidocv-lista-bloque {
+            display: block !important;
+        }
+
+        .crear-pedidocv-hr-lista {
+            display: block !important;
+        }
+    }
+}
+
+/* ========== Totales (desktop, tablet y pantalla dividida) ========== */
+.crear-pedidocv-totales-panel {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 10px;
+    box-sizing: border-box;
+    background: #fafbfc;
+    border: 1px solid #dde3ea;
+    border-radius: 4px;
+    overflow: visible;
+}
+
+.crear-pedidocv-totales-titulo {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.35;
+    background: #f4f6f8;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.crear-pedidocv-totales-titulo .fa {
+    color: #3c8dbc;
+    margin-right: 5px;
+}
+
+.crear-pedidocv-totales {
+    margin: 0;
+}
+
+.crear-pedidocv-totales > .form-group.row {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 6px 12px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    float: none;
+    box-sizing: border-box;
+}
+
+.crear-pedidocv-totales > .form-group.row > .form-group {
+    margin-bottom: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #eceff3;
+}
+
+.crear-pedidocv-totales > .form-group.row > .form-group:last-child {
+    border-bottom: none;
+}
+
+.crear-pedidocv-totales > .form-group.row > .form-group > .col-xs-4 {
+    display: none;
+}
+
+.crear-pedidocv-totales > .form-group.row > .form-group > [class*="col-"] {
+    float: none;
+    width: auto;
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.crear-pedidocv-totales .input-group {
+    width: 100%;
+    display: block;
+}
+
+.crear-pedidocv-totales .pull-right {
+    float: none !important;
+}
+
+.crear-pedidocv-totales span.form-control {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    text-align: left;
+    font-weight: 600;
+    color: #444;
+}
+
+.crear-pedidocv-total-fila--simple {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 32%);
+    gap: 8px;
+    align-items: center;
+}
+
+.crear-pedidocv-total-fila--simple > .col-xs-2 {
+    display: none;
+}
+
+.crear-pedidocv-total-fila--simple > .col-xs-3:first-of-type {
+    grid-column: 1;
+}
+
+.crear-pedidocv-total-fila--simple > .col-xs-3:last-of-type {
+    grid-column: 2;
+    text-align: right;
+}
+
+.crear-pedidocv-total-fila--split {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 46px minmax(72px, 30%);
+    gap: 6px;
+    align-items: center;
+}
+
+.crear-pedidocv-total-fila--split > .col-xs-3:first-of-type {
+    grid-column: 1;
+}
+
+.crear-pedidocv-total-fila--split > .col-xs-2 {
+    grid-column: 2;
+}
+
+.crear-pedidocv-total-fila--split > .col-xs-3:last-of-type {
+    grid-column: 3;
+    text-align: right;
+}
+
+.crear-pedidocv-total-fila--final {
+    margin-top: 2px;
+    padding-top: 6px !important;
+    border-top: 2px solid #3c8dbc !important;
+    border-bottom: none !important;
+}
+
+.crear-pedidocv-total-fila--final span.form-control {
+    font-size: 14px;
+    color: #222;
+}
+
+/* Montos de solo lectura: texto alineado a la derecha, sin caja de input */
+.crear-pedidocv-totales input.form-control[readonly],
+.crear-pedidocv-totales #impPer {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0;
+    height: auto;
+    min-height: 22px;
+    line-height: 22px;
+    text-align: right;
+    cursor: default;
+    font-weight: 600;
+    color: #333;
+    font-size: 13px;
+}
+
+.crear-pedidocv-totales #nuevoTotal {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a5276;
+    line-height: 24px;
+}
+
+/* Único campo editable en totales */
+.crear-pedidocv-totales #descPer {
+    height: 26px;
+    padding: 2px 4px;
+    text-align: center;
+    font-size: 13px;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 3px;
+    background: #fff !important;
+    font-weight: 600;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04);
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.crear-pedidocv-totales span.form-control {
+    font-size: 13px;
+}
+
+@media (min-width: 1400px) {
+    .crear-pedidocv-totales > .form-group.row {
+        max-width: 360px;
+        margin-left: auto;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
+@media (max-width: 1399px) {
+    .crear-pedidocv-lista-bloque,
+    .crear-pedidocv-hr-lista {
+        display: none !important;
+    }
+
+    .crear-pedidocv-zona-final {
+        margin-top: 4px;
+        padding: 14px 12px 4px;
+        background: #f3f6f9;
+        border: 1px solid #d8e0e8;
+        border-radius: 6px;
+    }
+
+    .crear-pedidocv-zona-final-titulo {
+        margin: 0 0 12px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .crear-pedidocv-totales-panel {
+        background: #fff;
+        border-color: #e2e8f0;
+    }
+
+    .crear-pedidocv-totales > .form-group.row {
+        float: none;
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .crear-pedidocv-sep-totales-cierre {
+        display: block;
+        margin: 14px 0 12px;
+        border: 0;
+        border-top: 2px solid #cbd5e1;
+    }
+
+    .crear-pedidocv-cierre-pedido {
+        float: none;
+        width: 100%;
+        max-width: none;
+        margin: 0 0 8px;
+        box-sizing: border-box;
+        background: #fff;
+        border-color: #e2e8f0;
+    }
+}
+
+@media (min-width: 1400px) {
+    .crear-pedidocv-zona-final-titulo {
+        display: none;
+    }
+
+    .crear-pedidocv-sep-totales-cierre {
+        display: block;
+        clear: both;
+        width: 100%;
+        max-width: none;
+        margin: 12px 0 10px;
+        border: 0;
+        border-top: 1px solid #d0d7e2;
+    }
+
+    .crear-pedidocv-cierre-pedido {
+        width: 100%;
+        max-width: none;
+        margin: 10px 0 14px;
+        float: none;
+    }
+}
+
+/* Cierre del pedido: condición de venta + agencia */
+.crear-pedidocv-cierre-pedido {
+    width: 100%;
+    max-width: none;
+    margin: 10px 0 14px;
+    padding: 0 0 12px;
+    background: #fafbfc;
+    border: 1px solid #dde3ea;
+    border-radius: 4px;
+    clear: both;
+    float: none;
+    box-sizing: border-box;
+    overflow: visible;
+    position: relative;
+    z-index: 3;
+}
+
+.crear-pedidocv-cierre-pedido::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.crear-pedidocv-cierre-titulo {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.35;
+    background: #f4f6f8;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.crear-pedidocv-cierre-titulo .fa {
+    color: #3c8dbc;
+    margin-right: 5px;
+}
+
+.crear-pedidocv-cierre-ayuda {
+    margin: 0;
+    padding: 8px 12px 10px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.crear-pedidocv-cierre-campos {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.crear-pedidocv-cierre-campos {
+    margin-left: -6px;
+    margin-right: -6px;
+}
+
+.crear-pedidocv-cierre-campos > [class*="col-"] {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.crear-pedidocv-campo-cierre {
+    margin-bottom: 0;
+}
+
+.crear-pedidocv-campo-cierre label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+.crear-pedidocv-etiq-opcional {
+    font-weight: 500;
+    font-size: 11px;
+    color: #888;
+    text-transform: lowercase;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select {
+    width: 100% !important;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select > .dropdown-toggle {
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    background: #fff;
+    min-height: 34px;
+    padding: 6px 28px 6px 10px;
+    font-size: 13px;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select > .dropdown-toggle .filter-option-inner-inner {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select > .dropdown-toggle:focus,
+.crear-pedidocv-cierre-pedido .bootstrap-select.open > .dropdown-toggle {
+    border-color: #3c8dbc;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.2);
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select .bs-searchbox .form-control {
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.crear-pedidocv-zona-final {
+    overflow: visible;
+    position: relative;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select.open {
+    z-index: 2050;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select .dropdown-menu {
+    z-index: 2051;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select.open > .dropdown-menu {
+    left: 0 !important;
+    right: auto !important;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select .dropdown-menu .inner {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.crear-pedidocv-cierre-pedido .bootstrap-select .dropdown-menu li a {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.crear-pedidocv-totales-panel {
+    position: relative;
+    z-index: 1;
+}
+
+@container pedidocv-form (max-width: 640px) {
+    .crear-pedidocv-cierre-campos > [class*="col-sm-"],
+    .crear-pedidocv-cierre-campos > [class*="col-md-"] {
+        width: 100%;
+        float: none;
+    }
+
+    .crear-pedidocv-cierre-campos > [class*="col-"] + [class*="col-"] {
+        margin-top: 12px;
+    }
+}
+
+@media (max-width: 767px) {
+    .crear-pedidocv-cierre-campos > .col-xs-12 + .col-xs-12 {
+        margin-top: 12px;
+    }
+}
+
+/* Cabecera del pedido */
+.crear-pedidocv-cabecera-pedido {
+    margin-bottom: 12px;
+    padding: 12px 12px 6px;
+    background: #fafbfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+}
+
+.crear-pedidocv-cabecera-titulo {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.crear-pedidocv-cabecera-titulo .fa {
+    color: #00a65a;
+    margin-right: 4px;
+}
+
+.crear-pedidocv-cabecera-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px 12px;
+}
+
+@media (min-width: 576px) {
+    .crear-pedidocv-cabecera-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .crear-pedidocv-fila-completa {
+        grid-column: 1 / -1;
+    }
+}
+
+.crear-pedidocv-cabecera-campo {
+    margin-bottom: 0;
+}
+
+.crear-pedidocv-cabecera-ayuda {
+    margin: -2px 0 4px;
+    grid-column: 1 / -1;
+}
+
+.crear-pedidocv-label-campo {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.crear-pedidocv-cabecera-pedido .input-group-addon {
+    background: #eef2f6;
+    color: #555;
+    border-color: #cbd5e1;
+    min-width: 38px;
+}
+
+.crear-pedidocv-cabecera-pedido input.form-control.input-sm[readonly] {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #444;
+}
+
+.crear-pedidocv-cabecera-pedido .bootstrap-select {
+    width: 100% !important;
+}
+
+.crear-pedidocv-cabecera-pedido .bootstrap-select > .dropdown-toggle {
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    background: #fff;
+    min-height: 34px;
+    font-size: 13px;
+}
+
+.crear-pedidocv-input-sin-addon {
+    display: block;
+    width: 100%;
+}
+
+.crear-pedidocv-zona-final {
+    clear: both;
+}
+
+.crear-pedidocv-zona-final-titulo .fa {
+    color: #3c8dbc;
+    margin-right: 5px;
+}
+
+.crear-pedidocv-sep-totales-cierre {
+    display: none;
+}
+
+/* Buscador */
+.crear-pedidocv-buscador .control-label {
+    margin-bottom: 4px;
+}
+
+@media (min-width: 992px) {
+    .crear-pedidocv-buscador .control-label {
+        padding-top: 7px;
+        margin-bottom: 0;
+    }
+}
+
+/* Panel derecho: grilla modelo / tallas (desktop first) */
+.crear-pedidocv-panel-modelos-body {
+    padding-bottom: 10px;
+}
+
+.crear-pedidocv-panel-modelos .crear-pedidocv-toolbar-modelo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.crear-pedidocv-panel-modelos .crear-pedidocv-toolbar-modelo > .form-group,
+.crear-pedidocv-panel-modelos .crear-pedidocv-toolbar-modelo > label {
+    margin-bottom: 0;
+}
+
+.crear-pedidocv-panel-modelos .crear-pedidocv-campo-modelo {
+    flex: 1 1 180px;
+    min-width: 120px;
+}
+
+.crear-pedidocv-help-modelo {
+    margin: 0 0 8px;
+}
+
+.crear-pedidocv-zona-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.crear-pedidocv-grilla-wrap.zona_impresion {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.crear-pedidocv-grilla-table {
+    width: 100%;
+    margin: 0 0 0 0;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border: none;
+    background: #fff;
+}
+
+.crear-pedidocv-grilla-table.table {
+    margin-bottom: 0;
+}
+
+.crear-pedidocv-grilla-table > thead > tr > th,
+.crear-pedidocv-grilla-table > tbody > tr > td,
+.crear-pedidocv-grilla-table > tfoot > tr > th {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+.crear-pedidocv-grilla-table th,
+.crear-pedidocv-grilla-table td {
+    border: none;
+    padding: 4px 3px;
+    vertical-align: middle;
+    font-size: 12px;
+}
+
+.crear-pedidocv-grilla-table thead th {
+    background: #3c8dbc;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    line-height: 1.15;
+}
+
+.crear-pedidocv-grilla-table thead tr:first-child th,
+.crear-pedidocv-grilla-table thead tr:nth-child(2) th {
+    padding-top: 3px;
+    padding-bottom: 2px;
+    font-size: 11px;
+}
+
+.crear-pedidocv-grilla-table .col-modelo {
+    width: 11%;
+}
+
+.crear-pedidocv-grilla-table .col-color {
+    width: 18%;
+}
+
+.crear-pedidocv-grilla-table .col-talla {
+    width: 6.5%;
+}
+
+.crear-pedidocv-grilla-table .col-total {
+    width: 7%;
+    font-weight: 700;
+}
+
+.crear-pedidocv-grilla-table tbody tr.crear-pedidocv-grilla-fila td {
+    background: #fff;
+}
+
+/* Separador visible solo al cambiar de modelo */
+.crear-pedidocv-grilla-table tbody tr.crear-pedidocv-sep-modelo td {
+    border-top: 3px solid #2c3e50;
+    padding-top: 8px;
+}
+
+.crear-pedidocv-grilla-table tfoot tr.crear-pedidocv-grilla-totales th {
+    background: #f4f4f4;
+    color: #111;
+    border-top: 2px solid #3c8dbc;
+    font-weight: 700;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.crear-pedidocv-grilla-table .btn-link-grilla {
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    line-height: 1.25;
+}
+
+.crear-pedidocv-grilla-table .col-modelo .btn-link-grilla {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.crear-pedidocv-grilla-table .col-talla .btn-link-grilla {
+    font-size: 13px;
+}
+
+/* Pantalla dividida: scroll horizontal sin deformar desktop */
+@media (max-width: 1199px) {
+    .crear-pedidocv-grilla-table {
+        min-width: 520px;
+    }
+
+    .crear-pedidocv-grilla-table .col-modelo .btn-link-grilla {
+        white-space: normal;
+        word-break: break-word;
+    }
+}
+
+/* Botones unificados (formulario, grilla, modales de esta pantalla) */
+.crear-pedidocv-page .crear-pedidocv-btn {
+    min-height: 34px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 3px;
+    line-height: 1.35;
+    box-shadow: none;
+}
+
+.crear-pedidocv-page .crear-pedidocv-btn.btn-sm {
+    min-height: 32px;
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.crear-pedidocv-page .crear-pedidocv-btn .fa {
+    margin-right: 4px;
+}
+
+.crear-pedidocv-page .crear-pedidocv-btn.btn-sm .fa:only-child {
+    margin-right: 0;
+}
+
+.crear-pedidocv-page .btn-default.crear-pedidocv-btn {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #444;
+}
+
+.crear-pedidocv-page .btn-default.crear-pedidocv-btn:hover,
+.crear-pedidocv-page .btn-default.crear-pedidocv-btn:focus {
+    background: #f4f6f8;
+    border-color: #b8c4d0;
+    color: #222;
+}
+
+.crear-pedidocv-page .btn-primary.crear-pedidocv-btn {
+    background: #3c8dbc;
+    border-color: #367fa9;
+}
+
+.crear-pedidocv-page .btn-primary.crear-pedidocv-btn:hover,
+.crear-pedidocv-page .btn-primary.crear-pedidocv-btn:focus {
+    background: #367fa9;
+    border-color: #2e6da4;
+}
+
+.crear-pedidocv-form-col .box-body > .box {
+    margin-bottom: 0;
+}
+
+.crear-pedidocv-barra-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    background: #f4f6f8;
+    border: 1px solid #dde3ea;
+    border-radius: 4px;
+}
+
+.crear-pedidocv-btn-cancelar {
+    border-color: #e0a8a8 !important;
+    color: #b94a48 !important;
+    background: #fff !important;
+}
+
+.crear-pedidocv-btn-cancelar:hover,
+.crear-pedidocv-btn-cancelar:focus {
+    background: #fdf3f3 !important;
+    border-color: #d9534f !important;
+    color: #a94442 !important;
+}
+
+.crear-pedidocv-btn-crear {
+    min-width: 148px;
+}
+
+.crear-pedidocv-toolbar-modelo-acciones.btn-group .crear-pedidocv-btn {
+    float: none;
+}
+
+.crear-pedidocv-toolbar-modelo-acciones.btn-group > .crear-pedidocv-btn + .crear-pedidocv-btn {
+    margin-left: -1px;
+}
+
+@media (max-width: 480px) {
+    .crear-pedidocv-toolbar-modelo-acciones.btn-group {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .crear-pedidocv-toolbar-modelo-acciones.btn-group > .crear-pedidocv-btn {
+        flex: 1 1 auto;
+        margin-left: 0 !important;
+        margin-top: 4px;
+    }
+}
+
+@media (max-width: 400px) {
+    .crear-pedidocv-barra-acciones {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .crear-pedidocv-barra-acciones .crear-pedidocv-btn {
+        width: 100%;
+    }
+}
+
+#modalModificarClienteP .modal-footer .btn,
+#modalGenerarPedido .modal-footer .btn {
+    min-height: 34px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 3px;
+}
+
+#modalModificarClienteP .modal-footer .btn-default,
+#modalGenerarPedido .modal-footer .btn-danger {
+    background: #fff;
+    border-color: #cbd5e1;
+}
+
+#modalModificarClienteP .modal-footer .btn-danger {
+    border-color: #e0a8a8;
+    color: #b94a48;
+}
+
+/* Modal detalle artículos */
+.crear-pedidocv-modal-ancho {
+    width: 95%;
+    max-width: 960px;
+    margin: 10px auto;
+}
+
+@media (min-width: 992px) {
+    .crear-pedidocv-modal-ancho {
+        width: 75%;
+    }
+}
+

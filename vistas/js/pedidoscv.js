@@ -139,7 +139,7 @@ $("#seleccionarVendedor").change(function () {
 $(".formularioPedidoCV").on("click", "button.quitarArtPed", function () {
     //console.log("boton");
 
-    $(this).parent().parent().parent().parent().remove();
+    $(this).closest(".mundito").remove();
 
     sumarTotalesPreciosA();
     cambioDescuento();
@@ -183,12 +183,7 @@ function cambioDescuento() {
  */
 
 $(".formularioPedidoCV").on("change", "input.nuevaCantidadArtPed", function () {
-    var precio = $(this)
-        .parent()
-        .parent()
-        .children(".ingresoPrecio")
-        .children()
-        .children(".nuevoPrecioArticulo");
+    var precio = $(this).closest(".mundito").find(".nuevoPrecioArticulo");
 
     //console.log("precio", precio.val());
 
@@ -460,7 +455,7 @@ $(
  * BOTON  IMPRIMIR TICKET
  */
 $(
-    ".tablaPedidosCV, .tablaPedidosGenerados, .tablaPedidosAprobados, .tablaPedidosAPT, .tablaPedidosConfirmados, .tablaPedidosFacturados"
+    ".tablaPedidosCV, .tablaPedidosGenerados, .tablaPedidosAprobados, .tablaPedidosAPT, .tablaPedidosConfirmados, .tablaPedidosFacturados, .crear-pedidocv-panel-modelos"
 ).on("click", ".btnImprimirPedido", function () {
     var codigo = $(this).attr("codigo");
     //console.log(codigo);
@@ -672,6 +667,93 @@ function mfRefreshSelectpicker($select) {
     } else {
         $select.selectpicker("refresh");
     }
+}
+
+function pedidoCvAjustarMenuSelectCierre(selectEl) {
+    var picker = $(selectEl).data("selectpicker");
+    if (!picker || !picker.$menu || !picker.$menu.length) {
+        return;
+    }
+    var ancho = picker.$newElement.outerWidth();
+    picker.$newElement.css("z-index", 2050);
+
+    function acotarMenu() {
+        picker.$menu.css({
+            minWidth: 0,
+            maxWidth: ancho,
+            width: ancho,
+            boxSizing: "border-box",
+            overflowX: "hidden",
+        });
+        if (picker.$menuInner && picker.$menuInner.length) {
+            picker.$menuInner.css({
+                maxWidth: "100%",
+                overflowX: "hidden",
+            });
+        }
+        picker.$menu.find("li a").css({
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
+        });
+    }
+
+    acotarMenu();
+    requestAnimationFrame(acotarMenu);
+}
+
+/**
+ * Recarga un fragmento de la misma pantalla (#updDiv tbody, #updDivB, etc.)
+ * sin romper el layout de la tabla (evita .load() directo sobre tbody).
+ */
+function pedidoCvRecargarFragmento(id) {
+    var $dest = $("#" + id);
+    if (!$dest.length) {
+        return $.Deferred().resolve().promise();
+    }
+    var url = window.location.href.replace(/#.*$/, "");
+    return $.ajax({ url: url, cache: false, dataType: "html" }).then(function (html) {
+        var $wrap = $("<div>").append($.parseHTML(html, document, false));
+        var $src = $wrap.find("#" + id).first();
+        if (!$src.length) {
+            return;
+        }
+        if ($dest.is("tbody")) {
+            $dest.empty().append($src.contents());
+            var tbl = $dest.closest("table")[0];
+            if (tbl) {
+                void tbl.offsetWidth;
+            }
+        } else {
+            $dest.html($src.html());
+        }
+    });
+}
+
+function pedidoCvRecargarDetallePedido() {
+    return $.when(
+        pedidoCvRecargarFragmento("updDivB"),
+        pedidoCvRecargarFragmento("updDivC"),
+        pedidoCvRecargarFragmento("updDiv")
+    );
+}
+
+/** Selects de cierre: menú debajo del campo (evita dropup vacío) y por encima de Totales. */
+function pedidoCvInitSelectCierre($select) {
+    if (!$select || !$select.length || typeof $select.selectpicker !== "function") {
+        return;
+    }
+    var opts = {
+        liveSearch: true,
+        size: 8,
+        width: "100%",
+        dropupAuto: false,
+        windowPadding: [8, 8, 8, 8],
+    };
+    if ($select.data("selectpicker")) {
+        $select.selectpicker("destroy");
+    }
+    $select.selectpicker(opts);
 }
 
 function mfLlenarSelectSeries($select, respuesta) {
@@ -1653,6 +1735,17 @@ $(document).ready(function () {
     var pedidoCvClientesAjaxPending = false;
     var pedidoCvClientesCatalogoListo = false;
 
+    if ($(".crear-pedidocv-page").length) {
+        $("body").addClass("pagina-crear-pedidocv");
+    }
+
+    pedidoCvInitSelectCierre($("#condicionVenta"));
+    pedidoCvInitSelectCierre($("#agencia"));
+
+    $(document).on("shown.bs.select", ".crear-pedidocv-select-cierre", function () {
+        pedidoCvAjustarMenuSelectCierre(this);
+    });
+
     const codClienteElement = document.getElementById("codCliente");
     const codAgenciaElement = document.getElementById("agencia");
 
@@ -1730,6 +1823,7 @@ $(document).ready(function () {
                 // Seleccionar el cliente que estaba previamente seleccionado si se está editando
                 if (clienteCuenta !== "1") {
                     $sel.val(clienteCuenta);
+                    $sel.selectpicker("val", clienteCuenta);
                 }
                 $sel.selectpicker("refresh");
 
@@ -1769,6 +1863,18 @@ $(document).ready(function () {
                 $("#agencia").selectpicker("refresh");
             },
         });
+    }
+
+    var $venSel = $("#seleccionarVendedor");
+    if ($venSel.length) {
+        var codVenIni = $venSel.find("option[selected]").val();
+        if (!codVenIni) {
+            codVenIni = $venSel.val();
+        }
+        if (codVenIni) {
+            $venSel.selectpicker("val", codVenIni);
+            $venSel.selectpicker("refresh");
+        }
     }
 });
 
@@ -2518,9 +2624,8 @@ $(".btnBorrarModelo").click(function () {
 
             if (respuesta == "ok") {
                 Command: toastr["error"]("El modelo fue eliminado");
-                $("#updDiv").load(" #updDiv"); //actualizas el div
-                //$("#updDivB").load(" #updDivB");//actualizas el div
-                $("#updDivC").load(" #updDivC"); //actualizas el div
+                pedidoCvRecargarFragmento("updDiv");
+                pedidoCvRecargarFragmento("updDivC");
             }
         },
     });
@@ -2878,9 +2983,7 @@ $("#guardarModelo").click(function () {
                 $("#modalModificarClienteP").modal("hide");
 
                 Command: toastr["success"]("El modelo fue registrado");
-                $("#updDivB").load(" #updDivB"); //actualizas el div
-                $("#updDivC").load(" #updDivC"); //actualizas el div
-                $("#updDiv").load(" #updDiv"); //actualizas el div
+                pedidoCvRecargarDetallePedido();
             } else {
                 window.location.href =
                     "index.php?ruta=crear-pedidocv&pedido=" + ped;

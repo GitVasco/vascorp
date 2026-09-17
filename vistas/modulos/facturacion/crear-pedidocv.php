@@ -7,7 +7,7 @@ $valor = $pedido["cliente"];
 $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
 ?>
-<div class="content-wrapper">
+<div class="content-wrapper crear-pedidocv-page">
 
     <section class="content-header">
 
@@ -29,13 +29,13 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
     <section class="content">
 
-        <div class="row">
+        <div class="row crear-pedidocv-main">
 
             <!--=====================================
             EL FORMULARIO
             ======================================-->
 
-            <div class="col-lg-7 col-xs-12">
+            <div class="col-xs-12 col-md-7 crear-pedidocv-form-col">
 
                 <div class="box box-success">
 
@@ -54,11 +54,17 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                 ?>
 
+                                <div class="crear-pedidocv-cabecera-pedido">
+
+                                <p class="crear-pedidocv-cabecera-titulo"><i class="fa fa-file-text-o"></i> Cabecera del pedido</p>
+
+                                <div class="crear-pedidocv-cabecera-grid">
+
                                 <!--=====================================
                                 ENTRADA DEL RESPONSABLE
                                 ======================================-->
 
-                                <div class="form-group">
+                                <div class="form-group crear-pedidocv-cabecera-campo">
 
                                     <div class="input-group">
 
@@ -80,7 +86,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 ENTRADA DEL CODIGO
                                 ======================================-->
 
-                                <div class="form-group">
+                                <div class="form-group crear-pedidocv-cabecera-campo">
 
                                     <div class="input-group">
 
@@ -97,10 +103,11 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 ENTRADA DEL CLIENTE
                                 ======================================-->
                                 <?php if ($pedidoCodigo == "") : ?>
-                                <p class="help-block small" style="margin-bottom:10px;margin-top:-4px;"><i class="fa fa-info-circle"></i> Abra el desplegable de <strong>Cliente</strong> para cargar el listado (la <strong>primera vez</strong> puede demorar unos segundos).</p>
+                                <p class="help-block small crear-pedidocv-cabecera-ayuda crear-pedidocv-fila-completa"><i class="fa fa-info-circle"></i> Abra el desplegable de <strong>Cliente</strong> para cargar el listado (la <strong>primera vez</strong> puede demorar unos segundos).</p>
                                 <?php endif; ?>
 
-                                <div class="form-group">
+                                <div class="form-group crear-pedidocv-cabecera-campo crear-pedidocv-fila-completa">
+                                    <label for="seleccionarCliente" class="crear-pedidocv-label-campo">Cliente</label>
                                     <div class="input-group">
                                         <span class="input-group-addon"><i class="fa fa-users"></i></span>
                                         <input type="hidden" class="form-control input-sm" id="codCliente" name="codCliente" value="<?= $pedido["cliente"] ?>">
@@ -115,7 +122,9 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 ENTRADA DEL VENDEDOR
                                 ======================================-->
 
-                                <div class="form-group">
+                                <div class="form-group crear-pedidocv-cabecera-campo crear-pedidocv-fila-completa">
+
+                                    <label for="seleccionarVendedor" class="crear-pedidocv-label-campo">Vendedor</label>
 
                                     <div class="input-group">
 
@@ -128,24 +137,21 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                             $valor = $_GET["pedido"];
                                             $pedido = ControladorPedidos::ctrMostrarTemporal($valor);
 
-                                            if ($pedido["vendedor"] != "") {
-                                                $vendedor = ControladorVendedores::ctrMostrarVendedores("codigo", $pedido["vendedor"]);
-                                                echo '<option value="' . $vendedor["codigo"] . '">' . $vendedor["codigo"] . ' - ' . $vendedor["descripcion"] . '</option>';
+                                            $vendedorPedido = ($pedido && isset($pedido["vendedor"])) ? trim((string) $pedido["vendedor"]) : "";
 
-                                                $vendedores = ControladorVendedores::ctrMostrarVendedores(null, null);
-                                            } else {
+                                            if ($vendedorPedido === "") {
                                                 echo '<option value="">Seleccione Vendedor</option>';
-                                                $vendedores = ControladorVendedores::ctrMostrarVendedores(null, null);
                                             }
 
-                                            // Ordenamos los vendedores por descripción alfabéticamente
+                                            $vendedores = ControladorVendedores::ctrMostrarVendedores(null, null);
+
                                             usort($vendedores, function ($a, $b) {
                                                 return strcmp($a["codigo"], $b["codigo"]);
                                             });
 
-                                            // Ahora generamos las opciones ya ordenadas
                                             foreach ($vendedores as $key => $value) {
-                                                echo '<option value="' . $value["codigo"] . '">' . $value["codigo"] . ' - ' . $value["descripcion"] . '</option>';
+                                                $selected = ($vendedorPedido !== "" && $value["codigo"] == $vendedorPedido) ? ' selected' : '';
+                                                echo '<option value="' . $value["codigo"] . '"' . $selected . '>' . $value["codigo"] . ' - ' . $value["descripcion"] . '</option>';
                                             }
 
 
@@ -156,6 +162,10 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                     </div>
 
                                 </div>
+
+                                </div><!-- .crear-pedidocv-cabecera-grid -->
+
+                                </div><!-- .crear-pedidocv-cabecera-pedido -->
 
                                 <!--=====================================
                                 ENTRADA LA LISTA DE PRECIOS
@@ -177,13 +187,16 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 }
 
                                 ?>
-                                <div class=" form-group buscador" id="elid" style="padding-bottom:25px">
-                                    <label for="" class="col-form-label col-lg-1">Buscar:</label>
-                                    <div class="col-lg-11">
-                                        <div class="input-group">
+                                <div class="crear-pedidocv-lista-bloque">
 
-                                            <input type="text" class="form-control " id="buscador" name="buscador" />
-                                            <div class="input-group-addon"><i class="fa fa-search"></i></div>
+                                <div class="form-group buscador crear-pedidocv-buscador" id="elid">
+                                    <div class="row">
+                                        <label for="buscador" class="col-xs-12 col-sm-2 col-md-1 control-label">Buscar:</label>
+                                        <div class="col-xs-12 col-sm-10 col-md-11">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="buscador" name="buscador" />
+                                                <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -191,103 +204,83 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 ENTRADA PARA AGREGAR PRODUCTO
                                 ======================================-->
 
-                                <div class="form-group row nuevoProductoPedido" style="height:500px; overflow: scroll;">
+                                <div class="nuevoProductoPedido crear-pedidocv-detalle-scroll">
 
-                                    <!--=====================================
-                                            TITULOS
-                                    ======================================-->
-
-                                    <div class="box box-primary">
-
-                                        <div class="row">
-
-                                            <div class="col-xs-5">
-
-                                                <label>Item</label>
-
-                                            </div>
-
-                                            <div class="col-xs-2">
-
-                                                <label for="">Cantidad</label>
-
-                                            </div>
-
-                                            <div class="col-xs-2">
-
-                                                <label for="">P. Unit</label>
-
-                                            </div>
-
-                                            <div class="col-xs-1">
-
-                                                <label for="">Total</label>
-
-                                            </div>
-
-                                            <div class="col-xs-1">
-
-                                                <label for="">U. IGV</label>
-
-                                            </div>
-
-                                            <div class="col-xs-1">
-
-                                                <label for="">T. IGV</label>
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="box box-primary" id="updDiv">
+                                    <table class="table table-condensed table-hover crear-pedidocv-tabla-lineas">
+                                        <colgroup>
+                                            <col class="crear-pedidocv-col-item">
+                                            <col class="crear-pedidocv-col-cant">
+                                            <col class="crear-pedidocv-col-punit-sin">
+                                            <col class="crear-pedidocv-col-punit-con">
+                                            <col class="crear-pedidocv-col-total">
+                                            <col class="crear-pedidocv-col-total-igv">
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th class="crear-pedidocv-col-item">Artículo</th>
+                                                <th class="text-right crear-pedidocv-col-cant crear-pedidocv-th-num">Cant.</th>
+                                                <th class="text-right crear-pedidocv-col-punit-sin crear-pedidocv-th-num">Unit. s/IGV</th>
+                                                <th class="text-right crear-pedidocv-col-punit-con crear-pedidocv-th-num">Unit. c/IGV</th>
+                                                <th class="text-right crear-pedidocv-col-total crear-pedidocv-th-num">Total s/IGV</th>
+                                                <th class="text-right crear-pedidocv-col-total-igv crear-pedidocv-th-num">Total c/IGV</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="updDiv">
                                         <?php
 
                                         $listaArtPed = ControladorPedidos::ctrMostrarDetallesTemporalB($_GET["pedido"]);
 
                                         foreach ($listaArtPed as $articuloPedido) {
                                             $total_detalle = $articuloPedido["cantidad"] * $articuloPedido["precio"];
+                                            $packingEsc = htmlspecialchars($articuloPedido["packing"], ENT_QUOTES, "UTF-8");
+                                            $articuloEsc = htmlspecialchars($articuloPedido["articulo"], ENT_QUOTES, "UTF-8");
+                                            $precioUnit = (float) $articuloPedido["precio"];
+                                            $cantidad = (int) $articuloPedido["cantidad"];
+                                            $totalLinea = round($total_detalle, 2);
+                                            $totalIgv = round($total_detalle * 1.18, 2);
+                                            $precioConIgv = round($precioUnit * 1.18, 4);
 
-                                            echo '<div class="row mundito" style="padding:5px 15px">
-                                                    <div class="col-xs-5" style="padding-right:0px">
-                                                        <div class="input-group">
-                                                            <span class="input-group-addon">
-                                                                <button type="button" class="btn btn-danger btn-xs quitarArtPed" articulo="' . $articuloPedido["articulo"] . '" disabled><i class="fa fa-times"></i></button>
-                                                            </span>
-                                                            <input type="text" class="form-control nuevaDescripcionArticulo input-sm" articulo="' . $articuloPedido["articulo"] . '"  value="' . $articuloPedido["packing"] . '" articuloP="' . $articuloPedido["articulo"] . '" readonly required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-xs-2">
-                                                        <input type="number" class="form-control nuevaCantidadArtPed input-sm"  min="1" value="' . $articuloPedido["cantidad"] . '" artPed="' . $articuloPedido["pedidos"] . '" nuevoArtPed="0" required readonly>
-                                                    </div>
-                                                    <div class="col-xs-2">
-                                                        <input type="text" class="form-control nuevoPunit input-sm"  min="1" value="' . $articuloPedido["precio"] . '" readonly>
-                                                    </div>                                                
-                                                    <div class="col-xs-1 ingresoPrecio" style="padding-left:0px">
-                                                        <div class="input-group">
-                                                            <input type="text" class="form-control nuevoPrecioArticulo input-sm" precioReal="' . $articuloPedido["precio"] . '"  value="' . round($total_detalle, 2) . '" readonly required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-xs-1">
-                                                        <input type="text" class="form-control nuevoPunitC input-sm"  min="1" value="' . ($articuloPedido["precio"] * 1.18) . '" readonly>
-                                                    </div>
-                                                    <div class="col-xs-1">
-                                                        <input type="text" class="form-control nuevoTotalC input-sm"  min="1" value="' . round($total_detalle * 1.18, 2) . '" readonly>
-                                                    </div>
-                                                </div>';
+                                            echo '<tr class="mundito">';
+                                            echo '<td class="crear-pedidocv-celda-articulo">';
+                                            echo '<span class="crear-pedidocv-linea-desc" title="' . $packingEsc . '">' . $packingEsc . '</span>';
+                                            echo '<input type="text" class="crear-pedidocv-campo-sistema nuevaDescripcionArticulo" articulo="' . $articuloEsc . '" value="' . $packingEsc . '" articuloP="' . $articuloEsc . '" readonly required tabindex="-1" aria-hidden="true">';
+                                            echo '<input type="text" class="crear-pedidocv-campo-sistema nuevoPunit" value="' . $precioUnit . '" readonly tabindex="-1" aria-hidden="true">';
+                                            echo '<input type="text" class="crear-pedidocv-campo-sistema nuevoPunitC" value="' . $precioConIgv . '" readonly tabindex="-1" aria-hidden="true">';
+                                            echo '<input type="text" class="crear-pedidocv-campo-sistema nuevoTotalC" value="' . $totalIgv . '" readonly tabindex="-1" aria-hidden="true">';
+                                            echo '</td>';
+                                            echo '<td class="text-right crear-pedidocv-celda-num">' . $cantidad;
+                                            echo '<input type="number" class="crear-pedidocv-campo-sistema nuevaCantidadArtPed" min="1" value="' . $cantidad . '" artPed="' . htmlspecialchars($articuloPedido["pedidos"], ENT_QUOTES, "UTF-8") . '" nuevoArtPed="0" required readonly tabindex="-1" aria-hidden="true">';
+                                            echo '</td>';
+                                            echo '<td class="text-right crear-pedidocv-celda-num">' . number_format($precioUnit, 4, '.', '') . '</td>';
+                                            echo '<td class="text-right crear-pedidocv-celda-num">' . number_format($precioConIgv, 4, '.', '') . '</td>';
+                                            echo '<td class="text-right crear-pedidocv-celda-num ingresoPrecio">' . number_format($totalLinea, 2);
+                                            echo '<input type="text" class="crear-pedidocv-campo-sistema nuevoPrecioArticulo" precioReal="' . $precioUnit . '" value="' . $totalLinea . '" readonly required tabindex="-1" aria-hidden="true">';
+                                            echo '</td>';
+                                            echo '<td class="text-right crear-pedidocv-celda-num"><strong>' . number_format($totalIgv, 2) . '</strong></td>';
+                                            echo '</tr>';
                                         }
 
                                         ?>
+                                        </tbody>
+                                    </table>
 
-                                    </div>
                                 </div>
+
+                                </div><!-- .crear-pedidocv-lista-bloque -->
 
                                 <input type="hidden" id="listaProductosPedidos" name="listaProductosPedidos">
 
-                                <hr>
+                                <hr class="crear-pedidocv-hr-lista">
 
-                                <div class="row" id="updDivC">
+                                <div class="crear-pedidocv-zona-final">
+
+                                <p class="crear-pedidocv-zona-final-titulo"><i class="fa fa-calculator"></i> Resumen y cierre</p>
+
+                                <div class="crear-pedidocv-totales-panel">
+
+                                <p class="crear-pedidocv-totales-titulo"><i class="fa fa-calculator"></i> Totales del pedido</p>
+
+                                <div class="row crear-pedidocv-totales" id="updDivC">
 
                                     <!--=====================================
                                     SUB TOTALES Y TOTALES
@@ -299,7 +292,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                         TOTAL BRUTO
                                         ======================================-->
 
-                                        <div class="form-group">
+                                        <div class="form-group crear-pedidocv-total-fila crear-pedidocv-total-fila--simple">
 
                                             <div class="col-xs-4">
                                             </div>
@@ -347,7 +340,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                         DESCUENTOS
                                         ======================================-->
 
-                                        <div class="form-group">
+                                        <div class="form-group crear-pedidocv-total-fila crear-pedidocv-total-fila--split">
 
                                             <div class="col-xs-4">
                                             </div>
@@ -438,7 +431,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                         SUB TOTAL
                                         ======================================-->
 
-                                        <div class="form-group">
+                                        <div class="form-group crear-pedidocv-total-fila crear-pedidocv-total-fila--simple">
 
                                             <div class="col-xs-4">
                                             </div>
@@ -494,7 +487,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                         IMPUESTO
                                         ======================================-->
 
-                                        <div class="form-group">
+                                        <div class="form-group crear-pedidocv-total-fila crear-pedidocv-total-fila--split">
 
                                             <div class="col-xs-4">
                                             </div>
@@ -546,7 +539,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                         TOTAL
                                         ======================================-->
 
-                                        <div class="form-group">
+                                        <div class="form-group crear-pedidocv-total-fila crear-pedidocv-total-fila--simple crear-pedidocv-total-fila--final">
 
                                             <div class="col-xs-4">
                                             </div>
@@ -596,21 +589,29 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                 </div>
 
-                                <hr>
+                                </div><!-- .crear-pedidocv-totales-panel -->
+
+                                <div class="crear-pedidocv-sep-totales-cierre" aria-hidden="true"></div>
 
                                 <!--=====================================
-                                ENTRADA MÉTODO DE PAGO
+                                CIERRE: CONDICIÓN Y AGENCIA
                                 ======================================-->
 
-                                <div class="form-group">
+                                <div class="crear-pedidocv-cierre-pedido">
 
-                                    <label>Condición de Venta</label>
+                                    <p class="crear-pedidocv-cierre-titulo"><i class="fa fa-clipboard"></i> Datos para crear el pedido</p>
 
-                                    <div class="input-group">
+                                    <p class="help-block small crear-pedidocv-cierre-ayuda">Indique la <strong>condición de venta</strong>. La agencia de transportes es opcional si aún no la define.</p>
 
-                                        <span class="input-group-addon"><i class="fa fa-money"></i></span>
+                                    <div class="row crear-pedidocv-cierre-campos">
 
-                                        <select class="form-control selectpicker" id="condicionVenta" name="condicionVenta" data-live-search="true" required>
+                                        <div class="col-xs-12 col-sm-6">
+
+                                <div class="form-group crear-pedidocv-campo-cierre">
+
+                                    <label for="condicionVenta">Condición de venta <span class="text-danger" title="Obligatorio">*</span></label>
+
+                                        <select class="form-control selectpicker crear-pedidocv-select-cierre" id="condicionVenta" name="condicionVenta" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar condición de venta" required>
 
                                             <?php
                                             $valor = $_GET["pedido"];
@@ -643,7 +644,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                                 $condiciones = ControladorCondicionVentas::ctrMostrarCondicionVentas($item, $valor);
 
-                                                echo '<option value="">Seleccione método de pago</option>';
+                                                echo '<option value="">Seleccionar condición de venta…</option>';
                                                 //var_dump($condiciones);
 
                                                 foreach ($condiciones as $key => $value) {
@@ -656,23 +657,15 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                         </select>
 
-                                    </div>
-
                                 </div>
 
-                                <!--=====================================
-                                ENTRADA LA AGENCIA
-                                ======================================-->
+                                        </div>
 
-                                <div class="form-group">
+                                        <div class="col-xs-12 col-sm-6">
 
-                                    <label>AGENCIA DE TRANSPORTES</label>
+                                <div class="form-group crear-pedidocv-campo-cierre">
 
-                                    <div class="input-group">
-
-                                        <span class="input-group-addon"><i class="fa fa-plane"></i></span>
-
-
+                                    <label for="agencia">Agencia de transportes <span class="crear-pedidocv-etiq-opcional">opcional</span></label>
 
                                         <?php
 
@@ -685,7 +678,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                         if ($pedido["agencia"] > 0) {
 
-                                            echo '<select class="form-control selectpicker" id="agencia" name="agencia" data-live-search="true">';
+                                            echo '<select class="form-control selectpicker crear-pedidocv-select-cierre" id="agencia" name="agencia" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar agencia">';
 
                                             $item = "id";
                                             $valor = $pedido["agencia"];
@@ -706,7 +699,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                             }
                                         } else {
 
-                                            echo '<select class="form-control selectpicker" id="agencia" name="agencia" data-live-search="true">';
+                                            echo '<select class="form-control selectpicker crear-pedidocv-select-cierre" id="agencia" name="agencia" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar agencia">';
 
                                             $item = null;
                                             $valor = null;
@@ -715,7 +708,7 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                             //var_dump($agencias);
 
-                                            echo '<option value="">Seleccionar Agencia</option>';
+                                            echo '<option value="">Seleccionar agencia…</option>';
 
                                             foreach ($agencias as $key => $value) {
 
@@ -727,21 +720,29 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                                         </select>
 
-                                    </div>
+                                </div>
 
-                                </div <br>
+                                        </div>
+
+                                    </div><!-- .crear-pedidocv-cierre-campos -->
+
+                                </div><!-- .crear-pedidocv-cierre-pedido -->
+
+                                </div><!-- .crear-pedidocv-zona-final -->
 
                             </div>
 
                         </div>
 
-                        <div class="box-header with-border">
+                        <div class="crear-pedidocv-barra-acciones">
 
-                            <button onclick="history.back()" type="button" class="btn btn-danger pull-left">Cancelar
+                            <button onclick="history.back()" type="button" class="btn btn-default crear-pedidocv-btn crear-pedidocv-btn-cancelar">
+                                <i class="fa fa-times"></i> Cancelar
                             </button>
 
-                            <button type="submit" class="btn btn-primary pull-right">Crear Pedido</button>
-
+                            <button type="submit" class="btn btn-primary crear-pedidocv-btn crear-pedidocv-btn-crear">
+                                <i class="fa fa-check"></i> Crear pedido
+                            </button>
 
                         </div>
 
@@ -762,33 +763,42 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
             LA TABLA DE PRODUCTOS
             ======================================-->
 
-            <div class="col-lg-5 hidden-md hidden-sm hidden-xs">
+            <div class="col-xs-12 col-md-5 crear-pedidocv-panel-modelos">
 
                 <div class="box box-warning">
 
-                    <div class="box-header with-border"></div>
-
-                    <div class="box-body">
-
-                        <label for="" class="col-form-label col-lg-2">Modelo</label>
-                        <div class="col-lg-4">
-                            <input type="text" class="form-control input-md" id='modelo' name='modelo'>
-                        </div>
-                        <div class="form-group col-lg-2">
-                            <button class='btn btn-primary btn-md modificarArtPedC' data-toggle='modal' data-target='#modalModificarClienteP'>Agregar</button>
-                        </div>
-
-                        <div class="form-group col-lg-2">
-                            <button class='btn btn-success btn-md refreshDetalle' pedido='<?php echo $_GET["pedido"]; ?>'><i class="fa fa-refresh"></i></button>
-                        </div>
-
-                        <p class="help-block small" style="clear:both;margin-top:6px;margin-bottom:0;"><i class="fa fa-info-circle"></i> Tras escribir el modelo, pulse <strong>Enter</strong> para abrir el detalle (mismo efecto que <strong>Agregar</strong>).</p>
-
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-th"></i> Grilla por modelo</h3>
                     </div>
 
-                    <div class="box-body" id="updDivB">
+                    <div class="box-body crear-pedidocv-panel-modelos-body">
 
-                        <body>
+                        <?php
+                        $codigoImprimirGrilla = isset($_GET["pedido"]) ? trim((string) $_GET["pedido"]) : "";
+                        ?>
+                        <div class="crear-pedidocv-toolbar-modelo">
+                            <label for="modelo" class="control-label">Modelo</label>
+                            <div class="crear-pedidocv-campo-modelo">
+                                <input type="text" class="form-control input-sm" id="modelo" name="modelo">
+                            </div>
+                            <div class="crear-pedidocv-toolbar-modelo-acciones btn-group" role="group" aria-label="Acciones de grilla">
+                                <button type="button" class="btn btn-default btn-sm crear-pedidocv-btn btnImprimirPedido" codigo="<?php echo htmlspecialchars($codigoImprimirGrilla, ENT_QUOTES, "UTF-8"); ?>" title="Imprimir pedido" <?php echo ($codigoImprimirGrilla === "") ? "disabled" : ""; ?>>
+                                    <i class="fa fa-print"></i> Imprimir
+                                </button>
+                                <button type="button" class="btn btn-default btn-sm crear-pedidocv-btn refreshDetalle" pedido="<?php echo htmlspecialchars($_GET["pedido"], ENT_QUOTES, "UTF-8"); ?>" title="Actualizar grilla">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm crear-pedidocv-btn modificarArtPedC" data-toggle="modal" data-target="#modalModificarClienteP">
+                                    <i class="fa fa-plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="help-block small crear-pedidocv-help-modelo"><i class="fa fa-info-circle"></i> Tras escribir el modelo, pulse <strong>Enter</strong> para abrir el detalle (mismo efecto que <strong>Agregar</strong>).</p>
+
+                        <div class="crear-pedidocv-zona-scroll" id="updDivB">
+
+                        <div class="crear-pedidocv-grilla-inner">
                             <?php
 
                             require_once "controladores/pedidos.controlador.php";
@@ -817,124 +827,109 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
 
                             ?>
 
-                            <div class="zona_impresion">
-
-                                <table border="1" align="left" width="700px">
-
-                                    <thead>
-                                        <tr>
-                                            <th style="width:10%"></th>
-                                            <th style="width:20%"></th>
-                                            <th style="width:6%;text-align:center;">S</th>
-                                            <th style="width:6%;text-align:center;">M</th>
-                                            <th style="width:6%;text-align:center;">L</th>
-                                            <th style="width:6%;text-align:center;">XL</th>
-                                            <th style="width:6%;text-align:center;">XXL</th>
-                                            <th style="width:6%;text-align:center;">XS</th>
-                                            <th style="width:6%;text-align:center;"></th>
-                                            <th style="width:6%;text-align:center;"></th>
-                                            <th style="width:6%;text-align:center;"></th>
-                                        </tr>
-
-                                        <tr>
-                                            <th style="width:10%"></th>
-                                            <th style="width:20%"></th>
-                                            <th style="width:6%;text-align:center;">28</th>
-                                            <th style="width:6%;text-align:center;">30</th>
-                                            <th style="width:6%;text-align:center;">32</th>
-                                            <th style="width:6%;text-align:center;">34</th>
-                                            <th style="width:6%;text-align:center;">36</th>
-                                            <th style="width:6%;text-align:center;">38</th>
-                                            <th style="width:6%;text-align:center;">40</th>
-                                            <th style="width:6%;text-align:center;">42</th>
-                                            <th style="width:6%;text-align:center;"></th>
-                                        </tr>
-
-                                        <tr>
-                                            <th style="width:10%;text-align:left;">Modelo</th>
-                                            <th style="width:20%">Color</th>
-                                            <th style="width:6%;text-align:center;">3</th>
-                                            <th style="width:6%;text-align:center;">4</th>
-                                            <th style="width:6%;text-align:center;">6</th>
-                                            <th style="width:6%;text-align:center;">8</th>
-                                            <th style="width:6%;text-align:center;">10</th>
-                                            <th style="width:6%;text-align:center;">12</th>
-                                            <th style="width:6%;text-align:center;">14</th>
-                                            <th style="width:6%;text-align:center;">16</th>
-                                            <th style="width:6%">TOTAL</th>
-                                        </tr>
-                                    </thead>
-
-                                </table>
+                            <div class="zona_impresion crear-pedidocv-grilla-wrap">
 
                                 <?php
                                 $respuestas = ModeloPedidos::mdlPedidoImpresionC($codigo);
+                                ?>
 
-                                echo "<table border='1' class='tablaVerPed' style='border:dashed' align='left' width='700px'>";
+                                <table class="tablaVerPed crear-pedidocv-grilla-table table table-condensed">
 
+                                    <thead>
+                                        <tr>
+                                            <th class="col-modelo"></th>
+                                            <th class="col-color"></th>
+                                            <th class="col-talla text-center">S</th>
+                                            <th class="col-talla text-center">M</th>
+                                            <th class="col-talla text-center">L</th>
+                                            <th class="col-talla text-center">XL</th>
+                                            <th class="col-talla text-center">XXL</th>
+                                            <th class="col-talla text-center">XS</th>
+                                            <th class="col-talla text-center"></th>
+                                            <th class="col-talla text-center"></th>
+                                            <th class="col-talla text-center"></th>
+                                        </tr>
+                                        <tr>
+                                            <th></th>
+                                            <th></th>
+                                            <th class="col-talla text-center">28</th>
+                                            <th class="col-talla text-center">30</th>
+                                            <th class="col-talla text-center">32</th>
+                                            <th class="col-talla text-center">34</th>
+                                            <th class="col-talla text-center">36</th>
+                                            <th class="col-talla text-center">38</th>
+                                            <th class="col-talla text-center">40</th>
+                                            <th class="col-talla text-center">42</th>
+                                            <th></th>
+                                        </tr>
+                                        <tr class="crear-pedidocv-grilla-head-labels">
+                                            <th class="col-modelo text-left">Modelo</th>
+                                            <th class="col-color">Color</th>
+                                            <th class="col-talla text-center">3</th>
+                                            <th class="col-talla text-center">4</th>
+                                            <th class="col-talla text-center">6</th>
+                                            <th class="col-talla text-center">8</th>
+                                            <th class="col-talla text-center">10</th>
+                                            <th class="col-talla text-center">12</th>
+                                            <th class="col-talla text-center">14</th>
+                                            <th class="col-talla text-center">16</th>
+                                            <th class="col-total">TOTAL</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                <?php
                                 $prevModelo = null;
                                 $buttonId = 0;
                                 foreach ($respuestas as $row) {
-                                    if ($prevModelo !== null && $prevModelo != $row['modelo']) {
-                                        echo "<tr><td colspan='13' style='background-color: black; height: 5px;'></td></tr>";
-                                    }
+                                    $sepModelo = ($prevModelo !== null && $prevModelo != $row['modelo']);
+                                    $trClass = $sepModelo ? ' crear-pedidocv-sep-modelo' : '';
 
-                                    echo "<tr>";
-                                    echo "<td style='width:10%;font-weight: bold;' class='text-left'><button style='margin:0; padding:0; font-size: 1.2em;' class='btn btn-link' id='modeloButton$buttonId' pedido='{$codigo}' modelo='{$row["modelo"]}'>" . $row['modelo'] . "</button></td>";
-                                    echo "<td style='width:20%;font-weight: normal;'>" . $row['color'] . "</td>";
+                                    echo "<tr class=\"crear-pedidocv-grilla-fila{$trClass}\">";
+                                    echo "<td class=\"col-modelo text-left\"><button type=\"button\" class=\"btn btn-link btn-link-grilla\" id=\"modeloButton$buttonId\" pedido=\"{$codigo}\" modelo=\"{$row["modelo"]}\">" . htmlspecialchars($row['modelo'], ENT_QUOTES, 'UTF-8') . "</button></td>";
+                                    echo "<td class=\"col-color\">" . htmlspecialchars($row['color'], ENT_QUOTES, 'UTF-8') . "</td>";
 
                                     for ($i = 1; $i <= 8; $i++) {
                                         $key = 't' . $i;
                                         if ($row[$key] != 0) {
-                                            echo "<td style='width:6%;font-weight: bold;' class='text-center'><button style='margin:0; padding:0; font-size: 1.2em;' class='btn btn-link' id='button$buttonId' pedido='{$codigo}' articulo='{$row["modelo"]}{$row["cod_color"]}{$i}'>" . $row[$key] . "</button></td>";
+                                            echo "<td class=\"col-talla text-center\"><button type=\"button\" class=\"btn btn-link btn-link-grilla\" id=\"button$buttonId\" pedido=\"{$codigo}\" articulo=\"{$row["modelo"]}{$row["cod_color"]}{$i}\">" . (int) $row[$key] . "</button></td>";
                                             $buttonId++;
                                         } else {
-                                            echo "<td style='width:6%;font-weight: bold;'></td>";
+                                            echo "<td class=\"col-talla\"></td>";
                                         }
                                     }
 
-                                    echo "<td style='width:6%;font-weight: bold;'>" . $row['total'] . "</td>";
+                                    echo "<td class=\"col-total text-center\">" . (int) $row['total'] . "</td>";
                                     echo "</tr>";
 
                                     $prevModelo = $row['modelo'];
                                 }
-
-                                echo "</table>";
                                 ?>
+                                    </tbody>
 
-
-                                <table border="1" align="left" width="700px">
-
-                                    </thead>
-
-                                    <tr>
-
-                                        <th style="width:10%;text-align:left;">TOTALES</th>
-                                        <th style="width:20%;text-align:left;">PEDIDO</th>
-                                        <th style="width:6%"><?php echo $totales["t1"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t2"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t3"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t4"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t5"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t6"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t7"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["t8"]; ?></th>
-                                        <th style="width:6%"><?php echo $totales["total"]; ?></th>
-
-                                    </tr>
-
-                                    </thead>
+                                    <tfoot>
+                                        <tr class="crear-pedidocv-grilla-totales">
+                                            <th class="col-modelo text-left">TOTALES</th>
+                                            <th class="col-color text-left">PEDIDO</th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t1"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t2"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t3"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t4"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t5"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t6"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t7"]; ?></th>
+                                            <th class="col-talla text-center"><?php echo (int) $totales["t8"]; ?></th>
+                                            <th class="col-total text-center"><?php echo (int) $totales["total"]; ?></th>
+                                        </tr>
+                                    </tfoot>
 
                                 </table>
 
-                                <br>
-
-
-
                             </div>
-                            <p>&nbsp;</p>
 
-                        </body>
+                        </div>
+
+                        </div><!-- #updDivB -->
 
                     </div>
 
@@ -954,7 +949,7 @@ MODAL MODIFICAR ARTICULOS
 
 <div id="modalModificarClienteP" class="modal fade" role="dialog">
 
-    <div class="modal-dialog" style="width: 60% !important;">
+    <div class="modal-dialog crear-pedidocv-modal-ancho">
 
         <div class="modal-content">
 
@@ -1487,9 +1482,9 @@ MODAL PARA GENERAR EL PEDIDO
                         console.log("respuesta", respuesta);
                         if (respuesta == "ok") {
                             Command: toastr["error"]("El articulo fue eliminado");
-                            $("#updDiv").load(" #updDiv"); //actualizas el div
-                            $("#updDivC").load(" #updDivC"); //actualizas el div
-                            $("#updDivB").load(" #updDivB"); //actualizas el div
+                            if (typeof pedidoCvRecargarDetallePedido === "function") {
+                                pedidoCvRecargarDetallePedido();
+                            }
                         }
                     },
                 });
@@ -1513,9 +1508,9 @@ MODAL PARA GENERAR EL PEDIDO
                         console.log("respuesta", respuesta);
                         if (respuesta == "ok") {
                             Command: toastr["error"]("El modelo fue eliminado");
-                            $("#updDiv").load(" #updDiv"); //actualizas el div
-                            $("#updDivC").load(" #updDivC"); //actualizas el div
-                            $("#updDivB").load(" #updDivB"); //actualizas el div
+                            if (typeof pedidoCvRecargarDetallePedido === "function") {
+                                pedidoCvRecargarDetallePedido();
+                            }
                         }
                     },
                 });

@@ -12,6 +12,10 @@
   "use strict";
 
   function refrescarAreasPedidoCv() {
+    if (typeof pedidoCvRecargarDetallePedido === "function") {
+      pedidoCvRecargarDetallePedido();
+      return;
+    }
     if ($("#updDiv").length) {
       $("#updDiv").load(" #updDiv");
     }
