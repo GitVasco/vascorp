@@ -105,7 +105,10 @@ $("#seleccionarCliente").change(function () {
     });
 });
 
-const vendedoresEspeciales = new Set(["08L", "08O"]);
+const listasPorVendedorEspecial = {
+    "08L": "precio6",
+    "08O": "precio5",
+};
 
 $("#seleccionarVendedor").change(function () {
     const cliList = $("#seleccionarCliente").val();
@@ -123,9 +126,8 @@ $("#seleccionarVendedor").change(function () {
         processData: false,
         dataType: "json",
         success: function (respuestaDet) {
-            const listaPrecio = vendedoresEspeciales.has(vendedor)
-                ? "precio6"
-                : respuestaDet["lista_precios"];
+            const listaPrecio = listasPorVendedorEspecial[vendedor]
+                || respuestaDet["lista_precios"];
             $("#lista").val(listaPrecio);
             console.log("🚀 ~ listaPrecio:", listaPrecio);
         },

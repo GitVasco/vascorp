@@ -326,7 +326,10 @@
     return;
   }
 
-  var vendedoresEspecialesEscaneo = new Set(["08L", "08O"]);
+  var listasPorVendedorEspecialEscaneo = {
+    "08L": "precio6",
+    "08O": "precio5",
+  };
 
 
 
@@ -669,9 +672,8 @@
       processData: false,
       dataType: "json",
       success: function (respuestaDet) {
-        var listaPrecio = vendedoresEspecialesEscaneo.has(vendedor)
-          ? "precio6"
-          : respuestaDet.lista_precios;
+        var listaPrecio = listasPorVendedorEspecialEscaneo[vendedor]
+          || respuestaDet.lista_precios;
         $("#escaneoListaPreciosCab").val(listaPrecio);
       },
     });
