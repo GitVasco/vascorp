@@ -348,7 +348,7 @@ class ModeloCuadreVentas
         return $ids;
     }
 
-    public static function mdlRegistrarPagos($idCuadre, $totalPagos, $medios)
+    public static function mdlRegistrarPagos($idCuadre, $totalPagos, $medios, $observacion = null)
     {
         $pdo = Conexion::conectar();
         $pdo->beginTransaction();
@@ -401,11 +401,17 @@ class ModeloCuadreVentas
                 "UPDATE cuadre_ventasjf
                  SET estado = 'REGISTRADO',
                      total_pagos = :total_pagos,
+                     observacion = :observacion,
                      fecha_registro = NOW(),
                      actualizado_en = NOW()
                  WHERE id = :id AND estado = 'BORRADOR'"
             );
             $stmtCab->bindValue(":total_pagos", number_format((float) $totalPagos, 2, ".", ""), PDO::PARAM_STR);
+            if ($observacion === null || $observacion === "") {
+                $stmtCab->bindValue(":observacion", null, PDO::PARAM_NULL);
+            } else {
+                $stmtCab->bindValue(":observacion", $observacion, PDO::PARAM_STR);
+            }
             $stmtCab->bindValue(":id", $idCuadre, PDO::PARAM_INT);
             $stmtCab->execute();
             if ($stmtCab->rowCount() < 1) {
@@ -537,6 +543,11 @@ class ModeloCuadreVentas
                     q.fecha_ventas,
                     LEFT(q.fecha_registro, 10) AS fecha_pago,
                     q.estado,
+                    q.observacion,
+                    q.total_docs,
+                    q.total_pagos,
+                    q.usuario_registro,
+                    q.usuario_ventas,
                     IFNULL(ur.nombre, ur.usuario) AS responsable,
                     d.tipo_doc,
                     d.num_cta,
@@ -585,6 +596,67 @@ class ModeloCuadreVentas
                 WHERE q.fecha_ventas = :fecha
                   AND q.estado IN ('REGISTRADO', 'VALIDADO', 'PROCESADO')
                 ORDER BY m.id_cuadre ASC, m.id ASC";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
+        $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = null;
+
+        return is_array($filas) ? $filas : array();
+    }
+
+    /** Medios de lotes listos/procesados, con descripción del abono si aún existe. */
+    public static function mdlMediosExcelProcesarFecha($fecha)
+    {
+        $sql = "SELECT
+                    m.id AS id_medio,
+                    m.id_cuadre,
+                    m.tipo_medio,
+                    m.id_abono,
+                    m.num_ope,
+                    m.monto,
+                    q.observacion,
+                    q.estado,
+                    q.cliente,
+                    cli.nombre AS cliente_nombre,
+                    cli.documento AS cliente_documento,
+                    a.descripcion AS abono_descripcion,
+                    a.agencia AS abono_agencia,
+                    LEFT(a.fecha, 10) AS abono_fecha
+                FROM cuadre_ventas_medjf m
+                INNER JOIN cuadre_ventasjf q ON q.id = m.id_cuadre
+                LEFT JOIN clientesjf cli ON cli.codigo = q.cliente
+                LEFT JOIN abonosjf a ON a.id = m.id_abono
+                WHERE q.fecha_ventas = :fecha
+                  AND q.estado IN ('VALIDADO', 'PROCESADO')
+                ORDER BY m.tipo_medio ASC, m.id ASC";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
+        $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = null;
+
+        return is_array($filas) ? $filas : array();
+    }
+
+    public static function mdlDocsExcelProcesarFecha($fecha)
+    {
+        $sql = "SELECT
+                    q.id AS id_cuadre,
+                    d.tipo_doc,
+                    d.num_cta,
+                    d.cliente,
+                    d.id_cuenta,
+                    d.monto_doc,
+                    d.monto_aplicar,
+                    cli.nombre AS cliente_nombre,
+                    cli.documento AS cliente_documento
+                FROM cuadre_ventas_docjf d
+                INNER JOIN cuadre_ventasjf q ON q.id = d.id_cuadre
+                LEFT JOIN clientesjf cli ON cli.codigo = d.cliente
+                WHERE q.fecha_ventas = :fecha
+                  AND q.estado IN ('VALIDADO', 'PROCESADO')
+                ORDER BY q.id ASC, d.id ASC";
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
         $stmt->execute();
@@ -915,10 +987,31 @@ class ModeloCuadreVentas
                  WHERE id = :id
                    AND (tip_mov = '+' OR tip_mov IS NULL OR tip_mov = '')"
             );
+            $pagadoPorCuenta = array();
+            foreach ($cortes as $corte) {
+                $idCtaCorte = (int) $corte["doc"]["id_cuenta"];
+                if (!isset($pagadoPorCuenta[$idCtaCorte])) {
+                    $pagadoPorCuenta[$idCtaCorte] = 0.0;
+                }
+                $pagadoPorCuenta[$idCtaCorte] += (float) $corte["monto"];
+            }
             foreach ($docs as $d) {
                 $idCta = (int) $d["id_cuenta"];
                 $car = $cargos[$idCta];
-                $nuevo = round((float) $car["saldo"] - (float) $d["monto_aplicar"], 2);
+                $aplicarOrig = round((float) $d["monto_aplicar"], 2);
+                $pagado = isset($pagadoPorCuenta[$idCta])
+                    ? round((float) $pagadoPorCuenta[$idCta], 2)
+                    : 0.0;
+                $faltante = round($aplicarOrig - $pagado, 2);
+                if ($faltante > 0.10) {
+                    throw new Exception(
+                        "Los pagos no cubren " . $d["num_cta"] . " (faltan "
+                        . number_format($faltante, 2, ".", ",") . ")."
+                    );
+                }
+                // Hasta 0.10 de menos: se condona y se cierra el documento.
+                $aplicar = $aplicarOrig;
+                $nuevo = round((float) $car["saldo"] - $aplicar, 2);
                 if ($nuevo < 0.01) {
                     $nuevo = 0.0;
                     $est = "CANCELADO";
@@ -1082,6 +1175,7 @@ class ModeloCuadreVentas
             $pays[$p]["restante"] = 0;
         }
 
+        $faltanteCents = 0;
         foreach ($items as $i => $it) {
             if ($items[$i]["restante"] <= 0) {
                 continue;
@@ -1106,8 +1200,15 @@ class ModeloCuadreVentas
                 $pays[$p]["restante"] -= $use;
             }
             if ($items[$i]["restante"] > 0) {
-                throw new Exception("Los pagos no cubren el documento " . $it["doc"]["num_cta"] . ".");
+                $faltanteCents += $items[$i]["restante"];
             }
+        }
+        if ($faltanteCents > 10) {
+            throw new Exception(
+                "Los pagos no cubren los documentos (faltan "
+                . number_format($faltanteCents / 100, 2, ".", ",")
+                . "). Solo se tolera hasta 0.10 de menos."
+            );
         }
 
         return $cortes;

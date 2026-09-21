@@ -11,8 +11,8 @@ class ControladorCuadreVentas
 {
     const SECTOR = "gestion_comercial";
     const MODULO = "cuadre_ventas";
-    /** Solo pruebas: este ID ve todas las ventas del día, no solo las suyas. */
-    const ID_PRUEBA_VER_TODAS = 6;
+    /** ID con control total: ve todos los documentos y puede procesar. */
+    const ID_ADMIN = 6;
 
     /**
      * Medios del cuadre (cod_pago de tipo_pagosjf).
@@ -68,13 +68,22 @@ class ControladorCuadreVentas
         return (int) $_SESSION["id"];
     }
 
+    /** Por procesar: permiso JSON o acceso a Cuentas corrientes (sesión cuenta). */
+    public static function ctrPuedeProcesar()
+    {
+        if (self::ctrPuede("procesar")) {
+            return true;
+        }
+        return isset($_SESSION["cuenta"]) && (int) $_SESSION["cuenta"] === 1;
+    }
+
     public static function ctrPermisos()
     {
         return array(
             "ver" => self::ctrPuede("ver"),
             "registrar" => self::ctrPuede("registrar"),
             "validar" => self::ctrPuede("validar"),
-            "procesar" => self::ctrPuede("procesar"),
+            "procesar" => self::ctrPuedeProcesar(),
         );
     }
 
@@ -87,9 +96,10 @@ class ControladorCuadreVentas
         return (string) self::ctrUsuarioSesionId();
     }
 
+    /** Solo el admin (ID 6) ve documentos y lotes de todos. */
     public static function ctrVeTodasLasVentas()
     {
-        return self::ctrUsuarioSesionId() === self::ID_PRUEBA_VER_TODAS;
+        return self::ctrUsuarioSesionId() === self::ID_ADMIN;
     }
 
     public static function ctrNormalizarFecha($fecha)
@@ -122,6 +132,19 @@ class ControladorCuadreVentas
         );
         $catalogo = self::ctrCatalogoMedios();
         $brutas = ModeloCuadreVentas::mdlFilasExcelFecha($fechaOk);
+        if (!self::ctrVeTodasLasVentas() && !self::ctrPuedeProcesar()) {
+            $yo = self::ctrUsuarioSesionId();
+            $yoStr = (string) $yo;
+            $filtradas = array();
+            foreach ($brutas as $f) {
+                $usrReg = isset($f["usuario_registro"]) ? (int) $f["usuario_registro"] : 0;
+                $usrVentas = isset($f["usuario_ventas"]) ? trim((string) $f["usuario_ventas"]) : "";
+                if ($usrReg === $yo || $usrVentas === $yoStr) {
+                    $filtradas[] = $f;
+                }
+            }
+            $brutas = $filtradas;
+        }
         $mediosAll = ModeloCuadreVentas::mdlMediosExcelFecha($fechaOk);
         $mediosPorLote = array();
         foreach ($mediosAll as $m) {
@@ -170,7 +193,21 @@ class ControladorCuadreVentas
             }
         }
 
-        $filas = array();
+        $montoOpPorOpe = array();
+        foreach ($mediosPorLote as $idL => $mediosLote) {
+            $montoOpPorOpe[$idL] = array();
+            foreach ($mediosLote as $med) {
+                $ope = isset($med["num_ope"]) ? trim((string) $med["num_ope"]) : "";
+                if ($ope === "") {
+                    continue;
+                }
+                if (!isset($montoOpPorOpe[$idL][$ope])) {
+                    $montoOpPorOpe[$idL][$ope] = round((float) $med["monto"], 2);
+                }
+            }
+        }
+
+        $filasPorLote = array();
         foreach ($brutas as $f) {
             $tipo = trim((string) $f["tipo_doc"]);
             $numCta = isset($f["num_cta"]) ? trim((string) $f["num_cta"]) : "";
@@ -205,8 +242,35 @@ class ControladorCuadreVentas
                 "ANULADO" => "Anulado",
             );
             $est = strtoupper(trim((string) (isset($f["estado"]) ? $f["estado"] : "")));
+            $totDocs = isset($f["total_docs"]) ? round((float) $f["total_docs"], 2) : 0;
+            $totPagos = isset($f["total_pagos"]) ? round((float) $f["total_pagos"], 2) : 0;
 
-            $filas[] = array(
+            $montosOp = array();
+            foreach ($ops as $opeDoc) {
+                if (isset($montoOpPorOpe[$idL][$opeDoc])) {
+                    $montosOp[] = number_format($montoOpPorOpe[$idL][$opeDoc], 2, ".", "");
+                }
+            }
+
+            if (!isset($filasPorLote[$idL])) {
+                $filasPorLote[$idL] = array(
+                    "meta" => array(
+                        "tot_docs" => $totDocs,
+                        "tot_pagos" => $totPagos,
+                        "diferencia" => round($totPagos - $totDocs, 2),
+                        "estado" => isset($estados[$est]) ? $estados[$est] : $est,
+                        "observacion" => isset($f["observacion"]) ? trim((string) $f["observacion"]) : "",
+                        "responsable" => isset($f["responsable"]) ? trim((string) $f["responsable"]) : "",
+                        "cliente" => isset($f["cliente"]) ? trim((string) $f["cliente"]) : "",
+                        "cliente_documento" => isset($f["cliente_documento"]) ? trim((string) $f["cliente_documento"]) : "",
+                        "cliente_nombre" => isset($f["cliente_nombre"]) ? trim((string) $f["cliente_nombre"]) : "",
+                        "ops" => isset($montoOpPorOpe[$idL]) ? $montoOpPorOpe[$idL] : array(),
+                    ),
+                    "docs" => array(),
+                );
+            }
+
+            $filasPorLote[$idL]["docs"][] = array(
                 "periodo" => substr($fechaOk, 5, 2) . "-" . substr($fechaOk, 0, 4),
                 "fecha_dia" => $fechaOk,
                 "responsable" => isset($f["responsable"]) ? trim((string) $f["responsable"]) : "",
@@ -225,11 +289,177 @@ class ControladorCuadreVentas
                 "monto_abonado" => isset($f["monto_aplicar"]) ? round((float) $f["monto_aplicar"], 2) : 0,
                 "forma_pago" => implode(" | ", $formas),
                 "nro_op" => implode("|", $ops),
+                "monto_op" => implode("|", $montosOp),
+                "diferencia" => "",
                 "estado" => isset($estados[$est]) ? $estados[$est] : $est,
+                "observacion" => "",
+                "es_resumen" => false,
             );
         }
 
+        $filas = array();
+        foreach ($filasPorLote as $idL => $bloque) {
+            $meta = $bloque["meta"];
+            foreach ($bloque["docs"] as $i => $row) {
+                if ($i === 0) {
+                    $row["diferencia"] = $meta["diferencia"];
+                    $row["observacion"] = $meta["observacion"];
+                }
+                $filas[] = $row;
+            }
+        }
+
         return array("ok" => true, "fecha" => $fechaOk, "filas" => $filas);
+    }
+
+    /**
+     * Excel de procesar: un abono/pago por fila, con documentos aplicados
+     * apilados en la misma celda (uno debajo de otro).
+     */
+    public static function ctrFilasExcelAbonosProcesar($fecha)
+    {
+        if (!self::ctrPuedeProcesar() && !self::ctrPuede("validar")) {
+            return array("ok" => false, "msg" => "Sin permiso.");
+        }
+
+        $fechaOk = self::ctrNormalizarFecha($fecha);
+        if ($fechaOk === "") {
+            return array("ok" => false, "msg" => "Fecha no válida.");
+        }
+
+        $tipos = array(
+            "01" => "FACTURA",
+            "03" => "BOLETA",
+        );
+        $catalogo = self::ctrCatalogoMedios();
+        $meses = array(
+            "01" => "ENERO", "02" => "FEBRERO", "03" => "MARZO", "04" => "ABRIL",
+            "05" => "MAYO", "06" => "JUNIO", "07" => "JULIO", "08" => "AGOSTO",
+            "09" => "SEPTIEMBRE", "10" => "OCTUBRE", "11" => "NOVIEMBRE", "12" => "DICIEMBRE",
+        );
+        $periodo = isset($meses[substr($fechaOk, 5, 2)])
+            ? $meses[substr($fechaOk, 5, 2)]
+            : substr($fechaOk, 5, 2);
+
+        $medios = ModeloCuadreVentas::mdlMediosExcelProcesarFecha($fechaOk);
+        $docsAll = ModeloCuadreVentas::mdlDocsExcelProcesarFecha($fechaOk);
+        $docsPorLote = array();
+        foreach ($docsAll as $d) {
+            $idL = (int) $d["id_cuadre"];
+            if (!isset($docsPorLote[$idL])) {
+                $docsPorLote[$idL] = array();
+            }
+            $docsPorLote[$idL][] = $d;
+        }
+
+        $mediosPorLote = array();
+        foreach ($medios as $m) {
+            $idL = (int) $m["id_cuadre"];
+            if (!isset($mediosPorLote[$idL])) {
+                $mediosPorLote[$idL] = array();
+            }
+            $mediosPorLote[$idL][] = $m;
+        }
+
+        // clave medio -> docs aplicados vía cortes
+        $docsPorMedio = array();
+        foreach ($mediosPorLote as $idL => $mediosLote) {
+            $docsLote = isset($docsPorLote[$idL]) ? $docsPorLote[$idL] : array();
+            if (empty($docsLote) || empty($mediosLote)) {
+                continue;
+            }
+            try {
+                $cortes = ModeloCuadreVentas::mdlCortesPagosDocs($docsLote, $mediosLote);
+            } catch (Exception $e) {
+                $cortes = array();
+            }
+            foreach ($cortes as $corte) {
+                $ope = isset($corte["num_ope"]) ? trim((string) $corte["num_ope"]) : "";
+                $cod = self::ctrNormalizarCodPago(isset($corte["cod_pago"]) ? $corte["cod_pago"] : "");
+                $clave = $idL . "|" . $cod . "|" . $ope;
+                if (!isset($docsPorMedio[$clave])) {
+                    $docsPorMedio[$clave] = array();
+                }
+                $doc = $corte["doc"];
+                $tipo = trim((string) $doc["tipo_doc"]);
+                $docsPorMedio[$clave][] = array(
+                    "num_cta" => isset($doc["num_cta"]) ? trim((string) $doc["num_cta"]) : "",
+                    "tipo_doc" => $tipo,
+                    "tipo_txt" => isset($tipos[$tipo]) ? $tipos[$tipo] : $tipo,
+                    "monto" => isset($corte["monto"]) ? round((float) $corte["monto"], 2) : 0,
+                );
+            }
+        }
+
+        $filas = array();
+        $porHoja = array();
+        foreach ($medios as $m) {
+            $idL = (int) $m["id_cuadre"];
+            $cod = self::ctrNormalizarCodPago(isset($m["tipo_medio"]) ? $m["tipo_medio"] : "");
+            $label = ($cod !== "" && isset($catalogo[$cod])) ? $catalogo[$cod]["label"] : $cod;
+            $ope = isset($m["num_ope"]) ? trim((string) $m["num_ope"]) : "";
+            $clave = $idL . "|" . $cod . "|" . $ope;
+            $docsMed = isset($docsPorMedio[$clave]) ? $docsPorMedio[$clave] : array();
+
+            $nums = array();
+            $tiposDoc = array();
+            foreach ($docsMed as $dm) {
+                if ($dm["num_cta"] !== "") {
+                    $nums[] = $dm["num_cta"];
+                }
+                if ($dm["tipo_txt"] !== "") {
+                    $tiposDoc[] = $dm["tipo_txt"];
+                }
+            }
+
+            $desc = isset($m["abono_descripcion"]) ? trim((string) $m["abono_descripcion"]) : "";
+            if ($desc === "") {
+                $desc = $label;
+                if ($ope !== "") {
+                    $desc .= " " . $ope;
+                }
+            }
+
+            $fechaFila = isset($m["abono_fecha"]) ? substr(trim((string) $m["abono_fecha"]), 0, 10) : "";
+            if ($fechaFila === "") {
+                $fechaFila = $fechaOk;
+            }
+
+            $fila = array(
+                "periodo" => $periodo,
+                "fecha" => $fechaFila,
+                "descripcion" => $desc,
+                "monto" => isset($m["monto"]) ? round((float) $m["monto"], 2) : 0,
+                "operacion" => $ope,
+                "documento" => implode("\n", $nums),
+                "tipo_documento" => implode("\n", $tiposDoc),
+                "ruc" => isset($m["cliente_documento"]) ? trim((string) $m["cliente_documento"]) : "",
+                "cliente" => isset($m["cliente_nombre"]) ? trim((string) $m["cliente_nombre"]) : "",
+                "saldo" => "",
+                "observaciones" => isset($m["observacion"]) ? trim((string) $m["observacion"]) : "",
+                "forma_pago" => $label,
+                "cod_pago" => $cod,
+                "n_docs" => count($nums),
+            );
+            $filas[] = $fila;
+
+            $hoja = strtoupper($label);
+            if ($hoja === "") {
+                $hoja = "OTROS";
+            }
+            if (!isset($porHoja[$hoja])) {
+                $porHoja[$hoja] = array();
+            }
+            $porHoja[$hoja][] = $fila;
+        }
+
+        return array(
+            "ok" => true,
+            "fecha" => $fechaOk,
+            "periodo" => $periodo,
+            "filas" => $filas,
+            "por_hoja" => $porHoja,
+        );
     }
 
     public static function ctrListarVentasDia($fecha)
@@ -326,7 +556,7 @@ class ControladorCuadreVentas
             "ver_todas" => $verTodas,
             "puede_registrar" => self::ctrPuede("registrar"),
             "puede_validar" => self::ctrPuede("validar"),
-            "puede_procesar" => self::ctrPuede("procesar"),
+            "puede_procesar" => self::ctrPuedeProcesar(),
             "docs" => $docs,
             "borrador" => $borradorActivo,
             "borradores" => $listaBorradores,
@@ -335,11 +565,12 @@ class ControladorCuadreVentas
                 ? self::ctrArmarLotesFecha(
                     $fechaOk,
                     array("REGISTRADO", "VALIDADO", "PROCESADO", "RECHAZADO", "ANULADO"),
-                    true
+                    true,
+                    !self::ctrVeTodasLasVentas()
                 )
                 : array(),
-            "validados" => (self::ctrPuede("validar") || self::ctrPuede("procesar"))
-                ? self::ctrArmarLotesFecha($fechaOk, array("VALIDADO", "PROCESADO"), true)
+            "validados" => self::ctrPuedeProcesar()
+                ? self::ctrArmarLotesFecha($fechaOk, array("VALIDADO", "PROCESADO"), true, false)
                 : array(),
             "totales" => array(
                 "cantidad" => count($docs),
@@ -524,7 +755,7 @@ class ControladorCuadreVentas
         );
     }
 
-    public static function ctrRegistrarPagos($fecha, $docsInput, $pagosInput)
+    public static function ctrRegistrarPagos($fecha, $docsInput, $pagosInput, $observacion = "")
     {
         if (!self::ctrPuede("registrar")) {
             return array("ok" => false, "msg" => "Sin permiso para registrar.");
@@ -547,25 +778,29 @@ class ControladorCuadreVentas
             $totalPagos += (float) $med["monto"];
         }
         $totalPagos = round($totalPagos, 2);
-        if (abs($totalPagos - $totalDocs) > 0.009) {
-            $hayAbono = false;
-            foreach ($medios as $med) {
-                if (!empty($med["id_abono"])) {
-                    $hayAbono = true;
-                    break;
-                }
-            }
-            $msg = $hayAbono
-                ? "El total de los abonos no cuadra con las boletas. Boletas: "
-                    . number_format($totalDocs, 2, ".", ",")
-                    . ". Abonos/pagos: "
-                    . number_format($totalPagos, 2, ".", ",")
-                    . "."
-                : "Los pagos deben cuadrar con lo aplicado a documentos.";
-            return array("ok" => false, "msg" => $msg);
+        $dif = round($totalPagos - $totalDocs, 2);
+        if ($dif < -0.10) {
+            return array(
+                "ok" => false,
+                "msg" => "Solo se permite hasta 0.10 de menos entre boletas y pagos. "
+                    . "Boletas: " . number_format($totalDocs, 2, ".", ",")
+                    . ". Pagos: " . number_format($totalPagos, 2, ".", ",")
+                    . " (faltan " . number_format(abs($dif), 2, ".", ",") . ").",
+            );
         }
 
-        $ok = ModeloCuadreVentas::mdlRegistrarPagos($idCuadre, $totalPagos, $medios);
+        $obs = trim((string) $observacion);
+        if ($obs !== "") {
+            if (function_exists("mb_substr")) {
+                $obs = mb_substr($obs, 0, 500, "UTF-8");
+            } else {
+                $obs = substr($obs, 0, 500);
+            }
+        } else {
+            $obs = null;
+        }
+
+        $ok = ModeloCuadreVentas::mdlRegistrarPagos($idCuadre, $totalPagos, $medios, $obs);
         if ($ok !== true) {
             $msg = is_string($ok) && $ok !== "" ? $ok : "No se pudo registrar.";
             if ($msg === "OP ya reservada") {
@@ -574,13 +809,21 @@ class ControladorCuadreVentas
             return array("ok" => false, "msg" => $msg);
         }
 
+        $msgOk = "Cuadre registrado. Si la OP estaba en Abonos, quedó reservada. Aún no entra a cuentas.";
+        if ($dif > 0.009) {
+            $msgOk .= " Atención: depósito de más por " . number_format($dif, 2, ".", ",") . ".";
+        } elseif ($dif < -0.009) {
+            $msgOk .= " Diferencia de menos: " . number_format(abs($dif), 2, ".", ",") . ".";
+        }
+
         return array(
             "ok" => true,
-            "msg" => "Cuadre registrado. Si la OP estaba en Abonos, quedó reservada. Aún no entra a cuentas.",
+            "msg" => $msgOk,
             "id" => $idCuadre,
             "cliente" => isset($save["cliente"]) ? $save["cliente"] : "",
             "total_docs" => $totalDocs,
             "total_pagos" => $totalPagos,
+            "diferencia" => $dif,
             "n_docs" => isset($save["n_docs"]) ? $save["n_docs"] : 0,
         );
     }
@@ -780,7 +1023,7 @@ class ControladorCuadreVentas
      */
     public static function ctrProcesarCuadre($idCuadre)
     {
-        if (!self::ctrPuede("procesar")) {
+        if (!self::ctrPuedeProcesar()) {
             return array("ok" => false, "msg" => "Sin permiso para procesar.");
         }
 
@@ -873,21 +1116,26 @@ class ControladorCuadreVentas
         return array("ok" => true, "lote" => $lote);
     }
 
-    private static function ctrArmarLotesFecha($fecha, $estados, $conDetalle)
+    private static function ctrArmarLotesFecha($fecha, $estados, $conDetalle, $soloPropios = false)
     {
         $filas = ModeloCuadreVentas::mdlListarLotesFecha($fecha, $estados);
         $out = array();
         $yo = self::ctrUsuarioSesionId();
+        $yoStr = (string) $yo;
         foreach ($filas as $fila) {
             $id = (int) $fila["id"];
             $usrReg = isset($fila["usuario_registro"]) ? (int) $fila["usuario_registro"] : 0;
+            $usrVentas = isset($fila["usuario_ventas"]) ? trim((string) $fila["usuario_ventas"]) : "";
+            if ($soloPropios && $usrReg !== $yo && $usrVentas !== $yoStr) {
+                continue;
+            }
             $item = array(
                 "id" => $id,
                 "cliente" => isset($fila["cliente"]) ? $fila["cliente"] : "",
                 "cliente_nombre" => isset($fila["cliente_nombre"]) ? $fila["cliente_nombre"] : "",
                 "usuario_registro" => $usrReg,
                 "usuario_registro_nombre" => isset($fila["usuario_registro_nombre"]) ? $fila["usuario_registro_nombre"] : "",
-                "usuario_ventas" => isset($fila["usuario_ventas"]) ? $fila["usuario_ventas"] : "",
+                "usuario_ventas" => $usrVentas,
                 "total_docs" => isset($fila["total_docs"]) ? (float) $fila["total_docs"] : 0,
                 "total_pagos" => isset($fila["total_pagos"]) ? (float) $fila["total_pagos"] : 0,
                 "n_docs" => isset($fila["n_docs"]) ? (int) $fila["n_docs"] : 0,

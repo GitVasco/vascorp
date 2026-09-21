@@ -7,7 +7,7 @@
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li>Cuentas corrientes</li>
+            <li>Facturación</li>
             <li class="active">Cuadre de ventas</li>
         </ol>
     </section>
@@ -96,7 +96,7 @@
                                 <h4>Pagos</h4>
                                 <p class="text-muted cv-pagos-ayuda">
                                     Elige el medio y la OP. Si está en Abonos, entra por su monto completo.
-                                    La suma de los abonos tiene que ser igual al total de las boletas.
+                                    Puede haber hasta <strong>0.10</strong> de menos; si deposita de más, se registra con aviso.
                                 </p>
                                 <div class="cv-pago-form">
                                     <label for="cvMedio">Medio</label>
@@ -138,20 +138,28 @@
                                     <thead>
                                         <tr>
                                             <th>Medio</th>
-                                            <th class="text-right">Monto</th>
+                                            <th>OP</th>
+                                            <th class="text-right">Monto OP</th>
                                             <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr class="cv-pagos-vacio">
-                                            <td colspan="3" class="text-muted text-center">Sin pagos</td>
+                                            <td colspan="4" class="text-muted text-center">Sin pagos</td>
                                         </tr>
                                     </tbody>
                                 </table>
                                 <div class="cv-pagos-resumen">
                                     <div>Docs: <strong id="cvPagoDocs">0.00</strong></div>
                                     <div>Pagos: <strong id="cvPagoSum">0.00</strong></div>
-                                    <div>Diferencia: <strong id="cvPagoDif">0.00</strong></div>
+                                    <div>Diferencia: <strong id="cvPagoDif">0.00</strong>
+                                        <span class="cv-dif-nota" id="cvPagoDifNota"></span>
+                                    </div>
+                                </div>
+                                <div class="cv-observacion-wrap">
+                                    <label for="cvObservacion">Observación <span class="text-muted">(opcional)</span></label>
+                                    <textarea class="form-control input-sm" id="cvObservacion" rows="2"
+                                              maxlength="500" placeholder="Nota del cuadre…"></textarea>
                                 </div>
                                 <button type="button" class="btn btn-warning btn-block" id="cvBtnRegistrar" disabled>
                                     <i class="fa fa-check"></i> Registrar
@@ -162,29 +170,24 @@
 
                     <div class="tab-pane" id="cvTabValidar">
                         <div class="cv-validar" id="cvBoxValidar">
-                            <p class="text-muted cv-pagos-ayuda">
-                                Pulsa <strong>+</strong> para ver el detalle.
-                                <strong>Confirmar</strong> deja el cuadre listo (aún no entra a cuentas).
-                                Quien lo armó, en producción, no confirma el suyo.
-                                Abajo queda el historial del día con su estado.
+                            <p class="text-muted cv-pagos-ayuda cv-validar-ayuda">
+                                <strong>+</strong> detalle ·
+                                <strong>Confirmar</strong> deja listo (aún no entra a cuentas) ·
+                                Quien lo armó no confirma el suyo
                             </p>
-                            <div class="cv-validar-acciones-top">
-                                <button type="button" class="btn btn-success btn-sm" id="cvBtnExcelValidar" title="Bajar Excel del día">
-                                    <i class="fa fa-file-excel-o"></i> Excel
-                                </button>
-                            </div>
                             <div class="cv-validar-cuerpo">
                             <div class="cv-tabla-wrap cv-validar-tabla-wrap">
                                 <table class="table table-bordered table-condensed" id="cvTablaValidar" style="width:100%">
                                     <colgroup>
-                                        <col style="width:40px">
+                                        <col style="width:34px">
+                                        <col>
+                                        <col style="width:88px">
+                                        <col style="width:44px">
+                                        <col style="width:72px">
                                         <col style="width:22%">
-                                        <col style="width:10%">
-                                        <col style="width:6%">
-                                        <col style="width:9%">
-                                        <col style="width:20%">
-                                        <col style="width:12%">
-                                        <col style="width:14%">
+                                        <col style="width:58px">
+                                        <col style="width:88px">
+                                        <col style="width:86px">
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -194,24 +197,46 @@
                                             <th class="text-right">Docs</th>
                                             <th class="text-right">Total</th>
                                             <th>Pagos</th>
+                                            <th class="text-right">Dif.</th>
                                             <th>Estado</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr class="cv-vacio">
-                                            <td colspan="8" class="text-muted text-center">No hay cuadres por validar.</td>
+                                            <td colspan="9" class="text-muted text-center">No hay cuadres por validar.</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <aside class="cv-validar-sumas" id="cvValidarSumas">
-                                <h4>Suma del día</h4>
-                                <p class="text-muted cv-pagos-ayuda">Lo que hay por validar, por medio.</p>
-                                <div id="cvSumasMedios"></div>
-                                <div class="cv-suma-fila cv-suma-total">
-                                    <span>Total</span>
-                                    <strong id="cvSumTotal">0.00</strong>
+                                <div class="cv-suma-cab">
+                                    <h4>Suma del día</h4>
+                                    <button type="button" class="btn btn-success btn-xs" id="cvBtnExcelValidar" title="Bajar Excel del día">
+                                        <i class="fa fa-file-excel-o"></i> Excel
+                                    </button>
+                                </div>
+                                <div class="cv-suma-bloque cv-suma-bloque-pend">
+                                    <div class="cv-suma-titulo">
+                                        Por validar
+                                        <span class="badge" id="cvSumBadgePend">0</span>
+                                    </div>
+                                    <div id="cvSumasMedios"></div>
+                                    <div class="cv-suma-fila cv-suma-total">
+                                        <span>Total</span>
+                                        <strong id="cvSumTotal">0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="cv-suma-bloque cv-suma-bloque-ok">
+                                    <div class="cv-suma-titulo">
+                                        Ya validados
+                                        <span class="badge" id="cvSumBadgeOk">0</span>
+                                    </div>
+                                    <div id="cvSumasValidados"></div>
+                                    <div class="cv-suma-fila cv-suma-total">
+                                        <span>Total</span>
+                                        <strong id="cvSumValidadosTotal">0.00</strong>
+                                    </div>
                                 </div>
                             </aside>
                             </div>
@@ -220,22 +245,23 @@
 
                     <div class="tab-pane" id="cvTabProcesar">
                         <div class="cv-validar" id="cvBoxProcesar">
-                            <p class="text-muted cv-pagos-ayuda">
-                                Cuadres ya confirmados. <strong>Procesar a cte</strong> baja el saldo en cuentas y consume la OP.
-                                El historial del día queda con estado Procesado.
+                            <p class="text-muted cv-pagos-ayuda cv-validar-ayuda">
+                                <strong>Procesar a cte</strong> baja el saldo en cuentas y consume la OP ·
+                                Abajo queda el historial ya procesado
                             </p>
                             <div class="cv-validar-cuerpo">
                             <div class="cv-tabla-wrap cv-validar-tabla-wrap">
                                 <table class="table table-bordered table-condensed" id="cvTablaProcesar" style="width:100%">
                                     <colgroup>
-                                        <col style="width:40px">
+                                        <col style="width:34px">
+                                        <col>
+                                        <col style="width:88px">
+                                        <col style="width:44px">
+                                        <col style="width:72px">
                                         <col style="width:22%">
-                                        <col style="width:10%">
-                                        <col style="width:6%">
-                                        <col style="width:9%">
-                                        <col style="width:20%">
-                                        <col style="width:12%">
-                                        <col style="width:14%">
+                                        <col style="width:58px">
+                                        <col style="width:88px">
+                                        <col style="width:86px">
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -245,24 +271,35 @@
                                             <th class="text-right">Docs</th>
                                             <th class="text-right">Total</th>
                                             <th>Pagos</th>
+                                            <th class="text-right">Dif.</th>
                                             <th>Estado</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr class="cv-vacio">
-                                            <td colspan="8" class="text-muted text-center">No hay cuadres por procesar.</td>
+                                            <td colspan="9" class="text-muted text-center">No hay cuadres por procesar.</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <aside class="cv-validar-sumas" id="cvProcesarSumas">
-                                <h4>Listos para cte</h4>
-                                <p class="text-muted cv-pagos-ayuda">Confirmados, listos para entrar a cuentas.</p>
-                                <div id="cvSumasProcesar"></div>
-                                <div class="cv-suma-fila cv-suma-total">
-                                    <span>Total</span>
-                                    <strong id="cvSumProcesarTotal">0.00</strong>
+                                <div class="cv-suma-cab">
+                                    <h4>Listos para cte</h4>
+                                    <button type="button" class="btn btn-success btn-xs" id="cvBtnExcelProcesar" title="Excel de abonos del día">
+                                        <i class="fa fa-file-excel-o"></i> Excel
+                                    </button>
+                                </div>
+                                <div class="cv-suma-bloque cv-suma-bloque-proc">
+                                    <div class="cv-suma-titulo">
+                                        Por procesar
+                                        <span class="badge" id="cvSumBadgeProc">0</span>
+                                    </div>
+                                    <div id="cvSumasProcesar"></div>
+                                    <div class="cv-suma-fila cv-suma-total">
+                                        <span>Total</span>
+                                        <strong id="cvSumProcesarTotal">0.00</strong>
+                                    </div>
                                 </div>
                             </aside>
                             </div>

@@ -116,7 +116,12 @@ if ($accion === "registrar-pagos") {
     if (!is_array($pagosInput)) {
         $pagosInput = array();
     }
-    $respuesta = ControladorCuadreVentas::ctrRegistrarPagos($fecha, $docsInput, $pagosInput);
+    $respuesta = ControladorCuadreVentas::ctrRegistrarPagos(
+        $fecha,
+        $docsInput,
+        $pagosInput,
+        isset($_POST["observacion"]) ? $_POST["observacion"] : ""
+    );
     if (empty($respuesta["ok"])) {
         http_response_code(400);
     }
@@ -171,7 +176,7 @@ if ($accion === "anular-cuadre") {
 }
 
 if ($accion === "procesar-cuadre") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "procesar")) {
+    if (!ControladorCuadreVentas::ctrPuedeProcesar()) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para procesar."));
         exit;

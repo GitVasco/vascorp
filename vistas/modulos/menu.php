@@ -1555,7 +1555,7 @@
                                         $_GET["ruta"] == "reportes-ventas" ||
                                         $_GET["ruta"] == "notas-credito" ||
                                         $_GET["ruta"] == "errores" ||
-                                        $_GET["ruta"] == "cuadre-caja"
+                                        $_GET["ruta"] == "cuadre-ventas"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1653,8 +1653,7 @@
                                                 $_GET["ruta"] == "ver-nota-credito" ||
                                                 $_GET["ruta"] == "editar-nota-credito" ||
                                                 $_GET["ruta"] == "notas-credito" ||
-                                                $_GET["ruta"] == "errores" ||
-                                                $_GET["ruta"] == "cuadre-caja"
+                                                $_GET["ruta"] == "errores"
                                             ) echo 'active'; ?>">
 
                             <a href="#"><i class="fa fa-clipboard"></i> Documentos
@@ -1737,20 +1736,22 @@
 
                                 </li>
 
-                                <li class="<?php if ($_GET["ruta"] == "cuadre-caja") echo 'active'; ?>">
-
-                                    <a href="cuadre-caja">
-
-                                        <i class="fa fa-calculator text-primary"></i>
-                                        <span>Cudrar caja</span>
-
-                                    </a>
-
-                                </li>
-
                             </ul>
 
                         </li>
+
+                        <?php if (!empty($puedeVerCuadreVentas)) { ?>
+                        <li class="<?php if ($_GET["ruta"] == "cuadre-ventas") echo 'active'; ?>">
+
+                            <a href="cuadre-ventas">
+
+                                <i class="fa fa-balance-scale"></i>
+                                <span>Cuadre de ventas</span>
+
+                            </a>
+
+                        </li>
+                        <?php } ?>
 
 
                     </ul>
@@ -1776,8 +1777,7 @@
                                         $_GET["ruta"] == "reportes-generales-v2" ||
                                         $_GET["ruta"] == "notificaciones" ||
                                         $_GET["ruta"] == "letras-plazo-protesto" ||
-                                        $_GET["ruta"] == "credipagos" ||
-                                        $_GET["ruta"] == "cuadre-ventas"
+                                        $_GET["ruta"] == "credipagos"
                                     ) echo 'active'; ?>">
 
                     <a href="#">
@@ -1917,17 +1917,6 @@
                             </a>
                         </li>
 
-                        <?php if (!empty($puedeVerCuadreVentas)) { ?>
-                        <li class="<?php if ($_GET["ruta"] == "cuadre-ventas") echo 'active'; ?>">
-                            <a href="cuadre-ventas">
-
-                                <i class="fa fa-balance-scale"></i>
-                                <span>Cuadre de ventas</span>
-
-                            </a>
-                        </li>
-                        <?php } ?>
-
                         <li class="<?php if ($_GET["ruta"] == "consultar-cuentas") echo 'active'; ?>">
                             <a href="consultar-cuentas">
 
@@ -1991,7 +1980,7 @@
             <?php
             }
             if (
-                (!isset($_SESSION["cuenta"]) || (int) $_SESSION["cuenta"] !== 1)
+                (!isset($_SESSION["facturacion"]) || (int) $_SESSION["facturacion"] !== 1)
                 && !empty($puedeVerCuadreVentas)
             ) {
             ?>

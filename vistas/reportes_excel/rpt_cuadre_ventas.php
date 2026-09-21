@@ -112,7 +112,10 @@ $cabeceras = array(
     "P" => "Monto abonado",
     "Q" => "Forma de pago",
     "R" => "Nro OP",
-    "S" => "Estado",
+    "S" => "Monto OP",
+    "T" => "Diferencia",
+    "U" => "Estado",
+    "V" => "Observación",
 );
 
 $anchos = array(
@@ -134,12 +137,15 @@ $anchos = array(
     "P" => 14,
     "Q" => 22,
     "R" => 24,
-    "S" => 14,
+    "S" => 18,
+    "T" => 12,
+    "U" => 14,
+    "V" => 40,
 );
 
-$colsTexto = array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "O", "Q", "R", "S");
-$colsMoneda = array("N", "P");
-$ultimaCol = "S";
+$colsTexto = array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "O", "Q", "R", "S", "U", "V");
+$colsMoneda = array("N", "P", "T");
+$ultimaCol = "V";
 $formatoMoneda = '#,##0.00';
 
 $hoja = $objPHPExcel->getActiveSheet();
@@ -157,6 +163,8 @@ $hoja->getRowDimension(2)->setRowHeight(28);
 
 $fila = 3;
 foreach ($filas as $item) {
+    $montoOpTxt = isset($item["monto_op"]) ? (string) $item["monto_op"] : "";
+    $difVal = isset($item["diferencia"]) ? $item["diferencia"] : "";
     $datos = array(
         cvExcelTexto($item["periodo"]),
         cvExcelFecha($item["fecha_dia"]),
@@ -176,12 +184,20 @@ foreach ($filas as $item) {
         (float) $item["monto_abonado"],
         cvExcelTexto($item["forma_pago"]),
         cvExcelTexto($item["nro_op"]),
+        cvExcelTexto($montoOpTxt),
+        ($difVal === "" || $difVal === null) ? "" : (float) $difVal,
         cvExcelTexto(isset($item["estado"]) ? $item["estado"] : ""),
+        cvExcelTexto(isset($item["observacion"]) ? $item["observacion"] : ""),
     );
-    $letras = array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S");
+    $letras = array(
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
+        "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
+    );
     foreach ($datos as $idx => $valor) {
         $col = $letras[$idx];
-        if (in_array($col, $colsTexto, true)) {
+        if ($col === "T" && ($valor === "" || $valor === null)) {
+            $hoja->setCellValueExplicit($col . $fila, "", PHPExcel_Cell_DataType::TYPE_STRING);
+        } elseif (in_array($col, $colsTexto, true)) {
             $hoja->setCellValueExplicit($col . $fila, (string) $valor, PHPExcel_Cell_DataType::TYPE_STRING);
         } else {
             $hoja->setCellValue($col . $fila, $valor);

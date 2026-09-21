@@ -32,6 +32,37 @@ $(function () {
         return Math.round((Number(n) || 0) * 100) / 100;
     }
 
+    /** Máximo permitido de menos (docs − pagos). De más se permite con aviso. */
+    var TOLERANCIA_MENOS = 0.10;
+
+    function difCuadre(docs, pagosTot) {
+        return round2((Number(pagosTot) || 0) - (Number(docs) || 0));
+    }
+
+    function difPermitida(docs, pagosTot) {
+        var dif = difCuadre(docs, pagosTot);
+        if (Math.abs(dif) < 0.01) {
+            return { ok: true, dif: 0, tipo: "" };
+        }
+        if (dif > 0) {
+            return { ok: true, dif: dif, tipo: "mas" };
+        }
+        if (dif >= -TOLERANCIA_MENOS) {
+            return { ok: true, dif: dif, tipo: "menos" };
+        }
+        return { ok: false, dif: dif, tipo: "menos" };
+    }
+
+    function textoDif(dif, tipo) {
+        if (!tipo || Math.abs(dif) < 0.01) {
+            return "";
+        }
+        if (tipo === "mas") {
+            return "de más " + money(Math.abs(dif));
+        }
+        return "de menos " + money(Math.abs(dif));
+    }
+
     var CATALOGO_MEDIOS = [
         { cod: "80", label: "Efectivo", pide_op: false },
         { cod: "15", label: "Yape", pide_op: true },
@@ -256,6 +287,7 @@ $(function () {
         gruposOrganizar = [];
         $("#cvGrupos").empty();
         pagos = [];
+        $("#cvObservacion").val("");
         pintarPagos();
         recalcularLote();
     }
@@ -338,7 +370,31 @@ $(function () {
             }
             partes.push(t + " " + money(m.monto));
         }
-        return partes.join(" + ");
+        return partes.join(" | ");
+    }
+
+    function htmlResumenPagos(medios) {
+        if (!medios || !medios.length) {
+            return "—";
+        }
+        var partes = [];
+        var i;
+        var m;
+        var txt;
+        for (i = 0; i < medios.length; i++) {
+            m = medios[i];
+            txt = etiquetaMedio(m.tipo_medio);
+            if (m.num_ope) {
+                txt += " " + m.num_ope;
+            }
+            partes.push(
+                '<span class="cv-pago-item">'
+                + esc(txt)
+                + ' <strong class="cv-pago-monto">' + esc(money(m.monto)) + "</strong>"
+                + "</span>"
+            );
+        }
+        return partes.join('<span class="cv-pago-sep"> | </span>');
     }
 
     function etiquetaPago(m) {
@@ -455,6 +511,63 @@ $(function () {
         var medios = lote.medios || [];
         var filas = asignarDocsAMedios(docs, medios);
         var html = '<div class="cv-val-detalle-inner">';
+        if (lote.observacion) {
+            html += '<p class="cv-val-obs"><strong>Observación:</strong> ' + esc(lote.observacion) + "</p>";
+        }
+        var totDocs = round2(lote.total_docs);
+        var totPagos = round2(lote.total_pagos);
+        var infoDif = difPermitida(totDocs, totPagos);
+        var aplicadoPorOp = {};
+        var fi;
+        var opeApl;
+        for (fi = 0; fi < filas.length; fi++) {
+            if (!filas[fi].medio || !filas[fi].medio.num_ope) {
+                continue;
+            }
+            opeApl = String(filas[fi].medio.num_ope);
+            if (!aplicadoPorOp[opeApl]) {
+                aplicadoPorOp[opeApl] = 0;
+            }
+            aplicadoPorOp[opeApl] = round2(aplicadoPorOp[opeApl] + Number(filas[fi].monto || 0));
+        }
+        html += '<p class="cv-val-detalle-titulo">OP y montos</p>';
+        html += '<table class="table table-bordered table-condensed cv-val-ops">';
+        html += "<thead><tr><th>OP</th><th class=\"text-right\">Monto OP</th>"
+            + "<th class=\"text-right\">Aplicado</th>"
+            + "<th class=\"text-right\">Dif.</th></tr></thead><tbody>";
+        if (!medios.length) {
+            html += '<tr><td colspan="4" class="text-muted">Sin pagos</td></tr>';
+        } else {
+            var mi;
+            var med;
+            var montoOp;
+            var aplicado;
+            var difOp;
+            var difTxt;
+            for (mi = 0; mi < medios.length; mi++) {
+                med = medios[mi];
+                montoOp = round2(med.monto);
+                aplicado = med.num_ope && aplicadoPorOp[String(med.num_ope)]
+                    ? aplicadoPorOp[String(med.num_ope)]
+                    : 0;
+                difOp = round2(montoOp - aplicado);
+                difTxt = "—";
+                if (Math.abs(difOp) >= 0.01) {
+                    difTxt = (difOp > 0 ? "+" : "") + money(difOp)
+                        + (difOp > 0 ? " de más" : " de menos");
+                }
+                html += "<tr><td>" + esc(med.num_ope || "—") + "</td>"
+                    + '<td class="text-right">' + money(montoOp) + "</td>"
+                    + '<td class="text-right">' + money(aplicado) + "</td>"
+                    + '<td class="text-right">' + esc(difTxt) + "</td></tr>";
+            }
+        }
+        html += "</tbody></table>";
+        if (infoDif.tipo) {
+            html += '<p class="cv-val-dif-lote"><strong>Diferencia del cuadre:</strong> '
+                + esc(textoDif(infoDif.dif, infoDif.tipo))
+                + " (docs " + money(totDocs) + " · pagos " + money(totPagos) + ")</p>";
+        }
         html += '<p class="cv-val-detalle-titulo">Documento a documento</p>';
         html += '<table class="table table-bordered table-condensed cv-val-cruce">';
         html += "<thead><tr><th>Documento</th><th class=\"text-right\">Monto doc.</th>"
@@ -517,29 +630,45 @@ $(function () {
         };
         var m = map[e] || { txt: e || "—", cls: "label-default" };
         var title = "";
-        if (l && l.observacion && (e === "RECHAZADO" || e === "ANULADO")) {
+        if (l && l.observacion) {
             title = ' title="' + esc(l.observacion) + '"';
         }
         return '<span class="label ' + m.cls + ' cv-estado"' + title + ">" + esc(m.txt) + "</span>";
     }
 
-    function htmlFilaLote(l, i, acciones) {
+    function htmlFilaLote(l, i, acciones, filaCls) {
         var nombre = l.cliente + (l.cliente_nombre ? " — " + l.cliente_nombre : "");
         var quien = l.usuario_registro_nombre || ("ID " + l.usuario_registro);
-        var hist = !acciones;
-        return '<tr class="cv-val-fila' + (hist ? " cv-val-hist" : "") + '" data-idx="' + i + '">'
+        var e = estadoLote(l);
+        var cls = filaCls || (e === "REGISTRADO" ? "cv-val-pend" : "cv-val-hist");
+        var infoDif = difPermitida(l.total_docs, l.total_pagos);
+        var difHtml = "—";
+        var difCls = "";
+        if (infoDif.tipo) {
+            difCls = infoDif.tipo === "mas" ? " cv-dif-mas" : " cv-dif-menos";
+            difHtml = (infoDif.dif > 0 ? "+" : "") + money(infoDif.dif);
+        }
+        return '<tr class="cv-val-fila ' + cls + '" data-idx="' + i + '">'
             + '<td class="cv-col-toggle"><button type="button" class="btn btn-default btn-xs cv-val-toggle" title="Ver documentos">'
             + '<i class="fa fa-plus"></i></button></td>'
-            + "<td>" + esc(nombre) + "</td>"
+            + '<td class="cv-val-cliente" title="' + esc(nombre) + '">' + esc(nombre) + "</td>"
             + "<td>" + esc(quien) + "</td>"
             + '<td class="text-right">' + (l.n_docs || 0) + "</td>"
-            + '<td class="text-right">' + money(l.total_docs) + "</td>"
-            + "<td>" + esc(resumenPagos(l.medios)) + "</td>"
+            + '<td class="text-right cv-val-total">' + money(l.total_docs) + "</td>"
+            + '<td class="cv-val-pagos">' + htmlResumenPagos(l.medios) + "</td>"
+            + '<td class="text-right' + difCls + '" title="' + esc(textoDif(infoDif.dif, infoDif.tipo)) + '">'
+            + difHtml + "</td>"
             + "<td>" + htmlEstado(l) + "</td>"
             + '<td class="cv-val-acciones">' + (acciones || "—") + "</td>"
             + "</tr>"
-            + '<tr class="cv-val-detalle" data-idx="' + i + '" style="display:none;"><td colspan="8">'
+            + '<tr class="cv-val-detalle" data-idx="' + i + '" style="display:none;"><td colspan="9">'
             + htmlDetalleLote(l) + "</td></tr>";
+    }
+
+    function htmlSeccionValidar(titulo, n, cls) {
+        return '<tr class="cv-val-seccion ' + (cls || "") + '">'
+            + '<td colspan="9"><span class="cv-val-seccion-tit">' + esc(titulo) + "</span>"
+            + ' <span class="badge">' + n + "</span></td></tr>";
     }
 
     function pintarPendientes(lista) {
@@ -548,23 +677,47 @@ $(function () {
         $tb.empty();
         syncPestanas();
         var pendientes = lotesDeEstado(pendientesValidar, "REGISTRADO");
+        var historial = [];
+        var i;
+        var l;
+        var e;
+        for (i = 0; i < pendientesValidar.length; i++) {
+            e = estadoLote(pendientesValidar[i]);
+            if (e !== "REGISTRADO") {
+                historial.push({ lote: pendientesValidar[i], idx: i });
+            }
+        }
         $("#cvBadgeValidar").text(pendientes.length);
+        $("#cvSumBadgePend").text(pendientes.length);
+        $("#cvSumBadgeOk").text(
+            lotesDeEstado(pendientesValidar, "VALIDADO").length
+            + lotesDeEstado(pendientesValidar, "PROCESADO").length
+        );
         if (!puedeValidar) {
-            pintarSumasEn("#cvSumasMedios", "#cvSumTotal", []);
+            pintarSumasDia([], []);
             return;
         }
         if (!pendientesValidar.length) {
-            $tb.append('<tr class="cv-vacio"><td colspan="8" class="text-muted text-center">No hay cuadres en esa fecha.</td></tr>');
-            pintarSumasEn("#cvSumasMedios", "#cvSumTotal", []);
+            $tb.append('<tr class="cv-vacio"><td colspan="9" class="text-muted text-center">No hay cuadres en esa fecha.</td></tr>');
+            pintarSumasDia([], []);
             return;
         }
-        var i;
-        var l;
-        var acciones;
-        for (i = 0; i < pendientesValidar.length; i++) {
-            l = pendientesValidar[i];
-            acciones = "";
-            if (estadoLote(l) === "REGISTRADO") {
+
+        $tb.append(htmlSeccionValidar("Pendientes por validar", pendientes.length, "cv-val-seccion-pend"));
+        if (!pendientes.length) {
+            $tb.append(
+                '<tr class="cv-vacio cv-vacio-seccion"><td colspan="9" class="text-muted">'
+                + "No hay nada pendiente. El historial del día está abajo."
+                + "</td></tr>"
+            );
+        } else {
+            var acciones;
+            for (i = 0; i < pendientesValidar.length; i++) {
+                l = pendientesValidar[i];
+                if (estadoLote(l) !== "REGISTRADO") {
+                    continue;
+                }
+                acciones = "";
                 if (l.es_propio) {
                     acciones = '<button type="button" class="btn btn-warning btn-xs cv-ico cv-val-anular" title="Cancelar">'
                         + '<i class="fa fa-undo"></i></button>';
@@ -576,10 +729,29 @@ $(function () {
                         + '<button type="button" class="btn btn-danger btn-xs cv-ico cv-val-no" title="Rechazar">'
                         + '<i class="fa fa-times-circle"></i></button>';
                 }
+                $tb.append(htmlFilaLote(l, i, acciones));
             }
-            $tb.append(htmlFilaLote(l, i, acciones));
         }
-        pintarSumasEn("#cvSumasMedios", "#cvSumTotal", pendientes);
+
+        $tb.append(htmlSeccionValidar("Historial del día", historial.length, "cv-val-seccion-hist"));
+        if (!historial.length) {
+            $tb.append(
+                '<tr class="cv-vacio cv-vacio-seccion"><td colspan="9" class="text-muted">'
+                + "Aún no hay confirmados, procesados ni rechazados."
+                + "</td></tr>"
+            );
+        } else {
+            for (i = 0; i < historial.length; i++) {
+                $tb.append(htmlFilaLote(historial[i].lote, historial[i].idx, ""));
+            }
+        }
+
+        pintarSumasDia(
+            pendientes,
+            lotesDeEstado(pendientesValidar, "VALIDADO").concat(
+                lotesDeEstado(pendientesValidar, "PROCESADO")
+            )
+        );
     }
 
     function syncPestanas() {
@@ -595,32 +767,71 @@ $(function () {
         $tb.empty();
         syncPestanas();
         var pendientes = lotesDeEstado(lotesProcesar, "VALIDADO");
+        var procesados = [];
+        var i;
+        var l;
+        for (i = 0; i < lotesProcesar.length; i++) {
+            if (estadoLote(lotesProcesar[i]) === "PROCESADO") {
+                procesados.push({ lote: lotesProcesar[i], idx: i });
+            }
+        }
         $("#cvBadgeProcesar").text(pendientes.length);
+        $("#cvSumBadgeProc").text(pendientes.length);
         if (!puedeProcesar) {
-            pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", []);
+            pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", [], "Sin montos");
             return;
         }
         if (!lotesProcesar.length) {
-            $tb.append('<tr class="cv-vacio"><td colspan="8" class="text-muted text-center">No hay cuadres confirmados ni procesados en esa fecha.</td></tr>');
-            pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", []);
+            $tb.append('<tr class="cv-vacio"><td colspan="9" class="text-muted text-center">No hay cuadres confirmados ni procesados en esa fecha.</td></tr>');
+            pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", [], "Sin montos");
             return;
         }
-        var i;
-        var l;
-        var acciones;
-        for (i = 0; i < lotesProcesar.length; i++) {
-            l = lotesProcesar[i];
-            acciones = "";
-            if (estadoLote(l) === "VALIDADO") {
-                acciones = '<button type="button" class="btn btn-success btn-xs cv-ico cv-proc-cte" title="Procesar a cuentas">'
-                    + '<i class="fa fa-arrow-circle-right"></i></button>';
+
+        $tb.append(htmlSeccionValidar("Listos para procesar", pendientes.length, "cv-val-seccion-proc"));
+        if (!pendientes.length) {
+            $tb.append(
+                '<tr class="cv-vacio cv-vacio-seccion"><td colspan="9" class="text-muted">'
+                + "No hay confirmados pendientes. El historial procesado está abajo."
+                + "</td></tr>"
+            );
+        } else {
+            for (i = 0; i < lotesProcesar.length; i++) {
+                l = lotesProcesar[i];
+                if (estadoLote(l) !== "VALIDADO") {
+                    continue;
+                }
+                $tb.append(htmlFilaLote(
+                    l,
+                    i,
+                    '<button type="button" class="btn btn-success btn-xs cv-ico cv-proc-cte" title="Procesar a cuentas">'
+                        + '<i class="fa fa-arrow-circle-right"></i></button>',
+                    "cv-val-proc"
+                ));
             }
-            $tb.append(htmlFilaLote(l, i, acciones));
         }
-        pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", pendientes);
+
+        $tb.append(htmlSeccionValidar("Ya procesados", procesados.length, "cv-val-seccion-hist"));
+        if (!procesados.length) {
+            $tb.append(
+                '<tr class="cv-vacio cv-vacio-seccion"><td colspan="9" class="text-muted">'
+                + "Aún no hay cuadres procesados en esta fecha."
+                + "</td></tr>"
+            );
+        } else {
+            for (i = 0; i < procesados.length; i++) {
+                $tb.append(htmlFilaLote(procesados[i].lote, procesados[i].idx, "", "cv-val-hist"));
+            }
+        }
+
+        pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", pendientes, "Nada por procesar");
     }
 
-    function pintarSumasEn(selFilas, selTotal, lotes) {
+    function pintarSumasDia(porValidar, yaValidados) {
+        pintarSumasEn("#cvSumasMedios", "#cvSumTotal", porValidar || [], "Nada pendiente");
+        pintarSumasEn("#cvSumasValidados", "#cvSumValidadosTotal", yaValidados || [], "Aún sin totales");
+    }
+
+    function pintarSumasEn(selFilas, selTotal, lotes, vacioTxt) {
         var sumas = {};
         var i;
         var j;
@@ -630,6 +841,7 @@ $(function () {
         var monto;
         var total = 0;
         var html = "";
+        var hay = false;
         for (k = 0; k < CATALOGO_MEDIOS.length; k++) {
             sumas[CATALOGO_MEDIOS[k].cod] = 0;
         }
@@ -645,11 +857,19 @@ $(function () {
             }
         }
         for (k = 0; k < CATALOGO_MEDIOS.length; k++) {
+            monto = round2(sumas[CATALOGO_MEDIOS[k].cod]);
+            if (monto < 0.01) {
+                continue;
+            }
+            hay = true;
             html += '<div class="cv-suma-fila"><span>'
                 + esc(CATALOGO_MEDIOS[k].label)
                 + "</span><strong>"
-                + money(sumas[CATALOGO_MEDIOS[k].cod])
+                + money(monto)
                 + "</strong></div>";
+        }
+        if (!hay) {
+            html = '<div class="cv-suma-vacio">' + esc(vacioTxt || "Sin montos") + "</div>";
         }
         $(selFilas).html(html);
         $(selTotal).text(money(total));
@@ -682,28 +902,29 @@ $(function () {
         var $tb = $("#cvTablaPagos tbody");
         $tb.empty();
         if (!pagos.length) {
-            $tb.append('<tr class="cv-pagos-vacio"><td colspan="3" class="text-muted text-center">Sin pagos</td></tr>');
+            $tb.append('<tr class="cv-pagos-vacio"><td colspan="4" class="text-muted text-center">Sin pagos</td></tr>');
             recalcularPagos();
             return;
         }
         for (var i = 0; i < pagos.length; i++) {
             var p = pagos[i];
-            var detalle = etiquetaMedio(p.tipo_medio);
-            if (p.num_ope) {
-                detalle += " " + esc(p.num_ope);
-                if (p.id_abono) {
-                    detalle += ' <span class="text-muted">(Abonos · ' + money(p.disponible || p.monto) + ")</span>";
-                } else {
-                    detalle += ' <span class="text-muted">(sin abono)</span>';
-                }
+            var medioTxt = etiquetaMedio(p.tipo_medio);
+            if (p.id_abono) {
+                medioTxt += ' <span class="text-muted">(Abonos)</span>';
+            } else if (p.num_ope) {
+                medioTxt += ' <span class="text-muted">(sin abono)</span>';
             }
+            var montoOp = p.id_abono
+                ? round2(p.disponible || p.monto)
+                : round2(p.monto);
             $tb.append(
                 '<tr data-idx="' + i + '">'
-                + "<td>" + detalle + "</td>"
+                + "<td>" + medioTxt + "</td>"
+                + "<td>" + esc(p.num_ope || "—") + "</td>"
                 + '<td class="text-right"><input type="number" min="0.01" step="0.01" class="form-control input-sm cv-pago-monto"'
                 + (p.id_abono ? " readonly" : "")
                 + ' value="'
-                + round2(p.monto).toFixed(2) + '"></td>'
+                + montoOp.toFixed(2) + '"></td>'
                 + '<td><button type="button" class="btn btn-xs btn-default cv-pago-quitar" title="Quitar">&times;</button></td>'
                 + "</tr>"
             );
@@ -714,16 +935,29 @@ $(function () {
     function recalcularPagos() {
         var docs = totalDocsLote();
         var sum = totalPagosLote();
-        var dif = round2(docs - sum);
+        var info = difPermitida(docs, sum);
+        var difVsDocs = round2(docs - sum);
         $("#cvPagoDocs").text(money(docs));
         $("#cvPagoSum").text(money(sum));
         var $dif = $("#cvPagoDif");
-        $dif.text(money(dif));
-        $dif.toggleClass("cv-dif-ok", Math.abs(dif) < 0.01 && docs > 0 && pagos.length > 0);
-        $dif.toggleClass("cv-dif-mal", Math.abs(dif) >= 0.01 || docs < 0.01 || pagos.length < 1);
+        var $nota = $("#cvPagoDifNota");
+        $dif.text(money(difVsDocs));
+        $dif.removeClass("cv-dif-ok cv-dif-mal cv-dif-aviso");
+        $nota.text("");
+        if (docs < 0.01 || pagos.length < 1) {
+            $dif.addClass("cv-dif-mal");
+        } else if (!info.ok) {
+            $dif.addClass("cv-dif-mal");
+            $nota.text(" (máx. 0.10 de menos)");
+        } else if (info.tipo) {
+            $dif.addClass("cv-dif-aviso");
+            $nota.text(" (" + textoDif(info.dif, info.tipo) + ")");
+        } else {
+            $dif.addClass("cv-dif-ok");
+        }
         $("#cvBtnRegistrar").prop(
             "disabled",
-            !puedeRegistrar || docs < 0.01 || pagos.length < 1 || Math.abs(dif) >= 0.01
+            !puedeRegistrar || docs < 0.01 || pagos.length < 1 || !info.ok
         );
     }
 
@@ -1054,6 +1288,7 @@ $(function () {
         pagos = [];
         gruposOrganizar = [];
         $("#cvGrupos").empty();
+        $("#cvObservacion").val("");
         pintarPagos();
         $("#cvTablaVentas tbody").html(filaVacia("Buscando…"));
         $.getJSON(API, { accion: "listar-ventas", fecha: fecha })
@@ -1526,11 +1761,14 @@ $(function () {
         if (!docs.length || !pagos.length) {
             return;
         }
-        if (Math.abs(restantePagos()) >= 0.01) {
+        var info = difPermitida(totalDocsLote(), totalPagosLote());
+        if (!info.ok) {
             aviso(
                 "warning",
                 "No cuadra",
-                "El total de los abonos/pagos tiene que ser igual al total de las boletas."
+                "Solo se permite hasta 0.10 de menos entre boletas y abonos/pagos. Ahora hay "
+                    + money(Math.abs(info.dif))
+                    + " de menos."
             );
             return;
         }
@@ -1543,13 +1781,13 @@ $(function () {
                     "Abono incompleto",
                     "La OP " + (pagos[i].num_ope || "") + " es de "
                         + money(pagos[i].disponible)
-                        + ". Usala completa para que cuadre con las boletas."
+                        + ". Usala completa; la diferencia con las boletas se registra aparte."
                 );
                 return;
             }
         }
         var payload = [];
-        for (var i = 0; i < pagos.length; i++) {
+        for (i = 0; i < pagos.length; i++) {
             payload.push({
                 tipo_medio: pagos[i].tipo_medio,
                 id_abono: pagos[i].id_abono || 0,
@@ -1557,32 +1795,79 @@ $(function () {
                 monto: round2(pagos[i].monto)
             });
         }
-        $("#cvBtnRegistrar").prop("disabled", true);
-        $.ajax({
-            url: API,
-            method: "POST",
-            dataType: "json",
-            data: {
-                accion: "registrar-pagos",
-                fecha: $("#cvFecha").val(),
-                docs: JSON.stringify(docs),
-                pagos: JSON.stringify(payload)
-            }
-        }).done(function (r) {
-            if (!r || !r.ok) {
+        var registrar = function () {
+            $("#cvBtnRegistrar").prop("disabled", true);
+            $.ajax({
+                url: API,
+                method: "POST",
+                dataType: "json",
+                data: {
+                    accion: "registrar-pagos",
+                    fecha: $("#cvFecha").val(),
+                    docs: JSON.stringify(docs),
+                    pagos: JSON.stringify(payload),
+                    observacion: $.trim($("#cvObservacion").val() || "")
+                }
+            }).done(function (r) {
+                if (!r || !r.ok) {
+                    aviso("error", "No se registró", (r && r.msg) ? r.msg : "Error al registrar.");
+                    recalcularPagos();
+                    return;
+                }
+                aviso("success", "Registrado", r.msg || "Cuadre registrado.");
+                pagos = [];
+                $("#cvObservacion").val("");
+                escribirUrl({ pestana: "validar" });
+                buscar();
+            }).fail(function (xhr) {
+                var r = xhr.responseJSON;
                 aviso("error", "No se registró", (r && r.msg) ? r.msg : "Error al registrar.");
                 recalcularPagos();
+            });
+        };
+        if (info.tipo === "mas") {
+            if (window.swal) {
+                swal({
+                    title: "Depósito de más",
+                    text: "El pago supera las boletas en " + money(info.dif) + ". ¿Registrar igual?",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, registrar",
+                    cancelButtonText: "Cancelar"
+                }).then(function (result) {
+                    if (result && result.value) {
+                        registrar();
+                    }
+                });
                 return;
             }
-            aviso("success", "Registrado", r.msg || "Cuadre registrado.");
-            pagos = [];
-            escribirUrl({ pestana: "validar" });
-            buscar();
-        }).fail(function (xhr) {
-            var r = xhr.responseJSON;
-            aviso("error", "No se registró", (r && r.msg) ? r.msg : "Error al registrar.");
-            recalcularPagos();
-        });
+            if (!window.confirm("El pago supera las boletas en " + money(info.dif) + ". ¿Registrar igual?")) {
+                return;
+            }
+        } else if (info.tipo === "menos") {
+            if (window.swal) {
+                swal({
+                    title: "Depósito de menos",
+                    text: "Faltan " + money(Math.abs(info.dif))
+                        + " (máx. 0.10). Se registrará la diferencia.",
+                    type: "info",
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, registrar",
+                    cancelButtonText: "Cancelar"
+                }).then(function (result) {
+                    if (result && result.value) {
+                        registrar();
+                    }
+                });
+                return;
+            }
+            if (!window.confirm(
+                "Faltan " + money(Math.abs(info.dif)) + " (máx. 0.10). ¿Registrar con esa diferencia?"
+            )) {
+                return;
+            }
+        }
+        registrar();
     });
 
     function lotePorFila($el) {
@@ -1700,9 +1985,6 @@ $(function () {
                     return;
                 }
                 aviso("success", "Confirmado", r.msg || "Cuadre confirmado.");
-                if (puedeProcesar) {
-                    escribirUrl({ pestana: "procesar" });
-                }
                 buscar();
             }).fail(function (xhr) {
                 var r = xhr.responseJSON;
@@ -1787,6 +2069,16 @@ $(function () {
         window.location = "vistas/reportes_excel/rpt_cuadre_ventas.php?fecha=" + encodeURIComponent(fecha);
     });
 
+    $("#cvBtnExcelProcesar").on("click", function () {
+        var fecha = $("#cvFecha").val();
+        if (!fechaValida(fecha)) {
+            aviso("warning", "Excel", "Elige una fecha.");
+            return;
+        }
+        window.location = "vistas/reportes_excel/rpt_cuadre_ventas_abonos.php?fecha="
+            + encodeURIComponent(fecha);
+    });
+
     $("#cvTablaValidar").on("click", ".cv-val-no", function () {
         var lote = lotePorFila($(this));
         if (!lote || (lote.es_propio && !verTodas)) {
@@ -1852,7 +2144,7 @@ $(function () {
             size: 8
         });
     }
-    pintarSumasEn("#cvSumasMedios", "#cvSumTotal", []);
+    pintarSumasDia([], []);
     pintarSumasEn("#cvSumasProcesar", "#cvSumProcesarTotal", []);
     syncFormaPago({ silent: true });
     buscar();
