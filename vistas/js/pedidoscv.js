@@ -258,19 +258,72 @@ function listarArticulosPed() {
 }
 
 /*
- * AL CAMBIAR LA CONDICION DE VENTA
+ * AL CAMBIAR LA CONDICION DE VENTA (delegado: el bloque #updDivCierre se recarga tras agregar ítems)
  */
 
-$("#condicionVenta").change(function () {
-    //console.log("si llego")
+function pedidoCvCodigoPedidoActivo() {
+    var c = $("#nuevoCodigo").val();
+    return c ? String(c).trim() : "";
+}
 
+function pedidoCvGuardarCierreTemporal() {
+    var codigo = pedidoCvCodigoPedidoActivo();
+    if (!codigo) {
+        return $.Deferred().resolve().promise();
+    }
+    var datos = new FormData();
+    datos.append("ajaxGuardarCierrePedidoCv", "1");
+    datos.append("codigoCierrePedidoCv", codigo);
+    datos.append("condicionCierrePedidoCv", $("#condicionVenta").val() || "");
+    datos.append("agenciaCierrePedidoCv", $("#agencia").val() || "");
+    return $.ajax({
+        url: "ajax/pedidos.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+    });
+}
+
+var pedidoCvGuardarCierreTimer = null;
+function pedidoCvGuardarCierreTemporalDebounced() {
+    clearTimeout(pedidoCvGuardarCierreTimer);
+    pedidoCvGuardarCierreTimer = setTimeout(function () {
+        pedidoCvGuardarCierreTemporal();
+    }, 350);
+}
+
+function pedidoCvInitCierreSelects() {
+    pedidoCvInitSelectCierre($("#condicionVenta"));
+    pedidoCvInitSelectCierre($("#agencia"));
+    var cv = $("#condicionVenta").val();
+    if (cv) {
+        $("#condicionVentaM").val(cv);
+    }
+}
+
+function pedidoCvRecargarCierrePedido() {
+    return pedidoCvRecargarFragmento("updDivCierre").then(function () {
+        pedidoCvInitCierreSelects();
+    });
+}
+
+function pedidoCvOnCondicionVentaChange() {
     sumarTotalesPreciosA();
-    //cambioDescuento();
     listarArticulosPed();
+    pedidoCvGuardarCierreTemporalDebounced();
 
     $("#modalito").removeAttr("disabled");
     $("#modalito").removeClass("btn-default");
     $("#modalito").addClass("btn-primary");
+}
+
+$(document).on("change", "#condicionVenta", pedidoCvOnCondicionVentaChange);
+
+$(document).on("change", "#agencia", function () {
+    pedidoCvGuardarCierreTemporalDebounced();
 });
 
 $("#seleccionarCliente").change(function () {
@@ -733,11 +786,21 @@ function pedidoCvRecargarFragmento(id) {
 }
 
 function pedidoCvRecargarDetallePedido() {
-    return $.when(
-        pedidoCvRecargarFragmento("updDivB"),
-        pedidoCvRecargarFragmento("updDivC"),
-        pedidoCvRecargarFragmento("updDiv")
-    );
+    return pedidoCvGuardarCierreTemporal()
+        .then(function () {
+            return $.when(
+                pedidoCvRecargarFragmento("updDivB"),
+                pedidoCvRecargarFragmento("updDivC"),
+                pedidoCvRecargarFragmento("updDiv")
+            );
+        })
+        .then(function () {
+            sumarTotalesPreciosA();
+            if (typeof cambioDescuento === "function") {
+                cambioDescuento();
+            }
+            return pedidoCvRecargarCierrePedido();
+        });
 }
 
 /** Selects de cierre: menú debajo del campo (evita dropup vacío) y por encima de Totales. */
@@ -1741,8 +1804,7 @@ $(document).ready(function () {
         $("body").addClass("pagina-crear-pedidocv");
     }
 
-    pedidoCvInitSelectCierre($("#condicionVenta"));
-    pedidoCvInitSelectCierre($("#agencia"));
+    pedidoCvInitCierreSelects();
 
     $(document).on("shown.bs.select", ".crear-pedidocv-select-cierre", function () {
         pedidoCvAjustarMenuSelectCierre(this);
@@ -2859,12 +2921,16 @@ $(".modificarArtPedC").click(function () {
         const pedido = $("#nuevoCodigo").val();
         const modLista = $("#lista").val();
         const agencia = $("#agencia").val();
+        const condicion = $("#condicionVenta").val();
         const listaValue = updateModLista(modLista);
 
         $("#nLista").val(listaValue);
         $("#clienteA").val(cliente);
         $("#vendedorA").val(vendedor);
         $("#agenciaA").val(agencia);
+        if (condicion) {
+            $("#condicionVentaM").val(condicion);
+        }
 
         const datos = new FormData();
         updateFormData(datos, "modLista", listaValue);
@@ -2947,7 +3013,12 @@ $("#guardarModelo").click(function () {
     const clienteN = document.getElementById("clienteA").value;
     const vendedorN = document.getElementById("vendedorA").value;
     const listaN = document.getElementById("nLista").value;
-    const agenciaN = document.getElementById("agenciaA").value;
+    const agenciaN =
+        document.getElementById("agenciaA").value ||
+        (document.getElementById("agencia") ? document.getElementById("agencia").value : "");
+    const condicionN = document.getElementById("condicionVenta")
+        ? document.getElementById("condicionVenta").value
+        : "";
     const modeloN = document.getElementById("modeloModalA").value;
     const precioN = document.getElementById("precioA").value;
 
@@ -2958,6 +3029,7 @@ $("#guardarModelo").click(function () {
     datos.append("vendedorN", vendedorN);
     datos.append("listaN", listaN);
     datos.append("agenciaN", agenciaN);
+    datos.append("condicionN", condicionN);
     datos.append("modeloN", modeloN);
     datos.append("precioN", precioN);
     datos.append("articulosN", tableInputsJson);

@@ -597,6 +597,8 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                 CIERRE: CONDICIÓN Y AGENCIA
                                 ======================================-->
 
+                                <div id="updDivCierre">
+
                                 <div class="crear-pedidocv-cierre-pedido">
 
                                     <p class="crear-pedidocv-cierre-titulo"><i class="fa fa-clipboard"></i> Datos para crear el pedido</p>
@@ -614,43 +616,20 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                         <select class="form-control selectpicker crear-pedidocv-select-cierre" id="condicionVenta" name="condicionVenta" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar condición de venta" required>
 
                                             <?php
-                                            $valor = $_GET["pedido"];
+                                            $pedidoCierre = ControladorPedidos::ctrMostrarTemporal($_GET["pedido"]);
+                                            $condicionSel = ($pedidoCierre && floatval($pedidoCierre["condicion_venta"]) > 0)
+                                                ? (string) $pedidoCierre["condicion_venta"]
+                                                : "";
 
-                                            $pedido = ControladorPedidos::ctrMostrarTemporal($valor);
-                                            //var_dump("pedido", $pedido["condicion_venta"]);
+                                            echo '<option value="">Seleccionar condición de venta…</option>';
 
-                                            if ($pedido["condicion_venta"] > 0) {
-
-                                                $item = "id";
-                                                $valor = $pedido["condicion_venta"];
-
-                                                $condiciones = ControladorCondicionVentas::ctrMostrarCondicionVentas($item, $valor);
-                                                //var_dump($condiciones["descripcion"]);
-
-                                                echo '<option value="' . $condiciones["id"] . '">' . $condiciones["codigo"] . ' - ' . $condiciones["descripcion"] . '</option>';
-
-                                                $cond2 = ControladorCondicionVentas::ctrMostrarCondicionVentas(null, null);
-
-                                                //var_dump($cond2);
-
-                                                foreach ($cond2 as $key => $value) {
-
-                                                    echo '<option value="' . $value["id"] . '">' . $value["codigo"] . ' - ' . $value["descripcion"] . '</option>';
-                                                }
-                                            } else {
-
-                                                $item = null;
-                                                $valor = null;
-
-                                                $condiciones = ControladorCondicionVentas::ctrMostrarCondicionVentas($item, $valor);
-
-                                                echo '<option value="">Seleccionar condición de venta…</option>';
-                                                //var_dump($condiciones);
-
-                                                foreach ($condiciones as $key => $value) {
-
-                                                    echo '<option value="' . $value["id"] . '">' . $value["codigo"] . ' - ' . $value["descripcion"] . '</option>';
-                                                }
+                                            $todasCondiciones = ControladorCondicionVentas::ctrMostrarCondicionVentas(null, null);
+                                            foreach ($todasCondiciones as $value) {
+                                                $idCond = (string) $value["id"];
+                                                $sel = ($condicionSel !== "" && $condicionSel === $idCond) ? ' selected="selected"' : '';
+                                                echo '<option value="' . htmlspecialchars($idCond, ENT_QUOTES, 'UTF-8') . '"' . $sel . '>'
+                                                    . htmlspecialchars($value["codigo"] . ' - ' . $value["descripcion"], ENT_QUOTES, 'UTF-8')
+                                                    . '</option>';
                                             }
 
                                             ?>
@@ -668,54 +647,24 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                     <label for="agencia">Agencia de transportes <span class="crear-pedidocv-etiq-opcional">opcional</span></label>
 
                                         <?php
+                                        $agenciaSel = ($pedidoCierre && floatval($pedidoCierre["agencia"]) > 0)
+                                            ? (string) $pedidoCierre["agencia"]
+                                            : "";
+                                        ?>
 
+                                        <select class="form-control selectpicker crear-pedidocv-select-cierre" id="agencia" name="agencia" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar agencia">
 
+                                        <?php
+                                        echo '<option value="">Seleccionar agencia…</option>';
 
-                                        $valor = $_GET["pedido"];
-
-                                        $pedido = ControladorPedidos::ctrMostrarTemporal($valor);
-                                        //var_dump("pedido", $pedido["agencia"]);
-
-                                        if ($pedido["agencia"] > 0) {
-
-                                            echo '<select class="form-control selectpicker crear-pedidocv-select-cierre" id="agencia" name="agencia" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar agencia">';
-
-                                            $item = "id";
-                                            $valor = $pedido["agencia"];
-
-                                            $agencias = ControladorAgencias::ctrMostrarAgencias($item, $valor);
-
-                                            //var_dump($agencias["nombre"]);
-
-                                            echo '<option value="' . $agencias["id"] . '">' . $agencias["id"] . ' - ' . $agencias["nombre"] . '</option>';
-
-                                            $cond2 = ControladorAgencias::ctrMostrarAgencias(null, null);
-
-                                            //var_dump($cond2);
-
-                                            foreach ($cond2 as $key => $value) {
-
-                                                echo '<option value="' . $value["id"] . '">' . $value["id"] . ' - ' . $value["nombre"] . '</option>';
-                                            }
-                                        } else {
-
-                                            echo '<select class="form-control selectpicker crear-pedidocv-select-cierre" id="agencia" name="agencia" data-live-search="true" data-width="100%" data-size="8" title="Seleccionar agencia">';
-
-                                            $item = null;
-                                            $valor = null;
-
-                                            $agencias = ControladorAgencias::ctrMostrarAgencias($item, $valor);
-
-                                            //var_dump($agencias);
-
-                                            echo '<option value="">Seleccionar agencia…</option>';
-
-                                            foreach ($agencias as $key => $value) {
-
-                                                echo '<option value="' . $value["id"] . '">' . $value["id"] . ' - ' . $value["nombre"] . '</option>';
-                                            }
+                                        $todasAgencias = ControladorAgencias::ctrMostrarAgencias(null, null);
+                                        foreach ($todasAgencias as $value) {
+                                            $idAg = (string) $value["id"];
+                                            $selAg = ($agenciaSel !== "" && $agenciaSel === $idAg) ? ' selected="selected"' : '';
+                                            echo '<option value="' . htmlspecialchars($idAg, ENT_QUOTES, 'UTF-8') . '"' . $selAg . '>'
+                                                . htmlspecialchars($idAg . ' - ' . $value["nombre"], ENT_QUOTES, 'UTF-8')
+                                                . '</option>';
                                         }
-
                                         ?>
 
                                         </select>
@@ -727,6 +676,8 @@ $clientes = ControladorClientes::ctrMostrarClientesP($item, $valor);
                                     </div><!-- .crear-pedidocv-cierre-campos -->
 
                                 </div><!-- .crear-pedidocv-cierre-pedido -->
+
+                                </div><!-- #updDivCierre -->
 
                                 </div><!-- .crear-pedidocv-zona-final -->
 

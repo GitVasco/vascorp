@@ -536,6 +536,7 @@ class AjaxPedidos
         $vendedorN = $this->vendedorN;
         $listaN = $this->listaN;
         $agenciaN = $this->agenciaN;
+        $condicionN = isset($this->condicionN) ? $this->condicionN : "";
         $modeloN = $this->modeloN;
         $precioN = $this->precioN;
         $articulosN = $this->articulosN;
@@ -559,7 +560,8 @@ class AjaxPedidos
                     "vendedor"  => $vendedorN,
                     "lista"     => $listaN,
                     "usuario"   => $usuario,
-                    "agencia"   => $agenciaN
+                    "agencia"   => $agenciaN,
+                    "condicion_venta" => $condicionN,
                 );
 
                 $cab = ModeloPedidos::mdlGuardarTemporal("temporaljf", $datos);
@@ -599,6 +601,8 @@ class AjaxPedidos
                     }
                 }
 
+                ModeloPedidos::mdlActualizarCierreTemporal($pedidoN, $condicionN, $agenciaN);
+
                 $alerta = alertaCoberturaPedidoCv($vendedorN, $modeloN);
                 echo json_encode(array(
                     "ok" => true,
@@ -607,6 +611,28 @@ class AjaxPedidos
                 ));
             }
         }
+    }
+
+    public function ajaxGuardarCierrePedidoCv()
+    {
+
+        $codigo = isset($_POST["codigoCierrePedidoCv"]) ? trim((string) $_POST["codigoCierrePedidoCv"]) : "";
+        $condicion = isset($_POST["condicionCierrePedidoCv"]) ? trim((string) $_POST["condicionCierrePedidoCv"]) : "";
+        $agencia = isset($_POST["agenciaCierrePedidoCv"]) ? trim((string) $_POST["agenciaCierrePedidoCv"]) : "";
+
+        if ($codigo === "") {
+            echo json_encode(array("ok" => false, "mensaje" => "Sin código de pedido."));
+            return;
+        }
+
+        $cab = ControladorPedidos::ctrMostrarTemporal($codigo);
+        if (!$cab || empty($cab["codigo"])) {
+            echo json_encode(array("ok" => false, "mensaje" => "Pedido temporal no encontrado."));
+            return;
+        }
+
+        $rpt = ModeloPedidos::mdlActualizarCierreTemporal($codigo, $condicion, $agencia);
+        echo json_encode(array("ok" => $rpt === "ok"));
     }
 }
 
@@ -819,8 +845,15 @@ if (isset($_POST["pedidoN"])) {
     $activar->vendedorN = $_POST["vendedorN"];
     $activar->listaN = $_POST["listaN"];
     $activar->agenciaN = $_POST["agenciaN"];
+    $activar->condicionN = isset($_POST["condicionN"]) ? $_POST["condicionN"] : "";
     $activar->modeloN = $_POST["modeloN"];
     $activar->precioN = $_POST["precioN"];
     $activar->articulosN = $_POST["articulosN"];
     $activar->ajaxNuevoGuardarPedido();
+}
+
+if (isset($_POST["ajaxGuardarCierrePedidoCv"])) {
+
+    $cierre = new AjaxPedidos();
+    $cierre->ajaxGuardarCierrePedidoCv();
 }

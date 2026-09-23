@@ -258,13 +258,16 @@ class ModeloPedidos
 	{
 
 
-		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla (codigo, cliente, vendedor, lista, agencia) VALUES (:codigo, :cliente, :vendedor, :lista, :agencia)");
+		$stmt = Conexion::conectar()->prepare("INSERT INTO $tabla (codigo, cliente, vendedor, lista, agencia, condicion_venta) VALUES (:codigo, :cliente, :vendedor, :lista, :agencia, :condicion_venta)");
+
+		$condicionVenta = isset($datos["condicion_venta"]) ? $datos["condicion_venta"] : "";
 
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":cliente", $datos["cliente"], PDO::PARAM_STR);
 		$stmt->bindParam(":vendedor", $datos["vendedor"], PDO::PARAM_STR);
 		$stmt->bindParam(":lista", $datos["lista"], PDO::PARAM_STR);
 		$stmt->bindParam(":agencia", $datos["agencia"], PDO::PARAM_STR);
+		$stmt->bindParam(":condicion_venta", $condicionVenta, PDO::PARAM_STR);
 
 		if ($stmt->execute()) {
 
@@ -585,6 +588,26 @@ class ModeloPedidos
 		}
 
 		$stmt = null;
+	}
+
+	/*
+    * Condición de venta y agencia en cabecera temporal (crear pedido CV).
+    */
+	static public function mdlActualizarCierreTemporal($codigo, $condicion_venta, $agencia)
+	{
+
+		$sql = "UPDATE temporaljf SET condicion_venta = :condicion_venta, agencia = :agencia WHERE codigo = :codigo";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		$stmt->bindParam(":condicion_venta", $condicion_venta, PDO::PARAM_STR);
+		$stmt->bindParam(":agencia", $agencia, PDO::PARAM_STR);
+
+		if ($stmt->execute()) {
+			return "ok";
+		}
+
+		return "error";
 	}
 
 	/*
