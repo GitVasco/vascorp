@@ -110,8 +110,8 @@
                 && usuarioPuedeVerModulo("gestion_comercial", "ficha_modelos");
             $puedeVerProyeccionComercial = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "proyeccion_comercial_modelos");
-            $puedeVerCuadreVentas = function_exists("usuarioPuedeVerModulo")
-                && usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas");
+            $puedeVerCuadreVentas = function_exists("usuarioPuedeCuadreVentas")
+                && usuarioPuedeCuadreVentas("ver");
             $puedeVerInformeSemanalVendedor = function_exists("usuarioPuedeVerModulo")
                 && usuarioPuedeVerModulo("gestion_comercial", "informe_semanal_vendedor");
 

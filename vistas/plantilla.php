@@ -908,7 +908,7 @@ CUERPO DOCUMENTO
                 }
             } else if ($_GET["ruta"] == "cuadre-ventas") {
 
-                if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas")) {
+                if (!function_exists("usuarioPuedeCuadreVentas") || !usuarioPuedeCuadreVentas("ver")) {
                     denegarAccesoModulo();
                 } else {
                     include "modulos/cuentas-corrientes/cuadre-ventas.php";

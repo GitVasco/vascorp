@@ -19,7 +19,7 @@ if (!isset($_SESSION["iniciarSesion"]) || $_SESSION["iniciarSesion"] !== "ok") {
     exit;
 }
 
-if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas")) {
+if (!function_exists("usuarioPuedeCuadreVentas") || !usuarioPuedeCuadreVentas("ver")) {
     echo "Acceso no autorizado.";
     exit;
 }

@@ -26,7 +26,7 @@ if (!isset($_SESSION["iniciarSesion"]) || $_SESSION["iniciarSesion"] !== "ok") {
     exit;
 }
 
-if (!usuarioPuedeVerModulo("gestion_comercial", "cuadre_ventas")) {
+if (!usuarioPuedeCuadreVentas("ver")) {
     http_response_code(403);
     cvJson(array("ok" => false, "msg" => "Sin permiso para este módulo."));
     exit;
@@ -65,7 +65,7 @@ if ($accion === "listar-ventas") {
 }
 
 if ($accion === "guardar-borrador") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "registrar")) {
+    if (!usuarioPuedeCuadreVentas("registrar")) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para registrar."));
         exit;
@@ -85,7 +85,7 @@ if ($accion === "guardar-borrador") {
 }
 
 if ($accion === "buscar-op") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "registrar")) {
+    if (!usuarioPuedeCuadreVentas("registrar")) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para registrar."));
         exit;
@@ -100,7 +100,7 @@ if ($accion === "buscar-op") {
 }
 
 if ($accion === "registrar-pagos") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "registrar")) {
+    if (!usuarioPuedeCuadreVentas("registrar")) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para registrar."));
         exit;
@@ -130,7 +130,7 @@ if ($accion === "registrar-pagos") {
 }
 
 if ($accion === "validar-cuadre") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "validar")) {
+    if (!usuarioPuedeCuadreVentas("validar")) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para validar."));
         exit;
@@ -145,7 +145,7 @@ if ($accion === "validar-cuadre") {
 }
 
 if ($accion === "rechazar-cuadre") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "validar")) {
+    if (!usuarioPuedeCuadreVentas("validar")) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para validar."));
         exit;
@@ -161,7 +161,7 @@ if ($accion === "rechazar-cuadre") {
 }
 
 if ($accion === "anular-cuadre") {
-    if (!usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", "registrar")) {
+    if (!usuarioPuedeCuadreVentas("registrar")) {
         http_response_code(403);
         cvJson(array("ok" => false, "msg" => "Sin permiso para cancelar."));
         exit;

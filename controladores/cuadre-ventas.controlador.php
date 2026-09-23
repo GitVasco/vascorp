@@ -55,8 +55,8 @@ class ControladorCuadreVentas
 
     public static function ctrPuede($accion = "ver")
     {
-        return function_exists("usuarioPuedeModulo")
-            && usuarioPuedeModulo(self::SECTOR, self::MODULO, $accion);
+        return function_exists("usuarioPuedeCuadreVentas")
+            && usuarioPuedeCuadreVentas($accion);
     }
 
     public static function ctrUsuarioSesionId()
@@ -68,13 +68,19 @@ class ControladorCuadreVentas
         return (int) $_SESSION["id"];
     }
 
-    /** Por procesar: permiso JSON o acceso a Cuentas corrientes (sesión cuenta). */
+    /**
+     * Por procesar: control total del JSON (p. ej. ID 6),
+     * o quien tenga Facturación y Cuentas a la vez.
+     */
     public static function ctrPuedeProcesar()
     {
-        if (self::ctrPuede("procesar")) {
+        if (function_exists("usuarioPuedeModulo")
+            && usuarioPuedeModulo(self::SECTOR, self::MODULO, "procesar")) {
             return true;
         }
-        return isset($_SESSION["cuenta"]) && (int) $_SESSION["cuenta"] === 1;
+        $fact = isset($_SESSION["facturacion"]) && (int) $_SESSION["facturacion"] === 1;
+        $cuenta = isset($_SESSION["cuenta"]) && (int) $_SESSION["cuenta"] === 1;
+        return $fact && $cuenta;
     }
 
     public static function ctrPermisos()

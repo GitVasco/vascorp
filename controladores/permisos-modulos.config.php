@@ -107,6 +107,32 @@ if (!function_exists("usuarioPuedeVerModulo")) {
     }
 }
 
+/**
+ * Cuadre de ventas: IDs del JSON (p. ej. 6 = control total) + quienes tienen
+ * Facturación (permiso 12) para ver / registrar / validar solo lo suyo.
+ * "procesar" no se abre solo con Facturación: va por JSON o Facturación+Cuentas.
+ */
+if (!function_exists("usuarioPuedeCuadreVentas")) {
+    function usuarioPuedeCuadreVentas($accion = "ver")
+    {
+        $accion = trim((string) $accion);
+        if ($accion === "") {
+            return false;
+        }
+        if (usuarioPuedeModulo("gestion_comercial", "cuadre_ventas", $accion)) {
+            return true;
+        }
+        if (
+            ($accion === "ver" || $accion === "registrar" || $accion === "validar")
+            && isset($_SESSION["facturacion"])
+            && (int) $_SESSION["facturacion"] === 1
+        ) {
+            return true;
+        }
+        return false;
+    }
+}
+
 if (!function_exists("usuarioPuedeAlgunaOpcionSector")) {
     function usuarioPuedeAlgunaOpcionSector($sector)
     {
