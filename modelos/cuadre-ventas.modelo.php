@@ -56,7 +56,7 @@ class ModeloCuadreVentas
                 LEFT JOIN clientesjf cli ON cli.codigo = c.cliente
                 LEFT JOIN usuariosjf u ON u.id = CAST(TRIM(c.usuario) AS UNSIGNED)
                 WHERE LEFT(c.fecha, 10) = :fecha
-                  AND TRIM(c.tipo_doc) IN ('01', '03')
+                  AND TRIM(c.tipo_doc) IN ('01', '03', '08')
                   AND TRIM(c.vendedor) LIKE '08%'
                   AND UPPER(TRIM(c.estado)) = 'PENDIENTE'
                   AND (c.tip_mov = '+' OR c.tip_mov IS NULL OR c.tip_mov = '')";
@@ -104,7 +104,7 @@ class ModeloCuadreVentas
                     LEFT(c.fecha, 10) AS fecha
                 FROM cuenta_ctejf c
                 WHERE c.id IN (" . implode(",", $ph) . ")
-                  AND TRIM(c.tipo_doc) IN ('01', '03')
+                  AND TRIM(c.tipo_doc) IN ('01', '03', '08')
                   AND TRIM(c.vendedor) LIKE '08%'
                   AND UPPER(TRIM(c.estado)) = 'PENDIENTE'
                   AND (c.tip_mov = '+' OR c.tip_mov IS NULL OR c.tip_mov = '')";
@@ -515,17 +515,19 @@ class ModeloCuadreVentas
                     TRIM(CASE sdm.tipo_documento
                         WHEN '01' THEN t.serie_factura
                         WHEN '03' THEN t.serie_boletas
+                        WHEN '08' THEN t.serie_nd
                         ELSE ''
                     END) AS serie,
                     GROUP_CONCAT(DISTINCT m.marca ORDER BY m.marca SEPARATOR ', ') AS marcas
                 FROM serie_documento_marcajf sdm
                 INNER JOIN talonariosjf t ON t.id = sdm.id_talonario
                 INNER JOIN marcasjf m ON m.id = sdm.id_marca
-                WHERE sdm.tipo_documento IN ('01', '03')
+                WHERE sdm.tipo_documento IN ('01', '03', '08')
                 GROUP BY sdm.tipo_documento,
                          TRIM(CASE sdm.tipo_documento
                              WHEN '01' THEN t.serie_factura
                              WHEN '03' THEN t.serie_boletas
+                             WHEN '08' THEN t.serie_nd
                              ELSE ''
                          END)";
         $stmt = Conexion::conectar()->prepare($sql);
@@ -825,7 +827,8 @@ class ModeloCuadreVentas
     /**
      * Paso 7: pasa un lote VALIDADO a cte.
      * INSERT tip_mov='-' (cod_pago del medio, notas OP- si hay), baja saldo del cargo,
-     * consume abonosjf y deja PROCESADO. Idempotente si ya está procesado.
+     * consume abonosjf (o deja el sobrante si se usó solo parte) y deja PROCESADO.
+     * Idempotente si ya está procesado.
      *
      * $ctx: usureg, pcreg, usuario_proceso
      */
@@ -1049,20 +1052,50 @@ class ModeloCuadreVentas
                 }
                 $disp = round((float) $ab["monto"], 2);
                 $usado = round((float) $m["monto"], 2);
-                if (abs($disp - $usado) > 0.009) {
+                if ($usado - $disp > 0.009) {
                     throw new Exception(
                         "La OP " . $ab["num_ope"] . " es de "
                         . number_format($disp, 2, ".", ",")
-                        . " y no cuadra con las boletas ("
+                        . " y el cuadre intenta usar "
                         . number_format($usado, 2, ".", ",")
-                        . "). Anula el cuadre y armá de nuevo."
+                        . ". Anula el cuadre y armá de nuevo."
                     );
                 }
             }
             $stmtDelAb = $pdo->prepare("DELETE FROM abonosjf WHERE id = :id_abono");
+            $stmtSobAb = $pdo->prepare(
+                "UPDATE abonosjf
+                 SET monto = :resto,
+                     id_cuadre = NULL
+                 WHERE id = :id_abono"
+            );
             foreach ($idsAbonos as $idA) {
-                $stmtDelAb->bindValue(":id_abono", (int) $idA, PDO::PARAM_INT);
-                $stmtDelAb->execute();
+                $usadoAb = 0.0;
+                foreach ($medios as $m) {
+                    if ((int) $m["id_abono"] === (int) $idA) {
+                        $usadoAb = round((float) $m["monto"], 2);
+                        break;
+                    }
+                }
+                $stmtAbMonto->bindValue(":id_abono", (int) $idA, PDO::PARAM_INT);
+                $stmtAbMonto->execute();
+                $abFin = $stmtAbMonto->fetch(PDO::FETCH_ASSOC);
+                if (method_exists($stmtAbMonto, "closeCursor")) {
+                    $stmtAbMonto->closeCursor();
+                }
+                if (!$abFin) {
+                    continue;
+                }
+                $dispFin = round((float) $abFin["monto"], 2);
+                $resto = round($dispFin - $usadoAb, 2);
+                if ($resto >= 0.01) {
+                    $stmtSobAb->bindValue(":resto", number_format($resto, 2, ".", ""), PDO::PARAM_STR);
+                    $stmtSobAb->bindValue(":id_abono", (int) $idA, PDO::PARAM_INT);
+                    $stmtSobAb->execute();
+                } else {
+                    $stmtDelAb->bindValue(":id_abono", (int) $idA, PDO::PARAM_INT);
+                    $stmtDelAb->execute();
+                }
             }
 
             $stmtUlt = $pdo->prepare(

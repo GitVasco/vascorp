@@ -135,6 +135,7 @@ class ControladorCuadreVentas
         $tipos = array(
             "01" => "Factura",
             "03" => "Boleta",
+            "08" => "Nota de débito",
         );
         $catalogo = self::ctrCatalogoMedios();
         $brutas = ModeloCuadreVentas::mdlFilasExcelFecha($fechaOk);
@@ -336,6 +337,7 @@ class ControladorCuadreVentas
         $tipos = array(
             "01" => "FACTURA",
             "03" => "BOLETA",
+            "08" => "NOTA DE DEBITO",
         );
         $catalogo = self::ctrCatalogoMedios();
         $meses = array(
@@ -788,8 +790,8 @@ class ControladorCuadreVentas
         if ($dif < -0.10) {
             return array(
                 "ok" => false,
-                "msg" => "Solo se permite hasta 0.10 de menos entre boletas y pagos. "
-                    . "Boletas: " . number_format($totalDocs, 2, ".", ",")
+                "msg" => "Solo se permite hasta 0.10 de menos entre documentos y pagos. "
+                    . "Documentos: " . number_format($totalDocs, 2, ".", ",")
                     . ". Pagos: " . number_format($totalPagos, 2, ".", ",")
                     . " (faltan " . number_format(abs($dif), 2, ".", ",") . ").",
             );
@@ -820,6 +822,24 @@ class ControladorCuadreVentas
             $msgOk .= " Atención: depósito de más por " . number_format($dif, 2, ".", ",") . ".";
         } elseif ($dif < -0.009) {
             $msgOk .= " Diferencia de menos: " . number_format(abs($dif), 2, ".", ",") . ".";
+        }
+        foreach ($medios as $med) {
+            $idA = isset($med["id_abono"]) ? (int) $med["id_abono"] : 0;
+            if ($idA < 1) {
+                continue;
+            }
+            $abono = ModeloCuadreVentas::mdlAbonoPorId($idA);
+            if (!$abono) {
+                continue;
+            }
+            $disp = round((float) $abono["monto"], 2);
+            $usado = round((float) $med["monto"], 2);
+            if ($disp - $usado >= 0.01) {
+                $msgOk .= " Sobra "
+                    . number_format($disp - $usado, 2, ".", ",")
+                    . " en la OP: quedará en Abonos al procesar.";
+                break;
+            }
         }
 
         return array(
@@ -902,12 +922,12 @@ class ControladorCuadreVentas
                         return array("ok" => false, "msg" => "La OP " . $ope . " ya está en otro cuadre.");
                     }
                     $disponible = round((float) $abono["monto"], 2);
-                    if (abs($monto - $disponible) > 0.009) {
+                    if ($monto - $disponible > 0.009) {
                         return array(
                             "ok" => false,
                             "msg" => "La OP " . $ope . " es de "
                                 . number_format($disponible, 2, ".", ",")
-                                . ". El abono se usa completo para que cuadre con las boletas.",
+                                . ". No se puede aplicar más de ese monto.",
                         );
                     }
                     $idA = (int) $abono["id"];

@@ -111,6 +111,9 @@ $(function () {
         if (tipo === "03") {
             return "Boleta";
         }
+        if (tipo === "08") {
+            return "Nota de débito";
+        }
         return tipo || "—";
     }
 
@@ -911,17 +914,21 @@ $(function () {
             } else if (p.num_ope) {
                 medioTxt += ' <span class="text-muted">(sin abono)</span>';
             }
-            var montoOp = p.id_abono
-                ? round2(p.disponible || p.monto)
-                : round2(p.monto);
+            var montoOp = round2(p.monto);
+            var celdaMonto = '<td class="text-right"><input type="number" min="0.01" step="0.01" class="form-control input-sm cv-pago-monto"'
+                + ' value="' + montoOp.toFixed(2) + '">';
+            if (p.id_abono && p.disponible && Math.abs(round2(p.disponible) - montoOp) >= 0.01) {
+                celdaMonto += '<div class="text-muted cv-pago-sobra" style="font-size:11px;margin-top:2px;">'
+                    + "OP " + money(p.disponible)
+                    + " · sobra " + money(round2(p.disponible - montoOp))
+                    + "</div>";
+            }
+            celdaMonto += "</td>";
             $tb.append(
                 '<tr data-idx="' + i + '">'
                 + "<td>" + medioTxt + "</td>"
                 + "<td>" + esc(p.num_ope || "—") + "</td>"
-                + '<td class="text-right"><input type="number" min="0.01" step="0.01" class="form-control input-sm cv-pago-monto"'
-                + (p.id_abono ? " readonly" : "")
-                + ' value="'
-                + montoOp.toFixed(2) + '"></td>'
+                + celdaMonto
                 + '<td><button type="button" class="btn btn-xs btn-default cv-pago-quitar" title="Quitar">&times;</button></td>'
                 + "</tr>"
             );
@@ -1114,7 +1121,7 @@ $(function () {
                 aviso(
                     "warning",
                     "Organizar",
-                    "No encontré boletas que sumen exacto a "
+                    "No encontré documentos que sumen exacto a "
                         + money(targets[t].pago.monto)
                         + " (" + etiquetaMedio(targets[t].pago.tipo_medio) + ")."
                 );
@@ -1420,11 +1427,17 @@ $(function () {
     }
 
     function montoDesdeAbono(abono) {
-        return round2(Number(abono.monto) || 0);
+        var disp = round2(Number(abono.monto) || 0);
+        var rest = restantePagos();
+        if (rest >= 0.01) {
+            return round2(Math.min(disp, rest));
+        }
+        return disp;
     }
 
     function bloquearMontoSiAbono() {
-        $("#cvPagoMontoNuevo").prop("readonly", !!(opConsulta && opConsulta.abono));
+        // El monto queda editable; no se puede pasar del disponible del abono.
+        $("#cvPagoMontoNuevo").prop("readonly", false);
     }
 
     function consultarOp(ope) {
@@ -1609,8 +1622,11 @@ $(function () {
                 pago.id_abono = extra.id_abono;
             }
             if (extra.disponible) {
-                pago.disponible = extra.disponible;
-                pago.monto = round2(extra.disponible);
+                pago.disponible = round2(extra.disponible);
+                pago.monto = round2(Math.min(montoForm(), pago.disponible));
+                if (pago.monto < 0.01) {
+                    pago.monto = round2(Math.min(pago.disponible, Math.max(restantePagos(), 0.01)));
+                }
             }
             if (extra.monto && !extra.id_abono) {
                 pago.monto = round2(extra.monto);
@@ -1733,14 +1749,30 @@ $(function () {
             $inp.val("0.01");
         }
         if (pagos[idx]) {
-            if (pagos[idx].id_abono) {
-                val = round2(pagos[idx].disponible || pagos[idx].monto);
+            if (pagos[idx].disponible && val > pagos[idx].disponible) {
+                val = round2(pagos[idx].disponible);
                 $inp.val(val.toFixed(2));
-            } else if (pagos[idx].disponible && val > pagos[idx].disponible) {
-                val = pagos[idx].disponible;
-                $inp.val(round2(val).toFixed(2));
             }
             pagos[idx].monto = round2(val);
+            if (pagos[idx].id_abono && pagos[idx].disponible) {
+                var dispNota = round2(pagos[idx].disponible);
+                var sobraNota = round2(dispNota - pagos[idx].monto);
+                var $cel = $inp.closest("td");
+                var $notaSobra = $cel.find(".cv-pago-sobra");
+                if (Math.abs(sobraNota) >= 0.01) {
+                    var txtSobra = "OP " + money(dispNota) + " · sobra " + money(sobraNota);
+                    if ($notaSobra.length) {
+                        $notaSobra.text(txtSobra);
+                    } else {
+                        $inp.after(
+                            '<div class="text-muted cv-pago-sobra" style="font-size:11px;margin-top:2px;">'
+                            + txtSobra + "</div>"
+                        );
+                    }
+                } else {
+                    $notaSobra.remove();
+                }
+            }
         }
         recalcularPagos();
     });
@@ -1763,7 +1795,7 @@ $(function () {
             aviso(
                 "warning",
                 "No cuadra",
-                "Solo se permite hasta 0.10 de menos entre boletas y abonos/pagos. Ahora hay "
+                "Solo se permite hasta 0.10 de menos entre documentos y abonos/pagos. Ahora hay "
                     + money(Math.abs(info.dif))
                     + " de menos."
             );
@@ -1772,13 +1804,13 @@ $(function () {
         var i;
         for (i = 0; i < pagos.length; i++) {
             if (pagos[i].id_abono && pagos[i].disponible
-                    && Math.abs(round2(pagos[i].monto) - round2(pagos[i].disponible)) >= 0.01) {
+                    && round2(pagos[i].monto) - round2(pagos[i].disponible) >= 0.01) {
                 aviso(
                     "warning",
-                    "Abono incompleto",
+                    "Abono",
                     "La OP " + (pagos[i].num_ope || "") + " es de "
                         + money(pagos[i].disponible)
-                        + ". Usala completa; la diferencia con las boletas se registra aparte."
+                        + ". No se puede aplicar más de ese monto."
                 );
                 return;
             }
@@ -1826,7 +1858,7 @@ $(function () {
             if (window.swal) {
                 swal({
                     title: "Depósito de más",
-                    text: "El pago supera las boletas en " + money(info.dif) + ". ¿Registrar igual?",
+                    text: "El pago supera los documentos en " + money(info.dif) + ". ¿Registrar igual?",
                     type: "warning",
                     showCancelButton: true,
                     confirmButtonText: "Sí, registrar",
@@ -1838,7 +1870,7 @@ $(function () {
                 });
                 return;
             }
-            if (!window.confirm("El pago supera las boletas en " + money(info.dif) + ". ¿Registrar igual?")) {
+            if (!window.confirm("El pago supera los documentos en " + money(info.dif) + ". ¿Registrar igual?")) {
                 return;
             }
         } else if (info.tipo === "menos") {

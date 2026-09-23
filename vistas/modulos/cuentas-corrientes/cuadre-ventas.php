@@ -95,7 +95,8 @@
                             <aside class="cv-pagos" id="cvPagosBox">
                                 <h4>Pagos</h4>
                                 <p class="text-muted cv-pagos-ayuda">
-                                    Elige el medio y la OP. Si está en Abonos, entra por su monto completo.
+                                    Elige el medio y la OP. Si está en Abonos, se aplica lo que falte
+                                    de los documentos; el sobrante queda en el abono para otra compra.
                                     Puede haber hasta <strong>0.10</strong> de menos; si deposita de más, se registra con aviso.
                                 </p>
                                 <div class="cv-pago-form">
@@ -139,7 +140,7 @@
                                         <tr>
                                             <th>Medio</th>
                                             <th>OP</th>
-                                            <th class="text-right">Monto OP</th>
+                                            <th class="text-right">Monto</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -246,7 +247,8 @@
                     <div class="tab-pane" id="cvTabProcesar">
                         <div class="cv-validar" id="cvBoxProcesar">
                             <p class="text-muted cv-pagos-ayuda cv-validar-ayuda">
-                                <strong>Procesar a cte</strong> baja el saldo en cuentas y consume la OP ·
+                                <strong>Procesar a cte</strong> baja el saldo en cuentas y aplica la OP
+                                (si sobra, el resto queda en Abonos) ·
                                 Abajo queda el historial ya procesado
                             </p>
                             <div class="cv-validar-cuerpo">
