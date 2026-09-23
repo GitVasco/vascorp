@@ -720,15 +720,12 @@ $(function () {
                 acciones = "";
                 if (l.es_propio) {
                     acciones = '<button type="button" class="btn btn-warning btn-xs cv-ico cv-val-anular" title="Cancelar">'
-                        + '<i class="fa fa-undo"></i></button>';
+                        + '<i class="fa fa-undo"></i></button> ';
                 }
-                if (!l.es_propio || verTodas) {
-                    acciones += (acciones ? " " : "")
-                        + '<button type="button" class="btn btn-success btn-xs cv-ico cv-val-ok" title="Confirmar">'
-                        + '<i class="fa fa-check-circle"></i></button> '
-                        + '<button type="button" class="btn btn-danger btn-xs cv-ico cv-val-no" title="Rechazar">'
-                        + '<i class="fa fa-times-circle"></i></button>';
-                }
+                acciones += '<button type="button" class="btn btn-success btn-xs cv-ico cv-val-ok" title="Confirmar">'
+                    + '<i class="fa fa-check-circle"></i></button> '
+                    + '<button type="button" class="btn btn-danger btn-xs cv-ico cv-val-no" title="Rechazar">'
+                    + '<i class="fa fa-times-circle"></i></button>';
                 $tb.append(htmlFilaLote(l, i, acciones));
             }
         }
@@ -1970,7 +1967,7 @@ $(function () {
 
     $("#cvTablaValidar").on("click", ".cv-val-ok", function () {
         var lote = lotePorFila($(this));
-        if (!lote || (lote.es_propio && !verTodas)) {
+        if (!lote) {
             return;
         }
         var hacer = function () {
@@ -2081,7 +2078,7 @@ $(function () {
 
     $("#cvTablaValidar").on("click", ".cv-val-no", function () {
         var lote = lotePorFila($(this));
-        if (!lote || (lote.es_propio && !verTodas)) {
+        if (!lote) {
             return;
         }
         var rechazar = function (motivo) {

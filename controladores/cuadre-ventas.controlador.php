@@ -1114,10 +1114,6 @@ class ControladorCuadreVentas
         if (strtoupper(trim((string) $lote["estado"])) !== "REGISTRADO") {
             return array("ok" => false, "msg" => "Ese cuadre ya no está pendiente de validar.");
         }
-        if ((int) $lote["usuario_registro"] === self::ctrUsuarioSesionId()
-            && !self::ctrVeTodasLasVentas()) {
-            return array("ok" => false, "msg" => "No puedes validar un cuadre que registraste tú.");
-        }
 
         return array("ok" => true, "lote" => $lote);
     }

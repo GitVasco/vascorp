@@ -1195,7 +1195,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
-    <script src="vistas/js/cuadre-ventas.js?v=45"></script>
+    <script src="vistas/js/cuadre-ventas.js?v=46"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
     <script src="vistas/js/regularizaciones-comerciales.js?v=2"></script>

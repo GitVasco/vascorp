@@ -173,7 +173,7 @@
                             <p class="text-muted cv-pagos-ayuda cv-validar-ayuda">
                                 <strong>+</strong> detalle ·
                                 <strong>Confirmar</strong> deja listo (aún no entra a cuentas) ·
-                                Quien lo armó no confirma el suyo
+                                Procesar a cte lo hace otra área
                             </p>
                             <div class="cv-validar-cuerpo">
                             <div class="cv-tabla-wrap cv-validar-tabla-wrap">
