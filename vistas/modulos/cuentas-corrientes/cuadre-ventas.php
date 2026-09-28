@@ -98,6 +98,7 @@
                                     Elige el medio y la OP. Si está en Abonos, se aplica lo que falte
                                     de los documentos; el sobrante queda en el abono para otra compra.
                                     Puede haber hasta <strong>0.10</strong> de menos; si deposita de más, se registra con aviso.
+                                    Con <strong>Nota de crédito</strong> se valida el número: mismo cliente y saldo disponible.
                                 </p>
                                 <div class="cv-pago-form">
                                     <label for="cvMedio">Medio</label>
@@ -112,10 +113,11 @@
                                         <option value="17">Tarjeta</option>
                                         <option value="16">Link de pago</option>
                                         <option value="14">Culqi</option>
+                                        <option value="NC">Nota de crédito</option>
                                     </select>
                                     <div class="cv-pago-fila cv-sin-op" id="cvPagoFila">
                                         <div id="cvPagoOpWrap" class="cv-pago-op-col" style="display:none;">
-                                            <label for="cvOpe">Nº de OP <span class="text-muted">si hay</span></label>
+                                            <label for="cvOpe" id="cvOpeLabel">Nº de OP <span class="text-muted">si hay</span></label>
                                             <input type="text" class="form-control input-sm" id="cvOpe" placeholder="Operación" maxlength="50" autocomplete="off">
                                         </div>
                                         <div class="cv-pago-monto-col">

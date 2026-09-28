@@ -69,7 +69,8 @@ $(function () {
         { cod: "05", label: "Depósito", pide_op: true },
         { cod: "17", label: "Tarjeta", pide_op: true },
         { cod: "16", label: "Link de pago", pide_op: true },
-        { cod: "14", label: "Culqi", pide_op: true }
+        { cod: "14", label: "Culqi", pide_op: true },
+        { cod: "NC", label: "Nota de crédito", pide_op: true, es_nc: true }
     ];
 
     function medioPorCod(cod) {
@@ -535,7 +536,7 @@ $(function () {
         }
         html += '<p class="cv-val-detalle-titulo">OP y montos</p>';
         html += '<table class="table table-bordered table-condensed cv-val-ops">';
-        html += "<thead><tr><th>OP</th><th class=\"text-right\">Monto OP</th>"
+        html += "<thead><tr><th>OP / NC</th><th class=\"text-right\">Monto</th>"
             + "<th class=\"text-right\">Aplicado</th>"
             + "<th class=\"text-right\">Dif.</th></tr></thead><tbody>";
         if (!medios.length) {
@@ -908,8 +909,11 @@ $(function () {
         }
         for (var i = 0; i < pagos.length; i++) {
             var p = pagos[i];
-            var medioTxt = etiquetaMedio(p.tipo_medio);
-            if (p.id_abono) {
+            var esNcPago = p.tipo_medio === "NC";
+            var medioTxt = esc(etiquetaMedio(p.tipo_medio));
+            if (esNcPago) {
+                medioTxt += p.nc_tipo ? ' <span class="text-muted">(' + esc(p.nc_tipo) + ")</span>" : "";
+            } else if (p.id_abono) {
                 medioTxt += ' <span class="text-muted">(Abonos)</span>';
             } else if (p.num_ope) {
                 medioTxt += ' <span class="text-muted">(sin abono)</span>';
@@ -917,9 +921,9 @@ $(function () {
             var montoOp = round2(p.monto);
             var celdaMonto = '<td class="text-right"><input type="number" min="0.01" step="0.01" class="form-control input-sm cv-pago-monto"'
                 + ' value="' + montoOp.toFixed(2) + '">';
-            if (p.id_abono && p.disponible && Math.abs(round2(p.disponible) - montoOp) >= 0.01) {
+            if ((p.id_abono || esNcPago) && p.disponible && Math.abs(round2(p.disponible) - montoOp) >= 0.01) {
                 celdaMonto += '<div class="text-muted cv-pago-sobra" style="font-size:11px;margin-top:2px;">'
-                    + "OP " + money(p.disponible)
+                    + (esNcPago ? "NC " : "OP ") + money(p.disponible)
                     + " · sobra " + money(round2(p.disponible - montoOp))
                     + "</div>";
             }
@@ -980,6 +984,7 @@ $(function () {
             id_abono: p.id_abono,
             num_ope: p.num_ope,
             disponible: p.disponible,
+            nc_tipo: p.nc_tipo,
             monto: p.monto
         };
     }
@@ -1410,6 +1415,8 @@ $(function () {
     var opConsulta = null;
     var opTimer = null;
     var opBusquedaN = 0;
+    var ncConsulta = null;
+    var modoNc = false;
 
     function opYaEnLote(ope, idAbono) {
         var i;
@@ -1514,6 +1521,9 @@ $(function () {
         if (opConsulta && opConsulta.abono) {
             sug = montoDesdeAbono(opConsulta.abono);
         }
+        if (modoNc && ncConsulta && ncConsulta.nc) {
+            sug = montoDesdeAbono({ monto: ncConsulta.nc.disponible });
+        }
         $("#cvPagoMontoNuevo").val(round2(sug).toFixed(2));
         bloquearMontoSiAbono();
     }
@@ -1521,6 +1531,7 @@ $(function () {
     function resetFormaPago() {
         $("#cvOpe").val("");
         opConsulta = null;
+        ncConsulta = null;
         pintarEstadoOpe("");
         pintarListaOpe([]);
         sugerirMontoForm();
@@ -1529,14 +1540,24 @@ $(function () {
     function syncFormaPago(opts) {
         var meta = medioForm();
         var pide = !!(meta && meta.pide_op);
+        var esNc = !!(meta && meta.es_nc);
         $("#cvPagoOpWrap").toggle(pide);
         $("#cvPagoFila").toggleClass("cv-sin-op", !pide);
-        if (!pide) {
+        if (esNc) {
+            $("#cvOpeLabel").html('Nº de NC <span class="text-muted">obligatorio</span>');
+            $("#cvOpe").attr("placeholder", "Ej. F00200005795");
+        } else {
+            $("#cvOpeLabel").html('Nº de OP <span class="text-muted">si hay</span>');
+            $("#cvOpe").attr("placeholder", "Operación");
+        }
+        if (!pide || esNc !== modoNc) {
             $("#cvOpe").val("");
             opConsulta = null;
+            ncConsulta = null;
             pintarEstadoOpe("");
             pintarListaOpe([]);
         }
+        modoNc = esNc;
         sugerirMontoForm();
         if (opts && opts.silent) {
             return;
@@ -1575,7 +1596,112 @@ $(function () {
         sugerirMontoForm();
     }
 
+    function consultarNc(doc) {
+        return $.getJSON(API, { accion: "buscar-nc", nc: doc, cliente: clienteSel });
+    }
+
+    function aplicarConsultaNc(r, doc) {
+        if (!r || !r.ok || !r.nc) {
+            ncConsulta = null;
+            pintarEstadoOpe((r && r.msg) ? r.msg : "No se pudo validar la nota de crédito.", "err");
+            return;
+        }
+        ncConsulta = { doc: doc, cliente: clienteSel, nc: r.nc };
+        var txt = "NC " + r.nc.documento + " · " + r.nc.tipo
+            + " · total " + money(r.nc.total)
+            + " · disponible " + money(r.nc.disponible);
+        pintarEstadoOpe(txt, "ok");
+        $("#cvPagoMontoNuevo").val(montoDesdeAbono({ monto: r.nc.disponible }).toFixed(2));
+    }
+
+    function buscarNcSilencio() {
+        var doc = $.trim($("#cvOpe").val());
+        var n;
+        pintarListaOpe([]);
+        if (!doc) {
+            ncConsulta = null;
+            pintarEstadoOpe("");
+            sugerirMontoForm();
+            return;
+        }
+        if (!clienteSel) {
+            ncConsulta = null;
+            pintarEstadoOpe("Marca primero los documentos del cliente.", "warn");
+            return;
+        }
+        n = ++opBusquedaN;
+        pintarEstadoOpe("Validando…");
+        consultarNc(doc)
+            .done(function (r) {
+                if (n === opBusquedaN) {
+                    aplicarConsultaNc(r, doc);
+                }
+            })
+            .fail(function (xhr) {
+                if (n === opBusquedaN) {
+                    aplicarConsultaNc(xhr.responseJSON, doc);
+                }
+            });
+    }
+
+    function agregarNc(nc) {
+        if (opYaEnLote(nc.documento, 0)) {
+            aviso("warning", "Nota de crédito", "Esa nota de crédito ya está en este lote.");
+            return;
+        }
+        var disp = round2(nc.disponible);
+        var monto = round2(Math.min(montoForm(), disp));
+        if (monto < 0.01) {
+            monto = round2(Math.min(disp, Math.max(restantePagos(), 0.01)));
+        }
+        agregarPago({
+            tipo_medio: "NC",
+            num_ope: nc.documento,
+            disponible: disp,
+            nc_tipo: nc.cod_pago === "96" ? "devolución" : "pronto pago",
+            monto: monto
+        });
+        resetFormaPago();
+    }
+
+    function agregarNcActual() {
+        var doc = $.trim($("#cvOpe").val());
+        if (!doc) {
+            aviso("warning", "Nota de crédito", "Ingresa el número de la nota de crédito.");
+            return;
+        }
+        if (!clienteSel) {
+            aviso("warning", "Nota de crédito", "Marca primero los documentos del cliente.");
+            return;
+        }
+        if (ncConsulta && ncConsulta.doc === doc && ncConsulta.cliente === clienteSel) {
+            agregarNc(ncConsulta.nc);
+            return;
+        }
+        $("#cvBtnAgregarPago").prop("disabled", true);
+        consultarNc(doc)
+            .done(function (r) {
+                $("#cvBtnAgregarPago").prop("disabled", false);
+                aplicarConsultaNc(r, doc);
+                if (!r || !r.ok || !r.nc) {
+                    aviso("error", "Nota de crédito", (r && r.msg) ? r.msg : "No se pudo validar.");
+                    return;
+                }
+                agregarNc(r.nc);
+            })
+            .fail(function (xhr) {
+                $("#cvBtnAgregarPago").prop("disabled", false);
+                var r = xhr.responseJSON;
+                aplicarConsultaNc(r, doc);
+                aviso("error", "Nota de crédito", (r && r.msg) ? r.msg : "No se pudo validar.");
+            });
+    }
+
     function buscarOpSilencio() {
+        if (modoNc) {
+            buscarNcSilencio();
+            return;
+        }
         var ope = $.trim($("#cvOpe").val());
         var n;
         if (!ope) {
@@ -1644,6 +1770,10 @@ $(function () {
         var ope;
         var extra;
         if (!meta) {
+            return;
+        }
+        if (meta.es_nc) {
+            agregarNcActual();
             return;
         }
         if (!meta.pide_op) {
@@ -1754,13 +1884,14 @@ $(function () {
                 $inp.val(val.toFixed(2));
             }
             pagos[idx].monto = round2(val);
-            if (pagos[idx].id_abono && pagos[idx].disponible) {
+            var esNcEdit = pagos[idx].tipo_medio === "NC";
+            if ((pagos[idx].id_abono || esNcEdit) && pagos[idx].disponible) {
                 var dispNota = round2(pagos[idx].disponible);
                 var sobraNota = round2(dispNota - pagos[idx].monto);
                 var $cel = $inp.closest("td");
                 var $notaSobra = $cel.find(".cv-pago-sobra");
                 if (Math.abs(sobraNota) >= 0.01) {
-                    var txtSobra = "OP " + money(dispNota) + " · sobra " + money(sobraNota);
+                    var txtSobra = (esNcEdit ? "NC " : "OP ") + money(dispNota) + " · sobra " + money(sobraNota);
                     if ($notaSobra.length) {
                         $notaSobra.text(txtSobra);
                     } else {
@@ -1803,13 +1934,13 @@ $(function () {
         }
         var i;
         for (i = 0; i < pagos.length; i++) {
-            if (pagos[i].id_abono && pagos[i].disponible
+            if ((pagos[i].id_abono || pagos[i].tipo_medio === "NC") && pagos[i].disponible
                     && round2(pagos[i].monto) - round2(pagos[i].disponible) >= 0.01) {
                 aviso(
                     "warning",
-                    "Abono",
-                    "La OP " + (pagos[i].num_ope || "") + " es de "
-                        + money(pagos[i].disponible)
+                    pagos[i].tipo_medio === "NC" ? "Nota de crédito" : "Abono",
+                    (pagos[i].tipo_medio === "NC" ? "La NC " : "La OP ") + (pagos[i].num_ope || "")
+                        + " tiene disponible " + money(pagos[i].disponible)
                         + ". No se puede aplicar más de ese monto."
                 );
                 return;

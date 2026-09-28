@@ -38,10 +38,11 @@ class TablaCredipagos
                     $tipo_doc = "Otro";
                 }
 
-                $monto = "<div style='text-align:right;'>" . number_format($cp["monto"], 2) . "</div>";
+                $montoRaw = number_format((float) $cp["monto"], 2, ".", "");
+                $monto = "<div style='text-align:right;' data-monto='" . $montoRaw . "'>" . number_format((float) $cp["monto"], 2) . "</div>";
 
                 // boton para eliminar
-                $botones = "<div class='form-inline'><div class='checkbox' style='margin-right:10px; display:inline-block;'><label><input type='checkbox' class='credipagoCheck' data-id-credipago='" . $credipagos[$i]["id"] . "'> Seleccionar</label></div></div>";
+                $botones = "<div class='form-inline'><div class='checkbox' style='margin-right:10px; display:inline-block;'><label><input type='checkbox' class='credipagoCheck' data-id-credipago='" . $credipagos[$i]["id"] . "' data-monto='" . $montoRaw . "'> Seleccionar</label></div></div>";
 
                 $datosJson .= '[
                     "' . $tipo_doc . '",

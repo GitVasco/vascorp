@@ -310,6 +310,94 @@ class ModeloCuadreVentas
         return is_array($filas) ? $filas : array();
     }
 
+    /**
+     * Nota de crédito (ventajf E05) con lo ya aplicado en cte y lo reservado en cuadres abiertos.
+     * Aplicado: cancelaciones '-' con esa NC como doc_origen (07/96/97) o la NC misma cancelada.
+     */
+    public static function mdlNotaCredito($documento, $exceptoCuadre = 0, $pdo = null)
+    {
+        $doc = trim((string) $documento);
+        if ($doc === "") {
+            return null;
+        }
+        if ($pdo === null) {
+            $pdo = Conexion::conectar();
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT v.documento, v.cliente, v.total, v.estado, LEFT(v.fecha, 10) AS fecha,
+                    cli.nombre AS cliente_nombre,
+                    (SELECT n.motivo FROM notascd_jf n
+                      WHERE n.documento = v.documento AND n.tipo = 'E05'
+                      ORDER BY n.id DESC LIMIT 1) AS motivo
+             FROM ventajf v
+             LEFT JOIN clientesjf cli ON cli.codigo = v.cliente
+             WHERE v.tipo = 'E05' AND v.documento = :doc
+             LIMIT 1"
+        );
+        $stmt->bindValue(":doc", $doc, PDO::PARAM_STR);
+        $stmt->execute();
+        $nc = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        if (!$nc) {
+            return null;
+        }
+
+        $stmtUso = $pdo->prepare(
+            "SELECT IFNULL(SUM(monto), 0)
+             FROM cuenta_ctejf
+             WHERE tip_mov = '-'
+               AND (
+                    (TRIM(doc_origen) = :doc1 AND cod_pago IN ('07', '96', '97'))
+                    OR (TRIM(tipo_doc) = '07' AND TRIM(num_cta) = :doc2)
+               )"
+        );
+        $stmtUso->bindValue(":doc1", $doc, PDO::PARAM_STR);
+        $stmtUso->bindValue(":doc2", $doc, PDO::PARAM_STR);
+        $stmtUso->execute();
+        $usado = round((float) $stmtUso->fetchColumn(), 2);
+        $stmtUso->closeCursor();
+
+        $stmtRes = $pdo->prepare(
+            "SELECT IFNULL(SUM(m.monto), 0)
+             FROM cuadre_ventas_medjf m
+             INNER JOIN cuadre_ventasjf q ON q.id = m.id_cuadre
+             WHERE m.tipo_medio = 'NC'
+               AND TRIM(m.num_ope) = :doc
+               AND q.estado IN ('BORRADOR', 'REGISTRADO', 'VALIDADO')
+               AND q.id <> :excepto"
+        );
+        $stmtRes->bindValue(":doc", $doc, PDO::PARAM_STR);
+        $stmtRes->bindValue(":excepto", (int) $exceptoCuadre, PDO::PARAM_INT);
+        $stmtRes->execute();
+        $reservado = round((float) $stmtRes->fetchColumn(), 2);
+        $stmtRes->closeCursor();
+
+        $total = round(abs((float) $nc["total"]), 2);
+        $motivo = strtoupper(trim((string) $nc["motivo"]));
+
+        return array(
+            "documento" => trim((string) $nc["documento"]),
+            "cliente" => trim((string) $nc["cliente"]),
+            "cliente_nombre" => isset($nc["cliente_nombre"]) ? trim((string) $nc["cliente_nombre"]) : "",
+            "fecha" => $nc["fecha"],
+            "estado" => strtoupper(trim((string) $nc["estado"])),
+            "motivo" => $motivo,
+            "cod_pago" => self::cvCodPagoNc($motivo),
+            "total" => $total,
+            "usado" => $usado,
+            "reservado" => $reservado,
+            "disponible" => max(0, round($total - $usado - $reservado, 2)),
+        );
+    }
+
+    /** Devolución (C1/C7) → 96; descuentos y demás motivos → 97. */
+    public static function cvCodPagoNc($motivo)
+    {
+        $motivo = strtoupper(trim((string) $motivo));
+        return ($motivo === "C1" || $motivo === "C7") ? "96" : "97";
+    }
+
     public static function mdlAbonoPorId($id)
     {
         $stmt = Conexion::conectar()->prepare("SELECT id, fecha, descripcion, monto, agencia, num_ope, id_cuadre FROM abonosjf WHERE id = :id LIMIT 1");
@@ -930,6 +1018,36 @@ class ModeloCuadreVentas
                 }
             }
 
+            $usoNc = array();
+            foreach ($medios as $k => $m) {
+                if (strtoupper(trim((string) $m["tipo_medio"])) !== "NC") {
+                    continue;
+                }
+                $docNc = trim((string) $m["num_ope"]);
+                $nc = self::mdlNotaCredito($docNc, $idCuadre, $pdo);
+                if (!$nc) {
+                    throw new Exception("La nota de crédito " . $docNc . " ya no existe.");
+                }
+                if ($nc["estado"] === "ANULADO") {
+                    throw new Exception("La nota de crédito " . $docNc . " está anulada.");
+                }
+                if ($nc["cliente"] !== trim((string) $lote["cliente"])) {
+                    throw new Exception("La nota de crédito " . $docNc . " no es de este cliente.");
+                }
+                if (!isset($usoNc[$docNc])) {
+                    $usoNc[$docNc] = 0.0;
+                }
+                $usoNc[$docNc] += round((float) $m["monto"], 2);
+                $libre = round($nc["total"] - $nc["usado"], 2);
+                if ($usoNc[$docNc] - $libre > 0.009) {
+                    throw new Exception(
+                        "A la nota de crédito " . $docNc . " solo le quedan "
+                        . number_format($libre, 2, ".", ",") . ". Anula el cuadre y armá de nuevo."
+                    );
+                }
+                $medios[$k]["cod_pago"] = $nc["cod_pago"];
+            }
+
             $cortes = self::cvRepartirPagosEnDocs($docs, $medios);
             $fechaLote = substr((string) $lote["fecha_ventas"], 0, 10);
             $usureg = isset($ctx["usureg"]) ? $ctx["usureg"] : "";
@@ -956,7 +1074,13 @@ class ModeloCuadreVentas
                 $car = $cargos[$idCta];
                 $cod = $corte["cod_pago"];
                 $ope = $corte["num_ope"];
-                $notas = $ope !== "" ? ("OP-" . $ope) : ("CUADRE-" . $idCuadre);
+                $esNc = !empty($corte["es_nc"]);
+                if ($esNc) {
+                    $notas = "NC-" . $ope;
+                } else {
+                    $notas = $ope !== "" ? ("OP-" . $ope) : ("CUADRE-" . $idCuadre);
+                }
+                $docOrigen = $esNc ? $ope : trim((string) $car["num_cta"]);
                 $fechaVen = isset($car["fecha_ven"]) && $car["fecha_ven"] ? $car["fecha_ven"] : $fechaLote;
                 $fechaMov = $fechaLote !== "" ? $fechaLote : date("Y-m-d");
 
@@ -969,7 +1093,7 @@ class ModeloCuadreVentas
                 $stmtIns->bindValue(":monto", number_format((float) $corte["monto"], 2, ".", ""), PDO::PARAM_STR);
                 $stmtIns->bindValue(":notas", $notas, PDO::PARAM_STR);
                 $stmtIns->bindValue(":cod_pago", $cod, PDO::PARAM_STR);
-                $stmtIns->bindValue(":doc_origen", trim((string) $car["num_cta"]), PDO::PARAM_STR);
+                $stmtIns->bindValue(":doc_origen", $docOrigen, PDO::PARAM_STR);
                 $stmtIns->bindValue(":usuario", trim((string) $car["usuario"]), PDO::PARAM_STR);
                 $stmtIns->bindValue(":usureg", $usureg, PDO::PARAM_STR);
                 $stmtIns->bindValue(":pcreg", $pcreg, PDO::PARAM_STR);
@@ -1163,8 +1287,12 @@ class ModeloCuadreVentas
             $cents = (int) round(((float) $m["monto"]) * 100);
             $ope = isset($m["num_ope"]) ? trim((string) $m["num_ope"]) : "";
             $idAbono = isset($m["id_abono"]) ? (int) $m["id_abono"] : 0;
+            $tipoMed = isset($m["tipo_medio"]) ? $m["tipo_medio"] : "";
             $pays[] = array(
-                "cod_pago" => self::cvCodPago(isset($m["tipo_medio"]) ? $m["tipo_medio"] : ""),
+                "cod_pago" => isset($m["cod_pago"]) && $m["cod_pago"] !== ""
+                    ? (string) $m["cod_pago"]
+                    : self::cvCodPago($tipoMed),
+                "es_nc" => strtoupper(trim((string) $tipoMed)) === "NC",
                 "num_ope" => $ope,
                 "con_op" => ($ope !== "" || $idAbono > 0) ? 1 : 0,
                 "cents" => $cents,
@@ -1201,6 +1329,7 @@ class ModeloCuadreVentas
                 $cortes[] = array(
                     "doc" => $it["doc"],
                     "cod_pago" => $pay["cod_pago"],
+                    "es_nc" => $pay["es_nc"],
                     "num_ope" => $pay["num_ope"],
                     "monto" => round($it["cents"] / 100, 2),
                 );
@@ -1226,6 +1355,7 @@ class ModeloCuadreVentas
                 $cortes[] = array(
                     "doc" => $it["doc"],
                     "cod_pago" => $pay["cod_pago"],
+                    "es_nc" => $pay["es_nc"],
                     "num_ope" => $pay["num_ope"],
                     "monto" => round($use / 100, 2),
                 );
@@ -1330,7 +1460,7 @@ class ModeloCuadreVentas
 
         foreach ($medios as $m) {
             $ope = isset($m["num_ope"]) ? trim((string) $m["num_ope"]) : "";
-            if ($ope === "") {
+            if ($ope === "" || strtoupper(trim((string) $m["tipo_medio"])) === "NC") {
                 continue;
             }
             $idEnc = 0;
@@ -1402,7 +1532,7 @@ class ModeloCuadreVentas
         if (isset($legado[$tipo])) {
             return $legado[$tipo];
         }
-        $ok = array("80" => true, "15" => true, "05" => true, "17" => true, "16" => true, "14" => true);
+        $ok = array("80" => true, "15" => true, "05" => true, "17" => true, "16" => true, "14" => true, "NC" => true);
         return isset($ok[$tipo]) ? $tipo : "80";
     }
 }

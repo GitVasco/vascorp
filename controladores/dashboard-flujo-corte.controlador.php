@@ -45,19 +45,33 @@ class ControladorDashboardFlujoCorte
         $stocks = ModeloDashboardFlujoCorte::mdlStocksActuales();
         $ocResumen = ModeloDashboardFlujoCorte::mdlResumenOcAbiertas();
         $movimiento = ModeloDashboardFlujoCorte::mdlMovimientoPeriodo($desde, $hastaSerie);
-        $movHastaHoy = ModeloDashboardFlujoCorte::mdlMovimientoPeriodo($desde, $hoy);
-
         $prev = self::ctrPeriodoAnterior($anio, $mes);
         $movAnterior = ModeloDashboardFlujoCorte::mdlMovimientoPeriodo($prev["desde"], $prev["hasta"]);
 
-        $porDia = ModeloDashboardFlujoCorte::mdlDiarioPeriodo($desde, $hastaSerie);
         $diario = self::ctrArmarSeriesDiarias(
             $desde,
             $hastaSerie,
-            $porDia,
+            ModeloDashboardFlujoCorte::mdlDiarioPeriodo($desde, $hastaSerie),
             $stocks,
-            $movHastaHoy
+            ModeloDashboardFlujoCorte::mdlMovimientoPeriodo($desde, $hoy)
         );
+
+        $modelosNuevos = ModeloDashboardFlujoCorte::mdlModelosPrimeraProduccion($desde, $hoy);
+        $diario["modelos_nuevos"] = count($modelosNuevos);
+        $diario["saldo_oc_antiguo"] = $diario["saldo_oc"];
+        if ($modelosNuevos) {
+            $filtro = array("modo" => "nuevo", "modelos" => $modelosNuevos);
+            $nuevos = self::ctrArmarSeriesDiarias(
+                $desde,
+                $hastaSerie,
+                ModeloDashboardFlujoCorte::mdlDiarioPeriodo($desde, $hastaSerie, $filtro),
+                ModeloDashboardFlujoCorte::mdlStocksActuales($filtro),
+                ModeloDashboardFlujoCorte::mdlMovimientoPeriodo($desde, $hoy, $filtro)
+            );
+            foreach ($diario["saldo_oc"] as $i => $total) {
+                $diario["saldo_oc_antiguo"][$i] = $total - $nuevos["saldo_oc"][$i];
+            }
+        }
 
         $enviadoTotal = $movimiento["enviado_taller"] + $movimiento["enviado_servicio"];
         $enviadoAnt = $movAnterior["enviado_taller"] + $movAnterior["enviado_servicio"];

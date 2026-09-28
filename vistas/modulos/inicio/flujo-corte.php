@@ -187,7 +187,10 @@ if (!function_exists("flujoCoberturaClase")) {
                 </div>
             </div>
             <div class="col-md-9">
-                <p class="flujo-chart-title">Tendencia de saldos</p>
+                <p class="flujo-chart-title">
+                    Tendencia de saldos
+                    <small id="flujo-chart-nota" class="text-muted" style="font-weight: normal;"></small>
+                </p>
                 <div class="chart">
                     <canvas id="flujoSaldoChart"></canvas>
                 </div>
@@ -254,52 +257,54 @@ if (!function_exists("flujoCoberturaClase")) {
             return;
         }
 
+        var etapas = [
+            { clave: "saldo_oc", nombre: "Orden de corte", color: "#f39c12" },
+            { clave: "saldo_corte", nombre: "Almacén de corte", color: "#605ca8" },
+            { clave: "saldo_taller", nombre: "Taller interno", color: "#00a65a" },
+            { clave: "saldo_servicio", nombre: "Servicios", color: "#3c8dbc" }
+        ];
+        var hayNuevos = (parseInt(diario.modelos_nuevos, 10) || 0) > 0;
+        var datasets = [];
+
+        etapas.forEach(function(etapa) {
+            var clave = (hayNuevos && etapa.clave === "saldo_oc") ? "saldo_oc_antiguo" : etapa.clave;
+            datasets.push({
+                label: etapa.nombre,
+                data: flujoSerie(diario[clave]),
+                borderColor: etapa.color,
+                backgroundColor: etapa.color,
+                pointRadius: 1,
+                borderWidth: 2,
+                fill: false,
+                lineTension: 0.3
+            });
+        });
+        if (hayNuevos) {
+            // fill: 0 sombrea contra la serie "Orden de corte" (índice 0)
+            datasets.push({
+                label: "Orden de corte + 1ª producción",
+                data: flujoSerie(diario.saldo_oc),
+                borderColor: "#f39c12",
+                backgroundColor: "rgba(243,156,18,0.18)",
+                borderDash: [6, 4],
+                pointRadius: 0,
+                borderWidth: 1.5,
+                fill: 0,
+                lineTension: 0.3
+            });
+        }
+
+        $("#flujo-chart-nota").text(
+            hayNuevos
+                ? "Sombra naranja: orden de corte de " + diario.modelos_nuevos + " modelo(s) en primera producción."
+                : ""
+        );
+
         flujoSaldoChart = new Chart(canvasSaldo.getContext("2d"), {
             type: "line",
             data: {
                 labels: diario.labels,
-                datasets: [
-                    {
-                        label: "Orden de corte",
-                        data: flujoSerie(diario.saldo_oc),
-                        borderColor: "#f39c12",
-                        backgroundColor: "rgba(243,156,18,0.12)",
-                        pointRadius: 1,
-                        borderWidth: 2,
-                        fill: false,
-                        lineTension: 0.3
-                    },
-                    {
-                        label: "Almacén de corte",
-                        data: flujoSerie(diario.saldo_corte),
-                        borderColor: "#605ca8",
-                        backgroundColor: "rgba(96,92,168,0.12)",
-                        pointRadius: 1,
-                        borderWidth: 2,
-                        fill: false,
-                        lineTension: 0.3
-                    },
-                    {
-                        label: "Taller interno",
-                        data: flujoSerie(diario.saldo_taller),
-                        borderColor: "#00a65a",
-                        backgroundColor: "rgba(0,166,90,0.12)",
-                        pointRadius: 1,
-                        borderWidth: 2,
-                        fill: false,
-                        lineTension: 0.3
-                    },
-                    {
-                        label: "Servicios",
-                        data: flujoSerie(diario.saldo_servicio),
-                        borderColor: "#3c8dbc",
-                        backgroundColor: "rgba(60,141,188,0.12)",
-                        pointRadius: 1,
-                        borderWidth: 2,
-                        fill: false,
-                        lineTension: 0.3
-                    }
-                ]
+                datasets: datasets
             },
             options: flujoOpcionesChart()
         });

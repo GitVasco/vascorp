@@ -27,7 +27,75 @@ class ControladorCuadreVentas
             "17" => array("cod_pago" => "17", "label" => "Tarjeta", "pide_op" => true),
             "16" => array("cod_pago" => "16", "label" => "Link de pago", "pide_op" => true),
             "14" => array("cod_pago" => "14", "label" => "Culqi", "pide_op" => true),
+            "NC" => array("cod_pago" => "NC", "label" => "Nota de crédito", "pide_op" => false, "es_nc" => true),
         );
+    }
+
+    /** Acepta F002-5795, F0025795 o F00200005795 → F00200005795. */
+    public static function ctrNormalizarDocNc($doc)
+    {
+        $doc = strtoupper(preg_replace('/\s+/', "", (string) $doc));
+        if (preg_match('/^([A-Z0-9]{4})-?(\d{1,8})$/', $doc, $m)) {
+            return $m[1] . str_pad($m[2], 8, "0", STR_PAD_LEFT);
+        }
+        return $doc;
+    }
+
+    public static function ctrBuscarNc($numNc, $cliente)
+    {
+        if (!self::ctrPuede("registrar")) {
+            return array("ok" => false, "msg" => "Sin permiso para registrar.");
+        }
+
+        $doc = self::ctrNormalizarDocNc($numNc);
+        if ($doc === "") {
+            return array("ok" => false, "msg" => "Ingresa el número de la nota de crédito.");
+        }
+        $chequeo = self::ctrValidarNc($doc, trim((string) $cliente), 0);
+        if (empty($chequeo["ok"])) {
+            return $chequeo;
+        }
+        $nc = $chequeo["nc"];
+
+        return array(
+            "ok" => true,
+            "nc" => array(
+                "documento" => $nc["documento"],
+                "fecha" => $nc["fecha"],
+                "total" => $nc["total"],
+                "usado" => $nc["usado"],
+                "reservado" => $nc["reservado"],
+                "disponible" => $nc["disponible"],
+                "cod_pago" => $nc["cod_pago"],
+                "tipo" => $nc["cod_pago"] === "96" ? "Devolución" : "Pronto pago / descuento",
+            ),
+        );
+    }
+
+    private static function ctrValidarNc($doc, $cliente, $idCuadre)
+    {
+        $nc = ModeloCuadreVentas::mdlNotaCredito($doc, $idCuadre);
+        if (!$nc) {
+            return array("ok" => false, "msg" => "No existe la nota de crédito " . $doc . ".");
+        }
+        if ($nc["estado"] === "ANULADO") {
+            return array("ok" => false, "msg" => "La nota de crédito " . $doc . " está anulada.");
+        }
+        if ($cliente === "") {
+            return array("ok" => false, "msg" => "Marca primero los documentos del cliente.");
+        }
+        if ($nc["cliente"] !== $cliente) {
+            $de = $nc["cliente"] . ($nc["cliente_nombre"] !== "" ? " — " . $nc["cliente_nombre"] : "");
+            return array("ok" => false, "msg" => "La nota de crédito " . $doc . " es de otro cliente (" . $de . ").");
+        }
+        if ($nc["disponible"] < 0.01) {
+            $msg = "La nota de crédito " . $doc . " ya no tiene saldo.";
+            if ($nc["reservado"] >= 0.01) {
+                $msg .= " Hay " . number_format($nc["reservado"], 2, ".", ",") . " reservados en otro cuadre.";
+            }
+            return array("ok" => false, "msg" => $msg);
+        }
+        return array("ok" => true, "nc" => $nc);
     }
 
     public static function ctrNormalizarCodPago($tipo)
@@ -776,7 +844,11 @@ class ControladorCuadreVentas
 
         $idCuadre = (int) $save["id"];
         $totalDocs = round((float) $save["total_docs"], 2);
-        $medios = self::ctrPrepararMedios($pagosInput, $idCuadre);
+        $medios = self::ctrPrepararMedios(
+            $pagosInput,
+            $idCuadre,
+            isset($save["cliente"]) ? trim((string) $save["cliente"]) : ""
+        );
         if (isset($medios["ok"]) && $medios["ok"] === false) {
             return $medios;
         }
@@ -854,7 +926,7 @@ class ControladorCuadreVentas
         );
     }
 
-    private static function ctrPrepararMedios($pagosInput, $idCuadre)
+    private static function ctrPrepararMedios($pagosInput, $idCuadre, $cliente)
     {
         if (!is_array($pagosInput) || empty($pagosInput)) {
             return array("ok" => false, "msg" => "Agrega al menos un pago.");
@@ -864,6 +936,7 @@ class ControladorCuadreVentas
         $medios = array();
         $abonosUsados = array();
         $opesUsadas = array();
+        $ncsUsadas = array();
 
         foreach ($pagosInput as $pago) {
             $cod = self::ctrNormalizarCodPago(
@@ -875,6 +948,36 @@ class ControladorCuadreVentas
             $monto = isset($pago["monto"]) ? round((float) $pago["monto"], 2) : 0.0;
             if ($monto <= 0) {
                 return array("ok" => false, "msg" => "Hay un monto de pago inválido.");
+            }
+
+            if (!empty($catalogo[$cod]["es_nc"])) {
+                $docNc = self::ctrNormalizarDocNc(isset($pago["num_ope"]) ? $pago["num_ope"] : "");
+                if ($docNc === "") {
+                    return array("ok" => false, "msg" => "Falta el número de la nota de crédito.");
+                }
+                if (isset($ncsUsadas[$docNc])) {
+                    return array("ok" => false, "msg" => "La misma nota de crédito no se puede usar dos veces en el lote.");
+                }
+                $ncsUsadas[$docNc] = true;
+                $chequeo = self::ctrValidarNc($docNc, $cliente, $idCuadre);
+                if (empty($chequeo["ok"])) {
+                    return $chequeo;
+                }
+                $disp = $chequeo["nc"]["disponible"];
+                if ($monto - $disp > 0.009) {
+                    return array(
+                        "ok" => false,
+                        "msg" => "A la nota de crédito " . $docNc . " solo le quedan "
+                            . number_format($disp, 2, ".", ",") . ".",
+                    );
+                }
+                $medios[] = array(
+                    "tipo_medio" => "NC",
+                    "id_abono" => 0,
+                    "num_ope" => $docNc,
+                    "monto" => $monto,
+                );
+                continue;
             }
 
             $pideOp = !empty($catalogo[$cod]["pide_op"]);

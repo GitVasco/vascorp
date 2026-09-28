@@ -3287,44 +3287,175 @@ const table = $(".tablaCredipagos").DataTable({
 
 const $eliminar = $("#eliminarSeleccionados");
 const $contador = $("#contadorSeleccionados strong");
+var seleccionCredipagos = {};
+
+function formatearEnteroCredipago(n) {
+    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function formatearSolesCredipago(n) {
+    var parts = (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return "S/ " + parts.join(".");
+}
+
+function montoDesdeHtmlCredipago(html) {
+    var match = String(html || "").match(/data-monto='([^']*)'|data-monto="([^"]*)"/);
+    var raw = match ? match[1] || match[2] || "0" : "0";
+    return parseFloat(raw) || 0;
+}
+
+function idDesdeHtmlCredipago(html) {
+    var match = String(html || "").match(/data-id-credipago='([^']*)'|data-id-credipago="([^"]*)"/);
+    return match ? match[1] || match[2] || "" : "";
+}
+
+function filasCredipagosFiltradas() {
+    if (!table || typeof table.rows !== "function") {
+        return [];
+    }
+    var data = table.rows({ search: "applied" }).data();
+    var filas = [];
+    for (var i = 0; i < data.length; i++) {
+        filas.push({
+            id: idDesdeHtmlCredipago(data[i][8]),
+            monto: montoDesdeHtmlCredipago(data[i][5]),
+        });
+    }
+    return filas;
+}
+
+function pintarChecksCredipagos() {
+    $(".tablaCredipagos tbody .credipagoCheck").each(function () {
+        var id = $(this).attr("data-id-credipago");
+        $(this).prop("checked", !!seleccionCredipagos[id]);
+    });
+}
+
+function actualizarKpisListado() {
+    if (!$("#kpiCredipagosCantidad").length) {
+        return { cantidad: 0, monto: 0 };
+    }
+    var filas = filasCredipagosFiltradas();
+    var monto = 0;
+    for (var i = 0; i < filas.length; i++) {
+        monto += filas[i].monto;
+    }
+    $("#kpiCredipagosCantidad").text(formatearEnteroCredipago(filas.length));
+    $("#kpiCredipagosMonto").text(formatearSolesCredipago(monto));
+    return { cantidad: filas.length, monto: monto };
+}
 
 function actualizarEstado() {
-    const count = $(".credipagoCheck:checked").length;
+    var ids = Object.keys(seleccionCredipagos);
+    var count = ids.length;
+    var montoSel = 0;
+    for (var i = 0; i < count; i++) {
+        montoSel += seleccionCredipagos[ids[i]] || 0;
+    }
     $contador.text(count);
     $eliminar.prop("disabled", count === 0);
+
+    var listado = actualizarKpisListado();
+    if (!$("#kpiCredipagosSeleccionados").length) {
+        return;
+    }
+    $("#kpiCredipagosSeleccionados").text(formatearEnteroCredipago(count));
+    $("#kpiCredipagosMontoSel").text(formatearSolesCredipago(montoSel));
+
+    var busquedaActiva =
+        table && typeof table.search === "function" && table.search() !== "";
+    $("#kpiCredipagosHintCantidad").text(
+        busquedaActiva ? "Según la búsqueda" : "Registros del listado",
+    );
+    $("#kpiCredipagosHintMonto").text(
+        busquedaActiva ? "Según la búsqueda" : "Suma del listado",
+    );
+
+    if (count === 0) {
+        $("#kpiCredipagosPctCantidad").text("Nada marcado");
+        $("#kpiCredipagosPctMonto").text("Se actualiza al marcar");
+    } else if (listado.cantidad > 0 && count > listado.cantidad) {
+        $("#kpiCredipagosPctCantidad").text("Incluye marcas de otro filtro");
+        $("#kpiCredipagosPctMonto").text("Listos para eliminar");
+    } else {
+        var pctCant =
+            listado.cantidad > 0
+                ? Math.round((count / listado.cantidad) * 1000) / 10
+                : 0;
+        var pctMonto =
+            listado.monto > 0
+                ? Math.round((montoSel / listado.monto) * 1000) / 10
+                : 0;
+        $("#kpiCredipagosPctCantidad").text(pctCant + "% del listado");
+        $("#kpiCredipagosPctMonto").text(pctMonto + "% del monto");
+    }
+
+    var filas = filasCredipagosFiltradas();
+    var todosMarcados =
+        filas.length > 0 &&
+        filas.every(function (fila) {
+            return !!seleccionCredipagos[fila.id];
+        });
+    $("#checkHeader").prop("checked", todosMarcados);
 }
 
 // Al hacer check/uncheck en cualquier checkbox de la tabla
-$(".tablaCredipagos tbody").on("change", ".credipagoCheck", actualizarEstado);
+$(".tablaCredipagos tbody").on("change", ".credipagoCheck", function () {
+    var id = $(this).attr("data-id-credipago");
+    var monto = parseFloat($(this).attr("data-monto")) || 0;
+    if (!id) {
+        return;
+    }
+    if (this.checked) {
+        seleccionCredipagos[id] = monto;
+    } else {
+        delete seleccionCredipagos[id];
+    }
+    actualizarEstado();
+});
 
-// Botón seleccionar todos
+// Botón seleccionar todos (respeta la búsqueda de la tabla)
 $("#marcarTodos").on("click", function () {
-    $(".credipagoCheck").prop("checked", true);
-    $("#checkHeader").prop("checked", true);
+    filasCredipagosFiltradas().forEach(function (fila) {
+        if (fila.id) {
+            seleccionCredipagos[fila.id] = fila.monto;
+        }
+    });
+    pintarChecksCredipagos();
     actualizarEstado();
 });
 
 // Botón desmarcar todos
 $("#desmarcarTodos").on("click", function () {
-    $(".credipagoCheck").prop("checked", false);
-    $("#checkHeader").prop("checked", false);
+    seleccionCredipagos = {};
+    pintarChecksCredipagos();
     actualizarEstado();
 });
 
-// Checkbox en header para seleccionar/deseleccionar toda la página visible
+// Checkbox en header para seleccionar/deseleccionar el listado filtrado
 $("#checkHeader").on("change", function () {
-    const estado = $(this).is(":checked");
-    $(".credipagoCheck").prop("checked", estado);
+    if ($(this).is(":checked")) {
+        filasCredipagosFiltradas().forEach(function (fila) {
+            if (fila.id) {
+                seleccionCredipagos[fila.id] = fila.monto;
+            }
+        });
+    } else {
+        filasCredipagosFiltradas().forEach(function (fila) {
+            delete seleccionCredipagos[fila.id];
+        });
+    }
+    pintarChecksCredipagos();
     actualizarEstado();
 });
 
-// Al cambiar página o filtrar, mantenemos el estado del header
+// Al cambiar página o filtrar, los totales siguen el listado visible
 table.on("draw", function () {
-    const allChecked =
-        $(".credipagoCheck").length === $(".credipagoCheck:checked").length &&
-        $(".credipagoCheck").length > 0;
-    $("#checkHeader").prop("checked", allChecked);
+    pintarChecksCredipagos();
+    actualizarEstado();
 });
+actualizarEstado();
 
 // Acción de eliminar seleccionados
 document.addEventListener("DOMContentLoaded", function () {
@@ -3335,10 +3466,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     btnEliminarSeleccionados.addEventListener("click", function () {
             // Recogemos los IDs seleccionados
-            const checks = document.querySelectorAll(".credipagoCheck:checked");
-            const ids = Array.from(checks).map((chk) =>
-                chk.getAttribute("data-id-credipago"),
-            );
+            const ids = Object.keys(seleccionCredipagos);
             const count = ids.length;
 
             if (count === 0) {

@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS cuadre_ventas_medjf (
     id_cuadre               BIGINT(20) NOT NULL
         COMMENT 'cuadre_ventasjf.id',
     tipo_medio              VARCHAR(20) NOT NULL
-        COMMENT 'cod_pago: 80 efectivo, 15 yape, 05 deposito, 17 tarjeta, 16 link, 14 culqi',
+        COMMENT 'cod_pago: 80 efectivo, 15 yape, 05 deposito, 17 tarjeta, 16 link, 14 culqi; NC nota de credito (num_ope = nro NC, al procesar 96/97 segun motivo)',
     id_abono                INT(11) NULL
         COMMENT 'abonosjf.id si la OP estaba en Abonos',
     num_ope                 VARCHAR(50) NULL

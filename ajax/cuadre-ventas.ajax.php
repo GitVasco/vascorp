@@ -99,6 +99,22 @@ if ($accion === "buscar-op") {
     exit;
 }
 
+if ($accion === "buscar-nc") {
+    if (!usuarioPuedeCuadreVentas("registrar")) {
+        http_response_code(403);
+        cvJson(array("ok" => false, "msg" => "Sin permiso para registrar."));
+        exit;
+    }
+    $nc = isset($_GET["nc"]) ? $_GET["nc"] : (isset($_POST["nc"]) ? $_POST["nc"] : "");
+    $cliente = isset($_GET["cliente"]) ? $_GET["cliente"] : (isset($_POST["cliente"]) ? $_POST["cliente"] : "");
+    $respuesta = ControladorCuadreVentas::ctrBuscarNc($nc, $cliente);
+    if (empty($respuesta["ok"])) {
+        http_response_code(400);
+    }
+    cvJson($respuesta);
+    exit;
+}
+
 if ($accion === "registrar-pagos") {
     if (!usuarioPuedeCuadreVentas("registrar")) {
         http_response_code(403);
