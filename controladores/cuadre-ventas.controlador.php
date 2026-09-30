@@ -1147,6 +1147,53 @@ class ControladorCuadreVentas
     }
 
     /**
+     * Quita un lote VALIDADO de "Por procesar" (p. ej. ya se registró a mano en cte).
+     * No entra a cuentas; queda ANULADO con el motivo y la OP libre.
+     */
+    public static function ctrQuitarPorProcesar($idCuadre, $motivo)
+    {
+        if (!self::ctrPuedeProcesar()) {
+            return array("ok" => false, "msg" => "Sin permiso para procesar.");
+        }
+
+        $motivo = trim((string) $motivo);
+        if ($motivo === "") {
+            return array("ok" => false, "msg" => "Indica el motivo para quitarlo.");
+        }
+        $motivo = "Quitado de por procesar: " . $motivo;
+        if (function_exists("mb_substr")) {
+            $motivo = mb_substr($motivo, 0, 500, "UTF-8");
+        } else {
+            $motivo = substr($motivo, 0, 500);
+        }
+
+        $idCuadre = (int) $idCuadre;
+        if ($idCuadre < 1) {
+            return array("ok" => false, "msg" => "Lote no válido.");
+        }
+
+        $lote = ModeloCuadreVentas::mdlCuadrePorId($idCuadre);
+        if (!$lote) {
+            return array("ok" => false, "msg" => "No se encontró el cuadre.");
+        }
+        if (strtoupper(trim((string) $lote["estado"])) !== "VALIDADO") {
+            return array("ok" => false, "msg" => "Solo se quitan cuadres confirmados que aún no se procesan.");
+        }
+
+        $ok = ModeloCuadreVentas::mdlQuitarPorProcesar($idCuadre, self::ctrUsuarioSesionId(), $motivo);
+        if ($ok !== true) {
+            $msg = is_string($ok) && $ok !== "" ? $ok : "No se pudo quitar.";
+            return array("ok" => false, "msg" => $msg);
+        }
+
+        return array(
+            "ok" => true,
+            "msg" => "Cuadre quitado. No entró a cuentas y la OP quedó libre.",
+            "id" => $idCuadre,
+        );
+    }
+
+    /**
      * Pasa un lote VALIDADO a cuenta corriente.
      * Quien validó no procesa (salvo ID de prueba). Si ya está PROCESADO, no repite.
      */

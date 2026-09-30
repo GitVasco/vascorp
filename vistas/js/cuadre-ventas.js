@@ -805,7 +805,9 @@ $(function () {
                     l,
                     i,
                     '<button type="button" class="btn btn-success btn-xs cv-ico cv-proc-cte" title="Procesar a cuentas">'
-                        + '<i class="fa fa-arrow-circle-right"></i></button>',
+                        + '<i class="fa fa-arrow-circle-right"></i></button> '
+                        + '<button type="button" class="btn btn-danger btn-xs cv-ico cv-proc-quitar" title="Quitar (ya registrado a mano)">'
+                        + '<i class="fa fa-trash"></i></button>',
                     "cv-val-proc"
                 ));
             }
@@ -2217,6 +2219,65 @@ $(function () {
         }
         if (window.confirm("¿Procesar a cuenta corriente? Baja el saldo y consume la OP.")) {
             hacer();
+        }
+    });
+
+    $("#cvTablaProcesar").on("click", ".cv-proc-quitar", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var lote = lotePorFila($(this));
+        if (!lote) {
+            return;
+        }
+        var $btn = $(this);
+        var quitar = function (motivo) {
+            $btn.prop("disabled", true);
+            $.ajax({
+                url: API,
+                method: "POST",
+                dataType: "json",
+                data: { accion: "quitar-por-procesar", id: lote.id, motivo: motivo }
+            }).done(function (r) {
+                $btn.prop("disabled", false);
+                if (!r || !r.ok) {
+                    aviso("error", "No se quitó", (r && r.msg) ? r.msg : "Error al quitar.");
+                    return;
+                }
+                aviso("success", "Quitado", r.msg || "Cuadre quitado.");
+                buscar();
+            }).fail(function (xhr) {
+                $btn.prop("disabled", false);
+                var r = xhr.responseJSON;
+                aviso("error", "No se quitó", (r && r.msg) ? r.msg : "Error al quitar.");
+            });
+        };
+        if (window.swal) {
+            swal({
+                title: "¿Quitar este cuadre?",
+                text: "No entra a cuentas y la OP queda libre otra vez. Úsalo si ya se registró a mano en cte.",
+                type: "warning",
+                input: "textarea",
+                inputValue: "Ya registrado a mano en cte",
+                inputPlaceholder: "Motivo",
+                showCancelButton: true,
+                confirmButtonText: "Quitar",
+                cancelButtonText: "Cancelar",
+                inputValidator: function (value) {
+                    if (!value || !$.trim(value)) {
+                        return "Indica un motivo";
+                    }
+                    return null;
+                }
+            }).then(function (result) {
+                if (result && result.value) {
+                    quitar($.trim(result.value));
+                }
+            });
+            return;
+        }
+        var motivo = window.prompt("Motivo para quitar (no entra a cuentas, la OP queda libre):", "Ya registrado a mano en cte");
+        if (motivo && $.trim(motivo)) {
+            quitar($.trim(motivo));
         }
     });
 

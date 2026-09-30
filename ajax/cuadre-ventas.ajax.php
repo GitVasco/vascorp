@@ -206,5 +206,21 @@ if ($accion === "procesar-cuadre") {
     exit;
 }
 
+if ($accion === "quitar-por-procesar") {
+    if (!ControladorCuadreVentas::ctrPuedeProcesar()) {
+        http_response_code(403);
+        cvJson(array("ok" => false, "msg" => "Sin permiso para procesar."));
+        exit;
+    }
+    $id = isset($_POST["id"]) ? (int) $_POST["id"] : 0;
+    $motivo = isset($_POST["motivo"]) ? $_POST["motivo"] : "";
+    $respuesta = ControladorCuadreVentas::ctrQuitarPorProcesar($id, $motivo);
+    if (empty($respuesta["ok"])) {
+        http_response_code(400);
+    }
+    cvJson($respuesta);
+    exit;
+}
+
 http_response_code(400);
 cvJson(array("ok" => false, "msg" => "Acción no válida."));

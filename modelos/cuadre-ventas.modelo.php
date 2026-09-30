@@ -913,6 +913,52 @@ class ModeloCuadreVentas
     }
 
     /**
+     * Quita de "Por procesar" un lote VALIDADO que ya se registró a mano en cte.
+     * No toca cuenta_ctejf: deja el lote ANULADO y libera la OP reservada.
+     */
+    public static function mdlQuitarPorProcesar($idCuadre, $usuarioProceso, $observacion)
+    {
+        $pdo = Conexion::conectar();
+        $pdo->beginTransaction();
+
+        try {
+            $idCuadre = (int) $idCuadre;
+            $stmt = $pdo->prepare(
+                "UPDATE cuadre_ventasjf
+                 SET estado = 'ANULADO',
+                     usuario_proceso = :usuario,
+                     fecha_proceso = NOW(),
+                     observacion = :motivo,
+                     actualizado_en = NOW()
+                 WHERE id = :id AND estado = 'VALIDADO'"
+            );
+            $stmt->bindValue(":usuario", (int) $usuarioProceso, PDO::PARAM_INT);
+            $stmt->bindValue(":motivo", $observacion, PDO::PARAM_STR);
+            $stmt->bindValue(":id", $idCuadre, PDO::PARAM_INT);
+            $stmt->execute();
+            if ($stmt->rowCount() < 1) {
+                throw new Exception("El lote ya no está pendiente de procesar");
+            }
+
+            $stmtLib = $pdo->prepare(
+                "UPDATE abonosjf
+                 SET id_cuadre = NULL
+                 WHERE id_cuadre = :id"
+            );
+            $stmtLib->bindValue(":id", $idCuadre, PDO::PARAM_INT);
+            $stmtLib->execute();
+
+            $pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return $e->getMessage();
+        }
+    }
+
+    /**
      * Paso 7: pasa un lote VALIDADO a cte.
      * INSERT tip_mov='-' (cod_pago del medio, notas OP- si hay), baja saldo del cargo,
      * consume abonosjf (o deja el sobrante si se usó solo parte) y deja PROCESADO.
