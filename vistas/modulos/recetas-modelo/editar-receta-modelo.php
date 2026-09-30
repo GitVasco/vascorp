@@ -464,6 +464,7 @@ if ($idReceta <= 0) {
 										<th>Cód. MP</th>
 										<th>MP (nombre)</th>
 										<th>Color MP</th>
+										<th>Estado MP</th>
 										<th>Consumo</th>
 										<th>Und</th>
 										<th></th>

@@ -316,7 +316,8 @@ class ModeloRecetasModelo
 				TRIM(p.UndPro) AS undpro,
 				IFNULL(tu.Des_Corta, '') AS unidad,
 				LEFT(p.CodFab, 6) AS codigo_sublinea,
-				p.FamPro AS fampro
+				p.FamPro AS fampro,
+				TRIM(IFNULL(p.EstPro, '')) AS estado
 			FROM producto p
 			LEFT JOIN Tabla_M_Detalle tc
 			  ON tc.Cod_Tabla = 'TCOL'
@@ -884,7 +885,8 @@ class ModeloRecetasModelo
 					IFNULL(tc.Des_Larga, '') AS color,
 					IFNULL(tu.Des_Corta, '') AS unidad,
 					LEFT(p.CodFab, 6) AS codigo_sublinea,
-					IFNULL(p.CodAlm01, 0) AS stock
+					IFNULL(p.CodAlm01, 0) AS stock,
+					TRIM(IFNULL(p.EstPro, '')) AS estado
 				FROM producto p
 				LEFT JOIN Tabla_M_Detalle tc
 				  ON tc.Cod_Tabla = 'TCOL' AND tc.Cod_Argumento = p.ColPro

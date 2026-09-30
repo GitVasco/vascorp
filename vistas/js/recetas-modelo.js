@@ -1672,8 +1672,18 @@ function rmCacheMp(mp) {
 	RM.mpCache[mp.mp_codigo] = {
 		descripcion: mp.descripcion || "",
 		color: mp.color || "",
-		unidad: mp.unidad || ""
+		unidad: mp.unidad || "",
+		estado: mp.estado != null ? String(mp.estado) : ""
 	};
+}
+
+function rmBadgeEstadoMp(codigo) {
+	var info = RM.mpCache[codigo];
+	var est = info && info.estado != null ? String(info.estado).trim() : "";
+	if (est === "1") return "<span class='label label-success'>Activo</span>";
+	if (est === "0") return "<span class='label label-danger'>Inactivo</span>";
+	if (est === "") return "<span class='text-muted'>—</span>";
+	return "<span class='label label-default'>" + rmEsc(est) + "</span>";
 }
 
 function rmColorMp(codigo) {
@@ -1718,7 +1728,8 @@ function rmEnriquecerMpsAsignadas(done) {
 				RM.mpCache[cod] = {
 					descripcion: row.descripcion || "",
 					color: row.color || "",
-					unidad: row.unidad || ""
+					unidad: row.unidad || "",
+					estado: row.estado != null ? String(row.estado) : ""
 				};
 			});
 		}
@@ -1989,11 +2000,11 @@ function rmRenderTarjetasPorArticulo() {
 	var arts = rmArticulosParaTarjetas();
 
 	if (!arts.length) {
-		$tb.html("<tr><td colspan='10' class='text-muted'>Sin artículos activos</td></tr>");
+		$tb.html("<tr><td colspan='11' class='text-muted'>Sin artículos activos</td></tr>");
 		return;
 	}
 	if (!lineas.length) {
-		$tb.html("<tr><td colspan='10' class='text-muted'>Agrega sublíneas para ver las tarjetas</td></tr>");
+		$tb.html("<tr><td colspan='11' class='text-muted'>Agrega sublíneas para ver las tarjetas</td></tr>");
 		return;
 	}
 
@@ -2031,6 +2042,7 @@ function rmRenderTarjetasPorArticulo() {
 				+ (esTela ? " <span class='label label-danger'>Tela</span>" : "")
 				+ "</td>"
 				+ "<td>" + rmEsc(ok ? rmEtiquetaMp(res.mp_codigo) : "—") + "</td>"
+				+ "<td>" + (ok ? rmBadgeEstadoMp(res.mp_codigo) : "—") + "</td>"
 				+ "<td>" + rmEsc(ok ? rmFmtNum(res.consumo) : "—") + "</td>"
 				+ "<td>" + rmEsc(ok ? (res.unidad || "") : "") + "</td>"
 				+ "<td>" + (ok
