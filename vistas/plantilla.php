@@ -83,6 +83,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Recetas por modelo | Vasco System";
         } elseif ($_GET["ruta"] === "editar-receta-modelo") {
             $__tituloVentana = "Editor de receta | Vasco System";
+        } elseif ($_GET["ruta"] === "gre-manual" || $_GET["ruta"] === "gre-manual-crear") {
+            $__tituloVentana = "Guías de remisión manuales | Vasco System";
         } elseif ($_GET["ruta"] === "cuadre-ventas") {
             $__tituloVentana = "Cuadre de ventas del día | Vasco System";
         } elseif ($_GET["ruta"] === "regularizaciones-comerciales") {
@@ -224,6 +226,9 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "solicitudes-atencion-vasco") : ?>
     <link rel="stylesheet" href="vistas/css/vasco-solicitud-atencion.css?v=<?php echo rand(); ?>">
+    <?php endif; ?>
+    <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear")) : ?>
+    <link rel="stylesheet" href="vistas/css/gre-manual.css?v=2">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") : ?>
     <link rel="stylesheet" href="vistas/css/cuadre-ventas.css?v=44">
@@ -821,7 +826,6 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "escaneo-barcode-pedidocv" ||
                 $_GET["ruta"] == "crear-facturascv" ||
                 $_GET["ruta"] == "guias-remision" ||
-                $_GET["ruta"] == "guias-remision" ||
                 $_GET["ruta"] == "facturas" ||
                 $_GET["ruta"] == "proformas" ||
                 $_GET["ruta"] == "notas-credito" ||
@@ -836,6 +840,13 @@ CUERPO DOCUMENTO
 
 
                 include "modulos/facturacion/" . $_GET["ruta"] . ".php";
+            } else if ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear") {
+
+                if (!class_exists("ControladorGreManual") || !ControladorGreManual::puedeUsar()) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/facturacion/" . $_GET["ruta"] . ".php";
+                }
             } else if ($_GET["ruta"] == "categorias-comerciales") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_comerciales")) {
@@ -1193,6 +1204,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "solicitudes-atencion-vasco") { ?>
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear")) { ?>
+    <script src="vistas/js/gre-manual.js?v=6"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
     <script src="vistas/js/cuadre-ventas.js?v=47"></script>

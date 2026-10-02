@@ -118,6 +118,8 @@ require_once "controladores/talonarios.controlador.php";
 
 require_once "controladores/facturacion.controlador.php";
 
+require_once "controladores/gre-manual.controlador.php";
+
 require_once "controladores/procedimiento.controlador.php";
 
 require_once "controladores/salidas.controlador.php";

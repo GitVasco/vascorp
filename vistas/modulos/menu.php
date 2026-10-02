@@ -1529,6 +1529,28 @@
             ?>
 
 
+            <!-- Guías de remisión manuales (Facturación o Materia Prima) -->
+            <?php
+            if (ControladorGreManual::puedeUsar()) {
+            ?>
+                <li class="treeview <?php if ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear") echo 'active'; ?>">
+                    <a href="#">
+                        <i class="fa fa-truck text-green"></i> <span>Guías manuales</span>
+                        <span class="pull-right-container"><i class="fa fa-angle-left pull-right"></i></span>
+                    </a>
+                    <ul class="treeview-menu">
+                        <li class="<?php if ($_GET["ruta"] == "gre-manual-crear") echo 'active'; ?>">
+                            <a href="gre-manual-crear"><i class="fa fa-circle-o text-green"></i><span>Nueva guía</span></a>
+                        </li>
+                        <li class="<?php if ($_GET["ruta"] == "gre-manual") echo 'active'; ?>">
+                            <a href="gre-manual"><i class="fa fa-circle-o text-blue"></i><span>Listado y envío</span></a>
+                        </li>
+                    </ul>
+                </li>
+            <?php
+            }
+            ?>
+
             <!--  Facturacion-->
             <?php
             if ($_SESSION["facturacion"] == 1) {

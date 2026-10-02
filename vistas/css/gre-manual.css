@@ -1,0 +1,22 @@
+.gre-buscador { position: relative; }
+.gre-resultados {
+    position: absolute; z-index: 1000; left: 15px; right: 15px; max-height: 260px; overflow-y: auto;
+    margin: 0; display: none; box-shadow: 0 4px 10px rgba(0, 0, 0, .15);
+}
+#greItemBuscarWrap .gre-resultados { left: 0; right: 0; }
+.gre-resultados li { cursor: pointer; padding: 6px 10px; }
+.gre-resultados li:hover { background: #f4f4f4; }
+.gre-resultados small { color: #777; }
+#greDocsLista li { background: #f4f4f4; border: 1px solid #ddd; border-radius: 3px; padding: 3px 8px; margin: 2px; }
+.gre-compacto .box { margin-bottom: 12px; }
+.gre-compacto .box-header { padding: 7px 12px; }
+.gre-compacto .box-header .box-title { font-size: 15px; }
+.gre-compacto .box-body { padding: 10px 12px 2px; }
+.gre-compacto .form-group { margin-bottom: 8px; }
+.gre-compacto label { font-size: 12px; margin-bottom: 2px; color: #555; }
+.gre-compacto .nav-pills > li > a { padding: 4px 12px; }
+.gre-compacto .gre-resultados { left: 12px; right: 12px; }
+.gre-barra {
+    position: sticky; bottom: 0; z-index: 900; text-align: right; padding: 10px 15px;
+    background: rgba(255, 255, 255, .95); border-top: 1px solid #ddd; margin: 0 -15px -15px;
+}
