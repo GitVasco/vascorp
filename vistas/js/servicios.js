@@ -1445,3 +1445,7 @@ $(".box").on("click", ".btnReporteHistorialServicios", function () {
 $(".box").on("click", ".btnReportePendienteRetorno", function () {
     window.location = "vistas/reportes_excel/rpt_pendiente_retorno_servicios.php";
 });
+
+$(".box").on("click", ".btnReportePrecioServicio", function () {
+    window.location = "vistas/reportes_excel/rpt_precio_servicio.php";
+});
