@@ -328,6 +328,32 @@ function num($v)
             </table>
             <p style="margin:6px 0 0"><b>Total a pagar: S/ <?= h(number_format($totImporte, 2)); ?></b>
                 <?= $sinPrecio ? " — " . $sinPrecio . " modelo(s) sin precio registrado para este taller" : ""; ?></p>
+            <?php
+            $itemsMp = array();
+            foreach ($g["items"] as $it) {
+                if ($it["origen"] === "MP") {
+                    $itemsMp[] = $it;
+                }
+            }
+            if ($itemsMp) { ?>
+                <p class="os-atender" style="margin-top:12px"><b>Materia prima / avíos que se envían junto con las prendas:</b></p>
+                <table class="mx">
+                    <thead>
+                        <tr><th style="width:22px">N°</th><th style="width:80px">Código</th><th>Descripción</th><th style="width:70px">Unidad</th><th style="width:70px">Cantidad</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($itemsMp as $i => $it) { ?>
+                            <tr>
+                                <td><?= $i + 1; ?></td>
+                                <td class="l"><?= h($it["codigo"]); ?></td>
+                                <td class="l"><?= h($it["descripcion"]); ?></td>
+                                <td><?= h($it["unidad_desc"] !== "" ? $it["unidad_desc"] : $it["unidad_cod"]); ?></td>
+                                <td class="r"><?= h(num($it["cantidad"])); ?></td>
+                            </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            <?php } ?>
             <p style="font-size:9px;color:#666;margin:4px 0 0">Precio por docena según la lista de precios del servicio (importe = total ÷ 12 × precio).</p>
 
             <div class="firmas">

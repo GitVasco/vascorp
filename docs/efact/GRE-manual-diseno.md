@@ -58,6 +58,14 @@ Pantalla nueva para emitir GRE remitente **sin pasar por pedidos/facturación**:
 - Migración: `docs/sql/gre-manual-servicio.sql`.
 - Pendiente de definir: transporte cuando el taller recoge (ver con contabilidad/EFACT cómo declararlo).
 
+## 5d. Guía desde notas de salida de MP (avíos)
+- En **Notas de salida** (MP) hay una columna "Guía": botón **Emitir** (precarga la guía) o el número de la guía si ya existe.
+- Precarga: ítems de la nota (`ventas_cab` / `venta_det`), unidades traducidas a códigos SUNAT (heurística en `ctrUnidadSunat`, editable), motivo 13, observación "ENVIO DE MATERIA PRIMA / AVIOS SEGUN NOTA DE SALIDA N° ...". Destinatario: taller registrado con el mismo RUC; si no, el cliente de la nota (hay que completar el ubigeo). Peso y bultos a mano.
+- Avíos y prendas **viajan juntos**: si el destinatario ya tiene una guía sin enviar (p. ej. la del servicio), el formulario ofrece **agregar la nota a esa guía**. También se pueden sumar notas desde la pestaña "Nota de salida MP" de cualquier guía.
+- Una nota solo puede estar en una guía no anulada (`gre_manual_detjf.nota`). No toca stock ni `EstGuia` de la nota.
+- La hoja 2 (orden de servicio) lista aparte la MP/avíos enviados.
+- Migración: `docs/sql/gre-manual-nota.sql`.
+
 ## 6. Archivos
 - `docs/sql/gre-manual.sql` (instalación nueva) y `docs/sql/gre-manual-tipo.sql` (migración a internas/electrónicas)
 - `modelos/gre-manual.modelo.php`, `controladores/gre-manual.controlador.php`, `ajax/gre-manual.ajax.php`

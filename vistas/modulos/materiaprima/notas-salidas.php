@@ -87,6 +87,7 @@
            <th>Almacen de Salida</th>
            <th>Responsable</th>
            <th>Estado</th>
+           <th>Guía</th>
            <th style="width:130px">Acciones</th>
 
          </tr> 

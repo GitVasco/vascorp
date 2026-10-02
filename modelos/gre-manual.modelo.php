@@ -19,11 +19,11 @@ class ModeloGreManual
             }
         }
         if (!count($faltan)) {
-            $columnas = array(array("gre_manual_seriejf", "tipo"), array("gre_manualjf", "tipo"), array("gre_manualjf", "doc_interno"), array("gre_manualjf", "servicio"));
+            $columnas = array(array("gre_manual_seriejf", "tipo"), array("gre_manualjf", "tipo"), array("gre_manualjf", "doc_interno"), array("gre_manualjf", "servicio"), array("gre_manual_detjf", "nota"));
             foreach ($columnas as $tc) {
                 $stmt = $pdo->query("SHOW COLUMNS FROM " . $tc[0] . " LIKE " . $pdo->quote($tc[1]));
                 if (!$stmt || !$stmt->fetch()) {
-                    $faltan[] = $tc[0] . "." . $tc[1] . ($tc[1] === "servicio" ? " (ejecutar docs/sql/gre-manual-servicio.sql)" : " (ejecutar docs/sql/gre-manual-tipo.sql)");
+                    $faltan[] = $tc[0] . "." . $tc[1] . ($tc[1] === "servicio" ? " (ejecutar docs/sql/gre-manual-servicio.sql)" : ($tc[1] === "nota" ? " (ejecutar docs/sql/gre-manual-nota.sql)" : " (ejecutar docs/sql/gre-manual-tipo.sql)"));
                 }
             }
             $stmt = $pdo->query("SHOW TABLES LIKE 'gre_sector_datosjf'");
@@ -195,7 +195,7 @@ class ModeloGreManual
         if (!$cab) {
             return null;
         }
-        $stmt = $pdo->prepare("SELECT origen, codigo, descripcion, unidad_cod, unidad_desc, cantidad
+        $stmt = $pdo->prepare("SELECT origen, nota, codigo, descripcion, unidad_cod, unidad_desc, cantidad
             FROM gre_manual_detjf WHERE id_gre = :id ORDER BY item");
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -280,8 +280,26 @@ class ModeloGreManual
                     ->execute(array(":n" => $numero, ":id" => $s["id"]));
             }
 
-            $stmt = $pdo->prepare("INSERT INTO gre_manual_detjf (id_gre, item, origen, codigo, descripcion, unidad_cod, unidad_desc, cantidad)
-                VALUES (:id, :item, :origen, :codigo, :descripcion, :unidad_cod, :unidad_desc, :cantidad)");
+            // Una nota de salida no puede estar en dos guías vigentes
+            $notasGuia = array();
+            foreach ($items as $it) {
+                if (!empty($it["nota"])) {
+                    $notasGuia[$it["nota"]] = true;
+                }
+            }
+            foreach (array_keys($notasGuia) as $nk) {
+                $stmt = $pdo->prepare("SELECT g.documento FROM gre_manual_detjf d JOIN gre_manualjf g ON g.id = d.id_gre
+                    WHERE d.nota = :n AND g.estado <> 'ANULADO' AND g.id <> :id LIMIT 1");
+                $stmt->execute(array(":n" => $nk, ":id" => $id));
+                $otra = $stmt->fetchColumn();
+                if ($otra) {
+                    $pdo->rollBack();
+                    return array("ok" => false, "msg" => "La nota de salida " . $nk . " ya está en la guía " . $otra . ".");
+                }
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO gre_manual_detjf (id_gre, item, origen, nota, codigo, descripcion, unidad_cod, unidad_desc, cantidad)
+                VALUES (:id, :item, :origen, :nota, :codigo, :descripcion, :unidad_cod, :unidad_desc, :cantidad)");
             $n = 0;
             foreach ($items as $it) {
                 $n++;
@@ -289,6 +307,7 @@ class ModeloGreManual
                     ":id" => $id,
                     ":item" => $n,
                     ":origen" => $it["origen"],
+                    ":nota" => !empty($it["nota"]) ? $it["nota"] : null,
                     ":codigo" => $it["codigo"],
                     ":descripcion" => $it["descripcion"],
                     ":unidad_cod" => $it["unidad_cod"],
@@ -599,5 +618,105 @@ class ModeloGreManual
         $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /*=============================================
+    NOTAS DE SALIDA DE MP
+    =============================================*/
+
+    /** Notas de salida (NS) aún sin guía vigente, por número o razón social. */
+    public static function mdlBuscarNotas($q)
+    {
+        $stmt = Conexion::conectar()->prepare("SELECT CONCAT(vc.Tip, '-', vc.Ser, '-', vc.Nro) AS codigo,
+                CONCAT(vc.Nro, ' · ', IFNULL(c.RazCli, ''), ' · ', DATE(vc.FecEmi)) AS descripcion, 'C62' AS unidad
+            FROM ventas_cab vc
+            LEFT JOIN Clientes c ON c.Ruc = vc.Ruc
+            WHERE vc.Tip = 'NS' AND vc.EstVta NOT LIKE 'A'
+                AND YEAR(vc.FecEmi) >= YEAR(NOW()) - 1
+                AND (vc.Nro LIKE :q OR c.RazCli LIKE :q)
+                AND NOT EXISTS (SELECT 1 FROM gre_manual_detjf d JOIN gre_manualjf g ON g.id = d.id_gre
+                    WHERE d.nota = CONCAT(vc.Tip, '-', vc.Ser, '-', vc.Nro) AND g.estado <> 'ANULADO')
+            ORDER BY vc.FecEmi DESC LIMIT 30");
+        $like = "%" . $q . "%";
+        $stmt->bindParam(":q", $like, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Mapa nota => guía vigente, para marcar el listado de notas de salida. */
+    public static function mdlNotasGuiadas()
+    {
+        try {
+            $stmt = Conexion::conectar()->query("SELECT d.nota, MIN(g.id) AS id, MIN(g.documento) AS documento
+                FROM gre_manual_detjf d JOIN gre_manualjf g ON g.id = d.id_gre
+                WHERE d.nota IS NOT NULL AND g.estado <> 'ANULADO' GROUP BY d.nota");
+            if (!$stmt) {
+                return array();
+            }
+            $mapa = array();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $f) {
+                $mapa[$f["nota"]] = $f;
+            }
+            return $mapa;
+        } catch (Exception $e) {
+            return array();
+        }
+    }
+
+    /**
+     * Cabecera + ítems de una nota de salida, destinatario sugerido (por RUC: taller
+     * registrado o cliente legado) y guías abiertas del mismo destinatario.
+     */
+    public static function mdlNotaParaGuia($tip, $ser, $nro)
+    {
+        $pdo = Conexion::conectar();
+        $stmt = $pdo->prepare("SELECT vc.Tip, vc.Ser, vc.Nro, vc.Ruc, DATE(vc.FecEmi) AS fecha, vc.EstNota, vc.observacion,
+                c.RazCli, c.DirCli
+            FROM ventas_cab vc LEFT JOIN Clientes c ON c.Ruc = vc.Ruc
+            WHERE vc.Tip = :t AND vc.Ser = :s AND vc.Nro = :n AND vc.EstVta NOT LIKE 'A' LIMIT 1");
+        $stmt->execute(array(":t" => $tip, ":s" => $ser, ":n" => $nro));
+        $n = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$n) {
+            return null;
+        }
+        $n["clave"] = $tip . "-" . $ser . "-" . $nro;
+
+        $stmt = $pdo->prepare("SELECT det.CodPro AS codigo,
+                CONCAT_WS(' - ', p.DesPro, tbcol.Des_Larga) AS descripcion, det.CanVta AS cantidad,
+                und.Des_Larga AS und_larga, und.Des_Corta AS und_corta
+            FROM venta_det det
+            LEFT JOIN producto p ON p.CodPro = det.CodPro
+            LEFT JOIN tabla_m_detalle tbcol ON tbcol.Cod_Tabla = 'TCOL' AND tbcol.Cod_Argumento = p.ColPro
+            LEFT JOIN tabla_m_detalle und ON und.Cod_Tabla = 'TUND' AND und.Cod_Argumento = p.UndPro
+            WHERE det.Tip = :t AND det.Ser = :s AND det.Nro = :n
+            ORDER BY det.Item");
+        $stmt->execute(array(":t" => $tip, ":s" => $ser, ":n" => $nro));
+        $n["items"] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Destinatario sugerido: taller con datos fiscales registrados (mismo RUC) o el cliente de la nota
+        $n["destino"] = null;
+        $stmt = $pdo->prepare("SELECT d.cod_sector AS codigo, d.razon_social AS nombre, d.tipo_doc, d.doc AS documento, d.email,
+                d.direccion, d.ubigeo, d.dpto AS departamento, d.prov AS provincia, d.dist AS distrito
+            FROM gre_sector_datosjf d WHERE d.doc = :r LIMIT 1");
+        $stmt->execute(array(":r" => $n["Ruc"]));
+        $dst = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($dst) {
+            $dst["origen"] = "TALLER";
+            $n["destino"] = $dst;
+        } elseif ($n["RazCli"]) {
+            $n["destino"] = array("origen" => "MANUAL", "codigo" => "", "nombre" => $n["RazCli"],
+                "tipo_doc" => strlen($n["Ruc"]) === 8 ? "1" : "6", "documento" => $n["Ruc"], "direccion" => $n["DirCli"]);
+        }
+
+        // Guía vigente de esta nota y guías abiertas (sin enviar) del mismo destinatario
+        $stmt = $pdo->prepare("SELECT g.id, g.documento FROM gre_manual_detjf d JOIN gre_manualjf g ON g.id = d.id_gre
+            WHERE d.nota = :k AND g.estado <> 'ANULADO' LIMIT 1");
+        $stmt->execute(array(":k" => $n["clave"]));
+        $n["guia"] = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stmt = $pdo->prepare("SELECT id, documento, servicio FROM gre_manualjf WHERE estado = 'GENERADO' AND dest_doc = :r ORDER BY id DESC LIMIT 5");
+        $stmt->execute(array(":r" => $n["Ruc"]));
+        $n["guias_abiertas"] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $n;
     }
 }

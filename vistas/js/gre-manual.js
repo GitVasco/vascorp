@@ -228,7 +228,7 @@
     function agregarItem(o) {
         sincronizar();
         var cod = o.unidad || "C62";
-        items.push({ origen: o.origen, codigo: o.codigo || "", descripcion: o.descripcion || "", unidad_cod: cod, unidad_desc: descUnidad(cod), cantidad: o.cantidad || "" });
+        items.push({ origen: o.origen, nota: o.nota || "", codigo: o.codigo || "", descripcion: o.descripcion || "", unidad_cod: cod, unidad_desc: descUnidad(cod), cantidad: o.cantidad || "" });
         pintarItems();
     }
 
@@ -281,6 +281,7 @@
             var $s = $(this).find(".it-unidad option:selected");
             it.push({
                 origen: o.origen,
+                nota: o.nota || "",
                 codigo: $(this).find(".it-codigo").val(),
                 descripcion: $(this).find(".it-desc").val(),
                 unidad_cod: $s.val(),
@@ -332,7 +333,7 @@
         $("#greChoferLicencia").val(g.chofer_licencia); $("#grePlaca").val(g.placa);
         docs = g.docs_rel ? JSON.parse(g.docs_rel) : [];
         items = $.map(g.items, function (i) {
-            return { origen: i.origen, codigo: i.codigo, descripcion: i.descripcion, unidad_cod: i.unidad_cod, unidad_desc: i.unidad_desc, cantidad: i.cantidad };
+            return { origen: i.origen, nota: i.nota || "", codigo: i.codigo, descripcion: i.descripcion, unidad_cod: i.unidad_cod, unidad_desc: i.unidad_desc, cantidad: i.cantidad };
         });
         pintarItems(); pintarDocs(); setModalidad(); setMotivo(); refrescarSP();
         $("#greGuardarTallerWrap").toggle(g.dest_origen === "TALLER");
@@ -352,6 +353,56 @@
             $("#greDestDoc").val(""); $("#greDestEmail").val("");
         }
         refrescarSP();
+    }
+
+    // Agrega los ítems de una nota de salida de MP (unidades ya traducidas a códigos SUNAT)
+    function agregarNota(clave, opts) {
+        sincronizar();
+        if ($.grep(items, function (i) { return i.nota === clave; }).length) { err("La nota " + clave + " ya está en esta guía."); return; }
+        $.getJSON(URL, { accion: "nota-datos", clave: clave }, function (r) {
+            var n = r.nota;
+            if (n.guia) { err("La nota " + clave + " ya está en la guía " + n.guia.documento + "."); return; }
+            if (!n.items.length) { err("La nota no tiene ítems."); return; }
+            $.each(n.items, function (k, i) {
+                var u = i.unidad || "C62";
+                items.push({ origen: "MP", nota: clave, codigo: String(i.codigo || ""), descripcion: i.descripcion || "", unidad_cod: u, unidad_desc: descUnidad(u), cantidad: parseFloat(i.cantidad) });
+            });
+            pintarItems();
+            var frase = "MATERIA PRIMA / AVIOS SEGUN NOTA DE SALIDA N° " + n.Nro + ".";
+            var obs = v("greObs");
+            if (obs.indexOf(String(n.Nro)) === -1) $("#greObs").val((obs ? obs + " " : "") + frase);
+
+            if (opts && opts.nueva) {
+                $("#greMotivo").val("13");
+                $("#greMotivoDesc").data("tocado", false);
+                setMotivo();
+                if (!v("greObs") || obs === "") $("#greObs").val("ENVIO DE " + frase);
+                var d = n.destino;
+                if (d && !v("greDestNombre")) {
+                    $("input[name=greDestOrigen][value=" + d.origen + "]").prop("checked", true).trigger("change");
+                    if (d.origen === "TALLER") {
+                        aplicarTaller({ codigo: d.codigo, nombre: d.nombre, razon_social: d.nombre, tipo_doc: d.tipo_doc, documento: d.documento,
+                            email: d.email, direccion: d.direccion, ubigeo: d.ubigeo, departamento: d.departamento, provincia: d.provincia, distrito: d.distrito });
+                    } else {
+                        $("#greDestNombre").val(d.nombre).data("codigo", "");
+                        $("#greDestTipoDoc").val(d.tipo_doc); $("#greDestDoc").val(d.documento);
+                        $("#gre_lle_direccion").val(d.direccion || "");
+                        err("Completa el ubigeo de llegada: este destinatario no tiene sus datos fiscales registrados.");
+                    }
+                }
+                usarVasco("par");
+                if (n.guias_abiertas && n.guias_abiertas.length) {
+                    var h = "Este destinatario ya tiene guías sin enviar: ";
+                    $.each(n.guias_abiertas, function (k, g) {
+                        h += "<a href='index.php?ruta=gre-manual-crear&id=" + g.id + "&agregar_nota=" + encodeURIComponent(clave) + "'><b>" + esc(g.documento) + "</b>" +
+                            (g.servicio ? " (servicio " + esc(g.servicio) + ")" : "") + "</a> · ";
+                    });
+                    $("#greAvisoNota").html(h + "si las prendas y los avíos viajan juntos, <b>agrégalos a esa guía</b> en vez de emitir otra.").show();
+                }
+            }
+            ok("Se agregaron " + n.items.length + " ítems de la nota " + n.Nro + ". Completa peso y bultos.");
+            refrescarSP();
+        }).fail(ajaxErr);
     }
 
     function cargarServicio(codigo) {
@@ -403,10 +454,14 @@
             var id = parseInt($("#greForm").data("id"), 10) || 0;
             var sv = $("#greForm").data("servicio");
             if (!id && sv) cargarServicio(String(sv));
+            var nt = $("#greForm").data("nota");
+            if (!id && !sv && nt) agregarNota(String(nt), { nueva: true });
             if (id) {
                 $.getJSON(URL, { accion: "obtener", id: id }, function (r) {
                     if (r.guia.estado !== "GENERADO") { err("Solo se edita una guía GENERADA."); window.location = "gre-manual"; return; }
                     poblar(r.guia);
+                    var ag = $("#greForm").data("agregar");
+                    if (ag) agregarNota(String(ag), {});
                 }).fail(ajaxErr);
             }
         }).fail(ajaxErr);
@@ -500,6 +555,7 @@
         buscador($("#greItemBuscador"), $("#greItemResultados"), function () { return tipoItem; },
             function (d) { return "<b>" + esc(d.codigo) + "</b> " + esc(d.descripcion); },
             function (d) {
+                if (tipoItem === "nota") { agregarNota(d.codigo, { nueva: !v("greDestNombre") }); return; }
                 var o = { modelo: "MODELO", articulo: "ARTICULO", mp: "MP" }[tipoItem];
                 agregarItem({ origen: o, codigo: d.codigo, descripcion: d.descripcion, unidad: d.unidad, cantidad: "" });
             });

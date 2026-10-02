@@ -56,6 +56,7 @@ switch ($accion) {
             "articulo" => "mdlBuscarArticulos",
             "mp" => "mdlBuscarMateriaPrima",
             "taller" => "mdlBuscarTalleres",
+            "nota" => "mdlBuscarNotas",
         );
         if (!isset($mapa[$tipo])) {
             greJson(array("ok" => false, "msg" => "Tipo de búsqueda inválido."), 400);
@@ -75,6 +76,17 @@ switch ($accion) {
     case "consultar-doc":
         $r = ControladorGreManual::ctrConsultarDocumento(isset($_REQUEST["tipo_doc"]) ? $_REQUEST["tipo_doc"] : "", isset($_REQUEST["numero"]) ? $_REQUEST["numero"] : "");
         greJson($r, !empty($r["ok"]) ? 200 : 400);
+
+    case "nota-datos":
+        $partes = explode("-", isset($_REQUEST["clave"]) ? trim($_REQUEST["clave"]) : "");
+        $nt = count($partes) === 3 ? ModeloGreManual::mdlNotaParaGuia($partes[0], $partes[1], $partes[2]) : null;
+        if (!$nt) {
+            greJson(array("ok" => false, "msg" => "Nota de salida no encontrada o anulada."), 404);
+        }
+        foreach ($nt["items"] as $k => $it) {
+            $nt["items"][$k]["unidad"] = ControladorGreManual::ctrUnidadSunat($it["und_larga"], $it["und_corta"]);
+        }
+        greJson(array("ok" => true, "nota" => $nt));
 
     case "servicio-datos":
         $sv = ModeloGreManual::mdlServicioParaGuia(isset($_REQUEST["codigo"]) ? trim($_REQUEST["codigo"]) : "");

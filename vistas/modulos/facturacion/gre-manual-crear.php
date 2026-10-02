@@ -1,8 +1,10 @@
 <?php
 $greId = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
+$greNota = isset($_GET["nota"]) ? preg_replace('/[^A-Za-z0-9-]/', '', $_GET["nota"]) : "";
+$greAgregar = isset($_GET["agregar_nota"]) ? preg_replace('/[^A-Za-z0-9-]/', '', $_GET["agregar_nota"]) : "";
 $greServicio = isset($_GET["servicio"]) ? preg_replace('/[^A-Za-z0-9_-]/', '', $_GET["servicio"]) : "";
 ?>
-<div class="content-wrapper" id="greForm" data-id="<?= $greId; ?>" data-servicio="<?= htmlspecialchars($greServicio, ENT_QUOTES, "UTF-8"); ?>">
+<div class="content-wrapper" id="greForm" data-id="<?= $greId; ?>" data-servicio="<?= htmlspecialchars($greServicio, ENT_QUOTES, "UTF-8"); ?>" data-nota="<?= htmlspecialchars($greNota, ENT_QUOTES, "UTF-8"); ?>" data-agregar="<?= htmlspecialchars($greAgregar, ENT_QUOTES, "UTF-8"); ?>">
 
     <section class="content-header">
         <h1>
@@ -20,6 +22,7 @@ $greServicio = isset($_GET["servicio"]) ? preg_replace('/[^A-Za-z0-9_-]/', '', $
 
         <div class="alert alert-danger" id="greFaltan" style="display:none"></div>
         <div class="alert alert-info" id="greAvisoServicio" style="display:none"></div>
+        <div class="alert alert-warning" id="greAvisoNota" style="display:none"></div>
 
         <!-- TRASLADO -->
         <div class="box box-primary">
@@ -220,6 +223,7 @@ $greServicio = isset($_GET["servicio"]) ? preg_replace('/[^A-Za-z0-9_-]/', '', $
                             <li class="active"><a href="#" data-tipo="modelo">Modelo</a></li>
                             <li><a href="#" data-tipo="articulo">Artículo</a></li>
                             <li><a href="#" data-tipo="mp">Materia prima</a></li>
+                            <li><a href="#" data-tipo="nota">Nota de salida MP</a></li>
                             <li><a href="#" data-tipo="manual">A mano</a></li>
                         </ul>
                     </div>

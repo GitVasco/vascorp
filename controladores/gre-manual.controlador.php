@@ -103,6 +103,32 @@ class ControladorGreManual
         );
     }
 
+    /**
+     * Unidad de MP (TUND del sistema) -> código SUNAT de unidades_medidajf.
+     * Heurística por nombre; lo que no se reconoce queda en C62 (piezas) y se puede cambiar en el formulario.
+     */
+    public static function ctrUnidadSunat($larga, $corta)
+    {
+        $t = strtoupper(trim($larga . " " . $corta));
+        $t = strtr($t, array("Á" => "A", "É" => "E", "Í" => "I", "Ó" => "O", "Ú" => "U"));
+        $reglas = array(
+            "MTR" => '/METRO|\bMTS?\b|\bMT\b|\bM\b/',
+            "KGM" => '/KILO|\bKGS?\b/',
+            "DZN" => '/DOCENA|\bDOC\b/',
+            "PR" => '/\bPAR(ES)?\b/',
+            "BX" => '/CAJA/',
+            "BG" => '/BOLSA/',
+            "PAK" => '/PACK|PAQUETE/',
+            "EST" => '/ESTUCHE/',
+        );
+        foreach ($reglas as $cod => $rx) {
+            if (preg_match($rx, $t)) {
+                return $cod;
+            }
+        }
+        return "C62";
+    }
+
     /** Mismos usuarios que ven "Cambiar Correlativo" en Guías Remisión. */
     public static function puedeCorregirCorrelativo()
     {
@@ -287,8 +313,10 @@ class ControladorGreManual
                     break;
                 }
                 $origen = isset($it["origen"]) && in_array($it["origen"], array("MODELO", "ARTICULO", "MP", "MANUAL"), true) ? $it["origen"] : "MANUAL";
+                $nota = isset($it["nota"]) ? self::t($it["nota"], 20) : "";
                 $items[] = array(
                     "origen" => $origen,
+                    "nota" => preg_match('/^[A-Za-z0-9-]{1,20}$/', $nota) ? $nota : "",
                     "codigo" => self::t(isset($it["codigo"]) ? $it["codigo"] : "", 16),
                     "descripcion" => $desc,
                     "unidad_cod" => $uni !== "" ? $uni : "C62",
