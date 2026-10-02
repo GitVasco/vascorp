@@ -5305,64 +5305,37 @@ class ModeloCuentas
 		$stmt = null;
 	}
 
-	static public function mdlUltPagos($cliente)
+	/*=============================================
+	PAGOS DE LOS ULTIMOS 6 MESES (mes actual + 5 anteriores): filas crudas
+	- Códigos de cobranza efectiva: misma lista definitiva de mrCodigosCobranzaEfectiva()
+	  (metas-retos.config.php). Antes faltaban TR, 15, 16, 17 y 18 (Yape, link, tarjeta...).
+	- Ventana por meses calendario completos.
+	- La marca (Jackyform / RosaFlor) la resuelve el controlador con la misma lógica de
+	  la sincronización (serie del documento, letras suben por doc_origen).
+	=============================================*/
+
+	static public function mdlUltPagosFilas($cliente)
 	{
 
-
 		$stmt = Conexion::conectar()->prepare("SELECT 
-		@i := @i + 1 AS contador, 
-		  YEAR(c.fecha) AS anno,
-		  CASE
-			WHEN MONTH(c.fecha) = 1 
-			THEN 'ENERO' 
-			WHEN MONTH(c.fecha) = 2 
-			THEN 'FEBRERO' 
-			WHEN MONTH(c.fecha) = 3 
-			THEN 'MARZO' 
-			WHEN MONTH(c.fecha) = 4 
-			THEN 'ABRIL' 
-			WHEN MONTH(c.fecha) = 5 
-			THEN 'MAYO' 
-			WHEN MONTH(c.fecha) = 6 
-			THEN 'JUNIO' 
-			WHEN MONTH(c.fecha) = 7 
-			THEN 'JULIO' 
-			WHEN MONTH(c.fecha) = 8 
-			THEN 'AGOSTO' 
-			WHEN MONTH(c.fecha) = 9 
-			THEN 'SEPTIEMBRE' 
-			WHEN MONTH(c.fecha) = 10 
-			THEN 'OCTUBRE' 
-			WHEN MONTH(c.fecha) = 11 
-			THEN 'NOVIEMBRE' 
-			ELSE 'DICIEMBRE' 
-		  END AS mes,
-		  FORMAT(SUM(c.monto),2) AS monto,
-		  FORMAT(SUM(CASE WHEN TRIM(c.vendedor) IN ('00', '00B', '00b', '04', '05', '19', '22', '27') THEN c.monto ELSE 0 END),2) AS monto_jackyform,
-		  FORMAT(SUM(CASE WHEN TRIM(c.vendedor) IN ('24', '26', '28') THEN c.monto ELSE 0 END),2) AS monto_rosalinda
+		  c.fecha,
+		  c.monto,
+		  c.tipo_doc,
+		  c.num_cta,
+		  c.doc_origen
 		FROM
 		  cuenta_ctejf c 
-		  CROSS JOIN (SELECT @i := 0) r
 		WHERE c.tip_mov = '-' 
-		  AND c.fecha BETWEEN DATE_SUB(NOW(), INTERVAL 7 MONTH) 
-		  AND NOW() 
+		  AND c.fecha >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01') 
+		  AND c.fecha < DATE_ADD(CURDATE(), INTERVAL 1 DAY) 
 		  AND c.cliente = :cliente 
-		  AND c.cod_pago IN ('00', '05', '06', '14', '80', '82') 
-		GROUP BY YEAR(c.fecha),
-		  MONTH(c.fecha) 
-		ORDER BY YEAR(c.fecha) DESC,
-		  MONTH(c.fecha) DESC
-		  LIMIT 6");
+		  AND c.cod_pago IN ('00', 'TR', '05', '06', '14', '15', '16', '17', '18', '80', '82')");
 
 		$stmt->bindParam(":cliente", $cliente, PDO::PARAM_STR);
 
 		$stmt->execute();
 
-		return $stmt->fetchAll();
-
-		$stmt->close();
-
-		$stmt = null;
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
 	static public function mdlSaldoFecha($inicio, $fin)

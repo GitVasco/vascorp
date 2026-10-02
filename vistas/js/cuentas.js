@@ -3127,6 +3127,15 @@ $("#btnCargarPagos").click(function () {
                 return;
             }
 
+            var celda = function (v, fuerte) {
+                var t = v || "0.00";
+                return (
+                    '<td class="text-right" style="font-variant-numeric: tabular-nums;">' +
+                    (fuerte ? "<strong>" + t + "</strong>" : t) +
+                    "</td>"
+                );
+            };
+
             var filas = "";
             for (var i = 0; i < respuesta.length; i++) {
                 var r = respuesta[i];
@@ -3136,15 +3145,9 @@ $("#btnCargarPagos").click(function () {
                     '<td style="white-space:nowrap;">' +
                     periodo +
                     "</td>" +
-                    '<td class="text-right" style="font-variant-numeric: tabular-nums;">' +
-                    (r["monto_jackyform"] || "0.00") +
-                    "</td>" +
-                    '<td class="text-right" style="font-variant-numeric: tabular-nums;">' +
-                    (r["monto_rosalinda"] || "0.00") +
-                    "</td>" +
-                    '<td class="text-right" style="font-variant-numeric: tabular-nums;"><strong>' +
-                    (r["monto"] || "0.00") +
-                    "</strong></td>" +
+                    celda(r["monto_jackyform"]) +
+                    celda(r["monto_rosalinda"]) +
+                    celda(r["monto"], true) +
                     "</tr>";
             }
 

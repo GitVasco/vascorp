@@ -1236,7 +1236,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/unidadesmedida.js"></script>
     <script src="vistas/js/servicios.js"></script>
     <script src="vistas/js/bancos.js"></script>
-    <script src="vistas/js/cuentas.js"></script>
+    <script src="vistas/js/cuentas.js?v=4"></script>
     <script src="vistas/js/vendedor.js"></script>
     <script>
         window.URL_BASE_IMPRESION_PROFORMA = "<?php echo obtenerUrlBaseImpresionProforma(); ?>";

@@ -1889,12 +1889,58 @@ class ControladorCuentas
 	MOSTRAR CUENTAS
 	=============================================*/
 
+	/*=============================================
+	PAGOS POR MES Y MARCA (últimos 6 meses)
+	La marca sale de la serie del documento pagado (misma lógica de la sincronización
+	con Vasco Online: JF = Jackyform, RF = RosaFlor; letras suben por doc_origen).
+	Los 6 meses siempre salen, en 0.00 si no hubo pagos.
+	=============================================*/
 	static public function ctrUltPagos($cliente)
 	{
 
-		$respuesta = ModeloCuentas::mdlUltPagos($cliente);
+		// Antes de cualquier date()/strtotime(): un aviso de zona horaria rompe el JSON del ajax
+		date_default_timezone_set("America/Lima");
 
-		return $respuesta;
+		if (!class_exists("ControladorVascoSync")) {
+			require_once __DIR__ . "/vasco-sync.controlador.php";
+		}
+		if (!class_exists("ModeloVascoSync")) {
+			require_once dirname(__DIR__) . "/modelos/vasco-sync.modelo.php";
+		}
+
+		$filas = ModeloCuentas::mdlUltPagosFilas($cliente);
+		ControladorVascoSync::prepararBrandCodeParaLote($filas);
+
+		$porMes = array();
+		foreach ($filas as $f) {
+			$clave = date("Y-n", strtotime($f["fecha"]));
+			if (!isset($porMes[$clave])) {
+				$porMes[$clave] = array("JF" => 0.0, "RF" => 0.0);
+			}
+			$marca = ControladorVascoSync::mapBrandCode($f) === "RF" ? "RF" : "JF";
+			$porMes[$clave][$marca] += (float) $f["monto"];
+		}
+
+		$nombres = array(1 => "ENERO", 2 => "FEBRERO", 3 => "MARZO", 4 => "ABRIL", 5 => "MAYO", 6 => "JUNIO",
+			7 => "JULIO", 8 => "AGOSTO", 9 => "SEPTIEMBRE", 10 => "OCTUBRE", 11 => "NOVIEMBRE", 12 => "DICIEMBRE");
+
+		$resultado = array();
+		for ($i = 0; $i < 6; $i++) {
+			$ts = strtotime(date("Y-m-01") . " -" . $i . " month");
+			$anno = (int) date("Y", $ts);
+			$mes = (int) date("n", $ts);
+			$m = isset($porMes[$anno . "-" . $mes]) ? $porMes[$anno . "-" . $mes] : array("JF" => 0.0, "RF" => 0.0);
+
+			$resultado[] = array(
+				"anno" => $anno,
+				"mes" => $nombres[$mes],
+				"monto_jackyform" => number_format($m["JF"], 2),
+				"monto_rosalinda" => number_format($m["RF"], 2),
+				"monto" => number_format($m["JF"] + $m["RF"], 2)
+			);
+		}
+
+		return $resultado;
 	}
 
 	/*=============================================
