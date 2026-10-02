@@ -74,7 +74,7 @@
                 { data: "fecha_emision" },
                 { data: "fecha_traslado" },
                 { data: null, render: function (r) { return esc(r.motivo_cod + " - " + r.motivo_desc); } },
-                { data: null, render: function (r) { return esc(r.dest_nombre) + " <small>" + esc(r.dest_doc) + "</small>"; } },
+                { data: null, render: function (r) { return esc(r.dest_nombre); } },
                 { data: "lle_dist" },
                 { data: "items" },
                 { data: "peso_kg" },

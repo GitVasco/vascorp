@@ -47,7 +47,7 @@ class TablaNotasSalidas{
             if (isset($notasGuiadas[$claveNota])) {
                 $guiaCol = "<a href='index.php?ruta=gre-manual' title='Ver en guías manuales'><span class='label label-success'>" . $notasGuiadas[$claveNota]["documento"] . "</span></a>";
             } elseif ($puedeGuia) {
-                $guiaCol = "<a class='btn btn-xs btn-success' title='Emitir guía de remisión' href='index.php?ruta=gre-manual-crear&nota=" . rawurlencode($claveNota) . "'><i class='fa fa-truck'></i> Emitir</a>";
+                $guiaCol = "<a class='btn btn-xs btn-success' title='Emitir guía de remisión' target='_blank' rel='noopener' href='index.php?ruta=gre-manual-crear&nota=" . rawurlencode($claveNota) . "'><i class='fa fa-truck'></i> Emitir</a>";
             } else {
                 $guiaCol = "";
             }
