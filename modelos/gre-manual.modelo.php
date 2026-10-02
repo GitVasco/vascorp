@@ -19,12 +19,16 @@ class ModeloGreManual
             }
         }
         if (!count($faltan)) {
-            $columnas = array(array("gre_manual_seriejf", "tipo"), array("gre_manualjf", "tipo"), array("gre_manualjf", "doc_interno"));
+            $columnas = array(array("gre_manual_seriejf", "tipo"), array("gre_manualjf", "tipo"), array("gre_manualjf", "doc_interno"), array("gre_manualjf", "servicio"));
             foreach ($columnas as $tc) {
                 $stmt = $pdo->query("SHOW COLUMNS FROM " . $tc[0] . " LIKE " . $pdo->quote($tc[1]));
                 if (!$stmt || !$stmt->fetch()) {
-                    $faltan[] = $tc[0] . "." . $tc[1] . " (ejecutar docs/sql/gre-manual-tipo.sql)";
+                    $faltan[] = $tc[0] . "." . $tc[1] . ($tc[1] === "servicio" ? " (ejecutar docs/sql/gre-manual-servicio.sql)" : " (ejecutar docs/sql/gre-manual-tipo.sql)");
                 }
+            }
+            $stmt = $pdo->query("SHOW TABLES LIKE 'gre_sector_datosjf'");
+            if (!$stmt || !$stmt->fetchColumn()) {
+                $faltan[] = "gre_sector_datosjf (ejecutar docs/sql/gre-manual-servicio.sql)";
             }
         }
         return $faltan;
@@ -155,7 +159,7 @@ class ModeloGreManual
 
     public static function mdlListar($desde, $hasta, $estado, $tipo = "")
     {
-        $sql = "SELECT g.id, g.documento, g.tipo, g.doc_interno, g.fecha_emision, g.fecha_traslado, g.motivo_cod, g.motivo_desc,
+        $sql = "SELECT g.id, g.documento, g.tipo, g.doc_interno, g.servicio, g.fecha_emision, g.fecha_traslado, g.motivo_cod, g.motivo_desc,
                     g.modalidad, g.dest_nombre, g.dest_doc, g.lle_dist, g.peso_kg, g.estado,
                     g.usuario_registro, g.fecha_envio,
                     (SELECT COUNT(*) FROM gre_manual_detjf d WHERE d.id_gre = g.id) AS items
@@ -214,7 +218,7 @@ class ModeloGreManual
                 "dest_email", "par_ubigeo", "par_direccion", "par_dpto", "par_prov", "par_dist", "lle_ubigeo",
                 "lle_direccion", "lle_dpto", "lle_prov", "lle_dist", "transp_ruc", "transp_nombre", "transp_mtc",
                 "chofer_tipo_doc", "chofer_doc", "chofer_nombres", "chofer_apellidos", "chofer_licencia",
-                "placa", "docs_rel",
+                "placa", "docs_rel", "servicio",
             );
 
             if ($id > 0) {
@@ -245,6 +249,16 @@ class ModeloGreManual
                 if (!$s) {
                     $pdo->rollBack();
                     return array("ok" => false, "msg" => "La serie no existe o está inactiva.");
+                }
+                if (!empty($c["servicio"])) {
+                    $stmt = $pdo->prepare("SELECT documento FROM gre_manualjf WHERE servicio = :sv AND estado <> 'ANULADO' LIMIT 1 FOR UPDATE");
+                    $stmt->bindValue(":sv", $c["servicio"]);
+                    $stmt->execute();
+                    $ya = $stmt->fetchColumn();
+                    if ($ya) {
+                        $pdo->rollBack();
+                        return array("ok" => false, "msg" => "El servicio " . $c["servicio"] . " ya tiene la guía " . $ya . ".");
+                    }
                 }
                 $numero = (int) $s["correlativo"] + 1;
                 $documento = $serie . "-" . str_pad($numero, 8, "0", STR_PAD_LEFT);
@@ -430,5 +444,160 @@ class ModeloGreManual
             error_log("[GRE_MANUAL] " . $e->getMessage());
             return array("ok" => false, "msg" => "No se pudo actualizar el correlativo.");
         }
+    }
+
+    /*=============================================
+    SERVICIOS / TALLERES
+    =============================================*/
+
+    public static function mdlBuscarTalleres($q)
+    {
+        $stmt = Conexion::conectar()->prepare("SELECT s.cod_sector AS codigo, s.nom_sector AS nombre,
+                d.razon_social, d.tipo_doc, d.doc AS documento, d.email, d.direccion, d.ubigeo, d.dpto AS departamento,
+                d.prov AS provincia, d.dist AS distrito
+            FROM sectorjf s
+            LEFT JOIN gre_sector_datosjf d ON d.cod_sector = s.cod_sector
+            WHERE s.tipo IS NOT NULL AND s.tipo <> 0 AND (s.nom_sector LIKE :q OR s.cod_sector LIKE :q)
+            ORDER BY s.nom_sector LIMIT 30");
+        $like = "%" . $q . "%";
+        $stmt->bindParam(":q", $like, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Datos fiscales guardados de un taller (o null). Tolera que la tabla aún no exista. */
+    public static function mdlDatosTaller($cod)
+    {
+        try {
+            $stmt = Conexion::conectar()->prepare("SELECT razon_social, tipo_doc, doc, email, direccion, ubigeo, dpto, prov, dist
+                FROM gre_sector_datosjf WHERE cod_sector = :c");
+            if (!$stmt) {
+                return null;
+            }
+            $stmt->bindParam(":c", $cod, PDO::PARAM_STR);
+            if (!$stmt->execute()) {
+                return null;
+            }
+            $f = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $f ? $f : null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /** Todos los datos fiscales indexados por cod_sector (para el listado de Sectores). */
+    public static function mdlTodosDatosTaller()
+    {
+        try {
+            $stmt = Conexion::conectar()->query("SELECT cod_sector, razon_social, tipo_doc, doc, direccion, dist FROM gre_sector_datosjf");
+            if (!$stmt) {
+                return array();
+            }
+            $mapa = array();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $f) {
+                $mapa[$f["cod_sector"]] = $f;
+            }
+            return $mapa;
+        } catch (Exception $e) {
+            return array();
+        }
+    }
+
+    public static function mdlUbigeoPorCodigo($cod)
+    {
+        $stmt = Conexion::conectar()->prepare("SELECT codigo, departamento, provincia, distrito FROM ubigeo WHERE codigo = :c LIMIT 1");
+        $stmt->bindParam(":c", $cod, PDO::PARAM_STR);
+        $stmt->execute();
+        $f = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $f ? $f : null;
+    }
+
+    public static function mdlGuardarDatosTaller($cod, $d, $usuario)
+    {
+        $stmt = Conexion::conectar()->prepare("INSERT INTO gre_sector_datosjf
+                (cod_sector, razon_social, tipo_doc, doc, email, direccion, ubigeo, dpto, prov, dist, usuario)
+            VALUES (:cod, :rs, :td, :doc, :email, :dir, :ubi, :dpto, :prov, :dist, :usu)
+            ON DUPLICATE KEY UPDATE razon_social = VALUES(razon_social), tipo_doc = VALUES(tipo_doc), doc = VALUES(doc),
+                email = VALUES(email), direccion = VALUES(direccion), ubigeo = VALUES(ubigeo), dpto = VALUES(dpto),
+                prov = VALUES(prov), dist = VALUES(dist), usuario = VALUES(usuario)");
+        return $stmt->execute(array(
+            ":cod" => $cod, ":rs" => $d["razon_social"], ":td" => $d["tipo_doc"], ":doc" => $d["doc"], ":email" => $d["email"],
+            ":dir" => $d["direccion"], ":ubi" => $d["ubigeo"], ":dpto" => $d["dpto"], ":prov" => $d["prov"], ":dist" => $d["dist"],
+            ":usu" => $usuario,
+        ));
+    }
+
+    /** Servicio + taller + ítems agrupados por modelo + guía existente (si la hay). */
+    public static function mdlServicioParaGuia($codigo)
+    {
+        $pdo = Conexion::conectar();
+        $stmt = $pdo->prepare("SELECT se.codigo, se.taller, se.fecha, s.nom_sector, s.tipo
+            FROM serviciosjf se LEFT JOIN sectorjf s ON se.taller = s.cod_sector WHERE se.codigo = :c");
+        $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $sv = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sv) {
+            return null;
+        }
+        $stmt = $pdo->prepare("SELECT a.modelo AS codigo, IFNULL(NULLIF(TRIM(m.nombre), ''), MIN(a.nombre)) AS descripcion,
+                COALESCE(NULLIF(TRIM(m.cod_unidad), ''), 'C62') AS unidad, SUM(sd.cantidad) AS cantidad
+            FROM servicios_detallejf sd
+            LEFT JOIN articulojf a ON sd.articulo = a.articulo
+            LEFT JOIN modelojf m ON a.modelo = m.modelo
+            WHERE sd.codigo = :c
+            GROUP BY a.modelo, m.nombre, m.cod_unidad
+            HAVING SUM(sd.cantidad) > 0
+            ORDER BY a.modelo");
+        $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $sv["items"] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // ¿El servicio viene de un corte? (sus detalles se registran con cabecera_taller)
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM servicios_detallejf WHERE codigo = :c AND cabecera_taller IS NOT NULL AND cabecera_taller <> 0");
+        $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $sv["desde_corte"] = (int) $stmt->fetchColumn() > 0;
+        $sv["observacion"] = $sv["desde_corte"]
+            ? "SERVICIO DE PRODUCCION N° " . $sv["codigo"] . " (CORTE). PRENDAS CORTADAS ENVIADAS AL TALLER PARA SU CONFECCION; RETORNAN TERMINADAS A CORPORACION VASCO S.A.C."
+            : "SERVICIO DE PRODUCCION N° " . $sv["codigo"] . ".";
+
+        $stmt = $pdo->prepare("SELECT cod_sector AS codigo, razon_social, tipo_doc, doc AS documento, email, direccion, ubigeo,
+                dpto AS departamento, prov AS provincia, dist AS distrito
+            FROM gre_sector_datosjf WHERE cod_sector = :c");
+        $stmt->bindParam(":c", $sv["taller"], PDO::PARAM_STR);
+        $stmt->execute();
+        $sv["datos_taller"] = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stmt = $pdo->prepare("SELECT id, documento, estado FROM gre_manualjf WHERE servicio = :c AND estado <> 'ANULADO' ORDER BY id DESC LIMIT 1");
+        $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $sv["guia"] = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $sv;
+    }
+
+    /**
+     * Matriz del servicio por modelo/color (tallas 1..8) con el precio a pagar
+     * (precio_serviciojf.precio_doc es por docena: importe = total / 12 * precio).
+     */
+    public static function mdlServicioMatriz($codigo)
+    {
+        $sumas = array();
+        for ($t = 1; $t <= 8; $t++) {
+            $sumas[] = "SUM(CASE WHEN a.cod_talla = '$t' THEN sd.cantidad ELSE 0 END) AS t$t";
+        }
+        $stmt = Conexion::conectar()->prepare("SELECT a.modelo, IFNULL(NULLIF(TRIM(m.nombre), ''), MIN(a.nombre)) AS nombre, a.color, "
+            . implode(", ", $sumas) . ", SUM(sd.cantidad) AS total, ps.precio_doc
+            FROM servicios_detallejf sd
+            LEFT JOIN articulojf a ON sd.articulo = a.articulo
+            LEFT JOIN modelojf m ON a.modelo = m.modelo
+            LEFT JOIN serviciosjf se ON se.codigo = sd.codigo
+            LEFT JOIN precio_serviciojf ps ON ps.taller = se.taller AND ps.modelo = a.modelo
+            WHERE sd.codigo = :c
+            GROUP BY a.modelo, m.nombre, a.cod_color, a.color, ps.precio_doc
+            HAVING SUM(sd.cantidad) > 0
+            ORDER BY a.modelo, a.color");
+        $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -49,6 +49,15 @@ Pantalla nueva para emitir GRE remitente **sin pasar por pedidos/facturación**:
 - Una interna en estado GENERADO se puede **convertir a electrónica** (botón en el listado): toma el siguiente número de la serie electrónica y el número interno queda en `doc_interno`. Luego se envía como cualquier otra.
 - Migración sobre lo ya creado: `docs/sql/gre-manual-tipo.sql`.
 
+## 5c. Guía desde Servicios (motivo 13 · SERVICIO DE PRODUCCION)
+- Botón de camión en cada fila de **Servicios** → `gre-manual-crear&servicio=<codigo>` (solo para quien puede emitir guías manuales).
+- Precarga: motivo 13, descripción "SERVICIO DE PRODUCCION", destinatario = taller, partida = domicilio Vasco, ítems = detalle del servicio **agrupado por modelo** (editable). Peso, bultos y transporte se piden al emitir; serie interna o electrónica a elección.
+- **Una guía por servicio** (se ignora la ANULADA): `gre_manualjf.servicio`. Si ya existe, el formulario avisa y enlaza a ella.
+- Datos del taller (RUC/DNI, dirección, ubigeo) en `gre_sector_datosjf`; se completan en la primera guía y se recuerdan ("Recordar estos datos"). El destinatario también se puede elegir como "Taller" en cualquier guía manual.
+- Los datos fiscales también se registran en **Sectores** (crear/editar, solo tipo Servicio externo): bloque "Datos para guía de remisión", opcional; si se llena, debe estar completo. Misma tabla `gre_sector_datosjf`.
+- Migración: `docs/sql/gre-manual-servicio.sql`.
+- Pendiente de definir: transporte cuando el taller recoge (ver con contabilidad/EFACT cómo declararlo).
+
 ## 6. Archivos
 - `docs/sql/gre-manual.sql` (instalación nueva) y `docs/sql/gre-manual-tipo.sql` (migración a internas/electrónicas)
 - `modelos/gre-manual.modelo.php`, `controladores/gre-manual.controlador.php`, `ajax/gre-manual.ajax.php`

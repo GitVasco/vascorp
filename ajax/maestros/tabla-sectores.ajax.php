@@ -2,6 +2,7 @@
 
 require_once "../../controladores/sectores.controlador.php";
 require_once "../../modelos/sectores.modelo.php";
+require_once "../../modelos/gre-manual.modelo.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -17,6 +18,9 @@ class TablaSectores
 			echo json_encode(array("data" => array()));
 			return;
 		}
+
+		$datosGre = ModeloGreManual::mdlTodosDatosTaller();
+		$tiposDoc = array("6" => "RUC", "1" => "DNI", "4" => "C.E.", "7" => "PAS.", "0" => "S/RUC", "A" => "C.D.");
 
 		foreach ($sector as $fila) {
 			$cod = isset($fila["cod_sector"]) ? (string) $fila["cod_sector"] : "";
@@ -48,10 +52,29 @@ class TablaSectores
 				. "<button class='btn btn-xs btn-danger btnEliminarSector' idSector='" . $codAttr
 				. "'><i class='fa fa-times'></i></button></div>";
 
+			// Datos para guía de remisión: solo aplica a externos
+			if ($tipo === "SERVICIO" && isset($datosGre[$cod])) {
+				$g = $datosGre[$cod];
+				$docHtml = htmlspecialchars((isset($tiposDoc[$g["tipo_doc"]]) ? $tiposDoc[$g["tipo_doc"]] : "") . " " . $g["doc"], ENT_QUOTES, "UTF-8");
+				$razonHtml = htmlspecialchars($g["razon_social"], ENT_QUOTES, "UTF-8");
+				$dirHtml = htmlspecialchars($g["direccion"] . ($g["dist"] !== "" ? " - " . $g["dist"] : ""), ENT_QUOTES, "UTF-8");
+			} elseif ($tipo === "SERVICIO") {
+				$docHtml = "<span class='label label-warning'>Sin datos</span>";
+				$razonHtml = "";
+				$dirHtml = "";
+			} else {
+				$docHtml = "<span class='text-muted'>—</span>";
+				$razonHtml = "";
+				$dirHtml = "";
+			}
+
 			$data[] = array(
 				$cod,
 				$nom,
 				$tipo,
+				$docHtml,
+				$razonHtml,
+				$dirHtml,
 				$colorHtml,
 				$estadoHtml,
 				$botones

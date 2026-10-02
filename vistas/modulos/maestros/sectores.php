@@ -1,3 +1,65 @@
+<?php
+/* Bloque de datos fiscales para guías de remisión (solo sectores externos) */
+function bloqueDatosGreSector($p)
+{
+?>
+        <div class="gre-sector-datos" id="<?= $p; ?>GreBloque" style="background:#f7f9fb;border:1px solid #dde3ea;border-radius:4px;padding:12px 14px">
+          <h4 style="margin:0 0 10px;font-size:15px"><i class="fa fa-truck text-blue"></i> Datos para guía de remisión
+            <small class="text-muted">opcional</small></h4>
+
+          <div class="form-group">
+            <label>Documento</label>
+            <div class="input-group">
+              <span class="input-group-btn" style="width:130px">
+                <select class="form-control" name="<?= $p; ?>GreTipoDoc" id="<?= $p; ?>GreTipoDoc" style="border-right:0">
+                  <option value="6">RUC</option><option value="1">DNI</option><option value="4">Carnet extr.</option>
+                  <option value="7">Pasaporte</option><option value="0">Sin RUC</option><option value="A">Céd. diplom.</option>
+                </select>
+              </span>
+              <input type="text" class="form-control" name="<?= $p; ?>GreDoc" id="<?= $p; ?>GreDoc" maxlength="15" placeholder="Número">
+              <span class="input-group-btn">
+                <button type="button" class="btn btn-info btnBuscarDocGre" data-p="<?= $p; ?>" title="Buscar en SUNAT / RENIEC (RUC o DNI)">
+                  <i class="fa fa-search"></i> Buscar
+                </button>
+              </span>
+            </div>
+            <span class="help-block" id="<?= $p; ?>GreMsg" style="margin:4px 0 0;font-size:12px"></span>
+          </div>
+
+          <div class="form-group">
+            <label>Razón social / nombre</label>
+            <input type="text" class="form-control" name="<?= $p; ?>GreRazon" id="<?= $p; ?>GreRazon" maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label>Correo <small class="text-muted">(opcional)</small></label>
+            <input type="text" class="form-control" name="<?= $p; ?>GreEmail" id="<?= $p; ?>GreEmail" maxlength="100">
+          </div>
+
+          <div class="form-group" style="position:relative">
+            <label>Ubigeo</label>
+            <input type="text" class="form-control gre-sector-ubigeo" data-p="<?= $p; ?>" placeholder="Buscar distrito o código..." autocomplete="off">
+            <ul class="list-group" style="display:none;position:absolute;z-index:2000;left:0;right:0;max-height:220px;overflow-y:auto;margin:0;box-shadow:0 4px 10px rgba(0,0,0,.15)"></ul>
+          </div>
+
+          <div class="row">
+            <div class="form-group col-sm-4"><label>Cód. ubigeo</label><input type="text" class="form-control" name="<?= $p; ?>GreUbigeo" id="<?= $p; ?>GreUbigeo" maxlength="6"></div>
+            <div class="form-group col-sm-8"><label>Distrito</label><input type="text" class="form-control" name="<?= $p; ?>GreDist" id="<?= $p; ?>GreDist" maxlength="30"></div>
+          </div>
+          <div class="row">
+            <div class="form-group col-sm-6"><label>Provincia</label><input type="text" class="form-control" name="<?= $p; ?>GreProv" id="<?= $p; ?>GreProv" maxlength="30"></div>
+            <div class="form-group col-sm-6"><label>Departamento</label><input type="text" class="form-control" name="<?= $p; ?>GreDpto" id="<?= $p; ?>GreDpto" maxlength="30"></div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label>Dirección</label>
+            <input type="text" class="form-control" name="<?= $p; ?>GreDireccion" id="<?= $p; ?>GreDireccion" maxlength="100">
+          </div>
+        </div>
+<?php
+}
+?>
+
 <div class="content-wrapper">
 
   <section class="content-header">
@@ -49,6 +111,9 @@
            <th>Codigo</th>
            <th>Sector</th>
            <th>Tipo</th>
+           <th>Documento</th>
+           <th>Razón social</th>
+           <th>Dirección (guía)</th>
            <th>Color</th>
            <th>Estado</th>
            <th>Acciones</th>
@@ -98,6 +163,8 @@ MODAL AGREGAR SECTOR
         <div class="modal-body">
 
           <div class="box-body">
+          <div class="row">
+          <div class="col-md-12" id="nuevoColGen">
 
             <!-- ENTRADA PARA EL CODIGO -->
             
@@ -169,6 +236,11 @@ MODAL AGREGAR SECTOR
             </div>
  
           </div>
+          <div class="col-md-6" id="nuevoColGre" style="display:none">
+<?php bloqueDatosGreSector('nuevo'); ?>
+          </div>
+          </div>
+          </div>
 
         </div>
 
@@ -233,6 +305,8 @@ MODAL EDITAR SECTOR
         <div class="modal-body">
 
           <div class="box-body">
+          <div class="row">
+          <div class="col-md-12" id="editarColGen">
 
           
             <!-- ENTRADA PARA EL DOCUMENTO ID -->
@@ -303,6 +377,11 @@ MODAL EDITAR SECTOR
               </div>
             </div>
   
+          </div>
+          <div class="col-md-6" id="editarColGre" style="display:none">
+<?php bloqueDatosGreSector('editar'); ?>
+          </div>
+          </div>
           </div>
 
         </div>

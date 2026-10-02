@@ -55,6 +55,7 @@ switch ($accion) {
             "modelo" => "mdlBuscarModelos",
             "articulo" => "mdlBuscarArticulos",
             "mp" => "mdlBuscarMateriaPrima",
+            "taller" => "mdlBuscarTalleres",
         );
         if (!isset($mapa[$tipo])) {
             greJson(array("ok" => false, "msg" => "Tipo de búsqueda inválido."), 400);
@@ -70,6 +71,17 @@ switch ($accion) {
         }
         $tipoF = isset($_REQUEST["tipo"]) && in_array($_REQUEST["tipo"], array("ELECTRONICA", "INTERNA"), true) ? $_REQUEST["tipo"] : "";
         greJson(array("ok" => true, "datos" => ModeloGreManual::mdlListar($desde, $hasta, $estado, $tipoF)));
+
+    case "consultar-doc":
+        $r = ControladorGreManual::ctrConsultarDocumento(isset($_REQUEST["tipo_doc"]) ? $_REQUEST["tipo_doc"] : "", isset($_REQUEST["numero"]) ? $_REQUEST["numero"] : "");
+        greJson($r, !empty($r["ok"]) ? 200 : 400);
+
+    case "servicio-datos":
+        $sv = ModeloGreManual::mdlServicioParaGuia(isset($_REQUEST["codigo"]) ? trim($_REQUEST["codigo"]) : "");
+        if (!$sv) {
+            greJson(array("ok" => false, "msg" => "Servicio no encontrado."), 404);
+        }
+        greJson(array("ok" => true, "servicio" => $sv));
 
     case "series":
         greJson(array("ok" => true, "series" => ModeloGreManual::mdlSeries()));

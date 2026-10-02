@@ -2,6 +2,61 @@
 
 class ControladorSectores{
 
+
+	/*=============================================
+	DATOS FISCALES PARA GUÍAS DE REMISIÓN (solo externos)
+	$p = "nuevo" | "editar". Devuelve vacio / ok / msg / datos.
+	=============================================*/
+
+	static private function greDatosPost($p){
+
+		$g = function($k) use ($p){
+			$v = isset($_POST[$p . $k]) ? trim((string) $_POST[$p . $k]) : "";
+			return trim(preg_replace('/[\r\n\t,]+/', ' ', $v));
+		};
+
+		$d = array(
+			"razon_social" => $g("GreRazon"), "tipo_doc" => $g("GreTipoDoc"), "doc" => strtoupper($g("GreDoc")),
+			"email" => $g("GreEmail"), "direccion" => $g("GreDireccion"), "ubigeo" => $g("GreUbigeo"),
+			"dpto" => $g("GreDpto"), "prov" => $g("GreProv"), "dist" => $g("GreDist")
+		);
+
+		if ($d["razon_social"] === "" && $d["doc"] === "" && $d["direccion"] === "" && $d["ubigeo"] === "") {
+			return array("vacio" => true, "ok" => true, "msg" => "", "datos" => $d);
+		}
+
+		$msg = "";
+		$td = $d["tipo_doc"];
+		if ($d["razon_social"] === "" || $d["doc"] === "" || $d["direccion"] === "" || $d["dpto"] === "" || $d["prov"] === "" || $d["dist"] === "") {
+			$msg = "Completa razón social, documento, dirección, departamento, provincia y distrito (o deja todo vacío).";
+		} elseif (!preg_match('/^\d{6}$/', $d["ubigeo"])) {
+			$msg = "El ubigeo debe tener 6 dígitos.";
+		} elseif (($td === "6" && !preg_match('/^\d{11}$/', $d["doc"])) || ($td === "1" && !preg_match('/^\d{8}$/', $d["doc"]))
+			|| (!in_array($td, array("0", "1", "4", "6", "7", "A"), true))
+			|| (in_array($td, array("0", "4", "7", "A"), true) && !preg_match('/^[A-Z0-9]{1,15}$/', $d["doc"]))) {
+			$msg = "El número de documento no coincide con su tipo (RUC 11 dígitos, DNI 8).";
+		}
+
+		return array("vacio" => false, "ok" => $msg === "", "msg" => $msg, "datos" => $d);
+
+	}
+
+	static private function greAvisoError($msg){
+
+		echo '<script>swal({type: "error", title: "Datos para guía de remisión", text: ' . json_encode($msg) . ', showConfirmButton: true, confirmButtonText: "Cerrar"});</script>';
+
+	}
+
+	static private function greGuardarDatos($cod, $g){
+
+		if (!$g["vacio"] && $g["ok"]) {
+			require_once __DIR__ . "/../modelos/gre-manual.modelo.php";
+			$usuario = isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "";
+			ModeloGreManual::mdlGuardarDatosTaller($cod, $g["datos"], $usuario);
+		}
+
+	}
+
 	/*=============================================
 	CREAR SECTORES
 	=============================================*/
@@ -20,7 +75,15 @@ class ControladorSectores{
 					           "estado"=>$estado,
 					           "color"=>$color);
 
+			   	$gre = array("vacio" => true, "ok" => true);
+			   	if($tipo === 1){
+			   		$gre = self::greDatosPost("nuevo");
+			   		if(!$gre["ok"]){ self::greAvisoError($gre["msg"]); return; }
+			   	}
+
 			   	$respuesta = ModeloSectores::mdlIngresarSector($datos);
+
+			   	if($respuesta == "ok" && $tipo === 1){ self::greGuardarDatos($_POST["nuevoCodigo"], $gre); }
 
 			   	if($respuesta == "ok"){
 
@@ -121,7 +184,15 @@ class ControladorSectores{
 					           "estado"=>$estado,
 					           "color"=>$color);
 
+			   	$gre = array("vacio" => true, "ok" => true);
+			   	if($tipo === 1){
+			   		$gre = self::greDatosPost("editar");
+			   		if(!$gre["ok"]){ self::greAvisoError($gre["msg"]); return; }
+			   	}
+
 			   	$respuesta = ModeloSectores::mdlEditarSector($datos);
+
+			   	if($respuesta == "ok" && $tipo === 1){ self::greGuardarDatos($_POST["editarCodigo"], $gre); }
 
 			   	if($respuesta == "ok"){
 

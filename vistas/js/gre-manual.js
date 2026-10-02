@@ -5,6 +5,7 @@
     var items = [];
     var docs = [];
     var tipoItem = "modelo";
+    var servicioCod = "";
 
     function esc(s) {
         return $("<div>").text(s == null ? "" : s).html();
@@ -64,7 +65,8 @@
             language: { emptyTable: "No hay guías en el rango", search: "Buscar:", lengthMenu: "Mostrar _MENU_", info: "_TOTAL_ guías", paginate: { next: "Sig.", previous: "Ant." } },
             columns: [
                 { data: null, render: function (r) {
-                    return "<b>" + esc(r.documento) + "</b>" + (r.doc_interno ? " <small class='text-muted' title='Número interno original'>(int. " + esc(r.doc_interno) + ")</small>" : "");
+                    return "<b>" + esc(r.documento) + "</b>" + (r.doc_interno ? " <small class='text-muted' title='Número interno original'>(int. " + esc(r.doc_interno) + ")</small>" : "") +
+                        (r.servicio ? " <small class='text-muted'>· servicio " + esc(r.servicio) + "</small>" : "");
                 } },
                 { data: "tipo", render: function (v) {
                     return v === "INTERNA" ? "<span class='label label-default'>INTERNA</span>" : "<span class='label label-info'>ELECTRÓNICA</span>";
@@ -90,7 +92,7 @@
                         ? "<button class='btn btn-xs btn-info greConvertir' title='Convertir a electrónica' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-exchange'></i></button>"
                         : "<button class='btn btn-xs btn-primary greEnviar' title='Enviar a EFACT' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-paper-plane'></i></button>";
                     return "<div class='btn-group'>" + imp +
-                        "<a class='btn btn-xs btn-warning' title='Editar' href='gre-manual-crear&id=" + r.id + "'><i class='fa fa-pencil'></i></a>" + accion +
+                        "<a class='btn btn-xs btn-warning' title='Editar' href='index.php?ruta=gre-manual-crear&id=" + r.id + "'><i class='fa fa-pencil'></i></a>" + accion +
                         "<button class='btn btn-xs btn-danger greAnular' title='Anular' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-ban'></i></button>" + del + "</div>";
                 } },
             ],
@@ -247,7 +249,7 @@
         var es04 = $("#greMotivo").val() === "04";
         $("#greAvisoMotivo04").toggle(es04);
         $("#greDestBuscar").toggle(!es04);
-        $("#greDestNombre,#greDestTipoDoc,#greDestDoc").prop("disabled", es04);
+        $("#greDestNombre,#greDestTipoDoc,#greDestDoc,#greBuscarDoc").prop("disabled", es04);
         if (es04) {
             var r = cat.remitente;
             $("#greDestNombre").val(r.nombre);
@@ -297,6 +299,7 @@
             chofer_tipo_doc: $("#greChoferTipoDoc").val(), chofer_doc: v("greChoferDoc"), chofer_nombres: v("greChoferNombres"),
             chofer_apellidos: v("greChoferApellidos"), chofer_licencia: v("greChoferLicencia"), placa: v("grePlaca"),
             docs_rel: JSON.stringify(docs), items: JSON.stringify(it),
+            servicio: servicioCod, guardar_taller: ($("#greGuardarTaller").is(":checked") && $("input[name=greDestOrigen]:checked").val() === "TALLER") ? "1" : "0",
         };
         $.each(["par", "lle"], function (i, p) {
             $.each(["ubigeo", "direccion", "dpto", "prov", "dist"], function (j, k) { d[p + "_" + k] = v("gre_" + p + "_" + k); });
@@ -305,6 +308,7 @@
     }
 
     function poblar(g) {
+        if (g.servicio) { servicioCod = g.servicio; $("#greAvisoServicio").text("Guía del servicio " + g.servicio).show(); }
         $("#greSerie").html("<option>" + esc(g.serie) + (g.tipo === "INTERNA" ? " · Interna" : " · Electrónica") + "</option>").prop("disabled", true);
         $("#greFechaEmision").val(g.fecha_emision);
         $("#greFechaTraslado").val(g.fecha_traslado);
@@ -331,7 +335,53 @@
             return { origen: i.origen, codigo: i.codigo, descripcion: i.descripcion, unidad_cod: i.unidad_cod, unidad_desc: i.unidad_desc, cantidad: i.cantidad };
         });
         pintarItems(); pintarDocs(); setModalidad(); setMotivo(); refrescarSP();
+        $("#greGuardarTallerWrap").toggle(g.dest_origen === "TALLER");
         if (docs.length) $("#greDocsBox").show();
+    }
+
+    // d: fila de mdlBuscarTalleres o datos_taller de un servicio
+    function aplicarTaller(d) {
+        $("#greDestNombre").val(d.razon_social || d.nombre).data("codigo", d.codigo);
+        if (d.documento) {
+            $("#greDestTipoDoc").val(d.tipo_doc || "6");
+            $("#greDestDoc").val(d.documento);
+            $("#greDestEmail").val(d.email || "");
+            $("#gre_lle_ubigeo").val(d.ubigeo || ""); $("#gre_lle_direccion").val(d.direccion || "");
+            $("#gre_lle_dpto").val(d.departamento || ""); $("#gre_lle_prov").val(d.provincia || ""); $("#gre_lle_dist").val(d.distrito || "");
+        } else {
+            $("#greDestDoc").val(""); $("#greDestEmail").val("");
+        }
+        refrescarSP();
+    }
+
+    function cargarServicio(codigo) {
+        $.getJSON(URL, { accion: "servicio-datos", codigo: codigo }, function (r) {
+            var sv = r.servicio;
+            servicioCod = sv.codigo;
+            if (sv.guia) {
+                $("#greAvisoServicio").removeClass("alert-info").addClass("alert-warning")
+                    .html("El servicio <b>" + esc(sv.codigo) + "</b> ya tiene la guía <b>" + esc(sv.guia.documento) + "</b> (" + esc(sv.guia.estado) + "). " +
+                        "<a href='index.php?ruta=gre-manual-crear&id=" + sv.guia.id + "'>Abrirla</a> · <a href='gre-manual'>Ir al listado</a>").show();
+                $("#greGuardar").prop("disabled", true);
+                return;
+            }
+            $("#greAvisoServicio").html("Guía para el <b>servicio " + esc(sv.codigo) + "</b> · taller " + esc(sv.nom_sector || sv.taller) +
+                ". Los datos se pueden ajustar antes de guardar.").show();
+            $("#greMotivo").val("13");
+            $("#greMotivoDesc").data("tocado", false);
+            setMotivo();
+            $("#greObs").val(sv.observacion);
+            $("input[name=greDestOrigen][value=TALLER]").prop("checked", true).trigger("change");
+            aplicarTaller($.extend({ codigo: sv.taller, nombre: sv.nom_sector }, sv.datos_taller || {}));
+            if (!sv.datos_taller) err("El taller aún no tiene datos registrados: complétalos y quedarán guardados.");
+            usarVasco("par");
+            items = $.map(sv.items, function (i) {
+                var u = i.unidad || "C62";
+                return { origen: "MODELO", codigo: i.codigo, descripcion: i.descripcion, unidad_cod: u, unidad_desc: descUnidad(u), cantidad: parseFloat(i.cantidad) };
+            });
+            pintarItems();
+            refrescarSP();
+        }).fail(ajaxErr);
     }
 
     function iniciarFormulario() {
@@ -351,6 +401,8 @@
             $("#greMotivo").val("01");
             setMotivo(); setModalidad(); refrescarSP();
             var id = parseInt($("#greForm").data("id"), 10) || 0;
+            var sv = $("#greForm").data("servicio");
+            if (!id && sv) cargarServicio(String(sv));
             if (id) {
                 $.getJSON(URL, { accion: "obtener", id: id }, function (r) {
                     if (r.guia.estado !== "GENERADO") { err("Solo se edita una guía GENERADA."); window.location = "gre-manual"; return; }
@@ -366,9 +418,15 @@
 
         // Destinatario
         buscador($("#greDestBuscador"), $("#greDestResultados"),
-            function () { var o = $("input[name=greDestOrigen]:checked").val(); return o === "PROVEEDOR" ? "proveedor" : "cliente"; },
-            function (d) { return "<b>" + esc(d.nombre) + "</b> <small>" + esc(d.documento) + " · " + esc(d.direccion) + "</small>"; },
+            function () { var o = $("input[name=greDestOrigen]:checked").val(); return o === "PROVEEDOR" ? "proveedor" : o === "TALLER" ? "taller" : "cliente"; },
             function (d) {
+                if (d.codigo !== undefined && d.razon_social !== undefined) {
+                    return "<b>" + esc(d.nombre) + "</b> <small>" + (d.documento ? esc(d.documento) + " · " + esc(d.direccion) : "sin datos registrados") + "</small>";
+                }
+                return "<b>" + esc(d.nombre) + "</b> <small>" + esc(d.documento) + " · " + esc(d.direccion) + "</small>";
+            },
+            function (d) {
+                if ($("input[name=greDestOrigen]:checked").val() === "TALLER") { aplicarTaller(d); return; }
                 $("#greDestNombre").val(d.nombre).data("codigo", d.codigo);
                 $("#greDestTipoDoc").val(d.tipo_doc && $("#greDestTipoDoc option[value='" + d.tipo_doc + "']").length ? d.tipo_doc : "6");
                 $("#greDestDoc").val(d.documento);
@@ -383,8 +441,26 @@
                 }
             });
         $("input[name=greDestOrigen]").on("change", function () {
+            $("#greGuardarTallerWrap").toggle($("input[name=greDestOrigen]:checked").val() === "TALLER");
             $("#greDestBuscador").closest(".gre-buscador").toggle($(this).val() !== "MANUAL");
             if ($(this).val() === "MANUAL") $("#greDestNombre").data("codigo", "");
+        });
+
+        // Buscar RUC / DNI en la API
+        $("#greBuscarDoc").on("click", function () {
+            var $b = $(this);
+            $b.prop("disabled", true).find("i").attr("class", "fa fa-spinner fa-spin");
+            $.getJSON(URL, { accion: "consultar-doc", tipo_doc: $("#greDestTipoDoc").val(), numero: v("greDestDoc") }, function (r) {
+                $("#greDestNombre").val(r.razon_social);
+                if (!v("gre_lle_direccion") && r.direccion) {
+                    $("#gre_lle_direccion").val(r.direccion);
+                    if (r.ubigeo) {
+                        $("#gre_lle_ubigeo").val(r.ubigeo); $("#gre_lle_dpto").val(r.dpto);
+                        $("#gre_lle_prov").val(r.prov); $("#gre_lle_dist").val(r.dist);
+                    }
+                }
+                ok("Datos completados");
+            }).fail(ajaxErr).always(function () { $b.prop("disabled", false).find("i").attr("class", "fa fa-search"); });
         });
 
         // Ubigeos

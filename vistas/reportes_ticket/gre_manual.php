@@ -22,6 +22,13 @@ $r = ControladorGreManual::remitente();
 $docs = $g["docs_rel"] ? json_decode($g["docs_rel"], true) : array();
 $privado = $g["modalidad"] === "02";
 $interna = $g["tipo"] === "INTERNA";
+$catMotivos = ControladorGreManual::motivos();
+$motivoNombre = isset($catMotivos[$g["motivo_cod"]]) ? $catMotivos[$g["motivo_cod"]] : $g["motivo_desc"];
+if ($g["motivo_cod"] === "13") {
+    $motivoNombre = "OTROS";
+}
+$matriz = $g["servicio"] ? ModeloGreManual::mdlServicioMatriz($g["servicio"]) : array();
+$svInfo = $g["servicio"] ? ModeloGreManual::mdlServicioParaGuia($g["servicio"]) : null;
 $tipoDoc = array("0" => "S/RUC", "1" => "DNI", "4" => "C.E.", "6" => "RUC", "7" => "PASAPORTE", "A" => "CED. DIPL.");
 $tipoRel = array("01" => "DAM", "02" => "Orden de entrega", "03" => "SCOP", "04" => "Manifiesto de carga", "05" => "Const. detracción", "06" => "Otros");
 
@@ -74,6 +81,27 @@ function num($v)
         .firmas > div { flex: 1; border-top: 1px solid #000; text-align: center; padding-top: 3px; font-size: 10px; }
         .marca { position: fixed; top: 38%; left: 0; right: 0; text-align: center; font-size: 90px; color: rgba(200, 0, 0, .18); transform: rotate(-25deg); pointer-events: none; }
         .noprint { text-align: center; padding: 8px; background: #f4f4f4; border-bottom: 1px solid #ccc; }
+        table.mx { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        table.mx th, table.mx td { border: 1px solid #000; padding: 3px 4px; text-align: center; }
+        table.mx th { background: #e6e6e6; font-size: 10px; }
+        table.mx td.l { text-align: left; }
+        table.mx td.r { text-align: right; }
+        table.mx tfoot td { font-weight: bold; background: #f0f0f0; }
+        .os-cab { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+        .os-cab .izq { display: flex; gap: 10px; align-items: flex-start; }
+        .os-cab img { height: 62px; }
+        .os-cab .emp p { margin: 1px 0; }
+        .os-cab .emp b { font-size: 13px; }
+        .os-cab .der { text-align: right; }
+        .os-cab .der .tit { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
+        .os-cab .der p { margin: 1px 0; }
+        .os-prov { margin: 8px 0 6px; }
+        .os-prov p { margin: 2px 0; }
+        .os-prov .e { display: inline-block; width: 82px; font-weight: bold; }
+        .os-atender { margin: 8px 0 4px; }
+        table.mx th { background: #3399ff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        table.mx tfoot td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .salto { page-break-before: always; break-before: page; }
         @media print { .noprint { display: none; } }
     </style>
 </head>
@@ -106,7 +134,11 @@ function num($v)
                     <div><span class="lbl">Bultos</span><span class="val"><?= h($g["bultos"]); ?></span></div>
                 </div>
                 <span class="lbl">Motivo de traslado</span>
-                <span class="val"><?= h($g["motivo_cod"] . " - " . $g["motivo_desc"]); ?></span>
+                <span class="val"><?= h($g["motivo_cod"] . " - " . $motivoNombre); ?></span>
+                <?php if (trim($g["motivo_desc"]) !== "" && strcasecmp(trim($g["motivo_desc"]), $motivoNombre) !== 0) { ?>
+                    <span class="lbl">Descripción</span>
+                    <span class="val"><?= h($g["motivo_desc"]); ?></span>
+                <?php } ?>
                 <span class="lbl">Modalidad de transporte</span>
                 <span class="val"><?= $privado ? "02 - Transporte privado" : "01 - Transporte público"; ?></span>
             </div>
@@ -206,6 +238,104 @@ function num($v)
             <p class="nota">Documento interno. La guía electrónica válida es la emitida por EFACT.</p>
         <?php } ?>
     </div>
+
+    <?php if ($g["servicio"]) {
+        $tallasL = array("S", "M", "L", "XL", "XXL", "XS", "", "");
+        $tallasA = array("28", "30", "32", "34", "36", "38", "40", "42");
+        $tallasB = array("3", "4", "6", "8", "10", "12", "14", "16");
+        $totT = array_fill(1, 8, 0);
+        $totQ = 0;
+        $totImporte = 0.0;
+        $sinPrecio = 0;
+    ?>
+        <div class="hoja salto">
+            <div class="os-cab">
+                <div class="izq">
+                    <img src="../img/plantilla/LogoJacky.png" alt="">
+                    <div class="emp">
+                        <p><b><?= h(strtoupper($r["nombre"])); ?></b></p>
+                        <p>R.U.C. : <?= h($r["doc"]); ?></p>
+                        <p>Dirección: <?= h($r["direccion"]); ?></p>
+                        <p>Distrito: <?= h($r["dist"]); ?></p>
+                    </div>
+                </div>
+                <div class="der">
+                    <div class="tit">Orden de Servicio N°: <?= h($g["servicio"]); ?></div>
+                    <p>Fec. Emisión: <?= h(fecha($svInfo && !empty($svInfo["fecha"]) ? $svInfo["fecha"] : $g["fecha_emision"])); ?></p>
+                    <p>Fec. Entrega: <?= h(fecha($g["fecha_traslado"])); ?></p>
+                    <p>Guía de remisión: <?= h($g["documento"]); ?></p>
+                </div>
+            </div>
+
+            <div class="os-prov">
+                <p><span class="e">Proveedor:</span> <?= h(($svInfo && $svInfo["taller"] ? $svInfo["taller"] . " - " : "") . $g["dest_nombre"]); ?>
+                    <?= $g["dest_doc"] !== "" ? " · " . h(isset($tipoDoc[$g["dest_tipo_doc"]]) ? $tipoDoc[$g["dest_tipo_doc"]] : "") . " " . h($g["dest_doc"]) : ""; ?></p>
+                <p><span class="e">Dirección:</span> <?= h($g["lle_direccion"] . " - " . $g["lle_dist"]); ?></p>
+                <p><span class="e">Observaciones:</span> <?= h($g["observaciones"]); ?></p>
+            </div>
+            <p class="os-atender">Sirva(n)se atender la siguiente Orden de Servicio :</p>
+
+            <table class="mx">
+                <thead>
+                    <tr>
+                        <th rowspan="3" style="width:22px">N°</th>
+                        <th rowspan="3" style="width:62px">Modelo</th>
+                        <th rowspan="3">Nombre</th>
+                        <th rowspan="3" style="width:70px">Color</th>
+                        <?php foreach ($tallasL as $t) { ?><th style="width:26px"><?= $t; ?></th><?php } ?>
+                        <th rowspan="3" style="width:36px">Total</th>
+                        <th rowspan="3" style="width:48px">P. docena</th>
+                        <th rowspan="3" style="width:56px">Importe</th>
+                    </tr>
+                    <tr><?php foreach ($tallasA as $t) { ?><th><?= $t; ?></th><?php } ?></tr>
+                    <tr><?php foreach ($tallasB as $t) { ?><th><?= $t; ?></th><?php } ?></tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($matriz as $i => $m) {
+                        $tiene = $m["precio_doc"] !== null && $m["precio_doc"] !== "";
+                        $importe = $tiene ? round(((float) $m["total"] / 12) * (float) $m["precio_doc"], 2) : 0;
+                        $totQ += (float) $m["total"];
+                        $totImporte += $importe;
+                        if (!$tiene) {
+                            $sinPrecio++;
+                        }
+                    ?>
+                        <tr>
+                            <td><?= $i + 1; ?></td>
+                            <td class="l"><?= h($m["modelo"]); ?></td>
+                            <td class="l"><?= h($m["nombre"]); ?></td>
+                            <td class="l"><?= h($m["color"]); ?></td>
+                            <?php for ($t = 1; $t <= 8; $t++) {
+                                $v = (float) $m["t$t"];
+                                $totT[$t] += $v; ?>
+                                <td><?= $v > 0 ? h(num($v)) : ""; ?></td>
+                            <?php } ?>
+                            <td><b><?= h(num($m["total"])); ?></b></td>
+                            <td class="r"><?= $tiene ? h(number_format((float) $m["precio_doc"], 2)) : "—"; ?></td>
+                            <td class="r"><?= $tiene ? h(number_format($importe, 2)) : "—"; ?></td>
+                        </tr>
+                    <?php } ?>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="r">TOTAL</td>
+                        <?php for ($t = 1; $t <= 8; $t++) { ?><td><?= $totT[$t] > 0 ? h(num($totT[$t])) : ""; ?></td><?php } ?>
+                        <td><?= h(num($totQ)); ?></td>
+                        <td></td>
+                        <td class="r"><?= h(number_format($totImporte, 2)); ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <p style="margin:6px 0 0"><b>Total a pagar: S/ <?= h(number_format($totImporte, 2)); ?></b>
+                <?= $sinPrecio ? " — " . $sinPrecio . " modelo(s) sin precio registrado para este taller" : ""; ?></p>
+            <p style="font-size:9px;color:#666;margin:4px 0 0">Precio por docena según la lista de precios del servicio (importe = total ÷ 12 × precio).</p>
+
+            <div class="firmas">
+                <div>ENTREGA - RESPONSABLE DEL ENVÍO</div>
+                <div>RECIBE - RESPONSABLE DEL SERVICIO</div>
+            </div>
+        </div>
+    <?php } ?>
 </body>
 
 </html>

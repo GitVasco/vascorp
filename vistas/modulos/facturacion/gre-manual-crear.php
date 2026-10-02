@@ -1,7 +1,8 @@
 <?php
 $greId = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
+$greServicio = isset($_GET["servicio"]) ? preg_replace('/[^A-Za-z0-9_-]/', '', $_GET["servicio"]) : "";
 ?>
-<div class="content-wrapper" id="greForm" data-id="<?= $greId; ?>">
+<div class="content-wrapper" id="greForm" data-id="<?= $greId; ?>" data-servicio="<?= htmlspecialchars($greServicio, ENT_QUOTES, "UTF-8"); ?>">
 
     <section class="content-header">
         <h1>
@@ -18,6 +19,7 @@ $greId = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
     <section class="content gre-compacto">
 
         <div class="alert alert-danger" id="greFaltan" style="display:none"></div>
+        <div class="alert alert-info" id="greAvisoServicio" style="display:none"></div>
 
         <!-- TRASLADO -->
         <div class="box box-primary">
@@ -72,6 +74,7 @@ $greId = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
                             <div class="form-group" style="margin-bottom:6px">
                                 <label class="radio-inline"><input type="radio" name="greDestOrigen" value="CLIENTE" checked> Cliente</label>
                                 <label class="radio-inline"><input type="radio" name="greDestOrigen" value="PROVEEDOR"> Proveedor</label>
+                                <label class="radio-inline"><input type="radio" name="greDestOrigen" value="TALLER"> Taller</label>
                                 <label class="radio-inline"><input type="radio" name="greDestOrigen" value="MANUAL"> A mano</label>
                             </div>
                             <div class="form-group gre-buscador">
@@ -99,12 +102,18 @@ $greId = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
                             </div>
                             <div class="form-group col-sm-4">
                                 <label>Número</label>
-                                <input type="text" class="form-control input-sm" id="greDestDoc" maxlength="15">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control" id="greDestDoc" maxlength="15">
+                                    <span class="input-group-btn"><button type="button" class="btn btn-info" id="greBuscarDoc" title="Buscar RUC o DNI"><i class="fa fa-search"></i></button></span>
+                                </div>
                             </div>
                             <div class="form-group col-sm-4">
                                 <label>Correo (opc.)</label>
                                 <input type="text" class="form-control input-sm" id="greDestEmail" maxlength="100">
                             </div>
+                        </div>
+                        <div class="checkbox" id="greGuardarTallerWrap" style="display:none;margin:0 0 6px">
+                            <label><input type="checkbox" id="greGuardarTaller" checked> Recordar estos datos (y la dirección de llegada) para este taller</label>
                         </div>
                         <p class="text-muted" id="greAvisoMotivo04" style="display:none;margin:0">
                             <i class="fa fa-info-circle"></i> Motivo 04: el destinatario es la misma empresa.

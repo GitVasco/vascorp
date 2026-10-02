@@ -43,6 +43,66 @@ class ControladorGreManual
                 || (isset($_SESSION["materiaprima"]) && $_SESSION["materiaprima"] == 1));
     }
 
+    /**
+     * Consulta RUC (tipo 6) o DNI (tipo 1) en la API que ya usa el sistema y devuelve
+     * razón social/nombre, dirección y ubigeo listos para llenar un formulario.
+     */
+    public static function ctrConsultarDocumento($tipo, $numero)
+    {
+        $numero = preg_replace('/\D/', '', (string) $numero);
+        if ($tipo === "6" && strlen($numero) !== 11) {
+            return array("ok" => false, "msg" => "El RUC debe tener 11 dígitos.");
+        }
+        if ($tipo === "1" && strlen($numero) !== 8) {
+            return array("ok" => false, "msg" => "El DNI debe tener 8 dígitos.");
+        }
+        if ($tipo !== "6" && $tipo !== "1") {
+            return array("ok" => false, "msg" => "La búsqueda solo existe para RUC y DNI.");
+        }
+
+        require_once __DIR__ . "/../helpers/jsonpe.api.php";
+        $r = $tipo === "6" ? JsonPeApi::consultarRuc($numero) : JsonPeApi::consultarDni($numero);
+        if (empty($r["success"]) || empty($r["data"]) || !is_array($r["data"])) {
+            return array("ok" => false, "msg" => isset($r["message"]) && $r["message"] !== "" ? (string) $r["message"] : "No se encontró el documento.");
+        }
+        $d = $r["data"];
+
+        if ($tipo === "6") {
+            $razon = isset($d["nombre_o_razon_social"]) ? $d["nombre_o_razon_social"] : "";
+        } else {
+            $razon = trim((isset($d["apellido_paterno"]) ? $d["apellido_paterno"] : "") . " "
+                . (isset($d["apellido_materno"]) ? $d["apellido_materno"] : "") . " "
+                . (isset($d["nombres"]) ? $d["nombres"] : ""));
+        }
+
+        $u = isset($d["ubigeo"]) ? $d["ubigeo"] : "";
+        if (is_array($u)) {
+            $u = count($u) ? end($u) : "";
+        }
+        $u = preg_match('/^\d{6}$/', (string) $u) ? (string) $u : "";
+        $dpto = isset($d["departamento"]) ? $d["departamento"] : "";
+        $prov = isset($d["provincia"]) ? $d["provincia"] : "";
+        $dist = isset($d["distrito"]) ? $d["distrito"] : "";
+        if ($u !== "") {
+            $ub = ModeloGreManual::mdlUbigeoPorCodigo($u);
+            if ($ub) {
+                $dpto = $ub["departamento"];
+                $prov = $ub["provincia"];
+                $dist = $ub["distrito"];
+            }
+        }
+
+        return array(
+            "ok" => true,
+            "razon_social" => self::t($razon, 100),
+            "direccion" => self::t(isset($d["direccion"]) ? $d["direccion"] : "", 100),
+            "ubigeo" => $u,
+            "dpto" => self::t($dpto, 30),
+            "prov" => self::t($prov, 30),
+            "dist" => self::t($dist, 30),
+        );
+    }
+
     /** Mismos usuarios que ven "Cambiar Correlativo" en Guías Remisión. */
     public static function puedeCorregirCorrelativo()
     {
@@ -114,7 +174,7 @@ class ControladorGreManual
         $c["observaciones"] = self::t(isset($in["observaciones"]) ? $in["observaciones"] : "", 250);
 
         // Destinatario (motivo 04: la misma empresa)
-        $c["dest_origen"] = in_array($g("dest_origen"), array("CLIENTE", "PROVEEDOR", "EMPRESA", "MANUAL"), true) ? $g("dest_origen") : "MANUAL";
+        $c["dest_origen"] = in_array($g("dest_origen"), array("CLIENTE", "PROVEEDOR", "TALLER", "EMPRESA", "MANUAL"), true) ? $g("dest_origen") : "MANUAL";
         $c["dest_codigo"] = self::t($g("dest_codigo"), 20);
         if ($c["motivo_cod"] === "04") {
             $c["dest_origen"] = "EMPRESA";
@@ -128,6 +188,8 @@ class ControladorGreManual
             $c["dest_doc"] = strtoupper($g("dest_doc"));
         }
         $c["dest_email"] = self::t($g("dest_email"), 100);
+        $sv = $g("servicio");
+        $c["servicio"] = ($sv !== "" && preg_match('/^[A-Za-z0-9_-]{1,20}$/', $sv)) ? $sv : null;
         if ($c["dest_nombre"] === "") {
             $err[] = "Falta el nombre del destinatario.";
         }
@@ -252,7 +314,18 @@ class ControladorGreManual
             return $n;
         }
         $usuario = isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "";
-        return ModeloGreManual::mdlGuardar((int) $id, $serie, $n["cab"], $n["items"], $usuario);
+        $r = ModeloGreManual::mdlGuardar((int) $id, $serie, $n["cab"], $n["items"], $usuario);
+        $c = $n["cab"];
+        // Recordar los datos del taller para las próximas guías
+        if (!empty($r["ok"]) && isset($in["guardar_taller"]) && $in["guardar_taller"] === "1"
+            && $c["dest_origen"] === "TALLER" && $c["dest_codigo"] !== "") {
+            ModeloGreManual::mdlGuardarDatosTaller($c["dest_codigo"], array(
+                "razon_social" => $c["dest_nombre"], "tipo_doc" => $c["dest_tipo_doc"], "doc" => $c["dest_doc"],
+                "email" => $c["dest_email"], "direccion" => $c["lle_direccion"], "ubigeo" => $c["lle_ubigeo"],
+                "dpto" => $c["lle_dpto"], "prov" => $c["lle_prov"], "dist" => $c["lle_dist"],
+            ), $usuario);
+        }
+        return $r;
     }
 
     /** config.php usa rutas relativas a /ajax (dev) o absolutas (prod). */
