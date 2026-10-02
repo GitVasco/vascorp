@@ -1,5 +1,9 @@
 <?php
 
+@ini_set("display_errors", "0");
+error_reporting(0);
+date_default_timezone_set('America/Lima');
+
 header('Content-Type: text/html; charset=ISO-8859-1');
 
 
@@ -12,810 +16,339 @@ require_once "../../controladores/usuarios.controlador.php";
 require_once "../../modelos/usuarios.modelo.php";
 require_once "../../controladores/servicio.controlador.php";
 require_once "../../modelos/servicio.modelo.php";
+require_once "../../modelos/recetas-modelo.modelo.php";
+require_once "../../modelos/recetas-modelo.resolucion.php";
+require_once "../../controladores/recetas-modelo.controlador.php";
 /* 
 * LLAMAMOS A LA CONEXION
 */
-$con=ControladorUsuarios::ctrMostrarConexiones("id",1);
+$conexion = Conexion::conectar();
 
-$conexion = mysql_connect($con["ip"], $con["user"], $con["pwd"]) or die("No se pudo conectar: " . mysql_error());
-mysql_select_db($con["db"], $conexion);
-
-/* 
-* CONFIGURAMOS LA FECHA ACTUAL
-*/
 $fechaactual = getdate();
 $fecha = date("d-m-Y");
-$codigo=$_GET["idServicio"];
-/* 
-* INSTANCIAMOS
-*/
+$codigo = $_GET["idServicio"];
+
 $objPHPExcel = new PHPExcel();
-
-/* 
-* CONFIGURAMOS AL CREADOR DEL ARCHIVO
-*/
-$objPHPExcel->getProperties()->setCreator("Corp. Vasco"); //autor
-$objPHPExcel->getProperties()->setTitle("00000020"); //titulo
-
-/* 
-* INICIO DE ESTILOS
-*/
-
-#negrita subrayado T-11
-$texto1 = new PHPExcel_Style();
-$texto1->applyFromArray(
-  array('alignment' => array(
-      'wrap' => false
-    ),
-    'font' => array(
-      'bold' => true,
-      'underline' =>true,
-      'size' => 11
-    )
-));
-
-#negrita T-11
-$texto2 = new PHPExcel_Style();
-$texto2->applyFromArray(
-  array('alignment' => array(
-      'wrap' => false
-    ),
-    'font' => array(
-      'bold' => true,
-      'underline' =>false,
-      'size' => 11
-    )
-));
-$texto3 = new PHPExcel_Style();
-$texto3->applyFromArray(
-  array('alignment' => array(
-      'wrap' => false
-    ),
-    'font' => array(
-      'bold' => true,
-      'color' => array('rgb' => 'FF0008'),
-      'underline' =>true,
-      'size' => 13
-    )
-));
-
-#bordes grueso: izquierda-arriba-derecha, color  GRIS NEGRITA T11
-$borde1 = new PHPExcel_Style();
-$borde1->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'fill' => array(
-      'type' => PHPExcel_Style_Fill::FILL_SOLID,
-      'color' => array('rgb' => 'D7DBDD')
-    ),
-    'borders' => array(
-      'top' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => true,
-      'size' => 11
-    )
-));
-
-#bordes grueso: izquierda-derecha, color  GRIS NEGRITA T11
-$borde2 = new PHPExcel_Style();
-$borde2->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'fill' => array(
-      'type' => PHPExcel_Style_Fill::FILL_SOLID,
-      'color' => array('rgb' => 'D7DBDD')
-    ),
-    'borders' => array(
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => true,
-      'size' => 11
-    )
-));
-
-#bordes grueso: izquierda-derecha-abajo, color  GRIS NEGRITA T11
-$borde3 = new PHPExcel_Style();
-$borde3->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'fill' => array(
-      'type' => PHPExcel_Style_Fill::FILL_SOLID,
-      'color' => array('rgb' => 'D7DBDD')
-    ),
-    'borders' => array(
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => true,
-      'size' => 11
-    )
-));
-
-#bordes derecho delgado / borde izquiedo grueso / borde abajo delgado
-$borde4 = new PHPExcel_Style();
-$borde4->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'borders' => array(
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => false,
-      'size' => 10
-    )
-));
-
-#bordes derecho delgado / borde izquiedo delgado / borde abajo delgado
-$borde5 = new PHPExcel_Style();
-$borde5->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'borders' => array(
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
-    ),
-      'font' => array(
-      'bold' => false,
-      'size' => 10
-    )
-));
-
-#bordes derecho grueso / borde izquiedo delgado / borde abajo delgado
-$borde6 = new PHPExcel_Style();
-$borde6->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'borders' => array(
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => false,
-      'size' => 10
-    )
-));
-
-#bordes grueso: izquierda-arriba-derecha, color  GRIS NEGRITA T11
-$borde7 = new PHPExcel_Style();
-$borde7->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'fill' => array(
-      'type' => PHPExcel_Style_Fill::FILL_SOLID,
-      'color' => array('rgb' => 'D7DBDD')
-    ),
-    'borders' => array(
-      'top' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => true,
-      'size' => 11
-    )
-));
-
-#bordes grueso: ABAJO
-$borde8 = new PHPExcel_Style();
-$borde8->applyFromArray(
-  array('borders' => array(
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    )
-));
-
-#bordes grueso: izquierda-derecha-abajo-arriba, color  GRIS NEGRITA T10
-$borde9 = new PHPExcel_Style();
-$borde9->applyFromArray(
-  array('alignment' => array( 
-      'wrap' => false,
-      'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER,
-    ),
-    'fill' => array(
-      'type' => PHPExcel_Style_Fill::FILL_SOLID,
-      'color' => array('rgb' => 'D7DBDD')
-    ),
-    'borders' => array(
-      'bottom' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'top' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'right' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM),
-      'left' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM)
-    ),
-      'font' => array(
-      'bold' => true,
-      'size' => 10
-    )
-));
-#negrita-11-azul
-$borde_2 = new PHPExcel_Style();
-$borde_2->applyFromArray(
-  array('alignment' => array(
-      'wrap' => false
-    ),
-    'borders' => array(
-        'bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-        'top' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-        'right' => array('style' => PHPExcel_Style_Border::BORDER_THIN),
-        'left' => array('style' => PHPExcel_Style_Border::BORDER_THIN)
-    ),
-    'font' => array(
-      'bold' => true,
-      'underline' =>false,
-      'color' => array('rgb' => '0400FF'),
-      'size' => 10
-    )
-));
-/* 
-* FIN DE ESTILOS
-*/
-/* 
-* CONFIGURAMOS LA 1ERA HOJA
-*/
-$objPHPExcel->createSheet(0);
+$objPHPExcel->getProperties()->setCreator("Corp. Vasco");
+$objPHPExcel->getProperties()->setTitle("Guía de servicio " . $codigo);
 $objPHPExcel->setActiveSheetIndex(0);
 
-# Titulo de la hoja
-$objPHPExcel->getActiveSheet()->setTitle("SERVICIOS MATERIA PRIMA LISTOS -".$fecha);
 
-# Orientacion hoja
-$objPHPExcel->getActiveSheet()->getPageSetup()->setOrientation(PHPExcel_Worksheet_PageSetup::ORIENTATION_PORTRAIT);
+$tablaBorde = array('borders' => array('allborders' => array('style' => PHPExcel_Style_Border::BORDER_THIN)));
+$tablaCabecera = array(
+  'font' => array('bold' => true, 'size' => 10),
+  'fill' => array('type' => PHPExcel_Style_Fill::FILL_SOLID, 'color' => array('rgb' => 'D7DBDD')),
+  'alignment' => array('horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_CENTER, 'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER, 'wrap' => true),
+  'borders' => array('allborders' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM))
+);
 
-# Tipo Papel
-$objPHPExcel->getActiveSheet()->getPageSetup()->setPaperSize(PHPExcel_Worksheet_PageSetup::PAPERSIZE_A4);
-
-# Establecer impresion a pagina completa
-$objPHPExcel->getActiveSheet()->getPageSetup()->setFitToPage(true);
-$objPHPExcel->getActiveSheet()->getPageSetup()->setFitToWidth(1);
-$objPHPExcel->getActiveSheet()->getPageSetup()->setFitToHeight(0);
-
-# Establecer margenes
-$marginV = 0.5 / 3.54; // 0.5 centimetros
-
-$objPHPExcel->getActiveSheet()->getPageMargins()->setTop($marginV);
-$objPHPExcel->getActiveSheet()->getPageMargins()->setBottom($marginV);
-$objPHPExcel->getActiveSheet()->getPageMargins()->setLeft($marginV);
-$objPHPExcel->getActiveSheet()->getPageMargins()->setRight($marginV);
-
-
-# Incluir una imagen
-$objDrawing = new PHPExcel_Worksheet_Drawing();
-$objDrawing->setPath('img/jackyform_letras.png'); //ruta
-$objDrawing->setWidthAndHeight(200, 150);
-$objDrawing->setCoordinates('A1');
-$objDrawing->setWorksheet($objPHPExcel->getActiveSheet());
-
-
-
-// TITULO
-$fila = 2;
-$objPHPExcel->getActiveSheet()->SetCellValue("C$fila", 'SERVICIOS DE MATERIA PRIMA  '.$codigo);
-$objPHPExcel->getActiveSheet()->mergeCells("C$fila:D$fila");
-$objPHPExcel->getActiveSheet()->setSharedStyle($texto3, "C$fila:D$fila");
-$objPHPExcel->getActiveSheet()->getStyle("C$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("F$fila", 'fecha:');
-$objPHPExcel->getActiveSheet()->setSharedStyle($texto1, "F$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("G$fila", $fecha);
-$objPHPExcel->getActiveSheet()->setSharedStyle($texto2, "G$fila");
-
-/* 
-todo: INICIO DE DETALLE
+/*
+* DATOS DEL SERVICIO
 */
+$servicio = ModeloServicios::mdlMostrarServicios("serviciosjf", "codigo", $codigo);
+$detalleServ = ModeloServicios::mdlVisualizarServicioDetalle($codigo);
+$taller = "";
+if (!empty($detalleServ)) {
+  $taller = trim($detalleServ[0]["cod_sector"] . " - " . $detalleServ[0]["nom_sector"], " -");
+} elseif (is_array($servicio) && isset($servicio["nom_sector"])) {
+  $taller = $servicio["nom_sector"];
+}
+$fechaServicio = (is_array($servicio) && !empty($servicio["fecha"])) ? date("d-m-Y", strtotime($servicio["fecha"])) : $fecha;
 
+/*
+* HELPERS DE HOJA
+*/
+function prepararHoja($hoja, $titulo, $ultCol, $textoTitulo, $codigo, $taller, $fechaServicio, $fecha)
+{
+  $hoja->setTitle($titulo);
+  $hoja->getPageSetup()->setOrientation(PHPExcel_Worksheet_PageSetup::ORIENTATION_PORTRAIT);
+  $hoja->getPageSetup()->setPaperSize(PHPExcel_Worksheet_PageSetup::PAPERSIZE_A4);
+  $hoja->getPageSetup()->setFitToPage(true);
+  $hoja->getPageSetup()->setFitToWidth(1);
+  $hoja->getPageSetup()->setFitToHeight(0);
+  $m = 0.5 / 2.54;
+  $hoja->getPageMargins()->setTop($m)->setBottom($m)->setLeft($m)->setRight($m);
 
-$fila = 5;
-$objPHPExcel->getActiveSheet()->SetCellValue("A$fila", 'LINEA');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "A$fila");
-$objPHPExcel->getActiveSheet()->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+  $logo = new PHPExcel_Worksheet_Drawing();
+  $logo->setPath('img/jackyform_letras.png');
+  $logo->setWidthAndHeight(150, 56);
+  $logo->setCoordinates('A1');
+  $logo->setWorksheet($hoja);
+  $hoja->getRowDimension(1)->setRowHeight(24);
+  $hoja->getRowDimension(2)->setRowHeight(24);
 
-$objPHPExcel->getActiveSheet()->SetCellValue("B$fila", 'COD. FAB');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "B$fila");
-$objPHPExcel->getActiveSheet()->getStyle("B$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+  $hoja->setCellValue("C2", $textoTitulo . " N° " . $codigo);
+  $hoja->mergeCells("C2:" . $ultCol . "2");
+  $hoja->getStyle("C2")->applyFromArray(array(
+    'font' => array('bold' => true, 'size' => 15, 'color' => array('rgb' => 'C00000')),
+    'alignment' => array('horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_CENTER, 'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER)
+  ));
 
-$objPHPExcel->getActiveSheet()->SetCellValue("C$fila", 'COD. PRO');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "C$fila");
-$objPHPExcel->getActiveSheet()->getStyle("C$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("D$fila", 'DESCRIPCION');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "D$fila");
-$objPHPExcel->getActiveSheet()->getStyle("D$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("E$fila", 'COLOR');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "E$fila");
-$objPHPExcel->getActiveSheet()->getStyle("E$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("F$fila", 'CONSUMO');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "F$fila");
-$objPHPExcel->getActiveSheet()->getStyle("F$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("G$fila", 'UNIDAD');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "G$fila");
-$objPHPExcel->getActiveSheet()->getStyle("G$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("H$fila", 'MANDAR');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "H$fila");
-$objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("I$fila", 'MARCAR');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde_2, "I$fila");
-$objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-
-#query para sacar los datos deL detalle
-$sqlDetalle2 = mysql_query("SELECT 
-              p.linea,
-              p.codlinea,
-              dt.mat_pri,
-              p.descripcion,
-              p.color,
-              (s.cantidad * dt.consumo) AS total,
-              p.unidad 
-              FROM
-              servicios_detallejf s 
-              LEFT JOIN detalles_tarjetajf dt 
-                ON s.articulo = dt.articulo 
-              LEFT JOIN 
-                (SELECT 
-                  p.codpro,
-                  LEFT(p.codfab, 6) AS codlinea,
-                  (SELECT 
-                    t.des_larga 
-                  FROM
-                    tabla_m_detalle t 
-                  WHERE t.cod_tabla = 'TLIN' 
-                    AND t.des_corta = LEFT(p.codfab, 3)) AS linea,
-                  p.despro AS descripcion,
-                  p.undpro,
-                  (SELECT 
-                    t.des_larga 
-                  FROM
-                    tabla_m_detalle t 
-                  WHERE t.cod_tabla = 'TUND' 
-                    AND t.cod_argumento = p.undpro) AS unidad,
-                  p.colpro,
-                  (SELECT 
-                    t.des_larga 
-                  FROM
-                    tabla_m_detalle t 
-                  WHERE t.cod_tabla = 'TCOL' 
-                    AND t.cod_argumento = p.colpro) AS color 
-                FROM
-                  producto p) p 
-                ON dt.mat_pri = p.codpro 
-              WHERE s.codigo = '$codigo' 
-              AND LEFT(p.codlinea, 3) IN ('BLO', 'ELA', 'ETI', 'SES') 
-              GROUP BY dt.mat_pri 
-              ORDER BY p.linea,
-              p.codlinea") or die(mysql_error());
-
-$cont = 0;
-while($respDetalle2 = mysql_fetch_array($sqlDetalle2)){
-    $cont+=1;
-
-    $fila+=1;
-    
-    $objPHPExcel->getActiveSheet()->SetCellValue("A$fila",utf8_encode($respDetalle2["linea"]));
-    
-    $objPHPExcel->getActiveSheet()->SetCellValue("B$fila", utf8_encode($respDetalle2["codlinea"])); 
-    
-    $objPHPExcel->getActiveSheet()->SetCellValue("C$fila", utf8_encode($respDetalle2["mat_pri"]));
-    
-    $objPHPExcel->getActiveSheet()->SetCellValue("D$fila", utf8_encode($respDetalle2["descripcion"]));
-    
-    $objPHPExcel->getActiveSheet()->SetCellValue("E$fila", utf8_encode($respDetalle2["color"]));
-
-    $objPHPExcel->getActiveSheet()->SetCellValue("F$fila", utf8_encode(number_format($respDetalle2["total"],6)));
-
-    $objPHPExcel->getActiveSheet()->SetCellValue("G$fila", utf8_encode($respDetalle2["unidad"]));
-
-    $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", "");
-
-    $objPHPExcel->getActiveSheet()->SetCellValue("I$fila", "");
-
-
-    
-    
-    
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "A$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "B$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("B$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "C$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("C$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "D$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("D$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "E$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("E$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "F$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("F$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_RIGHT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "G$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("G$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "H$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "I$fila");
-    $objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-
+  $info = array(array("TALLER:", $taller), array("FECHA DEL SERVICIO:", $fechaServicio), array("FECHA DE IMPRESIÓN:", $fecha));
+  $f = 4;
+  foreach ($info as $i) {
+    $hoja->setCellValue("A$f", $i[0]);
+    $hoja->mergeCells("A$f:B$f");
+    $hoja->setCellValue("C$f", $i[1]);
+    $hoja->getStyle("A$f")->getFont()->setBold(true);
+    $hoja->getStyle("C$f")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
+    $f++;
+  }
+  return 8;
 }
 
-$fila += 3;
-$objPHPExcel->getActiveSheet()->SetCellValue("A$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "A$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("B$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "B$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("C$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "C$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("D$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "D$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("E$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "E$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("F$fila", 'S');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "F$fila");
-$objPHPExcel->getActiveSheet()->getStyle("F$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("G$fila", 'M');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "G$fila");
-$objPHPExcel->getActiveSheet()->getStyle("G$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("H$fila", 'L');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "H$fila");
-$objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("I$fila", 'XL');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "I$fila");
-$objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("J$fila", 'XXL');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "J$fila");
-$objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("K$fila", 'XS');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "K$fila");
-$objPHPExcel->getActiveSheet()->getStyle("K$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("L$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "L$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("M$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "M$fila");
-
-$objPHPExcel->getActiveSheet()->SetCellValue("N$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde1, "N$fila");
-
-$fila += 1;
-$objPHPExcel->getActiveSheet()->SetCellValue("A$fila", 'TALLER');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "A$fila");
-$objPHPExcel->getActiveSheet()->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("B$fila", 'CÓDIGO');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "B$fila");
-$objPHPExcel->getActiveSheet()->getStyle("B$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("C$fila", 'MODELO');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "C$fila");
-$objPHPExcel->getActiveSheet()->getStyle("C$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("D$fila", 'NOMBRE');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "D$fila");
-$objPHPExcel->getActiveSheet()->getStyle("D$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("E$fila", 'COLOR');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "E$fila");
-$objPHPExcel->getActiveSheet()->getStyle("E$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("F$fila", '28');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "F$fila");
-$objPHPExcel->getActiveSheet()->getStyle("F$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("G$fila", '30');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "G$fila");
-$objPHPExcel->getActiveSheet()->getStyle("G$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("H$fila", '32');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "H$fila");
-$objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("I$fila", '34');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "I$fila");
-$objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("J$fila", '36');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "J$fila");
-$objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("K$fila", '38');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "K$fila");
-$objPHPExcel->getActiveSheet()->getStyle("K$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("L$fila", '40');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "L$fila");
-$objPHPExcel->getActiveSheet()->getStyle("L$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("M$fila", '42');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "M$fila");
-$objPHPExcel->getActiveSheet()->getStyle("M$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("N$fila", 'TOTAL');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "N$fila");
-$objPHPExcel->getActiveSheet()->getStyle("N$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$fila += 1;
-$objPHPExcel->getActiveSheet()->SetCellValue("A$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "A$fila");
-$objPHPExcel->getActiveSheet()->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("B$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "B$fila");
-$objPHPExcel->getActiveSheet()->getStyle("B$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("C$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "C$fila");
-$objPHPExcel->getActiveSheet()->getStyle("C$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("D$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "D$fila");
-$objPHPExcel->getActiveSheet()->getStyle("D$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("E$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "E$fila");
-$objPHPExcel->getActiveSheet()->getStyle("E$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("F$fila", '3');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "F$fila");
-$objPHPExcel->getActiveSheet()->getStyle("F$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("G$fila", '4');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "G$fila");
-$objPHPExcel->getActiveSheet()->getStyle("G$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("H$fila", '6');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "H$fila");
-$objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("I$fila", '8');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "I$fila");
-$objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("J$fila", '10');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "J$fila");
-$objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("K$fila", '12');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "K$fila");
-$objPHPExcel->getActiveSheet()->getStyle("K$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("L$fila", '14');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "L$fila");
-$objPHPExcel->getActiveSheet()->getStyle("L$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("M$fila", '16');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "M$fila");
-$objPHPExcel->getActiveSheet()->getStyle("M$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-$objPHPExcel->getActiveSheet()->SetCellValue("N$fila", '');
-$objPHPExcel->getActiveSheet()->setSharedStyle($borde3, "N$fila");
-$objPHPExcel->getActiveSheet()->getStyle("N$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-
-
-$sqlCabecera = ModeloServicios::mdlVisualizarServicioDetalle($codigo);
-
-foreach ($sqlCabecera as $key => $value) {
-
-    /* 
-    * QUITAMOS LOS CEROS - T1
-    */
-    if( $value["t1"] <= 0){
-
-        $t1 = '';
-        
-    }else{
-
-        $t1 = $value["t1"];
-
+function bloqueFirmas($hoja, $fila, $izqDesde, $izqHasta, $derDesde, $derHasta)
+{
+  $fila += 3;
+  $bloques = array(
+    array($izqDesde, $izqHasta, "ENTREGA - RESPONSABLE DEL ENVÍO"),
+    array($derDesde, $derHasta, "RECIBE - RESPONSABLE DEL SERVICIO")
+  );
+  foreach ($bloques as $b) {
+    $d = $b[0]; $h = $b[1];
+    $hoja->setCellValue("$d$fila", $b[2]);
+    $hoja->mergeCells("$d$fila:$h$fila");
+    $hoja->getStyle("$d$fila:$h$fila")->applyFromArray(array(
+      'font' => array('bold' => true, 'size' => 10),
+      'fill' => array('type' => PHPExcel_Style_Fill::FILL_SOLID, 'color' => array('rgb' => 'D7DBDD')),
+      'alignment' => array('horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_CENTER),
+      'borders' => array('allborders' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM))
+    ));
+    // espacio para la firma
+    $hoja->mergeCells("$d" . ($fila + 1) . ":$h" . ($fila + 1));
+    $hoja->getStyle("$d" . ($fila + 1) . ":$h" . ($fila + 1))->applyFromArray(array(
+      'borders' => array('allborders' => array('style' => PHPExcel_Style_Border::BORDER_MEDIUM))
+    ));
+    $hoja->setCellValue("$d" . ($fila + 2), "Firma");
+    $hoja->mergeCells("$d" . ($fila + 2) . ":$h" . ($fila + 2));
+    $hoja->getStyle("$d" . ($fila + 2))->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+    $hoja->getStyle("$d" . ($fila + 2))->getFont()->setSize(9);
+    $campos = array("Nombre:", "DNI:", "Fecha y hora:");
+    foreach ($campos as $k => $c) {
+      $r = $fila + 3 + $k;
+      $hoja->setCellValue("$d$r", $c);
+      $hoja->mergeCells("$d$r:$h$r");
+      $hoja->getStyle("$d$r:$h$r")->applyFromArray(array(
+        'font' => array('size' => 10),
+        'alignment' => array('horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_LEFT, 'vertical' => PHPExcel_Style_Alignment::VERTICAL_BOTTOM),
+        'borders' => array('bottom' => array('style' => PHPExcel_Style_Border::BORDER_THIN))
+      ));
+      $hoja->getRowDimension($r)->setRowHeight(22);
     }
-
-    /* 
-    * QUITAMOS LOS CEROS - T2
-    */
-    if( $value["t2"] <= 0){
-
-        $t2 = '';
-        
-    }else{
-
-        $t2 = $value["t2"];
-
-    }
-
-    /* 
-    * QUITAMOS LOS CEROS - T3
-    */
-    if( $value["t3"] <= 0){
-
-        $t3 = '';
-        
-    }else{
-
-        $t3 = $value["t3"];
-
-    }
-
-    /* 
-    * QUITAMOS LOS CEROS - T4
-    */
-    if( $value["t4"] <= 0){
-
-        $t4 = '';
-        
-    }else{
-
-        $t4 = $value["t4"];
-
-    }
-
-    /* 
-    * QUITAMOS LOS CEROS - T5
-    */
-    if( $value["t5"] <= 0){
-
-        $t5 = '';
-        
-    }else{
-
-        $t5 = $value["t5"];
-
-    }
-
-    /* 
-    * QUITAMOS LOS CEROS - T6
-    */
-    if( $value["t6"] <= 0){
-
-        $t6 = '';
-        
-    }else{
-
-        $t6 = $value["t6"];
-
-    }
-
-    /* 
-    * QUITAMOS LOS CEROS - T7
-    */
-    if( $value["t7"] <= 0){
-
-        $t7 = '';
-        
-    }else{
-
-        $t7 = $value["t7"];
-
-    }
-
-    /* 
-    * QUITAMOS LOS CEROS - T8
-    */
-    if( $value["t8"] <= 0){
-
-        $t8 = '';
-        
-    }else{
-
-        $t8 = $value["t8"];
-
-    }
-
-
-    $fila += 1;
-    $objPHPExcel->getActiveSheet()->SetCellValue("A$fila", $value["cod_sector"]);
-    $objPHPExcel->getActiveSheet()->SetCellValue("B$fila", $value["nom_sector"]);
-    $objPHPExcel->getActiveSheet()->SetCellValue("C$fila", $value["modelo"]);
-    $objPHPExcel->getActiveSheet()->SetCellValue("D$fila", $value["nombre"]);
-    $objPHPExcel->getActiveSheet()->SetCellValue("E$fila", $value["color"]);
-    $objPHPExcel->getActiveSheet()->SetCellValue("F$fila", $t1);
-    $objPHPExcel->getActiveSheet()->SetCellValue("G$fila", $t2);
-    $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", $t3);
-    $objPHPExcel->getActiveSheet()->SetCellValue("I$fila", $t4);
-    $objPHPExcel->getActiveSheet()->SetCellValue("J$fila", $t5);
-    $objPHPExcel->getActiveSheet()->SetCellValue("K$fila", $t6);
-    $objPHPExcel->getActiveSheet()->SetCellValue("L$fila", $t7);
-    $objPHPExcel->getActiveSheet()->SetCellValue("M$fila", $t8);
-    $objPHPExcel->getActiveSheet()->SetCellValue("N$fila", $value["total"]);
-    
-
-
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde4, "A$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "B$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "C$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "D$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "E$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "E$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde4, "F$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "G$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "H$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "I$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "J$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "K$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "L$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "M$fila");
-    $objPHPExcel->getActiveSheet()->setSharedStyle($borde6, "N$fila");
-
-
+  }
+  $hoja->getRowDimension($fila + 1)->setRowHeight(60);
 }
 
-# Ajustar el tamaño de las columnas
-$objPHPExcel->getActiveSheet()->getColumnDimension('A')->setWidth(14.28);
-$objPHPExcel->getActiveSheet()->getColumnDimension('B')->setWidth(8.57);
-$objPHPExcel->getActiveSheet()->getColumnDimension('C')->setWidth(8.57);
-$objPHPExcel->getActiveSheet()->getColumnDimension('D')->setWidth(57.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('E')->setWidth(17.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('F')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('G')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('H')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('I')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('J')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('K')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('L')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('L')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('M')->setWidth(9.14);
-$objPHPExcel->getActiveSheet()->getColumnDimension('N')->setWidth(9.14);
-/* 
+
+#detalle de MP desde las recetas del modelo (PUBLICADA, o BORRADOR si no hay publicada)
+$stmtArt = $conexion->prepare("SELECT 
+              a.articulo,
+              a.modelo,
+              a.cod_color,
+              a.color,
+              a.cod_talla,
+              a.talla,
+              SUM(s.cantidad) AS cantidad
+              FROM servicios_detallejf s
+              INNER JOIN articulojf a ON a.articulo = s.articulo
+              WHERE s.codigo = :codigo
+              GROUP BY a.articulo, a.modelo, a.cod_color, a.color, a.cod_talla, a.talla
+              HAVING SUM(s.cantidad) > 0");
+$stmtArt->bindValue(":codigo", $codigo, PDO::PARAM_STR);
+$stmtArt->execute();
+
+$porModelo = array();
+foreach ($stmtArt->fetchAll(PDO::FETCH_ASSOC) as $art) {
+    $porModelo[trim($art["modelo"])][] = $art;
+}
+
+$lineasMp = array('BLO', 'ELA', 'ETI', 'SES');
+$mapaMp = array();
+$modelosSinReceta = array();
+
+foreach ($porModelo as $modelo => $arts) {
+    $receta = ModeloRecetasModelo::mdlRecetaPreferidaModelo($modelo);
+    $estructura = $receta ? ControladorRecetasModelo::ctrEstructuraReceta((int) $receta["id"]) : null;
+    if (!$estructura) {
+        $modelosSinReceta[] = $modelo;
+        continue;
+    }
+
+    $conCantidad = array();
+    foreach ($arts as $art) {
+        $conCantidad[] = array("articulo" => $art, "cantidad" => (float) $art["cantidad"]);
+    }
+
+    $resultado = ServicioRecetasModeloResolucion::resolverMatriz(
+        $estructura["lineas"],
+        $estructura["variantes_por_detalle"],
+        $conCantidad,
+        $estructura["mp_info"]
+    );
+
+    foreach ($resultado["consolidados"] as $c) {
+        $mp = trim($c["mp_codigo"]);
+        $sub = isset($estructura["mp_info"][$mp]["codigo_sublinea"]) ? $estructura["mp_info"][$mp]["codigo_sublinea"] : "";
+        if (!in_array(substr($sub, 0, 3), $lineasMp, true)) {
+            continue;
+        }
+        if (!isset($mapaMp[$mp])) {
+            $mapaMp[$mp] = 0.0;
+        }
+        $mapaMp[$mp] += (float) $c["consumo_total"];
+    }
+}
+
+$filasMp = array();
+if (!empty($mapaMp)) {
+    $codigosMp = array_keys($mapaMp);
+    $marcas = implode(",", array_fill(0, count($codigosMp), "?"));
+    $stmtMp = $conexion->prepare("SELECT 
+              (SELECT t.des_larga FROM tabla_m_detalle t 
+                WHERE t.cod_tabla = 'TLIN' AND t.des_corta = LEFT(p.codfab, 3)) AS linea,
+              LEFT(p.codfab, 6) AS codlinea,
+              p.codpro AS mat_pri,
+              p.despro AS descripcion,
+              (SELECT t.des_larga FROM tabla_m_detalle t 
+                WHERE t.cod_tabla = 'TCOL' AND t.cod_argumento = p.colpro) AS color,
+              (SELECT t.des_larga FROM tabla_m_detalle t 
+                WHERE t.cod_tabla = 'TUND' AND t.cod_argumento = p.undpro) AS unidad
+              FROM producto p
+              WHERE p.codpro IN ($marcas)");
+    $stmtMp->execute($codigosMp);
+    foreach ($stmtMp->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $r["total"] = $mapaMp[trim($r["mat_pri"])];
+        $filasMp[] = $r;
+    }
+    usort($filasMp, function ($x, $y) {
+        return strcmp($x["linea"] . $x["codlinea"], $y["linea"] . $y["codlinea"]);
+    });
+}
+
+
+/*
+* HOJA 1: ARTÍCULOS
+*/
+$hoja = $objPHPExcel->getActiveSheet();
+$fila = prepararHoja($hoja, "ARTICULOS", "M", "GUÍA DE SERVICIO - ARTÍCULOS", $codigo, $taller, $fechaServicio, $fecha);
+
+$cab = array("A" => "N°", "B" => "MODELO", "C" => "NOMBRE", "D" => "COLOR", "E" => "T1", "F" => "T2", "G" => "T3", "H" => "T4", "I" => "T5", "J" => "T6", "K" => "T7", "L" => "T8", "M" => "TOTAL");
+$tallasA = array("E" => "28", "F" => "30", "G" => "32", "H" => "34", "I" => "36", "J" => "38", "K" => "40", "L" => "42");
+$tallasB = array("E" => "3", "F" => "4", "G" => "6", "H" => "8", "I" => "10", "J" => "12", "K" => "14", "L" => "16");
+foreach ($cab as $col => $txt) {
+  if (isset($tallasA[$col])) {
+    $hoja->setCellValue($col . $fila, $tallasA[$col]);
+    $hoja->setCellValue($col . ($fila + 1), $tallasB[$col]);
+  } else {
+    $hoja->setCellValue($col . $fila, $txt);
+    $hoja->mergeCells($col . $fila . ":" . $col . ($fila + 1));
+  }
+}
+$hoja->getStyle("A$fila:M" . ($fila + 1))->applyFromArray($tablaCabecera);
+$fila += 2;
+$inicio = $fila;
+
+$n = 0;
+$totales = array_fill(1, 8, 0);
+$totalGeneral = 0;
+foreach ($detalleServ as $value) {
+  $n++;
+  $hoja->setCellValue("A$fila", $n);
+  $hoja->setCellValue("B$fila", $value["modelo"]);
+  $hoja->setCellValue("C$fila", $value["nombre"]);
+  $hoja->setCellValue("D$fila", $value["color"]);
+  $col = "E";
+  for ($t = 1; $t <= 8; $t++) {
+    $v = (float) $value["t$t"];
+    if ($v > 0) {
+      $hoja->setCellValue("$col$fila", $v);
+      $totales[$t] += $v;
+    }
+    $col++;
+  }
+  $hoja->setCellValue("M$fila", (float) $value["total"]);
+  $totalGeneral += (float) $value["total"];
+  $fila++;
+}
+if ($n > 0) {
+  $hoja->getStyle("A$inicio:M" . ($fila - 1))->applyFromArray($tablaBorde);
+}
+$hoja->getStyle("A$inicio:B" . ($fila - 1))->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+$hoja->getStyle("E$inicio:M" . ($fila - 1))->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+
+// fila de totales
+$hoja->setCellValue("A$fila", "TOTAL");
+$hoja->mergeCells("A$fila:D$fila");
+$col = "E";
+for ($t = 1; $t <= 8; $t++) {
+  if ($totales[$t] > 0) {
+    $hoja->setCellValue("$col$fila", $totales[$t]);
+  }
+  $col++;
+}
+$hoja->setCellValue("M$fila", $totalGeneral);
+$hoja->getStyle("A$fila:M$fila")->applyFromArray($tablaCabecera);
+$hoja->getStyle("A$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_RIGHT);
+
+$anchos = array("A" => 6, "B" => 11, "C" => 45, "D" => 18, "M" => 10);
+foreach (range("E", "L") as $c) { $anchos[$c] = 7; }
+foreach ($anchos as $c => $w) { $hoja->getColumnDimension($c)->setWidth($w); }
+
+bloqueFirmas($hoja, $fila, "A", "D", "F", "M");
+
+/*
+* HOJA 2: MATERIA PRIMA
+*/
+$hoja2 = $objPHPExcel->createSheet(1);
+$objPHPExcel->setActiveSheetIndex(1);
+$fila = prepararHoja($hoja2, "MATERIA PRIMA", "I", "GUÍA DE SERVICIO - MATERIA PRIMA", $codigo, $taller, $fechaServicio, $fecha);
+
+$cab2 = array("A" => "LINEA", "B" => "COD. FAB", "C" => "COD. PRO", "D" => "DESCRIPCIÓN", "E" => "COLOR", "F" => "CONSUMO", "G" => "UNIDAD", "H" => "MANDAR", "I" => "MARCAR");
+foreach ($cab2 as $col => $txt) {
+  $hoja2->setCellValue($col . $fila, $txt);
+}
+$hoja2->getStyle("A$fila:I$fila")->applyFromArray($tablaCabecera);
+$fila++;
+$inicio = $fila;
+foreach ($filasMp as $r) {
+  $hoja2->setCellValue("A$fila", $r["linea"]);
+  $hoja2->setCellValue("B$fila", $r["codlinea"]);
+  $hoja2->setCellValueExplicit("C$fila", $r["mat_pri"], PHPExcel_Cell_DataType::TYPE_STRING);
+  $hoja2->setCellValue("D$fila", $r["descripcion"]);
+  $hoja2->setCellValue("E$fila", $r["color"]);
+  $hoja2->setCellValue("F$fila", round($r["total"], 4));
+  $hoja2->setCellValue("G$fila", $r["unidad"]);
+  $fila++;
+}
+if (!empty($filasMp)) {
+  $hoja2->getStyle("A$inicio:I" . ($fila - 1))->applyFromArray($tablaBorde);
+  $hoja2->getStyle("F$inicio:F" . ($fila - 1))->getNumberFormat()->setFormatCode('#,##0.0000');
+  $hoja2->getStyle("F$inicio:F" . ($fila - 1))->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_RIGHT);
+}
+if (!empty($modelosSinReceta)) {
+  $hoja2->setCellValue("A$fila", "SIN RECETA (no incluidos): " . implode(", ", $modelosSinReceta));
+  $hoja2->getStyle("A$fila")->getFont()->setBold(true)->getColor()->setRGB("C00000");
+  $fila++;
+}
+
+$anchos2 = array("A" => 16, "B" => 10, "C" => 10, "D" => 45, "E" => 18, "F" => 12, "G" => 10, "H" => 10, "I" => 10);
+foreach ($anchos2 as $c => $w) { $hoja2->getColumnDimension($c)->setWidth($w); }
+
+bloqueFirmas($hoja2, $fila, "A", "D", "E", "I");
+
+$objPHPExcel->setActiveSheetIndex(0);
+
+/*
 * CREAR EL ARCHIVO
 */
-$objWriter = new PHPExcel_Writer_Excel5($objPHPExcel); //Escribir archivo
+$objWriter = new PHPExcel_Writer_Excel5($objPHPExcel);
 
-/* 
-* Establecer formado de Excel 2003
-*/
+while (ob_get_level() > 0) {
+    ob_end_clean();
+}
+
 header("Content-Type: application/vnd.ms-excel");
+header('Content-Disposition: attachment; filename="GUIA SERVICIO ' . $codigo . ' - ' . $fecha . '.xls"');
+header("Cache-Control: max-age=0");
 
-/* 
-* CONFIGURAR EL NOMBRE DEL ARCHIVO
-*/
-
-
-
-# Nombre del archivo
-header('Content-Disposition: attachment; filename=" TARJETAS DE MATERIA PRIMA- '.$fecha.'.xls"');
-
-
-//forzar a descarga por el navegador
 $objWriter->save('php://output');
