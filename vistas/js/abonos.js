@@ -69,6 +69,46 @@ function sincronizarUrlFiltrosAbonos() {
     }
 }
 
+/* Query con los filtros activos (año, mes, motivo) para volver al mismo listado */
+function queryFiltrosAbonos() {
+    var periodo = periodoAbonosSeleccionado();
+    var motivo = $("#filtroMotivoAbono").val() || "";
+    var partes = [];
+    if (periodo.anio) {
+        partes.push("anio=" + encodeURIComponent(periodo.anio));
+    }
+    if (periodo.mes) {
+        partes.push("mes=" + encodeURIComponent(periodo.mes));
+    }
+    if (motivo) {
+        partes.push("motivo=" + encodeURIComponent(motivo));
+    }
+    return partes.join("&");
+}
+
+/* Si no hay selects en pantalla (p. ej. tras un POST) se toman de la URL */
+function urlRetornoAbonos(extra) {
+    var q = $("#anioPeriodoAbonos").length ? queryFiltrosAbonos() : "";
+    if (!q) {
+        var p = leerParamsUrlAbonos();
+        var partes = [];
+        ["anio", "mes", "motivo"].forEach(function (k) {
+            if (p[k]) {
+                partes.push(k + "=" + encodeURIComponent(p[k]));
+            }
+        });
+        q = partes.join("&");
+    }
+    var url = "index.php?ruta=abonos";
+    if (extra) {
+        url += "&" + extra;
+    }
+    if (q) {
+        url += "&" + q;
+    }
+    return url;
+}
+
 function aplicarFiltrosDesdeUrlAbonos() {
     var params = leerParamsUrlAbonos();
 
@@ -395,7 +435,13 @@ $("#btnGuardarMotivoAbono").on("click", function () {
                         respuesta.mensaje || "Motivo guardado"
                     );
                 }
-                cargarTablaAbonos($("#filtroMotivoAbono").val() || "");
+                // recarga en sitio: conserva filtros y página actual
+                if ($.fn.DataTable.isDataTable(".tablaAbonos")) {
+                    $(".tablaAbonos").DataTable().ajax.reload(null, false);
+                } else {
+                    cargarTablaAbonos($("#filtroMotivoAbono").val() || "");
+                }
+                cargarEstadisticasAbonos();
             } else {
                 var msg =
                     respuesta && respuesta.mensaje
@@ -433,7 +479,7 @@ $(".tablaAbonos").on("click", ".btnEliminarAbono", function () {
         confirmButtonText: "Si, borrar abono!",
     }).then(function (result) {
         if (result.value) {
-            window.location = "index.php?ruta=abonos&idAbono=" + idAbono;
+            window.location = urlRetornoAbonos("idAbono=" + idAbono);
         }
     });
 });

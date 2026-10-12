@@ -417,7 +417,7 @@ class ControladorAbonos
 						  }).then(function(result){
 									if (result.value) {
 
-									window.location = "abonos";
+									window.location = (typeof urlRetornoAbonos === "function") ? urlRetornoAbonos() : "abonos";
 
 									}
 								})
@@ -473,7 +473,7 @@ class ControladorAbonos
 					  }).then(function(result){
 								if (result.value) {
 
-								window.location = "abonos";
+								window.location = (typeof urlRetornoAbonos === "function") ? urlRetornoAbonos() : "abonos";
 
 								}
 							})
