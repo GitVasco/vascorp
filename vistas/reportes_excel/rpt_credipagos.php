@@ -1,5 +1,8 @@
 <?php
 
+@ini_set("display_errors", "0");
+error_reporting(0);
+
 header('Content-Type: text/html; charset=ISO-8859-1');
 
 
@@ -10,13 +13,11 @@ header('Content-Type: text/html; charset=ISO-8859-1');
 include "../reportes_excel/Classes/PHPExcel.php";
 require_once "../../controladores/usuarios.controlador.php";
 require_once "../../modelos/usuarios.modelo.php";
+require_once "../../modelos/conexion.php";
 /* 
 * LLAMAMOS A LA CONEXION
 */
-$con = ControladorUsuarios::ctrMostrarConexiones("id", 1);
-
-$conexion = mysql_connect($con["ip"], $con["user"], $con["pwd"]) or die("No se pudo conectar: " . mysql_error());
-mysql_select_db($con["db"], $conexion);
+$conexion = Conexion::conectar();
 
 /* 
 * CONFIGURAMOS LA FECHA ACTUAL
@@ -418,9 +419,13 @@ $objPHPExcel->getActiveSheet()->SetCellValue("H$fila", 'Monto');
 $objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "H$fila");
 $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
 
+$objPHPExcel->getActiveSheet()->SetCellValue("I$fila", 'Vend.');
+$objPHPExcel->getActiveSheet()->setSharedStyle($borde2, "I$fila");
+$objPHPExcel->getActiveSheet()->getStyle("I$fila")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+
 
 #query para sacar los datos deL detalle
-$sqlDetalle = mysql_query("SELECT 
+$sqlDetalle = $conexion->prepare("SELECT 
                             c.tipo_doc,
                             c.num_cta,
                             c.fecha,
@@ -428,6 +433,7 @@ $sqlDetalle = mysql_query("SELECT
                             cc.nombre,
                             c.cod_pago,
                             c.doc_origen,
+                            c.vendedor,
                             ROUND(c.monto, 2) AS monto 
                             FROM
                             cuenta_ctejf c 
@@ -437,13 +443,14 @@ $sqlDetalle = mysql_query("SELECT
                             AND c.cod_pago = '82' 
                             AND YEAR(c.fecha) >= '2021' 
                             AND (
-                              c.fecha BETWEEN '$inicio' 
-                              AND '$final'
+                              c.fecha BETWEEN :inicio 
+                              AND :final
                             ) 
                             ORDER BY c.tipo_doc,
-                            c.num_cta") or die(mysql_error());
+                            c.num_cta");
+$sqlDetalle->execute([":inicio" => $inicio, ":final" => $final]);
 
-while ($respDetalle = mysql_fetch_array($sqlDetalle)) {
+while ($respDetalle = $sqlDetalle->fetch(PDO::FETCH_BOTH)) {
 
 
   $fila += 1;
@@ -455,6 +462,7 @@ while ($respDetalle = mysql_fetch_array($sqlDetalle)) {
   $objPHPExcel->getActiveSheet()->SetCellValue("E$fila", utf8_encode($respDetalle["nombre"]));
   $objPHPExcel->getActiveSheet()->SetCellValue("F$fila", utf8_encode($respDetalle["cod_pago"]));
   $objPHPExcel->getActiveSheet()->setCellValueExplicit("G$fila", $respDetalle["doc_origen"], PHPExcel_Cell_DataType::TYPE_STRING);
+  $objPHPExcel->getActiveSheet()->setCellValueExplicit("I$fila", $respDetalle["vendedor"], PHPExcel_Cell_DataType::TYPE_STRING);
 
   if ($respDetalle["monto"] >= 0 && $respDetalle["monto"] < 1000) {
 
@@ -483,10 +491,11 @@ while ($respDetalle = mysql_fetch_array($sqlDetalle)) {
   $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "E$fila");
   $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "F$fila");
   $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "G$fila");
+  $objPHPExcel->getActiveSheet()->setSharedStyle($borde5, "I$fila");
 }
 
 #query para sacar el total
-$sqlTotal = mysql_query("SELECT 
+$sqlTotal = $conexion->prepare("SELECT 
                             c.cod_pago,
                             SUM(c.monto) AS monto 
                             FROM
@@ -497,12 +506,13 @@ $sqlTotal = mysql_query("SELECT
                             AND c.cod_pago = '82' 
                             AND YEAR(c.fecha) >= '2021' 
                             AND (
-                            c.fecha BETWEEN '$inicio' 
-                            AND '$final'
+                            c.fecha BETWEEN :inicio 
+                            AND :final
                             ) 
-                            GROUP BY c.cod_pago") or die(mysql_error());
+                            GROUP BY c.cod_pago");
+$sqlTotal->execute([":inicio" => $inicio, ":final" => $final]);
 
-$respTotal = mysql_fetch_array($sqlTotal);
+$respTotal = $sqlTotal->fetch(PDO::FETCH_BOTH);
 
 $fila += 1;
 $objPHPExcel->getActiveSheet()->SetCellValue("G$fila", 'TOTAL');
@@ -575,7 +585,7 @@ $objPHPExcel->getActiveSheet()->getStyle("H$fila")->getAlignment()->setHorizonta
 
 
 #query para sacar los datos deL detalle
-$sqlDetalle2 = mysql_query("SELECT 
+$sqlDetalle2 = $conexion->prepare("SELECT 
                                 c.vendedor,
                                 cc.documento,
                                 c.cliente,
@@ -592,14 +602,15 @@ $sqlDetalle2 = mysql_query("SELECT
                                 AND YEAR(c.fecha) >= '2021' 
                                 AND YEAR(c.fecha) >= '2021' 
                                 AND (
-                                c.fecha BETWEEN '$inicio' 
-                                AND '$final'
+                                c.fecha BETWEEN :inicio 
+                                AND :final
                                 ) 
                                 GROUP BY c.cliente,
                                 c.num_cta 
-                                ORDER BY c.vendedor") or die(mysql_error());
+                                ORDER BY c.vendedor");
+$sqlDetalle2->execute([":inicio" => $inicio, ":final" => $final]);
 
-while ($respDetalle2 = mysql_fetch_array($sqlDetalle2)) {
+while ($respDetalle2 = $sqlDetalle2->fetch(PDO::FETCH_BOTH)) {
 
 
   $fila += 1;
@@ -646,7 +657,7 @@ while ($respDetalle2 = mysql_fetch_array($sqlDetalle2)) {
 
 
 #query para sacar el total
-$sqlTotal = mysql_query("SELECT 
+$sqlTotal = $conexion->prepare("SELECT 
                     c.cod_pago,
                     SUM(c.monto) AS monto 
                     FROM
@@ -657,12 +668,13 @@ $sqlTotal = mysql_query("SELECT
                     AND c.cod_pago = '82' 
                     AND YEAR(c.fecha) >= '2021' 
                     AND (
-                    c.fecha BETWEEN '$inicio' 
-                    AND '$final'
+                    c.fecha BETWEEN :inicio 
+                    AND :final
                     ) 
-                    GROUP BY c.cod_pago") or die(mysql_error());
+                    GROUP BY c.cod_pago");
+$sqlTotal->execute([":inicio" => $inicio, ":final" => $final]);
 
-$respTotal = mysql_fetch_array($sqlTotal);
+$respTotal = $sqlTotal->fetch(PDO::FETCH_BOTH);
 
 $fila += 1;
 $objPHPExcel->getActiveSheet()->SetCellValue("G$fila", 'TOTAL');
@@ -698,30 +710,23 @@ $objPHPExcel->getActiveSheet()->getColumnDimension('E')->setWidth(49.98);
 $objPHPExcel->getActiveSheet()->getColumnDimension('F')->setWidth(4.57);
 $objPHPExcel->getActiveSheet()->getColumnDimension('G')->setWidth(14.28);
 $objPHPExcel->getActiveSheet()->getColumnDimension('H')->setWidth(11.43);
+$objPHPExcel->getActiveSheet()->getColumnDimension('I')->setWidth(8);
 
 
 
 
-/* 
+/*
 * CREAR EL ARCHIVO
 */
-$objWriter = new PHPExcel_Writer_Excel5($objPHPExcel); //Escribir archivo
+$objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
 
-/* 
-* Establecer formado de Excel 2003
-*/
+// descartar cualquier salida previa (avisos, espacios) que corrompe el archivo
+while (ob_get_level() > 0) {
+    ob_end_clean();
+}
+
 header("Content-Type: application/vnd.ms-excel");
+header('Content-Disposition: attachment; filename="Credipagos - ' . $fecha . '.xls"');
+header("Cache-Control: max-age=0");
 
-/* 
-* CONFIGURAR EL NOMBRE DEL ARCHIVO
-*/
-
-
-
-# Nombre del archivo
-header('Content-Disposition: attachment; filename=" Credipagos - ' . $fecha . '.xlsx"');
-$objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
-
-
-//forzar a descarga por el navegador
 $objWriter->save('php://output');
