@@ -144,8 +144,15 @@ $(".btnExportar").click(function () {
 
 //*KARDEX DE COSTOS*************************************************************************************
 
-$(".TablaKardexCostos").DataTable({
-    ajax: "ajax/centrocostos/tabla-kardex-carga.ajax.php",
+var tablaKardexCostos = $(".TablaKardexCostos").DataTable({
+    ajax: {
+        url: "ajax/centrocostos/tabla-kardex-carga.ajax.php",
+        data: function (d) {
+            d.tipo = $("#filtroTipoKardex").val();
+            d.anno = $("#filtroAnnoKardex").val();
+            d.mes = $("#filtroMesKardex").val();
+        },
+    },
     deferRender: true,
     retrieve: true,
     processing: true,
@@ -183,6 +190,20 @@ $(".TablaKardexCostos").DataTable({
                 ": Activar para ordenar la columna de manera descendente",
         },
     },
+});
+
+$("#filtroTipoKardex, #filtroAnnoKardex, #filtroMesKardex").on(
+    "change",
+    function () {
+        tablaKardexCostos.ajax.reload();
+    },
+);
+
+$("#btnLimpiarFiltrosKardex").on("click", function () {
+    $("#filtroTipoKardex, #filtroAnnoKardex, #filtroMesKardex")
+        .val("")
+        .selectpicker("refresh");
+    tablaKardexCostos.ajax.reload();
 });
 
 /*

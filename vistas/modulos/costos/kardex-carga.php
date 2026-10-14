@@ -23,11 +23,52 @@
         <div class="box">
 
             <div class="box-header with-border">
-                <button class="btn btn-primary" data-toggle="modal" data-target="#modalAgregarKardex">
+
+                <button class="btn btn-primary" data-toggle="modal" data-target="#modalAgregarKardex" style="vertical-align:top">
 
                     Cargar Kardex
 
                 </button>
+
+                <select class="form-control selectpicker" data-live-search="true" data-width="200px" id="filtroTipoKardex" title="Tipo">
+                    <option value="">Todos los tipos</option>
+                    <option value="APT">Producto Terminado</option>
+                    <option value="AMP">Materia Prima</option>
+                    <option value="APP">Producto en Proceso</option>
+                </select>
+
+                <select class="form-control selectpicker" data-live-search="true" data-width="130px" id="filtroAnnoKardex" title="Año">
+                    <option value="">Todos los años</option>
+                    <?php
+                    $annoActual = (int) date("Y");
+                    for ($a = $annoActual + 1; $a >= 2020; $a--) {
+                        echo '<option value="' . $a . '"' . ($a === $annoActual ? ' selected' : '') . '>' . $a . '</option>';
+                    }
+                    ?>
+                </select>
+
+                <select class="form-control selectpicker" data-live-search="true" data-width="150px" id="filtroMesKardex" title="Mes">
+                    <option value="">Todos los meses</option>
+                    <option value="Enero">Enero</option>
+                    <option value="Febrero">Febrero</option>
+                    <option value="Marzo">Marzo</option>
+                    <option value="Abril">Abril</option>
+                    <option value="Mayo">Mayo</option>
+                    <option value="Junio">Junio</option>
+                    <option value="Julio">Julio</option>
+                    <option value="Agosto">Agosto</option>
+                    <option value="Septiembre">Septiembre</option>
+                    <option value="Octubre">Octubre</option>
+                    <option value="Noviembre">Noviembre</option>
+                    <option value="Diciembre">Diciembre</option>
+                </select>
+
+                <button type="button" class="btn btn-default" id="btnLimpiarFiltrosKardex" style="vertical-align:top">
+
+                    <i class="fa fa-eraser"></i> Limpiar
+
+                </button>
+
             </div>
 
             <div class="box-body">
@@ -128,7 +169,7 @@ MODAL AGREGAR CENTRO DE COSTOS
                                     <option value="2023">2023</option>
                                     <option value="2024">2024</option>
                                     <option value="2025">2025</option>
-                                    <option value="2025">2026</option>
+                                    <option value="2026">2026</option>
 
                                 </select>
 

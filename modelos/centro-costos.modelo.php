@@ -1787,7 +1787,7 @@ class ModeloCentroCostos
     /*
 	* Mostrar Centro de Costos
 	*/
-    static public function mdlMostrarKardex($valor)
+    static public function mdlMostrarKardex($valor, $tipo = "", $anno = "", $mes = "")
     {
 
         if ($valor != null) {
@@ -1801,7 +1801,30 @@ class ModeloCentroCostos
             return $stmt->fetch();
         } else {
 
-            $stmt = Conexion::conectar()->prepare("SELECT * FROM kardex_cabjf");
+            $where = [];
+            if ($tipo !== "") {
+                $where[] = "tipo = :tipo";
+            }
+            if ($anno !== "") {
+                $where[] = "anno = :anno";
+            }
+            if ($mes !== "") {
+                $where[] = "LOWER(mes) = LOWER(:mes)";
+            }
+
+            $sql = "SELECT * FROM kardex_cabjf" . ($where ? " WHERE " . implode(" AND ", $where) : "");
+
+            $stmt = Conexion::conectar()->prepare($sql);
+
+            if ($tipo !== "") {
+                $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+            }
+            if ($anno !== "") {
+                $stmt->bindParam(":anno", $anno, PDO::PARAM_STR);
+            }
+            if ($mes !== "") {
+                $stmt->bindParam(":mes", $mes, PDO::PARAM_STR);
+            }
 
             $stmt->execute();
 

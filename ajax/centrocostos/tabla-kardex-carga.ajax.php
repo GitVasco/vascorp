@@ -12,8 +12,11 @@ class TablaKardex{
     public function mostrarTablaKardex(){
 
         $valor = null;
+        $tipo = isset($_GET["tipo"]) ? $_GET["tipo"] : "";
+        $anno = isset($_GET["anno"]) ? $_GET["anno"] : "";
+        $mes = isset($_GET["mes"]) ? $_GET["mes"] : "";
 
-        $centros = ControladorCentroCostos::ctrMostrarKardex($valor);	
+        $centros = ControladorCentroCostos::ctrMostrarKardex($valor, $tipo, $anno, $mes);
 
         if(count($centros)>0){
 

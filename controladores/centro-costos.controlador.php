@@ -1295,10 +1295,10 @@ class ControladorCentroCostos
     /* 
     *Mostrar KARDEX
     */
-    static public function ctrMostrarKardex($valor)
+    static public function ctrMostrarKardex($valor, $tipo = "", $anno = "", $mes = "")
     {
 
-        $respuesta = ModeloCentroCostos::mdlMostrarKardex($valor);
+        $respuesta = ModeloCentroCostos::mdlMostrarKardex($valor, $tipo, $anno, $mes);
 
         return $respuesta;
     }
