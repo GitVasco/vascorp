@@ -2214,6 +2214,7 @@ class ModeloProduccion
 		t.ape_pat_tra,
 		' ',
 		t.ape_mat_tra) AS nombre,
+	t.nro_doc_tra AS dni,
 	COUNT(DISTINCT DATE(et.fecha_terminado)) AS dias,
 	ROUND(SUM(et.total_precio), 2) AS produccion
   " . self::sqlFromWherePagosTrusas($sector) . "

@@ -977,6 +977,34 @@ class ModeloProgramacionTallerSemana
 		}
 	}
 
+	/** Cantidad ya programada (filas activas, todas las semanas) por clave modelo|color. */
+	static public function mdlCantidadProgramadaActiva($modelo = null, $codColor = null)
+	{
+		try {
+			$sql = "SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave,
+					SUM(cantidad) AS cantidad
+				 FROM programacion_taller_semanajf
+				 WHERE estado = 1";
+			if ($modelo !== null) {
+				$sql .= " AND TRIM(modelo) = :modelo AND TRIM(IFNULL(cod_color, '')) = :cod_color";
+			}
+			$sql .= " GROUP BY TRIM(modelo), TRIM(IFNULL(cod_color, ''))";
+			$stmt = Conexion::conectar()->prepare($sql);
+			if ($modelo !== null) {
+				$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
+				$stmt->bindValue(":cod_color", trim((string) $codColor), PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			$out = array();
+			foreach ($stmt->fetchAll() as $r) {
+				$out[$r["clave"]] = (int) $r["cantidad"];
+			}
+			return $out;
+		} catch (Exception $e) {
+			return array();
+		}
+	}
+
 	/** Claves modelo|color ya destinadas a alguna semana (activas). */
 	static public function mdlClavesProgramadasActivas()
 	{

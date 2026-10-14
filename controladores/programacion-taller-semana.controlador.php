@@ -126,13 +126,21 @@ class ControladorProgramacionTallerSemana
 		$enPrioridad = self::ctrMapaClavesActivas(
 			ModeloProgramacionTallerSemana::mdlClavesPrioridadActivas()
 		);
-		$enProgramado = self::ctrMapaClavesActivas(
-			ModeloProgramacionTallerSemana::mdlClavesProgramadasActivas()
-		);
+		$cantProgramada = ModeloProgramacionTallerSemana::mdlCantidadProgramadaActiva();
 		foreach ($lista as $fila) {
 			$clave = self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]);
-			if (isset($enPrioridad[$clave]) || isset($enProgramado[$clave])) {
+			if (isset($enPrioridad[$clave])) {
 				continue;
+			}
+			// Lo ya programado se descuenta; el remanente (p. ej. una OC nueva) vuelve a ser candidato
+			if (isset($cantProgramada[$clave])) {
+				$resto = (int) $fila["saldo_disponible"] - $cantProgramada[$clave];
+				if ($resto < 1) {
+					continue;
+				}
+				$fila["saldo_total"] = (int) $fila["saldo_disponible"];
+				$fila["saldo_disponible"] = $resto;
+				$fila["remanente"] = 1;
 			}
 			// Nivel lo elige quien prioriza; no se asigna automáticamente
 			$fila["nivel"] = "";
@@ -200,17 +208,7 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
-		$enProgramado = self::ctrMapaClavesActivas(
-			ModeloProgramacionTallerSemana::mdlClavesProgramadasActivas()
-		);
 		foreach ($lista as $fila) {
-			$clave = self::ctrClaveModeloColor(
-				isset($fila["modelo"]) ? $fila["modelo"] : "",
-				isset($fila["cod_color"]) ? $fila["cod_color"] : ""
-			);
-			if (isset($enProgramado[$clave])) {
-				continue;
-			}
 			$out[] = self::ctrEnriquecerPriorizado($fila);
 		}
 		usort($out, function ($a, $b) {
@@ -266,19 +264,20 @@ class ControladorProgramacionTallerSemana
 			return array("ok" => false, "mensaje" => "Modelo/color no encontrado");
 		}
 		$desdeDevolver = !empty($post["desde_devolver"]);
+		$disponible = (int) $art["saldo_disponible"];
 		if (!$desdeDevolver) {
-			$enProgramado = self::ctrMapaClavesActivas(
-				ModeloProgramacionTallerSemana::mdlClavesProgramadasActivas()
-			);
+			$prog = ModeloProgramacionTallerSemana::mdlCantidadProgramadaActiva($art["modelo"], $art["cod_color"]);
 			$clave = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]);
-			if (isset($enProgramado[$clave])) {
-				return array(
-					"ok" => false,
-					"mensaje" => "Ya está en Ya programado; quítalo de esa semana o devuélvelo desde No ejecutado"
-				);
+			if (isset($prog[$clave])) {
+				$disponible -= $prog[$clave];
+				if ($disponible < 1) {
+					return array(
+						"ok" => false,
+						"mensaje" => "Ya está en Ya programado; quítalo de esa semana o devuélvelo desde No ejecutado"
+					);
+				}
 			}
 		}
-		$disponible = (int) $art["saldo_disponible"];
 		if ($disponible < 1) {
 			return array("ok" => false, "mensaje" => "Sin saldo en almacén de corte ni en órdenes de corte");
 		}
@@ -726,6 +725,16 @@ class ControladorProgramacionTallerSemana
 		if ($disponible < 1) {
 			return array("ok" => false, "mensaje" => "Sin saldo en almacén de corte ni en órdenes de corte");
 		}
+		// Descontar lo ya programado en otras filas (p. ej. una OC nueva del mismo modelo/color)
+		$prog = ModeloProgramacionTallerSemana::mdlCantidadProgramadaActiva($art["modelo"], $art["cod_color"]);
+		$claveProg = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]);
+		$yaProgramado = isset($prog[$claveProg]) ? $prog[$claveProg] : 0;
+		if ($yaProgramado > 0) {
+			$disponible -= $yaProgramado;
+			if ($disponible < 1) {
+				return array("ok" => false, "mensaje" => "Todo el saldo de este modelo/color ya está programado");
+			}
+		}
 		if ($cantidad > $disponible) {
 			return array("ok" => false, "mensaje" => "La cantidad supera el saldo disponible ({$disponible})");
 		}
@@ -756,6 +765,10 @@ class ControladorProgramacionTallerSemana
 			$existente = ModeloProgramacionTallerSemana::mdlMostrar($idExiste);
 			$datosBase["id"] = $idExiste;
 			$datosBase["usumod"] = self::ctrUsuarioSesion();
+			if ($existente && (int) $existente["estado"] === 1) {
+				// Misma semana/taller ya programada: la cantidad nueva se suma
+				$datosBase["cantidad"] = (int) $existente["cantidad"] + $cantidad;
+			}
 			if ($existente && (int) $existente["estado"] === 0) {
 				$datosReac = array_merge($datosBase, array(
 					"modelo" => $art["modelo"],
