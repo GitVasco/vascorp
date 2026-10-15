@@ -679,6 +679,17 @@ class ControladorProgramacionTallerSemana
 		return $rango;
 	}
 
+	/** Observación resultante al fusionar dos programaciones (sin perder la existente). */
+	static private function ctrUnirObservacion($actual, $nueva)
+	{
+		$actual = trim((string) $actual);
+		$nueva = trim((string) $nueva);
+		if ($nueva === "" || $nueva === $actual) {
+			return $actual !== "" ? $actual : null;
+		}
+		return $actual !== "" ? $actual . " | " . $nueva : $nueva;
+	}
+
 	static public function ctrProgramarAjax($post)
 	{
 		if (!self::ctrPuedeProduccion()) {
@@ -766,8 +777,10 @@ class ControladorProgramacionTallerSemana
 			$datosBase["id"] = $idExiste;
 			$datosBase["usumod"] = self::ctrUsuarioSesion();
 			if ($existente && (int) $existente["estado"] === 1) {
-				// Misma semana/taller ya programada: la cantidad nueva se suma
+				// Misma semana/taller ya programada: se suma la cantidad y se conserva lo configurado
 				$datosBase["cantidad"] = (int) $existente["cantidad"] + $cantidad;
+				$datosBase["nivel"] = $existente["nivel"] !== "" && $existente["nivel"] !== null ? $existente["nivel"] : $nivel;
+				$datosBase["observacion"] = self::ctrUnirObservacion($existente["observacion"], $observacion);
 			}
 			if ($existente && (int) $existente["estado"] === 0) {
 				$datosReac = array_merge($datosBase, array(
@@ -1011,10 +1024,12 @@ class ControladorProgramacionTallerSemana
 				"semana" => $rango["semana"],
 				"fecha_inicio" => $rango["fecha_inicio"],
 				"fecha_fin" => $rango["fecha_fin"],
-				"cantidad" => $cantidad,
+				"cantidad" => $exist && (int) $exist["estado"] === 1 ? (int) $exist["cantidad"] + $cantidad : $cantidad,
 				"cod_sector" => $row["cod_sector"],
-				"nivel" => $row["nivel"],
-				"observacion" => isset($row["observacion"]) ? $row["observacion"] : null,
+				"nivel" => $exist && (int) $exist["estado"] === 1 && $exist["nivel"] !== "" ? $exist["nivel"] : $row["nivel"],
+				"observacion" => $exist && (int) $exist["estado"] === 1
+					? self::ctrUnirObservacion($exist["observacion"], isset($row["observacion"]) ? $row["observacion"] : "")
+					: (isset($row["observacion"]) ? $row["observacion"] : null),
 				"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
 				"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
 				"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],

@@ -977,14 +977,17 @@ class ModeloProgramacionTallerSemana
 		}
 	}
 
-	/** Cantidad ya programada (filas activas, todas las semanas) por clave modelo|color. */
+	/**
+	 * Cantidad ya programada por clave modelo|color en semanas vigentes o futuras.
+	 * Las semanas ya cerradas (No ejecutado) no descuentan: su OC ya pasó y no debe ocultar una OC nueva.
+	 */
 	static public function mdlCantidadProgramadaActiva($modelo = null, $codColor = null)
 	{
 		try {
 			$sql = "SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave,
 					SUM(cantidad) AS cantidad
 				 FROM programacion_taller_semanajf
-				 WHERE estado = 1";
+				 WHERE estado = 1 AND fecha_fin >= CURDATE()";
 			if ($modelo !== null) {
 				$sql .= " AND TRIM(modelo) = :modelo AND TRIM(IFNULL(cod_color, '')) = :cod_color";
 			}
