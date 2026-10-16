@@ -886,7 +886,48 @@ class ControladorProgramacionTallerSemana
 				$codSector
 			);
 			if ($otro > 0 && $otro !== $id) {
-				return array("ok" => false, "mensaje" => "Ya existe ese modelo/color en ese taller para la semana");
+				// Ya existe en destino: se acumula la cantidad y se quita el origen
+				$exist = ModeloProgramacionTallerSemana::mdlMostrar($otro);
+				$activo = $exist && (int) $exist["estado"] === 1;
+				$usuario = self::ctrUsuarioSesion();
+				$datosDest = array(
+					"id" => $otro,
+					"anio" => $rango["anio"],
+					"semana" => $rango["semana"],
+					"fecha_inicio" => $rango["fecha_inicio"],
+					"fecha_fin" => $rango["fecha_fin"],
+					"cantidad" => $activo ? (int) $exist["cantidad"] + $cantidad : $cantidad,
+					"cod_sector" => $codSector,
+					"nivel" => $activo && $exist["nivel"] !== "" && $exist["nivel"] !== null ? $exist["nivel"] : $nivel,
+					"observacion" => $activo
+						? self::ctrUnirObservacion($exist["observacion"], $observacion)
+						: ($observacion !== "" ? $observacion : null),
+					"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
+					"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+					"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
+					"usumod" => $usuario
+				);
+				if ($activo) {
+					$res = ModeloProgramacionTallerSemana::mdlEditar($datosDest);
+				} else {
+					$res = ModeloProgramacionTallerSemana::mdlReactivar(array_merge($datosDest, array(
+						"modelo" => $row["modelo"],
+						"cod_color" => $row["cod_color"],
+						"color" => $row["color"],
+						"nombre" => $row["nombre"]
+					)));
+				}
+				if ($res !== "ok") {
+					return array("ok" => false, "mensaje" => "No se pudo actualizar destino");
+				}
+				ModeloProgramacionTallerSemana::mdlEliminar($id, $usuario);
+				return array(
+					"ok" => true,
+					"mensaje" => "Acumulado en la semana {$semana}",
+					"id" => $otro,
+					"id_origen" => $id,
+					"row" => self::ctrFilaProgramadoPorId($otro)
+				);
 			}
 		}
 

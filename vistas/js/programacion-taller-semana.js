@@ -2617,6 +2617,9 @@ $("#formProgramarPts").on("submit", function (e) {
     $.post("ajax/programacion-taller-semana.ajax.php", payload, function (resp) {
         if (resp && resp.ok) {
             $("#modalProgramarPts").modal("hide");
+            if (resp.id_origen) {
+                quitarProgramadoCachePts(resp.id_origen);
+            }
             if (resp.row) {
                 var mismaSemana = parseInt(resp.row.anio, 10) === anioProgPts()
                     && parseInt(resp.row.semana, 10) === semanaProgPts();
