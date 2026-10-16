@@ -1032,6 +1032,7 @@ class ModeloProduccion
                 FROM articulojf a
                 INNER JOIN modelojf m ON a.modelo = m.modelo
                 WHERE m.tipo IN ('BRASIER', 'SEAMLESS')
+                  AND m.modelo NOT IN ('10411', '10412', '10413') -- seamless que sí se paga
               ) ex ON ex.articulo = et.articulo
             WHERE et.fecha_terminado >= :inicio
               AND et.fecha_terminado < DATE_ADD(:fin, INTERVAL 1 DAY)
@@ -1264,7 +1265,7 @@ class ModeloProduccion
           DATE(et.fecha_terminado) BETWEEN '" . $inicio . "' 
       AND '" . $fin . "'
         ) 
-        AND m.tipo NOT IN ('BRASIER','SEAMLESS') 
+        AND (m.tipo NOT IN ('BRASIER','SEAMLESS') OR m.modelo IN ('10411', '10412', '10413')) 
       GROUP BY et.trabajador) AS et 
       ON a.id_trabajador = et.trabajador 
     LEFT JOIN trabajadorjf t 
@@ -2312,7 +2313,7 @@ class ModeloProduccion
         WHERE ano = '2020'
       ) mes_tbl ON MONTH(et.fecha_terminado) = mes_tbl.codigo
       WHERE et.estado = '3'
-        AND COALESCE(modj.tipo, '') NOT IN ('BRASIER', 'SEAMLESS')
+        AND (COALESCE(modj.tipo, '') NOT IN ('BRASIER', 'SEAMLESS') OR modj.modelo IN ('10411', '10412', '10413'))
         AND et.fecha_terminado >= :inicio
         AND et.fecha_terminado < DATE_ADD(:fin, INTERVAL 1 DAY)
         AND et.trabajador = :trabajador
