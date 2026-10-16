@@ -2282,13 +2282,31 @@ $(function () {
     });
 
     $("#cvBtnExcelValidar").on("click", function () {
-        var fecha = $("#cvFecha").val();
-        if (!fechaValida(fecha)) {
-            aviso("warning", "Excel", "Elige una fecha.");
+        var mes = $("#cvMesExcel").val();
+        if (!mes) {
+            var f = $("#cvFecha").val();
+            mes = fechaValida(f) ? f.substr(0, 7) : "";
+        }
+        if (!/^\d{4}-\d{2}$/.test(mes)) {
+            aviso("warning", "Excel", "Elige un mes.");
             return;
         }
-        window.location = "vistas/reportes_excel/rpt_cuadre_ventas.php?fecha=" + encodeURIComponent(fecha);
+        window.location = "vistas/reportes_excel/rpt_cuadre_ventas.php?mes=" + encodeURIComponent(mes);
     });
+
+    $("#cvNavTabs").on("shown.bs.tab", 'a[data-toggle="tab"]', function () {
+        $("#cvExcelMesBox").toggle($(this).attr("href") === "#cvTabValidar");
+    });
+
+    $("#cvFecha").on("change", function () {
+        var f = $(this).val();
+        if (fechaValida(f)) {
+            $("#cvMesExcel").val(f.substr(0, 7));
+        }
+    });
+    if (fechaValida($("#cvFecha").val())) {
+        $("#cvMesExcel").val($("#cvFecha").val().substr(0, 7));
+    }
 
     $("#cvBtnExcelProcesar").on("click", function () {
         var fecha = $("#cvFecha").val();

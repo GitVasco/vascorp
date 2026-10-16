@@ -28,6 +28,15 @@
                             <i class="fa fa-search"></i> Buscar
                         </button>
                     </div>
+                    <div class="form-inline cv-excel-mes" id="cvExcelMesBox" style="display:none;margin-top:8px">
+                        <div class="form-group">
+                            <label for="cvMesExcel">Mes</label>
+                            <input type="month" class="form-control" id="cvMesExcel" title="Mes del Excel">
+                        </div>
+                        <button type="button" class="btn btn-success" id="cvBtnExcelValidar" title="Una hoja por cada día del mes">
+                            <i class="fa fa-file-excel-o"></i> Excel
+                        </button>
+                    </div>
                     <div class="cv-totales">
                         <span>Docs: <strong id="cvTotCantidad">0</strong></span>
                         <span>Monto: <strong id="cvTotMonto">0.00</strong></span>
@@ -215,9 +224,6 @@
                             <aside class="cv-validar-sumas" id="cvValidarSumas">
                                 <div class="cv-suma-cab">
                                     <h4>Suma del día</h4>
-                                    <button type="button" class="btn btn-success btn-xs" id="cvBtnExcelValidar" title="Bajar Excel del día">
-                                        <i class="fa fa-file-excel-o"></i> Excel
-                                    </button>
                                 </div>
                                 <div class="cv-suma-bloque cv-suma-bloque-pend">
                                     <div class="cv-suma-titulo">

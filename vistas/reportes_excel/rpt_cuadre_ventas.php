@@ -26,16 +26,30 @@ if (!function_exists("usuarioPuedeCuadreVentas") || !usuarioPuedeCuadreVentas("v
 
 date_default_timezone_set("America/Lima");
 
-$fecha = isset($_GET["fecha"]) ? $_GET["fecha"] : "";
-$res = ControladorCuadreVentas::ctrFilasExcel($fecha);
-if (empty($res["ok"])) {
-    echo isset($res["msg"]) ? $res["msg"] : "No se pudo armar el Excel.";
+$mes = isset($_GET["mes"]) ? trim($_GET["mes"]) : "";
+if (!preg_match('/^(\d{4})-(\d{2})$/', $mes, $mm) || !checkdate((int) $mm[2], 1, (int) $mm[1])) {
+    echo "Mes no válido.";
     exit;
 }
+$periodo = $mm[2] . "-" . $mm[1];
+$diasMes = (int) date("t", strtotime($mes . "-01"));
 
-$fechaOk = $res["fecha"];
-$filas = $res["filas"];
-$periodo = substr($fechaOk, 5, 2) . "-" . substr($fechaOk, 0, 4);
+$dias = array();
+for ($d = 1; $d <= $diasMes; $d++) {
+    $fechaDia = $mes . "-" . str_pad((string) $d, 2, "0", STR_PAD_LEFT);
+    $res = ControladorCuadreVentas::ctrFilasExcel($fechaDia);
+    if (empty($res["ok"])) {
+        echo isset($res["msg"]) ? $res["msg"] : "No se pudo armar el Excel.";
+        exit;
+    }
+    if (!empty($res["filas"])) {
+        $dias[$fechaDia] = $res["filas"];
+    }
+}
+if (empty($dias)) {
+    echo "No hay cuadres de ventas en el mes " . $periodo . ".";
+    exit;
+}
 
 function cvExcelTexto($valor)
 {
@@ -148,75 +162,89 @@ $colsMoneda = array("N", "P", "T");
 $ultimaCol = "V";
 $formatoMoneda = '#,##0.00';
 
-$hoja = $objPHPExcel->getActiveSheet();
-$hoja->setTitle("Cuadre");
-$hoja->mergeCells("A1:" . $ultimaCol . "1");
-$hoja->setCellValue("A1", "CUADRE DE VENTAS — " . $periodo . " — " . cvExcelFecha($fechaOk));
-$hoja->getStyle("A1")->applyFromArray($estiloTitulo);
-$hoja->getRowDimension(1)->setRowHeight(22);
+function cvExcelHojaDia($hoja, $fechaOk, $filas, $periodo, $cabeceras, $anchos, $colsTexto, $colsMoneda, $ultimaCol, $formatoMoneda, $estiloTitulo, $estiloCabecera, $estiloCelda)
+{
+    $hoja->setTitle(substr($fechaOk, 8, 2) . "-" . substr($fechaOk, 5, 2));
+    $hoja->mergeCells("A1:" . $ultimaCol . "1");
+    $hoja->setCellValue("A1", "CUADRE DE VENTAS — " . $periodo . " — " . cvExcelFecha($fechaOk));
+    $hoja->getStyle("A1")->applyFromArray($estiloTitulo);
+    $hoja->getRowDimension(1)->setRowHeight(22);
 
-foreach ($cabeceras as $col => $tituloCol) {
-    $hoja->setCellValue($col . "2", $tituloCol);
-    $hoja->getStyle($col . "2")->applyFromArray($estiloCabecera);
-}
-$hoja->getRowDimension(2)->setRowHeight(28);
+    foreach ($cabeceras as $col => $tituloCol) {
+        $hoja->setCellValue($col . "2", $tituloCol);
+        $hoja->getStyle($col . "2")->applyFromArray($estiloCabecera);
+    }
+    $hoja->getRowDimension(2)->setRowHeight(28);
 
-$fila = 3;
-foreach ($filas as $item) {
-    $montoOpTxt = isset($item["monto_op"]) ? (string) $item["monto_op"] : "";
-    $difVal = isset($item["diferencia"]) ? $item["diferencia"] : "";
-    $datos = array(
-        cvExcelTexto($item["periodo"]),
-        cvExcelFecha($item["fecha_dia"]),
-        cvExcelTexto($item["responsable"]),
-        cvExcelTexto($item["marca"]),
-        cvExcelTexto($item["vendedor"]),
-        cvExcelTexto($item["zona"]),
-        cvExcelTexto($item["codigo_cliente"]),
-        cvExcelTexto($item["documento_cliente"]),
-        cvExcelTexto($item["nombre_cliente"]),
-        cvExcelTexto($item["tipo_documento"]),
-        cvExcelTexto($item["codigo_tipo"]),
-        cvExcelTexto($item["nro_documento"]),
-        cvExcelFecha($item["fecha_emision"]),
-        (float) $item["monto"],
-        cvExcelFecha($item["fecha_pago"]),
-        (float) $item["monto_abonado"],
-        cvExcelTexto($item["forma_pago"]),
-        cvExcelTexto($item["nro_op"]),
-        cvExcelTexto($montoOpTxt),
-        ($difVal === "" || $difVal === null) ? "" : (float) $difVal,
-        cvExcelTexto(isset($item["estado"]) ? $item["estado"] : ""),
-        cvExcelTexto(isset($item["observacion"]) ? $item["observacion"] : ""),
-    );
-    $letras = array(
-        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
-        "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
-    );
-    foreach ($datos as $idx => $valor) {
-        $col = $letras[$idx];
-        if ($col === "T" && ($valor === "" || $valor === null)) {
-            $hoja->setCellValueExplicit($col . $fila, "", PHPExcel_Cell_DataType::TYPE_STRING);
-        } elseif (in_array($col, $colsTexto, true)) {
-            $hoja->setCellValueExplicit($col . $fila, (string) $valor, PHPExcel_Cell_DataType::TYPE_STRING);
-        } else {
-            $hoja->setCellValue($col . $fila, $valor);
+    $fila = 3;
+    foreach ($filas as $item) {
+        $montoOpTxt = isset($item["monto_op"]) ? (string) $item["monto_op"] : "";
+        $difVal = isset($item["diferencia"]) ? $item["diferencia"] : "";
+        $datos = array(
+            cvExcelTexto($item["periodo"]),
+            cvExcelFecha($item["fecha_dia"]),
+            cvExcelTexto($item["responsable"]),
+            cvExcelTexto($item["marca"]),
+            cvExcelTexto($item["vendedor"]),
+            cvExcelTexto($item["zona"]),
+            cvExcelTexto($item["codigo_cliente"]),
+            cvExcelTexto($item["documento_cliente"]),
+            cvExcelTexto($item["nombre_cliente"]),
+            cvExcelTexto($item["tipo_documento"]),
+            cvExcelTexto($item["codigo_tipo"]),
+            cvExcelTexto($item["nro_documento"]),
+            cvExcelFecha($item["fecha_emision"]),
+            (float) $item["monto"],
+            cvExcelFecha($item["fecha_pago"]),
+            (float) $item["monto_abonado"],
+            cvExcelTexto($item["forma_pago"]),
+            cvExcelTexto($item["nro_op"]),
+            cvExcelTexto($montoOpTxt),
+            ($difVal === "" || $difVal === null) ? "" : (float) $difVal,
+            cvExcelTexto(isset($item["estado"]) ? $item["estado"] : ""),
+            cvExcelTexto(isset($item["observacion"]) ? $item["observacion"] : ""),
+        );
+        $letras = array(
+            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
+            "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
+        );
+        foreach ($datos as $idx => $valor) {
+            $col = $letras[$idx];
+            if ($col === "T" && ($valor === "" || $valor === null)) {
+                $hoja->setCellValueExplicit($col . $fila, "", PHPExcel_Cell_DataType::TYPE_STRING);
+            } elseif (in_array($col, $colsTexto, true)) {
+                $hoja->setCellValueExplicit($col . $fila, (string) $valor, PHPExcel_Cell_DataType::TYPE_STRING);
+            } else {
+                $hoja->setCellValue($col . $fila, $valor);
+            }
         }
+        $hoja->getStyle("A" . $fila . ":" . $ultimaCol . $fila)->applyFromArray($estiloCelda);
+        foreach ($colsMoneda as $colMon) {
+            $hoja->getStyle($colMon . $fila)->getNumberFormat()->setFormatCode($formatoMoneda);
+        }
+        $fila++;
     }
-    $hoja->getStyle("A" . $fila . ":" . $ultimaCol . $fila)->applyFromArray($estiloCelda);
-    foreach ($colsMoneda as $colMon) {
-        $hoja->getStyle($colMon . $fila)->getNumberFormat()->setFormatCode($formatoMoneda);
+
+    foreach ($anchos as $col => $ancho) {
+        $hoja->getColumnDimension($col)->setWidth($ancho);
     }
-    $fila++;
+    $hoja->freezePane("A3");
+    $hoja->setAutoFilter("A2:" . $ultimaCol . "2");
 }
 
-foreach ($anchos as $col => $ancho) {
-    $hoja->getColumnDimension($col)->setWidth($ancho);
+$primera = true;
+foreach ($dias as $fechaOk => $filas) {
+    if ($primera) {
+        $hoja = $objPHPExcel->getActiveSheet();
+        $primera = false;
+    } else {
+        $hoja = $objPHPExcel->createSheet();
+    }
+    cvExcelHojaDia($hoja, $fechaOk, $filas, $periodo, $cabeceras, $anchos, $colsTexto, $colsMoneda, $ultimaCol, $formatoMoneda, $estiloTitulo, $estiloCabecera, $estiloCelda);
 }
-$hoja->freezePane("A3");
-$hoja->setAutoFilter("A2:" . $ultimaCol . "2");
+$objPHPExcel->setActiveSheetIndex(0);
 
-$nombreArchivo = "cuadre_ventas_" . $fechaOk . ".xls";
+$nombreArchivo = "cuadre_ventas_" . $mes . ".xls";
 
 while (ob_get_level() > 0) {
     ob_end_clean();
