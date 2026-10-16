@@ -298,6 +298,10 @@ class ModeloPedidos
 
 		if ($stmt->execute()) {
 
+			if ($tabla === "detalle_temporal") {
+				self::mdlSincronizarPedidosSiAprobado($datos["codigo"]);
+			}
+
 			return "ok";
 		} else {
 
@@ -342,6 +346,8 @@ class ModeloPedidos
 			$upd->bindParam(":articulo2", $articuloSku, PDO::PARAM_STR);
 
 			if ($upd->execute()) {
+
+				self::mdlSincronizarPedidosSiAprobado($codigoPedido);
 
 				return "ok";
 			}
@@ -400,7 +406,13 @@ class ModeloPedidos
 		$chk->bindParam(":art2", $articuloSku, PDO::PARAM_STR);
 		$chk->execute();
 
-		return $chk->fetchColumn() !== false ? "ok" : "error";
+		if ($chk->fetchColumn() === false) {
+			return "error";
+		}
+
+		self::mdlSincronizarPedidosSiAprobado($codigoPedido);
+
+		return "ok";
 	}
 
 	/*
@@ -421,6 +433,7 @@ class ModeloPedidos
 		}
 
 		if ($del->rowCount() > 0) {
+			self::mdlSincronizarPedidosSiAprobado($codigoPedido);
 			return "ok";
 		}
 
@@ -448,6 +461,12 @@ class ModeloPedidos
 
 		if ($stmt->execute()) {
 
+			if (preg_match_all("/\\(\\s*'?(\\d+)'?\\s*,/", (string) $detalle, $coincidencias)) {
+				foreach (array_unique($coincidencias[1]) as $codigoDetalle) {
+					self::mdlSincronizarPedidosSiAprobado($codigoDetalle);
+				}
+			}
+
 			return "ok";
 		} else {
 
@@ -472,6 +491,10 @@ class ModeloPedidos
 
 		if ($stmt->execute()) {
 
+			if ($tabla === "detalle_temporal") {
+				self::mdlSincronizarPedidosSiAprobado($eliminar["codigo"]);
+			}
+
 			return "ok";
 		} else {
 
@@ -489,6 +512,10 @@ class ModeloPedidos
 		$stmt = Conexion::conectar()->prepare("DELETE FROM $tabla WHERE codigo = '$pedido' AND articulo like '$modelo%'");
 
 		if ($stmt->execute()) {
+
+			if ($tabla === "detalle_temporal") {
+				self::mdlSincronizarPedidosSiAprobado($pedido);
+			}
 
 			return "ok";
 		} else {
@@ -515,6 +542,8 @@ class ModeloPedidos
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_INT);
 
 		if ($stmt->execute()) {
+
+			self::mdlSincronizarPedidosSiAprobado($datos["codigo"]);
 
 			return "ok";
 		} else {
@@ -1809,6 +1838,34 @@ class ModeloPedidos
 		$stmt->close();
 
 		$stmt = null;
+	}
+
+	/*
+	* Recalcula articulojf.pedidos solo si el pedido ya está APROBADO/APT/CONFIRMADO
+	* (se usa tras editar su detalle para que no quede desfasado).
+	*/
+	static public function mdlSincronizarPedidosSiAprobado($codigoPedido)
+	{
+
+		$codigoPedido = trim((string) $codigoPedido);
+
+		if ($codigoPedido === "") {
+			return false;
+		}
+
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT 1 FROM temporaljf WHERE codigo = :codigo AND estado IN ('APROBADO', 'APT', 'CONFIRMADO') LIMIT 1"
+		);
+		$stmt->bindParam(":codigo", $codigoPedido, PDO::PARAM_STR);
+		$stmt->execute();
+		$aprobado = $stmt->fetchColumn() !== false;
+		$stmt = null;
+
+		if (!$aprobado) {
+			return false;
+		}
+
+		return self::mdlCantAprobados() === "ok";
 	}
 
 	static public function mdlCantAprobados()
