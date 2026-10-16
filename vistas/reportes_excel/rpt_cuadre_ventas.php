@@ -26,10 +26,21 @@ if (!function_exists("usuarioPuedeCuadreVentas") || !usuarioPuedeCuadreVentas("v
 
 date_default_timezone_set("America/Lima");
 
+$verificar = isset($_GET["verificar"]);
+function cvExcelSalida($verificar, $ok, $msg)
+{
+    if ($verificar) {
+        header("Content-Type: application/json; charset=utf-8");
+        echo json_encode(array("ok" => $ok, "msg" => $msg));
+    } else {
+        echo $msg;
+    }
+    exit;
+}
+
 $mes = isset($_GET["mes"]) ? trim($_GET["mes"]) : "";
 if (!preg_match('/^(\d{4})-(\d{2})$/', $mes, $mm) || !checkdate((int) $mm[2], 1, (int) $mm[1])) {
-    echo "Mes no válido.";
-    exit;
+    cvExcelSalida($verificar, false, "Mes no válido.");
 }
 $periodo = $mm[2] . "-" . $mm[1];
 $diasMes = (int) date("t", strtotime($mes . "-01"));
@@ -39,16 +50,17 @@ for ($d = 1; $d <= $diasMes; $d++) {
     $fechaDia = $mes . "-" . str_pad((string) $d, 2, "0", STR_PAD_LEFT);
     $res = ControladorCuadreVentas::ctrFilasExcel($fechaDia);
     if (empty($res["ok"])) {
-        echo isset($res["msg"]) ? $res["msg"] : "No se pudo armar el Excel.";
-        exit;
+        cvExcelSalida($verificar, false, isset($res["msg"]) ? $res["msg"] : "No se pudo armar el Excel.");
     }
     if (!empty($res["filas"])) {
         $dias[$fechaDia] = $res["filas"];
     }
 }
 if (empty($dias)) {
-    echo "No hay cuadres de ventas en el mes " . $periodo . ".";
-    exit;
+    cvExcelSalida($verificar, false, "No hay cuadres de ventas en el mes " . $periodo . ".");
+}
+if ($verificar) {
+    cvExcelSalida(true, true, "");
 }
 
 function cvExcelTexto($valor)
@@ -128,8 +140,6 @@ $cabeceras = array(
     "R" => "Nro OP",
     "S" => "Monto OP",
     "T" => "Diferencia",
-    "U" => "Estado",
-    "V" => "Observación",
 );
 
 $anchos = array(
@@ -153,13 +163,11 @@ $anchos = array(
     "R" => 24,
     "S" => 18,
     "T" => 12,
-    "U" => 14,
-    "V" => 40,
 );
 
-$colsTexto = array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "O", "Q", "R", "S", "U", "V");
+$colsTexto = array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "O", "Q", "R", "S");
 $colsMoneda = array("N", "P", "T");
-$ultimaCol = "V";
+$ultimaCol = "T";
 $formatoMoneda = '#,##0.00';
 
 function cvExcelHojaDia($hoja, $fechaOk, $filas, $periodo, $cabeceras, $anchos, $colsTexto, $colsMoneda, $ultimaCol, $formatoMoneda, $estiloTitulo, $estiloCabecera, $estiloCelda)
@@ -201,12 +209,10 @@ function cvExcelHojaDia($hoja, $fechaOk, $filas, $periodo, $cabeceras, $anchos, 
             cvExcelTexto($item["nro_op"]),
             cvExcelTexto($montoOpTxt),
             ($difVal === "" || $difVal === null) ? "" : (float) $difVal,
-            cvExcelTexto(isset($item["estado"]) ? $item["estado"] : ""),
-            cvExcelTexto(isset($item["observacion"]) ? $item["observacion"] : ""),
         );
         $letras = array(
             "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
-            "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
+            "M", "N", "O", "P", "Q", "R", "S", "T",
         );
         foreach ($datos as $idx => $valor) {
             $col = $letras[$idx];

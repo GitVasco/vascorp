@@ -2291,7 +2291,18 @@ $(function () {
             aviso("warning", "Excel", "Elige un mes.");
             return;
         }
-        window.location = "vistas/reportes_excel/rpt_cuadre_ventas.php?mes=" + encodeURIComponent(mes);
+        var url = "vistas/reportes_excel/rpt_cuadre_ventas.php?mes=" + encodeURIComponent(mes);
+        $.getJSON(url + "&verificar=1")
+            .done(function (r) {
+                if (r && r.ok) {
+                    window.location = url;
+                } else {
+                    aviso("warning", "Excel", (r && r.msg) || "No se pudo armar el Excel.");
+                }
+            })
+            .fail(function () {
+                aviso("error", "Excel", "No se pudo verificar el mes.");
+            });
     });
 
     $("#cvNavTabs").on("shown.bs.tab", 'a[data-toggle="tab"]', function () {

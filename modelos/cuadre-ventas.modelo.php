@@ -662,7 +662,7 @@ class ModeloCuadreVentas
                     ON mv.codigo = TRIM(c.vendedor)
                    AND mv.tipo_dato = 'TVEND'
                 WHERE q.fecha_ventas = :fecha
-                  AND q.estado IN ('REGISTRADO', 'VALIDADO', 'PROCESADO')
+                  AND q.estado IN ('REGISTRADO', 'VALIDADO', 'PROCESADO', 'RECHAZADO', 'ANULADO')
                 ORDER BY q.id ASC, d.id ASC";
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
@@ -684,7 +684,7 @@ class ModeloCuadreVentas
                 FROM cuadre_ventas_medjf m
                 INNER JOIN cuadre_ventasjf q ON q.id = m.id_cuadre
                 WHERE q.fecha_ventas = :fecha
-                  AND q.estado IN ('REGISTRADO', 'VALIDADO', 'PROCESADO')
+                  AND q.estado IN ('REGISTRADO', 'VALIDADO', 'PROCESADO', 'RECHAZADO', 'ANULADO')
                 ORDER BY m.id_cuadre ASC, m.id ASC";
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
