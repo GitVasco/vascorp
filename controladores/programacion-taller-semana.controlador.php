@@ -99,23 +99,127 @@ class ControladorProgramacionTallerSemana
 		return $fila;
 	}
 
-	static public function ctrMapaClavesActivas($lista)
-	{
-		$map = array();
-		if (!is_array($lista)) {
-			return $map;
-		}
-		foreach ($lista as $clave) {
-			$map[(string) $clave] = true;
-		}
-		return $map;
-	}
-
 	static public function ctrClaveModeloColor($modelo, $codColor)
 	{
 		return trim((string) $modelo) . "|" . trim((string) $codColor);
 	}
 
+	static private $cacheSaldosOc = null;
+
+	/** Saldo por OC de todos los modelo/color (una sola vez por request). */
+	static public function ctrSaldosOc()
+	{
+		if (self::$cacheSaldosOc === null) {
+			self::$cacheSaldosOc = ModeloProgramacionTallerSemana::mdlSaldosPorOc();
+		}
+		return self::$cacheSaldosOc;
+	}
+
+	/** null / "" = fila legado sin OC. */
+	static private function ctrNormalizarOc($valor)
+	{
+		if ($valor === null || $valor === "") {
+			return null;
+		}
+		return (int) $valor;
+	}
+
+	static private function ctrSaldoDeMapa($mapa, $clave, $ordencorte)
+	{
+		$vacio = array(
+			"ordencorte" => $ordencorte,
+			"alm_corte" => 0,
+			"ord_corte" => 0,
+			"saldo" => 0,
+			"fecha_oc" => null,
+			"tallas" => array()
+		);
+		if (!isset($mapa[$clave])) {
+			return $vacio;
+		}
+		if ($ordencorte === null) {
+			// Legado sin OC: total del modelo/color
+			foreach ($mapa[$clave] as $s) {
+				$vacio["alm_corte"] += $s["alm_corte"];
+				$vacio["ord_corte"] += $s["ord_corte"];
+				$vacio["saldo"] += $s["saldo"];
+				foreach ($s["tallas"] as $art => $t) {
+					if (!isset($vacio["tallas"][$art])) {
+						$vacio["tallas"][$art] = array("alm_corte" => 0, "ord_corte" => 0);
+					}
+					$vacio["tallas"][$art]["alm_corte"] += $t["alm_corte"];
+					$vacio["tallas"][$art]["ord_corte"] += $t["ord_corte"];
+				}
+			}
+			return $vacio;
+		}
+		return isset($mapa[$clave][$ordencorte]) ? $mapa[$clave][$ordencorte] : $vacio;
+	}
+
+	/** Saldo vivo de un modelo/color en una OC (consulta acotada a ese modelo/color). */
+	static public function ctrSaldoOc($modelo, $codColor, $ordencorte)
+	{
+		$mapa = ModeloProgramacionTallerSemana::mdlSaldosPorOc($modelo, $codColor);
+		return self::ctrSaldoDeMapa(
+			$mapa,
+			self::ctrClaveModeloColor($modelo, $codColor),
+			self::ctrNormalizarOc($ordencorte)
+		);
+	}
+
+	/** Pone en la fila el saldo vivo de su propia OC (no el total del modelo/color). */
+	static private function ctrAplicarSaldoOc($fila, $mapa)
+	{
+		$oc = self::ctrNormalizarOc(isset($fila["ordencorte"]) ? $fila["ordencorte"] : null);
+		$s = self::ctrSaldoDeMapa($mapa, self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]), $oc);
+		$fila["alm_corte_vivo"] = (int) $s["alm_corte"];
+		$fila["ord_corte_vivo"] = (int) $s["ord_corte"];
+		$fila["saldo_vivo"] = (int) $s["saldo"];
+		$fila["fecha_oc"] = $s["fecha_oc"];
+		return $fila;
+	}
+
+	/** Fecha de OC para filas cuya OC ya no tiene saldo (no vienen en el mapa de saldos). */
+	static private function ctrCompletarFechasOc($filas)
+	{
+		$faltan = array();
+		foreach ($filas as $f) {
+			if (empty($f["fecha_oc"]) && isset($f["ordencorte"]) && (int) $f["ordencorte"] > 0) {
+				$faltan[] = (int) $f["ordencorte"];
+			}
+		}
+		if (!count($faltan)) {
+			return $filas;
+		}
+		$fechas = ModeloProgramacionTallerSemana::mdlFechasOc($faltan);
+		foreach ($filas as $i => $f) {
+			if (empty($f["fecha_oc"]) && isset($f["ordencorte"]) && isset($fechas[(int) $f["ordencorte"]])) {
+				$filas[$i]["fecha_oc"] = $fechas[(int) $f["ordencorte"]];
+			}
+		}
+		return $filas;
+	}
+
+	/** Candidato con saldo en una OC concreta a partir de la fila agregada del modelo/color. */
+	static private function ctrFilaCandidatoOc($fila, $saldoOc)
+	{
+		$fila["saldo_total"] = (int) $fila["saldo_disponible"];
+		$fila["ordencorte"] = (int) $saldoOc["ordencorte"];
+		$fila["fecha_oc"] = $saldoOc["fecha_oc"];
+		$fila["alm_corte"] = (int) $saldoOc["alm_corte"];
+		$fila["ord_corte"] = (int) $saldoOc["ord_corte"];
+		$fila["saldo_disponible"] = (int) $saldoOc["saldo"];
+		// Nivel lo elige quien prioriza; no se asigna automáticamente
+		$fila["nivel"] = "";
+		$fila["nivel_nombre"] = "";
+		$fila["nivel_color"] = "";
+		return $fila;
+	}
+
+	/**
+	 * Candidatos: una fila por modelo/color/OC con saldo vivo que no esté ya priorizada ni programada.
+	 * Una OC nueva siempre aparece por separado, aunque el modelo/color tenga otra OC programada.
+	 */
 	static public function ctrListarCandidatos($filtros = array())
 	{
 		$lista = ModeloProgramacionTallerSemana::mdlListarCandidatos($filtros);
@@ -123,30 +227,19 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
-		$enPrioridad = self::ctrMapaClavesActivas(
-			ModeloProgramacionTallerSemana::mdlClavesPrioridadActivas()
-		);
-		$cantProgramada = ModeloProgramacionTallerSemana::mdlCantidadProgramadaActiva();
+		$mapa = self::ctrSaldosOc();
+		$ocupadas = ModeloProgramacionTallerSemana::mdlClavesOcOcupadas();
 		foreach ($lista as $fila) {
 			$clave = self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]);
-			if (isset($enPrioridad[$clave])) {
+			if (!isset($mapa[$clave])) {
 				continue;
 			}
-			// Lo ya programado se descuenta; el remanente (p. ej. una OC nueva) vuelve a ser candidato
-			if (isset($cantProgramada[$clave])) {
-				$resto = (int) $fila["saldo_disponible"] - $cantProgramada[$clave];
-				if ($resto < 1) {
+			foreach ($mapa[$clave] as $oc => $s) {
+				if ((int) $s["saldo"] < 1 || isset($ocupadas[$clave . "|" . $oc])) {
 					continue;
 				}
-				$fila["saldo_total"] = (int) $fila["saldo_disponible"];
-				$fila["saldo_disponible"] = $resto;
-				$fila["remanente"] = 1;
+				$out[] = self::ctrFilaCandidatoOc($fila, $s);
 			}
-			// Nivel lo elige quien prioriza; no se asigna automáticamente
-			$fila["nivel"] = "";
-			$fila["nivel_nombre"] = "";
-			$fila["nivel_color"] = "";
-			$out[] = $fila;
 		}
 		usort($out, function ($a, $b) {
 			$cmp = strcmp((string) $a["modelo"], (string) $b["modelo"]);
@@ -157,11 +250,42 @@ class ControladorProgramacionTallerSemana
 			if ($cmpColor !== 0) {
 				return $cmpColor;
 			}
-			$ua = $a["urg_plan"] === null ? 999 : (float) $a["urg_plan"];
-			$ub = $b["urg_plan"] === null ? 999 : (float) $b["urg_plan"];
-			return ($ua < $ub) ? -1 : (($ua > $ub) ? 1 : 0);
+			return (int) $a["ordencorte"] - (int) $b["ordencorte"];
 		});
 		return $out;
+	}
+
+	/** Candidato de un modelo/color/OC tras quitarlo de prioridad o de la semana (null si ya no aplica). */
+	static private function ctrCandidatoOc($prev)
+	{
+		$oc = self::ctrNormalizarOc(isset($prev["ordencorte"]) ? $prev["ordencorte"] : null);
+		if ($oc === null) {
+			return null;
+		}
+		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($prev["modelo"], $prev["cod_color"]);
+		if (!is_array($art)) {
+			return null;
+		}
+		$clave = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]);
+		$ocupadas = ModeloProgramacionTallerSemana::mdlClavesOcOcupadas();
+		if (isset($ocupadas[$clave . "|" . $oc])) {
+			return null;
+		}
+		$s = self::ctrSaldoOc($art["modelo"], $art["cod_color"], $oc);
+		if ((int) $s["saldo"] < 1) {
+			return null;
+		}
+		$candidato = self::ctrFilaCandidatoOc($art, $s);
+		if (empty($candidato["cod_sector_resuelto"]) && !empty($prev["cod_sector"])) {
+			$candidato["cod_sector_resuelto"] = $prev["cod_sector"];
+		}
+		if (empty($candidato["nom_sector"]) && !empty($prev["nom_sector"])) {
+			$candidato["nom_sector"] = $prev["nom_sector"];
+		}
+		if (empty($candidato["color_taller"]) && !empty($prev["color_taller"])) {
+			$candidato["color_taller"] = $prev["color_taller"];
+		}
+		return $candidato;
 	}
 
 	static public function ctrEnriquecerPriorizado($fila)
@@ -187,10 +311,9 @@ class ControladorProgramacionTallerSemana
 		if (!$row || (int) $row["estado"] !== 1) {
 			return null;
 		}
-		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
-		$row["alm_corte_vivo"] = $art ? (int) $art["alm_corte"] : 0;
-		$row["ord_corte_vivo"] = $art ? (int) $art["ord_corte"] : 0;
-		$row["saldo_vivo"] = $art ? (int) $art["saldo_disponible"] : 0;
+		$row = self::ctrAplicarSaldoOc($row, ModeloProgramacionTallerSemana::mdlSaldosPorOc($row["modelo"], $row["cod_color"]));
+		$filas = self::ctrCompletarFechasOc(array($row));
+		$row = $filas[0];
 		if (empty($row["nom_sector"]) && !empty($row["cod_sector"]) && class_exists("ControladorSectores")) {
 			$sec = ControladorSectores::ctrMostrarSectores($row["cod_sector"]);
 			if (is_array($sec)) {
@@ -208,7 +331,10 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
-		foreach ($lista as $fila) {
+		$mapa = self::ctrSaldosOc();
+		foreach (self::ctrCompletarFechasOc(array_map(function ($f) use ($mapa) {
+			return self::ctrAplicarSaldoOc($f, $mapa);
+		}, $lista)) as $fila) {
 			$out[] = self::ctrEnriquecerPriorizado($fila);
 		}
 		usort($out, function ($a, $b) {
@@ -241,12 +367,16 @@ class ControladorProgramacionTallerSemana
 		$modelo = trim(isset($post["modelo"]) ? $post["modelo"] : "");
 		$codColor = trim(isset($post["cod_color"]) ? $post["cod_color"] : "");
 		$codSector = trim(isset($post["cod_sector"]) ? $post["cod_sector"] : "");
+		$ordencorte = self::ctrNormalizarOc(isset($post["ordencorte"]) ? $post["ordencorte"] : null);
 		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : 0;
 		$nivel = trim(isset($post["nivel"]) ? $post["nivel"] : "");
 		$observacion = trim(isset($post["observacion"]) ? $post["observacion"] : "");
 
 		if ($modelo === "") {
 			return array("ok" => false, "mensaje" => "Modelo obligatorio");
+		}
+		if ($ordencorte === null) {
+			return array("ok" => false, "mensaje" => "Falta la orden de corte; recarga la página");
 		}
 		if ($codSector === "") {
 			return array("ok" => false, "mensaje" => "Taller obligatorio");
@@ -263,26 +393,36 @@ class ControladorProgramacionTallerSemana
 		if (!$art) {
 			return array("ok" => false, "mensaje" => "Modelo/color no encontrado");
 		}
+		$saldo = self::ctrSaldoOc($art["modelo"], $art["cod_color"], $ordencorte);
+		$disponible = (int) $saldo["saldo"];
+		if ($disponible < 1) {
+			return array("ok" => false, "mensaje" => "La OC {$ordencorte} ya no tiene saldo en corte ni en orden de corte");
+		}
+
+		$idExiste = ModeloProgramacionTallerSemana::mdlIdPrioridadExistente(
+			$art["modelo"],
+			$art["cod_color"],
+			$codSector,
+			false,
+			$ordencorte
+		);
 		$desdeDevolver = !empty($post["desde_devolver"]);
-		$disponible = (int) $art["saldo_disponible"];
-		if (!$desdeDevolver) {
-			$prog = ModeloProgramacionTallerSemana::mdlCantidadProgramadaActiva($art["modelo"], $art["cod_color"]);
-			$clave = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]);
-			if (isset($prog[$clave])) {
-				$disponible -= $prog[$clave];
-				if ($disponible < 1) {
-					return array(
-						"ok" => false,
-						"mensaje" => "Ya está en Ya programado; quítalo de esa semana o devuélvelo desde No ejecutado"
-					);
-				}
+		$ocupadas = ModeloProgramacionTallerSemana::mdlClavesOcOcupadas();
+		$claveOc = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]) . "|" . $ordencorte;
+		if (isset($ocupadas[$claveOc])) {
+			$ocup = $ocupadas[$claveOc];
+			if ($ocup["tipo"] === "programado" && !$desdeDevolver) {
+				return array(
+					"ok" => false,
+					"mensaje" => "La OC {$ordencorte} ya está programada en la semana {$ocup["semana"]}"
+				);
+			}
+			if ($ocup["tipo"] === "prioridad" && $ocup["id"] !== $idExiste) {
+				return array("ok" => false, "mensaje" => "La OC {$ordencorte} ya está en la bandeja de prioridad");
 			}
 		}
-		if ($disponible < 1) {
-			return array("ok" => false, "mensaje" => "Sin saldo en almacén de corte ni en órdenes de corte");
-		}
 		if ($cantidad > $disponible) {
-			return array("ok" => false, "mensaje" => "La cantidad supera el saldo disponible ({$disponible})");
+			$cantidad = $disponible;
 		}
 
 		$datosBase = array(
@@ -290,20 +430,14 @@ class ControladorProgramacionTallerSemana
 			"cod_sector" => $codSector,
 			"nivel" => $nivel,
 			"observacion" => $observacion !== "" ? $observacion : null,
-			"saldo_alm_corte" => (int) $art["alm_corte"],
-			"saldo_ord_corte" => (int) $art["ord_corte"],
+			"saldo_alm_corte" => (int) $saldo["alm_corte"],
+			"saldo_ord_corte" => (int) $saldo["ord_corte"],
 			"urg_plan" => $art["urg_plan"],
 			"color" => $art["color"],
 			"nombre" => $art["nombre"],
 			"usumod" => self::ctrUsuarioSesion()
 		);
 
-		$idExiste = ModeloProgramacionTallerSemana::mdlIdPrioridadExistente(
-			$art["modelo"],
-			$art["cod_color"],
-			$codSector,
-			false
-		);
 		if ($idExiste > 0) {
 			$existente = ModeloProgramacionTallerSemana::mdlMostrarPrioridad($idExiste);
 			$datosBase["id"] = $idExiste;
@@ -332,6 +466,7 @@ class ControladorProgramacionTallerSemana
 		$datos = array_merge($datosBase, array(
 			"modelo" => $art["modelo"],
 			"cod_color" => $art["cod_color"],
+			"ordencorte" => $ordencorte,
 			"usureg" => self::ctrUsuarioSesion()
 		));
 		if (ModeloProgramacionTallerSemana::mdlCrearPrioridad($datos) === "ok") {
@@ -339,7 +474,8 @@ class ControladorProgramacionTallerSemana
 				$art["modelo"],
 				$art["cod_color"],
 				$codSector,
-				true
+				true,
+				$ordencorte
 			);
 			return array(
 				"ok" => true,
@@ -370,6 +506,7 @@ class ControladorProgramacionTallerSemana
 			$resp = self::ctrPriorizarAjax(array(
 				"modelo" => isset($item["modelo"]) ? $item["modelo"] : "",
 				"cod_color" => isset($item["cod_color"]) ? $item["cod_color"] : "",
+				"ordencorte" => isset($item["ordencorte"]) ? $item["ordencorte"] : null,
 				"cod_sector" => isset($item["cod_sector"]) ? $item["cod_sector"] : "",
 				"cantidad" => isset($item["cantidad"]) ? $item["cantidad"] : 0,
 				"nivel" => isset($item["nivel"]) ? $item["nivel"] : "",
@@ -410,15 +547,14 @@ class ControladorProgramacionTallerSemana
 			return array("ok" => false, "mensaje" => "Nivel no válido");
 		}
 		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+		$saldo = self::ctrSaldoOc($row["modelo"], $row["cod_color"], $row["ordencorte"]);
 		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : (int) $row["cantidad"];
-		if ($art) {
-			$disp = (int) $art["saldo_disponible"];
-			if ($disp > 0 && $cantidad > $disp) {
-				$cantidad = $disp;
-			}
-			if ($disp < 1) {
-				return array("ok" => false, "mensaje" => "Sin saldo vivo; quítalo de la prioridad");
-			}
+		$disp = (int) $saldo["saldo"];
+		if ($disp < 1) {
+			return array("ok" => false, "mensaje" => "Su OC ya no tiene saldo; quítalo de la prioridad");
+		}
+		if ($cantidad > $disp) {
+			$cantidad = $disp;
 		}
 		$datos = array(
 			"id" => $id,
@@ -426,8 +562,8 @@ class ControladorProgramacionTallerSemana
 			"cod_sector" => $row["cod_sector"],
 			"nivel" => $nivel,
 			"observacion" => isset($post["observacion"]) ? trim($post["observacion"]) : $row["observacion"],
-			"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
-			"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+			"saldo_alm_corte" => (int) $saldo["alm_corte"],
+			"saldo_ord_corte" => (int) $saldo["ord_corte"],
 			"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
 			"usumod" => self::ctrUsuarioSesion()
 		);
@@ -453,21 +589,7 @@ class ControladorProgramacionTallerSemana
 			return array("ok" => false, "mensaje" => "Prioridad no encontrada");
 		}
 		if (ModeloProgramacionTallerSemana::mdlEliminarPrioridad($id, self::ctrUsuarioSesion()) === "ok") {
-			$candidato = ModeloProgramacionTallerSemana::mdlColorParaProgramar($prev["modelo"], $prev["cod_color"]);
-			if (is_array($candidato)) {
-				$candidato["nivel"] = "";
-				$candidato["nivel_nombre"] = "";
-				$candidato["nivel_color"] = "";
-				$candidato["cod_sector_resuelto"] = isset($candidato["cod_sector_resuelto"])
-					? $candidato["cod_sector_resuelto"]
-					: (isset($prev["cod_sector"]) ? $prev["cod_sector"] : "");
-				if (empty($candidato["nom_sector"]) && !empty($prev["nom_sector"])) {
-					$candidato["nom_sector"] = $prev["nom_sector"];
-				}
-				if (empty($candidato["color_taller"]) && !empty($prev["color_taller"])) {
-					$candidato["color_taller"] = $prev["color_taller"];
-				}
-			}
+			$candidato = self::ctrCandidatoOc($prev);
 			return array(
 				"ok" => true,
 				"mensaje" => "Quitado de prioridad",
@@ -491,22 +613,19 @@ class ControladorProgramacionTallerSemana
 		}
 		$anio = isset($post["anio"]) ? (int) $post["anio"] : 0;
 		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
-		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($pri["modelo"], $pri["cod_color"]);
-		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : (int) $pri["cantidad"];
-		if ($art) {
-			$disp = (int) $art["saldo_disponible"];
-			if ($disp < 1) {
-				return array("ok" => false, "mensaje" => "Sin saldo vivo; no se puede destinar");
-			}
-			if ($cantidad > $disp) {
-				$cantidad = $disp;
-			}
+		$saldo = self::ctrSaldoOc($pri["modelo"], $pri["cod_color"], $pri["ordencorte"]);
+		$disp = (int) $saldo["saldo"];
+		if ($disp < 1) {
+			return array("ok" => false, "mensaje" => "Su OC ya no tiene saldo; no se puede destinar");
 		}
+		// La cantidad de la prioridad es una foto del día que se priorizó; se destina el saldo vivo de su OC
+		$cantidad = isset($post["cantidad"]) ? min((int) $post["cantidad"], $disp) : $disp;
 		$resp = self::ctrProgramarAjax(array(
 			"anio" => $anio,
 			"semana" => $semana,
 			"modelo" => $pri["modelo"],
 			"cod_color" => $pri["cod_color"],
+			"ordencorte" => $pri["ordencorte"],
 			"cod_sector" => $pri["cod_sector"],
 			"cantidad" => $cantidad,
 			"nivel" => $pri["nivel"],
@@ -591,10 +710,9 @@ class ControladorProgramacionTallerSemana
 		if (!$row || (int) $row["estado"] !== 1) {
 			return null;
 		}
-		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
-		$row["alm_corte_vivo"] = $art ? (int) $art["alm_corte"] : 0;
-		$row["ord_corte_vivo"] = $art ? (int) $art["ord_corte"] : 0;
-		$row["saldo_vivo"] = $art ? (int) $art["saldo_disponible"] : 0;
+		$row = self::ctrAplicarSaldoOc($row, ModeloProgramacionTallerSemana::mdlSaldosPorOc($row["modelo"], $row["cod_color"]));
+		$filas = self::ctrCompletarFechasOc(array($row));
+		$row = $filas[0];
 		if (empty($row["nom_sector"]) && !empty($row["cod_sector"]) && class_exists("ControladorSectores")) {
 			$sec = ControladorSectores::ctrMostrarSectores($row["cod_sector"]);
 			if (is_array($sec)) {
@@ -612,7 +730,10 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
-		foreach ($lista as $fila) {
+		$mapa = self::ctrSaldosOc();
+		foreach (self::ctrCompletarFechasOc(array_map(function ($f) use ($mapa) {
+			return self::ctrAplicarSaldoOc($f, $mapa);
+		}, $lista)) as $fila) {
 			$out[] = self::ctrEnriquecerProgramado($fila);
 		}
 		usort($out, function ($a, $b) {
@@ -631,9 +752,22 @@ class ControladorProgramacionTallerSemana
 		return $out;
 	}
 
-	static public function ctrEstadisticasSemana($anio, $semana)
+	/** $filas: programados ya enriquecidos de esa semana (para no volver a consultarlos). */
+	static public function ctrEstadisticasSemana($anio, $semana, $filas = null)
 	{
 		$stats = ModeloProgramacionTallerSemana::mdlEstadisticasSemana((int) $anio, (int) $semana);
+		if ($filas === null) {
+			$filas = self::ctrListarProgramados(array("anio" => (int) $anio, "semana" => (int) $semana));
+		}
+		// Pendiente / consumido según el saldo vivo de la OC de cada línea
+		$tot = array("pendientes_lineas" => 0, "consumidos_lineas" => 0, "pendientes_cantidad" => 0, "consumidos_cantidad" => 0);
+		foreach ($filas as $f) {
+			$suf = !empty($f["consumido"]) ? "consumidos" : "pendientes";
+			$tot[$suf . "_lineas"] += 1;
+			$tot[$suf . "_cantidad"] += (int) $f["cantidad"];
+		}
+		$stats["totales"] = array_merge(is_array($stats["totales"]) ? $stats["totales"] : array(), $tot);
+		$stats["por_programar"] = self::ctrPendienteProgramarSemana((int) $anio, (int) $semana);
 		if (!empty($stats["por_taller"]) && is_array($stats["por_taller"])) {
 			usort($stats["por_taller"], function ($a, $b) {
 				return strnatcasecmp(
@@ -651,6 +785,65 @@ class ControladorProgramacionTallerSemana
 			});
 		}
 		return $stats;
+	}
+
+	/**
+	 * OC con saldo vivo que no tienen línea activa en la semana, agrupadas por taller sugerido.
+	 * @return array{totales:array,por_taller:array}
+	 */
+	static private function ctrPendienteProgramarSemana($anio, $semana)
+	{
+		$lista = ModeloProgramacionTallerSemana::mdlListarCandidatos(array());
+		$mapa = self::ctrSaldosOc();
+		$enSemana = ModeloProgramacionTallerSemana::mdlClavesOcSemana($anio, $semana);
+		$colores = array();
+		$modelos = array();
+		$cantidad = 0;
+		$porTaller = array();
+		foreach ((array) $lista as $fila) {
+			$clave = self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]);
+			if (!isset($mapa[$clave])) {
+				continue;
+			}
+			foreach ($mapa[$clave] as $oc => $sal) {
+				if ((int) $sal["saldo"] < 1 || isset($enSemana[$clave . "|" . $oc])) {
+					continue;
+				}
+				$cod = trim((string) $fila["cod_sector_resuelto"]);
+				$k = $cod !== "" ? $cod : "—";
+				if (!isset($porTaller[$k])) {
+					$porTaller[$k] = array(
+						"cod_sector" => $k,
+						"nom_sector" => $cod === "" ? "Sin taller" : ($fila["nom_sector"] ? $fila["nom_sector"] : $cod),
+						"color_taller" => $fila["color_taller"] ? $fila["color_taller"] : "#f0ad4e",
+						"total_colores" => 0,
+						"total_cantidad" => 0,
+						"_colores" => array()
+					);
+				}
+				$porTaller[$k]["_colores"][$clave] = true;
+				$porTaller[$k]["total_cantidad"] += (int) $sal["saldo"];
+				$colores[$clave] = true;
+				$modelos[$fila["modelo"]] = true;
+				$cantidad += (int) $sal["saldo"];
+			}
+		}
+		foreach ($porTaller as $k => $t) {
+			$porTaller[$k]["total_colores"] = count($t["_colores"]);
+			unset($porTaller[$k]["_colores"]);
+		}
+		$porTaller = array_values($porTaller);
+		usort($porTaller, function ($a, $b) {
+			return $b["total_cantidad"] - $a["total_cantidad"];
+		});
+		return array(
+			"totales" => array(
+				"total_colores" => count($colores),
+				"total_modelos" => count($modelos),
+				"total_cantidad" => $cantidad
+			),
+			"por_taller" => $porTaller
+		);
 	}
 
 	/** Orden de taller ignorando la T inicial del código (T1, T2, T10…). */
@@ -700,6 +893,7 @@ class ControladorProgramacionTallerSemana
 		$semana = isset($post["semana"]) ? (int) $post["semana"] : 0;
 		$modelo = trim(isset($post["modelo"]) ? $post["modelo"] : "");
 		$codColor = trim(isset($post["cod_color"]) ? $post["cod_color"] : "");
+		$ordencorte = self::ctrNormalizarOc(isset($post["ordencorte"]) ? $post["ordencorte"] : null);
 		$codSector = trim(isset($post["cod_sector"]) ? $post["cod_sector"] : "");
 		$cantidad = isset($post["cantidad"]) ? (int) $post["cantidad"] : 0;
 		$nivel = trim(isset($post["nivel"]) ? $post["nivel"] : "");
@@ -714,6 +908,9 @@ class ControladorProgramacionTallerSemana
 		}
 		if ($modelo === "") {
 			return array("ok" => false, "mensaje" => "Modelo obligatorio");
+		}
+		if ($ordencorte === null) {
+			return array("ok" => false, "mensaje" => "Falta la orden de corte; recarga la página");
 		}
 		if ($codSector === "") {
 			return array("ok" => false, "mensaje" => "Taller obligatorio");
@@ -732,22 +929,10 @@ class ControladorProgramacionTallerSemana
 			return array("ok" => false, "mensaje" => "Modelo/color no encontrado");
 		}
 
-		$disponible = (int) $art["saldo_disponible"];
+		$saldo = self::ctrSaldoOc($art["modelo"], $art["cod_color"], $ordencorte);
+		$disponible = (int) $saldo["saldo"];
 		if ($disponible < 1) {
-			return array("ok" => false, "mensaje" => "Sin saldo en almacén de corte ni en órdenes de corte");
-		}
-		// Descontar lo ya programado en otras filas (p. ej. una OC nueva del mismo modelo/color)
-		$prog = ModeloProgramacionTallerSemana::mdlCantidadProgramadaActiva($art["modelo"], $art["cod_color"]);
-		$claveProg = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]);
-		$yaProgramado = isset($prog[$claveProg]) ? $prog[$claveProg] : 0;
-		if ($yaProgramado > 0) {
-			$disponible -= $yaProgramado;
-			if ($disponible < 1) {
-				return array("ok" => false, "mensaje" => "Todo el saldo de este modelo/color ya está programado");
-			}
-		}
-		if ($cantidad > $disponible) {
-			return array("ok" => false, "mensaje" => "La cantidad supera el saldo disponible ({$disponible})");
+			return array("ok" => false, "mensaje" => "La OC {$ordencorte} ya no tiene saldo en corte ni en orden de corte");
 		}
 
 		$idExiste = ModeloProgramacionTallerSemana::mdlIdExistente(
@@ -756,8 +941,22 @@ class ControladorProgramacionTallerSemana
 			$art["modelo"],
 			$art["cod_color"],
 			$codSector,
-			false
+			false,
+			$ordencorte
 		);
+		// Una OC se programa una sola vez; otra OC del mismo modelo/color es una línea aparte
+		$ocupadas = ModeloProgramacionTallerSemana::mdlClavesOcOcupadas();
+		$claveOc = self::ctrClaveModeloColor($art["modelo"], $art["cod_color"]) . "|" . $ordencorte;
+		if (isset($ocupadas[$claveOc]) && $ocupadas[$claveOc]["tipo"] === "programado" && $ocupadas[$claveOc]["id"] !== $idExiste) {
+			return array(
+				"ok" => false,
+				"mensaje" => "La OC {$ordencorte} ya está programada en la semana {$ocupadas[$claveOc]["semana"]}"
+			);
+		}
+		if ($cantidad > $disponible) {
+			$cantidad = $disponible;
+		}
+
 		$datosBase = array(
 			"anio" => $rango["anio"],
 			"semana" => $rango["semana"],
@@ -767,8 +966,8 @@ class ControladorProgramacionTallerSemana
 			"cod_sector" => $codSector,
 			"nivel" => $nivel,
 			"observacion" => $observacion !== "" ? $observacion : null,
-			"saldo_alm_corte" => (int) $art["alm_corte"],
-			"saldo_ord_corte" => (int) $art["ord_corte"],
+			"saldo_alm_corte" => (int) $saldo["alm_corte"],
+			"saldo_ord_corte" => (int) $saldo["ord_corte"],
 			"urg_plan" => $art["urg_plan"]
 		);
 
@@ -777,8 +976,8 @@ class ControladorProgramacionTallerSemana
 			$datosBase["id"] = $idExiste;
 			$datosBase["usumod"] = self::ctrUsuarioSesion();
 			if ($existente && (int) $existente["estado"] === 1) {
-				// Misma semana/taller ya programada: se suma la cantidad y se conserva lo configurado
-				$datosBase["cantidad"] = (int) $existente["cantidad"] + $cantidad;
+				// Misma OC/semana/taller ya programada: se suma (sin pasar el saldo de la OC) y se conserva lo configurado
+				$datosBase["cantidad"] = min($disponible, (int) $existente["cantidad"] + $cantidad);
 				$datosBase["nivel"] = $existente["nivel"] !== "" && $existente["nivel"] !== null ? $existente["nivel"] : $nivel;
 				$datosBase["observacion"] = self::ctrUnirObservacion($existente["observacion"], $observacion);
 			}
@@ -813,12 +1012,9 @@ class ControladorProgramacionTallerSemana
 		}
 
 		$datos = array_merge($datosBase, array(
-			"anio" => $rango["anio"],
-			"semana" => $rango["semana"],
-			"fecha_inicio" => $rango["fecha_inicio"],
-			"fecha_fin" => $rango["fecha_fin"],
 			"modelo" => $art["modelo"],
 			"cod_color" => $art["cod_color"],
+			"ordencorte" => $ordencorte,
 			"color" => $art["color"],
 			"nombre" => $art["nombre"],
 			"usureg" => self::ctrUsuarioSesion()
@@ -831,7 +1027,8 @@ class ControladorProgramacionTallerSemana
 				$art["modelo"],
 				$art["cod_color"],
 				$codSector,
-				true
+				true,
+				$ordencorte
 			);
 			return array(
 				"ok" => true,
@@ -876,6 +1073,7 @@ class ControladorProgramacionTallerSemana
 		}
 
 		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
+		$saldo = self::ctrSaldoOc($row["modelo"], $row["cod_color"], $row["ordencorte"]);
 
 		if ($cambiaSemana || $codSector !== $row["cod_sector"]) {
 			$otro = ModeloProgramacionTallerSemana::mdlIdExistente(
@@ -883,7 +1081,9 @@ class ControladorProgramacionTallerSemana
 				$semana,
 				$row["modelo"],
 				$row["cod_color"],
-				$codSector
+				$codSector,
+				false,
+				self::ctrNormalizarOc($row["ordencorte"])
 			);
 			if ($otro > 0 && $otro !== $id) {
 				// Ya existe en destino: se acumula la cantidad y se quita el origen
@@ -896,14 +1096,14 @@ class ControladorProgramacionTallerSemana
 					"semana" => $rango["semana"],
 					"fecha_inicio" => $rango["fecha_inicio"],
 					"fecha_fin" => $rango["fecha_fin"],
-					"cantidad" => $activo ? (int) $exist["cantidad"] + $cantidad : $cantidad,
+					"cantidad" => $activo ? min(max((int) $saldo["saldo"], $cantidad), (int) $exist["cantidad"] + $cantidad) : $cantidad,
 					"cod_sector" => $codSector,
 					"nivel" => $activo && $exist["nivel"] !== "" && $exist["nivel"] !== null ? $exist["nivel"] : $nivel,
 					"observacion" => $activo
 						? self::ctrUnirObservacion($exist["observacion"], $observacion)
 						: ($observacion !== "" ? $observacion : null),
-					"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
-					"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+					"saldo_alm_corte" => (int) $saldo["alm_corte"],
+					"saldo_ord_corte" => (int) $saldo["ord_corte"],
 					"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
 					"usumod" => $usuario
 				);
@@ -941,8 +1141,8 @@ class ControladorProgramacionTallerSemana
 			"cod_sector" => $codSector,
 			"nivel" => $nivel,
 			"observacion" => $observacion !== "" ? $observacion : null,
-			"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
-			"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+			"saldo_alm_corte" => (int) $saldo["alm_corte"],
+			"saldo_ord_corte" => (int) $saldo["ord_corte"],
 			"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
 			"usumod" => self::ctrUsuarioSesion()
 		);
@@ -969,21 +1169,7 @@ class ControladorProgramacionTallerSemana
 			return array("ok" => false, "mensaje" => "Registro no encontrado");
 		}
 		if (ModeloProgramacionTallerSemana::mdlEliminar($id, self::ctrUsuarioSesion()) === "ok") {
-			$candidato = ModeloProgramacionTallerSemana::mdlColorParaProgramar($prev["modelo"], $prev["cod_color"]);
-			if (is_array($candidato)) {
-				$candidato["nivel"] = "";
-				$candidato["nivel_nombre"] = "";
-				$candidato["nivel_color"] = "";
-				$candidato["cod_sector_resuelto"] = isset($candidato["cod_sector_resuelto"])
-					? $candidato["cod_sector_resuelto"]
-					: (isset($prev["cod_sector"]) ? $prev["cod_sector"] : "");
-				if (empty($candidato["nom_sector"]) && !empty($prev["nom_sector"])) {
-					$candidato["nom_sector"] = $prev["nom_sector"];
-				}
-				if (empty($candidato["color_taller"]) && !empty($prev["color_taller"])) {
-					$candidato["color_taller"] = $prev["color_taller"];
-				}
-			}
+			$candidato = self::ctrCandidatoOc($prev);
 			return array(
 				"ok" => true,
 				"mensaje" => "Programación eliminada",
@@ -1002,15 +1188,20 @@ class ControladorProgramacionTallerSemana
 		if (!is_array($lista)) {
 			return $out;
 		}
+		// Solo las que su OC aún tiene saldo; si ya se cortó y envió, la semana sí se ejecutó
+		$mapa = self::ctrSaldosOc();
 		foreach ($lista as $fila) {
-			$out[] = self::ctrEnriquecerProgramado($fila);
+			$fila = self::ctrAplicarSaldoOc($fila, $mapa);
+			if ($fila["saldo_vivo"] > 0) {
+				$out[] = self::ctrEnriquecerProgramado($fila);
+			}
 		}
 		return $out;
 	}
 
 	static public function ctrContarNoEjecutados()
 	{
-		return ModeloProgramacionTallerSemana::mdlContarNoEjecutados();
+		return count(self::ctrListarNoEjecutados());
 	}
 
 	/**
@@ -1041,9 +1232,10 @@ class ControladorProgramacionTallerSemana
 		}
 
 		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
-		$disp = $art ? (int) $art["saldo_disponible"] : 0;
+		$saldo = self::ctrSaldoOc($row["modelo"], $row["cod_color"], $row["ordencorte"]);
+		$disp = (int) $saldo["saldo"];
 		if ($disp < 1) {
-			return array("ok" => false, "mensaje" => "Ya no hay saldo vivo; no se puede mover");
+			return array("ok" => false, "mensaje" => "Su OC ya no tiene saldo; no se puede mover");
 		}
 		$cantidad = min((int) $row["cantidad"], $disp);
 
@@ -1054,7 +1246,8 @@ class ControladorProgramacionTallerSemana
 			$row["modelo"],
 			$row["cod_color"],
 			$row["cod_sector"],
-			false
+			false,
+			self::ctrNormalizarOc($row["ordencorte"])
 		);
 		$usuario = self::ctrUsuarioSesion();
 		if ($idDest > 0 && $idDest !== $id) {
@@ -1065,14 +1258,14 @@ class ControladorProgramacionTallerSemana
 				"semana" => $rango["semana"],
 				"fecha_inicio" => $rango["fecha_inicio"],
 				"fecha_fin" => $rango["fecha_fin"],
-				"cantidad" => $exist && (int) $exist["estado"] === 1 ? (int) $exist["cantidad"] + $cantidad : $cantidad,
+				"cantidad" => $exist && (int) $exist["estado"] === 1 ? min($disp, (int) $exist["cantidad"] + $cantidad) : $cantidad,
 				"cod_sector" => $row["cod_sector"],
 				"nivel" => $exist && (int) $exist["estado"] === 1 && $exist["nivel"] !== "" ? $exist["nivel"] : $row["nivel"],
 				"observacion" => $exist && (int) $exist["estado"] === 1
 					? self::ctrUnirObservacion($exist["observacion"], isset($row["observacion"]) ? $row["observacion"] : "")
 					: (isset($row["observacion"]) ? $row["observacion"] : null),
-				"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
-				"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+				"saldo_alm_corte" => (int) $saldo["alm_corte"],
+				"saldo_ord_corte" => (int) $saldo["ord_corte"],
 				"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
 				"usumod" => $usuario
 			);
@@ -1107,8 +1300,8 @@ class ControladorProgramacionTallerSemana
 			"fecha_inicio" => $rango["fecha_inicio"],
 			"fecha_fin" => $rango["fecha_fin"],
 			"cantidad" => $cantidad,
-			"saldo_alm_corte" => $art ? (int) $art["alm_corte"] : (int) $row["saldo_alm_corte"],
-			"saldo_ord_corte" => $art ? (int) $art["ord_corte"] : (int) $row["saldo_ord_corte"],
+			"saldo_alm_corte" => (int) $saldo["alm_corte"],
+			"saldo_ord_corte" => (int) $saldo["ord_corte"],
 			"urg_plan" => $art ? $art["urg_plan"] : $row["urg_plan"],
 			"usumod" => $usuario
 		)) === "ok") {
@@ -1172,15 +1365,16 @@ class ControladorProgramacionTallerSemana
 		if (!ModeloProgramacionTallerSemana::mdlSemanaYaPasada((int) $row["anio"], (int) $row["semana"])) {
 			return array("ok" => false, "mensaje" => "Solo aplica a semanas ya pasadas");
 		}
-		$art = ModeloProgramacionTallerSemana::mdlColorParaProgramar($row["modelo"], $row["cod_color"]);
-		$disp = $art ? (int) $art["saldo_disponible"] : 0;
+		$saldo = self::ctrSaldoOc($row["modelo"], $row["cod_color"], $row["ordencorte"]);
+		$disp = (int) $saldo["saldo"];
 		if ($disp < 1) {
-			return array("ok" => false, "mensaje" => "Sin saldo vivo; quítalo de la programación");
+			return array("ok" => false, "mensaje" => "Su OC ya no tiene saldo; quítalo de la programación");
 		}
 		$cantidad = min((int) $row["cantidad"], $disp);
 		$pri = self::ctrPriorizarAjax(array(
 			"modelo" => $row["modelo"],
 			"cod_color" => $row["cod_color"],
+			"ordencorte" => $row["ordencorte"],
 			"cod_sector" => $row["cod_sector"],
 			"cantidad" => $cantidad,
 			"nivel" => $row["nivel"],
@@ -1262,6 +1456,7 @@ class ControladorProgramacionTallerSemana
 				"semana" => $semana,
 				"modelo" => isset($item["modelo"]) ? $item["modelo"] : "",
 				"cod_color" => isset($item["cod_color"]) ? $item["cod_color"] : "",
+				"ordencorte" => isset($item["ordencorte"]) ? $item["ordencorte"] : null,
 				"cod_sector" => isset($item["cod_sector"]) ? $item["cod_sector"] : "",
 				"cantidad" => isset($item["cantidad"]) ? $item["cantidad"] : 0,
 				"nivel" => isset($item["nivel"]) ? $item["nivel"] : "",
@@ -1318,13 +1513,53 @@ class ControladorProgramacionTallerSemana
 			return array();
 		}
 		$map = self::ctrMapaNiveles();
+		$mapa = self::ctrSaldosOc();
 		$out = array();
 		foreach ($lista as $fila) {
+			// Alm. corte de la talla en la OC de esta línea, no el total del artículo
+			$s = self::ctrSaldoDeMapa(
+				$mapa,
+				self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]),
+				self::ctrNormalizarOc($fila["ordencorte"])
+			);
+			$art = trim((string) $fila["articulo"]);
+			$fila["alm_corte"] = isset($s["tallas"][$art]) ? (int) $s["tallas"][$art]["alm_corte"] : 0;
+			$fila["ord_corte"] = isset($s["tallas"][$art]) ? (int) $s["tallas"][$art]["ord_corte"] : 0;
+			$fila["fecha_oc"] = $s["fecha_oc"];
+			if ($fila["alm_corte"] < 1) {
+				continue;
+			}
 			$nid = isset($fila["nivel"]) ? $fila["nivel"] : "";
 			$fila["nivel_nombre"] = isset($map[$nid]["nombre"]) ? $map[$nid]["nombre"] : $nid;
 			$fila["nivel_color"] = isset($map[$nid]["color"]) ? $map[$nid]["color"] : "#CCCCCC";
 			$tipo = isset($fila["tipo_sector"]) ? (int) $fila["tipo_sector"] : 0;
 			$fila["es_interno"] = ($tipo === 0) ? 1 : 0;
+			$out[] = $fila;
+		}
+		return $out;
+	}
+
+	/** Detalle por talla de la semana (Excel) con el saldo de la OC de cada línea. */
+	static public function ctrExportDetalleSemana($anio, $semana, $filtros = array())
+	{
+		$lista = ModeloProgramacionTallerSemana::mdlExportDetalleSemana($anio, $semana, $filtros);
+		$mapa = self::ctrSaldosOc();
+		$out = array();
+		foreach ((array) $lista as $fila) {
+			$s = self::ctrSaldoDeMapa(
+				$mapa,
+				self::ctrClaveModeloColor($fila["modelo"], $fila["cod_color"]),
+				self::ctrNormalizarOc($fila["ordencorte"])
+			);
+			$art = trim((string) $fila["articulo"]);
+			$alm = isset($s["tallas"][$art]) ? (int) $s["tallas"][$art]["alm_corte"] : 0;
+			$ord = isset($s["tallas"][$art]) ? (int) $s["tallas"][$art]["ord_corte"] : 0;
+			if ($alm + $ord < 1) {
+				continue;
+			}
+			$fila["alm_corte"] = $alm;
+			$fila["ord_corte"] = $ord;
+			$fila["suma_orden"] = $alm + $ord;
 			$out[] = $fila;
 		}
 		return $out;
@@ -1420,6 +1655,9 @@ class ControladorProgramacionTallerSemana
 				$errores[] = $articulo . ": sin taller programado";
 				continue;
 			}
+			if ($cantidad > (int) $fila["alm_corte"]) {
+				$cantidad = (int) $fila["alm_corte"];
+			}
 			if (!empty($fila["es_interno"])) {
 				$necesitaGuia = true;
 			}
@@ -1445,7 +1683,14 @@ class ControladorProgramacionTallerSemana
 		self::ctrAsegurarDepsMandarTaller();
 
 		foreach ($pendientes as $pend) {
-			$resp = self::ctrMandarUnArticuloPts($pend["articulo"], $pend["cantidad"], $pend["taller"], $guia, $usuario);
+			$resp = self::ctrMandarUnArticuloPts(
+				$pend["articulo"],
+				$pend["cantidad"],
+				$pend["taller"],
+				$guia,
+				$usuario,
+				isset($pend["fila"]["ordencorte"]) ? (int) $pend["fila"]["ordencorte"] : 0
+			);
 			if (!empty($resp["ok"])) {
 				$procesados++;
 				if (!empty($resp["aviso"])) {
@@ -1478,7 +1723,8 @@ class ControladorProgramacionTallerSemana
 		);
 	}
 
-	static private function ctrMandarUnArticuloPts($articulo, $cantidadPedida, $taller, $guia, $usuario)
+	/** $ordencorte: OC de la programación; sus detalles de almacén de corte se liquidan primero. */
+	static private function ctrMandarUnArticuloPts($articulo, $cantidadPedida, $taller, $guia, $usuario, $ordencorte = 0)
 	{
 		$esExterno = !ControladorSectores::ctrEsInterno($taller);
 		$imprimirTickets = ControladorSectores::ctrDebeImprimirTickets($taller);
@@ -1492,7 +1738,8 @@ class ControladorProgramacionTallerSemana
 			"estado" => "0",
 			"guia" => $guia,
 			"taller" => $taller,
-			"es_servicio_externo" => $esExterno
+			"es_servicio_externo" => $esExterno,
+			"ordencorte" => (int) $ordencorte
 		);
 
 		$respuestaCab = ModeloCortes::mdlMandarTallerCabV2($datosCab);

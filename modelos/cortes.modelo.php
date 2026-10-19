@@ -491,6 +491,9 @@ class ModeloCortes
                 return "error_saldo_insuficiente";
             }
 
+            // Opcional (programación semanal): liquidar primero los detalles de esa orden de corte
+            $ocPreferida = isset($datos["ordencorte"]) ? (int) $datos["ordencorte"] : 0;
+
             // Traer todos los detalles con saldo del año, orden FIFO (más antiguo primero)
             $stmt = $pdo->prepare("SELECT acd.id, COALESCE(acd.saldo_taller, acd.cantidad) AS saldo_disponible
                 FROM almacencorte_detallejf acd
@@ -498,8 +501,10 @@ class ModeloCortes
                 WHERE acd.articulo = :articulo
                   AND COALESCE(acd.saldo_taller, acd.cantidad) > 0
                   AND YEAR(DATE(ac.fecha)) = YEAR(NOW())
-                ORDER BY acd.id ASC");
+                ORDER BY (IFNULL(acd.ordencorte, 0) = :oc_preferida AND :oc_preferida2 > 0) DESC, acd.id ASC");
             $stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+            $stmt->bindValue(":oc_preferida", $ocPreferida, PDO::PARAM_INT);
+            $stmt->bindValue(":oc_preferida2", $ocPreferida, PDO::PARAM_INT);
             $stmt->execute();
             $detalles = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $stmt->closeCursor();

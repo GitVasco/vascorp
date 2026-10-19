@@ -74,32 +74,205 @@ class ModeloProgramacionTallerSemana
 		return strcmp($rango["fecha_fin"], $hoy) < 0;
 	}
 
+	/**
+	 * Saldo vivo por orden de corte: modelo|color => [ordencorte => {alm_corte, ord_corte, saldo, fecha_oc, tallas}].
+	 * Sale de detalles_ordencortejf (OC no cerradas) y almacencorte_detallejf, topado por talla al total de
+	 * articulojf (alm_corte / ord_corte): si los detalles suman más (saldos viejos sin cerrar) se asigna de la OC
+	 * más nueva a la más antigua; si suman menos, el resto queda en la OC 0 (saldo sin OC).
+	 */
+	static public function mdlSaldosPorOc($modelo = null, $codColor = null)
+	{
+		$filtroArt = "";
+		$params = array();
+		if ($modelo !== null) {
+			$filtroArt = " AND TRIM(a.modelo) = :modelo AND TRIM(IFNULL(a.cod_color, '')) = :cod_color";
+			$params[":modelo"] = trim((string) $modelo);
+			$params[":cod_color"] = trim((string) $codColor);
+		}
+		$whereArt = "(
+					LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
+					OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
+				)
+			  AND TRIM(IFNULL(a.modelo, '')) <> ''" . $filtroArt;
+
+		$pdo = Conexion::conectar();
+		$ejecutar = function ($sql) use ($pdo, $params) {
+			$stmt = $pdo->prepare($sql);
+			foreach ($params as $k => $v) {
+				$stmt->bindValue($k, $v, PDO::PARAM_STR);
+			}
+			$stmt->execute();
+			return $stmt->fetchAll(PDO::FETCH_ASSOC);
+		};
+
+		$arts = $ejecutar(
+			"SELECT a.articulo, TRIM(a.modelo) AS modelo, TRIM(IFNULL(a.cod_color, '')) AS cod_color,
+				IFNULL(a.alm_corte, 0) AS alm, IFNULL(a.ord_corte, 0) AS ord
+			 FROM articulojf a
+			 WHERE {$whereArt}
+			   AND (IFNULL(a.alm_corte, 0) > 0 OR IFNULL(a.ord_corte, 0) > 0)"
+		);
+		if (!count($arts)) {
+			return array();
+		}
+		// Detalles sin join a articulojf (tablas sin índice útil); se filtran por artículo en PHP
+		$filtroDet = "";
+		if ($modelo !== null) {
+			$lista = array();
+			foreach ($arts as $a) {
+				$lista[] = $pdo->quote($a["articulo"]);
+			}
+			$filtroDet = " AND %s.articulo IN (" . implode(",", $lista) . ")";
+		}
+		$stmt = $pdo->prepare(
+			"SELECT d.articulo, d.ordencorte, SUM(d.saldo) AS saldo
+			 FROM detalles_ordencortejf d
+			 INNER JOIN ordencortejf o ON o.codigo = d.ordencorte
+			 WHERE d.saldo > 0 AND d.estado = 0 AND o.estado <> 'Cerrado'" . sprintf($filtroDet, "d") . "
+			 GROUP BY d.articulo, d.ordencorte"
+		);
+		$stmt->execute();
+		$detOrd = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		// Mismo criterio de saldo que usa el envío a taller (mdlMandarTallerCabV2)
+		$stmt = $pdo->prepare(
+			"SELECT acd.articulo, IFNULL(acd.ordencorte, 0) AS ordencorte,
+				SUM(COALESCE(acd.saldo_taller, acd.cantidad)) AS saldo
+			 FROM almacencorte_detallejf acd
+			 INNER JOIN almacencortejf ac ON ac.codigo = acd.almacencorte
+			 WHERE COALESCE(acd.saldo_taller, acd.cantidad) > 0
+			   AND YEAR(DATE(ac.fecha)) = YEAR(NOW())" . sprintf($filtroDet, "acd") . "
+			 GROUP BY acd.articulo, IFNULL(acd.ordencorte, 0)"
+		);
+		$stmt->execute();
+		$detAlm = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$porArt = array();
+		foreach ($detOrd as $r) {
+			$porArt[$r["articulo"]]["ord"][(int) $r["ordencorte"]] = (int) $r["saldo"];
+		}
+		foreach ($detAlm as $r) {
+			$porArt[$r["articulo"]]["alm"][(int) $r["ordencorte"]] = (int) $r["saldo"];
+		}
+
+		$out = array();
+		$codigos = array();
+		foreach ($arts as $a) {
+			$clave = $a["modelo"] . "|" . $a["cod_color"];
+			foreach (array("ord" => "ord_corte", "alm" => "alm_corte") as $tipo => $campo) {
+				$total = (int) $a[$tipo];
+				if ($total <= 0) {
+					continue;
+				}
+				$lista = isset($porArt[$a["articulo"]][$tipo]) ? $porArt[$a["articulo"]][$tipo] : array();
+				unset($lista[0]);
+				krsort($lista); // códigos de OC crecen en el tiempo: la más nueva primero
+				$lista[0] = $total;
+				foreach ($lista as $oc => $saldo) {
+					$usar = min((int) $saldo, $total);
+					if ($usar <= 0) {
+						continue;
+					}
+					if (!isset($out[$clave][$oc])) {
+						$out[$clave][$oc] = array(
+							"ordencorte" => $oc,
+							"alm_corte" => 0,
+							"ord_corte" => 0,
+							"saldo" => 0,
+							"fecha_oc" => null,
+							"tallas" => array()
+						);
+						$codigos[$oc] = true;
+					}
+					$out[$clave][$oc][$campo] += $usar;
+					$out[$clave][$oc]["saldo"] += $usar;
+					if (!isset($out[$clave][$oc]["tallas"][$a["articulo"]])) {
+						$out[$clave][$oc]["tallas"][$a["articulo"]] = array("alm_corte" => 0, "ord_corte" => 0);
+					}
+					$out[$clave][$oc]["tallas"][$a["articulo"]][$campo] += $usar;
+					$total -= $usar;
+					if ($total <= 0) {
+						break;
+					}
+				}
+			}
+		}
+
+		$fechas = self::mdlFechasOc(array_keys($codigos));
+		foreach ($out as $clave => $ocs) {
+			foreach ($ocs as $oc => $info) {
+				$out[$clave][$oc]["fecha_oc"] = isset($fechas[$oc]) ? $fechas[$oc] : null;
+			}
+			ksort($out[$clave]);
+		}
+		return $out;
+	}
+
+	/** Fecha de cada orden de corte (codigo => Y-m-d). */
+	static public function mdlFechasOc($codigos)
+	{
+		$ids = array();
+		foreach ((array) $codigos as $c) {
+			if ((int) $c > 0) {
+				$ids[(int) $c] = (int) $c;
+			}
+		}
+		if (!count($ids)) {
+			return array();
+		}
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT codigo, DATE(fecha) AS fecha FROM ordencortejf WHERE codigo IN (" . implode(",", $ids) . ")"
+		);
+		$stmt->execute();
+		$out = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+			$out[(int) $r["codigo"]] = $r["fecha"];
+		}
+		return $out;
+	}
+
+	/**
+	 * Claves modelo|color|ordencorte con fila activa en prioridad o programación (cualquier semana).
+	 * @return array clave => array{tipo:string,id:int,anio:?int,semana:?int}
+	 */
+	static public function mdlClavesOcOcupadas()
+	{
+		$out = array();
+		try {
+			$stmt = Conexion::conectar()->prepare(
+				"SELECT 'programado' AS tipo, id, anio, semana,
+					CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, '')), '|', ordencorte) AS clave
+				 FROM programacion_taller_semanajf
+				 WHERE estado = 1 AND ordencorte IS NOT NULL
+				 UNION ALL
+				 SELECT 'prioridad', id, NULL, NULL,
+					CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, '')), '|', ordencorte)
+				 FROM programacion_taller_prioridadjf
+				 WHERE estado = 1 AND ordencorte IS NOT NULL"
+			);
+			$stmt->execute();
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+				if (!isset($out[$r["clave"]])) {
+					$out[$r["clave"]] = array(
+						"tipo" => $r["tipo"],
+						"id" => (int) $r["id"],
+						"anio" => $r["anio"] !== null ? (int) $r["anio"] : null,
+						"semana" => $r["semana"] !== null ? (int) $r["semana"] : null
+					);
+				}
+			}
+		} catch (Exception $e) {
+			return array();
+		}
+		return $out;
+	}
+
 	static public function mdlListarProgramados($filtros = array())
 	{
 		$sql = "SELECT p.*,
 				s.nom_sector,
-				s.color AS color_taller,
-				IFNULL(sal.alm_corte, 0) AS alm_corte_vivo,
-				IFNULL(sal.ord_corte, 0) AS ord_corte_vivo,
-				IFNULL(sal.saldo_disponible, 0) AS saldo_vivo
+				s.color AS color_taller
 			FROM programacion_taller_semanajf p
 			LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
-			LEFT JOIN (
-				SELECT
-					TRIM(a.modelo) AS modelo,
-					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
-					SUM(IFNULL(a.alm_corte, 0)) AS alm_corte,
-					SUM(IFNULL(a.ord_corte, 0)) AS ord_corte,
-					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
-				FROM articulojf a
-				WHERE (
-						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
-						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
-					)
-				  AND TRIM(IFNULL(a.modelo, '')) <> ''
-				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
-			) sal ON sal.modelo = TRIM(p.modelo)
-				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
 			WHERE p.estado = 1";
 		$params = array();
 
@@ -135,38 +308,18 @@ class ModeloProgramacionTallerSemana
 	}
 
 	/**
-	 * Programados en semanas ya cerradas (fecha_fin < hoy) con saldo vivo > 0.
+	 * Programados en semanas ya cerradas (fecha_fin < hoy). El filtro de saldo vivo de su OC lo aplica el controlador.
 	 */
 	static public function mdlListarNoEjecutados($filtros = array())
 	{
 		$hoy = (new DateTime("now"))->format("Y-m-d");
 		$sql = "SELECT p.*,
 				s.nom_sector,
-				s.color AS color_taller,
-				IFNULL(sal.alm_corte, 0) AS alm_corte_vivo,
-				IFNULL(sal.ord_corte, 0) AS ord_corte_vivo,
-				IFNULL(sal.saldo_disponible, 0) AS saldo_vivo
+				s.color AS color_taller
 			FROM programacion_taller_semanajf p
 			LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
-			LEFT JOIN (
-				SELECT
-					TRIM(a.modelo) AS modelo,
-					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
-					SUM(IFNULL(a.alm_corte, 0)) AS alm_corte,
-					SUM(IFNULL(a.ord_corte, 0)) AS ord_corte,
-					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
-				FROM articulojf a
-				WHERE (
-						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
-						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
-					)
-				  AND TRIM(IFNULL(a.modelo, '')) <> ''
-				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
-			) sal ON sal.modelo = TRIM(p.modelo)
-				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
 			WHERE p.estado = 1
-			  AND p.fecha_fin < :hoy
-			  AND IFNULL(sal.saldo_disponible, 0) > 0";
+			  AND p.fecha_fin < :hoy";
 		$params = array(":hoy" => $hoy);
 
 		if (!empty($filtros["cod_sector"])) {
@@ -190,34 +343,6 @@ class ModeloProgramacionTallerSemana
 		}
 		$stmt->execute();
 		return $stmt->fetchAll();
-	}
-
-	static public function mdlContarNoEjecutados()
-	{
-		$hoy = (new DateTime("now"))->format("Y-m-d");
-		$stmt = Conexion::conectar()->prepare(
-			"SELECT COUNT(*) FROM programacion_taller_semanajf p
-			 LEFT JOIN (
-				SELECT
-					TRIM(a.modelo) AS modelo,
-					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
-					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
-				FROM articulojf a
-				WHERE (
-						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
-						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
-					)
-				  AND TRIM(IFNULL(a.modelo, '')) <> ''
-				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
-			 ) sal ON sal.modelo = TRIM(p.modelo)
-				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
-			 WHERE p.estado = 1
-			   AND p.fecha_fin < :hoy
-			   AND IFNULL(sal.saldo_disponible, 0) > 0"
-		);
-		$stmt->bindValue(":hoy", $hoy, PDO::PARAM_STR);
-		$stmt->execute();
-		return (int) $stmt->fetchColumn();
 	}
 
 	/** Cambia año/semana de una programación activa. */
@@ -272,23 +397,26 @@ class ModeloProgramacionTallerSemana
 		return $row ? $row : null;
 	}
 
-	static public function mdlIdExistente($anio, $semana, $modelo, $codColor, $codSector, $soloActivos = false)
+	/** $ordencorte null = fila legado sin OC. */
+	static public function mdlIdExistente($anio, $semana, $modelo, $codColor, $codSector, $soloActivos = false, $ordencorte = null)
 	{
 		$sql = "SELECT id FROM programacion_taller_semanajf
 			 WHERE anio = :anio AND semana = :semana
 			   AND TRIM(modelo) = :modelo
 			   AND TRIM(IFNULL(cod_color, '')) = :cod_color
-			   AND cod_sector = :cod_sector";
+			   AND cod_sector = :cod_sector
+			   AND IFNULL(ordencorte, -1) = :ordencorte";
 		if ($soloActivos) {
 			$sql .= " AND estado = 1";
 		}
-		$sql .= " LIMIT 1";
+		$sql .= " ORDER BY estado DESC LIMIT 1";
 		$stmt = Conexion::conectar()->prepare($sql);
 		$stmt->bindValue(":anio", (int) $anio, PDO::PARAM_INT);
 		$stmt->bindValue(":semana", (int) $semana, PDO::PARAM_INT);
 		$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
 		$stmt->bindValue(":cod_color", trim((string) $codColor), PDO::PARAM_STR);
 		$stmt->bindValue(":cod_sector", trim((string) $codSector), PDO::PARAM_STR);
+		$stmt->bindValue(":ordencorte", $ordencorte === null ? -1 : (int) $ordencorte, PDO::PARAM_INT);
 		$stmt->execute();
 		$id = $stmt->fetchColumn();
 		return $id !== false ? (int) $id : 0;
@@ -351,15 +479,16 @@ class ModeloProgramacionTallerSemana
 	{
 		$stmt = Conexion::conectar()->prepare(
 			"INSERT INTO programacion_taller_semanajf
-				(anio, semana, fecha_inicio, fecha_fin, articulo, modelo, cod_color, color,
+				(anio, semana, fecha_inicio, fecha_fin, articulo, modelo, cod_color, ordencorte, color,
 				 cod_talla, talla, nombre, cod_sector, cantidad, saldo_alm_corte, saldo_ord_corte,
 				 nivel, urg_plan, observacion, estado, usureg)
 			 VALUES
-				(:anio, :semana, :fecha_inicio, :fecha_fin, :articulo, :modelo, :cod_color, :color,
+				(:anio, :semana, :fecha_inicio, :fecha_fin, :articulo, :modelo, :cod_color, :ordencorte, :color,
 				 NULL, NULL, :nombre, :cod_sector, :cantidad, :saldo_alm_corte, :saldo_ord_corte,
 				 :nivel, :urg_plan, :observacion, 1, :usureg)"
 		);
 		self::mdlBindProgramacion($stmt, $datos, false);
+		$stmt->bindValue(":ordencorte", (int) $datos["ordencorte"], PDO::PARAM_INT);
 		return $stmt->execute() ? "ok" : "error";
 	}
 
@@ -618,28 +747,13 @@ class ModeloProgramacionTallerSemana
 	}
 
 	/**
-	 * Estadísticas de programación de una semana (totales, por nivel, por taller, pendiente/consumido).
+	 * Estadísticas de programación de una semana (totales, por nivel, por taller).
+	 * Pendiente/consumido y "por programar" dependen del saldo por OC y los arma el controlador.
 	 */
 	static public function mdlEstadisticasSemana($anio, $semana)
 	{
 		$anio = (int) $anio;
 		$semana = (int) $semana;
-		$joinSaldo = "
-			LEFT JOIN (
-				SELECT
-					TRIM(a.modelo) AS modelo,
-					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
-					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_vivo
-				FROM articulojf a
-				WHERE (
-						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
-						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
-					)
-				  AND TRIM(IFNULL(a.modelo, '')) <> ''
-				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
-			) sal ON sal.modelo = TRIM(p.modelo)
-				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
-		";
 
 		$stmtTot = Conexion::conectar()->prepare(
 			"SELECT
@@ -647,13 +761,8 @@ class ModeloProgramacionTallerSemana
 				IFNULL(SUM(p.cantidad), 0) AS total_cantidad,
 				COUNT(DISTINCT TRIM(p.modelo)) AS total_modelos,
 				COUNT(DISTINCT CONCAT(TRIM(p.modelo), '|', TRIM(IFNULL(p.cod_color, '')))) AS total_colores,
-				COUNT(DISTINCT p.cod_sector) AS total_talleres,
-				SUM(CASE WHEN IFNULL(sal.saldo_vivo, 0) > 0 THEN 1 ELSE 0 END) AS pendientes_lineas,
-				SUM(CASE WHEN IFNULL(sal.saldo_vivo, 0) <= 0 THEN 1 ELSE 0 END) AS consumidos_lineas,
-				IFNULL(SUM(CASE WHEN IFNULL(sal.saldo_vivo, 0) > 0 THEN p.cantidad ELSE 0 END), 0) AS pendientes_cantidad,
-				IFNULL(SUM(CASE WHEN IFNULL(sal.saldo_vivo, 0) <= 0 THEN p.cantidad ELSE 0 END), 0) AS consumidos_cantidad
+				COUNT(DISTINCT p.cod_sector) AS total_talleres
 			 FROM programacion_taller_semanajf p
-			 {$joinSaldo}
 			 WHERE p.estado = 1 AND p.anio = :anio AND p.semana = :semana"
 		);
 		$stmtTot->bindValue(":anio", $anio, PDO::PARAM_INT);
@@ -666,11 +775,7 @@ class ModeloProgramacionTallerSemana
 				"total_cantidad" => 0,
 				"total_modelos" => 0,
 				"total_colores" => 0,
-				"total_talleres" => 0,
-				"pendientes_lineas" => 0,
-				"consumidos_lineas" => 0,
-				"pendientes_cantidad" => 0,
-				"consumidos_cantidad" => 0
+				"total_talleres" => 0
 			);
 		}
 
@@ -688,112 +793,29 @@ class ModeloProgramacionTallerSemana
 		$stmtNivel->execute();
 		$porNivel = $stmtNivel->fetchAll();
 
-		$porProgramar = self::mdlPendienteProgramarSemana($anio, $semana);
-
 		return array(
 			"totales" => $totales,
 			"por_nivel" => $porNivel ? $porNivel : array(),
-			"por_taller" => self::mdlResumenPorTaller($anio, $semana),
-			"por_programar" => $porProgramar
+			"por_taller" => self::mdlResumenPorTaller($anio, $semana)
 		);
 	}
 
-	/**
-	 * Modelo/color con saldo en corte/OC que aún no tienen fila activa en la semana.
-	 * @return array{totales:array,por_taller:array}
-	 */
-	static public function mdlPendienteProgramarSemana($anio, $semana)
+	/** Claves modelo|color|ordencorte con fila activa en una semana. */
+	static public function mdlClavesOcSemana($anio, $semana)
 	{
-		$anio = (int) $anio;
-		$semana = (int) $semana;
-
-		$subCandidatos = "
-			SELECT
-				TRIM(a.modelo) AS modelo,
-				TRIM(IFNULL(a.cod_color, '')) AS cod_color,
-				SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible,
-				MAX(COALESCE(esp.cod_sector, gen.cod_sector, a.defecto_taller)) AS cod_sector
-			FROM articulojf a
-			LEFT JOIN modelo_color_tallerjf esp
-				ON esp.estado = 1
-				AND TRIM(esp.modelo) = TRIM(a.modelo)
-				AND TRIM(esp.cod_color) = TRIM(IFNULL(a.cod_color, ''))
-				AND TRIM(IFNULL(esp.cod_color, '')) <> ''
-			LEFT JOIN modelo_color_tallerjf gen
-				ON gen.estado = 1
-				AND TRIM(gen.modelo) = TRIM(a.modelo)
-				AND TRIM(IFNULL(gen.cod_color, '')) = ''
-			WHERE (
-					LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
-					OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
-				)
-			  AND TRIM(IFNULL(a.modelo, '')) <> ''
-			GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
-			HAVING SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) > 0
-		";
-
-		$notProgramado = "
-			NOT EXISTS (
-				SELECT 1
-				FROM programacion_taller_semanajf p
-				WHERE p.estado = 1
-				  AND p.anio = :anio
-				  AND p.semana = :semana
-				  AND TRIM(p.modelo) = c.modelo
-				  AND TRIM(IFNULL(p.cod_color, '')) = c.cod_color
-			)
-		";
-
-		$stmtTot = Conexion::conectar()->prepare(
-			"SELECT
-				COUNT(*) AS total_colores,
-				COUNT(DISTINCT c.modelo) AS total_modelos,
-				IFNULL(SUM(c.saldo_disponible), 0) AS total_cantidad
-			FROM ({$subCandidatos}) c
-			WHERE {$notProgramado}"
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT DISTINCT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, '')), '|', IFNULL(ordencorte, -1)) AS clave
+			 FROM programacion_taller_semanajf
+			 WHERE estado = 1 AND anio = :anio AND semana = :semana"
 		);
-		$stmtTot->bindValue(":anio", $anio, PDO::PARAM_INT);
-		$stmtTot->bindValue(":semana", $semana, PDO::PARAM_INT);
-		$stmtTot->execute();
-		$tot = $stmtTot->fetch();
-		if (!$tot) {
-			$tot = array(
-				"total_colores" => 0,
-				"total_modelos" => 0,
-				"total_cantidad" => 0
-			);
+		$stmt->bindValue(":anio", (int) $anio, PDO::PARAM_INT);
+		$stmt->bindValue(":semana", (int) $semana, PDO::PARAM_INT);
+		$stmt->execute();
+		$out = array();
+		foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $c) {
+			$out[$c] = true;
 		}
-
-		$stmtTaller = Conexion::conectar()->prepare(
-			"SELECT
-				IFNULL(NULLIF(TRIM(c.cod_sector), ''), '—') AS cod_sector,
-				CASE
-					WHEN IFNULL(NULLIF(TRIM(c.cod_sector), ''), '') = '' THEN 'Sin taller'
-					ELSE IFNULL(s.nom_sector, c.cod_sector)
-				END AS nom_sector,
-				IFNULL(s.color, '#f0ad4e') AS color_taller,
-				COUNT(*) AS total_colores,
-				IFNULL(SUM(c.saldo_disponible), 0) AS total_cantidad
-			FROM ({$subCandidatos}) c
-			LEFT JOIN sectorjf s ON s.cod_sector = c.cod_sector
-			WHERE {$notProgramado}
-			GROUP BY IFNULL(NULLIF(TRIM(c.cod_sector), ''), '—'),
-				CASE
-					WHEN IFNULL(NULLIF(TRIM(c.cod_sector), ''), '') = '' THEN 'Sin taller'
-					ELSE IFNULL(s.nom_sector, c.cod_sector)
-				END,
-				s.color
-			ORDER BY total_cantidad DESC, cod_sector ASC"
-		);
-		$stmtTaller->bindValue(":anio", $anio, PDO::PARAM_INT);
-		$stmtTaller->bindValue(":semana", $semana, PDO::PARAM_INT);
-		$stmtTaller->execute();
-		$porTaller = $stmtTaller->fetchAll();
-
-		return array(
-			"totales" => $tot,
-			"por_taller" => $porTaller ? $porTaller : array()
-		);
+		return $out;
 	}
 
 	/**
@@ -807,6 +829,7 @@ class ModeloProgramacionTallerSemana
 				p.semana,
 				p.nivel,
 				p.cantidad AS cant_programada,
+				p.ordencorte,
 				p.cod_sector,
 				IFNULL(s.nom_sector, p.cod_sector) AS nom_sector,
 				IFNULL(s.color, '#A8D5E5') AS color_taller,
@@ -903,6 +926,7 @@ class ModeloProgramacionTallerSemana
 				p.fecha_fin,
 				p.nivel,
 				p.cantidad AS cant_programada,
+				p.ordencorte,
 				p.cod_sector,
 				IFNULL(s.nom_sector, p.cod_sector) AS nom_sector,
 				IFNULL(s.color, '#A8D5E5') AS color_taller,
@@ -960,97 +984,13 @@ class ModeloProgramacionTallerSemana
 		return $stmt->fetchAll();
 	}
 
-	/** Claves modelo|color activas en bandeja de prioridad. */
-	static public function mdlClavesPrioridadActivas()
-	{
-		try {
-			$stmt = Conexion::conectar()->prepare(
-				"SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave
-				 FROM programacion_taller_prioridadjf
-				 WHERE estado = 1"
-			);
-			$stmt->execute();
-			$rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-			return is_array($rows) ? $rows : array();
-		} catch (Exception $e) {
-			return array();
-		}
-	}
-
-	/**
-	 * Cantidad ya programada por clave modelo|color en semanas vigentes o futuras.
-	 * Las semanas ya cerradas (No ejecutado) no descuentan: su OC ya pasó y no debe ocultar una OC nueva.
-	 */
-	static public function mdlCantidadProgramadaActiva($modelo = null, $codColor = null)
-	{
-		try {
-			$sql = "SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave,
-					SUM(cantidad) AS cantidad
-				 FROM programacion_taller_semanajf
-				 WHERE estado = 1 AND fecha_fin >= CURDATE()";
-			if ($modelo !== null) {
-				$sql .= " AND TRIM(modelo) = :modelo AND TRIM(IFNULL(cod_color, '')) = :cod_color";
-			}
-			$sql .= " GROUP BY TRIM(modelo), TRIM(IFNULL(cod_color, ''))";
-			$stmt = Conexion::conectar()->prepare($sql);
-			if ($modelo !== null) {
-				$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
-				$stmt->bindValue(":cod_color", trim((string) $codColor), PDO::PARAM_STR);
-			}
-			$stmt->execute();
-			$out = array();
-			foreach ($stmt->fetchAll() as $r) {
-				$out[$r["clave"]] = (int) $r["cantidad"];
-			}
-			return $out;
-		} catch (Exception $e) {
-			return array();
-		}
-	}
-
-	/** Claves modelo|color ya destinadas a alguna semana (activas). */
-	static public function mdlClavesProgramadasActivas()
-	{
-		try {
-			$stmt = Conexion::conectar()->prepare(
-				"SELECT CONCAT(TRIM(modelo), '|', TRIM(IFNULL(cod_color, ''))) AS clave
-				 FROM programacion_taller_semanajf
-				 WHERE estado = 1"
-			);
-			$stmt->execute();
-			$rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-			return is_array($rows) ? $rows : array();
-		} catch (Exception $e) {
-			return array();
-		}
-	}
-
 	static public function mdlListarPriorizados($filtros = array())
 	{
 		$sql = "SELECT p.*,
 				s.nom_sector,
-				s.color AS color_taller,
-				IFNULL(sal.alm_corte, 0) AS alm_corte_vivo,
-				IFNULL(sal.ord_corte, 0) AS ord_corte_vivo,
-				IFNULL(sal.saldo_disponible, 0) AS saldo_vivo
+				s.color AS color_taller
 			FROM programacion_taller_prioridadjf p
 			LEFT JOIN sectorjf s ON s.cod_sector = p.cod_sector
-			LEFT JOIN (
-				SELECT
-					TRIM(a.modelo) AS modelo,
-					TRIM(IFNULL(a.cod_color, '')) AS cod_color,
-					SUM(IFNULL(a.alm_corte, 0)) AS alm_corte,
-					SUM(IFNULL(a.ord_corte, 0)) AS ord_corte,
-					SUM(IFNULL(a.alm_corte, 0) + IFNULL(a.ord_corte, 0)) AS saldo_disponible
-				FROM articulojf a
-				WHERE (
-						LOWER(TRIM(IFNULL(a.estado, ''))) = 'activo'
-						OR UPPER(REPLACE(TRIM(IFNULL(a.estado, '')), 'Ñ', 'N')) LIKE '%CAMPANA%'
-					)
-				  AND TRIM(IFNULL(a.modelo, '')) <> ''
-				GROUP BY TRIM(a.modelo), TRIM(IFNULL(a.cod_color, ''))
-			) sal ON sal.modelo = TRIM(p.modelo)
-				AND sal.cod_color = TRIM(IFNULL(p.cod_color, ''))
 			WHERE p.estado = 1";
 		$params = array();
 		if (!empty($filtros["cod_sector"])) {
@@ -1101,21 +1041,23 @@ class ModeloProgramacionTallerSemana
 		}
 	}
 
-	static public function mdlIdPrioridadExistente($modelo, $codColor, $codSector, $soloActivos = false)
+	static public function mdlIdPrioridadExistente($modelo, $codColor, $codSector, $soloActivos = false, $ordencorte = null)
 	{
 		$sql = "SELECT id FROM programacion_taller_prioridadjf
 			 WHERE TRIM(modelo) = :modelo
 			   AND TRIM(IFNULL(cod_color, '')) = :cod_color
-			   AND cod_sector = :cod_sector";
+			   AND cod_sector = :cod_sector
+			   AND IFNULL(ordencorte, -1) = :ordencorte";
 		if ($soloActivos) {
 			$sql .= " AND estado = 1";
 		}
-		$sql .= " LIMIT 1";
+		$sql .= " ORDER BY estado DESC LIMIT 1";
 		try {
 			$stmt = Conexion::conectar()->prepare($sql);
 			$stmt->bindValue(":modelo", trim((string) $modelo), PDO::PARAM_STR);
 			$stmt->bindValue(":cod_color", trim((string) $codColor), PDO::PARAM_STR);
 			$stmt->bindValue(":cod_sector", trim((string) $codSector), PDO::PARAM_STR);
+			$stmt->bindValue(":ordencorte", $ordencorte === null ? -1 : (int) $ordencorte, PDO::PARAM_INT);
 			$stmt->execute();
 			$id = $stmt->fetchColumn();
 			return $id !== false ? (int) $id : 0;
@@ -1128,14 +1070,15 @@ class ModeloProgramacionTallerSemana
 	{
 		$stmt = Conexion::conectar()->prepare(
 			"INSERT INTO programacion_taller_prioridadjf
-				(modelo, cod_color, color, nombre, cod_sector, cantidad, saldo_alm_corte, saldo_ord_corte,
+				(modelo, cod_color, ordencorte, color, nombre, cod_sector, cantidad, saldo_alm_corte, saldo_ord_corte,
 				 nivel, urg_plan, observacion, estado, usureg)
 			 VALUES
-				(:modelo, :cod_color, :color, :nombre, :cod_sector, :cantidad, :saldo_alm_corte, :saldo_ord_corte,
+				(:modelo, :cod_color, :ordencorte, :color, :nombre, :cod_sector, :cantidad, :saldo_alm_corte, :saldo_ord_corte,
 				 :nivel, :urg_plan, :observacion, 1, :usureg)"
 		);
 		$stmt->bindValue(":modelo", $datos["modelo"], PDO::PARAM_STR);
 		$stmt->bindValue(":cod_color", $datos["cod_color"], PDO::PARAM_STR);
+		$stmt->bindValue(":ordencorte", (int) $datos["ordencorte"], PDO::PARAM_INT);
 		$stmt->bindValue(":color", $datos["color"], PDO::PARAM_STR);
 		$stmt->bindValue(":nombre", $datos["nombre"], PDO::PARAM_STR);
 		$stmt->bindValue(":cod_sector", $datos["cod_sector"], PDO::PARAM_STR);

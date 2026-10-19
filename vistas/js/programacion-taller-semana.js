@@ -692,6 +692,26 @@ function etiquetaColorPts(r) {
     return (r.cod_color || "") + (r.color ? " — " + r.color : "");
 }
 
+/** Orden de corte de la línea (cada OC se prioriza/programa por separado). */
+function etiquetaOcPts(r) {
+    if (!r || r.ordencorte == null || r.ordencorte === "") return "";
+    var oc = parseInt(r.ordencorte, 10) || 0;
+    var txt = oc > 0 ? "OC " + oc : "Sin OC";
+    if (oc > 0 && r.fecha_oc) {
+        var p = String(r.fecha_oc).split("-");
+        if (p.length === 3) txt += " · " + p[2] + "/" + p[1];
+    }
+    return txt;
+}
+
+/** Celda de color con la OC debajo (HTML ya escapado). */
+function celdaColorOcHtmlPts(r) {
+    var oc = etiquetaOcPts(r);
+    return "<td>" + escaparPts(etiquetaColorPts(r))
+        + (oc ? '<br><small class="text-muted pts-oc">' + escaparPts(oc) + "</small>" : "")
+        + "</td>";
+}
+
 function colorTallerPts(r) {
     if (r && r.color_taller) {
         return String(r.color_taller);
@@ -819,7 +839,7 @@ function pintarTablaProgramadosPts() {
             + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
             + celdaTallerHtmlPts(r, taller)
             + "<td>" + escaparPts(r.modelo) + "</td>"
-            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+            + celdaColorOcHtmlPts(r)
             + "<td><strong>" + escaparPts(r.cantidad) + "</strong></td>"
             + "<td title=\"" + escaparPts(titleSnap) + "\">" + escaparPts(alm) + "</td>"
             + "<td title=\"" + escaparPts(titleSnap) + "\">" + escaparPts(ord) + "</td>"
@@ -1008,7 +1028,7 @@ function pintarTablaNoEjecPts() {
             + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
             + celdaTallerHtmlPts(r, taller)
             + "<td>" + escaparPts(r.modelo) + "</td>"
-            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+            + celdaColorOcHtmlPts(r)
             + "<td><strong>" + escaparPts(r.cantidad) + "</strong></td>"
             + "<td>" + escaparPts(alm) + "</td>"
             + "<td>" + escaparPts(ord) + "</td>"
@@ -1064,7 +1084,8 @@ function refrescarBadgeNoEjecPts() {
 function abrirModalMoverNePts(row) {
     if (!row || !row.id) return;
     $("#neModalId").val(row.id);
-    $("#neModalArticulo").text((row.modelo || "") + " / " + etiquetaColorPts(row));
+    var ocNe = etiquetaOcPts(row);
+    $("#neModalArticulo").text((row.modelo || "") + " / " + etiquetaColorPts(row) + (ocNe ? " · " + ocNe : ""));
     $("#neModalOrigen").html(
         "Origen: sem. " + escaparPts(row.semana) + " · " + escaparPts(row.anio)
         + " · " + badgeNivelPts(row.nivel, row.nivel_nombre, row.nivel_color)
@@ -1313,7 +1334,7 @@ function cargarProgramadosPts(opts) {
 }
 
 function claveDispPts(r) {
-    return String(r.modelo || "") + "|" + String(r.cod_color || "");
+    return String(r.modelo || "") + "|" + String(r.cod_color || "") + "|" + String(r.ordencorte == null ? "" : r.ordencorte);
 }
 
 function filtrosDestinarPts() {
@@ -1356,7 +1377,9 @@ function pintarTablaPriorizadosPts() {
         var alm = r.alm_corte_vivo != null ? r.alm_corte_vivo : r.saldo_alm_corte;
         var ord = r.ord_corte_vivo != null ? r.ord_corte_vivo : r.saldo_ord_corte;
         var cant = r.cantidad != null ? r.cantidad : ((parseInt(alm, 10) || 0) + (parseInt(ord, 10) || 0));
-        var sinSaldo = (parseInt(r.saldo_vivo, 10) || 0) < 1;
+        var saldoVivoPts = parseInt(r.saldo_vivo, 10) || 0;
+        var sinSaldo = saldoVivoPts < 1;
+        var saldoMayorPts = saldoVivoPts > (parseInt(cant, 10) || 0);
         var $tr = $("<tr>");
         if (sinSaldo) {
             $tr.addClass("warning");
@@ -1374,8 +1397,10 @@ function pintarTablaPriorizadosPts() {
             + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
             + celdaTallerHtmlPts(r, tallerTxt)
             + "<td>" + escaparPts(r.modelo) + "</td>"
-            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
-            + "<td><strong>" + escaparPts(cant) + "</strong></td>"
+            + celdaColorOcHtmlPts(r)
+            + "<td><strong>" + escaparPts(cant) + "</strong>"
+            + (saldoMayorPts ? ' <i class="fa fa-exclamation-triangle text-warning" title="El saldo actual (' + escaparPts(saldoVivoPts) + ') es mayor que la cantidad priorizada (' + escaparPts(cant) + '). Al destinar se usará el saldo actual."></i>' : "")
+            + "</td>"
             + "<td>" + escaparPts(alm) + "</td>"
             + "<td>" + escaparPts(ord) + "</td>"
             + "<td>" + escaparPts(r.urg_plan == null ? "—" : r.urg_plan) + "</td>"
@@ -1495,7 +1520,7 @@ function pintarTablaDisponiblesPts() {
                 sinTaller ? ' <i class="fa fa-warning text-yellow" title="Sin taller"></i>' : ""
             )
             + "<td>" + escaparPts(r.modelo) + "</td>"
-            + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+            + celdaColorOcHtmlPts(r)
             + "<td>" + escaparPts(alm) + "</td>"
             + "<td>" + escaparPts(ord) + "</td>"
             + "<td><strong>" + escaparPts(disp) + "</strong></td>"
@@ -1535,7 +1560,8 @@ function claveSemanaEnvPts(r) {
 }
 
 function claveGrupoEnvPts(r) {
-    return String(r.id_programacion || "") + "|" + String(r.modelo || "") + "|" + String(r.cod_color || "");
+    return String(r.id_programacion || "") + "|" + String(r.modelo || "") + "|" + String(r.cod_color || "")
+        + "|" + String(r.ordencorte == null ? "" : r.ordencorte);
 }
 
 function actualizarContadorSelEnvPts() {
@@ -1636,7 +1662,7 @@ function pintarTablaEnviarPts() {
                 + "<td>" + badgeNivelPts(r.nivel, r.nivel_nombre, r.nivel_color) + "</td>"
                 + celdaTallerHtmlPts(r, taller)
                 + "<td>" + escaparPts(r.modelo) + "</td>"
-                + "<td>" + escaparPts(etiquetaColorPts(r)) + "</td>"
+                + celdaColorOcHtmlPts(r)
                 + '<td colspan="4"><span class="text-muted">'
                 + g.items.length + " talla(s) · " + totalAlm + " uds en corte</span>"
                 + (r.nombre_modelo ? ' <span class="text-muted">· ' + escaparPts(r.nombre_modelo) + "</span>" : "")
@@ -1831,6 +1857,7 @@ function payloadPriorizarPts(row, nivel, cantidad) {
         accion: "priorizar",
         modelo: row.modelo || "",
         cod_color: row.cod_color || "",
+        ordencorte: row.ordencorte == null ? "" : row.ordencorte,
         cod_sector: row.cod_sector_resuelto || row.cod_sector || "",
         nivel: nivel,
         cantidad: cantidad,
@@ -1857,7 +1884,8 @@ function priorizarFilaPts($tr, nivel) {
     $.post("ajax/programacion-taller-semana.ajax.php", payloadPriorizarPts(row, nivel, cant), function (resp) {
         if (resp && resp.ok) {
             $tr.removeClass("programando-pts").addClass("ok-pts");
-            toastPts((row.modelo || "") + " / " + (row.cod_color || "") + " → priorizado", "success");
+            var ocTxt = etiquetaOcPts(row);
+            toastPts((row.modelo || "") + " / " + (row.cod_color || "") + (ocTxt ? " (" + ocTxt + ")" : "") + " → priorizado", "success");
             var clave = claveDispPts(row);
             ptsDisponiblesCache = ptsDisponiblesCache.filter(function (x) {
                 return claveDispPts(x) !== clave;
@@ -1904,6 +1932,7 @@ function priorizarLotePts() {
         items.push({
             modelo: row.modelo,
             cod_color: row.cod_color,
+            ordencorte: row.ordencorte == null ? "" : row.ordencorte,
             cod_sector: row.cod_sector_resuelto,
             cantidad: cant,
             nivel: nivel
@@ -2016,8 +2045,9 @@ function destinarConSemanaPts(idPri, anio, semana, $tr) {
 function abrirModalDestinarPts(row) {
     if (!row || !row.id) return;
     $("#destModalIdPri").val(row.id);
+    var ocDest = etiquetaOcPts(row);
     $("#destModalArticulo").text(
-        (row.modelo || "") + " / " + etiquetaColorPts(row)
+        (row.modelo || "") + " / " + etiquetaColorPts(row) + (ocDest ? " · " + ocDest : "")
     );
     $("#destModalNivel").html(
         "Nivel: " + badgeNivelPts(row.nivel, row.nivel_nombre, row.nivel_color)
@@ -2115,9 +2145,11 @@ function abrirModalProgramarPts(row, esEdicion) {
     $("#ptsId").val(esEdicion ? row.id : "");
     $("#ptsModelo").val(row.modelo || "");
     $("#ptsCodColor").val(row.cod_color || "");
+    $("#formProgramarPts").data("ordencorte", row.ordencorte == null ? "" : row.ordencorte);
     $("#tituloModalPts").text(esEdicion ? "Editar programación" : "Programar modelo/color");
     $("#ptsArticuloTexto").text(
         (row.modelo || "") + " / " + etiquetaColorPts(row) + (row.nombre ? " — " + row.nombre : "")
+        + (etiquetaOcPts(row) ? " · " + etiquetaOcPts(row) : "")
     );
     var alm = row.alm_corte_vivo != null
         ? row.alm_corte_vivo
@@ -2610,6 +2642,7 @@ $("#formProgramarPts").on("submit", function (e) {
         semana: $("#ptsSemana").val(),
         modelo: $("#ptsModelo").val(),
         cod_color: $("#ptsCodColor").val(),
+        ordencorte: $("#formProgramarPts").data("ordencorte"),
         cod_sector: $("#ptsTaller").val(),
         nivel: $("#ptsNivel").val(),
         observacion: $("#ptsObservacion").val()

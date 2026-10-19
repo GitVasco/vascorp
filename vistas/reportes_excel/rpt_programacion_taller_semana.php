@@ -32,7 +32,7 @@ $filtros = array(
 );
 
 $rango = ModeloProgramacionTallerSemana::mdlRangoSemana($anio, $semana);
-$rows = ModeloProgramacionTallerSemana::mdlExportDetalleSemana($anio, $semana, $filtros);
+$rows = ControladorProgramacionTallerSemana::ctrExportDetalleSemana($anio, $semana, $filtros);
 if (!is_array($rows)) {
 	$rows = array();
 }
@@ -93,14 +93,14 @@ $estiloFila = array(
 );
 
 $sheet->setCellValue("A1", "Programación semanal por taller");
-$sheet->mergeCells("A1:N1");
+$sheet->mergeCells("A1:O1");
 $sheet->getStyle("A1")->getFont()->setBold(true)->setSize(13);
 
 $rangoTxt = $rango
 	? ($rango["fecha_inicio"] . " → " . $rango["fecha_fin"])
 	: "";
 $sheet->setCellValue("A2", "Semana {$semana} / {$anio}" . ($rangoTxt !== "" ? "  ({$rangoTxt})" : ""));
-$sheet->mergeCells("A2:N2");
+$sheet->mergeCells("A2:O2");
 
 $headers = array(
 	"A4" => "Urgencia",
@@ -116,12 +116,13 @@ $headers = array(
 	"K4" => "IND2",
 	"L4" => "Destino",
 	"M4" => "Semana",
-	"N4" => "Suma de ORDEN"
+	"N4" => "Suma de ORDEN",
+	"O4" => "OC"
 );
 foreach ($headers as $cell => $txt) {
 	$sheet->setCellValue($cell, $txt);
 }
-$sheet->getStyle("A4:N4")->applyFromArray($estiloCab);
+$sheet->getStyle("A4:O4")->applyFromArray($estiloCab);
 $sheet->getRowDimension(4)->setRowHeight(20);
 
 $fila = 5;
@@ -151,8 +152,9 @@ foreach ($rows as $r) {
 	$sheet->setCellValue("L{$fila}", $r["nom_sector"]);
 	$sheet->setCellValue("M{$fila}", "SEMANA " . (int) $r["semana"]);
 	$sheet->setCellValue("N{$fila}", (int) $r["suma_orden"]);
+	$sheet->setCellValue("O{$fila}", $r["ordencorte"] === null ? "" : ((int) $r["ordencorte"] > 0 ? (int) $r["ordencorte"] : "Sin OC"));
 
-	$sheet->getStyle("A{$fila}:N{$fila}")->applyFromArray($estiloFila);
+	$sheet->getStyle("A{$fila}:O{$fila}")->applyFromArray($estiloFila);
 	$sheet->getStyle("A{$fila}")->applyFromArray(array(
 		"fill" => array(
 			"type" => PHPExcel_Style_Fill::FILL_SOLID,
@@ -169,7 +171,7 @@ foreach ($rows as $r) {
 	$fila++;
 }
 
-foreach (range("A", "N") as $col) {
+foreach (range("A", "O") as $col) {
 	$sheet->getColumnDimension($col)->setAutoSize(true);
 }
 $sheet->freezePane("A5");
