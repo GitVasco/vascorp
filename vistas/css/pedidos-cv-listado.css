@@ -63,30 +63,18 @@
     max-width: 400px;
 }
 
-.pedidos-cv-import-hint {
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    white-space: nowrap;
-    flex: 0 0 auto;
-}
-
-.pedidos-cv-import-hint .fa {
-    color: #3c8dbc;
-    margin-right: 4px;
-}
-
 .pedidos-cv-import-form {
     display: flex;
     align-items: center;
-    gap: 8px;
     margin: 0;
     flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
 }
 
 .pedidos-cv-import-input {
     flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
     margin: 0;
 }

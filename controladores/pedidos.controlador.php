@@ -589,6 +589,17 @@ class ControladorPedidos
         return $respuesta;
     }
 
+    /*
+    * CARGAS IMPORTADAS DE UNA FECHA (para reimprimir la constancia)
+    */
+    static public function ctrListarCargasImportadas($fecha)
+    {
+
+        $respuesta = ModeloPedidos::mdlListarCargasImportadas($fecha);
+
+        return $respuesta;
+    }
+
     /* 
     *ANULAR PEDIDO
     */

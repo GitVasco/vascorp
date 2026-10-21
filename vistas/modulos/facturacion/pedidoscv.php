@@ -48,12 +48,25 @@
                                 <i class="fa fa-paper-plane"></i> Enviar pedidos
                             </button>';
                         }
+                        if (
+                            $_SESSION["id"] == "6" ||
+                            $_SESSION["id"] == "32" ||
+                            $_SESSION["id"] == "53" ||
+                            $_SESSION["id"] == "54" ||
+                            $_SESSION["id"] == "55" ||
+                            $_SESSION["id"] == "74"
+                        ) {
+                            echo '<button type="button" class="btn btn-default pedidos-cv-btn-accion pedidos-cv-solo-desktop" data-toggle="modal" data-target="#modalReimprimirCarga" title="Volver a imprimir la constancia de una carga importada">
+                                <i class="fa fa-print"></i> Reimprimir
+                            </button>';
+                        }
                         ?>
                     </div>
 
                     <?php
                     if (
                         $_SESSION["id"] == "6" ||
+                        $_SESSION["id"] == "32" ||
                         $_SESSION["id"] == "53" ||
                         $_SESSION["id"] == "54" ||
                         $_SESSION["id"] == "55" ||
@@ -61,7 +74,6 @@
                     ) {
                         echo '<div class="pedidos-cv-import-inline pedidos-cv-solo-desktop">
                             <form role="form" class="pedidos-cv-import-form" method="POST" enctype="multipart/form-data">
-                                <span class="pedidos-cv-import-hint"><i class="fa fa-file-text-o"></i> Importar .txt</span>
                                 <div class="input-group input-group-sm pedidos-cv-import-input">
                                     <input type="file" name="archivoPedTxt" id="archivoPedTxt" class="form-control" accept="text/plain" title="Seleccionar archivo de texto">
                                     <span class="input-group-btn">
@@ -614,6 +626,65 @@ MODAL ENVIAR PEDIDOS
             $enviar->ctrEnviarPedido();
 
             ?>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!--=====================================
+MODAL REIMPRIMIR CARGA IMPORTADA
+======================================-->
+
+<div id="modalReimprimirCarga" class="modal fade" role="dialog">
+
+    <div class="modal-dialog" style="width: 420px; max-width: 92vw;">
+
+        <div class="modal-content">
+
+            <div class="modal-header" style="background:#3c8dbc; color:white">
+
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+
+                <h4 class="modal-title">Reimprimir constancia de carga</h4>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div class="form-group">
+                    <label for="fechaReimpresion">Fecha de la carga</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        <?php
+                        date_default_timezone_set('America/Lima');
+                        $fechaHoy = new DateTime();
+                        ?>
+                        <input type="date" class="form-control input-sm" id="fechaReimpresion" value="<?php echo $fechaHoy->format("Y-m-d"); ?>">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cargaReimpresion">Carga (vendedor)</label>
+                    <select class="form-control input-sm" id="cargaReimpresion" disabled>
+                        <option value="">Cargando…</option>
+                    </select>
+                    <p class="help-block" id="reimpresionAyuda">Elegí la fecha para ver las cargas de ese día.</p>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
+
+                <button type="button" class="btn btn-primary" id="btnReimprimirCarga" disabled>
+                    <i class="fa fa-print"></i> Reimprimir
+                </button>
+
+            </div>
 
         </div>
 

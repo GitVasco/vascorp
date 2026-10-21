@@ -1,26 +1,40 @@
-<html>
-
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-  <link href="css/ticket_v7.css" target="_blank" rel="stylesheet" type="text/css">
-</head>
-
-<body  onload="window.print();">
-
 <?php
     require_once "../../controladores/pedidos.controlador.php";
     require_once "../../modelos/pedidos.modelo.php";
 
-    /* 
+    /*
     todo: traemos todos lso datos para el ticket
     */
-    $fecha = $_GET["fecha"];
-    $vend = $_GET["vend"];
+    $fecha = isset($_GET["fecha"]) ? trim((string) $_GET["fecha"]) : "";
+    $vend = isset($_GET["vend"]) ? trim((string) $_GET["vend"]) : "";
 
-    $pedido = ControladorPedidos::ctrMostrarTemporalFecVen($fecha, $vend);
-    #var_dump($pedido);
+    $pedido = ($fecha !== "" && $vend !== "")
+        ? ControladorPedidos::ctrMostrarTemporalFecVen($fecha, $vend)
+        : [];
+    if (!is_array($pedido)) {
+        $pedido = [];
+    }
 
+    $cantidadPedidos = count($pedido);
+    $nombreVendedor = "";
+    if ($cantidadPedidos > 0 && !empty($pedido[0]["vendedor_nombre"])) {
+        $nombreVendedor = trim((string) $pedido[0]["vendedor_nombre"]);
+    }
+    if ($nombreVendedor === "") {
+        $nombreVendedor = "Usuario " . $vend;
+    }
+    $fechaTitulo = str_replace("/", "-", $fecha);
+    $tituloPdf = "Pedidos " . $fechaTitulo . " " . $nombreVendedor;
 ?>
+<html>
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <title><?php echo htmlspecialchars($tituloPdf, ENT_QUOTES, "UTF-8"); ?></title>
+  <link href="css/ticket_v7.css" target="_blank" rel="stylesheet" type="text/css">
+</head>
+
+<body  onload="window.print();">
         <!-- codigo imprimir -->
         <div class="zona_impresion">
 
@@ -42,9 +56,12 @@
 
                 <tr>
                     <td><strong>PEDIDOS PROCESADOS</strong></td>
-                </tr>  
+                </tr>
+                <tr>
+                    <td>Carga: <?php echo htmlspecialchars($fecha, ENT_QUOTES, "UTF-8"); ?> &middot; <?php echo htmlspecialchars($nombreVendedor, ENT_QUOTES, "UTF-8"); ?> &middot; <?php echo $cantidadPedidos; ?> <?php echo $cantidadPedidos === 1 ? "pedido" : "pedidos"; ?></td>
+                </tr>
 
-            </table>   
+            </table>
 
             <table border="" style="border:2px solid;" width="100%">
 

@@ -613,6 +613,33 @@ class AjaxPedidos
         }
     }
 
+    /**
+     * Cargas importadas de una fecha (usuario/vendedor + cantidad) para reimprimir la constancia.
+     * Mismos usuarios que ven la opción de importar en pedidoscv.
+     */
+    public function ajaxListarCargasReimpresion()
+    {
+
+        $permitidos = array("6", "32", "53", "54", "55", "74");
+        if (!isset($_SESSION["id"]) || !in_array((string) $_SESSION["id"], $permitidos, true)) {
+            echo json_encode(array());
+            return;
+        }
+
+        $fecha = isset($_POST["fechaReimpresion"]) ? trim((string) $_POST["fechaReimpresion"]) : "";
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            echo json_encode(array());
+            return;
+        }
+
+        $respuesta = ControladorPedidos::ctrListarCargasImportadas($fecha);
+        if (!is_array($respuesta)) {
+            $respuesta = array();
+        }
+
+        echo json_encode($respuesta);
+    }
+
     public function ajaxGuardarCierrePedidoCv()
     {
 
@@ -856,4 +883,10 @@ if (isset($_POST["ajaxGuardarCierrePedidoCv"])) {
 
     $cierre = new AjaxPedidos();
     $cierre->ajaxGuardarCierrePedidoCv();
+}
+
+if (isset($_POST["listarCargasReimpresion"])) {
+
+    $cargas = new AjaxPedidos();
+    $cargas->ajaxListarCargasReimpresion();
 }

@@ -1818,18 +1818,51 @@ class ModeloPedidos
 						t.cliente,
 						c.nombre,
 						t.total,
-						cv.descripcion 
+						cv.descripcion,
+						u.nombre AS vendedor_nombre
 					FROM
-						temporaljf t 
-						LEFT JOIN clientesjf c 
-						ON t.cliente = c.codigo 
-						LEFT JOIN condiciones_ventajf cv 
-						ON t.condicion_venta = cv.id 
-					WHERE t.fecha = :fecha 
+						temporaljf t
+						LEFT JOIN clientesjf c
+						ON t.cliente = c.codigo
+						LEFT JOIN condiciones_ventajf cv
+						ON t.condicion_venta = cv.id
+						LEFT JOIN usuariosjf u
+						ON u.id = t.usuario
+					WHERE t.fecha = :fecha
 						AND t.usuario = :vend");
 
 		$stmt->bindParam(":fecha", $fecha, PDO::PARAM_STR);
 		$stmt->bindParam(":vend", $vend, PDO::PARAM_STR);
+
+		$stmt->execute();
+
+		return $stmt->fetchAll();
+
+		$stmt->close();
+
+		$stmt = null;
+	}
+
+	/*
+    * CARGAS IMPORTADAS DE UNA FECHA (para reimprimir la constancia)
+    * Una fila por usuario/vendedor con pedidos ese día.
+    */
+	static public function mdlListarCargasImportadas($fecha)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT
+						t.usuario AS usuario,
+						u.nombre AS vendedor_nombre,
+						COUNT(*) AS cantidad
+					FROM
+						temporaljf t
+						LEFT JOIN usuariosjf u
+						ON u.id = t.usuario
+					WHERE t.fecha = :fecha
+					GROUP BY t.usuario, u.nombre
+					ORDER BY u.nombre ASC, t.usuario ASC");
+
+		$stmt->bindParam(":fecha", $fecha, PDO::PARAM_STR);
 
 		$stmt->execute();
 

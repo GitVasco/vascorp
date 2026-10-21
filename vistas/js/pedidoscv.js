@@ -3084,6 +3084,104 @@ function getTableInputsData() {
     return tableInputsData;
 }
 
+/* Reimprimir constancia de una carga importada (modal en pedidoscv) */
+(function () {
+    var $fecha = $("#fechaReimpresion");
+    var $carga = $("#cargaReimpresion");
+    var $boton = $("#btnReimprimirCarga");
+    var $ayuda = $("#reimpresionAyuda");
+    if (!$fecha.length || !$carga.length || !$boton.length) {
+        return;
+    }
+
+    function cargarCargas() {
+        var fecha = $fecha.val();
+        $carga.empty().append('<option value="">Cargando…</option>').prop("disabled", true);
+        $boton.prop("disabled", true);
+        if ($ayuda.length) {
+            $ayuda.text("Buscando las cargas de ese día…");
+        }
+        if (!fecha) {
+            $carga.empty().append('<option value="">Elegí una fecha</option>');
+            return;
+        }
+
+        var datos = new FormData();
+        datos.append("listarCargasReimpresion", "1");
+        datos.append("fechaReimpresion", fecha);
+
+        $.ajax({
+            url: "ajax/pedidos.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                $carga.empty();
+                if (!respuesta || !respuesta.length) {
+                    $carga
+                        .append('<option value="">Sin cargas en esta fecha</option>')
+                        .prop("disabled", true);
+                    if ($ayuda.length) {
+                        $ayuda.text("No se importaron pedidos en la fecha elegida.");
+                    }
+                    return;
+                }
+                respuesta.forEach(function (carga) {
+                    var nombre = carga.vendedor_nombre
+                        ? carga.vendedor_nombre
+                        : "Usuario " + carga.usuario;
+                    var cantidad = parseInt(carga.cantidad, 10) || 0;
+                    $carga.append(
+                        $("<option></option>")
+                            .val(carga.usuario)
+                            .text(
+                                nombre +
+                                    " — " +
+                                    cantidad +
+                                    (cantidad === 1 ? " pedido" : " pedidos")
+                            )
+                    );
+                });
+                $carga.prop("disabled", false);
+                $boton.prop("disabled", false);
+                if ($ayuda.length) {
+                    $ayuda.text("Se abre la constancia lista para imprimir o guardar como PDF.");
+                }
+            },
+            error: function () {
+                $carga
+                    .empty()
+                    .append('<option value="">No se pudo buscar</option>')
+                    .prop("disabled", true);
+                if ($ayuda.length) {
+                    $ayuda.text("Ocurrió un error al buscar las cargas. Intentá de nuevo.");
+                }
+            },
+        });
+    }
+
+    $("#modalReimprimirCarga").on("shown.bs.modal", cargarCargas);
+    $fecha.on("change", cargarCargas);
+
+    $boton.on("click", function () {
+        var fecha = $fecha.val();
+        var vend = $carga.val();
+        if (!fecha || !vend) {
+            return;
+        }
+        window.open(
+            "vistas/reportes_ticket/pedidos_prov.php?fecha=" +
+                encodeURIComponent(fecha) +
+                "&vend=" +
+                encodeURIComponent(vend),
+            "_blank"
+        );
+    });
+})();
+
 //* boton cambiar precio
 $(".tablaPedidosCV, .tablaPedidosAprobados").on(
     "click",
