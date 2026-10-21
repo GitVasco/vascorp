@@ -581,71 +581,149 @@ $(".tablaOrdenesServicios").on(
             },
         });
 
-        var idOrdenServicioDetalle = $(this).attr("idOrdenServicio");
-        //console.log("codigoDAC", codigoDAC);
-
-        var datosDOC = new FormData();
-        datosDOC.append("idOrdenServicioDetalle", idOrdenServicioDetalle);
-
-        $.ajax({
-            url: "ajax/orden-servicio.ajax.php",
-            method: "POST",
-            data: datosDOC,
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: "json",
-            success: function (respuestaDetalle) {
-                // console.log(respuestaDetalle);
-
-                $(".detalleOS").remove();
-
-                for (var id of respuestaDetalle) {
-                    $(".tablaDetalleOrdenServicio").append(
-                        '<tr class="detalleOS">' +
-                            "<td >" +
-                            id.Item +
-                            " </td>" +
-                            "<td >" +
-                            id.CodProOrigen +
-                            " </td>" +
-                            "<td >" +
-                            id.DesProOrigen +
-                            " </td>" +
-                            "<td >" +
-                            id.CodProDestino +
-                            " </td>" +
-                            "<td >" +
-                            id.Descripcion +
-                            " </td>" +
-                            "<td >" +
-                            id.Color2 +
-                            " </td>" +
-                            "<td >" +
-                            id.Unidad +
-                            " </td>" +
-                            "<td >" +
-                            id.CantidadIni +
-                            "</td>" +
-                            "<td >" +
-                            id.Despacho +
-                            "</td>" +
-                            "<td >" +
-                            id.Saldo +
-                            "</td>" +
-                            "<td >" +
-                            id.EstOS +
-                            "</td>" +
-                            "<td >" +
-                            id.EstadoDet +
-                            "</td>" +
-                            "</tr>"
-                    );
-                }
-            },
-        });
+        cargarDetalleOrdenServicio(idOrdenServicio);
     }
 );
+
+function cargarDetalleOrdenServicio(idOrdenServicioDetalle) {
+    var datosDOC = new FormData();
+    datosDOC.append("idOrdenServicioDetalle", idOrdenServicioDetalle);
+
+    $.ajax({
+        url: "ajax/orden-servicio.ajax.php",
+        method: "POST",
+        data: datosDOC,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuestaDetalle) {
+            $(".detalleOS").remove();
+
+            for (var id of respuestaDetalle) {
+                var cerrado = String(id.EstOS || "").toUpperCase() === "CER";
+                var botonCerrar = cerrado
+                    ? "<button type='button' class='btn btn-xs' disabled title='Ítem cerrado'><i class='fa fa-times-circle'></i> Cerrar</button>"
+                    : "<button type='button' class='btn btn-xs btnCerrarDetalleOS' nro='" +
+                      id.Nro +
+                      "' item='" +
+                      id.Item +
+                      "' title='Cerrar ítem'><i class='fa fa-times-circle'></i> Cerrar</button>";
+
+                $(".tablaDetalleOrdenServicio").append(
+                    '<tr class="detalleOS">' +
+                        "<td >" +
+                        id.Item +
+                        " </td>" +
+                        "<td >" +
+                        id.CodProOrigen +
+                        " </td>" +
+                        "<td >" +
+                        id.DesProOrigen +
+                        " </td>" +
+                        "<td >" +
+                        id.CodProDestino +
+                        " </td>" +
+                        "<td >" +
+                        id.Descripcion +
+                        " </td>" +
+                        "<td >" +
+                        id.Color2 +
+                        " </td>" +
+                        "<td >" +
+                        id.Unidad +
+                        " </td>" +
+                        "<td >" +
+                        id.CantidadIni +
+                        "</td>" +
+                        "<td >" +
+                        id.Despacho +
+                        "</td>" +
+                        "<td >" +
+                        id.Saldo +
+                        "</td>" +
+                        "<td >" +
+                        id.EstOS +
+                        "</td>" +
+                        "<td >" +
+                        id.EstadoDet +
+                        "</td>" +
+                        "<td >" +
+                        botonCerrar +
+                        "</td>" +
+                        "</tr>"
+                );
+            }
+        },
+    });
+}
+
+$(".tablaDetalleOrdenServicio").on("click", ".btnCerrarDetalleOS", function () {
+    var nro = $(this).attr("nro");
+    var item = $(this).attr("item");
+
+    swal({
+        title: "¿Cerrar el ítem " + item + " de la orden " + nro + "?",
+        text: "¡Si no lo está puede cancelar la acción!",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        cancelButtonText: "Cancelar",
+        confirmButtonText: "Si, cerrar ítem!",
+    }).then(function (result) {
+        if (result.value) {
+            var datos = new FormData();
+            datos.append("cerrarItemNro", nro);
+            datos.append("cerrarItem", item);
+
+            $.ajax({
+                url: "ajax/orden-servicio.ajax.php",
+                type: "POST",
+                data: datos,
+                cache: false,
+                contentType: false,
+                processData: false,
+                success: function (respuesta) {
+                    respuesta = $.trim(respuesta);
+
+                    if (respuesta !== "ok" && respuesta !== "ok-orden") {
+                        swal({
+                            type: "error",
+                            title: "Error",
+                            text: "No se pudo cerrar el ítem.",
+                            confirmButtonText: "Cerrar",
+                        });
+                        return;
+                    }
+
+                    cargarDetalleOrdenServicio(nro);
+
+                    if (respuesta === "ok-orden") {
+                        $("#estado").val("CERRADA");
+                        if (
+                            $.fn.DataTable.isDataTable(".tablaOrdenesServicios")
+                        ) {
+                            $(".tablaOrdenesServicios")
+                                .DataTable()
+                                .ajax.reload(null, false);
+                        }
+                    }
+
+                    swal({
+                        type: "success",
+                        title: "¡Ok!",
+                        text:
+                            respuesta === "ok-orden"
+                                ? "El ítem se cerró y la orden quedó cerrada porque ya no tiene ítems abiertos."
+                                : "El ítem fue cerrado con éxito.",
+                        confirmButtonText: "Cerrar",
+                    });
+                },
+            });
+        }
+    });
+});
 
 $(".tablaOrdenesServicios").on("click", ".btnCerrarOServicio", function () {
     var idCerrar = $(this).attr("idOrdenServicio");

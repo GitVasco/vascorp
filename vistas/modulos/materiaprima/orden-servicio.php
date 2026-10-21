@@ -289,6 +289,7 @@ MODAL VIZUALIZAR ORDEN DE SERVICIO
                   <th >Saldo</th>
                   <th >Cod.Est</th>
                   <th >Estado</th>
+                  <th >Cerrar</th>
                 </thead>
                 <tbody>
                 </tbody>

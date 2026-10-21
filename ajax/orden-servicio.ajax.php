@@ -53,6 +53,41 @@ class AjaxOrdenServicio{
 		echo $respuesta;
 	}
 
+  /*=============================================
+  CERRAR UN ITEM DE LA ORDEN DE SERVICIO
+  =============================================*/
+
+  public function ajaxCerrarItemOrdenServicio(){
+		$nro = $this->cerrarItemNro;
+		$item = $this->cerrarItem;
+		date_default_timezone_set('America/Lima');
+		$fecha = new DateTime();
+		$PcCer = gethostbyaddr($_SERVER['REMOTE_ADDR']);
+		$datos = array("Nro" => $nro,
+						"Item" => $item,
+						"EstOS" => "CER",
+						"UsuMod" => $_SESSION["nombre"],
+						"PcMod" => $PcCer,
+						"FecMod" => $fecha->format("Y-m-d H:i:s"));
+
+		$respuesta = ModeloOrdenServicio::mdlCerrarItemOrdenServicio($datos);
+
+		if($respuesta != "ok"){
+			echo "error";
+			return;
+		}
+
+		$abiertos = ModeloOrdenServicio::mdlContarItemsAbiertosOrdenServicio($nro);
+
+		if($abiertos === 0){
+			ModeloOrdenServicio::mdlCerrarOrdenServicio("oservicio", $datos);
+			echo "ok-orden";
+			return;
+		}
+
+		echo "ok";
+	}
+
 
 }
 
@@ -86,5 +121,18 @@ if(isset($_POST["cerrarId"])){
 	$cerrarOrdenServicio = new AjaxOrdenServicio();
 	$cerrarOrdenServicio -> cerrarId = $_POST["cerrarId"];
 	$cerrarOrdenServicio -> ajaxCerrarOrdenServicio();
+
+}
+
+/*=============================================
+CERRAR UN ITEM DE LA ORDEN DE SERVICIO
+=============================================*/
+
+if(isset($_POST["cerrarItemNro"])){
+
+	$cerrarItem = new AjaxOrdenServicio();
+	$cerrarItem -> cerrarItemNro = $_POST["cerrarItemNro"];
+	$cerrarItem -> cerrarItem = $_POST["cerrarItem"];
+	$cerrarItem -> ajaxCerrarItemOrdenServicio();
 
 }

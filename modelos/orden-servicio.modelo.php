@@ -445,7 +445,53 @@ class ModeloOrdenServicio{
 
 		$stmt = null;
 
-	}	
+	}
+
+	/*=============================================
+	CERRAR UN ITEM DE LA ORDEN DE SERVICIO
+	=============================================*/
+
+	static public function mdlCerrarItemOrdenServicio($datos){
+
+		$stmt = Conexion::conectar()->prepare("UPDATE oserviciodet SET EstOS = :EstOS WHERE Nro = :Nro AND Item = :Item AND EstReg = '1'");
+
+		$stmt -> bindParam(":EstOS", $datos["EstOS"], PDO::PARAM_STR);
+		$stmt -> bindParam(":Nro", $datos["Nro"], PDO::PARAM_STR);
+		$stmt -> bindParam(":Item", $datos["Item"], PDO::PARAM_STR);
+
+		if($stmt -> execute()){
+
+			return "ok";
+
+		}else{
+
+			return "error";
+
+		}
+
+		$stmt -> close();
+
+		$stmt = null;
+
+	}
+
+	/*=============================================
+	ITEMS DE LA ORDEN QUE SIGUEN ABIERTOS
+	=============================================*/
+
+	static public function mdlContarItemsAbiertosOrdenServicio($nro){
+
+		$stmt = Conexion::conectar()->prepare("SELECT COUNT(*) AS total FROM oserviciodet WHERE Nro = :Nro AND EstReg = '1' AND (EstOS IS NULL OR EstOS <> 'CER')");
+
+		$stmt -> bindParam(":Nro", $nro, PDO::PARAM_STR);
+
+		$stmt -> execute();
+
+		$fila = $stmt -> fetch();
+
+		return (int)$fila["total"];
+
+	}
 
 
 	/*=============================================
