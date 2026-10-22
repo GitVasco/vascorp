@@ -690,6 +690,16 @@ $("#tdoc2").change(function () {
 });
 
 /*
+ * EVITAR DOBLE ENVÍO DE "Pasar Movimiento a:"
+ * Al enviar, el botón se deshabilita. La protección definitiva está en el
+ * servidor (transacción + estado), esto solo evita clics repetidos.
+ */
+$("#formFacturarSalida").on("submit", function () {
+    var $btn = $(this).find('button[type="submit"]');
+    $btn.prop("disabled", true).text("Generando documento...");
+});
+
+/*
  * ACTIVAR MODAL
  */
 

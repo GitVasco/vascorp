@@ -86,7 +86,7 @@ MODAL FACTURAR
 
         <div class="modal-content">
 
-            <form role="form" method="post">
+            <form role="form" method="post" id="formFacturarSalida">
 
                 <!--=====================================
         CABEZA DEL MODAL

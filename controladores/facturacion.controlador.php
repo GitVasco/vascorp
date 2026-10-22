@@ -813,216 +813,311 @@ class ControladorFacturacion
     static public function ctrFacturarSalida()
     {
 
-        if (isset($_POST["codSalida"])) {
+        if (!isset($_POST["codSalida"]) || !isset($_POST["tdoc"]) || $_POST["tdoc"] === "") {
 
-            if ($_POST["tdoc"] == "E25") {
-                $tabla = "detalle_ing_sal";
+            return;
+        }
 
-                $respuesta = ModeloSalidas::mdlMostraDetallesTemporal($tabla, $_POST["codSalida"]);
+        $codSalida = $_POST["codSalida"];
+        $tdoc = $_POST["tdoc"];
 
-                foreach ($respuesta as $key => $value) {
-                    $respuestaGuia = ModeloArticulos::mdlActualizarTallerIngreso($value["articulo"], $value["cantidad"]);
-                }
+        $pdo = Conexion::conectar();
 
+        try {
 
-                if ($respuestaGuia == "ok") {
+            // Si otro proceso tiene bloqueadas las tablas (p. ej. una
+            // transacción olvidada), fallar a los 20 s y revertir todo en
+            // lugar de quedarse colgado indefinidamente.
+            $pdo->exec("SET SESSION innodb_lock_wait_timeout = 20");
 
-                    $serie = $_POST["tdoc"];
-                    ModeloSalidas::mdlActualizarArgumento($serie);
+            $pdo->beginTransaction();
 
-                    ModeloSalidas::mdlActualizarSalidaF($_POST["codSalida"]);
+            // Bloquea la cabecera: los reintentos del mismo código esperan
+            // aquí y, al entrar, ven el estado ya confirmado.
+            $salida = ModeloSalidas::mdlBloquearSalida($codSalida);
 
-                    echo '<script>
+            if (!$salida) {
 
-                        swal({
-                            type: "success",
-                            title: "El perfil ha sido editado correctamente",
-                            showConfirmButton: true,
-                            confirmButtonText: "Cerrar"
-                            }).then(function(result) {
-                                        if (result.value) {
+                throw new RuntimeException("No se encontró la salida " . $codSalida);
+            }
 
-                                        window.location = "salidas-varios";
+            if (strtoupper(trim($salida["estado"])) === "FACTURADO") {
 
-                                        }
-                                    })
+                $pdo->rollBack();
 
-                        </script>';
-                }
-            } else {
-                //*todo: BAJAR o subir EL STOCK
-                $tabla = "detalle_ing_sal";
+                echo '<script>
 
-                $respuesta = ModeloSalidas::mdlMostraDetallesTemporal($tabla, $_POST["codSalida"]);
+                    swal({
+                        type: "warning",
+                        title: "Este movimiento ya fue procesado",
+                        text: "La salida ' . $codSalida . ' ya se encuentra FACTURADA. No se generó ningún documento adicional.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                        }).then(function(result) {
+                                    if (result.value) {
 
-                $almacen = $_SESSION["almacen"] == "01" ? "stock01" : "stock05";
+                                    window.location = "salidas-varios";
+
+                                    }
+                                })
+
+                    </script>';
+
+                return;
+            }
+
+            // Bloquea el correlativo del tipo destino: serializa la
+            // generación de documentos del mismo tipo.
+            $argumento = ModeloSalidas::mdlBloquearArgumento($tdoc);
+
+            if (!$argumento) {
+
+                throw new RuntimeException("Tipo de documento no válido: " . $tdoc);
+            }
+
+            $tabla = "detalle_ing_sal";
+
+            $respuesta = ModeloSalidas::mdlMostraDetallesTemporal($tabla, $codSalida);
+
+            if (empty($respuesta)) {
+
+                throw new RuntimeException("La salida " . $codSalida . " no tiene detalle");
+            }
+
+            if ($tdoc == "E25") {
 
                 foreach ($respuesta as $value) {
 
-                    $datos = array(
-                        "articulo" => $value["articulo"],
-                        "cantidad" => $value["cantidad"]
-                    );
-                    #var_dump($datos);
-                    $inicioTipo = substr($_POST["tdoc"], 0, 1);
+                    $respuestaGuia = ModeloArticulos::mdlActualizarTallerIngreso($value["articulo"], $value["cantidad"]);
 
-                    if ($inicioTipo == 'E') {
+                    if ($respuestaGuia != "ok") {
 
-                        $respuestaGuia = ModeloArticulos::mdlActualizarStockIngreso($value["articulo"], $value["cantidad"]);
-                        $respuestaGuia = ModeloArticulos::mdlActualizarStockIngreso01Almacen($almacen, $value["articulo"], $value["cantidad"]);
-                    } else {
-
-                        $respuestaGuia = ModeloArticulos::mdlActualizarStock($datos);
-                        $respuestaGuia = ModeloArticulos::mdlActualizarStock01($almacen, $value["articulo"], $value["cantidad"]);
+                        throw new RuntimeException("No se pudo actualizar el taller del artículo " . $value["articulo"]);
                     }
-
-                    #var_dump($respuestaGuia);
-
                 }
 
+                if (ModeloSalidas::mdlActualizarArgumento($tdoc) != "ok") {
 
-                //*todo: registrar en movimientos
-                if ($respuestaGuia == "ok") {
+                    throw new RuntimeException("No se pudo actualizar el correlativo " . $tdoc);
+                }
 
-                    $intoA = "";
-                    $intoB = "";
-                    foreach ($respuesta as $key => $value) {
+                if (ModeloSalidas::mdlActualizarSalidaF($codSalida) != "ok") {
 
-                        $tipo = $_POST["tdoc"];
+                    throw new RuntimeException("No se pudo actualizar el estado de la salida " . $codSalida);
+                }
 
-                        $documento = $_POST["serieSalida"];
-                        $doc = $tipo . $documento;
-                        //var_dump($doc);
+                $pdo->commit();
 
-                        $cliente = $_POST["codCli"];
-                        //var_dump($cliente);
+                echo '<script>
 
-                        $vendedor = $_POST["codVen"];
-                        //var_dump($vendedor);
+                    swal({
+                        type: "success",
+                        title: "El movimiento fue pasado correctamente",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                        }).then(function(result) {
+                                    if (result.value) {
 
-                        $dscto = 0;
-                        //var_dump($dscto);
+                                    window.location = "salidas-varios";
 
-                        date_default_timezone_set("America/Lima");
-                        $fecha = date("Y-m-d");
+                                    }
+                                })
 
-                        $tipoMov = ModeloMovimientos::mdlCodigoMaestra("ttop", $tipo);
+                    </script>';
 
-                        $nombre_tipo = $tipoMov["descripcion"];
+                return;
+            }
 
-                        $almacen = $_SESSION["almacen"];
+            // Guarda de idempotencia: ni el documento destino ni un
+            // documento generado desde esta salida deben existir ya.
+            $documento = isset($_POST["serieSalida"]) ? $_POST["serieSalida"] : "";
+            $doc = $tdoc . $documento;
 
-                        $total = $value["cantidad"] * $value["precio"] * ((100 - $dscto) / 100);
-                        //var_dump($total);
+            if ($documento === ""
+                || ModeloSalidas::mdlExisteDocumentoSalidaPorOrigen($codSalida) > 0
+                || ModeloSalidas::mdlExisteDocumentoSalidaDestino($tdoc, $doc) > 0
+                || ModeloFacturacion::mdlExisteMovimiento($tdoc, $doc) > 0) {
 
-                        if ($key < count($respuesta) - 1) {
+                $pdo->rollBack();
 
-                            $intoA .= "('" . $tipo . "','" . $doc . "','" . $fecha . "','" . $value["articulo"] . "','" . $cliente . "','" . $vendedor . "'," . $value["cantidad"] . "," . $value["precio"] . ",0," . $dscto . "," . $total . ",'" . $nombre_tipo . "','" . $almacen . "'),";
-                        } else {
+                echo '<script>
 
-                            $intoB .= "('" . $tipo . "','" . $doc . "','" . $fecha . "','" . $value["articulo"] . "','" . $cliente . "','" . $vendedor . "'," . $value["cantidad"] . "," . $value["precio"] . ",0," . $dscto . "," . $total . ",'" . $nombre_tipo . "','" . $almacen . "')";
-                        }
+                    swal({
+                        type: "warning",
+                        title: "Este movimiento ya fue procesado",
+                        text: "Ya existe el documento ' . $doc . ' o un documento generado desde la salida ' . $codSalida . '. No se generó ningún documento adicional.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                        }).then(function(result) {
+                                    if (result.value) {
+
+                                    window.location = "salidas-varios";
+
+                                    }
+                                })
+
+                    </script>';
+
+                return;
+            }
+
+            //*todo: BAJAR o subir EL STOCK (dentro de la transacción: si
+            // algo falla o se corta el proceso, el stock se revierte solo)
+            $almacenStock = $_SESSION["almacen"] == "01" ? "stock01" : "stock05";
+            $inicioTipo = substr($tdoc, 0, 1);
+
+            foreach ($respuesta as $value) {
+
+                $datos = array(
+                    "articulo" => $value["articulo"],
+                    "cantidad" => $value["cantidad"]
+                );
+
+                if ($inicioTipo == 'E') {
+
+                    if (ModeloArticulos::mdlActualizarStockIngreso($value["articulo"], $value["cantidad"]) != "ok"
+                        || ModeloArticulos::mdlActualizarStockIngreso01Almacen($almacenStock, $value["articulo"], $value["cantidad"]) != "ok") {
+
+                        throw new RuntimeException("No se pudo actualizar el stock del artículo " . $value["articulo"]);
                     }
+                } else {
 
-                    $detalle = $intoA . $intoB;
-                    #var_dump("detalle", $detalle);
+                    if (ModeloArticulos::mdlActualizarStock($datos) != "ok"
+                        || ModeloArticulos::mdlActualizarStock01($almacenStock, $value["articulo"], $value["cantidad"]) != "ok") {
 
-                    $respuestaMovimientos = ModeloFacturacion::mdlRegistrarMovimientos($detalle);
-                    #var_dump($respuestaMovimientos);   
-                    //var_dump($respuestaMovimientos);
-
-                    /*
-                        todo: registrar en ventajf
-                        */
-                    if ($respuestaMovimientos == "ok") {
-
-                        $respuestaDoc = ModeloSalidas::mdlMostrarSalidasCabecera($_POST["codSalida"]);
-                        //var_dump($respuestaDoc);
-
-                        $tipo = $_POST["tdoc"];
-
-                        $documento = $_POST["serieSalida"];
-                        $doc = $tipo . $documento;
-                        //var_dump($doc);
-
-                        $usuario = $_POST["idUsuario"];
-                        //var_dump($usuario);
-
-                        $docOrigen = $_POST["codSalida"];
-                        //var_dump("$docOrigen");
-
-                        //$docDestino = $_POST["serieSeparado"];
-                        //$docDest = str_replace('-', '', $docDestino);
-                        //var_dump($docDest);
-
-                        $datosD = array(
-                            "tipo" => $tipo,
-                            "documento" => $doc,
-                            "neto" => $respuestaDoc["op_gravada"],
-                            "igv" => $respuestaDoc["igv"],
-                            "dscto" => $respuestaDoc["descuento_total"],
-                            "total" => $respuestaDoc["total"],
-                            "cliente" => $respuestaDoc["cod_cli"],
-                            "vendedor" => $respuestaDoc["vendedor"],
-                            "agencia" => $respuestaDoc["agencia"],
-                            "lista_precios" => $respuestaDoc["lista"],
-                            "condicion_venta" => $respuestaDoc["condicion_venta"],
-                            "doc_destino" => '',
-                            "doc_origen" => $docOrigen,
-                            "usuario" => $usuario,
-                            "tipo_documento" => $_POST["nomTipo"]
-                        );
-                        //var_dump($datosD);
-
-                        $respuestaDocumento = ModeloSalidas::mdlRegistrarDocumentoSalida($datosD);
-                    }
-
-                    var_dump($respuestaDocumento);
-
-                    /* 
-                        todo: SUMAR 1 AL DOCUMENTO
-                        */
-                    if ($respuestaDocumento == "ok") {
-
-                        $serie = $_POST["tdoc"];
-                        //var_dump($serie);
-
-                        $talonario = ModeloSalidas::mdlActualizarArgumento($serie);
-                    }
-
-                    //var_dump($talonario);
-
-                    /*
-                        todo: CAMBIAR EL ESTADO DEL PEDIDO
-                        */
-                    if ($talonario == "ok") {
-
-                        $estado = ModeloSalidas::mdlActualizarSalidaF($_POST["codSalida"]);
-
-                        //var_dump($estado);
-
-                        if ($estado == "ok") {
-
-                            echo '<script>
-    
-                                swal({
-                                        type: "success",
-                                        title: "Se Genero el documento ' . $documento . '",
-                                        showConfirmButton: true,
-                                        confirmButtonText: "Cerrar"
-                                }).then(function(result){
-                                                if (result.value) {
-    
-                                                window.location = "salidas-varios";
-    
-                                                }
-                                            })
-    
-                                </script>';
-                        }
+                        throw new RuntimeException("No se pudo actualizar el stock del artículo " . $value["articulo"]);
                     }
                 }
             }
+
+            //*todo: registrar en movimientos
+            $tipoMov = ModeloMovimientos::mdlCodigoMaestra("ttop", $tdoc);
+
+            if (!$tipoMov) {
+
+                throw new RuntimeException("Tipo de documento no válido: " . $tdoc);
+            }
+
+            $nombre_tipo = $tipoMov["descripcion"];
+
+            $cliente = $_POST["codCli"];
+            $vendedor = $_POST["codVen"];
+            $dscto = 0;
+
+            date_default_timezone_set("America/Lima");
+            $fecha = date("Y-m-d");
+
+            $almacen = $_SESSION["almacen"];
+
+            $valores = array();
+
+            foreach ($respuesta as $value) {
+
+                $total = $value["cantidad"] * $value["precio"] * ((100 - $dscto) / 100);
+
+                $valores[] = "('" . $tdoc . "','" . $doc . "','" . $fecha . "','" . $value["articulo"] . "','" . $cliente . "','" . $vendedor . "'," . $value["cantidad"] . "," . $value["precio"] . ",0," . $dscto . "," . $total . ",'" . $nombre_tipo . "','" . $almacen . "')";
+            }
+
+            $respuestaMovimientos = ModeloFacturacion::mdlRegistrarMovimientos(implode(",", $valores));
+
+            if ($respuestaMovimientos != "ok") {
+
+                throw new RuntimeException("No se pudieron registrar los movimientos del documento " . $doc);
+            }
+
+            /*
+                todo: registrar en doc_ing_sal
+                */
+            $respuestaDoc = ModeloSalidas::mdlMostrarSalidasCabecera($codSalida);
+
+            if (!$respuestaDoc) {
+
+                throw new RuntimeException("No se encontró la cabecera de la salida " . $codSalida);
+            }
+
+            $datosD = array(
+                "tipo" => $tdoc,
+                "documento" => $doc,
+                "neto" => $respuestaDoc["op_gravada"],
+                "igv" => $respuestaDoc["igv"],
+                "dscto" => $respuestaDoc["descuento_total"],
+                "total" => $respuestaDoc["total"],
+                "cliente" => $respuestaDoc["cod_cli"],
+                "vendedor" => $respuestaDoc["vendedor"],
+                "agencia" => $respuestaDoc["agencia"],
+                "lista_precios" => $respuestaDoc["lista"],
+                "condicion_venta" => $respuestaDoc["condicion_venta"],
+                "doc_destino" => '',
+                "doc_origen" => $codSalida,
+                "usuario" => $_POST["idUsuario"],
+                "tipo_documento" => $_POST["nomTipo"]
+            );
+
+            if (ModeloSalidas::mdlRegistrarDocumentoSalida($datosD) != "ok") {
+
+                throw new RuntimeException("No se pudo registrar el documento " . $doc);
+            }
+
+            /*
+                todo: SUMAR 1 AL DOCUMENTO
+                */
+            if (ModeloSalidas::mdlActualizarArgumento($tdoc) != "ok") {
+
+                throw new RuntimeException("No se pudo actualizar el correlativo " . $tdoc);
+            }
+
+            /*
+                todo: CAMBIAR EL ESTADO DE LA SALIDA (solo al confirmar todo)
+                */
+            if (ModeloSalidas::mdlActualizarSalidaF($codSalida) != "ok") {
+
+                throw new RuntimeException("No se pudo actualizar el estado de la salida " . $codSalida);
+            }
+
+            $pdo->commit();
+
+            echo '<script>
+
+                swal({
+                        type: "success",
+                        title: "Se Genero el documento ' . $doc . '",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                }).then(function(result){
+                                if (result.value) {
+
+                                window.location = "salidas-varios";
+
+                                }
+                            })
+
+                </script>';
+        } catch (Exception $e) {
+
+            if ($pdo->inTransaction()) {
+
+                $pdo->rollBack();
+            }
+
+            error_log("ctrFacturarSalida codSalida=" . $codSalida . " tdoc=" . $tdoc . ": " . $e->getMessage());
+
+            echo '<script>
+
+                swal({
+                        type: "error",
+                        title: "No se pudo generar el documento",
+                        text: "El proceso fue revertido y no se aplicó ningún cambio. Vuelva a intentarlo; si el problema persiste, avise a Sistemas.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                }).then(function(result){
+                                if (result.value) {
+
+                                window.location = "salidas-varios";
+
+                                }
+                            })
+
+                </script>';
         }
     }
 

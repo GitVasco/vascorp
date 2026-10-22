@@ -819,6 +819,84 @@ class ModeloSalidas
 
 
 	/*
+    * BLOQUEAR LA CABECERA DE LA SALIDA (SELECT ... FOR UPDATE)
+    * Debe llamarse dentro de una transacción: serializa los intentos de
+    * "Pasar Movimiento a:" sobre el mismo código y permite verificar el
+    * estado ya confirmado por el intento que ganó.
+    */
+	static public function mdlBloquearSalida($codigo)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT codigo, estado FROM ing_sal WHERE codigo = :codigo FOR UPDATE");
+
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+
+		if (!$stmt->execute()) {
+
+			return false;
+		}
+
+		return $stmt->fetch();
+	}
+
+	/*
+    * BLOQUEAR EL CORRELATIVO DEL TIPO DE DOCUMENTO (SELECT ... FOR UPDATE)
+    * Debe llamarse dentro de una transacción: serializa la generación de
+    * documentos del mismo tipo para que no se duplique el correlativo.
+    */
+	static public function mdlBloquearArgumento($codigo)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT codigo, argumento FROM maestrajf WHERE codigo = :codigo AND tipo_dato = 'TTOP' FOR UPDATE");
+
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+
+		if (!$stmt->execute()) {
+
+			return false;
+		}
+
+		return $stmt->fetch();
+	}
+
+	/*
+    * ¿YA EXISTE UN DOCUMENTO GENERADO DESDE ESTA SALIDA?
+    */
+	static public function mdlExisteDocumentoSalidaPorOrigen($codigo)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT COUNT(*) FROM doc_ing_sal WHERE doc_origen = :codigo");
+
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+
+		if (!$stmt->execute()) {
+
+			return false;
+		}
+
+		return (int) $stmt->fetchColumn();
+	}
+
+	/*
+    * ¿YA EXISTE EL DOCUMENTO DESTINO (TIPO + NÚMERO) EN doc_ing_sal?
+    */
+	static public function mdlExisteDocumentoSalidaDestino($tipo, $documento)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT COUNT(*) FROM doc_ing_sal WHERE tipo = :tipo AND documento = :documento");
+
+		$stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+		$stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+
+		if (!$stmt->execute()) {
+
+			return false;
+		}
+
+		return (int) $stmt->fetchColumn();
+	}
+
+	/*
     * ACTUALIZAR ARGUMENTO + 1 GUIA
     */
 	static public function mdlActualizarArgumento($valor)

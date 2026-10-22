@@ -105,6 +105,26 @@ class ModeloFacturacion
   }
 
   /*
+	* ¿YA EXISTE UN MOVIMIENTO CON ESE TIPO + DOCUMENTO?
+	* Sirve como guarda de idempotencia antes de registrar movimientos.
+	*/
+  static public function mdlExisteMovimiento($tipo, $documento)
+  {
+
+    $stmt = Conexion::conectar()->prepare("SELECT COUNT(*) FROM movimientosjf_2026 WHERE tipo = :tipo AND documento = :documento");
+
+    $stmt->bindParam(":tipo", $tipo, PDO::PARAM_STR);
+    $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
+
+    if (!$stmt->execute()) {
+
+      return false;
+    }
+
+    return (int) $stmt->fetchColumn();
+  }
+
+  /*
 	* REGISTAR DOCUMENTO
 	*/
   static public function mdlRegistrarDocumento($datos)

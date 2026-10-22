@@ -24,6 +24,8 @@ class TablaSalidas
 
             for ($i = 0; $i < count($salidas); $i++) {
 
+                $botones = "";
+
                 if (substr($salidas[$i]["codigo"], 0, 1) !== "T") {
 
                     if ($salidas[$i]["estado"] == "GENERADO") {
@@ -44,7 +46,8 @@ class TablaSalidas
 
                         $estado = "<button class='btn btn-success btn-xs btn' codigo='" . $salidas[$i]["codigo"] . "' estadoPedido='FACTURADO'>FACTURADO</button>";
 
-                        $botones =  "<div class='btn-group'><button title='Imprimir Salida' class='btn btn-xs btn-success btnImprimirSalida' codigo='" . $salidas[$i]["codigo"] . "'><i class='fa fa-print'></i></button><button title='Facturar salida' class='btn btn-xs btn-primary btnFacturarSalida' codigo='" . $salidas[$i]["codigo"] . "' cod_cli='" . $salidas[$i]["cod_cli"] . "'  nom_cli='" . $salidas[$i]["nombre"] . "' tip_doc='" . $salidas[$i]["tipo_documento"] . "' nro_doc='" . $salidas[$i]["documento"] . "' dscto='" . $salidas[$i]["dscto"] . "' cod_ven='" . $salidas[$i]["vendedor"] . "' data-toggle='modal' data-target='#modalFacturar'><i class='fa fa-paper-plane'></i></button></div>";
+                        // Ya procesada: no se ofrece "Pasar Movimiento a:" de nuevo.
+                        $botones =  "<div class='btn-group'><button title='Imprimir Salida' class='btn btn-xs btn-success btnImprimirSalida' codigo='" . $salidas[$i]["codigo"] . "'><i class='fa fa-print'></i></button></div>";
                     }
 
 

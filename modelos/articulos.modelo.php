@@ -3738,15 +3738,22 @@ class ModeloArticulos
 	static public function mdlActualizarStock01($almacen, $articulo, $cantidad)
 	{
 
+		// La columna de almacén no se puede enlazar como parámetro: lista blanca.
+		if (!in_array($almacen, array("stock01", "stock05"), true)) {
+
+			return "error";
+		}
+
 		$stmt = Conexion::conectar()->prepare("UPDATE
 													articulojf
 												SET
-													$almacen = $almacen - $cantidad
-												WHERE articulo = '$cantidad'");
+													$almacen = $almacen - :cantidad
+												WHERE articulo = :articulo");
 
+		$stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+		$stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_STR);
 
-
-		if ($stmt->execute()) {
+		if ($stmt->execute() && $stmt->rowCount() > 0) {
 
 			return "ok";
 		} else {
@@ -3846,13 +3853,22 @@ class ModeloArticulos
 	static public function mdlActualizarStockIngreso01Almacen($almacen, $articulo, $cantidad)
 	{
 
+		// La columna de almacén no se puede enlazar como parámetro: lista blanca.
+		if (!in_array($almacen, array("stock01", "stock05"), true)) {
+
+			return "error";
+		}
+
 		$stmt = Conexion::conectar()->prepare("UPDATE
 													articulojf
 												SET
-													$almacen = $almacen + $cantidad
-												WHERE articulo = '$articulo'");
+													$almacen = $almacen + :cantidad
+												WHERE articulo = :articulo");
 
-		if ($stmt->execute()) {
+		$stmt->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+		$stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_STR);
+
+		if ($stmt->execute() && $stmt->rowCount() > 0) {
 
 			return "ok";
 		} else {
