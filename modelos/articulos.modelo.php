@@ -527,7 +527,7 @@ class ModeloArticulos
 			}
 		}
 
-		return ["T4", "T6", "T9", "T2", "T8", "TA", "T7", "T10", "TB", "T11", "T14", "TE", "T12", "T13", "TC"];
+		return ["T4", "T6", "T9", "T2", "T8", "TA", "T7", "T10", "TB", "T11", "T14", "TE", "T12", "T13", "TC", "T15"];
 	}
 
 	/**
