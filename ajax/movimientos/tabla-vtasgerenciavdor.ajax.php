@@ -31,43 +31,19 @@ class TablaMovimientos{
         $datosJson = '{
         "data": [';
 
+        $sumVentas = 0;
+        $sumPedidos = 0;
+        $sumTotal = 0;
+
         for($i = 0; $i < count($movimientos); $i++){
 
-            if($movimientos[$i]["codigo"] == "ZZ"){
+            $sumVentas += (float)$movimientos[$i]["ventas"];
+            $sumPedidos += (float)$movimientos[$i]["pedidos"];
+            $sumTotal += (float)$movimientos[$i]["total"];
 
-                $pedidos = "<div style='text-align:right !important'><b>".number_format($movimientos[$i]["pedidos"],2)."</b></div>";
-                $ventas = "<div style='text-align:right !important'><b>".number_format($movimientos[$i]["ventas"],2)."</div>";
-                $total = "<div style='text-align:right !important'><b>".number_format($movimientos[$i]["total"],2)."</b></div>";
-
-            }else{
-
-                $pedidos = "<div type='button' style='text-align:right !important'>".number_format($movimientos[$i]["pedidos"],2)."</div>";
-
-                
-            }
-
-            if($movimientos[$i]["ventas"] < 0){
-
-                $ventas = "<div style='text-align:right !important'>0.00</div>";
-
-            }else{
-
-                $ventas = "<div style='text-align:right !important'>".number_format($movimientos[$i]["ventas"],2)."</div>";
-
-            }
-
-            if($movimientos[$i]["total"] < 0){
-
-                $total = "<div style='text-align:right !important'>0.00</div>";
-
-            }else{
-
-                $total = "<div style='text-align:right !important'>".number_format($movimientos[$i]["total"],2)."</div>";
-
-            }            
-
-            #$ventas = "<div style='text-align:right !important'>".number_format($movimientos[$i]["ventas"],2)."</div>";
-            #$total = "<div style='text-align:right !important'>".number_format($movimientos[$i]["total"],2)."</div>";
+            $pedidos = "<div style='text-align:right !important'>".number_format($movimientos[$i]["pedidos"],2)."</div>";
+            $ventas = "<div style='text-align:right !important'>".number_format($movimientos[$i]["ventas"],2)."</div>";
+            $total = "<div style='text-align:right !important'>".number_format($movimientos[$i]["total"],2)."</div>";
 
             $codigo = "<button class='btn btn-link btn-xs btnRptPeds' title='Pedidos' vendedor='".$movimientos[$i]["codigo"]."' >".$movimientos[$i]["codigo"]."</button>";
             
@@ -82,8 +58,12 @@ class TablaMovimientos{
 
                 $datosJson=substr($datosJson, 0, -1);
 
-                $datosJson .= '] 
-
+                $datosJson .= '], 
+                "totales": {
+                    "ventas": "'.number_format($sumVentas,2).'",
+                    "pedidos": "'.number_format($sumPedidos,2).'",
+                    "total": "'.number_format($sumTotal,2).'"
+                }
                 }';
 
             echo $datosJson;

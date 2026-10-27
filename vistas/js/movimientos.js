@@ -660,24 +660,13 @@ $(".tablaVtasGerenciaVdor").DataTable({
         },
     },
     drawCallback: function () {
+        // Totales calculados en el servidor (sumar el HTML formateado fallaba con negativos y miles)
+        var json = this.api().ajax.json();
+        var totales = (json && json.totales) || {};
         var api = this.api();
-        $(api.column(2).footer()).html(
-            Intl.NumberFormat().format(
-                api.column(2, { page: "current" }).data().sum().toFixed(2) * -1
-            )
-        );
-
-        $(api.column(3).footer()).html(
-            Intl.NumberFormat().format(
-                api.column(3, { page: "current" }).data().sum().toFixed(2) * -1
-            )
-        );
-
-        $(api.column(4).footer()).html(
-            Intl.NumberFormat().format(
-                api.column(4, { page: "current" }).data().sum().toFixed(2) * -1
-            )
-        );
+        $(api.column(2).footer()).html(totales.ventas || "");
+        $(api.column(3).footer()).html(totales.pedidos || "");
+        $(api.column(4).footer()).html(totales.total || "");
     },
 });
 

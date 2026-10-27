@@ -12,6 +12,13 @@ if (isset($_GET["año"]) && $_GET["año"] != "" || $añoConsulta != date("Y")) {
     $totales = ControladorMovimientos::ctrTotalesSoles($mesConsulta);
 }
 
+if (!is_array($totales)) {
+    $totales = array("vtas_soles" => 0, "pagos_soles" => 0);
+}
+
+// Ventas en vivo desde ventajf (totalesjf queda desfasado); pagos siguen en totalesjf
+$totales["vtas_soles"] = ControladorMovimientos::ctrVentasNetasVivoGerencia($añoConsulta, $mesConsulta)["vtas_soles"];
+
 $pedidos = ControladorMovimientos::ctrTotalesSolesPedidos($mesConsulta);
 
 $totalesInicio = ModeloMovimientos::mdlTotalesInicio();

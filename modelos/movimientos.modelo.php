@@ -3911,6 +3911,44 @@ class ModeloMovimientos
    }
 
    /*
+   * VENTAS NETAS EN VIVO (mismo criterio que la tabla Ventas por Documento)
+   * Reemplaza a totalesjf.total_ventas_soles, que queda desfasado.
+   */
+   static public function mdlVentasNetasVivoGerencia($año, $mes)
+   {
+
+      $año = intval($año);
+      $desde = sprintf("%04d-01-01", $año);
+      $hasta = sprintf("%04d-01-01", $año + 1);
+
+      if ($mes != null && $mes != "null" && $mes != "TODO" && $mes != "") {
+
+         $mes = intval($mes);
+         $desde = sprintf("%04d-%02d-01", $año, $mes);
+         $hasta = date("Y-m-d", strtotime($desde . " +1 month"));
+      }
+
+      $stmt = Conexion::conectar()->prepare("SELECT 
+         IFNULL(SUM(v.neto), 0) AS vtas_soles 
+       FROM
+         ventajf v 
+       WHERE v.fecha >= :desde 
+         AND v.fecha < :hasta 
+         AND v.tipo IN ('E05', 'S02', 'S03', 'S70', 'S05') 
+         AND v.vendedor NOT IN ('99', '23')");
+
+      $stmt->bindParam(":desde", $desde, PDO::PARAM_STR);
+      $stmt->bindParam(":hasta", $hasta, PDO::PARAM_STR);
+      $stmt->execute();
+
+      $respuesta = $stmt->fetch();
+
+      $stmt = null;
+
+      return $respuesta;
+   }
+
+   /*
 	* MOSTRAR RESUMEN DE VENTAS CON AÑO Y MES ESPECÍFICOS
 	*/
    static public function mdlMostrarResumenVtasGerencia($año, $mes)

@@ -459,6 +459,15 @@ class ControladorMovimientos
     */
 
     /* 
+    * VENTAS NETAS EN VIVO (reemplaza totalesjf para ventas)
+    */
+    static public function ctrVentasNetasVivoGerencia($año, $mes)
+    {
+
+        return ModeloMovimientos::mdlVentasNetasVivoGerencia($año, $mes);
+    }
+
+    /* 
     * MOSTRAR TOTALES DEL MES CON AÑO ESPECÍFICO
     */
     static public function ctrTotalesSolesGerencia($año, $mes)

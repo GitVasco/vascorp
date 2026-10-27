@@ -169,6 +169,12 @@
                     $proformas = ControladorMovimientos::ctrProformas($mesConsulta);
                 }
 
+                if (!is_array($totales)) {
+                    $totales = array("vtas_soles" => 0, "pagos_soles" => 0);
+                }
+
+                $totales["vtas_soles"] = ControladorMovimientos::ctrVentasNetasVivoGerencia($añoConsulta, $mesConsulta)["vtas_soles"];
+
                 $totalFacturas = $totales["vtas_soles"] != 0 ? ($facturas["neto"] / $totales["vtas_soles"]) * 100 : 0;
                 $totalProformas = $totales["vtas_soles"] != 0 ? ($proformas["neto"] / $totales["vtas_soles"]) * 100 : 0;
 
