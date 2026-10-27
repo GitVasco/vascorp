@@ -266,6 +266,64 @@ class ModeloProgramacionTallerSemana
 		return $out;
 	}
 
+	/**
+	 * Desactiva las líneas activas (programación y prioridad) del modelo/color del artículo cuya OC ya no
+	 * tiene saldo vivo. Se llama tras enviar a taller; las líneas sin OC (NULL/0) siguen vivas mientras
+	 * el modelo/color tenga saldo en alguna OC.
+	 * @return int líneas desactivadas
+	 */
+	static public function mdlCerrarLineasSinSaldo($articulo, $usumod = "envio_taller")
+	{
+		$pdo = Conexion::conectar();
+		$stmt = $pdo->prepare(
+			"SELECT TRIM(modelo) AS modelo, TRIM(IFNULL(cod_color, '')) AS cod_color
+			 FROM articulojf WHERE articulo = :articulo"
+		);
+		$stmt->bindValue(":articulo", $articulo, PDO::PARAM_STR);
+		$stmt->execute();
+		$art = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$art || $art["modelo"] === "") {
+			return 0;
+		}
+
+		$mapa = self::mdlSaldosPorOc($art["modelo"], $art["cod_color"]);
+		$clave = $art["modelo"] . "|" . $art["cod_color"];
+		$ocs = isset($mapa[$clave]) ? $mapa[$clave] : array();
+		$saldoTotal = 0;
+		foreach ($ocs as $info) {
+			$saldoTotal += (int) $info["saldo"];
+		}
+
+		$cerradas = 0;
+		foreach (array("programacion_taller_semanajf", "programacion_taller_prioridadjf") as $tabla) {
+			$stmt = $pdo->prepare(
+				"SELECT id, ordencorte FROM {$tabla}
+				 WHERE estado = 1 AND TRIM(modelo) = :modelo AND TRIM(IFNULL(cod_color, '')) = :cod_color"
+			);
+			$stmt->bindValue(":modelo", $art["modelo"], PDO::PARAM_STR);
+			$stmt->bindValue(":cod_color", $art["cod_color"], PDO::PARAM_STR);
+			$stmt->execute();
+			foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+				$oc = (int) $fila["ordencorte"];
+				$vivo = $oc > 0
+					? (isset($ocs[$oc]) && (int) $ocs[$oc]["saldo"] > 0)
+					: $saldoTotal > 0;
+				if ($vivo) {
+					continue;
+				}
+				$upd = $pdo->prepare(
+					"UPDATE {$tabla} SET estado = 0, usumod = :usumod, fecmod = NOW() WHERE id = :id"
+				);
+				$upd->bindValue(":usumod", (string) $usumod, PDO::PARAM_STR);
+				$upd->bindValue(":id", (int) $fila["id"], PDO::PARAM_INT);
+				if ($upd->execute()) {
+					$cerradas++;
+				}
+			}
+		}
+		return $cerradas;
+	}
+
 	static public function mdlListarProgramados($filtros = array())
 	{
 		$sql = "SELECT p.*,

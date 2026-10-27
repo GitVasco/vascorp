@@ -617,6 +617,15 @@ class ModeloCortes
             }
 
             $pdo->commit();
+
+            // Programación semanal: cerrar líneas cuya OC ya no tiene saldo (nunca debe romper el envío)
+            try {
+                require_once __DIR__ . "/programacion-taller-semana.modelo.php";
+                ModeloProgramacionTallerSemana::mdlCerrarLineasSinSaldo($articulo, isset($datos["usuario"]) ? $datos["usuario"] : "envio_taller");
+            } catch (Throwable $e) {
+                error_log("mdlCerrarLineasSinSaldo: " . $e->getMessage());
+            }
+
             return ["status" => "ok", "cantidad_usada" => $cantidadTotalUsada];
         } catch (Exception $e) {
             if (isset($pdo) && $pdo->inTransaction()) {
