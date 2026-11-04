@@ -52,7 +52,39 @@ class ModeloDashboardGerencial
      */
     public static function mdlVendedoresFiltro($anio = null)
     {
-        return ModeloDashboardCobranzas::mdlVendedoresConCobranza($anio !== null ? (int) $anio : (int) date('Y'));
+        $anio = $anio !== null ? (int) $anio : (int) date('Y');
+        $ini = sprintf('%04d-01-01', $anio);
+        $fin = sprintf('%04d-01-01', $anio + 1);
+
+        // Vendedores con ventas o movimientos de cuenta corriente en el año (maestrajf TVEND para el nombre).
+        $sql = "SELECT u.codigo, COALESCE(MAX(m.descripcion), u.codigo) AS descripcion
+            FROM (
+                SELECT DISTINCT TRIM(v.vendedor) AS codigo
+                FROM ventajf v
+                WHERE v.fecha >= :ini1 AND v.fecha < :fin1
+                  AND v.vendedor IS NOT NULL AND TRIM(v.vendedor) <> ''
+                UNION
+                SELECT DISTINCT TRIM(c.vendedor) AS codigo
+                FROM cuenta_ctejf c
+                WHERE c.fecha >= :ini2 AND c.fecha < :fin2
+                  AND c.vendedor IS NOT NULL AND TRIM(c.vendedor) <> ''
+            ) u
+            LEFT JOIN maestrajf m ON m.codigo = u.codigo AND m.tipo_dato = 'TVEND'
+            GROUP BY u.codigo
+            ORDER BY u.codigo ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(':ini1', $ini, PDO::PARAM_STR);
+        $stmt->bindValue(':fin1', $fin, PDO::PARAM_STR);
+        $stmt->bindValue(':ini2', $ini, PDO::PARAM_STR);
+        $stmt->bindValue(':fin2', $fin, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $out = array();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $f) {
+            $out[] = array('codigo' => (string) $f['codigo'], 'descripcion' => trim((string) $f['descripcion']));
+        }
+        return $out;
     }
 
     /**

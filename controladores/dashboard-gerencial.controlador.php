@@ -389,7 +389,7 @@ class ControladorDashboardGerencial
             $porVendedor = ModeloDashboardGerencial::mdlOrigenCobranzaPorVendedor(
                 $rango['desde'],
                 $rango['hasta'],
-                15
+                50
             );
         }
 
