@@ -132,10 +132,11 @@ class ControladorIngresosMulti
                     title: "Error",
                     text: "' . $texto . '",
                     showConfirmButton: true,
-                    confirmButtonText: "Cerrar"
-                }).then((result)=>{
-                    if(result.value){
-                        window.location="' . $redireccion . '";}
+                    confirmButtonText: "Cerrar",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(function(){
+                    window.location="' . $redireccion . '";
                 });
             </script>';
     }
@@ -143,15 +144,17 @@ class ControladorIngresosMulti
     private function mostrarAlertaExito($texto, $redireccion)
     {
         echo '<script>
+                if (window.history.replaceState) { window.history.replaceState(null, null, window.location.href); }
                 swal({
                     type: "success",
                     title: "Felicitaciones",
                     text: "' . $texto . '",
                     showConfirmButton: true,
-                    confirmButtonText: "Cerrar"
-                }).then((result)=>{
-                    if(result.value){
-                        window.location="' . $redireccion . '";}
+                    confirmButtonText: "Cerrar",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(function(){
+                    window.location="' . $redireccion . '";
                 });
             </script>';
     }

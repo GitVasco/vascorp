@@ -418,251 +418,228 @@ class ControladorAlmacenCorte
 
     /*
     * EDITAR ALMACEN DE CORTE
+    *
+    * Los detalles NO se borran y reinsertan: se actualizan por id para conservar saldo_taller
+    * (lo ya enviado a taller/servicios) y las referencias almacencorte_detalle_id de los movimientos.
+    * Todo corre en una transacción: si algo falla no queda el corte a medias.
     */
     static public function ctrEditarAlmacenCorte()
     {
 
-        /*
-        todo: ver si trae datos
-        */
         if (
-            isset($_POST["editarAlmacenCorte"]) &&
-            isset($_POST["idUsuario"]) &&
-            isset($_POST["listaArticulosAC"])
+            !isset($_POST["editarAlmacenCorte"]) ||
+            !isset($_POST["idUsuario"]) ||
+            !isset($_POST["listaArticulosAC"])
         ) {
+            return;
+        }
 
-            #var_dump("nuevoAlmacenCorte", $_POST["nuevaAlmacenCorte"]);
-            #var_dump("idUsuario", $_POST["idUsuario"]);
-            #var_dump("listaArticulosAC", $_POST["listaArticulosAC"]);
+        $codigo = (int) $_POST["editarAlmacenCorte"];
+        $rutaEditar = "index.php?ruta=editar-almacencorte&codigo=" . $codigo;
 
-            if ($_POST["listaArticulosAC"] == "") {
+        if ($_POST["listaArticulosAC"] == "") {
+            self::alertaAlmacenCorte("error", "Error", "¡No se realizo ningún cambio. Por favor, intenteló de nuevo!", $rutaEditar);
+            return;
+        }
 
-                /*
-                    ? Mostramos una alerta suave si viene vacia
-                    */
-                echo '<script>
-                            swal({
-                                type: "error",
-                                title: "Error",
-                                text: "¡No se realizo ningún cambio. Por favor, intenteló de nuevo!",
-                                showConfirmButton: true,
-                                confirmButtonText: "Cerrar"
-                            }).then((result)=>{
-                                if(result.value){
-                                    window.location = "index.php?ruta=editar-almacencorte&codigo=' . $_POST["editarAlmacenCorte"] . '";}
-                            });
-                        </script>';
-            } else {
+        $listaArticulosAC = json_decode($_POST["listaArticulosAC"], true);
 
-                #var_dump("listaArticulosAC", $_POST["listaArticulosAC"]);
+        if (!is_array($listaArticulosAC) || count($listaArticulosAC) == 0) {
+            self::alertaAlmacenCorte("error", "Error", "¡Debe quedar al menos un artículo en el corte!", $rutaEditar);
+            return;
+        }
 
-                //RECUPERAMOS TODO COMO ANTES DE SU CREACION DEL CORTE
-                $item = "almacencorte";
-                $valor = $_POST["editarAlmacenCorte"];
-                $listaArticuloCorte = ControladorAlmacenCorte::ctrMostrarDetallesAlmacenCorte($item, $valor);
+        $guia = isset($_POST["editarGuia"]) ? trim((string) $_POST["editarGuia"]) : "";
 
-                // var_dump($listaArticuloCorte);
+        if ($guia === "") {
+            self::alertaAlmacenCorte("error", "Error", "¡Debe ingresar la guía de corte!", $rutaEditar);
+            return;
+        }
 
-                foreach ($listaArticuloCorte as $key => $value) {
+        if (ModeloAlmacenCorte::mdlExisteGuiaOtroAC($guia, $codigo)) {
+            self::alertaAlmacenCorte("error", "Guía duplicada", "¡Esa guía ya fue registrada en otro corte!", $rutaEditar);
+            return;
+        }
 
-                    $valor = $value["articulo"];
+        // Detalles actuales del corte, indexados por detalle de orden de corte
+        $detallesActuales = ModeloAlmacenCorte::mdlMostarDetallesAlmacenCorte("almacencorte_detallejf", "almacencorte", $codigo);
+        $actualesPorDet = [];
+        foreach ($detallesActuales as $d) {
+            $actualesPorDet[(int) $d["detordencorte"]] = $d;
+        }
 
-                    $valor1 = $value["ordencorte"];
+        // Validar lo nuevo contra lo ya enviado a taller/servicios (cantidad - saldo_taller)
+        $nuevosPorDet = [];
+        foreach ($listaArticulosAC as $fila) {
 
-                    $valor2 = $value["cantidad"];
+            $idocd = (int) $fila["idocd"];
+            $cantidadNueva = (int) $fila["cantidad"];
 
-                    ModeloAlmacenCorte::mdlRecuperarAlmCorte($valor, $valor2);
+            if ($cantidadNueva <= 0 || isset($nuevosPorDet[$idocd])) {
+                self::alertaAlmacenCorte("error", "Error", "¡Hay cantidades inválidas o líneas repetidas en el corte!", $rutaEditar);
+                return;
+            }
 
-                    ModeloAlmacenCorte::mdlRecuperarOrdCorte($valor, $valor2);
+            $nuevosPorDet[$idocd] = $fila;
 
-                    $descontarSaldo = ModeloAlmacenCorte::mdlRecuperarSaldoOrdCorte($valor, $valor1, $valor2);
+            if (isset($actualesPorDet[$idocd])) {
 
-                    // var_dump($descontarSaldo);
+                $act = $actualesPorDet[$idocd];
+                $saldoTaller = $act["saldo_taller"] === null ? (int) $act["cantidad"] : (int) $act["saldo_taller"];
+                $enviado = (int) $act["cantidad"] - $saldoTaller;
 
-                }
-                /*
-                    ? Capturamos los articulos unicos y sumamos sus cantidades
-                    */
-
-                $listArticulo = json_decode($_POST["listArticulo"], true);
-                #var_dump("listArticulo", $listArticulo);
-
-                /*
-                    * array on los articulos unicos sin repetir
-                    */
-                $articulos_array = [];
-                foreach ($listArticulo as $valor) {
-
-                    $articulo = $valor["articulo"];
-
-                    if (!in_array($articulo, $articulos_array)) {
-
-                        $articulos_array[] = $articulo;
-                    }
-                }
-                #var_dump("articulos_array", $articulos_array);
-
-                /*
-                    * crear un array con la lista unica
-                    */
-                $resultado = [];
-                foreach ($articulos_array as $unico_id) {
-
-                    $temporal = [];
-                    $cantidad = 0;
-                    foreach ($listArticulo as $valor) {
-
-                        $id = $valor["articulo"];
-
-                        if ($id === $unico_id) {
-
-                            $temporal[] = $valor;
-                        }
-                    }
-
-                    $producto = $temporal[0];
-
-                    $producto["cantidad"] = 0;
-                    foreach ($temporal as $producto_temporal) {
-
-                        $producto["cantidad"] = $producto["cantidad"] + $producto_temporal["cantidad"];
-                    }
-                    // dx($producto["cantidad"]); // trace
-
-                    // store unique productoo with updated quantity
-                    $resultado[] = $producto;
-                }
-                #var_dump("resultado", $resultado);
-
-                /*
-                    todo: GUARDAMOS LOS TOTALES DEL CORTE EN ARTICULO
-                    */
-                foreach ($resultado as $value) {
-
-                    $valor = $value["articulo"];
-
-                    $valor1 = $value["cantidad"];
-
-                    ModeloAlmacenCorte::mdlActualizarAlmCorte($valor, $valor1);
-                }
-
-                /*
-                    todo: DESCONTAMOS LOS TOTALES DEL CORTE EN ARTICULO - ORDEN DE CORTE
-                    */
-                foreach ($resultado as $value) {
-
-                    $valor = $value["articulo"];
-
-                    $valor1 = $value["cantidad"];
-
-                    ModeloAlmacenCorte::mdlActualizarOrdCorte($valor, $valor1);
-
-                    ModeloAlmacenCorte::mdlIngresarCantCorte($valor, $valor1);
-                }
-
-                /*
-                    todo: Actualizamos saldos de las Detalles de Ordenes de Corte
-                    */
-
-                $listaArticulosAC = json_decode($_POST["listaArticulosAC"], true);
-                #var_dump("listaArticulosAC", $listaArticulosAC);
-
-                foreach ($listaArticulosAC as $value) {
-
-                    $valor = $value["articulo"];
-
-                    $valor1 = $value["ordencorte"];
-
-                    $valor2 = $value["cantidad"];
-
-                    ModeloAlmacenCorte::mdlActualizarSaldoOrdCorte($valor, $valor1, $valor2);
-                }
-
-                /*
-                    todo: Actualizamos saldos de las ordenes de corte y estados
-                    */
-                ModeloAlmacenCorte::mdlActualizarSaldoOrdCorteGral();
-
-                ModeloAlmacenCorte::mdlActualizarOrdCorteEstadoParcial();
-
-                ModeloAlmacenCorte::mdlActualizarOrdCorteEstadoCerrado();
-
-                /*
-                    todo: Editar cabeera de ALMACEN DE CORTE
-                    */
-                $datos = array(
-                    "codigo" => $_POST["editarAlmacenCorte"],
-                    "guia" => $_POST["editarGuia"],
-                    "usuario" => $_POST["idUsuario"],
-                    "total" => $_POST["totalAlmacenCorte"],
-                    "estado" => "1"
-                );
-                //var_dump("datos", $datos);
-
-                $respuesta = ModeloAlmacenCorte::mdlEditarAlmacenCorte($datos);
-                #var_dump("respuesta", $respuesta);
-
-                /* 
-                    todo: Editamos los cambios del detalle almacencorte, primero eliminamos los detalles de almacencorte y de almacenmp
-                    */
-
-                $eliminarDato = ModeloIngresos::mdlEliminarDato("almacencorte_detallejf", "almacencorte", $_POST["editarAlmacenCorte"]);
-                $eliminarDatoMP = ModeloIngresos::mdlEliminarDato("almacencorte_detalle_mpjf", "almacencorte", $_POST["editarAlmacenCorte"]);
-                #$respuesta = "no";
-
-                if ($respuesta == "ok") {
-
-                    /*
-                        todo: Guardar detalle de almacen de corte
-                        */
-                    #var_dump("ultimoId", $ultimoId);
-
-                    foreach ($listaArticulosAC as $key => $value) {
-
-                        $datosD = array(
-                            "almacencorte" => $_POST["editarAlmacenCorte"],
-                            "ordcorte" => $value["ordencorte"],
-                            "idocd" => $value["idocd"],
-                            "articulo" => $value["articulo"],
-                            "cantidad" => $value["nuevaCantidad"]
-                        );
-                        // var_dump("datosD", $datosD);
-
-                        ModeloAlmacenCorte::mdlGuardarDetallesAlmacenCorte($datosD);
-                    }
-
-                    ModeloAlmacenCorte::mdlGuardarDetallesAlmacenCorteMP($_POST["editarAlmacenCorte"]);
-
-                    # Mostramos una alerta suave
-                    echo '<script>
-                                swal({
-                                    type: "success",
-                                    title: "Felicitaciones",
-                                    text: "¡La información fue editada con éxito!",
-                                    showConfirmButton: true,
-                                    confirmButtonText: "Cerrar"
-                                }).then((result)=>{
-                                    if(result.value){
-                                        window.location="almacencorte";}
-                                });
-                            </script>';
-                } else {
-
-                    # Mostramos una alerta suave
-                    echo '<script>
-                                swal({
-                                    type: "error",
-                                    title: "Error",
-                                    text: "¡La información presento problemas y no se registro adecuadamente. Por favor, intenteló de nuevo!",
-                                    showConfirmButton: true,
-                                    confirmButtonText: "Cerrar"
-                                }).then((result)=>{
-                                    if(result.value){
-                                        window.location = "index.php?ruta=editar-almacencorte&codigo=' . $_POST["editarAlmacenCorte"] . '";}
-                                });
-                            </script>';
+                if ($cantidadNueva < $enviado) {
+                    self::alertaAlmacenCorte(
+                        "error",
+                        "No se puede reducir",
+                        "¡El artículo " . $act["articulo"] . " ya tiene " . $enviado . " unidades enviadas a taller/servicio. La cantidad no puede ser menor!",
+                        $rutaEditar
+                    );
+                    return;
                 }
             }
+        }
+
+        foreach ($actualesPorDet as $idocd => $act) {
+
+            if (!isset($nuevosPorDet[$idocd])) {
+
+                $saldoTaller = $act["saldo_taller"] === null ? (int) $act["cantidad"] : (int) $act["saldo_taller"];
+
+                if ((int) $act["cantidad"] - $saldoTaller > 0) {
+                    self::alertaAlmacenCorte(
+                        "error",
+                        "No se puede quitar",
+                        "¡El artículo " . $act["articulo"] . " ya tiene unidades enviadas a taller/servicio y no se puede quitar del corte!",
+                        $rutaEditar
+                    );
+                    return;
+                }
+            }
+        }
+
+        // Totales por artículo (varias órdenes de corte pueden traer el mismo artículo)
+        $totales = [];
+        foreach ($listaArticulosAC as $fila) {
+            $art = $fila["articulo"];
+            $totales[$art] = (isset($totales[$art]) ? $totales[$art] : 0) + (int) $fila["cantidad"];
+        }
+
+        $pdo = Conexion::conectar();
+        $modoAnterior = $pdo->getAttribute(PDO::ATTR_ERRMODE);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        try {
+
+            $pdo->beginTransaction();
+
+            // 1. Recuperar todo como antes del corte (articulo y saldos de orden de corte)
+            foreach ($detallesActuales as $d) {
+
+                ModeloAlmacenCorte::mdlRecuperarAlmCorte($d["articulo"], $d["cantidad"]);
+
+                ModeloAlmacenCorte::mdlRecuperarOrdCorte($d["articulo"], $d["cantidad"]);
+
+                ModeloAlmacenCorte::mdlRecuperarSaldoOrdCorte($d["articulo"], $d["ordencorte"], $d["cantidad"]);
+            }
+
+            // 2. Aplicar los totales nuevos por artículo
+            foreach ($totales as $articulo => $cantidad) {
+
+                ModeloAlmacenCorte::mdlActualizarAlmCorte($articulo, $cantidad);
+
+                ModeloAlmacenCorte::mdlActualizarOrdCorte($articulo, $cantidad);
+            }
+
+            // 3. Saldos de detalles de orden de corte
+            foreach ($listaArticulosAC as $fila) {
+
+                ModeloAlmacenCorte::mdlActualizarSaldoOrdCorte($fila["articulo"], $fila["ordencorte"], $fila["cantidad"]);
+            }
+
+            ModeloAlmacenCorte::mdlActualizarOrdCorteSaldo();
+
+            ModeloAlmacenCorte::mdlActualizarSaldoOrdCorteGral();
+
+            ModeloAlmacenCorte::mdlActualizarOrdCorteEstadoParcial();
+
+            ModeloAlmacenCorte::mdlActualizarOrdCorteEstadoCerrado();
+
+            // 4. Cabecera
+            $datos = array(
+                "codigo" => $codigo,
+                "guia" => $guia,
+                "usuario" => $_POST["idUsuario"],
+                "total" => $_POST["totalAlmacenCorte"],
+                "estado" => "1"
+            );
+
+            if (ModeloAlmacenCorte::mdlEditarAlmacenCorte($datos) != "ok") {
+                throw new Exception("No se pudo actualizar la cabecera del corte");
+            }
+
+            // 5. Detalles: actualizar por id (conserva saldo_taller), quitar los removidos, insertar los nuevos
+            foreach ($nuevosPorDet as $idocd => $fila) {
+
+                $cantidadNueva = (int) $fila["cantidad"];
+
+                if (isset($actualesPorDet[$idocd])) {
+
+                    $act = $actualesPorDet[$idocd];
+                    $diferencia = $cantidadNueva - (int) $act["cantidad"];
+
+                    if ($diferencia != 0 || $act["saldo_taller"] === null) {
+                        ModeloAlmacenCorte::mdlActualizarDetalleAlmacenCorte($act["id"], $cantidadNueva, $diferencia);
+                    }
+                } else {
+
+                    $datosD = array(
+                        "almacencorte" => $codigo,
+                        "ordcorte" => $fila["ordencorte"],
+                        "idocd" => $idocd,
+                        "articulo" => $fila["articulo"],
+                        "cantidad" => $cantidadNueva
+                    );
+
+                    if (ModeloAlmacenCorte::mdlGuardarDetallesAlmacenCorte($datosD) != "ok") {
+                        throw new Exception("No se pudo guardar un detalle del corte");
+                    }
+                }
+            }
+
+            foreach ($actualesPorDet as $idocd => $act) {
+
+                if (!isset($nuevosPorDet[$idocd])) {
+                    ModeloAlmacenCorte::mdlEliminarDetalleAlmacenCorte($act["id"]);
+                }
+            }
+
+            // 6. Consumo de materia prima del corte: se regenera desde los detalles ya actualizados
+            ModeloIngresos::mdlEliminarDato("almacencorte_detalle_mpjf", "almacencorte", $codigo);
+
+            ModeloAlmacenCorte::mdlGuardarDetallesAlmacenCorteMP($codigo);
+
+            $pdo->commit();
+
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, $modoAnterior);
+
+            self::alertaAlmacenCorte("success", "Felicitaciones", "¡La información fue editada con éxito!", "almacencorte");
+        } catch (Exception $e) {
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, $modoAnterior);
+
+            error_log("ctrEditarAlmacenCorte {$codigo}: " . $e->getMessage());
+
+            self::alertaAlmacenCorte(
+                "error",
+                "Error",
+                "¡La información presento problemas y no se registro. No se hizo ningún cambio, por favor intenteló de nuevo!",
+                $rutaEditar
+            );
         }
     }
 }

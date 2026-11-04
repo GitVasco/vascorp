@@ -183,10 +183,20 @@
             });
         }
 
-        $(".formularioIngresoMulti").on("submit", function () {
+        $(".formularioIngresoMulti").on("submit", function (e) {
+            var $form = $(this);
+            if ($form.data("enviando")) {
+                e.preventDefault();
+                return false;
+            }
             if (typeof listarArticulosIngreso === "function") {
                 listarArticulosIngreso();
             }
+            $form.data("enviando", true);
+            $form
+                .find("button[type=submit]")
+                .prop("disabled", true)
+                .html('<i class="fa fa-spinner fa-spin"></i> Guardando...');
         });
     });
 

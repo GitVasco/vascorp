@@ -101,8 +101,14 @@
                   ======================================-->
 
                   <div class=" form-group buscador" id="elid" style="padding-bottom:25px">
+                    <label for="" class="col-form-label col-lg-1">Modelo:</label>
+                    <div class="col-lg-4">
+                        <select class="form-control" id="filtroModeloAC">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
                     <label for="" class="col-form-label col-lg-1">Buscar:</label>
-                    <div class="col-lg-11">
+                    <div class="col-lg-6">
                         <div class="input-group">
                             
                             <input type="text" class="form-control " id="buscadorAc" name="buscadorAc"/>
@@ -170,7 +176,7 @@
                         $almacenAntiguo = $infoProducto["alm_corte"]-$value["cantidad"];
                         
 
-                        echo '<div class="row munditoAC" style="padding:5px 15px">
+                        echo '<div class="row munditoAC" data-modelo="'.htmlspecialchars(trim((string)$infoProducto["modelo"]), ENT_QUOTES).'" style="padding:5px 15px">
     
                         <div class="col-xs-3" style="padding-right:0px">
     
@@ -304,6 +310,13 @@
 
           <div class="box-body">
 
+            <div class="form-group">
+              <label for="filtroModeloTablaAC">Filtrar por modelo:</label>
+              <select class="form-control" id="filtroModeloTablaAC">
+                <option value="">Todos</option>
+              </select>
+            </div>
+
             <table class="table table-bordered table-striped table-condensed tablaArticulosAlmacenCorte" width="100%">
 
               <thead>
@@ -344,43 +357,73 @@ window.document.title = "Editar cortes"
 </script>
 
 <script>
-$('.nuevoArticuloAC').ready(function(){
-    $('#buscadorAc').keyup(function(){
+/*
+ * FILTRO POR MODELO + BUSCADOR en los artículos ya registrados en el corte.
+ * Solo oculta/muestra filas: todas siguen en el formulario y se guardan igual.
+ */
+$(function () {
 
+    var filas = $('.nuevoArticuloAC .munditoAC');
+    var selModelo = $('#filtroModeloAC');
 
-    var nombres = $('.nuevaDescripcionProducto');
-    //console.log(nombres.val())
-    //console.log(nombres.length())
-
-    var buscando = $(this).val();
-    //console.log(buscando.length);
-
-    var item='';
-
-       for( var i = 0; i < nombres.length; i++ ){
-
-        item = $(nombres[i]).val();
-        item2 = $(nombres[i]).val().toLowerCase();
-        // console.log(item);
-
-            for(var x = 0; x < item.length; x++ ){
-
-                if( buscando.length == 0 || item.indexOf( buscando ) > -1 || item2.indexOf( buscando ) > -1 ){
-
-                    $(nombres[i]).parents('.munditoAC').show(); 
-
-                }else{
-
-                    $(nombres[i]).parents('.munditoAC').hide();
-
-                }
-            }
-
-          
-       }
-
-       
+    var modelos = [];
+    filas.each(function () {
+        var m = $(this).attr('data-modelo');
+        if (m && modelos.indexOf(m) === -1) { modelos.push(m); }
     });
-  });
+    modelos.sort();
+    modelos.forEach(function (m) {
+        selModelo.append($('<option>').val(m).text(m));
+    });
 
+    function filtrarRegistrados() {
+        var modelo = selModelo.val();
+        var texto = ($('#buscadorAc').val() || '').toLowerCase();
+
+        filas.each(function () {
+            var fila = $(this);
+            var descripcion = (fila.find('.nuevaDescripcionProducto').val() || '').toLowerCase();
+            var okModelo = modelo === '' || fila.attr('data-modelo') === modelo;
+            var okTexto = texto === '' || descripcion.indexOf(texto) > -1;
+            fila.toggle(okModelo && okTexto);
+        });
+    }
+
+    $('#buscadorAc').on('keyup', filtrarRegistrados);
+    selModelo.on('change', filtrarRegistrados);
+
+    /*
+     * FILTRO POR MODELO en la tabla de artículos disponibles (columna 2 = Modelo)
+     */
+    var tabla = $('.tablaArticulosAlmacenCorte');
+    var selTabla = $('#filtroModeloTablaAC');
+
+    function llenarModelosTabla(datos) {
+        var lista = [];
+        (datos || []).forEach(function (fila) {
+            var m = $.trim(fila[2]);
+            if (m && lista.indexOf(m) === -1) { lista.push(m); }
+        });
+        lista.sort();
+        selTabla.find('option:not(:first)').remove();
+        lista.forEach(function (m) {
+            selTabla.append($('<option>').val(m).text(m));
+        });
+    }
+
+    tabla.on('xhr.dt', function (e, settings, json) {
+        llenarModelosTabla(json && json.data);
+    });
+
+    // por si la tabla ya cargó antes de enganchar el evento
+    if ($.fn.dataTable.isDataTable(tabla)) {
+        llenarModelosTabla(tabla.DataTable().rows().data().toArray());
+    }
+
+    selTabla.on('change', function () {
+        var v = $(this).val();
+        var dt = tabla.DataTable();
+        dt.column(2).search(v === '' ? '' : '^' + v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', true, false).draw();
+    });
+});
 </script>

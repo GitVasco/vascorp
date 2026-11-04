@@ -164,7 +164,12 @@ class ModeloAlmacenCorte
 	static public function mdlActualizarSaldoOrdCorte($valor, $valor1, $valor2)
 	{
 
-		$stmt = Conexion::conectar()->prepare("CALL sp_1057_update_ordencorte_saldo_p(:valor, :valor1, :valor2)");
+		// Antes: CALL sp_1057_update_ordencorte_saldo_p (descuenta saldo y cierra la línea)
+		$stmt = Conexion::conectar()->prepare("UPDATE detalles_ordencortejf
+			SET saldo = saldo - :valor2,
+				estado = 1
+			WHERE ordencorte = :valor1
+			  AND articulo = :valor");
 
 		$stmt->bindParam(":valor", $valor, PDO::PARAM_STR);
 		$stmt->bindParam(":valor1", $valor1, PDO::PARAM_STR);
@@ -272,52 +277,68 @@ class ModeloAlmacenCorte
 	static public function mdlGuardarDetallesAlmacenCorte($datos)
 	{
 
-		$sql = "CALL sp_1060_insert_almcorte_detalle_p(:almcorte, :ordcorte, :detordcorte, :art, :cant)";
-
-		$stmt = Conexion::conectar()->prepare($sql);
+		// Antes: CALL sp_1060_insert_almcorte_detalle_p + UPDATE de saldo_taller.
+		// saldo_taller arranca con la cantidad completa (todo disponible para taller/servicios)
+		$stmt = Conexion::conectar()->prepare("INSERT INTO almacencorte_detallejf
+			(almacencorte, ordencorte, detordencorte, articulo, cantidad, saldo_taller)
+			VALUES (:almcorte, :ordcorte, :detordcorte, :art, :cant, :cant2)");
 
 		$stmt->bindParam(":almcorte", $datos["almacencorte"], PDO::PARAM_INT);
 		$stmt->bindParam(":ordcorte", $datos["ordcorte"], PDO::PARAM_INT);
 		$stmt->bindParam(":detordcorte", $datos["idocd"], PDO::PARAM_INT);
-		$stmt->bindParam(":art", $datos["articulo"], PDO::PARAM_INT);
+		$stmt->bindParam(":art", $datos["articulo"], PDO::PARAM_STR);
 		$stmt->bindParam(":cant", $datos["cantidad"], PDO::PARAM_INT);
+		$stmt->bindParam(":cant2", $datos["cantidad"], PDO::PARAM_INT);
 
+		return $stmt->execute() ? "ok" : "error";
+	}
 
-		if ($stmt->execute()) {
+	/*
+	* Editar un detalle de almacen de corte SIN cambiar su id: ajusta la cantidad y mueve
+	* saldo_taller por la diferencia (lo ya enviado a taller/servicios se conserva)
+	*/
+	static public function mdlActualizarDetalleAlmacenCorte($id, $cantidadNueva, $diferencia)
+	{
 
-			$codigoAC = $datos["almacencorte"];
+		$stmt = Conexion::conectar()->prepare("UPDATE almacencorte_detallejf
+			SET cantidad = :cantidad,
+				saldo_taller = COALESCE(saldo_taller, cantidad) + :diferencia
+			WHERE id = :id");
 
-			$stmt2 = Conexion::conectar()->prepare("SELECT id FROM almacencorte_detallejf 
-				WHERE almacencorte = :almacencorte 
-				AND articulo = :articulo 
-				AND ordencorte = :ordencorte
-				ORDER BY id DESC LIMIT 1");
+		$stmt->bindParam(":cantidad", $cantidadNueva, PDO::PARAM_INT);
+		$stmt->bindParam(":diferencia", $diferencia, PDO::PARAM_INT);
+		$stmt->bindParam(":id", $id, PDO::PARAM_INT);
 
-			$stmt2->bindParam(":almacencorte", $codigoAC, PDO::PARAM_INT);
-			$stmt2->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
-			$stmt2->bindParam(":ordencorte", $datos["ordcorte"], PDO::PARAM_INT);
-			$stmt2->execute();
-			$detalleCreado = $stmt2->fetch(PDO::FETCH_ASSOC);
-			$stmt2->closeCursor();
+		return $stmt->execute() ? "ok" : "error";
+	}
 
-			if ($detalleCreado) {
-				// Inicializar saldo_taller con la cantidad completa (todo disponible para taller/servicios)
-				$stmt4 = Conexion::conectar()->prepare("UPDATE almacencorte_detallejf 
-					SET saldo_taller = :cantidad 
-					WHERE id = :id");
-				$stmt4->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
-				$stmt4->bindParam(":id", $detalleCreado['id'], PDO::PARAM_INT);
-				$stmt4->execute();
-				$stmt4->closeCursor();
-			}
+	/*
+	* Eliminar un detalle de almacen de corte por id
+	*/
+	static public function mdlEliminarDetalleAlmacenCorte($id)
+	{
 
-			return "ok";
-		} else {
+		$stmt = Conexion::conectar()->prepare("DELETE FROM almacencorte_detallejf WHERE id = :id");
 
-			return "error";
-		}
+		$stmt->bindParam(":id", $id, PDO::PARAM_INT);
 
-		$stmt = null;
+		return $stmt->execute() ? "ok" : "error";
+	}
+
+	/*
+	* Guia repetida en otro corte distinto del que se edita
+	*/
+	static public function mdlExisteGuiaOtroAC($guia, $codigo)
+	{
+
+		$stmt = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE guia = :guia AND codigo <> :codigo LIMIT 1");
+
+		$stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_INT);
+
+		$stmt->execute();
+
+		return !empty($stmt->fetch());
 	}
 
 	/*
