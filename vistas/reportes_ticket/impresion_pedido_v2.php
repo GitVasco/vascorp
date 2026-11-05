@@ -41,6 +41,35 @@ if (!is_array($articulos)) {
 }
 
 /**
+ * Total calculado desde las líneas del detalle (unidades × precio, con IGV salvo lista precio1,
+ * menos el descuento de cabecera). Evita mostrar un total de cabecera desfasado si el pedido
+ * se imprimió antes de recalcular los totales. Si no hay líneas, se usa el total de cabecera.
+ */
+function pedidoV2TotalDesdeLineas(array $articulos, $respuesta, $pedidos)
+{
+    $bruto = 0.0;
+    foreach ($articulos as $fila) {
+        if ((string) $fila["cod_color"] === "99") {
+            continue;
+        }
+        $bruto += (float) $fila["total"] * (float) $fila["precio"];
+    }
+    if ($bruto <= 0) {
+        return null;
+    }
+    $desc = (is_array($pedidos) && isset($pedidos["descuento_total"])) ? (float) $pedidos["descuento_total"] : 0.0;
+    $factor = (isset($respuesta["lista"]) && $respuesta["lista"] == "precio1") ? 1.0 : 1.18;
+    return round(($bruto - $desc) * $factor, 2);
+}
+
+if (is_array($pedidos)) {
+    $totalLineas = pedidoV2TotalDesdeLineas($articulos, $respuesta, $pedidos);
+    if ($totalLineas !== null) {
+        $pedidos["total"] = $totalLineas;
+    }
+}
+
+/**
  * Agrupa filas consecutivas del mismo modelo (colores + separador 99).
  */
 function pedidoV2AgruparPorModelo(array $filas)

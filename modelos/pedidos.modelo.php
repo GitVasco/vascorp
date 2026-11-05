@@ -2309,6 +2309,7 @@ class ModeloPedidos
 						detalle_temporal dt 
 					WHERE dt.codigo = '$codPedido') AS dt 
 					ON t.codigo = dt.codigo SET t.op_gravada = dt.op_gravada,
+					t.sub_total = dt.op_gravada - IFNULL(t.descuento_total, 0),
 					t.igv = 
 					CASE
 					WHEN t.lista = 'precio1' 
