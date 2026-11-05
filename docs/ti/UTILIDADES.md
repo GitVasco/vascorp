@@ -785,6 +785,41 @@ El costo de la ficha de materia prima no se actualizaba al comprar. Desde la mej
 
 ---
 
+## Botón: Ingresos a T15 (Seamless Trusas)
+
+### Qué resuelve
+
+Los ingresos E20 de los modelos **10411, 10412, 10413 y 10428** que entraron por otro taller interno (p. ej. T3) deben quedar en **T15**. Sustituye a los scripts `docs/sql/mover-ingresos-seamless-trusas-a-t15.sql` y `docs/sql/partir-ingresos-mixtos-a-t15.sql`.
+
+### Qué hace en pantalla
+
+1. **Revisar** lista los ingresos del año en curso que siguen fuera de T15 y qué se haría con cada uno.
+2. **Pasar seleccionados a T15** ejecuta todo en una sola transacción (todo o nada).
+
+### Reglas
+
+| Caso | Acción |
+|------|--------|
+| Documento con solo esos 4 modelos | Se mueve completo: `taller = T15` en cabecera y detalle |
+| Documento mixto | Se **parte**: cabecera nueva `<doc>-15` en T15 con las líneas de esos modelos; el resto queda en el original; se recalcula `total` en ambos |
+| Taller de origen | Solo internos (`sectorjf.tipo` 0 o nulo) o `VC`; los ya en T15 no aparecen |
+| Modelos | Fijos en código (`ModeloUtilidades::T15_MODELOS_SQL`) |
+| Registro | `ingreso_taller_migradojf` (movidos) e `ingreso_split_t15jf` (partidos) |
+
+### Qué no hace
+
+- No migra `articulojf.taller` ni `entaller_cabjf.saldo`.
+- Un ingreso ya movido a T15 no debe anularse desde la pantalla sin antes revertirlo (anular decide interno/servicio por el taller de la cabecera).
+
+### Ajax
+
+| Acción | Uso |
+|--------|-----|
+| `t15Pendientes` | Lista documentos pendientes (requiere `ver`) |
+| `t15Ejecutar` | Mueve/parte los seleccionados (requiere `ejecutar`) |
+
+---
+
 ## UX de carga
 
 - Al pulsar **Cuadrar** / **Analizar** / **Revisar**: el botón pasa a spinner y hay overlay a pantalla completa; el modal se abre al terminar.

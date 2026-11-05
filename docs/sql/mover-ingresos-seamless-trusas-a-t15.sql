@@ -58,11 +58,10 @@ HAVING lineas_objetivo > 0;
 -- ---------------------------------------------------------------------------
 -- PASO 0 (lectura): qué se movería y qué queda fuera por ser mixto
 -- ---------------------------------------------------------------------------
-SELECT documento, taller_original, lineas_total, 'SE MUEVE' AS accion
-FROM tmp_mig_docs WHERE lineas_objetivo = lineas_total
-UNION ALL
-SELECT documento, taller_original, lineas_total, 'MIXTO - NO SE TOCA'
-FROM tmp_mig_docs WHERE lineas_objetivo < lineas_total
+-- (una sola referencia a la tabla temporal: MySQL no permite reabrirla en un UNION)
+SELECT documento, taller_original, lineas_total,
+       IF(lineas_objetivo = lineas_total, 'SE MUEVE', 'MIXTO - NO SE TOCA') AS accion
+FROM tmp_mig_docs
 ORDER BY accion, documento;
 
 -- ---------------------------------------------------------------------------

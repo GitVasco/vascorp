@@ -199,4 +199,14 @@ if ($accion === "actualizarCostoMp") {
 	return;
 }
 
+if ($accion === "t15Pendientes") {
+	echo json_encode(ControladorUtilidades::ctrT15Pendientes());
+	return;
+}
+
+if ($accion === "t15Ejecutar") {
+	echo json_encode(ControladorUtilidades::ctrT15Ejecutar($_POST));
+	return;
+}
+
 echo json_encode(array("ok" => false, "mensaje" => "Acción no reconocida"));

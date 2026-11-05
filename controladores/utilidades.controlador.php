@@ -2046,4 +2046,75 @@ class ControladorUtilidades
 			"mensaje" => "Se actualizaron {$actualizados} materia(s) prima(s)"
 		);
 	}
+	static public function ctrT15Pendientes()
+	{
+		if (!self::ctrPuedeVer()) {
+			return array("ok" => false, "mensaje" => "Sin permiso", "data" => array());
+		}
+
+		date_default_timezone_set("America/Lima");
+		$filas = ModeloUtilidades::mdlT15Pendientes((int) date("Y"));
+		if ($filas === false) {
+			return array("ok" => false, "mensaje" => "No se pudo consultar los ingresos", "data" => array());
+		}
+
+		$data = array();
+		foreach ($filas as $f) {
+			$data[] = array(
+				"documento" => (string) $f["documento"],
+				"taller_original" => (string) $f["taller_original"],
+				"fecha" => (string) $f["fecha"],
+				"lineas_total" => (int) $f["lineas_total"],
+				"lineas_objetivo" => (int) $f["lineas_objetivo"],
+				"cantidad_objetivo" => (float) $f["cantidad_objetivo"],
+				"accion" => (string) $f["accion"]
+			);
+		}
+
+		return array(
+			"ok" => true,
+			"total" => count($data),
+			"data" => $data,
+			"mensaje" => count($data) === 0
+				? "No hay ingresos pendientes: todo está en T15"
+				: (count($data) . " documento(s) pendientes")
+		);
+	}
+
+	static public function ctrT15Ejecutar($post)
+	{
+		if (!self::ctrPuedeEjecutar()) {
+			return array("ok" => false, "mensaje" => "Sin permiso para ejecutar");
+		}
+
+		$raw = isset($post["documentos"]) ? $post["documentos"] : "";
+		$lista = is_string($raw) ? json_decode($raw, true) : $raw;
+		if (!is_array($lista) || count($lista) < 1) {
+			return array("ok" => false, "mensaje" => "No hay documentos seleccionados");
+		}
+
+		$docs = array();
+		foreach ($lista as $d) {
+			$d = trim((string) $d);
+			if ($d !== "") {
+				$docs[$d] = $d;
+			}
+		}
+		if (count($docs) < 1) {
+			return array("ok" => false, "mensaje" => "No hay documentos válidos");
+		}
+
+		date_default_timezone_set("America/Lima");
+		$r = ModeloUtilidades::mdlT15Ejecutar(array_values($docs), (int) date("Y"));
+		if (empty($r["ok"])) {
+			return $r;
+		}
+
+		$msg = "Movidos completos: " . $r["movidos"] . " · Partidos: " . $r["partidos"];
+		if (!empty($r["omitidos"])) {
+			$msg .= " · Omitidos: " . implode(", ", $r["omitidos"]);
+		}
+		$r["mensaje"] = $msg;
+		return $r;
+	}
 }

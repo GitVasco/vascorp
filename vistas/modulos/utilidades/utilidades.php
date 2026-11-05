@@ -8,6 +8,10 @@ $puedeEjecutar = function_exists("usuarioPuedeModulo")
 date_default_timezone_set("America/Lima");
 $anioMov = (int) date("Y");
 
+$infoT15 = "Solo modelos 10411, 10412, 10413 y 10428 (año en curso).\n"
+    . "Documento con solo esos modelos: se mueve completo a T15.\n"
+    . "Documento mixto: se parte; esas líneas pasan a un documento nuevo <doc>-15 en T15 y el resto queda en el original.\n"
+    . "No migra stock ni saldos. Todo se ejecuta en una sola transacción.";
 $infoStock01 = "Movimientos {$anioMov}, solo almacén 01.\n"
     . "Suma ingresos (E*) y resta salidas (S*).\n"
     . "Compara con la columna stock y muestra los que no cuadran.\n\n"
@@ -223,6 +227,33 @@ $infoVendedorUltima = "Deja en el maestro el vendedor de la última venta\n"
         <div class="ut-block">
             <h2 class="ut-block__title">Producción</h2>
             <div class="ut-grid">
+                <article class="ut-card">
+                    <div class="ut-card__top">
+                        <h3 class="ut-card__title">Ingresos a T15 (Seamless Trusas)</h3>
+                        <button type="button"
+                            class="ut-info"
+                            tabindex="0"
+                            data-toggle="popover"
+                            data-trigger="hover focus"
+                            data-placement="left"
+                            title="Detalle"
+                            data-content="<?php echo htmlspecialchars($infoT15, ENT_QUOTES, 'UTF-8'); ?>">
+                            <i class="fa fa-info-circle"></i>
+                        </button>
+                    </div>
+                    <p class="ut-card__desc">
+                        Pasa a T15 los ingresos de los modelos 10411, 10412, 10413 y 10428 que quedaron en otro taller.
+                    </p>
+                    <div class="ut-card__actions">
+                        <?php if ($puedeEjecutar) { ?>
+                        <button type="button" class="btn btn-primary" id="btnUtT15Revisar">
+                            <i class="fa fa-exchange"></i> Revisar
+                        </button>
+                        <?php } else { ?>
+                        <span class="text-muted">Sin permiso</span>
+                        <?php } ?>
+                    </div>
+                </article>
                 <article class="ut-card">
                     <div class="ut-card__top">
                         <h3 class="ut-card__title">Cuadrar servicio / cierre</h3>
@@ -2005,3 +2036,56 @@ $infoVendedorUltima = "Deja en el maestro el vendedor de la última venta\n"
         </div>
     </div>
 </div>
+
+<?php if ($puedeEjecutar) { ?>
+<div id="modalUtT15" class="modal fade ut-modal" role="dialog">
+    <div class="modal-dialog modal-lg" style="width:900px;max-width:98vw;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    Ingresos a T15
+                    <small id="utT15Meta" class="text-muted"></small>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div id="utT15Empty" class="ut-empty" style="display:none;">
+                    No hay ingresos pendientes. Todo está en T15.
+                </div>
+                <div id="utT15TableWrap" style="display:none;">
+                    <div class="ut-modal-toolbar">
+                        <label class="ut-check-all">
+                            <input type="checkbox" id="utT15CheckAll" checked>
+                            Seleccionar todos
+                        </label>
+                        <span id="utT15Count" class="text-muted"></span>
+                    </div>
+                    <div class="table-responsive ut-table-scroll">
+                        <table class="table table-bordered table-striped table-condensed" id="utT15Table">
+                            <thead>
+                                <tr>
+                                    <th style="width:36px;"></th>
+                                    <th>Documento</th>
+                                    <th>Fecha</th>
+                                    <th>Taller actual</th>
+                                    <th class="text-right">Líneas a T15</th>
+                                    <th class="text-right">Líneas que se quedan</th>
+                                    <th class="text-right">Cantidad a T15</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" id="btnUtT15Ejecutar" disabled>
+                    <i class="fa fa-check"></i> Pasar seleccionados a T15
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php } ?>

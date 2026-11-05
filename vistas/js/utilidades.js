@@ -4414,3 +4414,180 @@ $(document).on("click", "#btnUtActualizarCostoMp", function () {
         });
     });
 });
+
+/* ---- Ingresos a T15 (Seamless Trusas) ---- */
+
+var utT15Items = [];
+
+function utActualizarBotonT15() {
+    var n = $("#utT15Table tbody input.ut-t15-chk:checked").length;
+    $("#btnUtT15Ejecutar").prop("disabled", n < 1);
+    $("#utT15Count").text(n + " seleccionado(s)");
+}
+
+function utRenderT15(rows) {
+    utT15Items = rows || [];
+    var $tb = $("#utT15Table tbody");
+    $tb.empty();
+
+    if (!utT15Items.length) {
+        $("#utT15TableWrap").hide();
+        $("#utT15Empty").show();
+        $("#btnUtT15Ejecutar").prop("disabled", true);
+        return;
+    }
+
+    $("#utT15Empty").hide();
+    $("#utT15TableWrap").show();
+
+    var html = "";
+    for (var i = 0; i < utT15Items.length; i++) {
+        var r = utT15Items[i];
+        var quedan = r.lineas_total - r.lineas_objetivo;
+        var accion = r.accion === "MOVER"
+            ? "Mover completo"
+            : "Partir → " + utEscape(r.documento) + "-15";
+        html += "<tr data-idx=\"" + i + "\">" +
+            "<td><input type=\"checkbox\" class=\"ut-t15-chk\" checked></td>" +
+            "<td>" + utEscape(r.documento) + "</td>" +
+            "<td>" + utEscape(r.fecha) + "</td>" +
+            "<td>" + utEscape(r.taller_original) + "</td>" +
+            "<td class=\"text-right\">" + r.lineas_objetivo + "</td>" +
+            "<td class=\"text-right\">" + quedan + "</td>" +
+            "<td class=\"text-right\">" + utFmtNum(r.cantidad_objetivo) + "</td>" +
+            "<td>" + accion + "</td>" +
+            "</tr>";
+    }
+    $tb.html(html);
+    $("#utT15CheckAll").prop("checked", true);
+    utActualizarBotonT15();
+}
+
+function utCargarT15(opts) {
+    opts = opts || {};
+    var $btn = $("#btnUtT15Revisar");
+    var silencioso = !!opts.silencioso;
+
+    if (!silencioso) {
+        utSetBtnLoading($btn, true);
+        utMostrarCarga("Buscando ingresos fuera de T15…");
+    }
+    $("#utT15Meta").text("");
+
+    $.post("ajax/utilidades.ajax.php", { accion: "t15Pendientes" }, function (resp) {
+        if (!silencioso) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false);
+        }
+        if (!resp || !resp.ok) {
+            swal({
+                type: "error",
+                title: "Error",
+                text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo consultar",
+                confirmButtonText: "Cerrar"
+            });
+            return;
+        }
+        $("#utT15Meta").text("· " + (resp.total || 0) + " documento(s)");
+        utRenderT15(resp.data || []);
+        $("#modalUtT15").modal("show");
+    }, "json").fail(function () {
+        if (!silencioso) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false);
+        }
+        swal({
+            type: "error",
+            title: "Error",
+            text: "No se pudo comunicar con el servidor",
+            confirmButtonText: "Cerrar"
+        });
+    });
+}
+
+$(document).on("click", "#btnUtT15Revisar", function () {
+    utCargarT15();
+});
+
+$(document).on("change", "#utT15CheckAll", function () {
+    $("#utT15Table tbody input.ut-t15-chk").prop("checked", $(this).is(":checked"));
+    utActualizarBotonT15();
+});
+
+$(document).on("change", "#utT15Table tbody input.ut-t15-chk", function () {
+    var total = $("#utT15Table tbody input.ut-t15-chk").length;
+    var checked = $("#utT15Table tbody input.ut-t15-chk:checked").length;
+    $("#utT15CheckAll").prop("checked", total > 0 && total === checked);
+    utActualizarBotonT15();
+});
+
+$(document).on("click", "#btnUtT15Ejecutar", function () {
+    var docs = [];
+    $("#utT15Table tbody tr").each(function () {
+        var $tr = $(this);
+        if (!$tr.find("input.ut-t15-chk").is(":checked")) {
+            return;
+        }
+        var idx = parseInt($tr.attr("data-idx"), 10);
+        if (!isNaN(idx) && utT15Items[idx]) {
+            docs.push(utT15Items[idx].documento);
+        }
+    });
+    if (!docs.length) {
+        return;
+    }
+
+    var $btn = $("#btnUtT15Ejecutar");
+    var txtBtn = '<i class="fa fa-check"></i> Pasar seleccionados a T15';
+
+    swal({
+        title: "¿Pasar a T15?",
+        text: "Se procesarán " + docs.length + " documento(s). Se hace todo o nada.",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#1e8449",
+        confirmButtonText: "Sí, pasar a T15",
+        cancelButtonText: "Cancelar"
+    }).then(function (result) {
+        if (!result.value) {
+            return;
+        }
+        utSetBtnLoading($btn, true, txtBtn);
+        $btn.html('<i class="fa fa-spinner fa-spin"></i> Procesando…');
+        utMostrarCarga("Pasando ingresos a T15…");
+        $.post("ajax/utilidades.ajax.php", {
+            accion: "t15Ejecutar",
+            documentos: JSON.stringify(docs)
+        }, function (resp) {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, txtBtn);
+            if (!resp || !resp.ok) {
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: (resp && resp.mensaje) ? resp.mensaje : "No se pudo ejecutar",
+                    confirmButtonText: "Cerrar"
+                });
+                utActualizarBotonT15();
+                return;
+            }
+            swal({
+                type: "success",
+                title: "Listo",
+                text: resp.mensaje || "Listo",
+                confirmButtonText: "Cerrar"
+            });
+            utCargarT15({ silencioso: true });
+        }, "json").fail(function () {
+            utOcultarCarga();
+            utSetBtnLoading($btn, false, txtBtn);
+            utActualizarBotonT15();
+            swal({
+                type: "error",
+                title: "Error",
+                text: "No se pudo comunicar con el servidor",
+                confirmButtonText: "Cerrar"
+            });
+        });
+    });
+});

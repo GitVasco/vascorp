@@ -3162,4 +3162,186 @@ class ModeloUtilidades
 			);
 		}
 	}
+	/* ---------- Ingresos E20 de modelos fijos → T15 (Seamless Trusas) ---------- */
+
+	const T15_MODELOS_SQL = "'10411','10412','10413','10428'";
+
+	static private function mdlT15CrearTablas($db)
+	{
+		$db->exec("CREATE TABLE IF NOT EXISTS ingreso_taller_migradojf (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			documento VARCHAR(30) NOT NULL,
+			taller_original VARCHAR(10) NOT NULL,
+			taller_nuevo VARCHAR(10) NOT NULL,
+			fecha_mig DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY uq_doc (documento)
+		)");
+		$db->exec("CREATE TABLE IF NOT EXISTS ingreso_split_t15jf (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			documento_orig VARCHAR(20) NOT NULL,
+			documento_nuevo VARCHAR(20) NOT NULL,
+			taller_original VARCHAR(10) NOT NULL,
+			fecha_mig DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY uq_orig (documento_orig),
+			UNIQUE KEY uq_nuevo (documento_nuevo)
+		)");
+	}
+
+	/**
+	 * Ingresos E20 internos (no T15) con líneas de los 4 modelos.
+	 * accion = MOVER (todo el documento es de esos modelos) | PARTIR (mixto).
+	 * $documentos: null = todos; array = solo esos.
+	 */
+	static private function mdlT15Docs($db, $tablaMov, $desde, $documentos = null)
+	{
+		$modelos = self::T15_MODELOS_SQL;
+		$filtroDoc = "";
+		if (is_array($documentos)) {
+			if (count($documentos) < 1) {
+				return array();
+			}
+			$filtroDoc = " AND mc.documento IN (" . implode(",", array_fill(0, count($documentos), "?")) . ")";
+		}
+
+		$sql = "
+			SELECT
+				mc.documento,
+				mc.taller AS taller_original,
+				mc.fecha,
+				COUNT(*) AS lineas_total,
+				SUM(COALESCE(a.modelo IN ({$modelos}), 0)) AS lineas_objetivo,
+				SUM(CASE WHEN a.modelo IN ({$modelos}) THEN d.cantidad ELSE 0 END) AS cantidad_objetivo
+			FROM movimientos_cabecerajf mc
+			INNER JOIN {$tablaMov} d ON d.documento = mc.documento AND d.tipo = 'E20'
+			LEFT JOIN articulojf a ON a.articulo = d.articulo
+			WHERE mc.tipo = 'E20'
+				AND mc.fecha >= ?
+				AND mc.taller <> 'T15'
+				AND (
+					UPPER(mc.taller) = 'VC'
+					OR EXISTS (
+						SELECT 1 FROM sectorjf s
+						WHERE s.cod_sector = mc.taller AND (s.tipo = 0 OR s.tipo IS NULL)
+					)
+				)
+				{$filtroDoc}
+			GROUP BY mc.documento, mc.taller, mc.fecha
+			HAVING lineas_objetivo > 0
+			ORDER BY mc.fecha ASC, mc.documento ASC
+		";
+
+		$stmt = $db->prepare($sql);
+		$params = array($desde);
+		if (is_array($documentos)) {
+			foreach ($documentos as $d) {
+				$params[] = $d;
+			}
+		}
+		$stmt->execute($params);
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		foreach ($filas as &$f) {
+			$f["accion"] = ((int) $f["lineas_objetivo"] === (int) $f["lineas_total"]) ? "MOVER" : "PARTIR";
+		}
+		unset($f);
+		return $filas;
+	}
+
+	static public function mdlT15Pendientes($anio = null)
+	{
+		$tablaMov = self::mdlTablaMovimientosAnio($anio);
+		$anio = (int) substr($tablaMov, -4);
+		$db = Conexion::conectar();
+		return self::mdlT15Docs($db, $tablaMov, $anio . "-01-01");
+	}
+
+	static public function mdlT15Ejecutar($documentos, $anio = null)
+	{
+		$tablaMov = self::mdlTablaMovimientosAnio($anio);
+		$anio = (int) substr($tablaMov, -4);
+		$modelos = self::T15_MODELOS_SQL;
+
+		$db = Conexion::conectar();
+		self::mdlT15CrearTablas($db); // DDL fuera de la transacción
+
+		$db->beginTransaction();
+		try {
+			// Se recalcula todo en el servidor: no se confía en lo que mande el navegador.
+			$docs = self::mdlT15Docs($db, $tablaMov, $anio . "-01-01", $documentos);
+
+			$movidos = 0;
+			$partidos = 0;
+			$omitidos = array();
+
+			$stTotal = $db->prepare("
+				UPDATE movimientos_cabecerajf
+				SET total = (SELECT COALESCE(SUM(cantidad), 0) FROM {$tablaMov} WHERE documento = :d1 AND tipo = 'E20')
+				WHERE documento = :d2 AND tipo = 'E20'
+			");
+
+			foreach ($docs as $doc) {
+				$orig = $doc["documento"];
+
+				if ($doc["accion"] === "MOVER") {
+					$db->prepare("INSERT IGNORE INTO ingreso_taller_migradojf (documento, taller_original, taller_nuevo) VALUES (?, ?, 'T15')")
+						->execute(array($orig, $doc["taller_original"]));
+					$db->prepare("UPDATE movimientos_cabecerajf SET taller = 'T15' WHERE documento = ? AND tipo = 'E20'")
+						->execute(array($orig));
+					$db->prepare("UPDATE {$tablaMov} SET taller = 'T15' WHERE documento = ? AND tipo = 'E20'")
+						->execute(array($orig));
+					$movidos++;
+					continue;
+				}
+
+				// PARTIR: documento nuevo <orig>-15 con las líneas de los 4 modelos
+				$nuevo = $orig . "-15";
+				if (strlen($nuevo) > 20) {
+					$omitidos[] = $orig . " (código demasiado largo)";
+					continue;
+				}
+				$ex = $db->prepare("SELECT COUNT(*) FROM movimientos_cabecerajf WHERE documento = ?");
+				$ex->execute(array($nuevo));
+				if ((int) $ex->fetchColumn() > 0) {
+					$omitidos[] = $orig . " (ya existe " . $nuevo . ")";
+					continue;
+				}
+
+				$db->prepare("INSERT INTO ingreso_split_t15jf (documento_orig, documento_nuevo, taller_original) VALUES (?, ?, ?)")
+					->execute(array($orig, $nuevo, $doc["taller_original"]));
+
+				$db->prepare("
+					INSERT INTO movimientos_cabecerajf (tipo, usuario, guia, taller, documento, total, fecha, almacen)
+					SELECT tipo, usuario, guia, 'T15', ?, 0, fecha, almacen
+					FROM movimientos_cabecerajf
+					WHERE documento = ? AND tipo = 'E20'
+					LIMIT 1
+				")->execute(array($nuevo, $orig));
+
+				$db->prepare("
+					UPDATE {$tablaMov} d
+					INNER JOIN articulojf a ON a.articulo = d.articulo
+					SET d.documento = ?, d.taller = 'T15'
+					WHERE d.tipo = 'E20' AND d.documento = ? AND a.modelo IN ({$modelos})
+				")->execute(array($nuevo, $orig));
+
+				foreach (array($orig, $nuevo) as $x) {
+					$stTotal->execute(array(":d1" => $x, ":d2" => $x));
+				}
+				$partidos++;
+			}
+
+			$db->commit();
+			return array(
+				"ok" => true,
+				"movidos" => $movidos,
+				"partidos" => $partidos,
+				"omitidos" => $omitidos
+			);
+		} catch (Exception $e) {
+			if ($db->inTransaction()) {
+				$db->rollBack();
+			}
+			return array("ok" => false, "mensaje" => "Error al mover ingresos a T15; no se aplicó ningún cambio");
+		}
+	}
 }
