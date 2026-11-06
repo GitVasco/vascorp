@@ -1601,6 +1601,7 @@ class ControladorProgramacionTallerSemana
 		$anioHasta = isset($post["anio_hasta"]) ? (int) $post["anio_hasta"] : $anio;
 		$semanaHasta = isset($post["semana_hasta"]) ? (int) $post["semana_hasta"] : $semana;
 		$guia = isset($post["guia"]) ? trim((string) $post["guia"]) : "";
+		$imprimirTk = !isset($post["imprimir_tickets"]) || (string) $post["imprimir_tickets"] !== "0";
 		$itemsRaw = isset($post["items"]) ? $post["items"] : "[]";
 		$items = is_array($itemsRaw) ? $itemsRaw : json_decode($itemsRaw, true);
 
@@ -1689,7 +1690,8 @@ class ControladorProgramacionTallerSemana
 				$pend["taller"],
 				$guia,
 				$usuario,
-				isset($pend["fila"]["ordencorte"]) ? (int) $pend["fila"]["ordencorte"] : 0
+				isset($pend["fila"]["ordencorte"]) ? (int) $pend["fila"]["ordencorte"] : 0,
+				$imprimirTk
 			);
 			if (!empty($resp["ok"])) {
 				$procesados++;
@@ -1724,7 +1726,7 @@ class ControladorProgramacionTallerSemana
 	}
 
 	/** $ordencorte: OC de la programación; sus detalles de almacén de corte se liquidan primero. */
-	static private function ctrMandarUnArticuloPts($articulo, $cantidadPedida, $taller, $guia, $usuario, $ordencorte = 0)
+	static private function ctrMandarUnArticuloPts($articulo, $cantidadPedida, $taller, $guia, $usuario, $ordencorte = 0, $imprimirTk = true)
 	{
 		$esExterno = !ControladorSectores::ctrEsInterno($taller);
 		$imprimirTickets = ControladorSectores::ctrDebeImprimirTickets($taller);
@@ -1772,10 +1774,13 @@ class ControladorProgramacionTallerSemana
 		}
 
 		if ($imprimirTickets) {
-			try {
-				ControladorCortes::ctrImprimirTicketsPorCabecera($cod);
-			} catch (Exception $e) {
-				$aviso = trim($aviso . " error al imprimir tickets");
+			// El usuario puede desactivar solo la impresión; el flujo de datos no cambia.
+			if ($imprimirTk) {
+				try {
+					ControladorCortes::ctrImprimirTicketsPorCabecera($cod);
+				} catch (Exception $e) {
+					$aviso = trim($aviso . " error al imprimir tickets");
+				}
 			}
 		} else {
 			ModeloArticulos::mdlActualizarServicioCorte($articulo, $cantidadUsada, false);

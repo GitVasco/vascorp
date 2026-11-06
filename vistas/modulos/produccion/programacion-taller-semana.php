@@ -448,6 +448,13 @@ if (!$infoEnvHasta) {
                                     <label>Guía</label>
                                     <input type="text" class="form-control input-sm" id="envGuiaPts" placeholder="Obligatoria si es interno" maxlength="40">
                                 </div>
+                                <div class="pts-filtro" style="min-width:190px;">
+                                    <label>&nbsp;</label>
+                                    <label id="lblImprimirTicketsPts" style="display:block;margin:0;cursor:pointer;font-size:14px;font-weight:700;color:#8a5a00;background:#fff3cd;border:2px solid #f0ad4e;border-radius:4px;padding:5px 12px;line-height:20px;">
+                                        <input type="checkbox" id="envImprimirTicketsPts" checked style="width:18px;height:18px;margin:0 6px 0 0;vertical-align:middle;cursor:pointer;">
+                                        <i class="fa fa-print"></i> Imprimir tickets
+                                    </label>
+                                </div>
                                 <div class="pts-filtro pts-filtro-acciones">
                                     <label>&nbsp;</label>
                                     <button type="button" class="btn btn-success btn-sm" id="btnMandarEnvPts" disabled>

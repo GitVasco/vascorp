@@ -1782,6 +1782,10 @@ function mandarLoteEnvPts() {
         if (semanas.hasOwnProperty(k)) nSem += 1;
     }
     var textoConfirm = items.length + " talla(s) de " + nSem + " semana(s) saldrán del almacén de corte al taller programado.";
+    var imprimirTk = $("#envImprimirTicketsPts").is(":checked");
+    textoConfirm += imprimirTk
+        ? "\n\nSe imprimirán los tickets automáticamente (en talleres que los usan)."
+        : "\n\nNO se imprimirán tickets.";
 
     var go = function () {
         $("#btnMandarEnvPts").prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Mandando…');
@@ -1789,6 +1793,7 @@ function mandarLoteEnvPts() {
         var payload = payloadRangoEnvPts();
         payload.accion = "mandarTallerLote";
         payload.guia = guia;
+        payload.imprimir_tickets = imprimirTk ? 1 : 0;
         payload.items = JSON.stringify(items);
         $.post("ajax/programacion-taller-semana.ajax.php", payload, function (resp) {
             $("#btnMandarEnvPts").html('Mandar seleccionados <span id="nSelEnvPts">(0)</span>');
@@ -2772,3 +2777,9 @@ $(document).on("change", "#tablaEnviarPts .chkGrupoEnvPts", function () {
 $(document).on("change", "#tablaEnviarPts .chkEnvPts", actualizarContadorSelEnvPts);
 $(document).on("change", "#tablaEnviarPts .qtyEnvPts", actualizarContadorSelEnvPts);
 $("#btnMandarEnvPts").on("click", mandarLoteEnvPts);
+$("#envImprimirTicketsPts").on("change", function () {
+    var on = $(this).is(":checked");
+    $("#lblImprimirTicketsPts").css(on
+        ? { background: "#fff3cd", borderColor: "#f0ad4e", color: "#8a5a00" }
+        : { background: "#f2dede", borderColor: "#d9534f", color: "#a94442" });
+});
