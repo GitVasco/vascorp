@@ -53,6 +53,7 @@
         '27'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
         '31'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
         '34'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
+        '35'  => ['marca' => 'JACKYFORM', 'opcion' => '1'],
         '18'  => ['marca' => 'VASCO',     'opcion' => '2'],
         '18A' => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
         '24'  => ['marca' => 'ROSAFLOR',  'opcion' => '2'],
