@@ -1212,7 +1212,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear")) { ?>
-    <script src="vistas/js/gre-manual.js?v=14"></script>
+    <script src="vistas/js/gre-manual.js?v=15"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
     <script src="vistas/js/cuadre-ventas.js?v=47"></script>

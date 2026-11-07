@@ -13,14 +13,25 @@
         return $("<div>").text(s == null ? "" : s).html();
     }
     function err(msg) {
-        if (window.toastr) toastr.error(msg);
-        else alert(msg);
+        swal({ type: "warning", title: "Atención", text: msg });
+    }
+    // Confirmación con SweetAlert (si cancela no hace nada)
+    function confirmar(titulo, texto, boton, alAceptar, peligro) {
+        swal({
+            title: titulo,
+            text: texto,
+            type: peligro ? "warning" : "question",
+            showCancelButton: true,
+            confirmButtonColor: peligro ? "#d33" : "#3085d6",
+            confirmButtonText: boton,
+            cancelButtonText: "Cancelar"
+        }).then(function () { alAceptar(); }, function () {});
     }
     function refrescarSP() {
         $("#greForm select.selectpicker").selectpicker("refresh");
     }
     function ok(msg) {
-        if (window.toastr) toastr.success(msg);
+        swal({ type: "success", title: msg, timer: 1800, showConfirmButton: false });
     }
     function ajaxErr(xhr) {
         var m = "Error de comunicación.";
@@ -109,13 +120,15 @@
         $("#greBuscar").on("click", cargar);
         $("#greTabla").on("click", ".greEnviar", function () {
             var id = $(this).data("id"), doc = $(this).data("doc");
-            if (!confirm("¿Enviar la guía " + doc + " a EFACT? Después ya no se podrá editar.")) return;
-            $.post(URL, { accion: "enviar", id: id }, function (r) { ok("Se generó el CSV de " + r.documento); cargar(); }, "json").fail(ajaxErr);
+            confirmar("¿Enviar la guía " + doc + " a EFACT?", "Después ya no se podrá editar.", "Sí, enviar", function () {
+                $.post(URL, { accion: "enviar", id: id }, function (r) { ok("Se generó el CSV de " + r.documento); cargar(); }, "json").fail(ajaxErr);
+            });
         });
         $("#greTabla").on("click", ".greAnular", function () {
             var id = $(this).data("id"), doc = $(this).data("doc");
-            if (!confirm("¿Anular la guía " + doc + "?")) return;
-            $.post(URL, { accion: "anular", id: id }, function () { ok("Guía anulada"); cargar(); }, "json").fail(ajaxErr);
+            confirmar("¿Anular la guía " + doc + "?", "Los servicios que ampara quedarán libres para otra guía.", "Sí, anular", function () {
+                $.post(URL, { accion: "anular", id: id }, function () { ok("Guía anulada"); cargar(); }, "json").fail(ajaxErr);
+            }, true);
         });
         // Convertir interna -> electrónica
         var convId = 0;
@@ -141,8 +154,9 @@
         });
         $("#greTabla").on("click", ".greEliminar", function () {
             var id = $(this).data("id"), doc = $(this).data("doc");
-            if (!confirm("¿ELIMINAR la guía " + doc + "? Se borra definitivamente (el correlativo no cambia).")) return;
-            $.post(URL, { accion: "eliminar", id: id }, function () { ok("Guía eliminada"); cargar(); }, "json").fail(ajaxErr);
+            confirmar("¿Eliminar la guía " + doc + "?", "Se borra definitivamente (el correlativo no cambia).", "Sí, eliminar", function () {
+                $.post(URL, { accion: "eliminar", id: id }, function () { ok("Guía eliminada"); cargar(); }, "json").fail(ajaxErr);
+            }, true);
         });
 
         // Corregir correlativo
@@ -175,11 +189,12 @@
             var s = seriesCor[$("#greCorSerie").val()];
             if (!s) return;
             var n = $("#greCorNumero").val();
-            if (!confirm("¿Dejar el último usado de " + s.serie + " en " + n + "?")) return;
-            $.post(URL, { accion: "correlativo-fijar", serie: s.serie, numero: n }, function (r) {
-                ok("Correlativo actualizado. Próxima: " + r.proximo);
-                $("#modalGreCorrelativo").modal("hide");
-            }, "json").fail(ajaxErr);
+            confirmar("¿Cambiar el correlativo de " + s.serie + "?", "El último número usado quedará en " + n + ".", "Sí, cambiar", function () {
+                $.post(URL, { accion: "correlativo-fijar", serie: s.serie, numero: n }, function (r) {
+                    $("#modalGreCorrelativo").modal("hide");
+                    ok("Correlativo actualizado. Próxima: " + r.proximo);
+                }, "json").fail(ajaxErr);
+            });
         });
         cargar();
     }
@@ -504,7 +519,11 @@
             if (!id && !sv && !ord && nt) agregarNota(String(nt), { nueva: true });
             if (id) {
                 $.getJSON(URL, { accion: "obtener", id: id }, function (r) {
-                    if (r.guia.estado !== "GENERADO") { err("Solo se edita una guía GENERADA."); window.location = "gre-manual"; return; }
+                    if (r.guia.estado !== "GENERADO") {
+                        var irListado = function () { window.location = "gre-manual"; };
+                        swal({ type: "warning", title: "Atención", text: "Solo se edita una guía GENERADA." }).then(irListado, irListado);
+                        return;
+                    }
                     poblar(r.guia);
                     var ag = $("#greForm").data("agregar");
                     if (ag) agregarNota(String(ag), {});
@@ -625,8 +644,8 @@
         $("#greGuardar").on("click", function () {
             var $b = $(this).prop("disabled", true);
             $.post(URL, recolectar(), function (r) {
-                ok("Guía " + r.documento + " guardada");
-                window.location = "gre-manual";
+                var irListado = function () { window.location = "gre-manual"; };
+                swal({ type: "success", title: "Guía " + r.documento + " guardada", timer: 1300, showConfirmButton: false }).then(irListado, irListado);
             }, "json").fail(function (xhr) { ajaxErr(xhr); $b.prop("disabled", false); });
         });
     }
