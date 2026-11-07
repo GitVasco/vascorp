@@ -55,6 +55,17 @@ function bloqueDatosGreSector($p)
             <label>Dirección</label>
             <input type="text" class="form-control" name="<?= $p; ?>GreDireccion" id="<?= $p; ?>GreDireccion" maxlength="100">
           </div>
+
+          <div class="row" style="margin-top:10px">
+            <div class="form-group col-sm-6" style="margin-bottom:0">
+              <label>Cuenta de detracción (B. Nación)</label>
+              <input type="text" class="form-control" name="<?= $p; ?>CuentaDetraccion" id="<?= $p; ?>CuentaDetraccion" maxlength="30" placeholder="Nº de cuenta">
+            </div>
+            <div class="form-group col-sm-6" style="margin-bottom:0">
+              <label>Cuenta BCP</label>
+              <input type="text" class="form-control" name="<?= $p; ?>CuentaBcp" id="<?= $p; ?>CuentaBcp" maxlength="30" placeholder="Nº de cuenta">
+            </div>
+          </div>
         </div>
 <?php
 }
@@ -113,7 +124,8 @@ function bloqueDatosGreSector($p)
            <th>Tipo</th>
            <th>Documento</th>
            <th>Razón social</th>
-           <th>Dirección (guía)</th>
+           <th>Cta. detracción</th>
+           <th>Cta. BCP</th>
            <th>Color</th>
            <th>Estado</th>
            <th>Acciones</th>

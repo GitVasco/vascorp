@@ -211,6 +211,8 @@ $(".tablaSectores").on("click", ".btnEditarSector", function () {
         url: "ajax/sectores.ajax.php", method: "POST", data: datos, cache: false, contentType: false, processData: false, dataType: "json",
         success: function (r) {
             llenarBloqueGre("editar", r ? r.gre : null);
+            $("#editarCuentaDetraccion").val(r ? r.cuenta_detraccion : "");
+            $("#editarCuentaBcp").val(r ? r.cuenta_bcp : "");
             toggleBloqueGre("editar");
         }
     });

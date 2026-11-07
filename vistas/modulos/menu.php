@@ -942,7 +942,7 @@
                     "seguimiento", "enviados-taller", "listar-documento", "ajuste-taller",
                     "urgencias-produccion", "urgencias-almacen", "urgencias-corte", "urgencias-plan",
                     "urgencias-maestro", "transferencias-apt", "crear-transferencias-apt", "estampado", "tampografia", "prehormado", "arreglos", "crear-arreglos", "cerrar-arreglos", "en-talleres",
-                    "programacion-taller-semana", "seguimiento-recetas"
+                    "programacion-taller-semana", "seguimiento-recetas", "ordenes-servicio-prod", "liquidaciones-servicio-prod"
                 ];
 
                 $isActiveProduccion = in_array($_GET["ruta"], $rutasActivasProduccion) ? 'active' : '';
@@ -958,7 +958,7 @@
                     <ul class="treeview-menu">
 
                         <?php
-                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "programacion-taller-semana", "seguimiento-recetas"];
+                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "programacion-taller-semana", "seguimiento-recetas", "ordenes-servicio-prod", "liquidaciones-servicio-prod"];
                         $isActiveProgramación = in_array($_GET["ruta"], $rutasActivasProgramación) ? 'active' : '';
                         ?>
 
@@ -986,9 +986,19 @@
                                     <a href="servicios"><i class="fa fa-circle-o"></i> Servicios</a>
                                 </li>
 
+                                <!-- ÓRDENES DE SERVICIO (sustento SUNAT) -->
+                                <li class="<?= $_GET['ruta'] == 'ordenes-servicio-prod' ? 'active' : '' ?>">
+                                    <a href="ordenes-servicio-prod"><i class="fa fa-circle-o"></i> Órdenes de servicio</a>
+                                </li>
+
                                 <!-- CIERRES -->
                                 <li class="<?= $_GET['ruta'] == 'cierres' ? 'active' : '' ?>">
                                     <a href="cierres"><i class="fa fa-circle-o"></i> Cierres</a>
+                                </li>
+
+                                <!-- LIQUIDACIONES DE SERVICIOS (pago a talleres) -->
+                                <li class="<?= $_GET['ruta'] == 'liquidaciones-servicio-prod' ? 'active' : '' ?>">
+                                    <a href="liquidaciones-servicio-prod"><i class="fa fa-circle-o"></i> Liquidaciones</a>
                                 </li>
 
                                 <!-- ARREGLOS -->

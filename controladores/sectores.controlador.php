@@ -41,6 +41,23 @@ class ControladorSectores{
 
 	}
 
+	/** Cuentas bancarias (detracción / BCP): solo dígitos, guiones y espacios; devuelve array o msg de error. */
+	static private function cuentasPost($p){
+
+		$out = array("ok" => true, "msg" => "", "cuenta_detraccion" => "", "cuenta_bcp" => "");
+		foreach (array("cuenta_detraccion" => "CuentaDetraccion", "cuenta_bcp" => "CuentaBcp") as $k => $campo) {
+			$v = isset($_POST[$p . $campo]) ? trim((string) $_POST[$p . $campo]) : "";
+			if ($v !== "" && !preg_match('/^[0-9][0-9\- ]{5,29}$/', $v)) {
+				$out["ok"] = false;
+				$out["msg"] = "La cuenta " . ($k === "cuenta_bcp" ? "BCP" : "de detracción") . " solo debe tener números y guiones (6 a 30 caracteres).";
+				return $out;
+			}
+			$out[$k] = $v;
+		}
+		return $out;
+
+	}
+
 	static private function greAvisoError($msg){
 
 		echo '<script>swal({type: "error", title: "Datos para guía de remisión", text: ' . json_encode($msg) . ', showConfirmButton: true, confirmButtonText: "Cerrar"});</script>';
@@ -49,8 +66,11 @@ class ControladorSectores{
 
 	static private function greGuardarDatos($cod, $g){
 
-		if (!$g["vacio"] && $g["ok"]) {
-			require_once __DIR__ . "/../modelos/gre-manual.modelo.php";
+		require_once __DIR__ . "/../modelos/gre-manual.modelo.php";
+		if ($g["vacio"]) {
+			// Todo vacío = el usuario quitó los datos fiscales: se elimina el registro guardado
+			ModeloGreManual::mdlEliminarDatosTaller($cod);
+		} elseif ($g["ok"]) {
 			$usuario = isset($_SESSION["nombre"]) ? $_SESSION["nombre"] : "";
 			ModeloGreManual::mdlGuardarDatosTaller($cod, $g["datos"], $usuario);
 		}
@@ -74,6 +94,11 @@ class ControladorSectores{
 					           "tipo"=>$tipo,
 					           "estado"=>$estado,
 					           "color"=>$color);
+
+			   	$cuentas = self::cuentasPost("nuevo");
+			   	if(!$cuentas["ok"]){ self::greAvisoError($cuentas["msg"]); return; }
+			   	$datos["cuenta_detraccion"] = $cuentas["cuenta_detraccion"];
+			   	$datos["cuenta_bcp"] = $cuentas["cuenta_bcp"];
 
 			   	$gre = array("vacio" => true, "ok" => true);
 			   	if($tipo === 1){
@@ -183,6 +208,11 @@ class ControladorSectores{
 					           "tipo"=>$tipo,
 					           "estado"=>$estado,
 					           "color"=>$color);
+
+			   	$cuentas = self::cuentasPost("editar");
+			   	if(!$cuentas["ok"]){ self::greAvisoError($cuentas["msg"]); return; }
+			   	$datos["cuenta_detraccion"] = $cuentas["cuenta_detraccion"];
+			   	$datos["cuenta_bcp"] = $cuentas["cuenta_bcp"];
 
 			   	$gre = array("vacio" => true, "ok" => true);
 			   	if($tipo === 1){

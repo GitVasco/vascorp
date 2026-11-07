@@ -57,16 +57,16 @@ class TablaSectores
 				$g = $datosGre[$cod];
 				$docHtml = htmlspecialchars((isset($tiposDoc[$g["tipo_doc"]]) ? $tiposDoc[$g["tipo_doc"]] : "") . " " . $g["doc"], ENT_QUOTES, "UTF-8");
 				$razonHtml = htmlspecialchars($g["razon_social"], ENT_QUOTES, "UTF-8");
-				$dirHtml = htmlspecialchars($g["direccion"] . ($g["dist"] !== "" ? " - " . $g["dist"] : ""), ENT_QUOTES, "UTF-8");
 			} elseif ($tipo === "SERVICIO") {
 				$docHtml = "<span class='label label-warning'>Sin datos</span>";
 				$razonHtml = "";
-				$dirHtml = "";
 			} else {
 				$docHtml = "<span class='text-muted'>—</span>";
 				$razonHtml = "";
-				$dirHtml = "";
 			}
+
+			$cdetHtml = isset($fila["cuenta_detraccion"]) ? htmlspecialchars((string) $fila["cuenta_detraccion"], ENT_QUOTES, "UTF-8") : "";
+			$cbcpHtml = isset($fila["cuenta_bcp"]) ? htmlspecialchars((string) $fila["cuenta_bcp"], ENT_QUOTES, "UTF-8") : "";
 
 			$data[] = array(
 				$cod,
@@ -74,7 +74,8 @@ class TablaSectores
 				$tipo,
 				$docHtml,
 				$razonHtml,
-				$dirHtml,
+				$cdetHtml,
+				$cbcpHtml,
 				$colorHtml,
 				$estadoHtml,
 				$botones

@@ -135,8 +135,8 @@ class ModeloSectores{
 		);
 
 		$stmt = Conexion::conectar()->prepare(
-			"INSERT INTO sectorjf (cod_sector, nom_sector, tipo, estado, color)
-			 VALUES (:codigo, :nombre, :tipo, :estado, :color)"
+			"INSERT INTO sectorjf (cod_sector, nom_sector, tipo, estado, color, cuenta_detraccion, cuenta_bcp)
+			 VALUES (:codigo, :nombre, :tipo, :estado, :color, :cdet, :cbcp)"
 		);
 
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
@@ -144,6 +144,10 @@ class ModeloSectores{
 		$stmt->bindParam(":tipo", $tipo, PDO::PARAM_INT);
 		$stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
 		$stmt->bindParam(":color", $color, PDO::PARAM_STR);
+		$cdet = (isset($datos["cuenta_detraccion"]) && $datos["cuenta_detraccion"] !== "") ? $datos["cuenta_detraccion"] : null;
+		$cbcp = (isset($datos["cuenta_bcp"]) && $datos["cuenta_bcp"] !== "") ? $datos["cuenta_bcp"] : null;
+		$stmt->bindParam(":cdet", $cdet, PDO::PARAM_STR);
+		$stmt->bindParam(":cbcp", $cbcp, PDO::PARAM_STR);
 
 		if($stmt->execute()){
 
@@ -219,7 +223,9 @@ class ModeloSectores{
 			     nom_sector = :sector,
 			     tipo = :tipo,
 			     estado = :estado,
-			     color = :color
+			     color = :color,
+			     cuenta_detraccion = :cdet,
+			     cuenta_bcp = :cbcp
 			 WHERE id = :valor"
 		);
 
@@ -229,6 +235,10 @@ class ModeloSectores{
 		$stmt->bindParam(":tipo", $tipo, PDO::PARAM_INT);
 		$stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
 		$stmt->bindParam(":color", $color, PDO::PARAM_STR);
+		$cdet = (isset($datos["cuenta_detraccion"]) && $datos["cuenta_detraccion"] !== "") ? $datos["cuenta_detraccion"] : null;
+		$cbcp = (isset($datos["cuenta_bcp"]) && $datos["cuenta_bcp"] !== "") ? $datos["cuenta_bcp"] : null;
+		$stmt->bindParam(":cdet", $cdet, PDO::PARAM_STR);
+		$stmt->bindParam(":cbcp", $cbcp, PDO::PARAM_STR);
 
 		if($stmt->execute()){
 

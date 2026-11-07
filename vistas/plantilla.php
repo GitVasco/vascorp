@@ -103,6 +103,10 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "MP en recetas | Vasco System";
         } elseif ($_GET["ruta"] === "seguimiento-recetas") {
             $__tituloVentana = "Seguimiento recetas | Vasco System";
+        } elseif ($_GET["ruta"] === "ordenes-servicio-prod") {
+            $__tituloVentana = "Órdenes de servicio | Vasco System";
+        } elseif ($_GET["ruta"] === "liquidaciones-servicio-prod") {
+            $__tituloVentana = "Liquidaciones de servicios | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
             $__tituloVentana = "NC / ND | Vasco System";
         } elseif ($_GET["ruta"] === "notas-credito") {
@@ -775,7 +779,9 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "en-talleres" ||
                 $_GET["ruta"] == "modelo-color-taller" ||
                 $_GET["ruta"] == "programacion-taller-semana" ||
-                $_GET["ruta"] == "seguimiento-recetas"
+                $_GET["ruta"] == "seguimiento-recetas" ||
+                $_GET["ruta"] == "ordenes-servicio-prod" ||
+                $_GET["ruta"] == "liquidaciones-servicio-prod"
             ) {
 
                 include "modulos/produccion/" . $_GET["ruta"] . ".php";
@@ -1225,7 +1231,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "reportes-generales-v2") { ?>
     <script src="vistas/js/reportes-generales-v2.js?v=16"></script>
     <?php } ?>
-    <script src="vistas/js/sectores.js?v=4"></script>
+    <script src="vistas/js/sectores.js?v=5"></script>
     <script src="vistas/js/paras.js"></script>
     <script src="vistas/js/asistencias.js"></script>
     <script src="vistas/js/produccion.js"></script>
@@ -1235,6 +1241,8 @@ CUERPO DOCUMENTO
     <script src="vistas/js/condicionesventa.js"></script>
     <script src="vistas/js/unidadesmedida.js"></script>
     <script src="vistas/js/servicios.js"></script>
+    <script src="vistas/js/ordenes-servicio-prod.js?v=4"></script>
+    <script src="vistas/js/liquidaciones-servicio-prod.js?v=2"></script>
     <script src="vistas/js/bancos.js"></script>
     <script src="vistas/js/cuentas.js?v=4"></script>
     <script src="vistas/js/vendedor.js"></script>

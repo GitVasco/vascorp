@@ -546,6 +546,12 @@ class ModeloGreManual
         ));
     }
 
+    public static function mdlEliminarDatosTaller($cod)
+    {
+        $stmt = Conexion::conectar()->prepare("DELETE FROM gre_sector_datosjf WHERE cod_sector = :cod");
+        return $stmt->execute(array(":cod" => $cod));
+    }
+
     /** Servicio + taller + ítems agrupados por modelo + guía existente (si la hay). */
     public static function mdlServicioParaGuia($codigo)
     {
