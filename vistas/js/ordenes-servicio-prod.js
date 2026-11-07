@@ -64,8 +64,9 @@
                     '<td class="text-right">' + num(o.total_unidades) + "</td>" +
                     '<td class="text-right">' + num(o.total_importe, 2) + "</td>" +
                     '<td><span class="label label-' + (anulada ? "danger" : "success") + '">' + esc(o.estado) + "</span>" +
-                    (!anulada && +o.guias_pendientes > 0 ? ' <span class="label label-warning">' + o.guias_pendientes + " guía(s) pendiente(s)</span>" : "") + "</td>" +
-                    '<td><a class="btn btn-default btn-sm" target="_blank" href="ajax/ordenes-servicio-prod.pdf.php?id=' + o.id + '"><i class="fa fa-print"></i> Imprimir</a> ' +
+                    (!anulada && +o.guias_pendientes > 0 ? ' <a href="#" class="label label-warning ospGuias" data-id="' + o.id + '" data-num="' + esc(o.numero) + '" title="Emitir guías">' + o.guias_pendientes + " guía(s) pendiente(s)</a>" : "") + "</td>" +
+                    '<td>' + (anulada ? "" : '<button class="btn btn-success btn-sm ospGuias" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-truck"></i> Guías</button> ') +
+                    '<a class="btn btn-default btn-sm" target="_blank" href="ajax/ordenes-servicio-prod.pdf.php?id=' + o.id + '"><i class="fa fa-print"></i> Imprimir</a> ' +
                     (anulada ? "" : '<button class="btn btn-warning btn-sm ospAnular" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-ban"></i> Anular</button> ') +
                     '<button class="btn btn-danger btn-sm ospEliminar" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-trash"></i> Eliminar</button>' +
                     "</td></tr>";
@@ -165,8 +166,67 @@
             swal({ type: "success", title: "Orden " + r.numero + " emitida", timer: 1800, showConfirmButton: false });
             window.open("ajax/ordenes-servicio-prod.pdf.php?id=" + r.id, "_blank");
             listar();
+            setTimeout(function () { abrirGuias(r.id, r.numero); }, 500);
         }, "json").fail(function (xhr) { $b.prop("disabled", false); errorAjax(xhr); });
     }
+
+    /* ---------- Guías de remisión de la orden ---------- */
+    var guiasOrden = { id: 0, num: "" };
+
+    function cargarGuias() {
+        $("#ospGuiasTabla").html('<p class="text-center text-muted"><i class="fa fa-spinner fa-spin"></i> Cargando...</p>');
+        $.getJSON(URL, { accion: "ver", id: guiasOrden.id }, function (r) {
+            if (!r.ok) { $("#ospGuiasTabla").html('<div class="alert alert-danger">' + esc(r.msg) + "</div>"); return; }
+            var o = r.orden, pend = 0;
+            var h = '<table class="table table-bordered table-condensed"><thead><tr>' +
+                "<th>Servicio</th><th>Fecha</th><th class='text-right'>Unidades</th><th>Guía de remisión</th><th>Independiente</th></tr></thead><tbody>";
+            $.each(o.servicios, function (i, s) {
+                var tiene = s.guia !== null && s.guia !== "";
+                if (!tiene) pend++;
+                var url = "index.php?ruta=gre-manual-crear&servicio=" + encodeURIComponent(s.servicio);
+                h += "<tr><td>" + esc(s.servicio) + "</td><td>" + fecha(s.fecha_servicio) + "</td>" +
+                    '<td class="text-right">' + num(s.unidades) + "</td><td>" +
+                    (tiene ? '<span class="label label-success">' + esc(s.guia) + "</span>" : '<span class="label label-warning">PENDIENTE</span>') + "</td><td>" +
+                    (tiene || !r.puede_guia || o.estado === "ANULADA" ? "" :
+                        '<a class="btn btn-success btn-xs" target="_blank" rel="noopener" href="' + url + '"><i class="fa fa-truck"></i> Emitir guía</a>') +
+                    "</td></tr>";
+            });
+            h += "</tbody></table>";
+            $("#ospGuiasTabla").html(h);
+            if (pend > 0 && r.puede_guia && o.estado !== "ANULADA") {
+                $("#ospGuiasTabla").append('<div class="well well-sm" style="margin-top:10px">' +
+                    '<a class="btn btn-primary btn-sm" target="_blank" rel="noopener" href="index.php?ruta=gre-manual-crear&orden=' + o.id + '">' +
+                    '<i class="fa fa-truck"></i> Emitir una guía global (' + pend + ' servicio' + (pend > 1 ? "s" : "") + ')</a> ' +
+                    '<span class="text-muted">Una sola guía que ampara todos los servicios pendientes de esta orden.</span></div>');
+            }
+            var av;
+            if (!r.puede_guia && pend) {
+                av = '<div class="alert alert-warning">No tiene permiso para emitir guías de remisión; pida a quien las emite que las genere desde Servicios.</div>';
+            } else if (pend) {
+                av = '<div class="alert alert-info"><b>' + pend + " de " + o.servicios.length + "</b> servicio(s) aún sin guía.</div>";
+            } else {
+                av = '<div class="alert alert-success">Todos los servicios de esta orden tienen guía de remisión.</div>';
+            }
+            $("#ospGuiasAviso").html(av);
+        }).fail(function (xhr) { $("#ospGuiasTabla").empty(); errorAjax(xhr); });
+    }
+
+    function abrirGuias(id, numOrden) {
+        guiasOrden = { id: id, num: numOrden };
+        $("#ospGuiasNum").text(numOrden);
+        $("#ospModalGuias").modal("show");
+        cargarGuias();
+    }
+
+    $("#ospTabla").on("click", ".ospGuias", function (e) {
+        e.preventDefault();
+        abrirGuias($(this).data("id"), $(this).data("num"));
+    });
+    $("#ospGuiasActualizar").on("click", cargarGuias);
+    // Al volver de la pestaña de la guía, refresca solo
+    $(window).on("focus", function () {
+        if ($("#ospModalGuias").hasClass("in")) cargarGuias();
+    });
 
     /* ---------- Anular ---------- */
     $("#ospTabla").on("click", ".ospAnular", function () {

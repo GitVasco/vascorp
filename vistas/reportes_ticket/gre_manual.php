@@ -27,8 +27,6 @@ $motivoNombre = isset($catMotivos[$g["motivo_cod"]]) ? $catMotivos[$g["motivo_co
 if ($g["motivo_cod"] === "13") {
     $motivoNombre = "OTROS";
 }
-$matriz = $g["servicio"] ? ModeloGreManual::mdlServicioMatriz($g["servicio"]) : array();
-$svInfo = $g["servicio"] ? ModeloGreManual::mdlServicioParaGuia($g["servicio"]) : null;
 $tipoDoc = array("0" => "S/RUC", "1" => "DNI", "4" => "C.E.", "6" => "RUC", "7" => "PASAPORTE", "A" => "CED. DIPL.");
 $tipoRel = array("01" => "DAM", "02" => "Orden de entrega", "03" => "SCOP", "04" => "Manifiesto de carga", "05" => "Const. detracción", "06" => "Otros");
 
@@ -40,10 +38,16 @@ function fecha($f)
 {
     return $f ? date("d/m/Y", strtotime($f)) : "";
 }
+/** Cantidad con miles y decimales solo si los tiene (mínimo 2, máximo 3): 1,250 · 12.50 · 0.125 */
 function num($v)
 {
-    $v = rtrim(rtrim(number_format((float) $v, 3, ".", ""), "0"), ".");
-    return $v === "" ? "0" : $v;
+    $v = round((float) $v, 3);
+    if (floor($v) == $v) {
+        return number_format($v, 0, ".", ",");
+    }
+    $t = rtrim(number_format($v, 3, ".", ","), "0");
+    $dec = strlen($t) - strpos($t, ".") - 1;
+    return $dec < 2 ? $t . str_repeat("0", 2 - $dec) : $t;
 }
 ?>
 <!DOCTYPE html>
@@ -53,55 +57,46 @@ function num($v)
     <meta charset="utf-8">
     <title>Guía <?= h($g["documento"]); ?></title>
     <style>
-        @page { size: A4; margin: 12mm; }
-        * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; margin: 0; }
+        @page { size: A4; margin: 10mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        :root { --oscuro: #1c2c42; --acento: #3c8dbc; --claro: #eef3f8; --zebra: #f7f9fc; --linea: #c4cdd8; --ambar: #fff3cd; --ambar-t: #966000; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1b1b1b; margin: 0; }
         .hoja { max-width: 190mm; margin: 0 auto; position: relative; }
-        .cab { display: flex; justify-content: space-between; align-items: stretch; margin-bottom: 8px; }
-        .emp { flex: 1; padding-right: 10px; }
-        .emp h1 { font-size: 16px; margin: 0 0 3px; }
-        .emp p { margin: 1px 0; }
-        .caja { width: 62mm; border: 2px solid #000; text-align: center; padding: 8px 4px; }
-        .caja .t { font-weight: bold; font-size: 12px; }
-        .caja .n { font-weight: bold; font-size: 16px; margin-top: 6px; }
-        .nota { font-size: 9px; color: #666; text-align: center; margin: 14px 0 0; }
-        .aviso { border: 1px dashed #666; padding: 4px 6px; font-size: 10px; margin-bottom: 8px; text-align: center; }
-        .sec { border: 1px solid #000; margin-bottom: 6px; }
-        .sec > .tit { background: #e6e6e6; font-weight: bold; padding: 2px 6px; border-bottom: 1px solid #000; text-transform: uppercase; font-size: 10px; }
-        .sec > .cuerpo { padding: 4px 6px; }
-        .fila { display: flex; gap: 12px; }
+
+        /* Banda superior */
+        .banda { background: var(--oscuro); color: #fff; padding: 11px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--acento); }
+        .banda .emp b { font-size: 15px; letter-spacing: .3px; display: block; margin-bottom: 3px; }
+        .banda .emp span { display: block; color: #bed2e4; font-size: 9.5px; line-height: 1.5; }
+        .banda .doc { text-align: right; }
+        .banda .doc small { display: block; font-size: 9px; font-weight: bold; letter-spacing: .6px; color: #bed2e4; text-transform: uppercase; }
+        .banda .doc strong { display: block; font-size: 21px; margin-top: 2px; }
+
+        .nota { background: var(--claro); color: #4a5a6c; padding: 5px 9px; font-size: 9.5px; margin: 6px 0; text-align: center; }
+
+        /* Secciones */
+        .sec { border: 1px solid var(--linea); margin-bottom: 7px; }
+        .sec > .tit { background: var(--oscuro); color: #fff; font-weight: bold; padding: 4px 9px; text-transform: uppercase; font-size: 9.5px; letter-spacing: .4px; }
+        .sec > .cuerpo { padding: 5px 9px 3px; }
+        .fila { display: flex; gap: 14px; }
         .fila > div { flex: 1; }
-        .lbl { color: #444; font-size: 9px; text-transform: uppercase; display: block; }
-        .val { display: block; margin-bottom: 3px; min-height: 12px; }
-        table.items { width: 100%; border-collapse: collapse; }
-        table.items th, table.items td { border: 1px solid #000; padding: 3px 5px; }
-        table.items th { background: #e6e6e6; font-size: 10px; }
+        .fila.dos { gap: 7px; }
+        .lbl { color: #5b6b7e; font-size: 8.5px; text-transform: uppercase; letter-spacing: .3px; display: block; }
+        .val { display: block; margin-bottom: 4px; min-height: 12px; font-weight: bold; }
+        .val.n { font-weight: normal; }
+
+        /* Tablas */
+        table.items { width: 100%; border-collapse: collapse; margin-top: 2px; }
+        table.items th { background: #34495e; color: #fff; font-size: 9.5px; padding: 4px 5px; border: 1px solid #34495e; }
+        table.items td { border: 1px solid var(--linea); padding: 3px 5px; }
+        table.items tbody tr:nth-child(even) { background: var(--zebra); }
         .r { text-align: right; }
-        .firmas { display: flex; gap: 30px; margin-top: 40px; }
-        .firmas > div { flex: 1; border-top: 1px solid #000; text-align: center; padding-top: 3px; font-size: 10px; }
+        .totalbar { background: var(--oscuro); color: #fff; padding: 7px 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-weight: bold; }
+        
+        .firmas { display: flex; gap: 30px; margin-top: 46px; }
+        .firmas > div { flex: 1; border-top: 1px solid var(--oscuro); text-align: center; padding-top: 3px; font-size: 10px; color: var(--oscuro); }
+        .pie { font-size: 9px; color: #6b7785; margin: 10px 0 0; }
         .marca { position: fixed; top: 38%; left: 0; right: 0; text-align: center; font-size: 90px; color: rgba(200, 0, 0, .18); transform: rotate(-25deg); pointer-events: none; }
         .noprint { text-align: center; padding: 8px; background: #f4f4f4; border-bottom: 1px solid #ccc; }
-        table.mx { width: 100%; border-collapse: collapse; margin-top: 6px; }
-        table.mx th, table.mx td { border: 1px solid #000; padding: 3px 4px; text-align: center; }
-        table.mx th { background: #e6e6e6; font-size: 10px; }
-        table.mx td.l { text-align: left; }
-        table.mx td.r { text-align: right; }
-        table.mx tfoot td { font-weight: bold; background: #f0f0f0; }
-        .os-cab { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-        .os-cab .izq { display: flex; gap: 10px; align-items: flex-start; }
-        .os-cab img { height: 62px; }
-        .os-cab .emp p { margin: 1px 0; }
-        .os-cab .emp b { font-size: 13px; }
-        .os-cab .der { text-align: right; }
-        .os-cab .der .tit { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
-        .os-cab .der p { margin: 1px 0; }
-        .os-prov { margin: 8px 0 6px; }
-        .os-prov p { margin: 2px 0; }
-        .os-prov .e { display: inline-block; width: 82px; font-weight: bold; }
-        .os-atender { margin: 8px 0 4px; }
-        table.mx th { background: #3399ff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        table.mx tfoot td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .salto { page-break-before: always; break-before: page; }
         @media print { .noprint { display: none; } }
     </style>
 </head>
@@ -111,18 +106,19 @@ function num($v)
     <?php if ($g["estado"] === "ANULADO") { ?><div class="marca">ANULADA</div><?php } ?>
 
     <div class="hoja">
-        <div class="cab">
+        <div class="banda">
             <div class="emp">
-                <h1><?= h(strtoupper($r["nombre"])); ?></h1>
-                <p><?= h($r["direccion"] . " " . $r["urb"]); ?></p>
-                <p><?= h($r["dist"] . " - " . $r["prov"] . " - " . $r["dpto"]); ?></p>
+                <b><?= h(strtoupper($r["nombre"])); ?></b>
+                <span>RUC <?= h($r["doc"]); ?></span>
+                <span><?= h($r["direccion"] . " " . $r["urb"] . " · " . $r["dist"] . " - " . $r["prov"] . " - " . $r["dpto"]); ?></span>
             </div>
-            <div class="caja">
-                <div class="t">RUC <?= h($r["doc"]); ?></div>
-                <div class="t"><?= $interna ? "GUÍA DE REMISIÓN<br>INTERNA" : "GUÍA DE REMISIÓN<br>REMITENTE"; ?></div>
-                <div class="n"><?= h($g["documento"]); ?></div>
+            <div class="doc">
+                <small><?= $interna ? "Guía de remisión interna" : "Guía de remisión remitente"; ?></small>
+                <strong><?= h($g["documento"]); ?></strong>
             </div>
         </div>
+
+        <div style="height:8px"></div>
 
         <div class="sec">
             <div class="tit">Datos del traslado</div>
@@ -133,14 +129,14 @@ function num($v)
                     <div><span class="lbl">Peso bruto total</span><span class="val"><?= h(num($g["peso_kg"])); ?> KGM</span></div>
                     <div><span class="lbl">Bultos</span><span class="val"><?= h($g["bultos"]); ?></span></div>
                 </div>
-                <span class="lbl">Motivo de traslado</span>
-                <span class="val"><?= h($g["motivo_cod"] . " - " . $motivoNombre); ?></span>
+                <div class="fila">
+                    <div><span class="lbl">Motivo de traslado</span><span class="val"><?= h($g["motivo_cod"] . " - " . $motivoNombre); ?></span></div>
+                    <div><span class="lbl">Modalidad de transporte</span><span class="val"><?= $privado ? "02 - Transporte privado" : "01 - Transporte público"; ?></span></div>
+                </div>
                 <?php if (trim($g["motivo_desc"]) !== "" && strcasecmp(trim($g["motivo_desc"]), $motivoNombre) !== 0) { ?>
                     <span class="lbl">Descripción</span>
-                    <span class="val"><?= h($g["motivo_desc"]); ?></span>
+                    <span class="val n"><?= h($g["motivo_desc"]); ?></span>
                 <?php } ?>
-                <span class="lbl">Modalidad de transporte</span>
-                <span class="val"><?= $privado ? "02 - Transporte privado" : "01 - Transporte público"; ?></span>
             </div>
         </div>
 
@@ -154,21 +150,21 @@ function num($v)
             </div>
         </div>
 
-        <div class="fila" style="gap:6px">
+        <div class="fila dos">
             <div class="sec">
                 <div class="tit">Punto de partida</div>
                 <div class="cuerpo">
                     <span class="val"><?= h($g["par_direccion"]); ?></span>
-                    <span class="val"><?= h($g["par_dist"] . " - " . $g["par_prov"] . " - " . $g["par_dpto"]); ?></span>
-                    <span class="lbl">Ubigeo</span><span class="val"><?= h($g["par_ubigeo"]); ?></span>
+                    <span class="val n"><?= h($g["par_dist"] . " - " . $g["par_prov"] . " - " . $g["par_dpto"]); ?></span>
+                    <span class="lbl">Ubigeo</span><span class="val n"><?= h($g["par_ubigeo"]); ?></span>
                 </div>
             </div>
             <div class="sec">
                 <div class="tit">Punto de llegada</div>
                 <div class="cuerpo">
                     <span class="val"><?= h($g["lle_direccion"]); ?></span>
-                    <span class="val"><?= h($g["lle_dist"] . " - " . $g["lle_prov"] . " - " . $g["lle_dpto"]); ?></span>
-                    <span class="lbl">Ubigeo</span><span class="val"><?= h($g["lle_ubigeo"]); ?></span>
+                    <span class="val n"><?= h($g["lle_dist"] . " - " . $g["lle_prov"] . " - " . $g["lle_dpto"]); ?></span>
+                    <span class="lbl">Ubigeo</span><span class="val n"><?= h($g["lle_ubigeo"]); ?></span>
                 </div>
             </div>
         </div>
@@ -209,22 +205,32 @@ function num($v)
                 <?php } ?>
             </tbody>
         </table>
+        <?php
+        $unidadesItems = array();
+        $sumaItems = 0;
+        foreach ($g["items"] as $it) {
+            $unidadesItems[$it["unidad_cod"]] = true;
+            $sumaItems += (float) $it["cantidad"];
+        }
+        if (count($g["items"]) > 1 && count($unidadesItems) === 1) { ?>
+            <div class="totalbar"><span>TOTAL (<?= count($g["items"]); ?> ítems)</span><span><?= h(num($sumaItems)); ?></span></div>
+        <?php } ?>
 
         <?php if ($docs) { ?>
-            <div class="sec" style="margin-top:6px">
+            <div class="sec" style="margin-top:7px">
                 <div class="tit">Documentos relacionados</div>
                 <div class="cuerpo">
                     <?php foreach ($docs as $d) { ?>
-                        <span class="val"><?= h((isset($tipoRel[$d["tipo"]]) ? $tipoRel[$d["tipo"]] : $d["tipo"]) . ": " . $d["numero"]); ?></span>
+                        <span class="val n"><?= h((isset($tipoRel[$d["tipo"]]) ? $tipoRel[$d["tipo"]] : $d["tipo"]) . ": " . $d["numero"]); ?></span>
                     <?php } ?>
                 </div>
             </div>
         <?php } ?>
 
         <?php if ($g["observaciones"] !== "" && $g["observaciones"] !== null) { ?>
-            <div class="sec" style="margin-top:6px">
+            <div class="sec" style="margin-top:7px">
                 <div class="tit">Observaciones</div>
-                <div class="cuerpo"><?= h($g["observaciones"]); ?></div>
+                <div class="cuerpo"><span class="val n"><?= h($g["observaciones"]); ?></span></div>
             </div>
         <?php } ?>
 
@@ -233,135 +239,12 @@ function num($v)
             <div>Transportista / Conductor</div>
             <div>Recibí conforme</div>
         </div>
-        <p style="font-size:9px;color:#666;margin-top:10px">Registrado por <?= h($g["usuario_registro"]); ?> el <?= h(date("d/m/Y H:i", strtotime($g["creado_en"]))); ?></p>
+        <p class="pie">Registrado por <?= h($g["usuario_registro"]); ?> el <?= h(date("d/m/Y H:i", strtotime($g["creado_en"]))); ?></p>
         <?php if (!$interna) { ?>
-            <p class="nota">Documento interno. La guía electrónica válida es la emitida por EFACT.</p>
+            <div class="nota">Representación impresa de la Guía de Remisión Electrónica Remitente. Puede consultar su validez en el portal de SUNAT.</div>
         <?php } ?>
     </div>
 
-    <?php if ($g["servicio"]) {
-        $tallasL = array("S", "M", "L", "XL", "XXL", "XS", "", "");
-        $tallasA = array("28", "30", "32", "34", "36", "38", "40", "42");
-        $tallasB = array("3", "4", "6", "8", "10", "12", "14", "16");
-        $totT = array_fill(1, 8, 0);
-        $totQ = 0;
-        $totImporte = 0.0;
-        $sinPrecio = 0;
-    ?>
-        <div class="hoja salto">
-            <div class="os-cab">
-                <div class="izq">
-                    <img src="../img/plantilla/LogoJacky.png" alt="">
-                    <div class="emp">
-                        <p><b><?= h(strtoupper($r["nombre"])); ?></b></p>
-                        <p>R.U.C. : <?= h($r["doc"]); ?></p>
-                        <p>Dirección: <?= h($r["direccion"]); ?></p>
-                        <p>Distrito: <?= h($r["dist"]); ?></p>
-                    </div>
-                </div>
-                <div class="der">
-                    <div class="tit">Orden de Servicio N°: <?= h($g["servicio"]); ?></div>
-                    <p>Fec. Emisión: <?= h(fecha($svInfo && !empty($svInfo["fecha"]) ? $svInfo["fecha"] : $g["fecha_emision"])); ?></p>
-                    <p>Fec. Entrega: <?= h(fecha($g["fecha_traslado"])); ?></p>
-                    <p>Guía de remisión: <?= h($g["documento"]); ?></p>
-                </div>
-            </div>
-
-            <div class="os-prov">
-                <p><span class="e">Proveedor:</span> <?= h(($svInfo && $svInfo["taller"] ? $svInfo["taller"] . " - " : "") . $g["dest_nombre"]); ?>
-                    <?= $g["dest_doc"] !== "" ? " · " . h(isset($tipoDoc[$g["dest_tipo_doc"]]) ? $tipoDoc[$g["dest_tipo_doc"]] : "") . " " . h($g["dest_doc"]) : ""; ?></p>
-                <p><span class="e">Dirección:</span> <?= h($g["lle_direccion"] . " - " . $g["lle_dist"]); ?></p>
-                <p><span class="e">Observaciones:</span> <?= h($g["observaciones"]); ?></p>
-            </div>
-            <p class="os-atender">Sirva(n)se atender la siguiente Orden de Servicio :</p>
-
-            <table class="mx">
-                <thead>
-                    <tr>
-                        <th rowspan="3" style="width:22px">N°</th>
-                        <th rowspan="3" style="width:62px">Modelo</th>
-                        <th rowspan="3">Nombre</th>
-                        <th rowspan="3" style="width:70px">Color</th>
-                        <?php foreach ($tallasL as $t) { ?><th style="width:26px"><?= $t; ?></th><?php } ?>
-                        <th rowspan="3" style="width:36px">Total</th>
-                        <th rowspan="3" style="width:48px">P. docena</th>
-                        <th rowspan="3" style="width:56px">Importe</th>
-                    </tr>
-                    <tr><?php foreach ($tallasA as $t) { ?><th><?= $t; ?></th><?php } ?></tr>
-                    <tr><?php foreach ($tallasB as $t) { ?><th><?= $t; ?></th><?php } ?></tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($matriz as $i => $m) {
-                        $tiene = $m["precio_doc"] !== null && $m["precio_doc"] !== "";
-                        $importe = $tiene ? round(((float) $m["total"] / 12) * (float) $m["precio_doc"], 2) : 0;
-                        $totQ += (float) $m["total"];
-                        $totImporte += $importe;
-                        if (!$tiene) {
-                            $sinPrecio++;
-                        }
-                    ?>
-                        <tr>
-                            <td><?= $i + 1; ?></td>
-                            <td class="l"><?= h($m["modelo"]); ?></td>
-                            <td class="l"><?= h($m["nombre"]); ?></td>
-                            <td class="l"><?= h($m["color"]); ?></td>
-                            <?php for ($t = 1; $t <= 8; $t++) {
-                                $v = (float) $m["t$t"];
-                                $totT[$t] += $v; ?>
-                                <td><?= $v > 0 ? h(num($v)) : ""; ?></td>
-                            <?php } ?>
-                            <td><b><?= h(num($m["total"])); ?></b></td>
-                            <td class="r"><?= $tiene ? h(number_format((float) $m["precio_doc"], 2)) : "—"; ?></td>
-                            <td class="r"><?= $tiene ? h(number_format($importe, 2)) : "—"; ?></td>
-                        </tr>
-                    <?php } ?>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="4" class="r">TOTAL</td>
-                        <?php for ($t = 1; $t <= 8; $t++) { ?><td><?= $totT[$t] > 0 ? h(num($totT[$t])) : ""; ?></td><?php } ?>
-                        <td><?= h(num($totQ)); ?></td>
-                        <td></td>
-                        <td class="r"><?= h(number_format($totImporte, 2)); ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-            <p style="margin:6px 0 0"><b>Total a pagar: S/ <?= h(number_format($totImporte, 2)); ?></b>
-                <?= $sinPrecio ? " — " . $sinPrecio . " modelo(s) sin precio registrado para este taller" : ""; ?></p>
-            <?php
-            $itemsMp = array();
-            foreach ($g["items"] as $it) {
-                if ($it["origen"] === "MP") {
-                    $itemsMp[] = $it;
-                }
-            }
-            if ($itemsMp) { ?>
-                <p class="os-atender" style="margin-top:12px"><b>Materia prima / avíos que se envían junto con las prendas:</b></p>
-                <table class="mx">
-                    <thead>
-                        <tr><th style="width:22px">N°</th><th style="width:80px">Código</th><th>Descripción</th><th style="width:70px">Unidad</th><th style="width:70px">Cantidad</th></tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($itemsMp as $i => $it) { ?>
-                            <tr>
-                                <td><?= $i + 1; ?></td>
-                                <td class="l"><?= h($it["codigo"]); ?></td>
-                                <td class="l"><?= h($it["descripcion"]); ?></td>
-                                <td><?= h($it["unidad_desc"] !== "" ? $it["unidad_desc"] : $it["unidad_cod"]); ?></td>
-                                <td class="r"><?= h(num($it["cantidad"])); ?></td>
-                            </tr>
-                        <?php } ?>
-                    </tbody>
-                </table>
-            <?php } ?>
-            <p style="font-size:9px;color:#666;margin:4px 0 0">Precio por docena según la lista de precios del servicio (importe = total ÷ 12 × precio).</p>
-
-            <div class="firmas">
-                <div>ENTREGA - RESPONSABLE DEL ENVÍO</div>
-                <div>RECIBE - RESPONSABLE DEL SERVICIO</div>
-            </div>
-        </div>
-    <?php } ?>
 </body>
 
 </html>

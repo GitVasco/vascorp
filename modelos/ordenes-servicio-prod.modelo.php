@@ -99,32 +99,33 @@ class ModeloOrdenesServicioProd
     }
 
     /**
-     * Completa la guía de los servicios de órdenes EMITIDAS que aún no la tenían.
-     * La guía se emite después de la orden: puede venir de serviciosjf.guia o de la GRE manual
-     * (gre_manualjf.servicio, sin anuladas). Es lo único que cambia en una orden ya emitida.
+     * Recalcula la guía de los servicios de órdenes EMITIDAS según lo que existe vigente:
+     * serviciosjf.guia, o la GRE manual del servicio, o la GRE manual global que lo ampara
+     * (sin anuladas). Si la guía se anula o elimina, el servicio vuelve a quedar PENDIENTE.
+     * Es lo único que cambia en una orden ya emitida.
      */
     public static function mdlSincronizarGuias()
     {
         $pdo = self::pdo();
-        $pdo->exec(
-            "UPDATE ordenes_servicio_prod_servjf os
-             INNER JOIN ordenes_servicio_prodjf o ON o.id = os.id_orden AND o.estado = 'EMITIDA'
-             INNER JOIN serviciosjf sv ON sv.codigo = os.servicio
-             SET os.guia = sv.guia
-             WHERE (os.guia IS NULL OR os.guia = '') AND sv.guia IS NOT NULL AND sv.guia <> ''"
-        );
-        try {
-            $pdo->exec(
-                "UPDATE ordenes_servicio_prod_servjf os
+        $manual = "(SELECT MAX(g.documento) FROM gre_manualjf g WHERE g.servicio = os.servicio AND g.estado <> 'ANULADO')";
+        $global = "(SELECT MAX(g2.documento) FROM gre_manual_serviciojf l INNER JOIN gre_manualjf g2 ON g2.id = l.id_gre AND g2.estado <> 'ANULADO' WHERE l.servicio = os.servicio)";
+        $base = "UPDATE ordenes_servicio_prod_servjf os
                  INNER JOIN ordenes_servicio_prodjf o ON o.id = os.id_orden AND o.estado = 'EMITIDA'
-                 INNER JOIN (SELECT servicio, MAX(documento) AS documento FROM gre_manualjf
-                             WHERE estado <> 'ANULADO' AND servicio IS NOT NULL AND servicio <> '' GROUP BY servicio) g
-                         ON g.servicio = os.servicio
-                 SET os.guia = g.documento
-                 WHERE (os.guia IS NULL OR os.guia = '')"
-            );
-        } catch (Exception $e) {
-            // sin tabla de GRE manual: solo aplica serviciosjf.guia
+                 INNER JOIN serviciosjf sv ON sv.codigo = os.servicio
+                 SET os.guia = ";
+        // Orden de preferencia: guía del servicio, guía manual propia, guía global
+        $variantes = array(
+            $base . "COALESCE(NULLIF(sv.guia, ''), $manual, $global)",
+            $base . "COALESCE(NULLIF(sv.guia, ''), $manual)", // aún sin la tabla de guías globales
+            $base . "NULLIF(sv.guia, '')",                    // aún sin la tabla de GRE manual
+        );
+        foreach ($variantes as $sql) {
+            try {
+                $pdo->exec($sql);
+                return;
+            } catch (Exception $e) {
+                // probar la variante más simple
+            }
         }
     }
 

@@ -55,6 +55,32 @@
 </div>
 
 <!--=====================================
+MODAL GUÍAS DE LA ORDEN
+======================================-->
+<div id="ospModalGuias" class="modal fade" role="dialog">
+    <div class="modal-dialog" style="width: 70%;">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#00a65a;color:#fff">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-truck"></i> Guías de remisión · <span id="ospGuiasNum"></span></h4>
+            </div>
+            <div class="modal-body">
+                <div id="ospGuiasAviso"></div>
+                <div id="ospGuiasTabla"></div>
+                <p class="text-muted" style="margin-top:8px">
+                    <i class="fa fa-info-circle"></i> Puede emitir una guía <b>independiente</b> por servicio o una <b>global</b> que ampara todos los pendientes (se abre en otra pestaña con los datos ya cargados).
+                    Al guardarla, la pantalla se actualiza sola al volver; en la orden el número se completa solo.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-info" id="ospGuiasActualizar"><i class="fa fa-refresh"></i> Actualizar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--=====================================
 MODAL NUEVA ORDEN
 ======================================-->
 <div id="ospModalNueva" class="modal fade" role="dialog">

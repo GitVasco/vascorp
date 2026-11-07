@@ -7,6 +7,8 @@ date_default_timezone_set("America/Lima");
 require_once "../controladores/config.php";
 require_once "../modelos/conexion.php";
 require_once "../modelos/ordenes-servicio-prod.modelo.php";
+require_once "../modelos/gre-manual.modelo.php";
+require_once "../controladores/gre-manual.controlador.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -83,7 +85,7 @@ switch ($accion) {
         if (!$o) {
             ospJson(array("ok" => false, "msg" => "Orden no encontrada."), 404);
         }
-        ospJson(array("ok" => true, "orden" => $o));
+        ospJson(array("ok" => true, "orden" => $o, "puede_guia" => ControladorGreManual::puedeUsar()));
 
     case "anular":
         $motivo = isset($_POST["motivo"]) ? mb_substr(trim($_POST["motivo"]), 0, 200) : "";

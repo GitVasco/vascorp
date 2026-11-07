@@ -1212,7 +1212,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/vasco-solicitud-atencion.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear")) { ?>
-    <script src="vistas/js/gre-manual.js?v=12"></script>
+    <script src="vistas/js/gre-manual.js?v=14"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
     <script src="vistas/js/cuadre-ventas.js?v=47"></script>
@@ -1241,7 +1241,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/condicionesventa.js"></script>
     <script src="vistas/js/unidadesmedida.js"></script>
     <script src="vistas/js/servicios.js"></script>
-    <script src="vistas/js/ordenes-servicio-prod.js?v=4"></script>
+    <script src="vistas/js/ordenes-servicio-prod.js?v=6"></script>
     <script src="vistas/js/liquidaciones-servicio-prod.js?v=2"></script>
     <script src="vistas/js/bancos.js"></script>
     <script src="vistas/js/cuentas.js?v=4"></script>

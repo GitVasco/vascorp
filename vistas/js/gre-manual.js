@@ -6,6 +6,8 @@
     var docs = [];
     var tipoItem = "modelo";
     var servicioCod = "";
+    var ordenId = 0;          // guía global: orden de servicio
+    var serviciosOrden = [];  // guía global: servicios que ampara
 
     function esc(s) {
         return $("<div>").text(s == null ? "" : s).html();
@@ -66,7 +68,8 @@
             columns: [
                 { data: null, render: function (r) {
                     return "<b>" + esc(r.documento) + "</b>" + (r.doc_interno ? " <small class='text-muted' title='Número interno original'>(int. " + esc(r.doc_interno) + ")</small>" : "") +
-                        (r.servicio ? " <small class='text-muted'>· servicio " + esc(r.servicio) + "</small>" : "");
+                        (r.servicio ? " <small class='text-muted'>· servicio " + esc(r.servicio) + "</small>" : "") +
+                        (r.orden_servicio ? " <small class='text-muted'>· global orden " + esc(r.orden_numero || r.orden_servicio) + "</small>" : "");
                 } },
                 { data: "tipo", render: function (v) {
                     return v === "INTERNA" ? "<span class='label label-default'>INTERNA</span>" : "<span class='label label-info'>ELECTRÓNICA</span>";
@@ -86,12 +89,13 @@
                 { data: null, orderable: false, render: function (r) {
                     var imp = "<a class='btn btn-xs btn-success' title='Imprimir' target='_blank' href='vistas/reportes_ticket/gre_manual.php?id=" + r.id + "'><i class='fa fa-print'></i></a>";
                     var del = "<button class='btn btn-xs btn-default greEliminar' title='Eliminar' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-trash'></i></button>";
+                    var csv = r.tipo === "INTERNA" ? "" : "<a class='btn btn-xs btn-default' title='Ver archivo EFACT (no envía nada)' target='_blank' href='ajax/gre-manual.ajax.php?accion=ver-csv&id=" + r.id + "'><i class='fa fa-file-text-o'></i></a>";
                     if (r.estado === "ANULADO") return "<div class='btn-group'>" + imp + del + "</div>";
-                    if (r.estado !== "GENERADO") return "<div class='btn-group'>" + imp + "</div>";
+                    if (r.estado !== "GENERADO") return "<div class='btn-group'>" + imp + csv + "</div>";
                     var accion = r.tipo === "INTERNA"
                         ? "<button class='btn btn-xs btn-info greConvertir' title='Convertir a electrónica' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-exchange'></i></button>"
                         : "<button class='btn btn-xs btn-primary greEnviar' title='Enviar a EFACT' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-paper-plane'></i></button>";
-                    return "<div class='btn-group'>" + imp +
+                    return "<div class='btn-group'>" + imp + csv +
                         "<a class='btn btn-xs btn-warning' title='Editar' href='index.php?ruta=gre-manual-crear&id=" + r.id + "'><i class='fa fa-pencil'></i></a>" + accion +
                         "<button class='btn btn-xs btn-danger greAnular' title='Anular' data-id='" + r.id + "' data-doc='" + esc(r.documento) + "'><i class='fa fa-ban'></i></button>" + del + "</div>";
                 } },
@@ -300,7 +304,8 @@
             chofer_tipo_doc: $("#greChoferTipoDoc").val(), chofer_doc: v("greChoferDoc"), chofer_nombres: v("greChoferNombres"),
             chofer_apellidos: v("greChoferApellidos"), chofer_licencia: v("greChoferLicencia"), placa: v("grePlaca"),
             docs_rel: JSON.stringify(docs), items: JSON.stringify(it),
-            servicio: servicioCod, guardar_taller: ($("#greGuardarTaller").is(":checked") && $("input[name=greDestOrigen]:checked").val() === "TALLER") ? "1" : "0",
+            servicio: servicioCod, orden_servicio: ordenId || "", servicios_orden: JSON.stringify(serviciosOrden),
+            guardar_taller: ($("#greGuardarTaller").is(":checked") && $("input[name=greDestOrigen]:checked").val() === "TALLER") ? "1" : "0",
         };
         $.each(["par", "lle"], function (i, p) {
             $.each(["ubigeo", "direccion", "dpto", "prov", "dist"], function (j, k) { d[p + "_" + k] = v("gre_" + p + "_" + k); });
@@ -310,6 +315,11 @@
 
     function poblar(g) {
         if (g.servicio) { servicioCod = g.servicio; $("#greAvisoServicio").text("Guía del servicio " + g.servicio).show(); }
+        if (g.orden_servicio && g.servicios_orden && g.servicios_orden.length) {
+            ordenId = parseInt(g.orden_servicio, 10);
+            serviciosOrden = g.servicios_orden;
+            $("#greAvisoServicio").html("Guía global de la <b>orden de servicio</b> · servicios: " + $.map(serviciosOrden, esc).join(", ")).show();
+        }
         $("#greSerie").html("<option>" + esc(g.serie) + (g.tipo === "INTERNA" ? " · Interna" : " · Electrónica") + "</option>").prop("disabled", true);
         $("#greFechaEmision").val(g.fecha_emision);
         $("#greFechaTraslado").val(g.fecha_traslado);
@@ -435,6 +445,40 @@
         }).fail(ajaxErr);
     }
 
+    function cargarOrden(id) {
+        $.getJSON(URL, { accion: "orden-datos", orden: id }, function (r) {
+            var od = r.orden, o = od.orden;
+            if (od.error) {
+                $("#greAvisoServicio").removeClass("alert-info").addClass("alert-warning").html(esc(od.error) +
+                    " <a href='ordenes-servicio-prod'>Volver a órdenes de servicio</a>").show();
+                $("#greGuardar").prop("disabled", true);
+                return;
+            }
+            ordenId = parseInt(o.id, 10);
+            serviciosOrden = od.servicios;
+            var aviso = "Guía <b>global</b> de la orden <b>" + esc(o.numero) + "</b> · taller " + esc(o.taller_nombre || o.taller) +
+                ". Ampara " + od.servicios.length + " servicio(s): <b>" + $.map(od.servicios, esc).join(", ") + "</b>.";
+            if (od.con_guia.length) {
+                aviso += "<br>No se incluyen (ya tienen guía): " + $.map(od.con_guia, function (x) { return esc(x.servicio) + " (" + esc(x.documento) + ")"; }).join(", ") + ".";
+            }
+            $("#greAvisoServicio").html(aviso + "<br>Los datos se pueden ajustar antes de guardar.").show();
+            $("#greMotivo").val("13");
+            $("#greMotivoDesc").data("tocado", false);
+            setMotivo();
+            $("#greObs").val(od.observacion);
+            $("input[name=greDestOrigen][value=TALLER]").prop("checked", true).trigger("change");
+            aplicarTaller($.extend({ codigo: o.taller, nombre: o.taller_nombre }, od.datos_taller || {}));
+            if (!od.datos_taller) err("El taller aún no tiene datos registrados: complétalos y quedarán guardados.");
+            usarVasco("par");
+            items = $.map(od.items, function (i) {
+                var u = i.unidad || "C62";
+                return { origen: "MODELO", codigo: i.codigo, descripcion: i.descripcion, unidad_cod: u, unidad_desc: descUnidad(u), cantidad: parseFloat(i.cantidad) };
+            });
+            pintarItems();
+            refrescarSP();
+        }).fail(ajaxErr);
+    }
+
     function iniciarFormulario() {
         $.getJSON(URL, { accion: "catalogos" }, function (c) {
             cat = c;
@@ -454,8 +498,10 @@
             var id = parseInt($("#greForm").data("id"), 10) || 0;
             var sv = $("#greForm").data("servicio");
             if (!id && sv) cargarServicio(String(sv));
+            var ord = parseInt($("#greForm").data("orden"), 10) || 0;
+            if (!id && !sv && ord) cargarOrden(ord);
             var nt = $("#greForm").data("nota");
-            if (!id && !sv && nt) agregarNota(String(nt), { nueva: true });
+            if (!id && !sv && !ord && nt) agregarNota(String(nt), { nueva: true });
             if (id) {
                 $.getJSON(URL, { accion: "obtener", id: id }, function (r) {
                     if (r.guia.estado !== "GENERADO") { err("Solo se edita una guía GENERADA."); window.location = "gre-manual"; return; }

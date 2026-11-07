@@ -2,9 +2,10 @@
 $greId = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
 $greNota = isset($_GET["nota"]) ? preg_replace('/[^A-Za-z0-9-]/', '', $_GET["nota"]) : "";
 $greAgregar = isset($_GET["agregar_nota"]) ? preg_replace('/[^A-Za-z0-9-]/', '', $_GET["agregar_nota"]) : "";
+$greOrden = isset($_GET["orden"]) ? (int) $_GET["orden"] : 0;
 $greServicio = isset($_GET["servicio"]) ? preg_replace('/[^A-Za-z0-9_-]/', '', $_GET["servicio"]) : "";
 ?>
-<div class="content-wrapper" id="greForm" data-id="<?= $greId; ?>" data-servicio="<?= htmlspecialchars($greServicio, ENT_QUOTES, "UTF-8"); ?>" data-nota="<?= htmlspecialchars($greNota, ENT_QUOTES, "UTF-8"); ?>" data-agregar="<?= htmlspecialchars($greAgregar, ENT_QUOTES, "UTF-8"); ?>">
+<div class="content-wrapper" id="greForm" data-id="<?= $greId; ?>" data-servicio="<?= htmlspecialchars($greServicio, ENT_QUOTES, "UTF-8"); ?>" data-orden="<?= $greOrden; ?>" data-nota="<?= htmlspecialchars($greNota, ENT_QUOTES, "UTF-8"); ?>" data-agregar="<?= htmlspecialchars($greAgregar, ENT_QUOTES, "UTF-8"); ?>">
 
     <section class="content-header">
         <h1>

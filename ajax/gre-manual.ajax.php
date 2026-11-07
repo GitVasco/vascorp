@@ -95,6 +95,13 @@ switch ($accion) {
         }
         greJson(array("ok" => true, "servicio" => $sv));
 
+    case "orden-datos":
+        $od = ModeloGreManual::mdlOrdenParaGuia(isset($_REQUEST["orden"]) ? (int) $_REQUEST["orden"] : 0);
+        if (!$od) {
+            greJson(array("ok" => false, "msg" => "Orden de servicio no encontrada."), 404);
+        }
+        greJson(array("ok" => true, "orden" => $od));
+
     case "series":
         greJson(array("ok" => true, "series" => ModeloGreManual::mdlSeries()));
 
@@ -118,6 +125,17 @@ switch ($accion) {
     case "enviar":
         $r = ControladorGreManual::ctrEnviar((int) (isset($_POST["id"]) ? $_POST["id"] : 0));
         greJson($r, !empty($r["ok"]) ? 200 : 400);
+
+    case "ver-csv":
+        // Para revisar el archivo EFACT: texto plano, no envía ni cambia la guía
+        $r = ControladorGreManual::ctrVerArchivo((int) (isset($_REQUEST["id"]) ? $_REQUEST["id"] : 0));
+        if (empty($r["ok"])) {
+            greJson($r, 400);
+        }
+        header("Content-Type: text/plain; charset=utf-8");
+        header("Content-Disposition: inline; filename=\"" . $r["nombre"] . "\"");
+        echo $r["contenido"];
+        exit;
 
     case "anular":
         $ok = ModeloGreManual::mdlAnular((int) (isset($_POST["id"]) ? $_POST["id"] : 0));

@@ -8,6 +8,41 @@ require_once "conexion.php";
  */
 class ModeloGreManual
 {
+    private static $tieneOrden = null;
+
+    /** ¿Ya se ejecutó docs/sql/gre-manual-orden-servicio.sql? (guía global por orden de servicio) */
+    public static function tieneOrden()
+    {
+        if (self::$tieneOrden === null) {
+            try {
+                $pdo = Conexion::conectar();
+                $c = $pdo->query("SHOW COLUMNS FROM gre_manualjf LIKE 'orden_servicio'");
+                $t = $pdo->query("SHOW TABLES LIKE 'gre_manual_serviciojf'");
+                self::$tieneOrden = ($c && $c->fetch() && $t && $t->fetchColumn()) ? true : false;
+            } catch (Exception $e) {
+                self::$tieneOrden = false;
+            }
+        }
+        return self::$tieneOrden;
+    }
+
+    /** Guía vigente (no anulada) que ya cubre un servicio, de forma independiente o global. */
+    public static function guiaDeServicio($pdo, $servicio, $excluirId = 0)
+    {
+        $stmt = $pdo->prepare("SELECT id, documento, estado FROM gre_manualjf WHERE servicio = :s AND estado <> 'ANULADO' AND id <> :x ORDER BY id DESC LIMIT 1");
+        $stmt->execute(array(":s" => $servicio, ":x" => (int) $excluirId));
+        $g = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($g || !self::tieneOrden()) {
+            return $g ? $g : null;
+        }
+        $stmt = $pdo->prepare("SELECT g.id, g.documento, g.estado FROM gre_manual_serviciojf l
+            INNER JOIN gre_manualjf g ON g.id = l.id_gre AND g.estado <> 'ANULADO' AND g.id <> :x
+            WHERE l.servicio = :s ORDER BY g.id DESC LIMIT 1");
+        $stmt->execute(array(":s" => $servicio, ":x" => (int) $excluirId));
+        $g = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $g ? $g : null;
+    }
+
     public static function mdlTablasListas()
     {
         $pdo = Conexion::conectar();
@@ -159,7 +194,8 @@ class ModeloGreManual
 
     public static function mdlListar($desde, $hasta, $estado, $tipo = "")
     {
-        $sql = "SELECT g.id, g.documento, g.tipo, g.doc_interno, g.servicio, g.fecha_emision, g.fecha_traslado, g.motivo_cod, g.motivo_desc,
+        $ordenCol = self::tieneOrden() ? "g.orden_servicio, (SELECT o.numero FROM ordenes_servicio_prodjf o WHERE o.id = g.orden_servicio) AS orden_numero, " : "";
+        $sql = "SELECT g.id, g.documento, g.tipo, g.doc_interno, g.servicio, " . $ordenCol . "g.fecha_emision, g.fecha_traslado, g.motivo_cod, g.motivo_desc,
                     g.modalidad, g.dest_nombre, g.dest_doc, g.lle_dist, g.peso_kg, g.estado,
                     g.usuario_registro, g.fecha_envio,
                     (SELECT COUNT(*) FROM gre_manual_detjf d WHERE d.id_gre = g.id) AS items
@@ -200,6 +236,13 @@ class ModeloGreManual
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
         $cab["items"] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $cab["servicios_orden"] = array();
+        if (self::tieneOrden()) {
+            $stmt = $pdo->prepare("SELECT servicio FROM gre_manual_serviciojf WHERE id_gre = :id ORDER BY id");
+            $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+            $stmt->execute();
+            $cab["servicios_orden"] = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        }
         return $cab;
     }
 
@@ -220,6 +263,17 @@ class ModeloGreManual
                 "chofer_tipo_doc", "chofer_doc", "chofer_nombres", "chofer_apellidos", "chofer_licencia",
                 "placa", "docs_rel", "servicio",
             );
+            $conOrden = self::tieneOrden();
+            if (!$conOrden && !empty($c["servicios_orden"])) {
+                $pdo->rollBack();
+                return array("ok" => false, "msg" => "Falta ejecutar docs/sql/gre-manual-orden-servicio.sql para guardar guías globales.");
+            }
+            if ($conOrden) {
+                $cols[] = "orden_servicio";
+                if (!array_key_exists("orden_servicio", $c)) {
+                    $c["orden_servicio"] = null;
+                }
+            }
 
             if ($id > 0) {
                 $stmt = $pdo->prepare("SELECT estado FROM gre_manualjf WHERE id = :id FOR UPDATE");
@@ -255,6 +309,10 @@ class ModeloGreManual
                     $stmt->bindValue(":sv", $c["servicio"]);
                     $stmt->execute();
                     $ya = $stmt->fetchColumn();
+                    if (!$ya) {
+                        $otra = self::guiaDeServicio($pdo, $c["servicio"]);
+                        $ya = $otra ? $otra["documento"] : false;
+                    }
                     if ($ya) {
                         $pdo->rollBack();
                         return array("ok" => false, "msg" => "El servicio " . $c["servicio"] . " ya tiene la guía " . $ya . ".");
@@ -295,6 +353,21 @@ class ModeloGreManual
                 if ($otra) {
                     $pdo->rollBack();
                     return array("ok" => false, "msg" => "La nota de salida " . $nk . " ya está en la guía " . $otra . ".");
+                }
+            }
+
+            // Guía global: los servicios de la orden que ampara (ninguno puede tener otra guía vigente)
+            if ($conOrden) {
+                $pdo->prepare("DELETE FROM gre_manual_serviciojf WHERE id_gre = " . (int) $id)->execute();
+                $servOrden = isset($c["servicios_orden"]) && is_array($c["servicios_orden"]) ? $c["servicios_orden"] : array();
+                $insL = $pdo->prepare("INSERT INTO gre_manual_serviciojf (id_gre, servicio) VALUES (:g, :s)");
+                foreach ($servOrden as $sv) {
+                    $otra = self::guiaDeServicio($pdo, $sv, $id);
+                    if ($otra) {
+                        $pdo->rollBack();
+                        return array("ok" => false, "msg" => "El servicio " . $sv . " ya tiene la guía " . $otra["documento"] . ".");
+                    }
+                    $insL->execute(array(":g" => $id, ":s" => $sv));
                 }
             }
 
@@ -406,6 +479,9 @@ class ModeloGreManual
                 return false;
             }
             $pdo->prepare("DELETE FROM gre_manual_detjf WHERE id_gre = " . (int) $id)->execute();
+            if (self::tieneOrden()) {
+                $pdo->prepare("DELETE FROM gre_manual_serviciojf WHERE id_gre = " . (int) $id)->execute();
+            }
             $pdo->prepare("DELETE FROM gre_manualjf WHERE id = " . (int) $id)->execute();
             $pdo->commit();
             return true;
@@ -593,11 +669,82 @@ class ModeloGreManual
         $stmt->execute();
         $sv["datos_taller"] = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $stmt = $pdo->prepare("SELECT id, documento, estado FROM gre_manualjf WHERE servicio = :c AND estado <> 'ANULADO' ORDER BY id DESC LIMIT 1");
-        $stmt->bindParam(":c", $codigo, PDO::PARAM_STR);
-        $stmt->execute();
-        $sv["guia"] = $stmt->fetch(PDO::FETCH_ASSOC);
+        $sv["guia"] = self::guiaDeServicio($pdo, $codigo);
         return $sv;
+    }
+
+    /**
+     * Datos para una guía GLOBAL de una orden de servicio: taller + servicios de la orden que aún
+     * no tienen guía vigente + ítems sumados por modelo + observación.
+     * Devuelve null si la orden no existe; "error" si está anulada o no quedan servicios libres.
+     */
+    public static function mdlOrdenParaGuia($idOrden)
+    {
+        if (!self::tieneOrden()) {
+            return array("orden" => array("id" => 0, "numero" => "", "taller" => "", "taller_nombre" => "", "estado" => ""), "servicios" => array(),
+                "con_guia" => array(), "items" => array(), "datos_taller" => null, "desde_corte" => false, "observacion" => "",
+                "error" => "Falta ejecutar docs/sql/gre-manual-orden-servicio.sql para emitir guías globales.");
+        }
+        $pdo = Conexion::conectar();
+        $stmt = $pdo->prepare("SELECT id, numero, taller, taller_nombre, estado FROM ordenes_servicio_prodjf WHERE id = :id");
+        $stmt->execute(array(":id" => (int) $idOrden));
+        $o = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$o) {
+            return null;
+        }
+        $res = array("orden" => $o, "servicios" => array(), "con_guia" => array(), "items" => array(), "datos_taller" => null,
+            "desde_corte" => false, "observacion" => "", "error" => "");
+        if ($o["estado"] === "ANULADA") {
+            $res["error"] = "La orden " . $o["numero"] . " está anulada.";
+            return $res;
+        }
+        $stmt = $pdo->prepare("SELECT servicio FROM ordenes_servicio_prod_servjf WHERE id_orden = :id ORDER BY fecha_servicio, servicio");
+        $stmt->execute(array(":id" => (int) $idOrden));
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $sv) {
+            $g = self::guiaDeServicio($pdo, $sv);
+            if ($g) {
+                $res["con_guia"][] = array("servicio" => $sv, "documento" => $g["documento"]);
+            } else {
+                $res["servicios"][] = $sv;
+            }
+        }
+        if (!count($res["servicios"])) {
+            $res["error"] = "Todos los servicios de la orden " . $o["numero"] . " ya tienen guía.";
+            return $res;
+        }
+        $ph = implode(",", array_fill(0, count($res["servicios"]), "?"));
+        $stmt = $pdo->prepare("SELECT a.modelo AS codigo, IFNULL(NULLIF(TRIM(m.nombre), ''), MIN(a.nombre)) AS descripcion,
+                COALESCE(NULLIF(TRIM(m.cod_unidad), ''), 'C62') AS unidad, SUM(sd.cantidad) AS cantidad
+            FROM servicios_detallejf sd
+            LEFT JOIN articulojf a ON sd.articulo = a.articulo
+            LEFT JOIN modelojf m ON a.modelo = m.modelo
+            WHERE sd.codigo IN ($ph)
+            GROUP BY a.modelo, m.nombre, m.cod_unidad
+            HAVING SUM(sd.cantidad) > 0
+            ORDER BY a.modelo");
+        $stmt->execute($res["servicios"]);
+        $res["items"] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM servicios_detallejf WHERE codigo IN ($ph) AND cabecera_taller IS NOT NULL AND cabecera_taller <> 0");
+        $stmt->execute($res["servicios"]);
+        $res["desde_corte"] = (int) $stmt->fetchColumn() > 0;
+
+        // La referencia a la orden y a los servicios va solo en las observaciones (la cabecera de la guía es estándar)
+        $corte = $res["desde_corte"] ? " PRENDAS CORTADAS ENVIADAS AL TALLER PARA SU CONFECCION; RETORNAN TERMINADAS A CORPORACION VASCO S.A.C." : "";
+        $obs = "SERVICIO DE PRODUCCION - ORDEN " . $o["numero"] . " (SERVICIOS: " . implode(", ", $res["servicios"]) . ")." . $corte;
+        if (function_exists("mb_strlen") && mb_strlen($obs, "UTF-8") > 250) {
+            // muchos servicios: se indica la cantidad en lugar de la lista
+            $obs = "SERVICIO DE PRODUCCION - ORDEN " . $o["numero"] . " (" . count($res["servicios"]) . " SERVICIOS)." . $corte;
+        }
+        $res["observacion"] = $obs;
+
+        $stmt = $pdo->prepare("SELECT cod_sector AS codigo, razon_social, tipo_doc, doc AS documento, email, direccion, ubigeo,
+                dpto AS departamento, prov AS provincia, dist AS distrito
+            FROM gre_sector_datosjf WHERE cod_sector = :c");
+        $stmt->execute(array(":c" => $o["taller"]));
+        $d = $stmt->fetch(PDO::FETCH_ASSOC);
+        $res["datos_taller"] = $d ? $d : null;
+        return $res;
     }
 
     /**

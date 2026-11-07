@@ -216,6 +216,29 @@ class ControladorGreManual
         $c["dest_email"] = self::t($g("dest_email"), 100);
         $sv = $g("servicio");
         $c["servicio"] = ($sv !== "" && preg_match('/^[A-Za-z0-9_-]{1,20}$/', $sv)) ? $sv : null;
+        // Guía global de una orden de servicio: orden + servicios que ampara
+        $os = $g("orden_servicio");
+        $c["orden_servicio"] = ($os !== "" && ctype_digit($os)) ? (int) $os : null;
+        $so = isset($in["servicios_orden"]) ? $in["servicios_orden"] : array();
+        if (is_string($so)) {
+            $so = json_decode($so, true);
+        }
+        $c["servicios_orden"] = array();
+        if (is_array($so)) {
+            foreach ($so as $x) {
+                $x = trim((string) $x);
+                if ($x !== "" && preg_match('/^[A-Za-z0-9_-]{1,20}$/', $x)) {
+                    $c["servicios_orden"][$x] = $x;
+                }
+            }
+            $c["servicios_orden"] = array_values($c["servicios_orden"]);
+        }
+        if ($c["orden_servicio"] === null || $c["servicio"] !== null) {
+            $c["servicios_orden"] = array();
+        }
+        if ($c["orden_servicio"] !== null && !count($c["servicios_orden"])) {
+            $c["orden_servicio"] = null;
+        }
         if ($c["dest_nombre"] === "") {
             $err[] = "Falta el nombre del destinatario.";
         }
@@ -366,9 +389,10 @@ class ControladorGreManual
     }
 
     /**
-     * Arma el CSV, lo deja en la carpeta que vigila EFACT y marca ENVIADO.
+     * Arma las líneas del archivo EFACT (sin escribir nada ni cambiar la guía).
+     * Devuelve array(ok, msg) o array(ok, g, lineas, nombre).
      */
-    public static function ctrEnviar($id)
+    private static function armarArchivo($id)
     {
         $g = ModeloGreManual::mdlObtener((int) $id);
         if (!$g) {
@@ -377,8 +401,8 @@ class ControladorGreManual
         if ($g["tipo"] === "INTERNA") {
             return array("ok" => false, "msg" => "Una guía interna no se envía a EFACT. Conviértela a electrónica primero.");
         }
-        if ($g["estado"] !== "GENERADO") {
-            return array("ok" => false, "msg" => "La guía ya está " . $g["estado"] . ".");
+        if ($g["estado"] === "ANULADO") {
+            return array("ok" => false, "msg" => "La guía está ANULADA.");
         }
         // Revalidar con lo guardado (por si se editó directo en BD)
         $chk = self::ctrNormalizar(array_merge($g, array("items" => $g["items"], "docs_rel" => $g["docs_rel"])));
@@ -439,9 +463,35 @@ class ControladorGreManual
                 $desc, $it["codigo"])) . ",";
         }
         $lineas[] = "FF00FF";
+        return array("ok" => true, "g" => $g, "lineas" => $lineas, "nombre" => self::RUC_REMITENTE . "-09-" . $g["documento"]);
+    }
+
+    /** Contenido del archivo EFACT para revisarlo: no lo escribe en ninguna carpeta ni marca la guía. */
+    public static function ctrVerArchivo($id)
+    {
+        $a = self::armarArchivo($id);
+        if (!$a["ok"]) {
+            return $a;
+        }
+        return array("ok" => true, "nombre" => $a["nombre"] . ".csv", "contenido" => implode(PHP_EOL, $a["lineas"]));
+    }
+
+    /**
+     * Arma el CSV, lo deja en la carpeta que vigila EFACT y marca ENVIADO.
+     */
+    public static function ctrEnviar($id)
+    {
+        $a = self::armarArchivo($id);
+        if (!$a["ok"]) {
+            return $a;
+        }
+        if ($a["g"]["estado"] !== "GENERADO") {
+            return array("ok" => false, "msg" => "La guía ya está " . $a["g"]["estado"] . ".");
+        }
+        $lineas = $a["lineas"];
+        $nombre = $a["nombre"];
 
         require_once __DIR__ . "/config.php";
-        $nombre = self::RUC_REMITENTE . "-09-" . $g["documento"];
         $origenDir = self::rutaFisica(ORIGEN);
         $destinoDir = self::rutaFisica(DESTINO_GUIA_REMISION);
         if (!is_dir($origenDir)) {
