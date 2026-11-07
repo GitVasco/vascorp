@@ -64,6 +64,7 @@ function fd($f, $conHora = false)
     return $t ? date($conHora ? "d/m/Y H:i" : "d/m/Y", $t) : $f;
 }
 
+$regul = !empty($orden["regularizacion"]);
 $W = 190; // ancho útil A4 vertical (márgenes de 10 mm)
 
 // Paleta
@@ -104,7 +105,7 @@ $pdf->SetXY(10, 17.5);
 $pdf->Cell(110, 4, "Cal. Santo Toribio Nro. 259, Urb. Santa Luisa 1ra Etapa, San Martín de Porres, Lima", 0, 0, "L");
 $pdf->SetFont("helvetica", "B", 7.5);
 $pdf->SetXY(100, 6);
-$pdf->Cell(100, 4, "ORDEN DE SERVICIO DE PRODUCCIÓN", 0, 1, "R");
+$pdf->Cell(100, 4, $regul ? "ORDEN DE SERVICIO · REGULARIZACIÓN" : "ORDEN DE SERVICIO DE PRODUCCIÓN", 0, 1, "R");
 $pdf->SetTextColor(255, 255, 255);
 $pdf->SetFont("helvetica", "B", 17);
 $pdf->SetXY(100, 11);
@@ -184,25 +185,35 @@ $cabTabla = function () use ($pdf, $cOscuro) {
 };
 
 
-/* ---------- Resumen de guías ---------- */
-$seccion("GUÍAS DE REMISIÓN Y SERVICIOS INCLUIDOS");
-$pdf->SetFont("helvetica", "B", 8);
-$cabTabla();
-$pdf->Cell(40, 5.5, "Servicio", 1, 0, "C", true);
-$pdf->Cell(60, 5.5, "Guía de remisión", 1, 0, "C", true);
-$pdf->Cell(50, 5.5, "Fecha servicio", 1, 0, "C", true);
-$pdf->Cell(40, 5.5, "Unidades", 1, 1, "C", true);
-$pdf->SetTextColor(0, 0, 0);
-$pdf->SetFont("helvetica", "", 8);
+/* ---------- Servicios incluidos (con su guía) ---------- */
+$seccion($regul ? "SERVICIOS INCLUIDOS" : "GUÍAS DE REMISIÓN Y SERVICIOS INCLUIDOS");
+$cabServicios = function () use ($pdf, $cabTabla) {
+    $pdf->SetFont("helvetica", "B", 8);
+    $cabTabla();
+    $pdf->Cell(40, 5.5, "Servicio", 1, 0, "C", true);
+    $pdf->Cell(60, 5.5, "Guía de remisión", 1, 0, "C", true);
+    $pdf->Cell(50, 5.5, "Fecha servicio", 1, 0, "C", true);
+    $pdf->Cell(40, 5.5, "Unidades", 1, 1, "C", true);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetFont("helvetica", "", 8);
+};
+$cabServicios();
 $pend = 0;
 $n = 0;
 foreach ($orden["servicios"] as $s) {
+    if ($pdf->GetY() > 275) {
+        $pdf->AddPage();
+        $pdf->SetY(14);
+        $cabServicios();
+    }
     $tieneGuia = $s["guia"] !== null && $s["guia"] !== "";
     $z = ($n++ % 2) === 1;
     $pdf->SetFillColor($cZebra[0], $cZebra[1], $cZebra[2]);
     $pdf->Cell(40, 5.5, $s["servicio"], 1, 0, "C", $z);
     if ($tieneGuia) {
         $pdf->Cell(60, 5.5, $s["guia"], 1, 0, "C", $z);
+    } elseif ($regul) {
+        $pdf->Cell(60, 5.5, "-", 1, 0, "C", $z);
     } else {
         $pend++;
         $pdf->SetFillColor($cAmbar[0], $cAmbar[1], $cAmbar[2]);
@@ -224,6 +235,7 @@ if ($pend > 0) {
 }
 $pdf->Ln(4);
 
+if (!$regul) {
 /* ---------- Detalle por servicio ---------- */
 // Solo se muestran las tallas que realmente tienen cantidades en esta orden
 $tallas = ModeloOrdenesServicioProd::TALLAS;
@@ -320,6 +332,25 @@ if ($pdf->GetY() > 245) {
     $pdf->AddPage();
     $pdf->SetY(14);
 }
+// Neto / IGV / Total: depende de si los precios del taller ya incluyen IGV (marca congelada al emitir)
+$tasaIgv = 0.18;
+$importeLineas = (float) $orden["total_importe"];
+if (!empty($orden["precios_igv"])) {
+    $totalPagar = round($importeLineas, 2);
+    $neto = round($totalPagar / (1 + $tasaIgv), 2);
+    $igv = round($totalPagar - $neto, 2);
+} else {
+    $neto = round($importeLineas, 2);
+    $igv = round($neto * $tasaIgv, 2);
+    $totalPagar = round($neto + $igv, 2);
+}
+$pdf->SetFillColor($cClaro[0], $cClaro[1], $cClaro[2]);
+$pdf->SetTextColor($cOscuro[0], $cOscuro[1], $cOscuro[2]);
+$pdf->SetFont("helvetica", "", 9);
+$pdf->Cell($W - 60, 6.5, "SUBTOTAL NETO (sin IGV)  ", 1, 0, "R", true);
+$pdf->Cell(60, 6.5, "S/ " . number_format($neto, 2) . "  ", 1, 1, "R", true);
+$pdf->Cell($W - 60, 6.5, "IGV (18%)  ", 1, 0, "R", true);
+$pdf->Cell(60, 6.5, "S/ " . number_format($igv, 2) . "  ", 1, 1, "R", true);
 $pdf->SetFillColor($cOscuro[0], $cOscuro[1], $cOscuro[2]);
 $pdf->SetTextColor(255, 255, 255);
 $pdf->SetFont("helvetica", "B", 9);
@@ -327,11 +358,116 @@ $pdf->Cell($W - 85, 8, "TOTAL ORDEN  (" . number_format($orden["total_servicios"
 $pdf->Cell(25, 8, number_format($orden["total_unidades"]) . " un.", 0, 0, "R", true);
 $pdf->SetFillColor($cAcento[0], $cAcento[1], $cAcento[2]);
 $pdf->SetFont("helvetica", "B", 12);
-$pdf->Cell(60, 8, "S/ " . number_format($orden["total_importe"], 2) . "  ", 0, 1, "R", true);
+$pdf->Cell(60, 8, "S/ " . number_format($totalPagar, 2) . "  ", 0, 1, "R", true);
 $pdf->SetTextColor(110, 110, 110);
 $pdf->SetFont("helvetica", "I", 7);
-$pdf->Cell(0, 5, "Importes sin IGV, calculados con el precio por docena vigente en el sistema al momento de emitir la orden.", 0, 1, "L");
+$pdf->Cell(0, 5, !empty($orden["precios_igv"])
+    ? "Los precios por docena de este taller incluyen IGV: el neto resulta de dividir el total entre 1.18."
+    : "Importes calculados con el precio por docena (sin IGV); el IGV (18%) se suma al neto.", 0, 1, "L");
 $pdf->SetTextColor(0, 0, 0);
+} else {
+    /* ---------- Regularización: resumen por modelo y color, sin importes ---------- */
+    $tallasR = ModeloOrdenesServicioProd::TALLAS;
+    $agg = array();
+    foreach ($orden["servicios"] as $s) {
+        foreach ($s["detalle"] as $d) {
+            $k = $d["modelo"] . "|" . $d["cod_color"];
+            if (!isset($agg[$k])) {
+                $agg[$k] = array("modelo" => $d["modelo"], "nombre" => $d["nombre"], "color" => $d["color"], "cantidad" => 0,
+                    "t" => array_fill(1, 8, 0));
+            }
+            $agg[$k]["cantidad"] += (int) $d["cantidad"];
+            for ($i = 1; $i <= 8; $i++) {
+                $agg[$k]["t"][$i] += (int) $d["t$i"];
+            }
+        }
+    }
+    ksort($agg);
+    $usadasR = array();
+    foreach ($agg as $f) {
+        for ($i = 1; $i <= 8; $i++) {
+            if ($f["t"][$i] > 0) {
+                $usadasR[$i] = true;
+            }
+        }
+    }
+    $usadasR = array_keys($usadasR);
+    sort($usadasR);
+    $wT = 10;
+    $wTot = 16;
+    $wDoc = 16;
+    $wMod = 16;
+    $wCol = 28;
+    $wDes = $W - $wMod - $wCol - $wT * count($usadasR) - $wTot - $wDoc;
+    $charsD = max(8, (int) floor($wDes / 1.55));
+    $cabResumen = function () use ($pdf, $cabTabla, $usadasR, $tallasR, $wT, $wTot, $wDoc, $wMod, $wCol, $wDes) {
+        $pdf->SetFont("helvetica", "B", 7.5);
+        $cabTabla();
+        $pdf->Cell($wMod, 5.5, "Modelo", 1, 0, "C", true);
+        $pdf->Cell($wDes, 5.5, "Descripción", 1, 0, "C", true);
+        $pdf->Cell($wCol, 5.5, "Color", 1, 0, "C", true);
+        foreach ($usadasR as $i) {
+            $pdf->Cell($wT, 5.5, $tallasR[$i - 1], 1, 0, "C", true);
+        }
+        $pdf->Cell($wTot, 5.5, "Total", 1, 0, "C", true);
+        $pdf->Cell($wDoc, 5.5, "Docenas", 1, 1, "C", true);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFont("helvetica", "", 7.5);
+    };
+    if ($pdf->GetY() > 240) {
+        $pdf->AddPage();
+        $pdf->SetY(14);
+    }
+    $seccion("RESUMEN DE PRENDAS ENVIADAS (POR MODELO Y COLOR)");
+    $cabResumen();
+    $n = 0;
+    $sumT = array_fill(1, 8, 0);
+    $sumQ = 0;
+    foreach ($agg as $f) {
+        if ($pdf->GetY() > 275) {
+            $pdf->AddPage();
+            $pdf->SetY(14);
+            $cabResumen();
+        }
+        $z = ($n++ % 2) === 1;
+        $pdf->SetFillColor($cZebra[0], $cZebra[1], $cZebra[2]);
+        $pdf->Cell($wMod, 5, $f["modelo"], 1, 0, "L", $z);
+        $pdf->Cell($wDes, 5, mb_substr((string) $f["nombre"], 0, $charsD), 1, 0, "L", $z);
+        $pdf->Cell($wCol, 5, mb_substr((string) $f["color"], 0, 17), 1, 0, "L", $z);
+        foreach ($usadasR as $i) {
+            $pdf->Cell($wT, 5, $f["t"][$i] > 0 ? number_format($f["t"][$i]) : "", 1, 0, "C", $z);
+            $sumT[$i] += $f["t"][$i];
+        }
+        $pdf->Cell($wTot, 5, number_format($f["cantidad"]), 1, 0, "R", $z);
+        $pdf->Cell($wDoc, 5, number_format($f["cantidad"] / 12, 2), 1, 1, "R", $z);
+        $sumQ += $f["cantidad"];
+    }
+    $pdf->SetFont("helvetica", "B", 7.5);
+    $pdf->SetFillColor(226, 234, 243);
+    $pdf->Cell($wMod + $wDes + $wCol, 5.5, "TOTAL", 1, 0, "R", true);
+    foreach ($usadasR as $i) {
+        $pdf->Cell($wT, 5.5, number_format($sumT[$i]), 1, 0, "C", true);
+    }
+    $pdf->Cell($wTot, 5.5, number_format($sumQ), 1, 0, "R", true);
+    $pdf->Cell($wDoc, 5.5, number_format($sumQ / 12, 2), 1, 1, "R", true);
+    $pdf->Ln(4);
+
+    if ($pdf->GetY() > 255) {
+        $pdf->AddPage();
+        $pdf->SetY(14);
+    }
+    $pdf->SetFillColor($cOscuro[0], $cOscuro[1], $cOscuro[2]);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->SetFont("helvetica", "B", 9);
+    $pdf->Cell($W - 60, 8, "TOTAL ORDEN  (" . number_format($orden["total_servicios"]) . " servicios)  ", 0, 0, "R", true);
+    $pdf->SetFillColor($cAcento[0], $cAcento[1], $cAcento[2]);
+    $pdf->SetFont("helvetica", "B", 11);
+    $pdf->Cell(60, 8, number_format($orden["total_unidades"]) . " unidades  ", 0, 1, "R", true);
+    $pdf->SetTextColor(110, 110, 110);
+    $pdf->SetFont("helvetica", "I", 7);
+    $pdf->MultiCell($W, 4, "Orden de regularización: registra los servicios enviados al taller en el periodo indicado. No incluye valorización; los importes se determinan en la liquidación de servicios del taller.", 0, "L");
+    $pdf->SetTextColor(0, 0, 0);
+}
 
 if (trim((string) $orden["observaciones"]) !== "") {
     $pdf->Ln(1);

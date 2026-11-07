@@ -110,6 +110,14 @@ MODAL NUEVA ORDEN
                     </div>
                 </div>
 
+                <div class="checkbox" style="margin-top:10px">
+                    <label>
+                        <input type="checkbox" id="ospRegularizacion">
+                        <b>Orden de regularización</b>
+                        <small class="text-muted">(servicios ya enviados antes de usar órdenes: sin importes, sin precios requeridos y sin guías pendientes)</small>
+                    </label>
+                </div>
+
                 <div id="ospAvisos" style="margin-top:12px"></div>
                 <div id="ospPrevia" style="margin-top:12px; max-height:380px; overflow:auto"></div>
 

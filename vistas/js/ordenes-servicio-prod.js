@@ -17,6 +17,14 @@
         var p = String(f).substr(0, 10).split("-");
         return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : f;
     }
+    /* Neto / IGV / Total según si los precios del taller ya incluyen IGV */
+    function desglose(importe, conIgv) {
+        importe = Number(importe || 0);
+        var neto, igv, total;
+        if (conIgv) { total = importe; neto = Math.round(total / 1.18 * 100) / 100; igv = Math.round((total - neto) * 100) / 100; }
+        else { neto = importe; igv = Math.round(neto * 0.18 * 100) / 100; total = Math.round((neto + igv) * 100) / 100; }
+        return { neto: neto, igv: igv, total: total };
+    }
     function aviso(tipo, html) {
         $("#ospAvisos").append('<div class="alert alert-' + tipo + '" style="margin-bottom:6px">' + html + "</div>");
     }
@@ -62,10 +70,11 @@
                     "<td>" + fecha(o.fecha_emision) + "</td>" +
                     '<td class="text-right">' + num(o.total_servicios) + "</td>" +
                     '<td class="text-right">' + num(o.total_unidades) + "</td>" +
-                    '<td class="text-right">' + num(o.total_importe, 2) + "</td>" +
+                    '<td class="text-right">' + (+o.regularizacion === 1 ? '<span class="text-muted">—</span>' : num(o.total_importe, 2)) + "</td>" +
                     '<td><span class="label label-' + (anulada ? "danger" : "success") + '">' + esc(o.estado) + "</span>" +
+                    (+o.regularizacion === 1 ? ' <span class="label label-info" title="Servicios ya enviados: sin importes ni guías">REGULARIZACIÓN</span>' : "") +
                     (!anulada && +o.guias_pendientes > 0 ? ' <a href="#" class="label label-warning ospGuias" data-id="' + o.id + '" data-num="' + esc(o.numero) + '" title="Emitir guías">' + o.guias_pendientes + " guía(s) pendiente(s)</a>" : "") + "</td>" +
-                    '<td>' + (anulada ? "" : '<button class="btn btn-success btn-sm ospGuias" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-truck"></i> Guías</button> ') +
+                    '<td>' + (anulada || +o.regularizacion === 1 ? "" : '<button class="btn btn-success btn-sm ospGuias" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-truck"></i> Guías</button> ') +
                     '<a class="btn btn-default btn-sm" target="_blank" href="ajax/ordenes-servicio-prod.pdf.php?id=' + o.id + '"><i class="fa fa-print"></i> Imprimir</a> ' +
                     (anulada ? "" : '<button class="btn btn-warning btn-sm ospAnular" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-ban"></i> Anular</button> ') +
                     '<button class="btn btn-danger btn-sm ospEliminar" data-id="' + o.id + '" data-num="' + esc(o.numero) + '"><i class="fa fa-trash"></i> Eliminar</button>' +
@@ -102,7 +111,8 @@
         if (!taller || !desde || !hasta) { aviso("warning", "Seleccione taller y rango de fechas."); return; }
         if (desde > hasta) { aviso("warning", "La fecha inicial no puede ser mayor a la final."); return; }
 
-        $.getJSON(URL, { accion: "vista_previa", taller: taller, desde: desde, hasta: hasta }, function (r) {
+        var regul = $("#ospRegularizacion").is(":checked");
+        $.getJSON(URL, { accion: "vista_previa", taller: taller, desde: desde, hasta: hasta, regularizacion: regul ? "1" : "0" }, function (r) {
             if (!r.ok) { aviso("danger", esc(r.msg)); return; }
             var bloquea = false;
             var t = r.taller || {};
@@ -128,17 +138,26 @@
                 return;
             }
 
+            if (regul) {
+                aviso("info", "<b>Orden de regularización:</b> registra los servicios ya enviados. No lleva importes ni exige precios, y no cuenta guías pendientes.");
+            }
             var h = '<table class="table table-bordered table-condensed"><thead><tr>' +
-                "<th>Servicio</th><th>Guía</th><th>Fecha</th><th>Modelos / colores</th><th class='text-right'>Unidades</th><th class='text-right'>Importe</th></tr></thead><tbody>";
+                "<th>Servicio</th><th>Guía</th><th>Fecha</th><th>Modelos / colores</th><th class='text-right'>Unidades</th>" + (regul ? "" : "<th class='text-right'>Importe</th>") + "</tr></thead><tbody>";
             $.each(r.servicios, function (i, s) {
                 var imp = 0;
                 $.each(s.detalle, function (j, d) { imp += d.importe; });
-                h += "<tr><td>" + esc(s.codigo) + "</td><td>" + (s.guia ? esc(s.guia) : '<span class="text-warning">PENDIENTE</span>') + "</td>" +
+                h += "<tr><td>" + esc(s.codigo) + "</td><td>" + (s.guia ? esc(s.guia) : (regul ? "—" : '<span class="text-warning">PENDIENTE</span>')) + "</td>" +
                     "<td>" + fecha(s.fecha) + "</td><td>" + s.detalle.length + " líneas</td>" +
-                    '<td class="text-right">' + num(s.unidades) + '</td><td class="text-right">' + num(imp, 2) + "</td></tr>";
+                    '<td class="text-right">' + num(s.unidades) + "</td>" + (regul ? "" : '<td class="text-right">' + num(imp, 2) + "</td>") + "</tr>";
             });
-            h += '</tbody><tfoot><tr><th colspan="4" class="text-right">TOTAL</th><th class="text-right">' + num(r.total_unidades) +
-                '</th><th class="text-right">S/ ' + num(r.total_importe, 2) + "</th></tr></tfoot></table>";
+            var dg = desglose(r.total_importe, +((r.taller || {}).precios_igv) === 1);
+            if (regul) {
+                h += '</tbody><tfoot><tr><th colspan="4" class="text-right">TOTAL (' + r.servicios.length + ' servicios)</th><th class="text-right">' + num(r.total_unidades) + "</th></tr></tfoot></table>";
+            } else h += '</tbody><tfoot>' +
+                '<tr><td colspan="4" class="text-right">Subtotal neto (sin IGV)</td><td></td><td class="text-right">S/ ' + num(dg.neto, 2) + "</td></tr>" +
+                '<tr><td colspan="4" class="text-right">IGV (18%)</td><td></td><td class="text-right">S/ ' + num(dg.igv, 2) + "</td></tr>" +
+                '<tr><th colspan="4" class="text-right">TOTAL</th><th class="text-right">' + num(r.total_unidades) +
+                '</th><th class="text-right">S/ ' + num(dg.total, 2) + "</th></tr></tfoot></table>";
             $("#ospPrevia").html(h);
             $("#ospPie").show();
             previaValida = !bloquea;
@@ -155,7 +174,8 @@
             taller: $("#ospTaller").val(),
             desde: $("#ospDesde").val(),
             hasta: $("#ospHasta").val(),
-            observaciones: $("#ospObs").val()
+            observaciones: $("#ospObs").val(),
+            regularizacion: $("#ospRegularizacion").is(":checked") ? "1" : "0"
         }, function (r) {
             if (!r.ok) {
                 $b.prop("disabled", false);
@@ -178,6 +198,11 @@
         $.getJSON(URL, { accion: "ver", id: guiasOrden.id }, function (r) {
             if (!r.ok) { $("#ospGuiasTabla").html('<div class="alert alert-danger">' + esc(r.msg) + "</div>"); return; }
             var o = r.orden, pend = 0;
+            if (+o.regularizacion === 1) {
+                $("#ospGuiasAviso").html('<div class="alert alert-info">Orden de regularización: los servicios ya fueron enviados, por lo que no requiere guías de remisión.</div>');
+                $("#ospGuiasTabla").empty();
+                return;
+            }
             var h = '<table class="table table-bordered table-condensed"><thead><tr>' +
                 "<th>Servicio</th><th>Fecha</th><th class='text-right'>Unidades</th><th>Guía de remisión</th><th>Independiente</th></tr></thead><tbody>";
             $.each(o.servicios, function (i, s) {
@@ -280,7 +305,9 @@
         resetPrevia();
         $("#ospTaller").selectpicker("refresh");
         $("#ospObs").val("");
+        $("#ospRegularizacion").prop("checked", false);
     });
+    $("#ospRegularizacion").on("change", resetPrevia);
 
     cargarTalleres();
     listar();

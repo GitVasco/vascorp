@@ -61,7 +61,8 @@ switch ($accion) {
         if ($taller === "" || !ospFecha($desde) || !ospFecha($hasta) || $desde > $hasta) {
             ospJson(array("ok" => false, "msg" => "Seleccione taller y un rango de fechas válido."), 400);
         }
-        $prev = ModeloOrdenesServicioProd::mdlVistaPrevia($taller, $desde, $hasta);
+        $regul = isset($_REQUEST["regularizacion"]) && $_REQUEST["regularizacion"] === "1";
+        $prev = ModeloOrdenesServicioProd::mdlVistaPrevia($taller, $desde, $hasta, null, false, $regul);
         $prev["taller"] = ModeloOrdenesServicioProd::mdlDatosTaller($taller);
         $prev["ok"] = true;
         ospJson($prev);
@@ -78,7 +79,11 @@ switch ($accion) {
         if (!$datos || trim((string) $datos["doc"]) === "") {
             ospJson(array("ok" => false, "msg" => "El taller no tiene RUC/razón social registrados (datos fiscales de talleres de la GRE manual). Complételos antes de emitir la orden."));
         }
-        ospJson(ModeloOrdenesServicioProd::mdlCrear($taller, $desde, $hasta, $obs, (int) $_SESSION["id"], $_SESSION["nombre"]));
+        $regul = isset($_POST["regularizacion"]) && $_POST["regularizacion"] === "1";
+        if ($regul && $obs === "") {
+            $obs = "ORDEN DE REGULARIZACION: SERVICIOS ENVIADOS DEL " . date("d/m/Y", strtotime($desde)) . " AL " . date("d/m/Y", strtotime($hasta)) . ".";
+        }
+        ospJson(ModeloOrdenesServicioProd::mdlCrear($taller, $desde, $hasta, $obs, (int) $_SESSION["id"], $_SESSION["nombre"], $regul));
 
     case "ver":
         $o = ModeloOrdenesServicioProd::mdlObtener(isset($_REQUEST["id"]) ? $_REQUEST["id"] : 0);

@@ -1231,7 +1231,7 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "reportes-generales-v2") { ?>
     <script src="vistas/js/reportes-generales-v2.js?v=16"></script>
     <?php } ?>
-    <script src="vistas/js/sectores.js?v=5"></script>
+    <script src="vistas/js/sectores.js?v=6"></script>
     <script src="vistas/js/paras.js"></script>
     <script src="vistas/js/asistencias.js"></script>
     <script src="vistas/js/produccion.js"></script>
@@ -1241,8 +1241,8 @@ CUERPO DOCUMENTO
     <script src="vistas/js/condicionesventa.js"></script>
     <script src="vistas/js/unidadesmedida.js"></script>
     <script src="vistas/js/servicios.js"></script>
-    <script src="vistas/js/ordenes-servicio-prod.js?v=6"></script>
-    <script src="vistas/js/liquidaciones-servicio-prod.js?v=2"></script>
+    <script src="vistas/js/ordenes-servicio-prod.js?v=8"></script>
+    <script src="vistas/js/liquidaciones-servicio-prod.js?v=3"></script>
     <script src="vistas/js/bancos.js"></script>
     <script src="vistas/js/cuentas.js?v=4"></script>
     <script src="vistas/js/vendedor.js"></script>

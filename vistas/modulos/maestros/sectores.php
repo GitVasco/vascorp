@@ -66,6 +66,14 @@ function bloqueDatosGreSector($p)
               <input type="text" class="form-control" name="<?= $p; ?>CuentaBcp" id="<?= $p; ?>CuentaBcp" maxlength="30" placeholder="Nº de cuenta">
             </div>
           </div>
+
+          <div class="checkbox" style="margin-bottom:0">
+            <label>
+              <input type="checkbox" name="<?= $p; ?>PreciosIgv" id="<?= $p; ?>PreciosIgv" value="1">
+              Los precios de servicio de este taller <b>incluyen IGV</b>
+              <small class="text-muted">(en las órdenes y liquidaciones se separa Neto, IGV y Total)</small>
+            </label>
+          </div>
         </div>
 <?php
 }

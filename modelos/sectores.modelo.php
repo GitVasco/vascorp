@@ -125,6 +125,22 @@ class ModeloSectores{
 	CREAR SECTOR
 	=============================================*/
 
+	/** ¿Existe sectorjf.precios_igv? (docs/sql/precios-igv.sql). Tolera que aún no se haya ejecutado. */
+	static private $tienePreciosIgv = null;
+	static public function mdlTienePreciosIgv(){
+
+		if(self::$tienePreciosIgv === null){
+			try {
+				$st = Conexion::conectar()->query("SHOW COLUMNS FROM sectorjf LIKE 'precios_igv'");
+				self::$tienePreciosIgv = ($st && $st->fetch()) ? true : false;
+			} catch (Exception $e) {
+				self::$tienePreciosIgv = false;
+			}
+		}
+		return self::$tienePreciosIgv;
+
+	}
+
 	static public function mdlIngresarSector($datos){
 
 		$tipo = (isset($datos["tipo"]) && (int) $datos["tipo"] === 0) ? 0 : 1;
@@ -134,10 +150,15 @@ class ModeloSectores{
 			isset($datos["codigo"]) ? $datos["codigo"] : ""
 		);
 
+		$conIgv = self::mdlTienePreciosIgv();
 		$stmt = Conexion::conectar()->prepare(
-			"INSERT INTO sectorjf (cod_sector, nom_sector, tipo, estado, color, cuenta_detraccion, cuenta_bcp)
-			 VALUES (:codigo, :nombre, :tipo, :estado, :color, :cdet, :cbcp)"
+			"INSERT INTO sectorjf (cod_sector, nom_sector, tipo, estado, color, cuenta_detraccion, cuenta_bcp" . ($conIgv ? ", precios_igv" : "") . ")
+			 VALUES (:codigo, :nombre, :tipo, :estado, :color, :cdet, :cbcp" . ($conIgv ? ", :pigv" : "") . ")"
 		);
+		if($conIgv){
+			$pigv = !empty($datos["precios_igv"]) ? 1 : 0;
+			$stmt->bindParam(":pigv", $pigv, PDO::PARAM_INT);
+		}
 
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);
 		$stmt->bindParam(":nombre", $datos["sector"], PDO::PARAM_STR);
@@ -217,6 +238,7 @@ class ModeloSectores{
 			isset($datos["codigo"]) ? $datos["codigo"] : ""
 		);
 
+		$conIgv = self::mdlTienePreciosIgv();
 		$stmt = Conexion::conectar()->prepare(
 			"UPDATE sectorjf
 			 SET cod_sector = :codigo,
@@ -225,9 +247,14 @@ class ModeloSectores{
 			     estado = :estado,
 			     color = :color,
 			     cuenta_detraccion = :cdet,
-			     cuenta_bcp = :cbcp
+			     cuenta_bcp = :cbcp" . ($conIgv ? ",
+			     precios_igv = :pigv" : "") . "
 			 WHERE id = :valor"
 		);
+		if($conIgv){
+			$pigv = !empty($datos["precios_igv"]) ? 1 : 0;
+			$stmt->bindParam(":pigv", $pigv, PDO::PARAM_INT);
+		}
 
 		$stmt->bindParam(":valor", $datos["id"], PDO::PARAM_INT);
 		$stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_STR);

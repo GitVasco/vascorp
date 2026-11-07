@@ -32,7 +32,7 @@ class ModeloLiquidacionesServicioProd
                 $faltan[] = $tabla;
             }
         }
-        foreach (array(array("cierresjf", "liquidacion"), array("serviciosjf", "orden_servicio"), array("sectorjf", "cuenta_bcp")) as $tc) {
+        foreach (array(array("cierresjf", "liquidacion"), array("serviciosjf", "orden_servicio"), array("sectorjf", "cuenta_bcp"), array("sectorjf", "precios_igv"), array("liquidaciones_servicio_prodjf", "precios_igv")) as $tc) {
             $stmt = $pdo->query("SHOW COLUMNS FROM " . $tc[0] . " LIKE " . $pdo->quote($tc[1]));
             if (!$stmt || !$stmt->fetch()) {
                 $faltan[] = $tc[0] . "." . $tc[1];
@@ -58,7 +58,7 @@ class ModeloLiquidacionesServicioProd
     {
         $stmt = self::pdo()->prepare(
             "SELECT s.cod_sector, s.nom_sector, g.razon_social, g.tipo_doc, g.doc, g.direccion, g.dist, g.prov, g.dpto,
-                    s.cuenta_detraccion, s.cuenta_bcp
+                    s.cuenta_detraccion, s.cuenta_bcp, s.precios_igv
              FROM sectorjf s
              LEFT JOIN gre_sector_datosjf g ON g.cod_sector = s.cod_sector
              WHERE s.cod_sector = :t"
@@ -276,9 +276,9 @@ class ModeloLiquidacionesServicioProd
             $direccion = trim($datos["direccion"] . " " . ($datos["dist"] ? "- " . $datos["dist"] . " - " . $datos["prov"] . " - " . $datos["dpto"] : ""));
             $stmt = $pdo->prepare(
                 "INSERT INTO liquidaciones_servicio_prodjf
-                 (numero, taller, taller_nombre, taller_razon, taller_ruc, taller_direccion, taller_cta_detraccion, taller_cta_bcp, fecha_desde, fecha_hasta,
+                 (numero, taller, taller_nombre, taller_razon, taller_ruc, taller_direccion, taller_cta_detraccion, taller_cta_bcp, precios_igv, fecha_desde, fecha_hasta,
                   fecha_emision, usuario, usuario_nombre, observaciones, total_cierres, total_unidades, total_importe, estado)
-                 VALUES (:numero, :taller, :tn, :tr, :truc, :tdir, :tcd, :tcb, :desde, :hasta, NOW(), :uid, :unom, :obs, :tc, :tu, :ti, 'LIQUIDADA')"
+                 VALUES (:numero, :taller, :tn, :tr, :truc, :tdir, :tcd, :tcb, :pigv, :desde, :hasta, NOW(), :uid, :unom, :obs, :tc, :tu, :ti, 'LIQUIDADA')"
             );
             $stmt->execute(array(
                 ":numero" => $numero,
@@ -289,6 +289,7 @@ class ModeloLiquidacionesServicioProd
                 ":tdir" => $direccion,
                 ":tcd" => $datos["cuenta_detraccion"],
                 ":tcb" => $datos["cuenta_bcp"],
+                ":pigv" => !empty($datos["precios_igv"]) ? 1 : 0,
                 ":desde" => $desde,
                 ":hasta" => $hasta,
                 ":uid" => $usuarioId,

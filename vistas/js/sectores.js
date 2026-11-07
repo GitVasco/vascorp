@@ -181,6 +181,7 @@ function limpiarBloqueGre(prefijo) {
     $("#" + prefijo + "GreMsg").text("");
     $("#" + prefijo + "GreBloque").find("input[type=text]").val("");
     $("#" + prefijo + "GreTipoDoc").val("6");
+    $("#" + prefijo + "PreciosIgv").prop("checked", false);
 }
 
 function llenarBloqueGre(prefijo, d) {
@@ -213,6 +214,7 @@ $(".tablaSectores").on("click", ".btnEditarSector", function () {
             llenarBloqueGre("editar", r ? r.gre : null);
             $("#editarCuentaDetraccion").val(r ? r.cuenta_detraccion : "");
             $("#editarCuentaBcp").val(r ? r.cuenta_bcp : "");
+            $("#editarPreciosIgv").prop("checked", !!(r && +r.precios_igv === 1));
             toggleBloqueGre("editar");
         }
     });

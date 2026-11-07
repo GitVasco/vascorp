@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS liquidaciones_servicio_prodjf (
     taller_direccion      VARCHAR(200) NULL,
     taller_cta_detraccion VARCHAR(30) NULL,
     taller_cta_bcp        VARCHAR(30) NULL,
+    precios_igv           TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Copia de sectorjf.precios_igv al liquidar (docs/sql/precios-igv.sql)',
     fecha_desde           DATE NOT NULL,
     fecha_hasta           DATE NOT NULL,
     fecha_emision         DATETIME NOT NULL,

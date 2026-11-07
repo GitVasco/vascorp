@@ -686,7 +686,7 @@ class ModeloGreManual
                 "error" => "Falta ejecutar docs/sql/gre-manual-orden-servicio.sql para emitir guías globales.");
         }
         $pdo = Conexion::conectar();
-        $stmt = $pdo->prepare("SELECT id, numero, taller, taller_nombre, estado FROM ordenes_servicio_prodjf WHERE id = :id");
+        $stmt = $pdo->prepare("SELECT * FROM ordenes_servicio_prodjf WHERE id = :id");
         $stmt->execute(array(":id" => (int) $idOrden));
         $o = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$o) {
@@ -696,6 +696,10 @@ class ModeloGreManual
             "desde_corte" => false, "observacion" => "", "error" => "");
         if ($o["estado"] === "ANULADA") {
             $res["error"] = "La orden " . $o["numero"] . " está anulada.";
+            return $res;
+        }
+        if (!empty($o["regularizacion"])) {
+            $res["error"] = "La orden " . $o["numero"] . " es de regularización: no requiere guías de remisión.";
             return $res;
         }
         $stmt = $pdo->prepare("SELECT servicio FROM ordenes_servicio_prod_servjf WHERE id_orden = :id ORDER BY fecha_servicio, servicio");

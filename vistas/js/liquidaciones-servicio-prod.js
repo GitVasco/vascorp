@@ -17,6 +17,14 @@
         var p = String(f).substr(0, 10).split("-");
         return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : f;
     }
+    /* Neto / IGV / Total según si los precios del taller ya incluyen IGV */
+    function desglose(importe, conIgv) {
+        importe = Number(importe || 0);
+        var neto, igv, total;
+        if (conIgv) { total = importe; neto = Math.round(total / 1.18 * 100) / 100; igv = Math.round((total - neto) * 100) / 100; }
+        else { neto = importe; igv = Math.round(neto * 0.18 * 100) / 100; total = Math.round((neto + igv) * 100) / 100; }
+        return { neto: neto, igv: igv, total: total };
+    }
     function aviso(tipo, html) {
         $("#lspAvisos").append('<div class="alert alert-' + tipo + '" style="margin-bottom:6px">' + html + "</div>");
     }
@@ -153,8 +161,12 @@
                 h += "<tr><td>" + esc(c.codigo) + "</td><td>" + esc(c.guia) + "</td><td>" + fecha(c.fecha) + "</td><td>" + (c.servicios.length ? $.map(c.servicios, esc).join(", ") : '<span class="text-muted">sin servicio</span>') + "</td><td>" + osp + "</td>" +
                     '<td class="text-right">' + num(c.unidades) + '</td><td class="text-right">' + num(c.importe, 2) + "</td></tr>";
             });
-            h += '</tbody><tfoot><tr><th colspan="5" class="text-right">TOTAL</th><th class="text-right">' + num(r.total_unidades) +
-                '</th><th class="text-right">S/ ' + num(r.total_importe, 2) + "</th></tr></tfoot></table>";
+            var dg = desglose(r.total_importe, +((r.taller || {}).precios_igv) === 1);
+            h += '</tbody><tfoot>' +
+                '<tr><td colspan="5" class="text-right">Subtotal neto (sin IGV)</td><td></td><td class="text-right">S/ ' + num(dg.neto, 2) + "</td></tr>" +
+                '<tr><td colspan="5" class="text-right">IGV (18%)</td><td></td><td class="text-right">S/ ' + num(dg.igv, 2) + "</td></tr>" +
+                '<tr><th colspan="5" class="text-right">TOTAL</th><th class="text-right">' + num(r.total_unidades) +
+                '</th><th class="text-right">S/ ' + num(dg.total, 2) + "</th></tr></tfoot></table>";
             $("#lspPrevia").html(h);
             $("#lspPie").show();
             previaValida = !bloquea;

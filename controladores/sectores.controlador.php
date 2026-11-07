@@ -99,6 +99,7 @@ class ControladorSectores{
 			   	if(!$cuentas["ok"]){ self::greAvisoError($cuentas["msg"]); return; }
 			   	$datos["cuenta_detraccion"] = $cuentas["cuenta_detraccion"];
 			   	$datos["cuenta_bcp"] = $cuentas["cuenta_bcp"];
+			   	$datos["precios_igv"] = isset($_POST["nuevoPreciosIgv"]) ? 1 : 0;
 
 			   	$gre = array("vacio" => true, "ok" => true);
 			   	if($tipo === 1){
@@ -213,6 +214,7 @@ class ControladorSectores{
 			   	if(!$cuentas["ok"]){ self::greAvisoError($cuentas["msg"]); return; }
 			   	$datos["cuenta_detraccion"] = $cuentas["cuenta_detraccion"];
 			   	$datos["cuenta_bcp"] = $cuentas["cuenta_bcp"];
+			   	$datos["precios_igv"] = isset($_POST["editarPreciosIgv"]) ? 1 : 0;
 
 			   	$gre = array("vacio" => true, "ok" => true);
 			   	if($tipo === 1){

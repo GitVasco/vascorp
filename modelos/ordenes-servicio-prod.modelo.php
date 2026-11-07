@@ -34,7 +34,7 @@ class ModeloOrdenesServicioProd
         if (!$stmt || !$stmt->fetch()) {
             $faltan[] = "serviciosjf.orden_servicio";
         }
-        foreach (array(array("ordenes_servicio_prodjf", "taller_cta_bcp"), array("sectorjf", "cuenta_bcp")) as $tc) {
+        foreach (array(array("ordenes_servicio_prodjf", "taller_cta_bcp"), array("sectorjf", "cuenta_bcp"), array("sectorjf", "precios_igv"), array("ordenes_servicio_prodjf", "precios_igv"), array("ordenes_servicio_prodjf", "regularizacion")) as $tc) {
             $stmt = $pdo->query("SHOW COLUMNS FROM " . $tc[0] . " LIKE " . $pdo->quote($tc[1]));
             if (!$stmt || !$stmt->fetch()) {
                 $faltan[] = $tc[0] . "." . $tc[1];
@@ -60,7 +60,7 @@ class ModeloOrdenesServicioProd
     {
         $stmt = self::pdo()->prepare(
             "SELECT s.cod_sector, s.nom_sector, g.razon_social, g.tipo_doc, g.doc, g.direccion, g.dist, g.prov, g.dpto,
-                    s.cuenta_detraccion, s.cuenta_bcp
+                    s.cuenta_detraccion, s.cuenta_bcp, s.precios_igv
              FROM sectorjf s
              LEFT JOIN gre_sector_datosjf g ON g.cod_sector = s.cod_sector
              WHERE s.cod_sector = :t"
@@ -167,7 +167,7 @@ class ModeloOrdenesServicioProd
     /**
      * Arma (sin guardar) el contenido de una orden: servicios libres + detalle + advertencias.
      */
-    public static function mdlVistaPrevia($taller, $desde, $hasta, $pdo = null, $bloquear = false)
+    public static function mdlVistaPrevia($taller, $desde, $hasta, $pdo = null, $bloquear = false, $regularizacion = false)
     {
         $pdo = $pdo ? $pdo : self::pdo();
         $servicios = self::servicios($pdo, $taller, $desde, $hasta, true, $bloquear);
@@ -191,6 +191,13 @@ class ModeloOrdenesServicioProd
                 continue;
             }
             $s["detalle"] = self::detalleServicio($pdo, $s["codigo"], $taller);
+            if ($regularizacion) {
+                // Regularización: no se valoriza (ni se exigen precios)
+                foreach ($s["detalle"] as $k => $d) {
+                    $s["detalle"][$k]["precio_doc"] = 0;
+                    $s["detalle"][$k]["importe"] = 0;
+                }
+            }
             if (trim((string) $s["guia"]) === "") {
                 $sinGuia[] = $s["codigo"];
             }
@@ -223,7 +230,7 @@ class ModeloOrdenesServicioProd
      * Crea la orden dentro de una transacción. Devuelve array(ok, id|msg).
      * Vuelve a leer los servicios con FOR UPDATE para que dos usuarios no tomen los mismos.
      */
-    public static function mdlCrear($taller, $desde, $hasta, $observaciones, $usuarioId, $usuarioNombre)
+    public static function mdlCrear($taller, $desde, $hasta, $observaciones, $usuarioId, $usuarioNombre, $regularizacion = false)
     {
         $pdo = self::pdo();
         try {
@@ -233,7 +240,7 @@ class ModeloOrdenesServicioProd
             if (!$datos) {
                 throw new Exception("Taller no encontrado.");
             }
-            $prev = self::mdlVistaPrevia($taller, $desde, $hasta, $pdo, true);
+            $prev = self::mdlVistaPrevia($taller, $desde, $hasta, $pdo, true, $regularizacion);
             if (!count($prev["servicios"])) {
                 throw new Exception("No hay servicios libres para ese taller y rango de fechas.");
             }
@@ -247,9 +254,9 @@ class ModeloOrdenesServicioProd
 
             $stmt = $pdo->prepare(
                 "INSERT INTO ordenes_servicio_prodjf
-                 (numero, taller, taller_nombre, taller_razon, taller_ruc, taller_direccion, taller_cta_detraccion, taller_cta_bcp, fecha_desde, fecha_hasta,
+                 (numero, taller, taller_nombre, taller_razon, taller_ruc, taller_direccion, taller_cta_detraccion, taller_cta_bcp, precios_igv, regularizacion, fecha_desde, fecha_hasta,
                   fecha_emision, usuario, usuario_nombre, observaciones, total_servicios, total_unidades, total_importe, estado)
-                 VALUES (:numero, :taller, :tn, :tr, :truc, :tdir, :tcd, :tcb, :desde, :hasta, NOW(), :uid, :unom, :obs, :ts, :tu, :ti, 'EMITIDA')"
+                 VALUES (:numero, :taller, :tn, :tr, :truc, :tdir, :tcd, :tcb, :pigv, :reg, :desde, :hasta, NOW(), :uid, :unom, :obs, :ts, :tu, :ti, 'EMITIDA')"
             );
             $direccion = trim($datos["direccion"] . " " . ($datos["dist"] ? "- " . $datos["dist"] . " - " . $datos["prov"] . " - " . $datos["dpto"] : ""));
             $stmt->execute(array(
@@ -261,6 +268,8 @@ class ModeloOrdenesServicioProd
                 ":tdir" => $direccion,
                 ":tcd" => $datos["cuenta_detraccion"],
                 ":tcb" => $datos["cuenta_bcp"],
+                ":pigv" => !empty($datos["precios_igv"]) ? 1 : 0,
+                ":reg" => $regularizacion ? 1 : 0,
                 ":desde" => $desde,
                 ":hasta" => $hasta,
                 ":uid" => $usuarioId,
@@ -311,9 +320,10 @@ class ModeloOrdenesServicioProd
     {
         self::mdlSincronizarGuias();
         $sql = "SELECT id, numero, taller, taller_nombre, taller_ruc, fecha_desde, fecha_hasta, fecha_emision,
-                    usuario_nombre, total_servicios, total_unidades, total_importe, estado,
-                    (SELECT COUNT(*) FROM ordenes_servicio_prod_servjf os
-                      WHERE os.id_orden = ordenes_servicio_prodjf.id AND (os.guia IS NULL OR os.guia = '')) AS guias_pendientes
+                    usuario_nombre, total_servicios, total_unidades, total_importe, estado, regularizacion,
+                    (CASE WHEN regularizacion = 1 THEN 0 ELSE
+                        (SELECT COUNT(*) FROM ordenes_servicio_prod_servjf os
+                          WHERE os.id_orden = ordenes_servicio_prodjf.id AND (os.guia IS NULL OR os.guia = '')) END) AS guias_pendientes
                 FROM ordenes_servicio_prodjf
                 WHERE DATE(fecha_emision) BETWEEN :desde AND :hasta";
         $par = array(":desde" => $desde, ":hasta" => $hasta);
