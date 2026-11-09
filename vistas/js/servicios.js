@@ -1449,3 +1449,4 @@ $(".box").on("click", ".btnReportePendienteRetorno", function () {
 $(".box").on("click", ".btnReportePrecioServicio", function () {
     window.location = "vistas/reportes_excel/rpt_precio_servicio.php";
 });
+

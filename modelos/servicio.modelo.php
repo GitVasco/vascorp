@@ -2348,4 +2348,151 @@ class ModeloServicios
 
 		return $filas;
 	}
+
+	/*=============================================
+	CIERRE MANUAL: LINEAS ABIERTAS (saldo > 0, no cerradas)
+	=============================================*/
+	static public function mdlListarAbiertosCierreManual($codigo = null)
+	{
+		$sql = "SELECT sd.id, sd.codigo, s.guia, s.taller, se.nom_sector, sd.articulo, a.modelo, a.nombre, a.color,
+					sd.cantidad, sd.saldo, DATE(s.fecha) AS fecha
+				FROM servicios_detallejf sd
+				LEFT JOIN serviciosjf s ON s.codigo = sd.codigo
+				LEFT JOIN articulojf a ON a.articulo = sd.articulo
+				LEFT JOIN sectorjf se ON se.cod_sector = s.taller
+				WHERE sd.saldo > 0 AND sd.cerrar = 0";
+		if ($codigo) {
+			$sql .= " AND sd.codigo = :codigo";
+		}
+		$sql .= " ORDER BY s.fecha DESC, sd.codigo, a.modelo, a.color";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		if ($codigo) {
+			$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		}
+		if (!$stmt->execute()) {
+			$e = $stmt->errorInfo();
+			throw new Exception("SQL: " . $e[2]);
+		}
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	CIERRE MANUAL: CIERRA CANTIDADES INDICADAS (transaccional)
+	$items = array(array("id"=>, "cantidad"=>), ...)
+	=============================================*/
+	static public function mdlCierreManualServicios($items, $motivo, $obs, $usuario)
+	{
+		$pdo = Conexion::conectar();
+		$pdo->beginTransaction();
+
+		try {
+			$lineas = 0;
+			$total = 0;
+			foreach ($items as $it) {
+				$id = (int) $it["id"];
+				$cant = (int) $it["cantidad"];
+				if ($cant <= 0) {
+					continue;
+				}
+
+				$stmt = $pdo->prepare("SELECT codigo, articulo, saldo, cabecera_taller FROM servicios_detallejf WHERE id = :id AND cerrar = 0 FOR UPDATE");
+				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
+				$stmt->execute();
+				$d = $stmt->fetch(PDO::FETCH_ASSOC);
+				$stmt->closeCursor();
+
+				if (!$d) {
+					throw new Exception("La línea $id no existe o ya está cerrada");
+				}
+				$saldo = (int) $d["saldo"];
+				if ($cant > $saldo) {
+					throw new Exception("Servicio " . $d["codigo"] . " / " . $d["articulo"] . ": la cantidad ($cant) supera el saldo ($saldo)");
+				}
+
+				// descuenta del saldo; si queda en 0 se marca como cerrada
+				$nuevoSaldo = $saldo - $cant;
+				$stmt = $pdo->prepare("UPDATE servicios_detallejf
+					SET saldo = :nuevo, cerrar = :cerrar
+					WHERE id = :id");
+				$stmt->bindValue(":nuevo", $nuevoSaldo, PDO::PARAM_INT);
+				$stmt->bindValue(":cerrar", $nuevoSaldo <= 0 ? "1" : "0", PDO::PARAM_STR);
+				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
+				$stmt->execute();
+				$stmt->closeCursor();
+
+				// baja el stock "en servicio" del artículo
+				$stmt = $pdo->prepare("UPDATE articulojf SET servicio = servicio - :cant WHERE articulo = :articulo");
+				$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
+				$stmt->bindValue(":articulo", $d["articulo"], PDO::PARAM_STR);
+				$stmt->execute();
+				$stmt->closeCursor();
+
+				// si viene de un envío a taller, descuenta su saldo y lo cierra al llegar a 0
+				if ($d["cabecera_taller"]) {
+					$stmt = $pdo->prepare("UPDATE entaller_cabjf SET saldo = GREATEST(saldo - :cant, 0)
+						WHERE id = :cab AND estado = '0'");
+					$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
+					$stmt->bindValue(":cab", (int) $d["cabecera_taller"], PDO::PARAM_INT);
+					$stmt->execute();
+					$stmt->closeCursor();
+
+					$stmt = $pdo->prepare("UPDATE entaller_cabjf SET estado = 1 WHERE id = :cab AND saldo <= 0");
+					$stmt->bindValue(":cab", (int) $d["cabecera_taller"], PDO::PARAM_INT);
+					$stmt->execute();
+					$stmt->closeCursor();
+				}
+
+				// registro del cierre
+				$stmt = $pdo->prepare("INSERT INTO servicios_cierre_manual
+					(detalle_id, codigo, articulo, cantidad, saldo_antes, motivo, obs, usuario, fecha)
+					VALUES (:id, :codigo, :articulo, :cant, :saldo, :motivo, :obs, :usuario, NOW())");
+				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
+				$stmt->bindValue(":codigo", $d["codigo"], PDO::PARAM_STR);
+				$stmt->bindValue(":articulo", $d["articulo"], PDO::PARAM_STR);
+				$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
+				$stmt->bindValue(":saldo", $saldo, PDO::PARAM_INT);
+				$stmt->bindValue(":motivo", $motivo, PDO::PARAM_STR);
+				$stmt->bindValue(":obs", $obs, PDO::PARAM_STR);
+				$stmt->bindValue(":usuario", $usuario, PDO::PARAM_STR);
+				$stmt->execute();
+				$stmt->closeCursor();
+
+				$lineas++;
+				$total += $cant;
+			}
+
+			if ($lineas === 0) {
+				throw new Exception("Indique una cantidad mayor a 0 en al menos una línea");
+			}
+
+			$pdo->commit();
+			return array("ok" => true, "cerrados" => $lineas, "cantidad" => $total);
+		} catch (Exception $e) {
+			$pdo->rollBack();
+			return array("ok" => false, "error" => $e->getMessage());
+		}
+	}
+
+	/*=============================================
+	CIERRE MANUAL: HISTORIAL DE LO CERRADO A MANO
+	=============================================*/
+	static public function mdlHistorialCierreManual($desde, $hasta)
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT cm.id, cm.codigo, s.guia, s.taller, se.nom_sector, cm.articulo,
+					a.modelo, a.nombre, a.color, cm.saldo_antes, cm.cantidad, cm.motivo, cm.obs, cm.usuario, cm.fecha
+				FROM servicios_cierre_manual cm
+				LEFT JOIN serviciosjf s ON s.codigo = cm.codigo
+				LEFT JOIN articulojf a ON a.articulo = cm.articulo
+				LEFT JOIN sectorjf se ON se.cod_sector = s.taller
+				WHERE DATE(cm.fecha) BETWEEN :desde AND :hasta
+				ORDER BY cm.fecha DESC, cm.id DESC");
+		$stmt->bindParam(":desde", $desde, PDO::PARAM_STR);
+		$stmt->bindParam(":hasta", $hasta, PDO::PARAM_STR);
+		if (!$stmt->execute()) {
+			$e = $stmt->errorInfo();
+			throw new Exception("SQL: " . $e[2]);
+		}
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
 }

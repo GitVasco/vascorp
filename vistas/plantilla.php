@@ -107,6 +107,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Seguimiento recetas | Vasco System";
         } elseif ($_GET["ruta"] === "ordenes-servicio-prod") {
             $__tituloVentana = "Órdenes de servicio | Vasco System";
+        } elseif ($_GET["ruta"] === "cierre-manual-servicios") {
+            $__tituloVentana = "Cierre manual de servicios | Vasco System";
         } elseif ($_GET["ruta"] === "liquidaciones-servicio-prod") {
             $__tituloVentana = "Liquidaciones de servicios | Vasco System";
         } elseif ($_GET["ruta"] === "ver-nota-credito") {
@@ -783,6 +785,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "programacion-taller-semana" ||
                 $_GET["ruta"] == "seguimiento-recetas" ||
                 $_GET["ruta"] == "ordenes-servicio-prod" ||
+                $_GET["ruta"] == "cierre-manual-servicios" ||
                 $_GET["ruta"] == "liquidaciones-servicio-prod"
             ) {
 
@@ -1253,6 +1256,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/condicionesventa.js"></script>
     <script src="vistas/js/unidadesmedida.js"></script>
     <script src="vistas/js/servicios.js"></script>
+    <script src="vistas/js/cierre-manual-servicios.js?v=1"></script>
     <script src="vistas/js/ordenes-servicio-prod.js?v=8"></script>
     <script src="vistas/js/liquidaciones-servicio-prod.js?v=3"></script>
     <script src="vistas/js/bancos.js"></script>

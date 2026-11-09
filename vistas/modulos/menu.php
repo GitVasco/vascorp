@@ -986,6 +986,11 @@
                                     <a href="servicios"><i class="fa fa-circle-o"></i> Servicios</a>
                                 </li>
 
+                                <!-- CIERRE MANUAL DE SERVICIOS -->
+                                <li class="<?= $_GET['ruta'] == 'cierre-manual-servicios' ? 'active' : '' ?>">
+                                    <a href="cierre-manual-servicios"><i class="fa fa-circle-o"></i> Cierre manual</a>
+                                </li>
+
                                 <!-- ÓRDENES DE SERVICIO (sustento SUNAT) -->
                                 <li class="<?= $_GET['ruta'] == 'ordenes-servicio-prod' ? 'active' : '' ?>">
                                     <a href="ordenes-servicio-prod"><i class="fa fa-circle-o"></i> Órdenes de servicio</a>

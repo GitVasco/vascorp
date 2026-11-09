@@ -28,6 +28,7 @@
                     </button>
                 </a>
                 <button class="btn btn-info btnServicioDeta" data-toggle='modal' data-target='#modalVerServicioDeta' codigoServicio><i class="fa fa-eye"></i> Ver servicios</button>
+                <a href="cierre-manual-servicios" class="btn btn-warning"><i class="fa fa-lock"></i> Cierre manual</a>
                 <button class="btn btn-outline-success  btnReporteServicios" style="border:green 1px solid">
                     <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte Servicios </button>
                 <select id="anioHistorialServicios" class="form-control input-sm" style="width:90px; display:inline-block; height:34px; vertical-align:middle; margin:0 4px 0 8px;">
@@ -104,6 +105,7 @@
     </section>
 
 </div>
+
 
 <!--=====================================
 MODAL VISUALIZAR INFORMACION
