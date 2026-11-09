@@ -2028,6 +2028,81 @@ $("#fechaCabecera2").change(function () {
 });
 
 /*
+ * CAMBIAR TALLER DE UN BLOQUE (modal #modalCambiarTaller)
+ * Lista los bloques (entaller_cab) de la fecha; solo es editable el bloque intacto
+ * (estado 0 y saldo = cantidad). El taller nuevo se limita al mismo tipo (interno/externo).
+ */
+$("#fechaCambiarTaller").change(function () {
+    var datos = new FormData();
+    datos.append("fecha", $(this).val());
+    $.ajax({
+        url: "ajax/talleres.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            var $sel = $("#bloqueCambiarTaller");
+            $sel.find("option").remove();
+            $sel.append('<option value="">Seleccionar bloque</option>');
+            for (var i = 0; i < respuesta.length; i++) {
+                var r = respuesta[i];
+                var intacto =
+                    String(r["estado"]) === "0" &&
+                    r["saldo"] !== null &&
+                    parseInt(r["saldo"], 10) === parseInt(r["cantidad"], 10);
+                var $op = $("<option></option>")
+                    .val(r["id"])
+                    .attr("data-taller", (r["taller"] || "").toString().toUpperCase())
+                    .text(
+                        r["id"] + " - " + r["articulo"] + " - " + r["color"] + " - " + r["talla"] +
+                        " - Cant " + r["cantidad"] + " - Taller " + (r["taller"] || "?") +
+                        (intacto ? "" : " (no editable)")
+                    );
+                if (!intacto) {
+                    $op.prop("disabled", true);
+                }
+                $sel.append($op);
+            }
+            $sel.selectpicker("refresh");
+            $("#tallerActualCambiar").text(
+                respuesta.length ? "" : "No hay bloques en esa fecha"
+            );
+            filtrarTalleresNuevoCambio("");
+        },
+        error: function (xhr, estado, err) {
+            console.error("Cambiar taller - error al listar bloques:", estado, err, xhr.responseText);
+            $("#tallerActualCambiar").text(
+                "Error al cargar bloques (" + estado + "). Revise la consola del navegador."
+            );
+        },
+    });
+});
+
+$("#bloqueCambiarTaller").change(function () {
+    var actual = ($(this).find("option:selected").attr("data-taller") || "").toUpperCase();
+    $("#tallerActualCambiar").text(actual ? "Taller actual: " + actual : "");
+    filtrarTalleresNuevoCambio(actual);
+});
+
+function filtrarTalleresNuevoCambio(actual) {
+    var tipos = window.tipoSectorCambiarTaller || {};
+    var tipoActual = actual && tipos[actual] !== undefined ? String(tipos[actual]) : null;
+    var $nuevo = $("#tallerNuevoCambiar");
+    $nuevo.find("option[data-tipo]").each(function () {
+        var $o = $(this);
+        var permitido =
+            $o.val().toUpperCase() !== actual &&
+            (tipoActual === null || String($o.attr("data-tipo")) === tipoActual);
+        $o.prop("disabled", !permitido);
+    });
+    $nuevo.val("");
+    $nuevo.selectpicker("refresh");
+}
+
+/*
  * CARGAR TABLA TALLER GENERADO
  */
 if (localStorage.getItem("articuloTallerP") != null) {

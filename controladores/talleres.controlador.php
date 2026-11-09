@@ -2827,4 +2827,68 @@ class ControladorTalleres
             "errores" => $errores
         );
     }
+
+    /*=============================================
+    CAMBIAR TALLER DE UN BLOQUE ENVIADO POR ERROR
+    Ver reglas en ModeloTalleres::mdlCambiarTallerBloque
+    =============================================*/
+    static public function ctrCambiarTallerBloque()
+    {
+        if (!isset($_POST["bloqueCambiarTaller"])) {
+            return;
+        }
+
+        $idCab = (int) $_POST["bloqueCambiarTaller"];
+        $nuevoTaller = isset($_POST["tallerNuevoCambiar"]) ? trim((string) $_POST["tallerNuevoCambiar"]) : "";
+
+        $respuesta = ModeloTalleres::mdlCambiarTallerBloque($idCab, $nuevoTaller);
+
+        if (is_array($respuesta) && isset($respuesta["status"]) && $respuesta["status"] === "ok") {
+            $texto = "Bloque " . $idCab . " (" . $respuesta["articulo"] . " x " . $respuesta["cantidad"] . "): "
+                . $respuesta["taller_anterior"] . " → " . $respuesta["taller_nuevo"];
+            echo '<script>
+            swal({
+                type: "success",
+                title: "Taller cambiado correctamente",
+                text: ' . json_encode($texto) . ',
+                showConfirmButton: true,
+                confirmButtonText: "Cerrar"
+            }).then(function(result){
+                if (result.value) {
+                    window.location = "en-taller";
+                }
+            })
+            </script>';
+            return;
+        }
+
+        $mensajes = array(
+            "error_datos_incompletos" => "Seleccione el bloque y el taller nuevo.",
+            "error_movimiento_no_encontrado" => "No se encontró el bloque de taller.",
+            "error_mismo_taller" => "El taller nuevo es el mismo que el actual.",
+            "error_taller_no_existe" => "El taller seleccionado no existe.",
+            "error_tipo_distinto" => "No se puede pasar de taller interno a servicio externo (o al revés). Use «Eliminar bloque» y vuelva a enviar desde En Cortes.",
+            "error_no_se_pudo_crear_servicio" => "No se pudo obtener/crear el servicio del día del taller nuevo.",
+            "error_bloque_modificado" => "El bloque cambió mientras lo editaba. Vuelva a intentarlo.",
+            "error_bloque_ya_procesado" => "El bloque ya fue procesado, no se puede cambiar de taller.",
+            "error_bloque_con_ingresos" => "El bloque ya tiene ingresos/terminados (saldo menor a la cantidad). No se puede cambiar de taller.",
+            "error_bloque_con_tickets_en_proceso" => "El bloque tiene tickets asignados, en proceso o terminados. No se puede cambiar de taller.",
+            "error_detalle_servicio_no_encontrado" => "No se encontró un único detalle de servicio ligado al bloque.",
+            "error_servicio_con_ingresos" => "El servicio del bloque ya tiene ingresos. No se puede cambiar de taller.",
+            "error_servicio_no_activo" => "El servicio original ya no está ACTIVO. No se puede cambiar de taller."
+        );
+        $msg = is_string($respuesta) && isset($mensajes[$respuesta])
+            ? $mensajes[$respuesta]
+            : "No se pudo cambiar el taller: " . (is_string($respuesta) ? $respuesta : "error desconocido");
+
+        echo '<script>
+        swal({
+            type: "error",
+            title: "No se cambió el taller",
+            text: ' . json_encode($msg) . ',
+            showConfirmButton: true,
+            confirmButtonText: "Cerrar"
+        })
+        </script>';
+    }
 }

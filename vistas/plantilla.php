@@ -1098,7 +1098,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/trabajador.js"></script>
     <script src="vistas/js/modelos.js"></script>
     <script src="vistas/js/cortes.js"></script>
-    <script src="vistas/js/talleres.js"></script>
+    <script src="vistas/js/talleres.js?v=<?php echo @filemtime(__DIR__ . "/js/talleres.js"); ?>"></script>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "crear-ingresos-multi") { ?>
     <script src="vistas/js/crear-ingresos-multi.js?v=<?php echo rand(); ?>"></script>
     <?php } ?>

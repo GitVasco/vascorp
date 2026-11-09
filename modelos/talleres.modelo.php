@@ -2930,4 +2930,184 @@ class ModeloTalleres
 
         $stmt = null;
     }
+
+    /*
+    * CAMBIAR TALLER DE UN BLOQUE ENVIADO POR ERROR (entaller_cabjf)
+    *
+    * Solo si el bloque está intacto: estado '0', saldo = cantidad, sin tickets en proceso/terminados
+    * y (si es servicio externo) con su detalle de servicio sin ingresos. Solo entre talleres del MISMO
+    * tipo (interno -> interno, externo -> externo); entre tipos distintos usar "Eliminar bloque" y reenviar.
+    *
+    * - Interno: solo cambia entaller_cabjf.taller (el stock articulojf.taller es global por artículo).
+    * - Externo: además mueve servicios_detallejf al servicio del día del taller nuevo y ajusta
+    *   serviciosjf.total en ambos servicios.
+    * - NO toca programacion_taller_semanajf / prioridadjf: no se enlazan por id con la cabecera
+    *   (se cierran por saldo de la OC, independiente del taller), por eso no hace falta reabrirlas.
+    *
+    * @return array ["status"=>"ok", ...] | string con código de error
+    */
+    static public function mdlCambiarTallerBloque($idCab, $nuevoTaller)
+    {
+        $idCab = (int) $idCab;
+        $nuevoTaller = strtoupper(trim((string) $nuevoTaller));
+
+        if ($idCab <= 0 || $nuevoTaller === "") {
+            return "error_datos_incompletos";
+        }
+
+        try {
+            // Pre-lectura (sin bloqueo) para saber el tipo y preparar el servicio del día si es externo
+            $pdo = Conexion::conectar();
+            $stmt = $pdo->prepare("SELECT id, taller, usuario FROM entaller_cabjf WHERE id = :id");
+            $stmt->bindValue(":id", $idCab, PDO::PARAM_INT);
+            $stmt->execute();
+            $pre = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            if (!$pre) {
+                return "error_movimiento_no_encontrado";
+            }
+
+            $tallerActual = strtoupper(trim((string) $pre["taller"]));
+            if ($tallerActual === $nuevoTaller) {
+                return "error_mismo_taller";
+            }
+
+            if (!ModeloSectores::mdlMostrarSectores($nuevoTaller)) {
+                return "error_taller_no_existe";
+            }
+
+            $esInternoActual = ModeloSectores::mdlEsInterno($tallerActual);
+            $esInternoNuevo = ModeloSectores::mdlEsInterno($nuevoTaller);
+            if ($esInternoActual !== $esInternoNuevo) {
+                return "error_tipo_distinto";
+            }
+
+            $codServicioNuevo = null;
+            if (!$esInternoNuevo) {
+                $codServicioNuevo = ModeloServicios::mdlObtenerOCrearServicioDelDia($nuevoTaller, $pre["usuario"]);
+                if (!$codServicioNuevo) {
+                    return "error_no_se_pudo_crear_servicio";
+                }
+            }
+
+            $pdo->beginTransaction();
+
+            // Releer con bloqueo y validar que el bloque siga intacto
+            $stmt = $pdo->prepare("SELECT id, articulo, cantidad, saldo, estado, taller
+                FROM entaller_cabjf WHERE id = :id FOR UPDATE");
+            $stmt->bindValue(":id", $idCab, PDO::PARAM_INT);
+            $stmt->execute();
+            $cab = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            if (!$cab) {
+                $pdo->rollBack();
+                return "error_movimiento_no_encontrado";
+            }
+            if (strtoupper(trim((string) $cab["taller"])) !== $tallerActual) {
+                $pdo->rollBack();
+                return "error_bloque_modificado";
+            }
+            if ((string) $cab["estado"] !== "0") {
+                $pdo->rollBack();
+                return "error_bloque_ya_procesado";
+            }
+            if ($cab["saldo"] === null || (int) $cab["saldo"] !== (int) $cab["cantidad"]) {
+                $pdo->rollBack();
+                return "error_bloque_con_ingresos";
+            }
+
+            // Tickets de operaciones (interno): ninguno debe estar asignado/en proceso/terminado
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM entallerjf
+                WHERE id_cabecera = :id
+                  AND (IFNULL(estado, 1) <> 1 OR IFNULL(trabajador, 0) <> 0
+                       OR fecha_proceso IS NOT NULL OR fecha_terminado IS NOT NULL)");
+            $stmt->bindValue(":id", $idCab, PDO::PARAM_INT);
+            $stmt->execute();
+            $tickets = (int) $stmt->fetchColumn();
+            $stmt->closeCursor();
+            if ($tickets > 0) {
+                $pdo->rollBack();
+                return "error_bloque_con_tickets_en_proceso";
+            }
+
+            $cantidad = (int) $cab["cantidad"];
+
+            if (!$esInternoNuevo) {
+                // Detalle de servicio del bloque (externo)
+                $stmt = $pdo->prepare("SELECT d.id, d.codigo, d.cantidad, d.saldo
+                    FROM servicios_detallejf d WHERE d.cabecera_taller = :id FOR UPDATE");
+                $stmt->bindValue(":id", $idCab, PDO::PARAM_INT);
+                $stmt->execute();
+                $detalles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->closeCursor();
+
+                if (count($detalles) !== 1) {
+                    $pdo->rollBack();
+                    return "error_detalle_servicio_no_encontrado";
+                }
+                $det = $detalles[0];
+                if ((int) $det["saldo"] !== (int) $det["cantidad"]) {
+                    $pdo->rollBack();
+                    return "error_servicio_con_ingresos";
+                }
+
+                $codServicioViejo = $det["codigo"];
+
+                $stmt = $pdo->prepare("SELECT estado FROM serviciosjf WHERE codigo = :codigo FOR UPDATE");
+                $stmt->bindValue(":codigo", $codServicioViejo, PDO::PARAM_STR);
+                $stmt->execute();
+                $servViejo = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt->closeCursor();
+                if (!$servViejo || strtoupper(trim((string) $servViejo["estado"])) !== "ACTIVO") {
+                    $pdo->rollBack();
+                    return "error_servicio_no_activo";
+                }
+
+                // Mover detalle al servicio del día del taller nuevo y ajustar totales
+                $stmt = $pdo->prepare("UPDATE servicios_detallejf SET codigo = :nuevo WHERE id = :id");
+                $stmt->bindValue(":nuevo", $codServicioNuevo, PDO::PARAM_STR);
+                $stmt->bindValue(":id", (int) $det["id"], PDO::PARAM_INT);
+                $stmt->execute();
+                $stmt->closeCursor();
+
+                $stmt = $pdo->prepare("UPDATE serviciosjf SET total = GREATEST(COALESCE(total, 0) - :c, 0) WHERE codigo = :codigo");
+                $stmt->bindValue(":c", $cantidad, PDO::PARAM_INT);
+                $stmt->bindValue(":codigo", $codServicioViejo, PDO::PARAM_STR);
+                $stmt->execute();
+                $stmt->closeCursor();
+
+                $stmt = $pdo->prepare("UPDATE serviciosjf SET total = COALESCE(total, 0) + :c WHERE codigo = :codigo");
+                $stmt->bindValue(":c", $cantidad, PDO::PARAM_INT);
+                $stmt->bindValue(":codigo", $codServicioNuevo, PDO::PARAM_STR);
+                $stmt->execute();
+                $stmt->closeCursor();
+            }
+
+            $stmt = $pdo->prepare("UPDATE entaller_cabjf SET taller = :taller WHERE id = :id");
+            $stmt->bindValue(":taller", $nuevoTaller, PDO::PARAM_STR);
+            $stmt->bindValue(":id", $idCab, PDO::PARAM_INT);
+            $stmt->execute();
+            $stmt->closeCursor();
+
+            $pdo->commit();
+
+            error_log("CAMBIO_TALLER_BLOQUE id={$idCab} {$tallerActual}->{$nuevoTaller} articulo={$cab["articulo"]} cantidad={$cantidad}");
+
+            return array(
+                "status" => "ok",
+                "taller_anterior" => $tallerActual,
+                "taller_nuevo" => $nuevoTaller,
+                "articulo" => $cab["articulo"],
+                "cantidad" => $cantidad,
+                "tipo" => $esInternoNuevo ? "interno" : "externo"
+            );
+        } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return "error: " . $e->getMessage();
+        }
+    }
 }

@@ -28,6 +28,9 @@
         <button class="btn btn-danger" data-toggle="modal" data-target="#modalEliminarArticulo"> 
         <i class="fa fa-trash"></i> Eliminar bloque
         </button>
+        <button class="btn btn-warning btnCambiarTallerBloque" data-toggle="modal" data-target="#modalCambiarTaller">
+        <i class="fa fa-exchange"></i> Cambiar taller
+        </button>
         <button class="btn btn-warning btnCrearTicket" data-toggle="modal" data-target="#modalCrearTicket" idTaller="2021493731"> 
         <i class="fa fa-print"></i> Reimprimir ticket
         </button>
@@ -492,6 +495,113 @@ MODAL ELIMINAR ARTICULO
 
 </div>
 
+
+<!--=====================================
+MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
+======================================-->
+
+<?php
+  $sectoresCT = array();
+  foreach (ControladorSectores::ctrSectoresPorTipo(0) as $v) { $sectoresCT[0][] = $v; }
+  foreach (ControladorSectores::ctrSectoresPorTipo(1) as $v) { $sectoresCT[1][] = $v; }
+  $tipoPorSectorCT = array("VC" => 0);
+  foreach ($sectoresCT as $tipo => $lista) {
+    foreach ($lista as $v) { $tipoPorSectorCT[strtoupper(trim($v["cod_sector"]))] = $tipo; }
+  }
+?>
+
+<div id="modalCambiarTaller" class="modal fade" role="dialog">
+
+  <div class="modal-dialog">
+
+    <div class="modal-content">
+
+      <form role="form" method="post">
+
+        <div class="modal-header" style="background:#f39c12; color:white">
+
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+
+          <h4 class="modal-title"><i class="fa fa-exchange"></i> Cambiar taller de un bloque</h4>
+
+        </div>
+
+        <div class="modal-body">
+
+          <div class="box-body">
+
+            <p class="text-muted">
+              Corrige un envío hecho al taller equivocado, <b>sin eliminar ni reenviar</b>.
+              Solo bloques intactos (sin ingresos ni tickets en proceso) y entre talleres del mismo tipo
+              (interno&rarr;interno o servicio externo&rarr;externo).
+            </p>
+
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                <input type="date" class="form-control input-lg" id="fechaCambiarTaller">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-key"></i></span>
+                <select class="form-control input-lg selectpicker" name="bloqueCambiarTaller" id="bloqueCambiarTaller" data-live-search="true" data-size="10" required>
+                  <option value="">Seleccionar bloque (elija fecha)</option>
+                </select>
+              </div>
+              <small class="text-muted" id="tallerActualCambiar"></small>
+            </div>
+
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-users"></i></span>
+                <select class="form-control input-lg selectpicker" name="tallerNuevoCambiar" id="tallerNuevoCambiar" data-live-search="true" data-size="10" required>
+                  <option value="">Taller correcto</option>
+                  <optgroup label="Taller (interno)">
+                    <?php foreach ($sectoresCT[0] as $v) {
+                      echo '<option value="' . htmlspecialchars($v["cod_sector"]) . '" data-tipo="0">' . htmlspecialchars($v["cod_sector"] . " - " . $v["nom_sector"]) . '</option>';
+                    } ?>
+                  </optgroup>
+                  <optgroup label="Servicio (externo)">
+                    <?php foreach ($sectoresCT[1] as $v) {
+                      echo '<option value="' . htmlspecialchars($v["cod_sector"]) . '" data-tipo="1">' . htmlspecialchars($v["cod_sector"] . " - " . $v["nom_sector"]) . '</option>';
+                    } ?>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+
+          <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Salir</button>
+
+          <button type="submit" class="btn btn-warning">Confirmar cambio</button>
+
+        </div>
+
+      </form>
+
+      <?php
+
+        $cambiarTallerBloque = new ControladorTalleres();
+        $cambiarTallerBloque->ctrCambiarTallerBloque();
+
+      ?>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.tipoSectorCambiarTaller = <?= json_encode($tipoPorSectorCT); ?>;
+</script>
 
 <div id="modalCrearTicket" class="modal fade" role="dialog">
   
