@@ -119,6 +119,8 @@ require_once "controladores/talonarios.controlador.php";
 require_once "controladores/facturacion.controlador.php";
 
 require_once "controladores/gre-manual.controlador.php";
+require_once "modelos/comprobantes-especiales.modelo.php";
+require_once "controladores/comprobantes-especiales.controlador.php";
 
 require_once "controladores/procedimiento.controlador.php";
 

@@ -85,6 +85,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Editor de receta | Vasco System";
         } elseif ($_GET["ruta"] === "gre-manual" || $_GET["ruta"] === "gre-manual-crear") {
             $__tituloVentana = "Guías de remisión manuales | Vasco System";
+        } elseif ($_GET["ruta"] === "comprobantes-especiales" || $_GET["ruta"] === "comprobantes-especiales-crear") {
+            $__tituloVentana = "Comprobantes especiales | Vasco System";
         } elseif ($_GET["ruta"] === "cuadre-ventas") {
             $__tituloVentana = "Cuadre de ventas del día | Vasco System";
         } elseif ($_GET["ruta"] === "regularizaciones-comerciales") {
@@ -853,6 +855,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/facturacion/" . $_GET["ruta"] . ".php";
                 }
+            } else if ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear") {
+
+                if (!class_exists("ControladorComprobantesEspeciales") || !ControladorComprobantesEspeciales::puedeUsar()) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/facturacion/" . $_GET["ruta"] . ".php";
+                }
             } else if ($_GET["ruta"] == "categorias-comerciales") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_comerciales")) {
@@ -1213,6 +1222,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear")) { ?>
     <script src="vistas/js/gre-manual.js?v=15"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear")) { ?>
+    <script src="vistas/js/comprobantes-especiales.js?v=<?php echo @filemtime("vistas/js/comprobantes-especiales.js"); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
     <script src="vistas/js/cuadre-ventas.js?v=47"></script>

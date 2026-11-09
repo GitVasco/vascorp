@@ -1561,6 +1561,28 @@
             }
             ?>
 
+            <!-- Comprobantes especiales (boleta/factura con operaciones gratuitas, etc.) — solo usuarios autorizados -->
+            <?php
+            if (ControladorComprobantesEspeciales::puedeUsar()) {
+            ?>
+                <li class="treeview <?php if ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear") echo 'active'; ?>">
+                    <a href="#">
+                        <i class="fa fa-file-text-o text-red"></i> <span>Comprobantes especiales</span>
+                        <span class="pull-right-container"><i class="fa fa-angle-left pull-right"></i></span>
+                    </a>
+                    <ul class="treeview-menu">
+                        <li class="<?php if ($_GET["ruta"] == "comprobantes-especiales-crear") echo 'active'; ?>">
+                            <a href="comprobantes-especiales-crear"><i class="fa fa-circle-o text-green"></i><span>Nuevo comprobante</span></a>
+                        </li>
+                        <li class="<?php if ($_GET["ruta"] == "comprobantes-especiales") echo 'active'; ?>">
+                            <a href="comprobantes-especiales"><i class="fa fa-circle-o text-blue"></i><span>Listado y envío</span></a>
+                        </li>
+                    </ul>
+                </li>
+            <?php
+            }
+            ?>
+
             <!--  Facturacion-->
             <?php
             if ($_SESSION["facturacion"] == 1) {
