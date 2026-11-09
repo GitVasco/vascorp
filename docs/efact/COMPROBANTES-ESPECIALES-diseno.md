@@ -7,6 +7,7 @@
 **Implementado:** `docs/sql/comprobantes-especiales.sql`, `modelos/comprobantes-especiales.modelo.php`, `controladores/comprobantes-especiales.controlador.php`, `ajax/comprobantes-especiales.ajax.php`, vistas `comprobantes-especiales.php` / `comprobantes-especiales-crear.php`, `vistas/js/comprobantes-especiales.js`, `vistas/reportes_ticket/impresion_comprobante_especial_html.php` y `impresion_comprobante_especial.php` y cableado en `index.php`, `plantilla.php`, `menu.php`.
 **Diferencias frente al diseño:** (1) los ítems son solo manuales (sin buscador de artículos); (2) acceso por `COMPROBANTES_ESPECIALES_USUARIOS` (id de sesión), por defecto 70 y 6; (3) inafecto desactivado salvo `GRATUITAS_PERMITE_INAFECTO`; (4) se agregó el estado `BAJA` (registro manual de que se dio de baja en eFact); (5) el total en letras del obsequio es fijo "CERO Y 00/100 SOLES" — **no** se modificó `convertir()` del flujo normal; (6) series provisionales BG01 / FG01; (7) máximo 7 días de antigüedad en la fecha de emisión.
 **Base técnica:** `ITEMS-GRATUITOS-obsequios-analisis.md` (brechas y reglas del manual Legacy CSV 2.1).
+**Pendientes (cuenta por cobrar, prueba con eFact, registro de ventas, SISCONT):** `COMPROBANTES-ESPECIALES-pendientes.md`.
 **Patrón a copiar:** `GRE-manual-diseno.md` (módulo aislado, tablas propias, CSV propio, misma carpeta de salida).
 
 ---
