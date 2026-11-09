@@ -242,7 +242,10 @@ try {
             }
         }
     }
-} catch (Throwable $e) {
+} catch (Exception $e) {
+    logLinea("EXCEPCIÓN: " . $e->getMessage() . " en " . basename($e->getFile()) . ":" . $e->getLine());
+    $hayErrores = true;
+} catch (Throwable $e) { // PHP 7+ (en 5.6 esta clase no existe y este bloque simplemente no aplica)
     logLinea("EXCEPCIÓN: " . $e->getMessage() . " en " . basename($e->getFile()) . ":" . $e->getLine());
     $hayErrores = true;
 }

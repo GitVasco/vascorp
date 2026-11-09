@@ -1,151 +1,142 @@
 # Sync programada Vasco Online en servidor Windows
 
-Reemplaza el proceso manual de la pantalla **Vasco Online** (clientes, grupos, cuentas) por una
-tarea del **Programador de tareas de Windows** que ejecuta `scripts/vasco-sync-cron.bat`.
+Reemplaza el proceso manual de la pantalla **Vasco Online** (clientes, grupos, cuentas).
+La tarea de Windows ejecuta directamente **php.exe + el script**, igual que las otras tareas:
 
-Rutas de ejemplo: el proyecto está en `C:\xampp\htdocs\vascorp`. Ajusta si es otra.
+```
+php.exe  C:\xampp\htdocs\vascorp\scripts\vasco-sync-cron.php  todo
+```
+
+(ajusta las rutas a las reales del servidor)
 
 ---
 
-## 1. Requisitos en el servidor
+## 1. Preparar el servidor (PHP 5.6)
 
-| # | Qué | Cómo verificar |
-|---|-----|----------------|
-| 1 | PHP CLI (viene con XAMPP) | `C:\xampp\php\php.exe -v` |
-| 2 | Extensión `curl` | `C:\xampp\php\php.exe -m` → debe listar `curl` |
-| 3 | Extensión `pdo_mysql` | igual → debe listar `pdo_mysql` |
-| 4 | Llega a la BD `192.168.1.64:3306` | `Test-NetConnection 192.168.1.64 -Port 3306` (PowerShell) |
-| 5 | Llega al API por internet | `curl https://api.jackyform.com.pe/health` → 200 |
-
-Si faltan `curl` o `pdo_mysql`: en `C:\xampp\php\php.ini` quita el `;` de `extension=curl` y
-`extension=pdo_mysql`.
-
-## 2. Llevar el código
-
-1. Copiar/actualizar el proyecto en `C:\xampp\htdocs\vascorp` (git pull de la rama).
-2. Confirmar que existen `scripts\vasco-sync-cron.php` y `scripts\vasco-sync-cron.bat`.
-3. Crear/revisar `controladores\config.php` (**no está en git**). Debe tener:
+1. Tener el proyecto actualizado en `C:\xampp\htdocs\vascorp`.
+2. Revisar `controladores\config.php` (no está en git):
 
 ```php
-define("VASCO_ONLINE_ENTORNO", "produccion");   // "pruebas" para la primera prueba
+define("VASCO_ONLINE_ENTORNO", "produccion");
 define("VASCO_ONLINE_API_KEY", "la-clave-real");
 ```
 
-4. Abrir `scripts\vasco-sync-cron.bat` y poner en `PHP_EXE` la ruta real de `php.exe`.
+3. Confirmar la versión y las extensiones del **PHP de consola** (puede no ser el mismo que usa Apache):
 
-## 3. Pruebas manuales (antes de programar nada)
+```bat
+C:\xampp\php\php.exe -v
+C:\xampp\php\php.exe -m
+```
 
-Abrir **CMD** y entrar al proyecto:
+   Deben aparecer `curl` y `pdo_mysql`. Si faltan, en `C:\xampp\php\php.ini` quitar el `;` de
+   `extension=php_curl.dll` y `extension=php_pdo_mysql.dll`. Para saber qué `php.ini` usa la consola:
+   `C:\xampp\php\php.exe --ini`.
+4. El servidor debe llegar a la BD `192.168.1.64` (puerto 3306) y a `https://api.jackyform.com.pe`.
+
+> Si `php.exe` no está en `C:\xampp\php`, búscalo con: `where /R C:\ php.exe`.
+
+## 2. Probar en la terminal
+
+1. Abrir **CMD** (Inicio → escribir `cmd` → Enter).
+2. Ir a la carpeta del proyecto:
 
 ```bat
 cd C:\xampp\htdocs\vascorp
 ```
 
-**Prueba A – solo clientes**
+3. Ejecutar solo clientes (prueba más corta):
 
 ```bat
 C:\xampp\php\php.exe scripts\vasco-sync-cron.php clientes
+```
+
+4. Ver el código de salida (0 = OK):
+
+```bat
 echo %ERRORLEVEL%
 ```
 
+5. Ver el log: abrir `scripts\logs\vasco-sync-AAAAMMDD.log` (con el Bloc de notas) o en la terminal:
+   `type scripts\logs\vasco-sync-%date:~-4%%date:~3,2%%date:~0,2%.log` (si el formato de fecha de tu
+   Windows es dd/mm/aaaa; si no, abre el archivo a mano).
+
 Esperado: `Conexión al API OK`, líneas `clientes · Lote N enviado correctamente` y
-`código de salida 0`. Revisar el log `scripts\logs\vasco-sync-AAAAMMDD.log`.
+`código de salida 0`.
 
-**Prueba B – grupos y cuentas**
+Orden recomendado de pruebas (cada una con el mismo formato de comando):
 
-```bat
-C:\xampp\php\php.exe scripts\vasco-sync-cron.php grupos
-C:\xampp\php\php.exe scripts\vasco-sync-cron.php cuentas
-```
+| # | Comando (después de `C:\xampp\php\php.exe scripts\vasco-sync-cron.php`) | Qué prueba |
+|---|---|---|
+| 1 | `clientes` | maestro de clientes |
+| 2 | `grupos` | grupos y asignaciones |
+| 3 | `cuentas` | estados de cuenta (sin purga) |
+| 4 | `todo` | lo que hará la tarea horaria |
+| 5 | `todo --finalize` | igual + purga de cuentas (hacerla una sola vez, al final, y con 1–4 sin errores) |
 
-**Prueba C – corrida completa** (lo que hará la tarea horaria)
+Prueba del lock: abre dos CMD y lanza `todo` casi a la vez; la segunda debe decir
+`Ya hay una sincronización en curso` y terminar con código 3.
 
-```bat
-scripts\vasco-sync-cron.bat
-```
+## 3. Programar la tarea (interfaz gráfica)
 
-**Prueba D – con cierre/purga** (solo cuando A–C estén bien)
+1. **Inicio** → escribir **Programador de tareas** → abrir.
+2. Panel derecho → **Crear tarea…** (no "Crear tarea básica").
+3. Pestaña **General**:
+   - Nombre: `Vasco Sync Horario`
+   - Marcar **Ejecutar tanto si el usuario inició sesión como si no**
+   - Marcar **Ejecutar con los privilegios más altos**
+   - "Configurar para": tu versión de Windows/Server.
+4. Pestaña **Desencadenadores** → **Nuevo…**:
+   - Iniciar la tarea: **Según una programación** → **Diariamente**
+   - Hora de inicio: `06:00:00`
+   - Marcar **Repetir la tarea cada:** `1 hora` **durante:** `Indefinidamente`
+     (si no sale `Indefinidamente`, escribe `1 día`)
+   - Marcar **Habilitado** → Aceptar.
+5. Pestaña **Acciones** → **Nueva…**:
+   - Acción: **Iniciar un programa**
+   - **Programa o script:** `C:\xampp\php\php.exe`
+   - **Agregar argumentos (opcional):** `C:\xampp\htdocs\vascorp\scripts\vasco-sync-cron.php todo`
+   - **Iniciar en (opcional):** `C:\xampp\htdocs\vascorp`
+   - Aceptar.
+6. Pestaña **Configuración**:
+   - Marcar **Permitir ejecutar la tarea a petición**
+   - Desmarcar "Detener la tarea si se ejecuta durante más de…" (o poner 2 horas)
+   - "Si la tarea ya se está ejecutando": **No iniciar una nueva instancia**
+7. **Aceptar**. Pide usuario y contraseña de Windows (cuenta con permiso para ejecutar tareas).
+8. Probar: clic derecho sobre la tarea → **Ejecutar**. Revisar el log y, en la lista, la columna
+   **Resultado de la última ejecución** = `0x0` (correcto).
 
-```bat
-scripts\vasco-sync-cron.bat --finalize
-```
+**Tarea 2 – diaria con purga:** repetir los pasos 2–8 con estas diferencias:
+- Nombre: `Vasco Sync Diario Finalize`
+- Desencadenador: Diariamente a las `23:30:00`, **sin** repetir cada hora
+- Argumentos: `C:\xampp\htdocs\vascorp\scripts\vasco-sync-cron.php todo --finalize`
 
-Verificar en Vasco (pantalla o API) que clientes/cuentas coinciden con vascorp.
+Pausar una tarea: clic derecho → **Deshabilitar**.
 
-**Prueba E – lock:** abrir dos CMD y lanzar `scripts\vasco-sync-cron.bat` en ambas casi a la vez.
-La segunda debe decir `Ya hay una sincronización en curso` y salir con código 3.
-
-### Códigos de salida
+## 4. Códigos de salida
 
 | Código | Significado |
 |--------|-------------|
 | 0 | Todo OK |
 | 1 | Error (red, API, BD, excepción) |
-| 2 | Terminó pero Vasco rechazó filas (ver `↳ rechazado` en el log) o se omitió el finalize |
-| 3 | Ya había otra corrida |
+| 2 | Terminó, pero Vasco rechazó filas (ver `↳ rechazado` en el log) o se omitió el finalize |
+| 3 | Ya había otra corrida en curso |
 
-## 4. Programar las tareas (Programador de tareas)
+## 5. Notas
 
-Abrir **CMD como Administrador**. Dos tareas:
-
-**Tarea 1 – cada hora (sin purga)**
-
-```bat
-schtasks /Create /TN "Vasco Sync Horario" /SC HOURLY /ST 06:00 /RU SYSTEM /RL HIGHEST ^
-  /TR "C:\xampp\htdocs\vascorp\scripts\vasco-sync-cron.bat"
-```
-
-**Tarea 2 – una vez al día, con purga de cuentas**
-
-```bat
-schtasks /Create /TN "Vasco Sync Diario Finalize" /SC DAILY /ST 23:30 /RU SYSTEM /RL HIGHEST ^
-  /TR "\"C:\xampp\htdocs\vascorp\scripts\vasco-sync-cron.bat\" --finalize"
-```
-
-> Si prefieres la interfaz: **Programador de tareas → Crear tarea** → General: "Ejecutar tanto
-> si el usuario inició sesión como si no" + "Ejecutar con los privilegios más altos" →
-> Desencadenadores: repetir cada 1 hora → Acciones: *Iniciar un programa* →
-> `C:\xampp\htdocs\vascorp\scripts\vasco-sync-cron.bat` (argumentos: `--finalize` en la diaria) →
-> Iniciar en: `C:\xampp\htdocs\vascorp`.
-
-Probar sin esperar:
-
-```bat
-schtasks /Run /TN "Vasco Sync Horario"
-schtasks /Query /TN "Vasco Sync Horario" /V /FO LIST
-```
-
-Ver "Último resultado" = 0 en la consulta, y el log del día.
-
-### Solapamiento
-Un lock impide dos corridas a la vez. Si la tarea diaria cae mientras corre la horaria, la
-diaria sale con código 3 y **no hace el finalize ese día**. Por eso se programa a las 23:30
-(lejos de la hora en punto) y conviene que una corrida normal dure bastante menos de 30 min.
-Revisa en el log cuánto tarda y ajusta.
-
-## 5. Operación diaria
-
-- Logs: `scripts\logs\vasco-sync-AAAAMMDD.log` (borrar los viejos de vez en cuando).
-- Buscar problemas: `findstr /I "ERROR ABORTADA rechazado EXCEPCIÓN OMITIDO" scripts\logs\*.log`
-- Pausar la sync: `schtasks /Change /TN "Vasco Sync Horario" /DISABLE` (y `/ENABLE` para reactivar).
-- Eliminar: `schtasks /Delete /TN "Vasco Sync Horario" /F`
+- **Solapamiento:** hay un lock; si la diaria cae mientras corre la horaria, sale con código 3 y ese día
+  no hace la purga. Por eso va a las 23:30. Mide cuánto tarda una corrida y ajusta.
+- **`--finalize`** purga en Vasco los clientes que ya no deben, y solo se envía si toda la corrida de
+  cuentas fue limpia (sin lotes fallidos ni parciales). Si no, el log dice `FINALIZE OMITIDO`.
+- Buscar problemas en los logs: `findstr /I "ERROR ABORTADA rechazado EXCEPCIÓN OMITIDO" C:\xampp\htdocs\vascorp\scripts\logs\*.log`
+- Pausar: `schtasks /Change /TN "Vasco Sync Horario" /DISABLE`
 
 ## 6. Problemas frecuentes
 
 | Síntoma | Causa / solución |
 |---------|------------------|
-| `'php.exe' no se reconoce` | `PHP_EXE` mal en el `.bat` |
-| `could not find driver` | Falta `pdo_mysql` en `php.ini` |
-| `cURL no está disponible` | Falta `extension=curl` |
-| `SQLSTATE[HY000] [2002]` | El servidor no llega a `192.168.1.64` |
+| `could not find driver` | Falta `extension=php_pdo_mysql.dll` en el `php.ini` que usa la consola |
+| `cURL no está disponible` | Falta `extension=php_curl.dll` |
+| `SQLSTATE[HY000] [2002]` | No llega a `192.168.1.64` |
 | `API key no configurada` | Falta `VASCO_ONLINE_API_KEY` en `config.php` |
-| `el API no responde` | Sin internet/firewall hacia `api.jackyform.com.pe` |
-| Tarea "Último resultado" 0x1 | Error; leer el log. Con `/RU SYSTEM` no hay consola, solo el log |
-| Código 2 constante | Filas rechazadas: corregir el dato en vascorp (documento, tipo, etc.) |
-| `FINALIZE OMITIDO` | La corrida de cuentas tuvo lotes parciales/fallidos; es la protección contra purgar de más |
-
-## 7. Qué hace el script (resumen)
-
-`todo` = clientes → grupos → miembros → cuentas. Cada lote se reintenta 3 veces. Si clientes
-falla, no sigue. `--finalize` solo purga si toda la corrida de cuentas fue limpia.
-Detalle técnico en `VASCO_ONLINE_SYNC.md` y en la cabecera de `scripts/vasco-sync-cron.php`.
+| `el API no responde` | Sin internet o firewall hacia `api.jackyform.com.pe` |
+| La tarea no hace nada | Revisar "Iniciar en" y que la ruta de `php.exe` sea correcta; mirar el log |
