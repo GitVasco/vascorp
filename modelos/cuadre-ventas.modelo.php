@@ -79,6 +79,52 @@ class ModeloCuadreVentas
         return is_array($filas) ? $filas : array();
     }
 
+    /**
+     * Mismos filtros del día (08 / 01-03-08 / usuario), pero no pendientes.
+     * Solo lectura para el reporte de serie de ventas (p. ej. ya CANCELADO = pagado).
+     * No entran al lote ni a validar/procesar.
+     */
+    public static function mdlListarVentasDiaOtros($usuario, $fecha, $verTodas = false)
+    {
+        $sql = "SELECT
+                    c.id,
+                    c.tipo_doc,
+                    c.num_cta,
+                    c.cliente,
+                    cli.nombre AS cliente_nombre,
+                    c.usuario,
+                    u.usuario AS usuario_nombre,
+                    c.vendedor,
+                    c.monto,
+                    c.saldo,
+                    c.estado
+                FROM cuenta_ctejf c
+                LEFT JOIN clientesjf cli ON cli.codigo = c.cliente
+                LEFT JOIN usuariosjf u ON u.id = CAST(TRIM(c.usuario) AS UNSIGNED)
+                WHERE LEFT(c.fecha, 10) = :fecha
+                  AND TRIM(c.tipo_doc) IN ('01', '03', '08')
+                  AND TRIM(c.vendedor) LIKE '08%'
+                  AND UPPER(TRIM(c.estado)) <> 'PENDIENTE'
+                  AND (c.tip_mov = '+' OR c.tip_mov IS NULL OR c.tip_mov = '')";
+
+        if (!$verTodas) {
+            $sql .= " AND TRIM(c.usuario) = :usuario";
+        }
+
+        $sql .= " ORDER BY c.usuario ASC, c.cliente ASC, c.tipo_doc ASC, c.num_cta ASC";
+
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
+        if (!$verTodas) {
+            $stmt->bindValue(":usuario", (string) $usuario, PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = null;
+
+        return is_array($filas) ? $filas : array();
+    }
+
     public static function mdlCargosPorIds($ids)
     {
         $ids = array_values(array_unique(array_filter(array_map("intval", $ids))));
@@ -172,10 +218,19 @@ class ModeloCuadreVentas
 
     public static function mdlDocsDeCuadre($idCuadre)
     {
-        $sql = "SELECT id_cuenta, tipo_doc, num_cta, cliente, monto_doc, monto_aplicar
-                FROM cuadre_ventas_docjf
-                WHERE id_cuadre = :id
-                ORDER BY id ASC";
+        $sql = "SELECT
+                    d.id_cuenta,
+                    d.tipo_doc,
+                    d.num_cta,
+                    d.cliente,
+                    d.monto_doc,
+                    d.monto_aplicar,
+                    c.estado AS estado_cuenta,
+                    c.saldo AS saldo_cuenta
+                FROM cuadre_ventas_docjf d
+                LEFT JOIN cuenta_ctejf c ON c.id = d.id_cuenta
+                WHERE d.id_cuadre = :id
+                ORDER BY d.id ASC";
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":id", (int) $idCuadre, PDO::PARAM_INT);
         $stmt->execute();
@@ -666,6 +721,116 @@ class ModeloCuadreVentas
                 ORDER BY q.id ASC, d.id ASC";
         $stmt = Conexion::conectar()->prepare($sql);
         $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
+        $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = null;
+
+        return is_array($filas) ? $filas : array();
+    }
+
+    /**
+     * Cargos del día ya no pendientes (p. ej. CANCELADO) que no están en ningún cuadre
+     * de esa fecha. Sirven para el Excel de serie de ventas.
+     */
+    public static function mdlFilasExcelCanceladosFuera($fecha)
+    {
+        $sql = "SELECT
+                    c.id AS id_cuenta,
+                    c.usuario AS usuario_ventas,
+                    IFNULL(ur.nombre, ur.usuario) AS responsable,
+                    TRIM(c.tipo_doc) AS tipo_doc,
+                    TRIM(c.num_cta) AS num_cta,
+                    TRIM(c.cliente) AS cliente,
+                    c.monto AS monto_doc,
+                    c.monto AS monto_aplicar,
+                    c.estado AS estado_cuenta,
+                    LEFT(c.fecha, 10) AS fecha_emision,
+                    LEFT(IFNULL(NULLIF(TRIM(c.ult_pago), ''), c.fecha), 10) AS fecha_pago,
+                    TRIM(c.vendedor) AS vendedor,
+                    mv.descripcion AS vendedor_nombre,
+                    cli.nombre AS cliente_nombre,
+                    cli.documento AS cliente_documento,
+                    ub.departamento,
+                    ub.distrito
+                FROM cuenta_ctejf c
+                LEFT JOIN clientesjf cli ON cli.codigo = c.cliente
+                LEFT JOIN ubigeo ub ON ub.codigo = cli.ubigeo
+                LEFT JOIN usuariosjf ur ON ur.id = CAST(TRIM(c.usuario) AS UNSIGNED)
+                LEFT JOIN maestrajf mv
+                    ON mv.codigo = TRIM(c.vendedor)
+                   AND mv.tipo_dato = 'TVEND'
+                WHERE LEFT(c.fecha, 10) = :fecha
+                  AND TRIM(c.tipo_doc) IN ('01', '03', '08')
+                  AND TRIM(c.vendedor) LIKE '08%'
+                  AND UPPER(TRIM(c.estado)) <> 'PENDIENTE'
+                  AND (c.tip_mov = '+' OR c.tip_mov IS NULL OR c.tip_mov = '')
+                  AND NOT EXISTS (
+                        SELECT 1
+                        FROM cuadre_ventas_docjf d
+                        INNER JOIN cuadre_ventasjf q ON q.id = d.id_cuadre
+                        WHERE d.id_cuenta = c.id
+                          AND q.fecha_ventas = :fecha2
+                          AND q.estado IN ('REGISTRADO', 'VALIDADO', 'PROCESADO', 'RECHAZADO', 'ANULADO')
+                  )
+                ORDER BY c.usuario ASC, c.cliente ASC, c.tipo_doc ASC, c.num_cta ASC";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":fecha", (string) $fecha, PDO::PARAM_STR);
+        $stmt->bindValue(":fecha2", (string) $fecha, PDO::PARAM_STR);
+        $stmt->execute();
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = null;
+
+        return is_array($filas) ? $filas : array();
+    }
+
+    /**
+     * Pagos tip_mov='-' que cancelaron esos documentos (mismo cliente + num_cta o doc_origen).
+     */
+    public static function mdlPagosCancelacionDocs($docs)
+    {
+        if (!is_array($docs) || empty($docs)) {
+            return array();
+        }
+
+        $pares = array();
+        foreach ($docs as $d) {
+            $cli = isset($d["cliente"]) ? trim((string) $d["cliente"]) : "";
+            $num = isset($d["num_cta"]) ? trim((string) $d["num_cta"]) : "";
+            if ($cli === "" || $num === "") {
+                continue;
+            }
+            $pares[$cli . "|" . $num] = array("cliente" => $cli, "num_cta" => $num);
+        }
+        if (empty($pares)) {
+            return array();
+        }
+
+        $pares = array_values($pares);
+        $or = array();
+        foreach ($pares as $i => $p) {
+            $or[] = "(TRIM(p.cliente) = :cli" . $i
+                . " AND (TRIM(p.num_cta) = :num" . $i
+                . " OR TRIM(p.doc_origen) = :doc" . $i . "))";
+        }
+
+        $sql = "SELECT
+                    TRIM(p.cliente) AS cliente,
+                    TRIM(p.num_cta) AS num_cta,
+                    TRIM(p.doc_origen) AS doc_origen,
+                    TRIM(p.cod_pago) AS cod_pago,
+                    TRIM(p.notas) AS notas,
+                    p.monto,
+                    LEFT(p.fecha, 10) AS fecha_pago
+                FROM cuenta_ctejf p
+                WHERE p.tip_mov = '-'
+                  AND (" . implode(" OR ", $or) . ")
+                ORDER BY p.id ASC";
+        $stmt = Conexion::conectar()->prepare($sql);
+        foreach ($pares as $i => $p) {
+            $stmt->bindValue(":cli" . $i, $p["cliente"], PDO::PARAM_STR);
+            $stmt->bindValue(":num" . $i, $p["num_cta"], PDO::PARAM_STR);
+            $stmt->bindValue(":doc" . $i, $p["num_cta"], PDO::PARAM_STR);
+        }
         $stmt->execute();
         $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt = null;

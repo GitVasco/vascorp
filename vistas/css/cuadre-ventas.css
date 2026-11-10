@@ -163,9 +163,71 @@
     gap: 10px;
 }
 
+#panelCuadreVentas .cv-docs-col {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#panelCuadreVentas .cv-docs-titulo {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#panelCuadreVentas .cv-docs-titulo small {
+    margin-left: 6px;
+    font-weight: 400;
+}
+
 #panelCuadreVentas .cv-cuerpo .cv-tabla-wrap {
     flex: 1 1 auto;
 }
+
+#panelCuadreVentas .cv-otros-box {
+    margin-top: 4px;
+}
+
+#panelCuadreVentas .cv-tabla-otros-wrap {
+    min-height: 0;
+    max-height: 220px;
+}
+
+#panelCuadreVentas #cvTablaVentasOtros {
+    width: 100%;
+    margin-bottom: 0;
+    table-layout: fixed;
+}
+
+#panelCuadreVentas #cvTablaVentasOtros thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fafafa;
+    color: #555;
+}
+
+#panelCuadreVentas #cvTablaVentasOtros th,
+#panelCuadreVentas #cvTablaVentasOtros td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 5px 10px;
+    color: #666;
+}
+
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-usuario { width: 12%; }
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-vendedor { width: 8%; }
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-tipo { width: 9%; }
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-doc { width: 16%; }
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-cliente { width: 34%; }
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-monto,
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-saldo { width: 10%; }
+#panelCuadreVentas #cvTablaVentasOtros .cv-col-estado { width: 11%; }
+
+#panelCuadreVentas #cvTablaVentasOtros.cv-con-usuario .cv-col-cliente { width: 26%; }
 
 #panelCuadreVentas .cv-pagos {
     flex: 0 0 340px;
@@ -781,6 +843,19 @@
     margin: 0 1px;
     line-height: 24px;
     font-size: 14px;
+}
+
+#panelCuadreVentas .cv-proc-aviso {
+    display: inline-block;
+    margin-right: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #8a6d3b;
+    vertical-align: middle;
+}
+
+#panelCuadreVentas .cv-val-ya-cte > td {
+    background: #fcf8e3;
 }
 
 #panelCuadreVentas .cv-estado {

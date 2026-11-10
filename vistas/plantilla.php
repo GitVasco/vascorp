@@ -239,7 +239,7 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
     <link rel="stylesheet" href="vistas/css/gre-manual.css?v=3">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") : ?>
-    <link rel="stylesheet" href="vistas/css/cuadre-ventas.css?v=44">
+    <link rel="stylesheet" href="vistas/css/cuadre-ventas.css?v=46">
     <?php endif; ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "informe-semanal-vendedor") : ?>
     <link rel="stylesheet" href="vistas/css/informe-semanal-vendedor.css?v=11">
@@ -1230,7 +1230,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/comprobantes-especiales.js?v=<?php echo @filemtime("vistas/js/comprobantes-especiales.js"); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
-    <script src="vistas/js/cuadre-ventas.js?v=47"></script>
+    <script src="vistas/js/cuadre-ventas.js?v=50"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "regularizaciones-comerciales") { ?>
     <script src="vistas/js/regularizaciones-comerciales.js?v=2"></script>

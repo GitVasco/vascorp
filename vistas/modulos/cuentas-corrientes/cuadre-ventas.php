@@ -3,7 +3,7 @@
     <section class="content-header">
         <h1>
             Cuadre de ventas del día
-            <small>Pendientes · vendedores 08 · pagos que cuadran · aún no entra a cuentas</small>
+            <small>Pendientes para cuadrar · ya cancelados solo consulta · vendedores 08</small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
@@ -38,12 +38,15 @@
                         </button>
                     </div>
                     <div class="cv-totales">
-                        <span>Docs: <strong id="cvTotCantidad">0</strong></span>
-                        <span>Monto: <strong id="cvTotMonto">0.00</strong></span>
-                        <span>Saldo: <strong id="cvTotSaldo">0.00</strong></span>
+                        <span>Día: <strong id="cvTotDia">0</strong></span>
+                        <span>Pendientes: <strong id="cvTotCantidad">0</strong></span>
+                        <span>Ya cancelados: <strong id="cvTotOtros">0</strong></span>
+                        <span>Monto pend.: <strong id="cvTotMonto">0.00</strong></span>
+                        <span>Monto canc.: <strong id="cvTotMontoOtros">0.00</strong></span>
+                        <span>Saldo pend.: <strong id="cvTotSaldo">0.00</strong></span>
                     </div>
                     <p class="text-muted cv-ayuda" id="cvAyuda">
-                        Solo pendientes de vendedores <strong>08</strong>. Un lote = un cliente.
+                        Pendientes de vendedores <strong>08</strong> para armar el lote. Los ya cancelados se ven abajo, solo consulta.
                     </p>
                 </div>
 
@@ -78,28 +81,54 @@
                         <div class="cv-borradores" id="cvBorradores"></div>
                         <div class="cv-registrados" id="cvRegistrados"></div>
                         <div class="cv-cuerpo">
-                            <div class="table-responsive cv-tabla-wrap">
-                                <table class="table table-bordered table-striped table-condensed" id="cvTablaVentas">
-                                    <thead>
-                                        <tr>
-                                            <th class="cv-col-check"></th>
-                                            <th class="cv-col-usuario" style="display:none;">Usuario</th>
-                                            <th class="cv-col-vendedor" style="display:none;">Vendedor</th>
-                                            <th class="cv-col-tipo">Tipo</th>
-                                            <th class="cv-col-doc">Documento</th>
-                                            <th class="cv-col-cliente">Cliente</th>
-                                            <th class="cv-col-monto text-right">Monto</th>
-                                            <th class="cv-col-saldo text-right">Saldo</th>
-                                            <th class="cv-col-aplicar text-right">A aplicar</th>
-                                            <th class="cv-col-estado">Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr class="cv-vacio">
-                                            <td colspan="6" class="text-muted text-center">Elige una fecha y busca.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <div class="cv-docs-col">
+                                <h4 class="cv-docs-titulo">Pendientes para cuadrar</h4>
+                                <div class="table-responsive cv-tabla-wrap">
+                                    <table class="table table-bordered table-striped table-condensed" id="cvTablaVentas">
+                                        <thead>
+                                            <tr>
+                                                <th class="cv-col-check"></th>
+                                                <th class="cv-col-usuario" style="display:none;">Usuario</th>
+                                                <th class="cv-col-vendedor" style="display:none;">Vendedor</th>
+                                                <th class="cv-col-tipo">Tipo</th>
+                                                <th class="cv-col-doc">Documento</th>
+                                                <th class="cv-col-cliente">Cliente</th>
+                                                <th class="cv-col-monto text-right">Monto</th>
+                                                <th class="cv-col-saldo text-right">Saldo</th>
+                                                <th class="cv-col-aplicar text-right">A aplicar</th>
+                                                <th class="cv-col-estado">Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="cv-vacio">
+                                                <td colspan="6" class="text-muted text-center">Elige una fecha y busca.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="cv-otros-box" id="cvOtrosBox" style="display:none;">
+                                    <h4 class="cv-docs-titulo">
+                                        Ya cancelados
+                                        <small class="text-muted">Solo consulta · no entran al cuadre</small>
+                                    </h4>
+                                    <div class="table-responsive cv-tabla-wrap cv-tabla-otros-wrap">
+                                        <table class="table table-bordered table-condensed" id="cvTablaVentasOtros">
+                                            <thead>
+                                                <tr>
+                                                    <th class="cv-col-usuario" style="display:none;">Usuario</th>
+                                                    <th class="cv-col-vendedor" style="display:none;">Vendedor</th>
+                                                    <th class="cv-col-tipo">Tipo</th>
+                                                    <th class="cv-col-doc">Documento</th>
+                                                    <th class="cv-col-cliente">Cliente</th>
+                                                    <th class="cv-col-monto text-right">Monto</th>
+                                                    <th class="cv-col-saldo text-right">Saldo</th>
+                                                    <th class="cv-col-estado">Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                             <aside class="cv-pagos" id="cvPagosBox">
                                 <h4>Pagos</h4>
@@ -257,6 +286,7 @@
                             <p class="text-muted cv-pagos-ayuda cv-validar-ayuda">
                                 <strong>Procesar a cte</strong> baja el saldo en cuentas y aplica la OP
                                 (si sobra, el resto queda en Abonos) ·
+                                Si los documentos <strong>ya están cancelados</strong>, verás “Ya no es necesario” y puedes <strong>anular</strong> el lote ·
                                 Abajo queda el historial ya procesado
                             </p>
                             <div class="cv-validar-cuerpo">

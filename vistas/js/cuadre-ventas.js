@@ -235,22 +235,28 @@ $(function () {
     function aplicarModo(todas) {
         verTodas = !!todas;
         $(".cv-col-usuario, .cv-col-vendedor").toggle(verTodas);
-        $("#cvTablaVentas").toggleClass("cv-con-usuario", verTodas);
+        $("#cvTablaVentas, #cvTablaVentasOtros").toggleClass("cv-con-usuario", verTodas);
         if (verTodas) {
             $("#cvAyuda").html(
-                "Pendientes de vendedores <strong>08</strong>. Marca un solo cliente. Puedes aplicar menos que el saldo."
+                "Pendientes de vendedores <strong>08</strong> para el lote. Los ya cancelados salen abajo, solo consulta."
             );
         } else {
             $("#cvAyuda").html(
-                "Tus pendientes (vendedores 08). Marca un solo cliente. Puedes aplicar menos que el saldo."
+                "Tus pendientes (vendedores 08) para el lote. Los ya cancelados salen abajo, solo consulta."
             );
         }
     }
 
     function pintarTotales(totales) {
         var t = totales || {};
-        $("#cvTotCantidad").text(t.cantidad != null ? t.cantidad : 0);
+        var nPend = t.cantidad != null ? t.cantidad : 0;
+        var nOtros = t.cantidad_otros != null ? t.cantidad_otros : 0;
+        var nDia = t.cantidad_dia != null ? t.cantidad_dia : (nPend + nOtros);
+        $("#cvTotDia").text(nDia);
+        $("#cvTotCantidad").text(nPend);
+        $("#cvTotOtros").text(nOtros);
         $("#cvTotMonto").text(money(t.monto));
+        $("#cvTotMontoOtros").text(money(t.monto_otros));
         $("#cvTotSaldo").text(money(t.saldo));
     }
 
@@ -612,6 +618,22 @@ $(function () {
         return String((l && l.estado) || "").toUpperCase();
     }
 
+    function loteYaEnCte(l) {
+        return !!(l && l.ya_en_cte);
+    }
+
+    function accionesProcesar(l) {
+        var quitar = '<button type="button" class="btn btn-danger btn-xs cv-ico cv-proc-quitar" title="Anular (quita el lote y libera la OP)">'
+            + '<i class="fa fa-trash"></i></button>';
+        if (loteYaEnCte(l)) {
+            return '<span class="cv-proc-aviso" title="Los documentos ya no están pendientes en cuentas">Ya no es necesario</span> '
+                + quitar;
+        }
+        return '<button type="button" class="btn btn-success btn-xs cv-ico cv-proc-cte" title="Procesar a cuentas">'
+            + '<i class="fa fa-arrow-circle-right"></i></button> '
+            + quitar;
+    }
+
     function lotesDeEstado(lista, estado) {
         var out = [];
         var i;
@@ -633,8 +655,16 @@ $(function () {
             ANULADO: { txt: "Anulado", cls: "label-default" }
         };
         var m = map[e] || { txt: e || "—", cls: "label-default" };
+        if (e === "VALIDADO" && loteYaEnCte(l)) {
+            m = {
+                txt: "Ya en cuentas",
+                cls: "label-default"
+            };
+        }
         var title = "";
-        if (l && l.observacion) {
+        if (e === "VALIDADO" && loteYaEnCte(l)) {
+            title = ' title="Ya no es necesario procesar. Anula el lote para liberar la OP."';
+        } else if (l && l.observacion) {
             title = ' title="' + esc(l.observacion) + '"';
         }
         return '<span class="label ' + m.cls + ' cv-estado"' + title + ">" + esc(m.txt) + "</span>";
@@ -760,6 +790,9 @@ $(function () {
         $("#cvNavTabs").toggle(hayTabs);
         $("#cvLiValidar").toggle(!!puedeValidar);
         $("#cvLiProcesar").toggle(!!puedeProcesar);
+        if (typeof syncExcelMesBox === "function") {
+            syncExcelMesBox();
+        }
     }
 
     function pintarProcesar(lista) {
@@ -804,11 +837,8 @@ $(function () {
                 $tb.append(htmlFilaLote(
                     l,
                     i,
-                    '<button type="button" class="btn btn-success btn-xs cv-ico cv-proc-cte" title="Procesar a cuentas">'
-                        + '<i class="fa fa-arrow-circle-right"></i></button> '
-                        + '<button type="button" class="btn btn-danger btn-xs cv-ico cv-proc-quitar" title="Quitar (ya registrado a mano)">'
-                        + '<i class="fa fa-trash"></i></button>',
-                    "cv-val-proc"
+                    accionesProcesar(l),
+                    loteYaEnCte(l) ? "cv-val-proc cv-val-ya-cte" : "cv-val-proc"
                 ));
             }
         }
@@ -1206,7 +1236,7 @@ $(function () {
 
     function filtrarClientes() {
         var q = $.trim($("#cvBuscaCliente").val() || "").toLowerCase();
-        $("#cvTablaVentas tbody tr").each(function () {
+        $("#cvTablaVentas tbody tr, #cvTablaVentasOtros tbody tr").each(function () {
             var $tr = $(this);
             if ($tr.hasClass("cv-vacio")) {
                 return;
@@ -1218,6 +1248,40 @@ $(function () {
             var txt = (($tr.attr("data-cliente-label") || "") + " " + ($tr.attr("data-cliente") || "")).toLowerCase();
             $tr.toggle(txt.indexOf(q) !== -1);
         });
+    }
+
+    function pintarDocsOtros(docs) {
+        var $box = $("#cvOtrosBox");
+        var $tb = $("#cvTablaVentasOtros tbody");
+        $tb.empty();
+        if (!docs || !docs.length) {
+            $box.hide();
+            return;
+        }
+        $box.show();
+        for (var i = 0; i < docs.length; i++) {
+            var d = docs[i];
+            var labelCliente = d.cliente_nombre
+                ? d.cliente + " — " + d.cliente_nombre
+                : (d.cliente || "—");
+            var etiquetaUsuario = d.usuario_nombre || d.usuario || "—";
+            var colExtra = verTodas
+                ? '<td class="cv-col-usuario">' + esc(etiquetaUsuario) + "</td>"
+                    + '<td class="cv-col-vendedor">' + esc(d.vendedor || "—") + "</td>"
+                : "";
+            $tb.append(
+                '<tr data-cliente="' + esc(d.cliente)
+                + '" data-cliente-label="' + esc(labelCliente) + '">'
+                + colExtra
+                + '<td class="cv-col-tipo">' + esc(etiquetaTipo(d.tipo_doc)) + "</td>"
+                + '<td class="cv-col-doc">' + esc(d.num_cta) + "</td>"
+                + '<td class="cv-col-cliente">' + esc(labelCliente) + "</td>"
+                + '<td class="cv-col-monto text-right">' + money(d.monto) + "</td>"
+                + '<td class="cv-col-saldo text-right">' + money(d.saldo) + "</td>"
+                + '<td class="cv-col-estado">' + esc(d.estado || "—") + "</td>"
+                + "</tr>"
+            );
+        }
     }
 
     function pintarDocs(docs) {
@@ -1292,7 +1356,8 @@ $(function () {
         var fecha = $("#cvFecha").val();
         if (!fecha) {
             $("#cvTablaVentas tbody").html(filaVacia("Elige una fecha."));
-            pintarTotales({ cantidad: 0, monto: 0, saldo: 0 });
+            pintarDocsOtros([]);
+            pintarTotales({ cantidad: 0, monto: 0, saldo: 0, cantidad_otros: 0, monto_otros: 0, cantidad_dia: 0 });
             return;
         }
         escribirFechaUrl(fecha);
@@ -1302,11 +1367,13 @@ $(function () {
         $("#cvObservacion").val("");
         pintarPagos();
         $("#cvTablaVentas tbody").html(filaVacia("Buscando…"));
+        $("#cvOtrosBox").hide();
         $.getJSON(API, { accion: "listar-ventas", fecha: fecha })
             .done(function (r) {
                 if (!r || !r.ok) {
                     $("#cvTablaVentas tbody").html(filaVacia((r && r.msg) ? r.msg : "No se pudo listar."));
-                    pintarTotales({ cantidad: 0, monto: 0, saldo: 0 });
+                    pintarDocsOtros([]);
+                    pintarTotales({ cantidad: 0, monto: 0, saldo: 0, cantidad_otros: 0, monto_otros: 0, cantidad_dia: 0 });
                     return;
                 }
                 puedeRegistrar = !!r.puede_registrar;
@@ -1314,7 +1381,9 @@ $(function () {
                 puedeProcesar = !!r.puede_procesar;
                 aplicarModo(r.ver_todas);
                 pintarDocs(r.docs || []);
+                pintarDocsOtros(r.docs_otros || []);
                 pintarTotales(r.totales);
+                filtrarClientes();
                 pintarBorradores(r.borradores || []);
                 pintarRegistrados(r.registrados || []);
                 pintarPendientes(r.pendientes_validar || []);
@@ -1326,7 +1395,8 @@ $(function () {
             })
             .fail(function () {
                 $("#cvTablaVentas tbody").html(filaVacia("Sin permiso o error al listar."));
-                pintarTotales({ cantidad: 0, monto: 0, saldo: 0 });
+                pintarDocsOtros([]);
+                pintarTotales({ cantidad: 0, monto: 0, saldo: 0, cantidad_otros: 0, monto_otros: 0, cantidad_dia: 0 });
             });
     }
 
@@ -2251,16 +2321,22 @@ $(function () {
                 aviso("error", "No se quitó", (r && r.msg) ? r.msg : "Error al quitar.");
             });
         };
+        var motivoDef = loteYaEnCte(lote)
+            ? "Ya no es necesario: documentos ya cancelados en cte"
+            : "Ya registrado a mano en cte";
+        var textoQuitar = loteYaEnCte(lote)
+            ? "Los documentos ya están en cuentas. Anula el lote para sacarlo de Por procesar y liberar la OP."
+            : "No entra a cuentas y la OP queda libre otra vez. Úsalo si ya se registró a mano en cte.";
         if (window.swal) {
             swal({
-                title: "¿Quitar este cuadre?",
-                text: "No entra a cuentas y la OP queda libre otra vez. Úsalo si ya se registró a mano en cte.",
+                title: "¿Anular este cuadre?",
+                text: textoQuitar,
                 type: "warning",
                 input: "textarea",
-                inputValue: "Ya registrado a mano en cte",
+                inputValue: motivoDef,
                 inputPlaceholder: "Motivo",
                 showCancelButton: true,
-                confirmButtonText: "Quitar",
+                confirmButtonText: "Anular",
                 cancelButtonText: "Cancelar",
                 inputValidator: function (value) {
                     if (!value || !$.trim(value)) {
@@ -2275,7 +2351,7 @@ $(function () {
             });
             return;
         }
-        var motivo = window.prompt("Motivo para quitar (no entra a cuentas, la OP queda libre):", "Ya registrado a mano en cte");
+        var motivo = window.prompt("Motivo para anular (no entra a cuentas, la OP queda libre):", motivoDef);
         if (motivo && $.trim(motivo)) {
             quitar($.trim(motivo));
         }
@@ -2305,9 +2381,19 @@ $(function () {
             });
     });
 
+    function syncExcelMesBox() {
+        var href = $("#cvNavTabs li.active a").attr("href") || "#cvTabDocs";
+        // Serie de ventas y validación usan el mismo Excel (incluye ya cancelados).
+        var verExcel = !$("#cvNavTabs").is(":visible")
+            || href === "#cvTabDocs"
+            || href === "#cvTabValidar";
+        $("#cvExcelMesBox").toggle(verExcel);
+    }
+
     $("#cvNavTabs").on("shown.bs.tab", 'a[data-toggle="tab"]', function () {
-        $("#cvExcelMesBox").toggle($(this).attr("href") === "#cvTabValidar");
+        syncExcelMesBox();
     });
+    syncExcelMesBox();
 
     $("#cvFecha").on("change", function () {
         var f = $(this).val();

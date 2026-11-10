@@ -384,7 +384,150 @@ class ControladorCuadreVentas
             }
         }
 
+        $cancelados = ModeloCuadreVentas::mdlFilasExcelCanceladosFuera($fechaOk);
+        if (!self::ctrVeTodasLasVentas() && !self::ctrPuedeProcesar()) {
+            $yoStr = (string) self::ctrUsuarioSesionId();
+            $cancelados = array_values(array_filter($cancelados, function ($f) use ($yoStr) {
+                return trim((string) (isset($f["usuario_ventas"]) ? $f["usuario_ventas"] : "")) === $yoStr;
+            }));
+        }
+        if (!empty($cancelados)) {
+            $pagosCanc = ModeloCuadreVentas::mdlPagosCancelacionDocs($cancelados);
+            $pagosPorDoc = array();
+            foreach ($pagosCanc as $p) {
+                $cli = isset($p["cliente"]) ? trim((string) $p["cliente"]) : "";
+                $num = isset($p["num_cta"]) ? trim((string) $p["num_cta"]) : "";
+                $docOri = isset($p["doc_origen"]) ? trim((string) $p["doc_origen"]) : "";
+                $claves = array();
+                if ($cli !== "" && $num !== "") {
+                    $claves[] = $cli . "|" . $num;
+                }
+                if ($cli !== "" && $docOri !== "" && $docOri !== $num) {
+                    $claves[] = $cli . "|" . $docOri;
+                }
+                foreach ($claves as $claveP) {
+                    if (!isset($pagosPorDoc[$claveP])) {
+                        $pagosPorDoc[$claveP] = array(
+                            "ops" => array(),
+                            "formas" => array(),
+                            "montos_op" => array(),
+                            "monto_abonado" => 0.0,
+                            "fecha_pago" => "",
+                        );
+                    }
+                    $montoP = isset($p["monto"]) ? round((float) $p["monto"], 2) : 0.0;
+                    $pagosPorDoc[$claveP]["monto_abonado"] += $montoP;
+                    $codN = self::ctrNormalizarCodPago(isset($p["cod_pago"]) ? $p["cod_pago"] : "");
+                    if ($codN === "") {
+                        $codN = strtoupper(trim((string) (isset($p["cod_pago"]) ? $p["cod_pago"] : "")));
+                    }
+                    $forma = ($codN !== "" && isset($catalogo[$codN]))
+                        ? $catalogo[$codN]["label"]
+                        : self::ctrEtiquetaCodPagoExtra($codN);
+                    if ($forma !== "" && !in_array($forma, $pagosPorDoc[$claveP]["formas"], true)) {
+                        $pagosPorDoc[$claveP]["formas"][] = $forma;
+                    }
+                    $ope = self::ctrOpDesdeNotas(isset($p["notas"]) ? $p["notas"] : "");
+                    if ($ope !== "" && !in_array($ope, $pagosPorDoc[$claveP]["ops"], true)) {
+                        $pagosPorDoc[$claveP]["ops"][] = $ope;
+                        $pagosPorDoc[$claveP]["montos_op"][] = number_format($montoP, 2, ".", "");
+                    }
+                    $fp = isset($p["fecha_pago"]) ? substr((string) $p["fecha_pago"], 0, 10) : "";
+                    if ($fp !== "" && $pagosPorDoc[$claveP]["fecha_pago"] === "") {
+                        $pagosPorDoc[$claveP]["fecha_pago"] = $fp;
+                    }
+                }
+            }
+
+            foreach ($cancelados as $f) {
+                $tipo = trim((string) $f["tipo_doc"]);
+                $numCta = isset($f["num_cta"]) ? trim((string) $f["num_cta"]) : "";
+                $cli = isset($f["cliente"]) ? trim((string) $f["cliente"]) : "";
+                $clave = $cli . "|" . $numCta;
+                $dep = strtoupper(trim((string) (isset($f["departamento"]) ? $f["departamento"] : "")));
+                $zona = ($dep === "LIMA")
+                    ? trim((string) (isset($f["distrito"]) ? $f["distrito"] : ""))
+                    : trim((string) (isset($f["departamento"]) ? $f["departamento"] : ""));
+                $vend = trim((string) (isset($f["vendedor"]) ? $f["vendedor"] : ""));
+                $vendNom = trim((string) (isset($f["vendedor_nombre"]) ? $f["vendedor_nombre"] : ""));
+                $infoP = isset($pagosPorDoc[$clave]) ? $pagosPorDoc[$clave] : null;
+                $ops = $infoP ? $infoP["ops"] : array();
+                $formas = $infoP ? $infoP["formas"] : array();
+                $montosOp = $infoP ? $infoP["montos_op"] : array();
+                $montoDoc = isset($f["monto_doc"]) ? round((float) $f["monto_doc"], 2) : 0.0;
+                $montoAbonado = $infoP && $infoP["monto_abonado"] > 0
+                    ? round($infoP["monto_abonado"], 2)
+                    : $montoDoc;
+                $emision = isset($f["fecha_emision"]) ? substr((string) $f["fecha_emision"], 0, 10) : "";
+                $pago = ($infoP && $infoP["fecha_pago"] !== "")
+                    ? $infoP["fecha_pago"]
+                    : (isset($f["fecha_pago"]) ? substr((string) $f["fecha_pago"], 0, 10) : "");
+                if ($emision === "") {
+                    $emision = $fechaOk;
+                }
+                if ($pago === "") {
+                    $pago = $fechaOk;
+                }
+
+                $filas[] = array(
+                    "periodo" => substr($fechaOk, 5, 2) . "-" . substr($fechaOk, 0, 4),
+                    "fecha_dia" => $fechaOk,
+                    "responsable" => isset($f["responsable"]) ? trim((string) $f["responsable"]) : "",
+                    "marca" => ModeloCuadreVentas::mdlGrupoMarcaDeDocumento($numCta),
+                    "vendedor" => $vendNom !== "" ? ($vend . " — " . $vendNom) : $vend,
+                    "zona" => $zona,
+                    "codigo_cliente" => $cli,
+                    "documento_cliente" => isset($f["cliente_documento"]) ? trim((string) $f["cliente_documento"]) : "",
+                    "nombre_cliente" => isset($f["cliente_nombre"]) ? trim((string) $f["cliente_nombre"]) : "",
+                    "tipo_documento" => isset($tipos[$tipo]) ? $tipos[$tipo] : $tipo,
+                    "codigo_tipo" => $tipo,
+                    "nro_documento" => $numCta,
+                    "fecha_emision" => $emision,
+                    "monto" => $montoDoc,
+                    "fecha_pago" => $pago,
+                    "monto_abonado" => $montoAbonado,
+                    "forma_pago" => !empty($formas) ? implode(" | ", $formas) : "Ya cancelado",
+                    "nro_op" => implode("|", $ops),
+                    "monto_op" => implode("|", $montosOp),
+                    "diferencia" => "",
+                    "estado" => "Ya cancelado",
+                    "observacion" => "Cancelado fuera de cuadre",
+                    "es_resumen" => false,
+                );
+            }
+        }
+
         return array("ok" => true, "fecha" => $fechaOk, "filas" => $filas);
+    }
+
+    private static function ctrOpDesdeNotas($notas)
+    {
+        $n = trim((string) $notas);
+        if ($n === "") {
+            return "";
+        }
+        if (preg_match('/^(OP|NC)-(.+)$/i', $n, $m)) {
+            return trim($m[2]);
+        }
+        if (preg_match('/^CUADRE-\d+$/i', $n)) {
+            return "";
+        }
+        return $n;
+    }
+
+    private static function ctrEtiquetaCodPagoExtra($cod)
+    {
+        $cod = strtoupper(trim((string) $cod));
+        if ($cod === "") {
+            return "";
+        }
+        $extra = array(
+            "00" => "Varios",
+            "07" => "Nota de crédito",
+            "96" => "NC devolución",
+            "97" => "NC descuento",
+        );
+        return isset($extra[$cod]) ? $extra[$cod] : $cod;
     }
 
     /**
@@ -556,6 +699,7 @@ class ControladorCuadreVentas
 
         $verTodas = self::ctrVeTodasLasVentas();
         $filas = ModeloCuadreVentas::mdlListarVentasDia($usuario, $fechaOk, $verTodas);
+        $filasOtros = ModeloCuadreVentas::mdlListarVentasDiaOtros($usuario, $fechaOk, $verTodas);
         $idsEnAbierto = ModeloCuadreVentas::mdlIdsCuentasEnLotes(array("BORRADOR", "REGISTRADO", "VALIDADO"));
         $borradores = ModeloCuadreVentas::mdlListarBorradoresDia(self::ctrUsuarioSesionId(), $fechaOk);
         $registrados = ModeloCuadreVentas::mdlListarBorradoresDia(self::ctrUsuarioSesionId(), $fechaOk, "REGISTRADO");
@@ -625,6 +769,30 @@ class ControladorCuadreVentas
             );
         }
 
+        $docsOtros = array();
+        $totalMontoOtros = 0.0;
+        foreach ($filasOtros as $fila) {
+            $monto = isset($fila["monto"]) ? (float) $fila["monto"] : 0.0;
+            $saldo = isset($fila["saldo"]) ? (float) $fila["saldo"] : 0.0;
+            $totalMontoOtros += $monto;
+            $docsOtros[] = array(
+                "id" => isset($fila["id"]) ? (int) $fila["id"] : 0,
+                "tipo_doc" => isset($fila["tipo_doc"]) ? trim((string) $fila["tipo_doc"]) : "",
+                "num_cta" => isset($fila["num_cta"]) ? trim((string) $fila["num_cta"]) : "",
+                "cliente" => isset($fila["cliente"]) ? trim((string) $fila["cliente"]) : "",
+                "cliente_nombre" => isset($fila["cliente_nombre"]) ? trim((string) $fila["cliente_nombre"]) : "",
+                "usuario" => isset($fila["usuario"]) ? trim((string) $fila["usuario"]) : "",
+                "usuario_nombre" => isset($fila["usuario_nombre"]) ? trim((string) $fila["usuario_nombre"]) : "",
+                "vendedor" => isset($fila["vendedor"]) ? trim((string) $fila["vendedor"]) : "",
+                "monto" => $monto,
+                "saldo" => $saldo,
+                "estado" => isset($fila["estado"]) ? trim((string) $fila["estado"]) : "",
+            );
+        }
+
+        $nPend = count($docs);
+        $nOtros = count($docsOtros);
+
         return array(
             "ok" => true,
             "fecha" => $fechaOk,
@@ -634,6 +802,7 @@ class ControladorCuadreVentas
             "puede_validar" => self::ctrPuede("validar"),
             "puede_procesar" => self::ctrPuedeProcesar(),
             "docs" => $docs,
+            "docs_otros" => $docsOtros,
             "borrador" => $borradorActivo,
             "borradores" => $listaBorradores,
             "registrados" => $listaRegistrados,
@@ -649,9 +818,13 @@ class ControladorCuadreVentas
                 ? self::ctrArmarLotesFecha($fechaOk, array("VALIDADO", "PROCESADO"), true, false)
                 : array(),
             "totales" => array(
-                "cantidad" => count($docs),
+                "cantidad" => $nPend,
                 "monto" => round($totalMonto, 2),
                 "saldo" => round($totalSaldo, 2),
+                "cantidad_otros" => $nOtros,
+                "monto_otros" => round($totalMontoOtros, 2),
+                "cantidad_dia" => $nPend + $nOtros,
+                "monto_dia" => round($totalMonto + $totalMontoOtros, 2),
             ),
         );
     }
@@ -1232,6 +1405,14 @@ class ControladorCuadreVentas
             return array("ok" => false, "msg" => "No puedes procesar un cuadre que validaste tú.");
         }
 
+        $docsCte = ModeloCuadreVentas::mdlDocsDeCuadre($idCuadre);
+        if (self::ctrDocsYaEnCte($docsCte)) {
+            return array(
+                "ok" => false,
+                "msg" => "Ya no es necesario procesar: los documentos ya no están pendientes en cuentas. Usa Anular para quitar el lote.",
+            );
+        }
+
         $usureg = "";
         if (isset($_SESSION["nombre"])) {
             $usureg = (string) $_SESSION["nombre"];
@@ -1317,12 +1498,32 @@ class ControladorCuadreVentas
                 "es_propio" => $usrReg === $yo,
             );
             if ($conDetalle) {
-                $item["docs"] = self::ctrSerializarDocs(ModeloCuadreVentas::mdlDocsDeCuadre($id));
+                $docsRaw = ModeloCuadreVentas::mdlDocsDeCuadre($id);
+                $item["docs"] = self::ctrSerializarDocs($docsRaw);
                 $item["medios"] = self::ctrSerializarMedios(ModeloCuadreVentas::mdlMediosDeCuadre($id));
+                $item["ya_en_cte"] = self::ctrDocsYaEnCte($docsRaw);
             }
             $out[] = $item;
         }
         return $out;
+    }
+
+    /**
+     * True si el lote ya no tiene nada pendiente en cte (todos cancelados u otro estado).
+     * En Por procesar: no hace falta bajar a cuentas; conviene anular el lote.
+     */
+    private static function ctrDocsYaEnCte($filas)
+    {
+        if (!is_array($filas) || empty($filas)) {
+            return false;
+        }
+        foreach ($filas as $d) {
+            $est = isset($d["estado_cuenta"]) ? strtoupper(trim((string) $d["estado_cuenta"])) : "";
+            if ($est === "" || $est === "PENDIENTE") {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function ctrSerializarDocs($filas)
@@ -1336,6 +1537,7 @@ class ControladorCuadreVentas
                 "cliente" => isset($d["cliente"]) ? trim((string) $d["cliente"]) : "",
                 "monto_doc" => isset($d["monto_doc"]) ? (float) $d["monto_doc"] : 0,
                 "monto_aplicar" => isset($d["monto_aplicar"]) ? (float) $d["monto_aplicar"] : 0,
+                "estado_cuenta" => isset($d["estado_cuenta"]) ? trim((string) $d["estado_cuenta"]) : "",
             );
         }
         return $out;
