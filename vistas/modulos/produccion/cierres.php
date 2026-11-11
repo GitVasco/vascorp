@@ -27,6 +27,7 @@
             Registrar Cierre
           </button>
         </a>
+        <a href="crear-cierre-manual" class="btn btn-warning"><i class="fa fa-lock"></i> Cierre manual</a>
         <button class="btn btn-info btnCierreDeta" data-toggle='modal' data-target='#modalVerCierreDeta' codigoServicio><i class="fa fa-eye"></i> Ver cierres</button>
         <button class="btn btn-outline-success btnReporteCierre"  style="border:green 1px solid">
                       <img src="vistas/img/plantilla/excel.png" width="20px"> Reporte Cierres  </button>
@@ -60,28 +61,71 @@
         <input type="hidden" value="<?= $_SESSION["perfil"]; ?>" id="perfilOculto">
         <input type="hidden" value="<?= $_GET["ruta"]; ?>" id="rutaAcceso">
 
-        <table class="table table-bordered table-striped dt-responsive tablaCierres" width="100%">
+        <div class="nav-tabs-custom">
+          <ul class="nav nav-tabs">
+            <li class="active"><a href="#tabCierres" data-toggle="tab"><i class="fa fa-list"></i> Cierres</a></li>
+            <li><a href="#tabCierresManuales" data-toggle="tab"><i class="fa fa-lock"></i> Cierres manuales</a></li>
+          </ul>
 
-          <thead>
+          <div class="tab-content">
 
-            <tr>
+            <div class="tab-pane active" id="tabCierres">
 
-              <th>#</th>
-              <th>Codigo</th>
-              <th>N° Guia</th>
-              <th>Usuario</th>
-              <th>Taller</th>
-              <th>Total</th>
-              <th>Fecha</th>
-              <th>Estado</th>
-              <th>Estado Pago</th>
-              <th>Acciones</th>
+              <table class="table table-bordered table-striped dt-responsive tablaCierres" width="100%">
 
-            </tr>
+                <thead>
 
-          </thead>
+                  <tr>
 
-        </table>
+                    <th>#</th>
+                    <th>Codigo</th>
+                    <th>N° Guia</th>
+                    <th>Usuario</th>
+                    <th>Taller</th>
+                    <th>Total</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Estado Pago</th>
+                    <th>Acciones</th>
+
+                  </tr>
+
+                </thead>
+
+              </table>
+
+            </div>
+
+            <div class="tab-pane" id="tabCierresManuales">
+
+              <div class="form-inline" style="margin-bottom:10px">
+                <label>Desde</label>
+                <input type="date" id="cmDesde" class="form-control input-sm" value="<?= date('Y-m-01'); ?>">
+                <label>Hasta</label>
+                <input type="date" id="cmHasta" class="form-control input-sm" value="<?= date('Y-m-d'); ?>">
+                <button type="button" class="btn btn-sm btn-primary" id="cmBtnFiltrar"><i class="fa fa-search"></i> Filtrar</button>
+              </div>
+
+              <table class="table table-bordered table-striped tablaCierresManuales" width="100%">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Taller</th>
+                    <th>Tipo de falla</th>
+                    <th>Observación</th>
+                    <th>Líneas</th>
+                    <th>Total</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+              </table>
+
+            </div>
+
+          </div>
+        </div>
 
       </div>
 
@@ -486,6 +530,40 @@ MODAL VISUALIZAR INFORMACION
   </div>
 
 </div>
+<!--=====================================
+MODAL DETALLE DE CIERRE MANUAL
+======================================-->
+<div id="modalDetalleCierreManual" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#f39c12; color:white">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Cierre manual <span id="cmDetTitulo"></span></h4>
+      </div>
+      <div class="modal-body">
+        <p id="cmDetCabecera" class="text-muted"></p>
+        <table class="table table-bordered table-striped table-condensed" id="cmDetTabla">
+          <thead>
+            <tr>
+              <th>Servicio</th>
+              <th>Guía</th>
+              <th>Modelo</th>
+              <th>Color</th>
+              <th>Talla</th>
+              <th class="text-right">Saldo antes</th>
+              <th class="text-right">Cerrado</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger pull-left" data-dismiss="modal">Salir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 window.document.title = "Cierres"
 </script>

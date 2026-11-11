@@ -2350,26 +2350,38 @@ class ModeloServicios
 	}
 
 	/*=============================================
-	CIERRE MANUAL: LINEAS ABIERTAS (saldo > 0, no cerradas)
+	CIERRE MANUAL: TALLERES CON LINEAS ABIERTAS
 	=============================================*/
-	static public function mdlListarAbiertosCierreManual($codigo = null)
+	static public function mdlTalleresCierreManual()
 	{
-		$sql = "SELECT sd.id, sd.codigo, s.guia, s.taller, se.nom_sector, sd.articulo, a.modelo, a.nombre, a.color,
-					sd.cantidad, sd.saldo, DATE(s.fecha) AS fecha
+		$stmt = Conexion::conectar()->prepare("SELECT s.taller, se.nom_sector, COUNT(*) AS lineas, SUM(sd.saldo) AS saldo
 				FROM servicios_detallejf sd
-				LEFT JOIN serviciosjf s ON s.codigo = sd.codigo
+				INNER JOIN serviciosjf s ON s.codigo = sd.codigo
+				LEFT JOIN sectorjf se ON se.cod_sector = s.taller
+				WHERE sd.saldo > 0 AND sd.cerrar = 0
+				GROUP BY s.taller, se.nom_sector
+				ORDER BY s.taller");
+		if (!$stmt->execute()) {
+			$e = $stmt->errorInfo();
+			throw new Exception("SQL: " . $e[2]);
+		}
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	CIERRE MANUAL: LINEAS ABIERTAS DE UN TALLER (saldo > 0, no cerradas)
+	=============================================*/
+	static public function mdlListarAbiertosCierreManual($taller)
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT sd.id, sd.codigo, s.guia, s.taller, se.nom_sector, sd.articulo,
+					a.modelo, a.nombre, a.color, a.talla, sd.cantidad, sd.saldo, DATE(s.fecha) AS fecha
+				FROM servicios_detallejf sd
+				INNER JOIN serviciosjf s ON s.codigo = sd.codigo
 				LEFT JOIN articulojf a ON a.articulo = sd.articulo
 				LEFT JOIN sectorjf se ON se.cod_sector = s.taller
-				WHERE sd.saldo > 0 AND sd.cerrar = 0";
-		if ($codigo) {
-			$sql .= " AND sd.codigo = :codigo";
-		}
-		$sql .= " ORDER BY s.fecha DESC, sd.codigo, a.modelo, a.color";
-
-		$stmt = Conexion::conectar()->prepare($sql);
-		if ($codigo) {
-			$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
-		}
+				WHERE sd.saldo > 0 AND sd.cerrar = 0 AND s.taller = :taller
+				ORDER BY s.fecha DESC, sd.codigo, a.modelo, a.color, a.cod_talla");
+		$stmt->bindParam(":taller", $taller, PDO::PARAM_STR);
 		if (!$stmt->execute()) {
 			$e = $stmt->errorInfo();
 			throw new Exception("SQL: " . $e[2]);
@@ -2380,13 +2392,21 @@ class ModeloServicios
 	/*=============================================
 	CIERRE MANUAL: CIERRA CANTIDADES INDICADAS (transaccional)
 	$items = array(array("id"=>, "cantidad"=>), ...)
+	Todas las líneas deben ser del taller indicado. Se agrupan bajo un código CM000001.
 	=============================================*/
-	static public function mdlCierreManualServicios($items, $motivo, $obs, $usuario)
+	static public function mdlCierreManualServicios($items, $falla, $obs, $usuario, $taller)
 	{
 		$pdo = Conexion::conectar();
 		$pdo->beginTransaction();
 
 		try {
+			$stmt = $pdo->prepare("SELECT MAX(CAST(SUBSTRING(cierre_codigo, 3) AS UNSIGNED)) FROM servicios_cierre_manual
+				WHERE cierre_codigo LIKE 'CM%' FOR UPDATE");
+			$stmt->execute();
+			$ultimo = (int) $stmt->fetchColumn();
+			$stmt->closeCursor();
+			$cierreCodigo = "CM" . str_pad((string) ($ultimo + 1), 6, "0", STR_PAD_LEFT);
+
 			$lineas = 0;
 			$total = 0;
 			foreach ($items as $it) {
@@ -2396,7 +2416,10 @@ class ModeloServicios
 					continue;
 				}
 
-				$stmt = $pdo->prepare("SELECT codigo, articulo, saldo, cabecera_taller FROM servicios_detallejf WHERE id = :id AND cerrar = 0 FOR UPDATE");
+				$stmt = $pdo->prepare("SELECT sd.codigo, sd.articulo, sd.saldo, sd.cabecera_taller, s.taller
+					FROM servicios_detallejf sd
+					INNER JOIN serviciosjf s ON s.codigo = sd.codigo
+					WHERE sd.id = :id AND sd.cerrar = 0 FOR UPDATE");
 				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
 				$stmt->execute();
 				$d = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -2404,6 +2427,9 @@ class ModeloServicios
 
 				if (!$d) {
 					throw new Exception("La línea $id no existe o ya está cerrada");
+				}
+				if ((string) $d["taller"] !== (string) $taller) {
+					throw new Exception("Servicio " . $d["codigo"] . " / " . $d["articulo"] . ": no pertenece al taller seleccionado");
 				}
 				$saldo = (int) $d["saldo"];
 				if ($cant > $saldo) {
@@ -2445,14 +2471,16 @@ class ModeloServicios
 
 				// registro del cierre
 				$stmt = $pdo->prepare("INSERT INTO servicios_cierre_manual
-					(detalle_id, codigo, articulo, cantidad, saldo_antes, motivo, obs, usuario, fecha)
-					VALUES (:id, :codigo, :articulo, :cant, :saldo, :motivo, :obs, :usuario, NOW())");
+					(cierre_codigo, taller, detalle_id, codigo, articulo, cantidad, saldo_antes, motivo, obs, usuario, fecha)
+					VALUES (:cierre, :taller, :id, :codigo, :articulo, :cant, :saldo, :motivo, :obs, :usuario, NOW())");
+				$stmt->bindValue(":cierre", $cierreCodigo, PDO::PARAM_STR);
+				$stmt->bindValue(":taller", $taller, PDO::PARAM_STR);
 				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
 				$stmt->bindValue(":codigo", $d["codigo"], PDO::PARAM_STR);
 				$stmt->bindValue(":articulo", $d["articulo"], PDO::PARAM_STR);
 				$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
 				$stmt->bindValue(":saldo", $saldo, PDO::PARAM_INT);
-				$stmt->bindValue(":motivo", $motivo, PDO::PARAM_STR);
+				$stmt->bindValue(":motivo", $falla, PDO::PARAM_STR);
 				$stmt->bindValue(":obs", $obs, PDO::PARAM_STR);
 				$stmt->bindValue(":usuario", $usuario, PDO::PARAM_STR);
 				$stmt->execute();
@@ -2467,7 +2495,7 @@ class ModeloServicios
 			}
 
 			$pdo->commit();
-			return array("ok" => true, "cerrados" => $lineas, "cantidad" => $total);
+			return array("ok" => true, "codigo" => $cierreCodigo, "cerrados" => $lineas, "cantidad" => $total);
 		} catch (Exception $e) {
 			$pdo->rollBack();
 			return array("ok" => false, "error" => $e->getMessage());
@@ -2475,20 +2503,46 @@ class ModeloServicios
 	}
 
 	/*=============================================
-	CIERRE MANUAL: HISTORIAL DE LO CERRADO A MANO
+	CIERRE MANUAL: HISTORIAL AGRUPADO POR CIERRE
+	Los registros previos a cierre_codigo se agrupan por usuario + fecha exacta.
 	=============================================*/
 	static public function mdlHistorialCierreManual($desde, $hasta)
 	{
-		$stmt = Conexion::conectar()->prepare("SELECT cm.id, cm.codigo, s.guia, s.taller, se.nom_sector, cm.articulo,
-					a.modelo, a.nombre, a.color, cm.saldo_antes, cm.cantidad, cm.motivo, cm.obs, cm.usuario, cm.fecha
+		$stmt = Conexion::conectar()->prepare("SELECT
+					COALESCE(cm.cierre_codigo, CONCAT(cm.usuario, '|', cm.fecha)) AS clave,
+					MAX(cm.cierre_codigo) AS cierre_codigo,
+					MAX(cm.fecha) AS fecha, MAX(cm.usuario) AS usuario,
+					MAX(cm.motivo) AS motivo, MAX(cm.obs) AS obs,
+					GROUP_CONCAT(DISTINCT CONCAT(COALESCE(cm.taller, s.taller), ' - ', COALESCE(se.nom_sector, '')) SEPARATOR ', ') AS taller,
+					COUNT(*) AS lineas, SUM(cm.cantidad) AS cantidad
+				FROM servicios_cierre_manual cm
+				LEFT JOIN serviciosjf s ON s.codigo = cm.codigo
+				LEFT JOIN sectorjf se ON se.cod_sector = COALESCE(cm.taller, s.taller)
+				WHERE DATE(cm.fecha) BETWEEN :desde AND :hasta
+				GROUP BY clave
+				ORDER BY MAX(cm.fecha) DESC");
+		$stmt->bindParam(":desde", $desde, PDO::PARAM_STR);
+		$stmt->bindParam(":hasta", $hasta, PDO::PARAM_STR);
+		if (!$stmt->execute()) {
+			$e = $stmt->errorInfo();
+			throw new Exception("SQL: " . $e[2]);
+		}
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	CIERRE MANUAL: LINEAS DE UN CIERRE (clave del historial)
+	=============================================*/
+	static public function mdlDetalleCierreManual($clave)
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT cm.codigo, s.guia, cm.articulo, a.modelo, a.nombre, a.color, a.talla,
+					cm.saldo_antes, cm.cantidad
 				FROM servicios_cierre_manual cm
 				LEFT JOIN serviciosjf s ON s.codigo = cm.codigo
 				LEFT JOIN articulojf a ON a.articulo = cm.articulo
-				LEFT JOIN sectorjf se ON se.cod_sector = s.taller
-				WHERE DATE(cm.fecha) BETWEEN :desde AND :hasta
-				ORDER BY cm.fecha DESC, cm.id DESC");
-		$stmt->bindParam(":desde", $desde, PDO::PARAM_STR);
-		$stmt->bindParam(":hasta", $hasta, PDO::PARAM_STR);
+				WHERE COALESCE(cm.cierre_codigo, CONCAT(cm.usuario, '|', cm.fecha)) = :clave
+				ORDER BY cm.codigo, a.modelo, a.color, a.cod_talla");
+		$stmt->bindParam(":clave", $clave, PDO::PARAM_STR);
 		if (!$stmt->execute()) {
 			$e = $stmt->errorInfo();
 			throw new Exception("SQL: " . $e[2]);

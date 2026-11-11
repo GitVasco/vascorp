@@ -937,7 +937,7 @@
                     "en-tallerp", "ingresos", "crear-ingresos", "crear-ingresos-multi", "crear-segunda", "crear-segundas-multi", "asistencia",
                     "quincena", "eficiencia-global", "produccion-trusas", "produccion-brasier",
                     "produccion-vasco", "urgencias", "urgenciasamp", "proyeccion-mp", "servicios",
-                    "crear-servicio", "cierres", "crear-cierre", "precio-servicio", "pago-servicio",
+                    "crear-servicio", "cierres", "crear-cierre", "crear-cierre-manual", "precio-servicio", "pago-servicio",
                     "salidas-varios", "crear-salidas-varios", "operacion-taller", "sublimados",
                     "seguimiento", "enviados-taller", "listar-documento", "ajuste-taller",
                     "urgencias-produccion", "urgencias-almacen", "urgencias-corte", "urgencias-plan",
@@ -958,7 +958,7 @@
                     <ul class="treeview-menu">
 
                         <?php
-                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "ingresos", "programacion-taller-semana", "seguimiento-recetas", "ordenes-servicio-prod", "liquidaciones-servicio-prod"];
+                        $rutasActivasProgramación = ["ordencorte", "almacencorte", "servicios", "cierres", "crear-cierre-manual", "ingresos", "programacion-taller-semana", "seguimiento-recetas", "ordenes-servicio-prod", "liquidaciones-servicio-prod"];
                         $isActiveProgramación = in_array($_GET["ruta"], $rutasActivasProgramación) ? 'active' : '';
                         ?>
 
@@ -986,18 +986,13 @@
                                     <a href="servicios"><i class="fa fa-circle-o"></i> Servicios</a>
                                 </li>
 
-                                <!-- CIERRE MANUAL DE SERVICIOS -->
-                                <li class="<?= $_GET['ruta'] == 'cierre-manual-servicios' ? 'active' : '' ?>">
-                                    <a href="cierre-manual-servicios"><i class="fa fa-circle-o"></i> Cierre manual</a>
-                                </li>
-
                                 <!-- ÓRDENES DE SERVICIO (sustento SUNAT) -->
                                 <li class="<?= $_GET['ruta'] == 'ordenes-servicio-prod' ? 'active' : '' ?>">
                                     <a href="ordenes-servicio-prod"><i class="fa fa-circle-o"></i> Órdenes de servicio</a>
                                 </li>
 
                                 <!-- CIERRES -->
-                                <li class="<?= $_GET['ruta'] == 'cierres' ? 'active' : '' ?>">
+                                <li class="<?= in_array($_GET['ruta'], ['cierres', 'crear-cierre-manual']) ? 'active' : '' ?>">
                                     <a href="cierres"><i class="fa fa-circle-o"></i> Cierres</a>
                                 </li>
 

@@ -1,0 +1,28 @@
+{
+  "descripcion": "Tipos de falla para el cierre manual de servicios (Cierres > Cierre manual).",
+  "fallas": [
+    { "codigo": "01", "nombre": "TONALIDAD" },
+    { "codigo": "02", "nombre": "SUCIEDAD" },
+    { "codigo": "03", "nombre": "EMPATES DE COSTURA" },
+    { "codigo": "04", "nombre": "FALLA DE TEJIDO" },
+    { "codigo": "05", "nombre": "FALLA DE SILICONADO" },
+    { "codigo": "06", "nombre": "FALLA DE ESTAMPADO" },
+    { "codigo": "07", "nombre": "HILO CORRIDO" },
+    { "codigo": "08", "nombre": "QUEBRADURAS" },
+    { "codigo": "09", "nombre": "EMPATES" },
+    { "codigo": "10", "nombre": "MANCHAS" },
+    { "codigo": "11", "nombre": "ONDEADO" },
+    { "codigo": "12", "nombre": "GLOBO (LAMINADO)" },
+    { "codigo": "13", "nombre": "CONTAMINADO" },
+    { "codigo": "14", "nombre": "TONALIDAD DE TONOS" },
+    { "codigo": "15", "nombre": "FALLA DE TEÑIDO" },
+    { "codigo": "16", "nombre": "MAL ARMADO" }
+  ],
+  "motivos_anteriores": {
+    "PERDIDA": "Pérdida / merma",
+    "DEFECTO": "Prendas con defecto",
+    "ERROR_REGISTRO": "Error de registro",
+    "ACUERDO_TALLER": "Acuerdo con el taller",
+    "OTRO": "Otro"
+  }
+}

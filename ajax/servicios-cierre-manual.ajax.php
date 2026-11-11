@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once "../modelos/conexion.php";
 require_once "../modelos/servicio.modelo.php";
+require_once "../controladores/cierre-manual.config.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -13,8 +14,6 @@ if (!isset($_SESSION["nombre"])) {
     echo json_encode(array("ok" => false, "error" => "Sesión no válida"));
     exit;
 }
-
-$motivosValidos = array("PERDIDA", "DEFECTO", "ERROR_REGISTRO", "ACUERDO_TALLER", "OTRO");
 
 $accion = isset($_POST["accion"]) ? $_POST["accion"] : "";
 
@@ -28,9 +27,13 @@ function salidaJson($arr)
 }
 
 if ($accion === "listar") {
+    $taller = isset($_POST["taller"]) ? trim($_POST["taller"]) : "";
+    if ($taller === "") {
+        salidaJson(array("data" => array()));
+        exit;
+    }
     try {
-        $codigo = !empty($_POST["codigo"]) ? $_POST["codigo"] : null;
-        salidaJson(array("data" => ModeloServicios::mdlListarAbiertosCierreManual($codigo)));
+        salidaJson(array("data" => ModeloServicios::mdlListarAbiertosCierreManual($taller)));
     } catch (Exception $e) {
         salidaJson(array("data" => array(), "error" => $e->getMessage()));
     }
@@ -38,9 +41,21 @@ if ($accion === "listar") {
     $desde = (isset($_POST["desde"]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST["desde"])) ? $_POST["desde"] : date("Y-m-01");
     $hasta = (isset($_POST["hasta"]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST["hasta"])) ? $_POST["hasta"] : date("Y-m-d");
     try {
-        salidaJson(array("data" => ModeloServicios::mdlHistorialCierreManual($desde, $hasta)));
+        $filas = ModeloServicios::mdlHistorialCierreManual($desde, $hasta);
+        foreach ($filas as &$f) {
+            $f["falla"] = cmNombreFalla($f["motivo"]);
+        }
+        unset($f);
+        salidaJson(array("data" => $filas));
     } catch (Exception $e) {
         salidaJson(array("data" => array(), "error" => $e->getMessage()));
+    }
+} elseif ($accion === "detalle") {
+    $clave = isset($_POST["clave"]) ? $_POST["clave"] : "";
+    try {
+        salidaJson(array("ok" => true, "data" => ModeloServicios::mdlDetalleCierreManual($clave)));
+    } catch (Exception $e) {
+        salidaJson(array("ok" => false, "data" => array(), "error" => $e->getMessage()));
     }
 } elseif ($accion === "cerrar") {
     $items = array();
@@ -52,17 +67,18 @@ if ($accion === "listar") {
             }
         }
     }
-    $motivo = isset($_POST["motivo"]) ? $_POST["motivo"] : "";
+    $taller = isset($_POST["taller"]) ? trim($_POST["taller"]) : "";
+    $falla = isset($_POST["falla"]) ? $_POST["falla"] : "";
     $obs = trim(isset($_POST["obs"]) ? $_POST["obs"] : "");
 
-    if (!$items) {
-        echo json_encode(array("ok" => false, "error" => "Indique la cantidad a cerrar en al menos una línea"));
-    } elseif (!in_array($motivo, $motivosValidos, true)) {
-        echo json_encode(array("ok" => false, "error" => "Seleccione un motivo válido"));
-    } elseif ($motivo === "OTRO" && $obs === "") {
-        echo json_encode(array("ok" => false, "error" => "Indique la observación para el motivo 'Otro'"));
+    if ($taller === "") {
+        echo json_encode(array("ok" => false, "error" => "Seleccione el taller"));
+    } elseif (!cmFallaValida($falla)) {
+        echo json_encode(array("ok" => false, "error" => "Seleccione un tipo de falla válido"));
+    } elseif (!$items) {
+        echo json_encode(array("ok" => false, "error" => "Agregue al menos un artículo con cantidad a cerrar"));
     } else {
-        echo json_encode(ModeloServicios::mdlCierreManualServicios($items, $motivo, mb_substr($obs, 0, 255), $_SESSION["nombre"]));
+        echo json_encode(ModeloServicios::mdlCierreManualServicios($items, $falla, mb_substr($obs, 0, 255), $_SESSION["nombre"], $taller));
     }
 } else {
     echo json_encode(array("ok" => false, "error" => "Acción no válida"));
