@@ -4114,6 +4114,32 @@ class ControladorFacturacion
             $exportacion = substr($serieSeleccionada, 0, 2) == "FX" ? 1 : 0;
             $tipo_moneda = $exportacion ? 2 : 1;
 
+            // Exportación (docs/efact/EXPORTACION-diseno.md): serie FX solo para clientes del exterior y viceversa
+            if (class_exists("ControladorExportacion") && class_exists("ModeloExportacion")) {
+                $msgExportacion = "";
+                try {
+                    $msgExportacion = ControladorExportacion::ctrValidarFacturarPedido($codigo, $tipoDocumento, $serieSeleccionada);
+                } catch (Exception $e) {
+                    $msgExportacion = "";
+                }
+                if ($msgExportacion !== "") {
+                    $textoExportacion = json_encode(
+                        $msgExportacion,
+                        JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
+                    );
+                    echo '<script>
+                        swal({
+                            type: "warning",
+                            title: "Exportación",
+                            text: ' . $textoExportacion . ',
+                            showConfirmButton: true,
+                            confirmButtonText: "Cerrar"
+                        });
+                    </script>';
+                    return;
+                }
+            }
+
             if ($checkBoleta == "on" && $checkFactura == null) {
                 $tipoDestino = "S02";
                 $nombresDestino = "BOLETA";

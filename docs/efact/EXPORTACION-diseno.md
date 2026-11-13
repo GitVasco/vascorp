@@ -2,9 +2,59 @@
 
 **Emisor:** Corporación Vasco S.A.C. — RUC 20513613939
 **Fecha:** 13 de noviembre de 2026
-**Estado:** diseño aprobado, sin implementar. Se avanza por fases y se prueba cada una antes de seguir.
+**Estado:** fases 1, 2 y 3A implementadas, falta probarlas con una factura real. Se avanza por fases y se prueba cada una antes de seguir.
 
 **Regla principal:** **no modificar código actual.** Todo es nuevo (funciones, tablas, vistas). Lo existente solo se **llama**, no se edita. El flujo actual con serie `FX` sigue funcionando hasta que el nuevo esté probado.
+
+---
+
+## Dónde nos quedamos (13-nov-2026)
+
+**Esperando:** que almacén prepare un pedido de exportación real para probar con él.
+
+**Hecho:**
+
+| Fase | Qué quedó | SQL |
+|------|-----------|-----|
+| 1 | País del cliente en Clientes («Cliente del exterior»), pantalla Configuración de exportación con las pestañas Clientes, Modelos/precio lista 1 y Códigos SUNAT | `exportacion-fase1.sql` ✅ ejecutado |
+| 2 | Pestaña **Archivo eFact (prueba)**: compara el CSV actual con el nuevo de una factura FX y los descarga. No envía nada | `exportacion-fase2.sql` ⏳ ejecutar (precarga los 5 códigos SUNAT) |
+| 3A | Pedidos: marca «EXP» y bandera en los listados, aviso en crear pedido, solo series FX en Facturar, control en el servidor y «EXPORTACIÓN · país» en el título del pedido impreso | — |
+
+**Prueba pendiente, con el pedido real:**
+
+1. Lista de pedidos: el cliente aparece con «EXP» y su bandera. El pedido impreso dice «EXPORTACIÓN · país» en el título.
+2. Facturar → Factura: solo aparece la serie FX. Emitir como siempre.
+3. Configuración de exportación → Archivo eFact (prueba): comparar esa factura. Las diferencias esperadas son fila 5 H, fila 6 H, columna R y el país.
+4. Opcional: mandar a eFact a mano el archivo «nuevo» para ver si lo acepta.
+5. Anotar el resultado en la §6 Registro de pruebas.
+
+**Siguiente (3B), cuando la prueba salga bien:**
+
+- Cuenta corriente en USD con tipo de cambio actualizable (`exp_cta_monedajf`).
+- Envío a eFact del CSV nuevo en lugar del actual.
+
+Después siguen la Fase 4 (formato de impresión de la factura), la Fase 5 (cobranza en USD, en pausa) y la Fase 6 (retiro del flujo antiguo).
+
+**Archivos nuevos:**
+
+- `modelos/exportacion.modelo.php`
+- `controladores/exportacion.controlador.php`
+- `ajax/exportacion.ajax.php`
+- `ajax/exportacion-pedidos.ajax.php`
+- `vistas/modulos/facturacion/exportacion-config.php`
+- `vistas/js/exportacion.js`
+- `vistas/js/exportacion-pedidos.js`
+
+**Ganchos mínimos en archivos existentes:**
+
+- `index.php`
+- `vistas/plantilla.php`
+- `vistas/modulos/menu.php`
+- `vistas/modulos/facturacion/clientes.php`
+- `vistas/js/clientes.js`
+- `controladores/clientes.controlador.php`
+- `controladores/facturacion.controlador.php` (bloque de control en `ctrFacturarN`)
+- `vistas/reportes_ticket/impresion_pedido_v2.php` (título)
 
 ---
 
@@ -89,7 +139,38 @@ Submenú **Comprobantes especiales → Exportación** (ver `COMPROBANTES-ESPECIA
 
 **Prueba:** el CSV nuevo de una factura antigua debe ser igual al actual, salvo los cambios listados.
 
+**Implementado (13-nov-2026):**
+
+- `ControladorExportacion::ctrArmarCsv($doc, "actual"|"nuevo")` arma el CSV **en memoria** con las consultas de solo lectura `mdlFEFacturaCabB` y `mdlFEFacturaDetAExportacion`. No escribe en ninguna carpeta: se descarga desde la pantalla. `ctrCompararCsv` compara celda por celda.
+- El modo "actual" sale **idéntico byte por byte** a `ctrGenerarFEFacBolB` (probado con PHP 5.6 y datos simulados).
+- Pantalla: Configuración de exportación → pestaña **Archivo eFact (prueba)** (`#archivo`), con la lista de facturas FX, las diferencias, los dos archivos lado a lado y las descargas.
+- Hallazgos sobre el CSV actual:
+  - **Columna R de los ítems: hoy siempre "No encontrado".** `$codigo_arancel` de `config.php` no llega a la función, porque `config.php` ya está cargado y el `require_once` no lo vuelve a leer. En PHP 8 sería un error fatal.
+  - Los valores de `$codigo_arancel` son **códigos de producto SUNAT (catálogo 25, 8 dígitos)**, no partidas de 10. La tabla `exp_partida_lineajf` guarda ese código (precarga: `docs/sql/exportacion-fase2.sql`).
+  - Cabecera: alias `h5` duplicado en la fila 6 de `mdlFEFacturaCabB`, así que la provincia del emisor (fila 5 H) sale "-" y la fila 6 H sale vacía.
+- Cambios del modo "nuevo":
+  - Fila 5 H = LIMA y fila 6 H = "-".
+  - País (fila 6 K) desde `clientesjf.pais_iso`.
+  - Receptor sin documento (fila 6 A/B).
+  - Monto en letras en USD con `montoLetrasUSD`.
+  - Columna R con el código SUNAT de la línea, o vacía si no tiene.
+
 ### Fase 3 — Emisión desde pedido
+
+**3A implementada (13-nov-2026): reconocimiento y controles en pedidos.** Un pedido es de exportación si el cliente tiene `pais_iso` distinto de Perú; el pedido no lleva marca propia.
+
+- **Control en el servidor:** `ControladorExportacion::ctrValidarFacturarPedido`. Se llama desde `ctrFacturarN` con un bloque aditivo, antes de asignar el correlativo, y solo aplica a factura y boleta (01, 03):
+  - Serie FX con un cliente de Perú o sin país: se bloquea.
+  - Cliente del exterior sin serie FX: se bloquea.
+  - Serie FX con boleta: se bloquea.
+  - Serie FX con un pedido que no usa `precio1`: se bloquea.
+- **Ayuda en pantalla:** `vistas/js/exportacion-pedidos.js`, con `ajax/exportacion-pedidos.ajax.php` (solo lectura; basta con tener sesión iniciada):
+  - En los listados de pedidos, la marca «EXP» con la bandera.
+  - En crear o editar pedido, un aviso con el país y la lista de precios.
+  - En el modal Facturar, solo series FX para el exterior (se elige sola si hay una) y sin series FX para Perú.
+- La emisión sigue usando el flujo actual de `ctrFacturarN`, que ya marca `exportacion = 1` y la moneda USD por la serie FX.
+
+**3B pendiente:** cuenta en USD (`exp_cta_monedajf`) y envío del CSV nuevo a eFact.
 
 - Bandeja: pedidos **preparados por almacén** con lista `precio1` y cliente con país del exterior.
 - Validaciones antes de emitir: lista `precio1`, cliente con país distinto de Perú, serie de exportación configurada y pedido completo.
@@ -122,7 +203,7 @@ Submenú **Comprobantes especiales → Exportación** (ver `COMPROBANTES-ESPECIA
 1. **Tipo de cambio:** sí se guarda en `exp_cta_monedajf.tipo_cambio`; puede quedar vacío al emitir y **actualizarse después**.
 2. **Cobranza USD:** **se deja como está** por ahora. Pendiente revisar más adelante (Fase 5).
 3. **Serie:** **la misma serie FX** y el mismo correlativo de `talonariosjf`.
-4. **Partida arancelaria:** tabla lista y vacía; **más adelante alguien puede llenarla**.
+4. **Partida arancelaria:** tabla lista y vacía; **más adelante alguien puede llenarla**. En la Fase 2 se vio que lo que se envía es el código de producto SUNAT de 8 dígitos; se precargan los 5 de `config.php`.
 
 ## 6. Registro de pruebas
 

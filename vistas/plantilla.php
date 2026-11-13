@@ -1241,6 +1241,9 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "exportacion-config") { ?>
     <script src="vistas/js/exportacion.js?v=<?php echo @filemtime("vistas/js/exportacion.js"); ?>"></script>
     <?php } ?>
+    <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["pedidoscv", "pedidos-generados", "pedidos-aprobados", "pedidos-apt", "pedidos-confirmados", "pedidos-facturados", "crear-pedidocv"], true)) { ?>
+    <script src="vistas/js/exportacion-pedidos.js?v=<?php echo @filemtime("vistas/js/exportacion-pedidos.js"); ?>"></script>
+    <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
     <script src="vistas/js/cuadre-ventas.js?v=50"></script>
     <?php } ?>

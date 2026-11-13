@@ -29,6 +29,23 @@ if (!$respuesta) {
     exit;
 }
 
+// Exportación (docs/efact/EXPORTACION-diseno.md): cliente con país distinto de Perú
+$respuesta["exp_pais"] = "";
+if (file_exists(__DIR__ . "/../../modelos/exportacion.modelo.php")) {
+    try {
+        require_once __DIR__ . "/../../modelos/exportacion.modelo.php";
+        require_once __DIR__ . "/../../controladores/exportacion.controlador.php";
+        $expIso = ModeloExportacion::mdlPaisCliente(isset($respuesta["codigo"]) ? trim((string) $respuesta["codigo"]) : "");
+        if (ControladorExportacion::esExterior($expIso)) {
+            $expNombre = ControladorExportacion::nombrePais(strtoupper($expIso));
+            // Nombres largos (p. ej. REPÚBLICA DOMINICANA) van con el código para no partir el título
+            $respuesta["exp_pais"] = strlen($expNombre) <= 10 ? $expNombre : strtoupper($expIso);
+        }
+    } catch (Exception $e) {
+        $respuesta["exp_pais"] = "";
+    }
+}
+
 $moneda = (isset($respuesta["lista"]) && $respuesta["lista"] == "precio1") ? " $ " : " S/ ";
 $totales = ControladorPedidos::ctrPedidoImpresionTotales($codigo);
 $pedidos = controladorPedidos::ctrMostraPedidosCabecera($codigo);
@@ -244,7 +261,11 @@ function pedidoV2CabeceraHoja(array $respuesta, $fechaEmision, $fechaAprobacion,
     echo '<table class="pedido-v2-cab">';
 
     echo '<tr class="fila-sep">';
-    echo '<td class="empresa">CORPORACION VASCO S.A.C.</td>';
+    $expTitulo = !empty($respuesta["exp_pais"])
+        ? ' <span style="border:1px solid #000;padding:0 3px;margin-left:4px;font-size:11px">EXPOR ' 
+            . pedidoV2Esc($respuesta["exp_pais"]) . '</span>'
+        : '';
+    echo '<td class="empresa"' . ($expTitulo !== '' ? ' style="white-space:nowrap"' : '') . '>CORPORACION VASCO S.A.C.' . $expTitulo . '</td>';
     echo '<td class="pedido-nro">Nº PEDIDO&nbsp;&nbsp;' . pedidoV2Esc($respuesta["pedido"]) . '</td>';
     echo '</tr>';
 

@@ -4,7 +4,10 @@
     #expConfig .exp-nowrap { white-space: nowrap; }
     #expConfig .exp-cfg-linea { display: flex; flex-wrap: wrap; gap: 8px 32px; align-items: baseline; }
     #expConfig .exp-cfg-linea label { margin: 0 4px 0 0; color: #555; }
-    #expTablaModelos { font-size: 12px; }
+    #expTablaModelos, #expTablaFx, #expTablaDiff { font-size: 12px; }
+    #expConfig .exp-csv { font-size: 11px; max-height: 360px; overflow: auto; white-space: pre; }
+    #expConfig .exp-csv .exp-dif { background: #fff3cd; display: block; }
+    #expTablaDiff td { font-family: monospace; word-break: break-all; }
     #expTablaModelos td { padding: 2px 6px !important; }
     #expConfig .exp-precio { width: 90px; height: 24px; padding: 2px 6px; font-size: 12px; display: inline-block; text-align: right; }
     #expConfig .exp-precio.exp-ok { border-color: #00a65a; background: #eafaf1; }
@@ -44,7 +47,8 @@
             <ul class="nav nav-tabs">
                 <li class="active"><a href="#expTabClientes" data-toggle="tab"><i class="fa fa-globe"></i> Clientes del exterior</a></li>
                 <li><a href="#expTabModelos" data-toggle="tab"><i class="fa fa-tags"></i> Modelos y precio lista 1</a></li>
-                <li><a href="#expTabPartidas" data-toggle="tab"><i class="fa fa-barcode"></i> Partidas arancelarias</a></li>
+                <li><a href="#expTabPartidas" data-toggle="tab"><i class="fa fa-barcode"></i> Códigos SUNAT</a></li>
+                <li><a href="#expTabArchivo" data-toggle="tab"><i class="fa fa-file-text-o"></i> Archivo eFact (prueba)</a></li>
             </ul>
             <div class="tab-content">
 
@@ -80,13 +84,49 @@
 
                 <div class="tab-pane" id="expTabPartidas">
                     <p class="text-muted" style="font-size:12px">
-                        Opcional. Si una línea no tiene partida, la factura sale igual sin ese dato.
+                        Código de producto SUNAT (catálogo 25, 8 dígitos) por línea de prenda. Opcional: si una línea no tiene código, la factura sale igual con ese dato vacío.
                     </p>
                     <table class="table table-bordered table-striped" id="expTablaPartidas" width="100%">
                         <thead>
-                            <tr><th>Línea</th><th>Partida</th><th>Descripción</th><th class="text-center">Estado</th><th class="text-center">Acciones</th></tr>
+                            <tr><th>Línea</th><th>Código SUNAT</th><th>Descripción</th><th class="text-center">Estado</th><th class="text-center">Acciones</th></tr>
                         </thead>
                     </table>
+                </div>
+
+                <div class="tab-pane" id="expTabArchivo">
+                    <p class="text-muted" style="font-size:12px">
+                        Compara el archivo de eFact que genera hoy el sistema con el archivo nuevo, para una factura FX ya emitida.
+                        <b>No envía nada a eFact</b> ni cambia la factura.
+                    </p>
+                    <div class="form-inline" style="margin-bottom:8px">
+                        <label>Desde</label> <input type="date" class="form-control input-sm" id="expFxDesde" value="<?= date("Y-01-01"); ?>">
+                        <label style="margin-left:8px">Hasta</label> <input type="date" class="form-control input-sm" id="expFxHasta" value="<?= date("Y-m-d"); ?>">
+                        <button type="button" class="btn btn-default btn-sm" id="expFxBuscar"><i class="fa fa-search"></i> Buscar</button>
+                    </div>
+                    <table class="table table-bordered table-striped table-condensed" id="expTablaFx" width="100%">
+                        <thead>
+                            <tr><th>Factura</th><th class="text-center">Fecha</th><th>Cliente</th><th>País</th><th class="text-right">Total</th><th class="text-center">Líneas</th><th class="text-center">Acciones</th></tr>
+                        </thead>
+                    </table>
+
+                    <div id="expCsvResultado" style="display:none;margin-top:12px">
+                        <h4 style="margin-top:0">
+                            <span id="expCsvTitulo"></span>
+                            <span class="pull-right">
+                                <a class="btn btn-default btn-xs" id="expCsvBajarActual" target="_blank"><i class="fa fa-download"></i> Archivo actual</a>
+                                <a class="btn btn-primary btn-xs" id="expCsvBajarNuevo" target="_blank"><i class="fa fa-download"></i> Archivo nuevo</a>
+                            </span>
+                        </h4>
+                        <div class="alert alert-warning" id="expCsvAvisos" style="display:none"></div>
+                        <table class="table table-bordered table-condensed" id="expTablaDiff">
+                            <thead><tr><th>Fila</th><th class="text-center">Columna</th><th>Actual</th><th>Nuevo</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <div class="row">
+                            <div class="col-md-6"><label>Actual</label><pre class="exp-csv" id="expCsvActual"></pre></div>
+                            <div class="col-md-6"><label>Nuevo</label><pre class="exp-csv" id="expCsvNuevo"></pre></div>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -99,13 +139,13 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title">Partida de <b id="expPLineaTxt"></b></h4>
+                <h4 class="modal-title">Código SUNAT de <b id="expPLineaTxt"></b></h4>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="expPLinea">
                 <div class="form-group">
-                    <label>Partida arancelaria (10 dígitos)</label>
-                    <input type="text" class="form-control input-sm" id="expPPartida" maxlength="13" placeholder="6109100000">
+                    <label>Código de producto SUNAT (8 dígitos)</label>
+                    <input type="text" class="form-control input-sm" id="expPPartida" maxlength="8" placeholder="53102303">
                 </div>
                 <div class="form-group">
                     <label>Descripción</label>

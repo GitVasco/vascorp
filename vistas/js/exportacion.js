@@ -46,6 +46,11 @@
        CLIENTES DEL EXTERIOR (solo consulta)
     ===================================================== */
     var tablaClientes, paises = {}, listaExp = "precio1";
+
+    function banderaPais(v) {
+        var iso = String(v || "").toLowerCase();
+        return /^[a-z]{2}$/.test(iso) ? "<img class='exp-bandera' src='https://flagcdn.com/w20/" + iso + ".png' alt='' onerror=\"this.style.display='none'\">" : "";
+    }
     function iniciarClientes() {
         tablaClientes = $("#expTablaClientes").DataTable({
             order: [[1, "asc"]],
@@ -56,9 +61,7 @@
                 { data: "nombre", render: function (v) { return "<b>" + esc(v) + "</b>"; } },
                 { data: "pais_iso", className: "exp-nowrap", render: function (v, t) {
                     if (t !== "display") return v + " " + (paises[v] || "");
-                    var iso = String(v || "").toLowerCase();
-                    var flag = /^[a-z]{2}$/.test(iso) ? "<img class='exp-bandera' src='https://flagcdn.com/w20/" + iso + ".png' alt='' onerror=\"this.style.display='none'\">" : "";
-                    return flag + "<b>" + esc(v) + "</b> " + esc(paises[v] || "");
+                    return banderaPais(v) + "<b>" + esc(v) + "</b> " + esc(paises[v] || "");
                 } },
                 { data: null, render: function (r) { return esc(TIPOS_DOC[r.tipo_documento] || r.tipo_documento) + " " + esc(r.documento); } },
                 { data: "direccion", render: function (v) { return esc(v); } },
@@ -74,6 +77,7 @@
         $.getJSON(URL, { accion: "clientes" }, function (r) {
             paises = r.paises || {};
             tablaClientes.clear().rows.add(r.exterior || []).draw();
+            if (tablaFx) tablaFx.rows().invalidate().draw(false);
             var d = r.sin_pais || [];
             if (!d.length) { $("#expSinPais").hide(); return; }
             $("#expSinPais").html("<b>" + d.length + " cliente(s) ya tienen facturas de exportación y no tienen país asignado:</b> " +
@@ -143,6 +147,85 @@
     }
 
     /* =====================================================
+       ARCHIVO eFACT (PRUEBA): actual vs nuevo, sin enviar
+    ===================================================== */
+    var tablaFx;
+    function iniciarFx() {
+        tablaFx = $("#expTablaFx").DataTable({
+            order: [[1, "desc"]],
+            autoWidth: false,
+            pageLength: 10,
+            language: { emptyTable: "No hay facturas de exportación en el rango", search: "Buscar:", lengthMenu: "Mostrar _MENU_", info: "_TOTAL_ factura(s)", paginate: { next: "Sig.", previous: "Ant." } },
+            columns: [
+                { data: "documento", className: "exp-nowrap", render: function (v) { return "<b>" + esc(v) + "</b>"; } },
+                { data: "fecha", className: "text-center exp-nowrap", render: function (v, t) {
+                    if (t !== "display") return v;
+                    var p = String(v || "").substr(0, 10).split("-");
+                    return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : esc(v);
+                } },
+                { data: null, render: function (r) { return esc(r.nombre) + " <small class='text-muted'>" + esc(r.cliente) + "</small>"; } },
+                { data: "pais_iso", className: "exp-nowrap", render: function (v, t) {
+                    if (t !== "display") return v;
+                    return v && v !== "PE" ? banderaPais(v) + "<b>" + esc(v) + "</b> " + esc(paises[v] || "") : "<span class='text-danger' title='Asignar país en Clientes'>Sin país</span>";
+                } },
+                { data: "total", className: "text-right exp-nowrap", render: function (v) { return "$ " + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } },
+                { data: "lineas", className: "text-center", render: function (v) {
+                    return String(v) === "0" ? "<span class='text-danger' title='Sin movimientos en el año en curso'>0</span>" : esc(v);
+                } },
+                { data: null, orderable: false, className: "text-center", render: function (r) {
+                    return "<button class='btn btn-xs btn-primary expComparar' data-doc='" + esc(r.documento) + "'><i class='fa fa-columns'></i> Comparar</button>";
+                } }
+            ]
+        });
+        $("#expFxBuscar").on("click", cargarFx);
+        $("#expTablaFx").on("click", ".expComparar", function () { comparar(String($(this).attr("data-doc"))); });
+    }
+
+    function cargarFx() {
+        $.getJSON(URL, { accion: "facturas-fx", desde: $("#expFxDesde").val(), hasta: $("#expFxHasta").val() }, function (r) {
+            tablaFx.clear().rows.add(r.datos || []).draw();
+        }).fail(ajaxErr);
+    }
+
+    function pintarCsv($pre, texto, lineasDif) {
+        var h = $.map(String(texto).split(/\r?\n/), function (l, i) {
+            return lineasDif[i + 1] ? "<span class='exp-dif'>" + esc(l) + "</span>" : esc(l) + "\n";
+        }).join("");
+        $pre.html(h);
+    }
+
+    function comparar(doc) {
+        $.getJSON(URL, { accion: "csv-comparar", documento: doc }, function (r) {
+            var lineasDif = {};
+            $.each(r.diferencias || [], function (i, d) { lineasDif[d.linea] = true; });
+
+            $("#expCsvTitulo").text(r.nombre + " · " + (r.diferencias.length ? r.diferencias.length + " diferencia(s)" : "sin diferencias"));
+            var base = URL + "?accion=csv-descargar&documento=" + encodeURIComponent(doc);
+            $("#expCsvBajarActual").attr("href", base + "&modo=actual");
+            $("#expCsvBajarNuevo").attr("href", base + "&modo=nuevo");
+
+            if (r.avisos && r.avisos.length) {
+                $("#expCsvAvisos").html($.map(r.avisos, esc).join("<br>")).show();
+            } else {
+                $("#expCsvAvisos").hide();
+            }
+
+            var filas = $.map(r.diferencias || [], function (d) {
+                var vacio = "<span class='text-muted'>(vacío)</span>";
+                return "<tr><td>" + esc(d.fila) + "</td><td class='text-center'><b>" + esc(d.columna) + "</b></td><td>" +
+                    (d.actual === null || d.actual === "" ? vacio : esc(d.actual)) + "</td><td>" +
+                    (d.nuevo === null || d.nuevo === "" ? vacio : esc(d.nuevo)) + "</td></tr>";
+            }).join("");
+            $("#expTablaDiff tbody").html(filas || "<tr><td colspan='4' class='text-center text-muted'>Los dos archivos son iguales</td></tr>");
+
+            pintarCsv($("#expCsvActual"), r.actual, lineasDif);
+            pintarCsv($("#expCsvNuevo"), r.nuevo, lineasDif);
+            $("#expCsvResultado").show();
+            $("html, body").animate({ scrollTop: $("#expCsvResultado").offset().top - 60 }, 200);
+        }).fail(ajaxErr);
+    }
+
+    /* =====================================================
        PARTIDAS POR LÍNEA
     ===================================================== */
     var tablaPartidas;
@@ -154,7 +237,7 @@
             language: { emptyTable: "No hay líneas", search: "Buscar:", lengthMenu: "Mostrar _MENU_", info: "_TOTAL_ línea(s)", paginate: { next: "Sig.", previous: "Ant." } },
             columns: [
                 { data: "linea", render: function (v) { return "<b>" + esc(v) + "</b>"; } },
-                { data: "partida", className: "exp-nowrap", render: function (v) { return v ? esc(v) : "<span class='text-muted'>Sin partida</span>"; } },
+                { data: "partida", className: "exp-nowrap", render: function (v) { return v ? esc(v) : "<span class='text-muted'>Sin código</span>"; } },
                 { data: "descripcion", render: function (v) { return esc(v); } },
                 { data: null, className: "text-center", render: function (r) { return r.partida ? estado(r.activo) : ""; } },
                 { data: null, orderable: false, className: "text-center", render: function (r) {
@@ -186,16 +269,19 @@
         iniciarClientes();
         iniciarModelos();
         iniciarPartidas();
+        iniciarFx();
         cargarConfig();
         cargarModelos();
         cargarPartidas();
-        $("a[href='#expTabModelos'], a[href='#expTabPartidas']").on("shown.bs.tab", function () {
+        cargarFx();
+        $("a[href='#expTabModelos'], a[href='#expTabPartidas'], a[href='#expTabArchivo']").on("shown.bs.tab", function () {
             tablaModelos.columns.adjust();
             tablaPartidas.columns.adjust();
+            tablaFx.columns.adjust();
         });
 
-        // Pestaña activa en la URL (#clientes, #modelos, #partidas)
-        var TABS = { clientes: "#expTabClientes", modelos: "#expTabModelos", partidas: "#expTabPartidas" };
+        // Pestaña activa en la URL (#clientes, #modelos, #partidas, #archivo)
+        var TABS = { clientes: "#expTabClientes", modelos: "#expTabModelos", partidas: "#expTabPartidas", archivo: "#expTabArchivo" };
         $("#expConfig .nav-tabs a[data-toggle='tab']").on("shown.bs.tab", function () {
             var destino = $(this).attr("href");
             for (var k in TABS) {
@@ -218,7 +304,7 @@
                 activo: $("#expPActivo").is(":checked") ? 1 : 0
             }, function () {
                 $("#expModalPartida").modal("hide");
-                ok("Partida guardada");
+                ok("Código guardado");
                 cargarPartidas();
             }, "json").fail(ajaxErr);
         });

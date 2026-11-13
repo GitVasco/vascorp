@@ -70,6 +70,92 @@ class ModeloExportacion
         return Conexion::conectar()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public static function mdlPaisCliente($codigo)
+    {
+        if (!self::mdlTienePais()) {
+            return "";
+        }
+        $stmt = Conexion::conectar()->prepare("SELECT IFNULL(pais_iso, '') FROM clientesjf WHERE codigo = :c LIMIT 1");
+        $stmt->bindValue(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $v = $stmt->fetchColumn();
+        return $v === false ? "" : strtoupper(trim($v));
+    }
+
+    /** Facturas de exportación ya emitidas (ventajf.exportacion = 1). Líneas: movimientosjf_2026, igual que el CSV actual. */
+    public static function mdlFacturasFX($desde, $hasta)
+    {
+        $sql = "SELECT v.documento, v.fecha, v.cliente, c.nombre, IFNULL(c.pais_iso, '') AS pais_iso,
+                    v.total, v.tipo_moneda,
+                    (SELECT COUNT(*) FROM movimientosjf_2026 m WHERE m.tipo = 'S03' AND m.documento = v.documento) AS lineas
+                FROM ventajf v
+                LEFT JOIN clientesjf c ON c.codigo = v.cliente
+                WHERE v.tipo = 'S03' AND v.exportacion = 1 AND v.documento LIKE 'FX%'
+                  AND v.fecha BETWEEN :desde AND :hasta
+                ORDER BY v.fecha DESC, v.documento DESC
+                LIMIT 500";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":desde", $desde, PDO::PARAM_STR);
+        $stmt->bindValue(":hasta", $hasta, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /* =====================================================
+       PEDIDOS (temporaljf): solo lectura
+    ===================================================== */
+
+    /** codigo => pais_iso de los clientes del exterior (marca en las tablas de pedidos). */
+    public static function mdlMapaClientesExterior()
+    {
+        $r = array();
+        if (!self::mdlTienePais()) {
+            return $r;
+        }
+        $rows = Conexion::conectar()->query(
+            "SELECT TRIM(codigo) AS codigo, pais_iso FROM clientesjf
+             WHERE pais_iso IS NOT NULL AND pais_iso <> '' AND pais_iso <> 'PE'"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $r[$row["codigo"]] = strtoupper($row["pais_iso"]);
+        }
+        return $r;
+    }
+
+    /** Cliente con su país y lista de precios (pantalla crear pedido). */
+    public static function mdlClienteExportacion($codigo)
+    {
+        if (!self::mdlTienePais()) {
+            return null;
+        }
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT TRIM(codigo) AS codigo, nombre, IFNULL(pais_iso, '') AS pais_iso, lista_precios
+             FROM clientesjf WHERE codigo = :c LIMIT 1"
+        );
+        $stmt->bindValue(":c", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
+    /** Pedido con el país del cliente (validación antes de facturar). */
+    public static function mdlPedidoExportacion($codigoPedido)
+    {
+        if (!self::mdlTienePais()) {
+            return null;
+        }
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT t.codigo, TRIM(t.cliente) AS cliente, t.lista, c.nombre, IFNULL(c.pais_iso, '') AS pais_iso
+             FROM temporaljf t
+             LEFT JOIN clientesjf c ON c.codigo = t.cliente
+             WHERE t.codigo = :p LIMIT 1"
+        );
+        $stmt->bindValue(":p", $codigoPedido, PDO::PARAM_STR);
+        $stmt->execute();
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
     /** Solo actualiza pais_iso del cliente (NULL = Perú). */
     public static function mdlGuardarPaisCliente($codigo, $paisIso)
     {
