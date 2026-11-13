@@ -507,8 +507,37 @@ class ModeloTalleres
 
     static public function mdlIngresarTaller($datos)
     {
+        $tieneFecha = !empty($datos["fecha"]);
 
-        $stmt = Conexion::conectar()->prepare("INSERT INTO entallerjf (
+        if ($tieneFecha) {
+            $sql = "INSERT INTO entallerjf (
+      id_cabecera,
+      articulo,
+      cod_operacion,
+      cantidad,
+      usuario,
+      total_precio,
+      total_tiempo,
+      codigo,
+      fecha
+  )
+  (SELECT
+      :codigo,
+      a.articulo,
+      od.cod_operacion,
+      :cantidad,
+      :usuario,
+      ((od.precio_doc) / 12) * :cantidad,
+      ((od.tiempo_stand) / 60) * :cantidad,
+      :editarBarra,
+      :fecha
+  FROM
+      articulojf a
+      LEFT JOIN operaciones_detallejf od
+      ON a.modelo = od.modelo
+  WHERE articulo = :articulo AND cod_operacion= :operacion)";
+        } else {
+            $sql = "INSERT INTO entallerjf (
       id_cabecera,
       articulo,
       cod_operacion,
@@ -517,8 +546,8 @@ class ModeloTalleres
       total_precio,
       total_tiempo,
       codigo
-  ) 
-  (SELECT 
+  )
+  (SELECT
       :codigo,
       a.articulo,
       od.cod_operacion,
@@ -526,20 +555,25 @@ class ModeloTalleres
       :usuario,
       ((od.precio_doc) / 12) * :cantidad,
       ((od.tiempo_stand) / 60) * :cantidad,
-      :editarBarra 
+      :editarBarra
   FROM
-      articulojf a 
-      LEFT JOIN operaciones_detallejf od 
-      ON a.modelo = od.modelo 
-  WHERE articulo = :articulo AND cod_operacion= :operacion)");
+      articulojf a
+      LEFT JOIN operaciones_detallejf od
+      ON a.modelo = od.modelo
+  WHERE articulo = :articulo AND cod_operacion= :operacion)";
+        }
+
+        $stmt = Conexion::conectar()->prepare($sql);
 
         $stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
         $stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_INT);
-        $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_INT);
+        $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_STR);
         $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
         $stmt->bindParam(":editarBarra", $datos["editarBarra"], PDO::PARAM_STR);
         $stmt->bindParam(":operacion", $datos["operacion"], PDO::PARAM_STR);
-
+        if ($tieneFecha) {
+            $stmt->bindParam(":fecha", $datos["fecha"], PDO::PARAM_STR);
+        }
 
         if ($stmt->execute()) {
 

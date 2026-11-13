@@ -981,125 +981,71 @@ MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
 </div>
 
 <div id="modalCrearCompensacion" class="modal fade" role="dialog">
-  
+
   <div class="modal-dialog">
 
     <div class="modal-content">
 
-      <form role="form" method="post">
-
-        <!--=====================================
-        CABEZA DEL MODAL
-        ======================================-->
+      <form role="form" method="post" id="formCrearCompensacion828">
 
         <div class="modal-header" style="background:#3c8dbc; color:white">
-
           <button type="button" class="close" data-dismiss="modal">&times;</button>
-
-          <h4 class="modal-title">Crear Compensación</h4>
-
+          <h4 class="modal-title">Crear compensación</h4>
         </div>
-
-        <!--=====================================
-        CUERPO DEL MODAL
-        ======================================-->
 
         <div class="modal-body">
-
           <div class="box-body">
 
-            <div class="form-group col-lg-6">
-              <label for="">Modelo</label>
-              <div class="input-group">
+            <input type="hidden" name="verArti" value="C001251">
+            <input type="hidden" name="verCodOP" value="828">
+            <input type="hidden" name="verUser" value="<?php echo $_SESSION["id"]?>">
+            <input type="hidden" name="verCantidad2" id="verCantidad2" value="">
 
-                  <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                  <input type="text" class="form-control input-lg" id="verMod2" name="verMod" value="C001" readonly>
-                  
-              </div>
-            </div>  
-
-            <div class="form-group col-lg-6">
-              <label for="">Color</label>
-              <div class="input-group">
-
-                  <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                  <input type="text" class="form-control input-lg" id="verCol2" name="verCol" value="SURTIDO" readonly>
-                  
-              </div>
-            </div>  
-
-            <div class="form-group col-lg-6">
-              <label for="">Talla</label>
-              <div class="input-group">
-
-                  <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-                  <input type="text" class="form-control input-lg" id="verTal2" name="verTal" value="SURTIDO"readonly>
-                  <input type="hidden" id="verArti2" name="verArti" value="C001251">
-                  <input type="hidden" id="verCab2" name="verCab" value="2021493">
-                  <input type="hidden"  name="verUser" value="<?php echo $_SESSION["id"]?>">
-                  
-              </div>
-            </div>  
-
-
-            <div class="form-group col-lg-6">
-            <label for="">Cod. Operacion</label>
-              <div class="input-group">
-
-                  <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-
-                  <input type="text" class="form-control input-lg" id="verCodOP2" name="verCodOP" value="828" readonly>
-              </div>
-
+            <div class="form-group">
+              <label>Trabajador</label>
+              <select class="form-control input-lg selectpicker" name="trabajadorCompensacion828" id="trabajadorCompensacion828" data-live-search="true" data-width="100%" data-size="10" title="Seleccionar trabajador" required>
+                <option value="">Seleccionar trabajador</option>
+                <?php
+                  $trabajadores828 = ControladorTrabajador::ctrMostrarTrabajadorActivo();
+                  if (is_array($trabajadores828)) {
+                    foreach ($trabajadores828 as $tra828) {
+                      $cod = htmlspecialchars($tra828["cod_tra"]);
+                      $nom = htmlspecialchars($tra828["trabajador"]);
+                      echo "<option value='".$cod."'>".$cod." - ".$nom."</option>";
+                    }
+                  }
+                ?>
+              </select>
             </div>
 
-            <div class="form-group col-lg-6">
-            <label for="">Operacion</label>
-              <div class="input-group">
-
-                  <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-
-                  <input type="text" class="form-control input-lg" id="verOP2" name="verOP" value="COMPENSACION" readonly>
+            <div class="row" style="margin-left:0;margin-right:0;">
+              <div class="form-group col-xs-6" style="padding-left:0;padding-right:8px;">
+                <label>Fecha</label>
+                <input type="date" class="form-control input-lg" name="fechaCompensacion828" id="fechaCompensacion828" required>
               </div>
-
-            </div>
-
-            <div class="form-group col-lg-6">
-            <label for="">Cantidad</label>
-              <div class="input-group">
-
-                  <span class="input-group-addon"><i class="fa fa-hand-o-right"></i></span>
-
-                  <input type="text" class="form-control input-lg" name="verCantidad2" id="verCantidad2" required>
+              <div class="form-group col-xs-6" style="padding-left:8px;padding-right:0;">
+                <label>Monto (S/)</label>
+                <input type="number" class="form-control input-lg" name="verMonto2" id="verMonto2" min="0.01" step="0.01" placeholder="Ej. 50.00" required>
               </div>
-
             </div>
+            <p class="help-block" id="ayudaCantidadCompensacion828" style="margin:0 0 8px;">
+              El ticket queda asignado y terminado al trabajador (op. 828).
+            </p>
 
           </div>
-
         </div>
 
-        <!--=====================================
-        PIE DEL MODAL
-        ======================================-->
-
         <div class="modal-footer">
-
           <button type="button" class="btn btn-danger pull-left" data-dismiss="modal">Salir</button>
-
-          <button type="submit" class="btn btn-primary">Crear Compensacion</button>
-
+          <button type="submit" class="btn btn-primary">Crear compensación</button>
         </div>
 
       </form>
 
-        <?php
-
-          $crearCompensacion = new ControladorTalleres();
-          $crearCompensacion -> ctrCrearCompensacion();
-
-        ?>  
-
+      <?php
+        $crearCompensacion = new ControladorTalleres();
+        $crearCompensacion->ctrCrearCompensacion();
+      ?>
 
     </div>
 

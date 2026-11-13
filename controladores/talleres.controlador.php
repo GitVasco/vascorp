@@ -2516,66 +2516,120 @@ class ControladorTalleres
     static public function ctrCrearCompensacion()
     {
 
-        if (isset($_POST["verCantidad2"])) {
-            $datosCab = array(
-                "articulo" => $_POST["verArti"],
-                "usuario" => $_POST["verUser"],
-                "cantidad" => $_POST["verCantidad2"],
-                "estado" => "1"
-            );
-            $respuestaCab = ModeloCortes::mdlMandarTallerCab($datosCab);
+        if (!isset($_POST["verMonto2"]) || !isset($_POST["trabajadorCompensacion828"])) {
+            return;
+        }
 
+        $articulo = isset($_POST["verArti"]) ? trim((string) $_POST["verArti"]) : "C001251";
+        $operacion = isset($_POST["verCodOP"]) ? trim((string) $_POST["verCodOP"]) : "828";
+        $usuario = isset($_POST["verUser"]) ? $_POST["verUser"] : null;
+        $codTra = (int) $_POST["trabajadorCompensacion828"];
+        $monto = (float) $_POST["verMonto2"];
 
+        if ($codTra <= 0) {
+            echo '<script>swal({type:"error",title:"Seleccione un trabajador",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
 
-            $ultId = ModeloCortes::mdlUltCodigo();
+        if ($monto <= 0) {
+            echo '<script>swal({type:"error",title:"Indique un monto válido",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
 
-            $datos = array(
-                "codigo" => $ultId["ult_codigo"],
-                "usuario" => $_POST["verUser"],
-                "articulo" => $_POST["verArti"],
-                "operacion" => $_POST["verCodOP"],
-                "cantidad" => $_POST["verCantidad2"],
-                "editarBarra" => $ultId["ult_codigo"] . $_POST["verCodOP"]
-            );
+        $trab = ModeloTrabajador::mdlMostrarTrabajador("trabajadorjf", "cod_tra", $codTra);
+        if (!$trab || !is_array($trab)) {
+            echo '<script>swal({type:"error",title:"Trabajador no encontrado",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
+        if (!isset($trab["estado"]) || strcasecmp((string) $trab["estado"], "Activo") !== 0) {
+            echo '<script>swal({type:"error",title:"El trabajador no está activo",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
 
-            $respuesta = ModeloTalleres::mdlIngresarTaller($datos);
+        $pdoPrecio = Conexion::conectar()->prepare(
+            "SELECT od.precio_doc
+             FROM operaciones_detallejf od
+             INNER JOIN articulojf a ON a.modelo = od.modelo
+             WHERE a.articulo = :articulo AND od.cod_operacion = :operacion
+             LIMIT 1"
+        );
+        $pdoPrecio->bindParam(":articulo", $articulo, PDO::PARAM_STR);
+        $pdoPrecio->bindParam(":operacion", $operacion, PDO::PARAM_STR);
+        $pdoPrecio->execute();
+        $rowPrecio = $pdoPrecio->fetch(PDO::FETCH_ASSOC);
+        if (!$rowPrecio) {
+            echo '<script>swal({type:"error",title:"Falta configurar operación 828 en modelo C001",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
+        $precioDoc = ((float) $rowPrecio["precio_doc"] > 0) ? (float) $rowPrecio["precio_doc"] : 1.0;
+        $cantidad = round(($monto * 12) / $precioDoc, 2);
+        if ($cantidad <= 0) {
+            echo '<script>swal({type:"error",title:"Cantidad calculada inválida",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
 
-            if ($respuesta == "ok") {
-                $ultimo = $ultId["ult_codigo"] . $_POST["verCodOP"];
-                $valor = $_POST["verArti"];
-                $rpt_articulo = ModeloArticulos::mdlMostrarArticulos($valor);
-                $modelo = $rpt_articulo["modelo"];
-                $nombre = $rpt_articulo["nombre"];
-                $color = $rpt_articulo["color"];
-                $talla = $rpt_articulo["talla"];
-                $cantidad = $_POST["verCantidad2"];
-                $cod_ope = $_POST["verCodOP"];
-                $tablaop = "operacionesjf";
-                $itemop = "codigo";
-                $rpt_operacion = ModeloOperaciones::mdlMostrarOperaciones($tablaop, $itemop, $cod_ope);
-                $nom_ope = $rpt_operacion["nombre"];
+        $cantidadStr = number_format($cantidad, 2, ".", "");
+        $montoStr = number_format($monto, 2, ".", "");
 
-                echo '<script>
+        date_default_timezone_set("America/Lima");
+        $fechaSel = isset($_POST["fechaCompensacion828"]) ? trim((string) $_POST["fechaCompensacion828"]) : "";
+        if ($fechaSel === "" || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaSel)) {
+            $fechaSel = date("Y-m-d");
+        }
+        $fechaTicket = $fechaSel . " " . date("G:i:s");
 
-                window.open("vistas/reportes_ticket/produccion_ticket_detalle.php?ultimo=' . $ultimo . '&modelo=' . $modelo . '&nombre=' . $nombre . '&color=' . $color . '&talla=' . $talla . '&cant_taller=' . $cantidad . '&cod_operacion=' . $cod_ope . '&nom_operacion=' . $nom_ope . '","_blank");
-                </script>';
+        $datosCab = array(
+            "articulo" => $articulo,
+            "usuario" => $usuario,
+            "cantidad" => $cantidadStr,
+            "estado" => "1",
+            "taller" => "TX"
+        );
+        $respuestaCab = ModeloCortes::mdlMandarTallerCab($datosCab);
+        if ($respuestaCab !== "ok") {
+            echo '<script>swal({type:"error",title:"No se pudo crear la cabecera",confirmButtonText:"Cerrar"});</script>';
+            return;
+        }
 
-                echo '<script>
+        $ultId = ModeloCortes::mdlUltCodigo();
+        $idCab = $ultId["ult_codigo"];
+        $codigoBarra = $idCab . $operacion;
+
+        $datos = array(
+            "codigo" => $idCab,
+            "usuario" => $usuario,
+            "articulo" => $articulo,
+            "operacion" => $operacion,
+            "concepto" => "COMPENSACION",
+            "cantidad" => $cantidadStr,
+            "monto" => $montoStr,
+            "editarBarra" => $codigoBarra,
+            "trabajador" => $codTra,
+            "fecha_proceso" => $fechaTicket,
+            "fecha_terminado" => $fechaTicket
+        );
+
+        $respuesta = ModeloTalleres::mdlIngresarTallerFeriado($datos);
+
+        if ($respuesta == "ok") {
+            $nombreTra = isset($trab["nombre"]) ? $trab["nombre"] : ("#" . $codTra);
+            $montoTxt = "S/ " . $montoStr;
+
+            echo '<script>
                     swal({
-						  type: "success",
-						  title: "La compensacion ha sido creada correctamente",
-						  showConfirmButton: true,
-						  confirmButtonText: "Cerrar"
-						  }).then(function(result){
-									if (result.value) {
-
-									window.location = "en-taller";
-
-									}
-								})
-
-					</script>';
-            }
+                          type: "success",
+                          title: "Compensación creada: ' . addslashes($nombreTra) . ' (' . $montoTxt . ')",
+                          text: "Ticket 828 asignado y terminado",
+                          showConfirmButton: true,
+                          confirmButtonText: "Cerrar"
+                          }).then(function(result){
+                                    if (result.value) {
+                                    window.location = "en-taller";
+                                    }
+                                })
+                    </script>';
+        } else {
+            echo '<script>swal({type:"error",title:"No se pudo crear el ticket",confirmButtonText:"Cerrar"});</script>';
         }
     }
 

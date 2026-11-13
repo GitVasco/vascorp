@@ -3612,3 +3612,73 @@ $(document).on("click", "#btnGuardarFeriado", function () {
         });
     });
 });
+
+/*=============================================
+COMPENSACIÓN 828: trabajador + fecha + monto
+=============================================*/
+function actualizarAyudaCompensacion828() {
+    var monto = parseFloat($("#verMonto2").val());
+    if (!monto || monto <= 0) {
+        $("#ayudaCantidadCompensacion828").text(
+            "El ticket queda asignado y terminado al trabajador (op. 828)."
+        );
+        $("#verCantidad2").val("");
+        return;
+    }
+    var cantidad = Math.round(monto * 12 * 100) / 100;
+    $("#verCantidad2").val(cantidad.toFixed(2));
+    $("#ayudaCantidadCompensacion828").html(
+        "Monto <b>S/ " +
+            monto.toFixed(2) +
+            "</b>. El ticket queda asignado y terminado al trabajador (op. 828)."
+    );
+}
+
+$("#modalCrearCompensacion").on("shown.bs.modal", function () {
+    if (!$("#fechaCompensacion828").val()) {
+        var hoy = new Date();
+        var yyyy = hoy.getFullYear();
+        var mm = String(hoy.getMonth() + 1).padStart(2, "0");
+        var dd = String(hoy.getDate()).padStart(2, "0");
+        $("#fechaCompensacion828").val(yyyy + "-" + mm + "-" + dd);
+    }
+    if ($.fn.selectpicker) {
+        $("#trabajadorCompensacion828").selectpicker("refresh");
+    }
+    actualizarAyudaCompensacion828();
+});
+
+$(document).on("input change", "#verMonto2", function () {
+    actualizarAyudaCompensacion828();
+});
+
+$(document).on("submit", "#formCrearCompensacion828", function (e) {
+    var trabajador = $("#trabajadorCompensacion828").val();
+    var monto = parseFloat($("#verMonto2").val());
+    var fecha = $("#fechaCompensacion828").val();
+
+    if (!trabajador) {
+        e.preventDefault();
+        swal({
+            type: "warning",
+            title: "Seleccione un trabajador",
+            confirmButtonText: "Cerrar",
+        });
+        return false;
+    }
+    if (!fecha) {
+        e.preventDefault();
+        swal({ type: "warning", title: "Indique la fecha", confirmButtonText: "Cerrar" });
+        return false;
+    }
+    if (!monto || monto <= 0) {
+        e.preventDefault();
+        swal({
+            type: "warning",
+            title: "Indique el monto en soles",
+            confirmButtonText: "Cerrar",
+        });
+        return false;
+    }
+    actualizarAyudaCompensacion828();
+});
