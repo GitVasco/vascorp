@@ -175,19 +175,313 @@ class ControladorExportacion
         $esFx = strtoupper(substr(trim((string) $serie), 0, 2)) === "FX";
         $exterior = self::esExterior($p["pais_iso"]);
 
-        if ($esFx && !$exterior) {
-            return "La serie FX es solo para clientes del exterior. Si el cliente es del exterior, márquelo en Clientes (casilla «Cliente del exterior» y país).";
+        // Desde 13-nov-2026 la exportación se emite solo en Comprobantes especiales → Nuevo comprobante → Exportación
+        if ($exterior) {
+            return "El cliente es del exterior (" . self::nombrePais(strtoupper($p["pais_iso"])) . "): la factura de exportación se emite en Comprobantes especiales → Nuevo comprobante → tipo Exportación.";
         }
-        if ($exterior && !$esFx) {
-            return "El cliente es del exterior (" . self::nombrePais(strtoupper($p["pais_iso"])) . "): debe emitirse con una serie FX.";
-        }
-        if ($esFx && (string) $tipoDocumento !== "01") {
-            return "La exportación solo se emite como factura.";
-        }
-        if ($esFx && $p["lista"] !== "precio1") {
-            return "Un pedido de exportación debe usar la lista de precios 1 (USD). Cambie la lista del pedido antes de facturar.";
+        if ($esFx) {
+            return "La serie FX es solo para exportación (Comprobantes especiales → Nuevo comprobante → Exportación). Si el cliente es del exterior, márquelo en Clientes (casilla «Cliente del exterior» y país).";
         }
         return "";
+    }
+
+    /* =====================================================
+       FASE 3B: EMITIR DESDE PEDIDO
+    ===================================================== */
+
+    const ESTADOS_EMITIR = "APROBADO,APT,CONFIRMADO";
+
+    public static function tablasEmitir()
+    {
+        $faltan = ModeloExportacion::mdlTablasListas();
+        if (!ModeloExportacion::mdlTablaFacturas()) {
+            $faltan[] = "exp_facturajf";
+        }
+        return $faltan;
+    }
+
+    /** Revisión del pedido antes de emitir: errores bloquean, avisos solo informan. */
+    public static function ctrRevisarPedido($codigo)
+    {
+        $codigo = trim((string) $codigo);
+        if ($codigo === "" || !ctype_digit($codigo)) {
+            return array("ok" => false, "msg" => "Pedido no válido.");
+        }
+        $p = ModeloExportacion::mdlPedidoEmitir($codigo);
+        if (!$p) {
+            return array("ok" => false, "msg" => "Pedido no encontrado.");
+        }
+        $cfg = self::config();
+        $errores = array();
+        $avisos = array();
+
+        if (!in_array(strtoupper($p["estado"]), explode(",", self::ESTADOS_EMITIR), true)) {
+            $errores[] = "El pedido está " . $p["estado"] . "; solo se emiten pedidos aprobados, APT o confirmados.";
+        }
+        if (!self::esExterior($p["pais_iso"])) {
+            $errores[] = "El cliente no es del exterior (sin país asignado en Clientes).";
+        }
+        if ($p["lista"] !== "precio1") {
+            $errores[] = "El pedido usa la lista " . $p["lista"] . "; debe ser la lista 1 (USD).";
+        }
+        if ($cfg["serie"] === "") {
+            $errores[] = "No hay serie FX configurada. " . implode(" ", $cfg["avisos"]);
+        }
+        $sinPrecio = ModeloPedidos::mdlArticulosPrecioCeroPedido($codigo);
+        if (!empty($sinPrecio)) {
+            $errores[] = count($sinPrecio) === 1 ? "Hay 1 modelo sin precio." : ("Hay " . count($sinPrecio) . " modelos sin precio.");
+        }
+        if (class_exists("ModeloDecisionesCredito")) {
+            $control = ModeloDecisionesCredito::mdlControlBloqueantePendiente((int) $codigo);
+            if ($control) {
+                $errores[] = "Control de créditos pendiente: " . $control["mensaje"];
+            }
+        }
+        $previa = ModeloExportacion::mdlFacturaPorPedido($codigo);
+        if ($previa) {
+            $errores[] = "Este pedido ya se emitió como " . $previa["documento"] . ".";
+        }
+
+        $detalle = ModeloExportacion::mdlDetallePedido($codigo);
+        $sinStock = 0;
+        foreach ($detalle as $d) {
+            $sinStock += (int) $d["sin_stock"];
+        }
+        if ($sinStock > 0) {
+            $avisos[] = $sinStock . " talla(s)/color(es) con stock del almacén 01 menor a lo pedido (se descuenta igual, como en la facturación normal).";
+        }
+        if (trim((string) $p["direccion"]) === "") {
+            $avisos[] = "El cliente no tiene dirección.";
+        }
+
+        $p["pais"] = self::nombrePais(strtoupper($p["pais_iso"]));
+        return array(
+            "ok" => true,
+            "pedido" => $p,
+            "detalle" => $detalle,
+            "serie" => $cfg["serie"],
+            "errores" => $errores,
+            "avisos" => $avisos,
+            "puede_emitir" => count($errores) === 0,
+        );
+    }
+
+    /**
+     * Tipo de cambio (venta) de una fecha:
+     * 1) totalesjf del día; 2) si no, API (JsonPeApi) y se guarda en totalesjf; 3) si la API falla, el último de totalesjf.
+     * Devuelve array(ok, venta, compra, fuente, texto).
+     */
+    public static function ctrTipoCambioDia($fecha = null)
+    {
+        date_default_timezone_set("America/Lima");
+        $fecha = $fecha && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) ? $fecha : date("Y-m-d");
+
+        $tot = ModeloExportacion::mdlTipoCambioTotales($fecha);
+        if ($tot && (float) $tot["cambio_venta"] > 0) {
+            return array("ok" => true, "fecha" => $fecha, "venta" => (float) $tot["cambio_venta"], "compra" => (float) $tot["cambio_compra"],
+                "fuente" => "totales", "texto" => "Totales del día");
+        }
+
+        if (class_exists("JsonPeApi")) {
+            $api = JsonPeApi::consultarTipoCambio($fecha);
+            $venta = isset($api["venta"]) ? $api["venta"] : null;
+            if ((!isset($api["_ok"]) || $api["_ok"] === true) && is_numeric($venta) && (float) $venta > 0) {
+                $compra = isset($api["compra"]) && is_numeric($api["compra"]) ? (float) $api["compra"] : 0;
+                $guardado = false;
+                if ($tot && class_exists("ModeloUtilidades")) {
+                    $u = ModeloUtilidades::mdlActualizarTipCambioTotales($fecha, $compra, (float) $venta);
+                    $guardado = !empty($u["ok"]);
+                }
+                return array("ok" => true, "fecha" => $fecha, "venta" => (float) $venta, "compra" => $compra,
+                    "fuente" => "api", "texto" => $guardado ? "API SUNAT (actualizado en totales)" : "API SUNAT");
+            }
+        }
+
+        if (class_exists("ModeloUtilidades")) {
+            $prev = ModeloUtilidades::mdlUltimoTipCambioTotalesAntes($fecha);
+            if ($prev && (float) $prev["cambio_venta"] > 0) {
+                return array("ok" => true, "fecha" => $fecha, "venta" => (float) $prev["cambio_venta"], "compra" => (float) $prev["cambio_compra"],
+                    "fuente" => "anterior", "texto" => "Último registrado (" . $prev["fecha"] . "); la API no respondió");
+            }
+        }
+
+        return array("ok" => false, "fecha" => $fecha, "msg" => "No se encontró el tipo de cambio (totales ni API).");
+    }
+
+    /** Tipo de cambio opcional: vacío = NULL; si viene, número positivo con hasta 4 decimales. */
+    public static function normalizarTipoCambio($v)
+    {
+        $v = trim(str_replace(",", ".", (string) $v));
+        if ($v === "") {
+            return array(true, null);
+        }
+        if (!preg_match('/^\d{1,3}(\.\d{1,4})?$/', $v) || (float) $v <= 0) {
+            return array(false, null);
+        }
+        return array(true, $v);
+    }
+
+    /**
+     * Emite la factura FX del pedido con las funciones existentes (mismo orden y datos que
+     * ControladorFacturacion::ctrFacturarN para factura), sin pasar por su formulario.
+     * Almacén 01, exportacion = 1, moneda 2 (USD). No envía a eFact.
+     */
+    public static function ctrEmitir($codigo, $tipoCambio)
+    {
+        list($tcOk, $tc) = self::normalizarTipoCambio($tipoCambio);
+        if (!$tcOk) {
+            return array("ok" => false, "msg" => "Tipo de cambio no válido (ej. 3.7520).");
+        }
+        $codigo = trim((string) $codigo);
+        if ($codigo === "" || !ctype_digit($codigo)) {
+            return array("ok" => false, "msg" => "Pedido no válido.");
+        }
+
+        $pdo = Conexion::conectar();
+        if (!ModeloExportacion::mdlBloquearPedido($pdo, $codigo)) {
+            return array("ok" => false, "msg" => "El pedido se está emitiendo en otra ventana. Espere y actualice.");
+        }
+
+        try {
+            $rev = self::ctrRevisarPedido($codigo);
+            if (empty($rev["ok"])) {
+                return $rev;
+            }
+            if (!$rev["puede_emitir"]) {
+                return array("ok" => false, "msg" => implode(" ", $rev["errores"]));
+            }
+            $p = $rev["pedido"];
+            $serie = $rev["serie"];
+
+            if ($tc === null) {
+                $tcDia = self::ctrTipoCambioDia(date("Y-m-d"));
+                if (!empty($tcDia["ok"])) {
+                    $tc = number_format($tcDia["venta"], 4, ".", "");
+                }
+            }
+
+            $usuario = isset($_SESSION["id"]) ? $_SESSION["id"] : "";
+            $usureg = self::usuario();
+            $pcreg = isset($_SERVER["REMOTE_ADDR"]) ? gethostbyaddr($_SERVER["REMOTE_ADDR"]) : "";
+            $dscto = $p["dscto"] === null || $p["dscto"] === "" ? 0 : $p["dscto"];
+
+            $documento = ModeloFacturacion::mdlAsignarSiguienteDocumento("01", $serie);
+            if (!$documento) {
+                return array("ok" => false, "msg" => "No se pudo asignar el correlativo de la serie " . $serie . ". No se registró nada.");
+            }
+
+            $stock = ModeloArticulos::mdlActualizarStockPedido($codigo, "stock01");
+            if ($stock !== "ok") {
+                return array("ok" => false, "msg" => "No se pudo descontar el stock. El número " . $documento . " quedó reservado sin usar: avisar a TI.");
+            }
+
+            ControladorFacturacion::ctrRegistrarCuentaCorriente($codigo, "01", $documento, $usuario, $usureg, $pcreg);
+            ControladorFacturacion::ctrRegistrarMovimientos($codigo, "S03", $documento, $p["cliente"], $p["vendedor"], $dscto, "FACTURA", "01");
+            ControladorFacturacion::ctrRegistrarVentas($codigo, "S03", $documento, "", $codigo, $usuario, "FACTURA", $usureg, $pcreg, null, null, null, null, 1, 2, "");
+            ModeloFacturacion::mdlActualizarPedidoF($codigo);
+            ModeloFacturacion::mdlActualizarPedidoB($codigo);
+            if ($tc !== null) {
+                ModeloExportacion::mdlGuardarTipoCambioVenta($documento, $tc);
+            }
+
+            ModeloExportacion::mdlRegistrarFactura(array(
+                "documento" => $documento,
+                "pedido" => $codigo,
+                "cliente" => $p["cliente"],
+                "pais_iso" => strtoupper($p["pais_iso"]),
+                "tipo_cambio" => $tc,
+                "total" => $p["total"],
+                "usuario" => $usureg,
+            ));
+            $f = ModeloExportacion::mdlFacturaPorPedido($codigo);
+
+            return array("ok" => true, "documento" => $documento, "id" => $f ? (int) $f["id"] : 0, "tipo_cambio" => $tc);
+        } finally {
+            ModeloExportacion::mdlLiberarPedido($pdo, $codigo);
+        }
+    }
+
+    public static function ctrGuardarTipoCambio($id, $valor)
+    {
+        list($ok, $tc) = self::normalizarTipoCambio($valor);
+        if (!$ok) {
+            return array("ok" => false, "msg" => "Tipo de cambio no válido (ej. 3.7520).");
+        }
+        $f = ModeloExportacion::mdlFactura($id);
+        if (!$f) {
+            return array("ok" => false, "msg" => "Factura no encontrada.");
+        }
+        ModeloExportacion::mdlGuardarTipoCambio($id, $tc);
+        ModeloExportacion::mdlGuardarTipoCambioVenta($f["documento"], $tc);
+        return array("ok" => true, "tipo_cambio" => $tc);
+    }
+
+    /** Completa el tipo de cambio de una factura con el del día de emisión (totales → API → último). */
+    public static function ctrTipoCambioAuto($id)
+    {
+        $f = ModeloExportacion::mdlFactura($id);
+        if (!$f) {
+            return array("ok" => false, "msg" => "Factura no encontrada.");
+        }
+        $dia = self::ctrTipoCambioDia(substr((string) $f["creado_en"], 0, 10));
+        if (empty($dia["ok"])) {
+            return $dia;
+        }
+        $tc = number_format($dia["venta"], 4, ".", "");
+        ModeloExportacion::mdlGuardarTipoCambio($id, $tc);
+        ModeloExportacion::mdlGuardarTipoCambioVenta($f["documento"], $tc);
+        return array("ok" => true, "tipo_cambio" => $tc, "texto" => $dia["texto"]);
+    }
+
+    private static function rutaFisica($ruta)
+    {
+        if (preg_match('#^([A-Za-z]:|/|\\\\)#', $ruta)) {
+            return $ruta;
+        }
+        return __DIR__ . "/" . $ruta;
+    }
+
+    /**
+     * Deja el CSV nuevo en la carpeta que vigila eFact (mismo mecanismo que Comprobantes especiales)
+     * y marca la venta como ENVIADO igual que el envío normal (mdlEnviarTXT).
+     */
+    public static function ctrEnviar($id)
+    {
+        $f = ModeloExportacion::mdlFactura($id);
+        if (!$f) {
+            return array("ok" => false, "msg" => "Factura no encontrada.");
+        }
+        if ($f["estado"] !== "GENERADO") {
+            return array("ok" => false, "msg" => "La factura ya está " . $f["estado"] . ".");
+        }
+        $csv = self::ctrArmarCsv($f["documento"], "nuevo");
+        if (empty($csv["ok"])) {
+            return $csv;
+        }
+        if (!defined("ORIGEN") || !defined("DESTINO_INVOICE")) {
+            return array("ok" => false, "msg" => "Falta configurar las carpetas de eFact (config.php).");
+        }
+        $origenDir = self::rutaFisica(ORIGEN);
+        $destinoDir = self::rutaFisica(DESTINO_INVOICE);
+        if (!is_dir($origenDir)) {
+            @mkdir($origenDir, 0775, true);
+        }
+        $base = preg_replace('/\.csv$/', '', $csv["nombre"]);
+        $tmp = $origenDir . $base . ".txt";
+        if (file_put_contents($tmp, $csv["contenido"]) === false) {
+            return array("ok" => false, "msg" => "No se pudo escribir el archivo temporal.");
+        }
+        if (!ModeloExportacion::mdlMarcarEnviada($id, $csv["nombre"], self::usuario())) {
+            @unlink($tmp);
+            return array("ok" => false, "msg" => "La factura ya fue enviada desde otra ventana.");
+        }
+        if (!@rename($tmp, $destinoDir . $csv["nombre"])) {
+            @unlink($tmp);
+            ModeloExportacion::mdlVolverGenerada($id);
+            return array("ok" => false, "msg" => "No se pudo dejar el archivo en la carpeta de eFact.");
+        }
+        ModeloFacturacion::mdlEnviarTXT("S03", $f["documento"]);
+        return array("ok" => true, "documento" => $f["documento"], "archivo" => $csv["nombre"], "avisos" => $csv["avisos"]);
     }
 
     /** Editar precio de lista: mismo permiso que Maestros → Modelos (ficha_modelos → precios). */

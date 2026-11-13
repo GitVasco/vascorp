@@ -2,7 +2,7 @@
 
 **Emisor:** Corporación Vasco S.A.C. — RUC 20513613939
 **Fecha:** 13 de noviembre de 2026
-**Estado:** fases 1, 2 y 3A implementadas, falta probarlas con una factura real. Se avanza por fases y se prueba cada una antes de seguir.
+**Estado:** fases 1, 2, 3A y 3B implementadas, falta probarlas con una factura real. Se avanza por fases y se prueba cada una antes de seguir.
 
 **Regla principal:** **no modificar código actual.** Todo es nuevo (funciones, tablas, vistas). Lo existente solo se **llama**, no se edita. El flujo actual con serie `FX` sigue funcionando hasta que el nuevo esté probado.
 
@@ -18,22 +18,22 @@
 |------|-----------|-----|
 | 1 | País del cliente en Clientes («Cliente del exterior»), pantalla Configuración de exportación con las pestañas Clientes, Modelos/precio lista 1 y Códigos SUNAT | `exportacion-fase1.sql` ✅ ejecutado |
 | 2 | Pestaña **Archivo eFact (prueba)**: compara el CSV actual con el nuevo de una factura FX y los descarga. No envía nada | `exportacion-fase2.sql` ⏳ ejecutar (precarga los 5 códigos SUNAT) |
-| 3A | Pedidos: marca «EXP» y bandera en los listados, aviso en crear pedido, solo series FX en Facturar, control en el servidor y «EXPORTACIÓN · país» en el título del pedido impreso | — |
+| 3A | Pedidos: marca «EXP» y bandera en los listados, aviso en crear pedido, control en el servidor y «EXPOR país» en el título del pedido impreso | — |
+| 3B | Tipo **Exportación** en Comprobantes especiales → Nuevo comprobante: jalar el pedido, revisar y emitir (`ventajf` y demás). Envío a eFact y tipo de cambio en **Listado y envío → pestaña Exportación** (compartido con las gratuitas). El modal Facturar ya no emite exportación | `exportacion-fase3.sql` ⏳ ejecutar |
 
 **Prueba pendiente, con el pedido real:**
 
-1. Lista de pedidos: el cliente aparece con «EXP» y su bandera. El pedido impreso dice «EXPORTACIÓN · país» en el título.
-2. Facturar → Factura: solo aparece la serie FX. Emitir como siempre.
-3. Configuración de exportación → Archivo eFact (prueba): comparar esa factura. Las diferencias esperadas son fila 5 H, fila 6 H, columna R y el país.
-4. Opcional: mandar a eFact a mano el archivo «nuevo» para ver si lo acepta.
+1. Ejecutar `exportacion-fase2.sql` y `exportacion-fase3.sql`.
+2. Lista de pedidos: el cliente aparece con «EXP» y su bandera. El pedido impreso dice «EXPOR país». En el modal Facturar no deja elegir ninguna serie y muestra el enlace.
+3. Comprobantes especiales → Nuevo comprobante → tipo Exportación: elegir el pedido → Emitir. Comprobar el stock, la venta en `ventajf` (USD, exportación), la cuenta corriente y que el pedido quede FACTURADOS.
+4. Comprobantes especiales → Listado y envío → pestaña Exportación: ver el archivo → Enviar. Revisar la respuesta de eFact.
 5. Anotar el resultado en la §6 Registro de pruebas.
 
-**Siguiente (3B), cuando la prueba salga bien:**
+**Siguiente:**
 
-- Cuenta corriente en USD con tipo de cambio actualizable (`exp_cta_monedajf`).
-- Envío a eFact del CSV nuevo en lugar del actual.
-
-Después siguen la Fase 4 (formato de impresión de la factura), la Fase 5 (cobranza en USD, en pausa) y la Fase 6 (retiro del flujo antiguo).
+- Fase 4: formato de impresión de la factura.
+- Fase 5: cobranza en USD (en pausa).
+- Fase 6: lo que queda del flujo antiguo, como el botón de envío FX en el listado de ventas.
 
 **Archivos nuevos:**
 
@@ -44,6 +44,12 @@ Después siguen la Fase 4 (formato de impresión de la factura), la Fase 5 (cobr
 - `vistas/modulos/facturacion/exportacion-config.php`
 - `vistas/js/exportacion.js`
 - `vistas/js/exportacion-pedidos.js`
+- `ajax/exportacion-emitir.ajax.php`
+- `vistas/modulos/facturacion/exportacion-listado-panel.php` (pestaña Exportación del listado)
+- `vistas/js/exportacion-emitir.js`
+- `vistas/modulos/facturacion/exportacion-crear-panel.php`
+- `vistas/js/exportacion-crear.js`
+- `docs/sql/exportacion-fase3.sql`
 
 **Ganchos mínimos en archivos existentes:**
 
@@ -55,6 +61,8 @@ Después siguen la Fase 4 (formato de impresión de la factura), la Fase 5 (cobr
 - `controladores/clientes.controlador.php`
 - `controladores/facturacion.controlador.php` (bloque de control en `ctrFacturarN`)
 - `vistas/reportes_ticket/impresion_pedido_v2.php` (título)
+- `vistas/modulos/facturacion/comprobantes-especiales-crear.php` (incluye el panel de exportación)
+- `vistas/modulos/facturacion/comprobantes-especiales.php` (pestañas Gratuitas y Exportación en el listado)
 
 ---
 
@@ -170,7 +178,35 @@ Submenú **Comprobantes especiales → Exportación** (ver `COMPROBANTES-ESPECIA
   - En el modal Facturar, solo series FX para el exterior (se elige sola si hay una) y sin series FX para Perú.
 - La emisión sigue usando el flujo actual de `ctrFacturarN`, que ya marca `exportacion = 1` y la moneda USD por la serie FX.
 
-**3B pendiente:** cuenta en USD (`exp_cta_monedajf`) y envío del CSV nuevo a eFact.
+**3B implementada (13-nov-2026): tipo «Exportación» en Comprobantes especiales → Nuevo comprobante** (`comprobantes-especiales-crear`).
+
+- **Pantallas:**
+  - Al elegir el tipo Exportación se ocultan los bloques de la gratuita y aparece el panel `exportacion-crear-panel.php` (con `exportacion-crear.js`). Ahí se jala el pedido, se carga la información y se emite.
+  - También entran los usuarios con facturación aunque no tengan permiso de gratuitas; a ellos solo les aparece Exportación.
+  - Acceso directo: `comprobantes-especiales-crear#exportacion-<pedido>`, que es el enlace del modal Facturar.
+  - El envío a eFact y el tipo de cambio están en **Listado y envío**, compartido con las gratuitas en pestañas: Gratuitas y Exportación (`comprobantes-especiales#exportacion`). Cada usuario ve las pestañas de su permiso.
+- **Pedidos que se pueden jalar:** APROBADO, APT o CONFIRMADO de clientes del exterior. Al jalar uno se ve el detalle por modelo, los errores que bloquean (estado, país, lista 1, serie FX, precios, control de créditos, ya emitido) y los avisos (stock 01, dirección).
+- **Registro:** la venta va a `ventajf` (exportación 1, moneda 2), igual que los movimientos, la cuenta corriente y el stock. `exp_facturajf` solo agrega lo propio: tipo de cambio y envío.
+- **Tipo de cambio** (`ctrTipoCambioDia`):
+  1. `totalesjf.cambio_venta` del día.
+  2. Si no hay, la API json.pe (`JsonPeApi::consultarTipoCambio`), y se guarda en `totalesjf` si existe la fila del día.
+  3. Si la API falla, el último de `totalesjf`.
+
+  Se precarga al elegir Exportación y se puede corregir a mano. Al emitir se guarda en `exp_facturajf` y en **`ventajf.tipo_cambio`**, que es el campo que usan los reportes para pasar USD a soles. En el listado, ↻ lo vuelve a traer para el día de emisión.
+- **Emitir:** `ControladorExportacion::ctrEmitir` llama a las mismas funciones que `ctrFacturarN` para una factura, sin pasar por su formulario:
+  1. `mdlAsignarSiguienteDocumento("01", FX)`
+  2. `mdlActualizarStockPedido(stock01)`
+  3. `ctrRegistrarCuentaCorriente`, `ctrRegistrarMovimientos` y `ctrRegistrarVentas` (exportación 1, moneda 2)
+  4. `mdlActualizarPedidoF/B`
+
+  El pedido se bloquea con `GET_LOCK` para que no se emita dos veces.
+- **Tabla nueva `exp_facturajf`** (`docs/sql/exportacion-fase3.sql`): marca la factura en USD, guarda el tipo de cambio (opcional, se edita en la pestaña Emitidas) y el estado del envío (GENERADO o ENVIADO). Reemplaza la `exp_cta_monedajf` prevista.
+- **Enviar a eFact:** botón aparte en Emitidas. Deja el **CSV nuevo** en la carpeta de eFact, igual que las gratuitas, y marca la venta como ENVIADO (`mdlEnviarTXT`), igual que el envío normal. Si la venta figura enviada por el camino antiguo, aparece una alerta.
+- **Modal Facturar de pedidos:** desde ya bloquea a los clientes del exterior en factura o boleta y quita la serie FX a los de Perú. Lo controlan el servidor y la pantalla, con un enlace a Emitir. Esto adelanta la Fase 6 en lo que toca a pedidos.
+- **Pendiente:**
+  - El CSV lee `movimientosjf_2026` (tabla fija del año, como el actual).
+  - La impresión usa el formato normal (Fase 4).
+  - El botón antiguo de envío para FX en el listado de ventas no se tocó.
 
 - Bandeja: pedidos **preparados por almacén** con lista `precio1` y cliente con país del exterior.
 - Validaciones antes de emitir: lista `precio1`, cliente con país distinto de Perú, serie de exportación configurada y pedido completo.

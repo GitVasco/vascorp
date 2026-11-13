@@ -59,6 +59,13 @@
             </div>
         </div>
 
+        <?php
+        // Tipo Exportación (desde pedido): panel propio, docs/efact/EXPORTACION-diseno.md
+        if (class_exists("ControladorExportacion") && ControladorExportacion::puedeUsar()) {
+            include __DIR__ . "/exportacion-crear-panel.php";
+        }
+        ?>
+
         <!-- ÍTEMS -->
         <div class="box box-primary">
             <div class="box-header with-border">

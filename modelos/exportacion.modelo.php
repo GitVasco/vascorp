@@ -156,6 +156,203 @@ class ModeloExportacion
         return $r ?: null;
     }
 
+    /* =====================================================
+       FASE 3B: EMITIR DESDE PEDIDO (exp_facturajf)
+    ===================================================== */
+
+    public static function mdlTablaFacturas()
+    {
+        $stmt = Conexion::conectar()->query("SHOW TABLES LIKE 'exp_facturajf'");
+        return $stmt && $stmt->fetchColumn() ? true : false;
+    }
+
+    /** Pedidos de clientes del exterior listos para facturar (mismos estados que el modal Facturar). */
+    public static function mdlBandejaPedidos()
+    {
+        $sql = "SELECT t.codigo, DATE(t.fecha) AS fecha, t.estado, TRIM(t.cliente) AS cliente, c.nombre,
+                    c.pais_iso, t.lista, t.vendedor, t.total, cv.descripcion AS condicion,
+                    (SELECT COALESCE(SUM(d.cantidad), 0) FROM detalle_temporal d WHERE d.codigo = t.codigo) AS unidades,
+                    (SELECT COUNT(*) FROM detalle_temporal d WHERE d.codigo = t.codigo AND (d.precio IS NULL OR d.precio <= 0)) AS sin_precio
+                FROM temporaljf t
+                INNER JOIN clientesjf c ON c.codigo = t.cliente
+                LEFT JOIN condiciones_ventajf cv ON cv.id = t.condicion_venta
+                WHERE t.estado IN ('APROBADO', 'APT', 'CONFIRMADO')
+                  AND c.pais_iso IS NOT NULL AND c.pais_iso <> '' AND c.pais_iso <> 'PE'
+                ORDER BY t.fecha DESC, t.codigo DESC";
+        return Conexion::conectar()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Cabecera del pedido para emitir (solo lectura). */
+    public static function mdlPedidoEmitir($codigo)
+    {
+        $sql = "SELECT t.codigo, DATE(t.fecha) AS fecha, t.estado, TRIM(t.cliente) AS cliente, c.nombre,
+                    c.tipo_documento, c.documento, c.direccion, c.email, IFNULL(c.pais_iso, '') AS pais_iso,
+                    t.lista, t.vendedor, t.op_gravada, t.descuento_total, t.igv, t.total,
+                    IF(t.op_gravada > 0, ROUND(t.descuento_total / t.op_gravada * 100, 2), 0) AS dscto,
+                    t.condicion_venta, cv.descripcion AS condicion, cv.dias
+                FROM temporaljf t
+                LEFT JOIN clientesjf c ON c.codigo = t.cliente
+                LEFT JOIN condiciones_ventajf cv ON cv.id = t.condicion_venta
+                WHERE t.codigo = :p LIMIT 1";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":p", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
+    /** Detalle agrupado por modelo y precio, con stock del almacén 01. */
+    public static function mdlDetallePedido($codigo)
+    {
+        $sql = "SELECT a.modelo, MAX(a.nombre) AS nombre, MAX(a.linea) AS linea, d.precio,
+                    SUM(d.cantidad) AS cantidad, SUM(d.total) AS total,
+                    SUM(IF(COALESCE(a.stock01, 0) < d.cantidad, 1, 0)) AS sin_stock,
+                    COUNT(*) AS skus
+                FROM detalle_temporal d
+                LEFT JOIN articulojf a ON a.articulo = d.articulo
+                WHERE d.codigo = :p
+                GROUP BY a.modelo, d.precio
+                ORDER BY a.modelo";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":p", $codigo, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function mdlFacturaPorPedido($pedido)
+    {
+        $stmt = Conexion::conectar()->prepare("SELECT * FROM exp_facturajf WHERE pedido = :p ORDER BY id DESC LIMIT 1");
+        $stmt->bindValue(":p", $pedido, PDO::PARAM_STR);
+        $stmt->execute();
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
+    public static function mdlFactura($id)
+    {
+        $stmt = Conexion::conectar()->prepare("SELECT * FROM exp_facturajf WHERE id = :id LIMIT 1");
+        $stmt->bindValue(":id", (int) $id, PDO::PARAM_INT);
+        $stmt->execute();
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
+    public static function mdlRegistrarFactura($d)
+    {
+        $sql = "INSERT INTO exp_facturajf (tipo, documento, pedido, cliente, pais_iso, moneda, tipo_cambio, total, estado, usuario_registro)
+                VALUES ('S03', :documento, :pedido, :cliente, :pais, 'USD', :tc, :total, 'GENERADO', :usuario)";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":documento", $d["documento"], PDO::PARAM_STR);
+        $stmt->bindValue(":pedido", $d["pedido"], PDO::PARAM_STR);
+        $stmt->bindValue(":cliente", $d["cliente"], PDO::PARAM_STR);
+        $stmt->bindValue(":pais", $d["pais_iso"], PDO::PARAM_STR);
+        if ($d["tipo_cambio"] === null) {
+            $stmt->bindValue(":tc", null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(":tc", $d["tipo_cambio"], PDO::PARAM_STR);
+        }
+        $stmt->bindValue(":total", $d["total"], PDO::PARAM_STR);
+        $stmt->bindValue(":usuario", $d["usuario"], PDO::PARAM_STR);
+        return $stmt->execute();
+    }
+
+    /** Emitidas desde la pantalla nueva, con el estado de la venta (ventajf) para avisar si alguien la mandó por el camino antiguo. */
+    public static function mdlFacturasEmitidas($desde, $hasta)
+    {
+        $sql = "SELECT f.id, f.documento, f.pedido, f.cliente, c.nombre, f.pais_iso, f.moneda, f.tipo_cambio, f.total,
+                    f.estado, f.archivo, f.usuario_registro, f.creado_en, f.enviado_en, v.estado AS estado_venta
+                FROM exp_facturajf f
+                LEFT JOIN clientesjf c ON c.codigo = f.cliente
+                LEFT JOIN ventajf v ON v.tipo = f.tipo AND v.documento = f.documento
+                WHERE DATE(f.creado_en) BETWEEN :desde AND :hasta
+                ORDER BY f.id DESC
+                LIMIT 500";
+        $stmt = Conexion::conectar()->prepare($sql);
+        $stmt->bindValue(":desde", $desde, PDO::PARAM_STR);
+        $stmt->bindValue(":hasta", $hasta, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function mdlGuardarTipoCambio($id, $tc)
+    {
+        $stmt = Conexion::conectar()->prepare("UPDATE exp_facturajf SET tipo_cambio = :tc WHERE id = :id");
+        if ($tc === null) {
+            $stmt->bindValue(":tc", null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(":tc", $tc, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(":id", (int) $id, PDO::PARAM_INT);
+        return $stmt->execute();
+    }
+
+    /** Pasa a ENVIADO solo si seguía GENERADO (evita doble envío). */
+    public static function mdlMarcarEnviada($id, $archivo, $usuario)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "UPDATE exp_facturajf SET estado = 'ENVIADO', archivo = :archivo, usuario_envio = :u, enviado_en = NOW()
+             WHERE id = :id AND estado = 'GENERADO'"
+        );
+        $stmt->bindValue(":archivo", $archivo, PDO::PARAM_STR);
+        $stmt->bindValue(":u", $usuario, PDO::PARAM_STR);
+        $stmt->bindValue(":id", (int) $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Candado por pedido (GET_LOCK) en una conexión propia, para que no se emita dos veces. */
+    public static function mdlBloquearPedido($pdo, $pedido)
+    {
+        $stmt = $pdo->prepare("SELECT GET_LOCK(:k, 5)");
+        $stmt->bindValue(":k", "exp_pedido_" . $pedido, PDO::PARAM_STR);
+        $stmt->execute();
+        return (int) $stmt->fetchColumn() === 1;
+    }
+
+    public static function mdlLiberarPedido($pdo, $pedido)
+    {
+        $stmt = $pdo->prepare("SELECT RELEASE_LOCK(:k)");
+        $stmt->bindValue(":k", "exp_pedido_" . $pedido, PDO::PARAM_STR);
+        $stmt->execute();
+    }
+
+    /** Tipo de cambio del día en totalesjf (si existe la fila del día). */
+    public static function mdlTipoCambioTotales($fecha)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "SELECT DATE(fecha) AS fecha, ROUND(COALESCE(cambio_compra, 0), 4) AS cambio_compra,
+                    ROUND(COALESCE(cambio_venta, 0), 4) AS cambio_venta
+             FROM totalesjf WHERE DATE(fecha) = :f LIMIT 1"
+        );
+        $stmt->bindValue(":f", $fecha, PDO::PARAM_STR);
+        $stmt->execute();
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
+    /** Mismo campo que completa Utilidades desde totalesjf; los reportes lo usan para pasar USD a soles. */
+    public static function mdlGuardarTipoCambioVenta($documento, $tc)
+    {
+        $stmt = Conexion::conectar()->prepare("UPDATE ventajf SET tipo_cambio = :tc WHERE tipo = 'S03' AND documento = :d");
+        if ($tc === null) {
+            $stmt->bindValue(":tc", 0, PDO::PARAM_STR);
+        } else {
+            $stmt->bindValue(":tc", $tc, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(":d", $documento, PDO::PARAM_STR);
+        return $stmt->execute();
+    }
+
+    /** Si el archivo no llegó a la carpeta de eFact, se deja otra vez para enviar. */
+    public static function mdlVolverGenerada($id)
+    {
+        $stmt = Conexion::conectar()->prepare(
+            "UPDATE exp_facturajf SET estado = 'GENERADO', archivo = NULL, usuario_envio = NULL, enviado_en = NULL WHERE id = :id"
+        );
+        $stmt->bindValue(":id", (int) $id, PDO::PARAM_INT);
+        return $stmt->execute();
+    }
+
     /** Solo actualiza pais_iso del cliente (NULL = Perú). */
     public static function mdlGuardarPaisCliente($codigo, $paisIso)
     {

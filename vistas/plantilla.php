@@ -862,7 +862,9 @@ CUERPO DOCUMENTO
                 }
             } else if ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear") {
 
-                if (!class_exists("ControladorComprobantesEspeciales") || !ControladorComprobantesEspeciales::puedeUsar()) {
+                // También entra quien emite exportación (tipo y pestaña Exportación, docs/efact/EXPORTACION-diseno.md)
+                $ceAccesoExportacion = class_exists("ControladorExportacion") && ControladorExportacion::puedeUsar();
+                if (!$ceAccesoExportacion && (!class_exists("ControladorComprobantesEspeciales") || !ControladorComprobantesEspeciales::puedeUsar())) {
                     denegarAccesoModulo();
                 } else {
                     include "modulos/facturacion/" . $_GET["ruta"] . ".php";
@@ -1235,11 +1237,20 @@ CUERPO DOCUMENTO
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "gre-manual" || $_GET["ruta"] == "gre-manual-crear")) { ?>
     <script src="vistas/js/gre-manual.js?v=15"></script>
     <?php } ?>
-    <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear")) { ?>
+    <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear") && ControladorComprobantesEspeciales::puedeUsar()) { ?>
     <script src="vistas/js/comprobantes-especiales.js?v=<?php echo @filemtime("vistas/js/comprobantes-especiales.js"); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comprobantes-especiales-crear" && class_exists("ControladorExportacion") && ControladorExportacion::puedeUsar()) { ?>
+    <script src="vistas/js/exportacion-crear.js?v=<?php echo @filemtime("vistas/js/exportacion-crear.js"); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comprobantes-especiales-crear") { ?>
+    <script src="vistas/js/ce-tipo-hash.js?v=<?php echo @filemtime("vistas/js/ce-tipo-hash.js"); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "exportacion-config") { ?>
     <script src="vistas/js/exportacion.js?v=<?php echo @filemtime("vistas/js/exportacion.js"); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "comprobantes-especiales" && class_exists("ControladorExportacion") && ControladorExportacion::puedeUsar()) { ?>
+    <script src="vistas/js/exportacion-emitir.js?v=<?php echo @filemtime("vistas/js/exportacion-emitir.js"); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && in_array($_GET["ruta"], ["pedidoscv", "pedidos-generados", "pedidos-aprobados", "pedidos-apt", "pedidos-confirmados", "pedidos-facturados", "crear-pedidocv"], true)) { ?>
     <script src="vistas/js/exportacion-pedidos.js?v=<?php echo @filemtime("vistas/js/exportacion-pedidos.js"); ?>"></script>

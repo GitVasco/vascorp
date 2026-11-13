@@ -120,19 +120,12 @@
 
         var fx = $ops.filter(function () { return /^FX/i.test(this.value); });
         if (infoPedido.exterior) {
-            $ops.not(fx).prop("disabled", true);
-            if (tdoc === "03") {
-                fx.prop("disabled", true);
-                avisoFacturar(etiqueta(infoPedido.pais_iso) + " <span class='text-danger'>Cliente del exterior: la exportación se emite como <b>factura</b>.</span>");
-            } else {
-                var h = etiqueta(infoPedido.pais_iso) + " Exportación · " + esc(infoPedido.pais) + ": solo series FX (USD).";
-                if (!infoPedido.lista_ok) {
-                    h += " <span class='text-danger'><b>El pedido no usa la lista 1</b> (" + esc(infoPedido.lista || "—") + "): cámbiela antes de facturar.</span>";
-                }
-                avisoFacturar(h);
-                if ($serie.val() && !/^FX/i.test($serie.val())) $serie.val("");
-                if (!$serie.val() && fx.length === 1) $serie.val(fx.val()).trigger("change");
-            }
+            // La exportación se emite solo en Comprobantes especiales → Exportación → Emitir desde pedido
+            $ops.prop("disabled", true);
+            if ($serie.val()) $serie.val("").trigger("change");
+            avisoFacturar(etiqueta(infoPedido.pais_iso) + " <span class='text-danger'>Cliente del exterior (" + esc(infoPedido.pais) +
+                "): la factura de exportación se emite en <a href='comprobantes-especiales-crear#exportacion-" + encodeURIComponent(pedidoActual) +
+                "'><b>Comprobantes especiales → Nuevo comprobante → Exportación</b></a>.</span>");
         } else {
             fx.prop("disabled", true);
             if (/^FX/i.test($serie.val() || "")) $serie.val("").trigger("change");

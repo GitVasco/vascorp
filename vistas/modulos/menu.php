@@ -1573,24 +1573,15 @@
                         <span class="pull-right-container"><i class="fa fa-angle-left pull-right"></i></span>
                     </a>
                     <ul class="treeview-menu">
-                        <?php if ($menuCeGratuitas) { ?>
                         <li class="<?php if ($_GET["ruta"] == "comprobantes-especiales-crear") echo 'active'; ?>">
                             <a href="comprobantes-especiales-crear"><i class="fa fa-circle-o text-green"></i><span>Nuevo comprobante</span></a>
                         </li>
                         <li class="<?php if ($_GET["ruta"] == "comprobantes-especiales") echo 'active'; ?>">
                             <a href="comprobantes-especiales"><i class="fa fa-circle-o text-blue"></i><span>Listado y envío</span></a>
                         </li>
-                        <?php } ?>
                         <?php if ($menuCeExportacion) { ?>
-                        <li class="treeview <?php if ($_GET["ruta"] == "exportacion-config") echo 'active'; ?>">
-                            <a href="#"><i class="fa fa-globe text-aqua"></i> <span>Exportación</span>
-                                <span class="pull-right-container"><i class="fa fa-angle-left pull-right"></i></span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li class="<?php if ($_GET["ruta"] == "exportacion-config") echo 'active'; ?>">
-                                    <a href="exportacion-config"><i class="fa fa-circle-o text-aqua"></i><span>Configuración</span></a>
-                                </li>
-                            </ul>
+                        <li class="<?php if ($_GET["ruta"] == "exportacion-config") echo 'active'; ?>">
+                            <a href="exportacion-config"><i class="fa fa-globe text-aqua"></i><span>Configuración exportación</span></a>
                         </li>
                         <?php } ?>
                     </ul>

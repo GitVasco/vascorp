@@ -8,7 +8,7 @@
     <section class="content-header">
         <h1>
             Comprobantes especiales
-            <small>Boletas y facturas fuera del flujo de ventas · no mueve stock</small>
+            <small><?= class_exists("ControladorExportacion") && ControladorExportacion::puedeUsar() ? "Listado y envío a eFact · gratuitas y exportación" : "Boletas y facturas fuera del flujo de ventas · no mueve stock"; ?></small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
@@ -16,7 +16,29 @@
         </ol>
     </section>
 
+    <?php
+    // Pestañas: Gratuitas (permiso propio) y Exportación (módulo de facturación, docs/efact/EXPORTACION-diseno.md)
+    $ceVerGratuitas = ControladorComprobantesEspeciales::puedeUsar();
+    $ceVerExportacion = class_exists("ControladorExportacion") && ControladorExportacion::puedeUsar();
+    ?>
     <section class="content">
+        <div class="nav-tabs-custom" id="ceTabsListado">
+            <ul class="nav nav-tabs">
+                <?php if ($ceVerGratuitas) { ?>
+                <li class="active"><a href="#ceTabGratuitas" data-toggle="tab"><i class="fa fa-gift"></i> Gratuitas</a></li>
+                <?php } ?>
+                <?php if ($ceVerExportacion) { ?>
+                <li class="<?= $ceVerGratuitas ? "" : "active"; ?>"><a href="#ceTabExportacion" data-toggle="tab"><i class="fa fa-globe"></i> Exportación</a></li>
+                <?php } ?>
+            </ul>
+            <div class="tab-content">
+        <?php if ($ceVerExportacion) { ?>
+        <div class="tab-pane <?= $ceVerGratuitas ? "" : "active"; ?>" id="ceTabExportacion">
+            <?php include __DIR__ . "/exportacion-listado-panel.php"; ?>
+        </div>
+        <?php } ?>
+        <?php if ($ceVerGratuitas) { ?>
+        <div class="tab-pane active" id="ceTabGratuitas">
         <div class="alert alert-danger" id="ceFaltan" style="display:none"></div>
         <div class="box">
             <div class="box-header with-border">
@@ -53,5 +75,9 @@
             <b>Enviar</b> deja el CSV en la carpeta de eFact. Si es una prueba, dar de baja el comprobante en el portal de eFact y pulsar
             <i class="fa fa-arrow-down"></i> <b>Marcar baja</b> para dejar el registro.
         </p>
+        </div>
+        <?php } ?>
+            </div>
+        </div>
     </section>
 </div>
