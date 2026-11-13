@@ -317,7 +317,7 @@ $(".tablaClientes").on("click", ".btnEditarCliente", function () {
 
             $("#editarCodigoCliente").val(respuesta["codigo"]);
             $("#editarNombre").val(respuesta["nombre"]);
-            $("#editarTipo_documento").val(respuesta["tipo_documento"]);
+            $("#editarTipo_documento").val(respuesta["tipo_documento"]).selectpicker("refresh");
             $("#editarDocumento").val(respuesta["documento"]);
             $("#editarTipo_persona").val(respuesta["tipo_persona"]);
             $("#editarApe_paterno").val(respuesta["ape_paterno"]);
@@ -356,6 +356,16 @@ $(".tablaClientes").on("click", ".btnEditarCliente", function () {
             $("#editarLista_precios").val(respuesta["lista_precios"]);
             $("#editarLista_precios").selectpicker("refresh");
 
+            if ($("#editarPais_iso").length) {
+                var paisCli = respuesta["pais_iso"] && respuesta["pais_iso"] !== "PE" ? respuesta["pais_iso"] : "";
+                if (paisCli && !$("#editarPais_iso option[value='" + paisCli + "']").length) {
+                    $("#editarPais_iso").append($("<option>").val(paisCli).text(paisCli));
+                }
+                $("#editarPais_iso").val(paisCli);
+                $("#editarChkExterior").prop("checked", paisCli !== "");
+                mostrarPaisCliente($("#editarChkExterior"));
+            }
+
             if (typeof cargarCategoriaComercialCliente === "function") {
                 cargarCategoriaComercialCliente(respuesta["codigo"], respuesta["grupo"]);
             }
@@ -364,6 +374,34 @@ $(".tablaClientes").on("click", ".btnEditarCliente", function () {
                 mostrarZonaEfectivaCliente(respuesta["codigo"]);
             }
         },
+    });
+});
+
+/*=============================================
+CLIENTE DEL EXTERIOR (exportación): el país solo se muestra si se marca el check.
+Del exterior: el ubigeo (solo Perú) se oculta y deja de ser obligatorio; la dirección sigue obligatoria.
+El valor previo del ubigeo no se borra: el CSV FX actual aún lo usa para detectar ESPAÑA.
+=============================================*/
+function mostrarPaisCliente($chk) {
+    var $sel = $($chk.data("pais"));
+    var $ubi = $($chk.data("ubigeo"));
+    var marcado = $chk.is(":checked");
+    $sel.closest(".grupoPaisCliente").toggle(marcado);
+    $sel.prop("required", marcado);
+    if (!marcado) {
+        $sel.val("");
+    }
+    $sel.selectpicker("refresh");
+    if ($ubi.length) {
+        $ubi.prop("required", !marcado);
+        $ubi.closest(".form-group").toggle(!marcado);
+        $ubi.selectpicker("refresh");
+    }
+}
+
+$(function () {
+    $(".chkClienteExterior").on("change", function () {
+        mostrarPaisCliente($(this));
     });
 });
 

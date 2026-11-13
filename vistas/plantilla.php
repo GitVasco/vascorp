@@ -87,6 +87,8 @@ if (isset($_GET["ruta"]) && $_GET["ruta"] === "pedidoscv-vendedores") {
             $__tituloVentana = "Guías de remisión manuales | Vasco System";
         } elseif ($_GET["ruta"] === "comprobantes-especiales" || $_GET["ruta"] === "comprobantes-especiales-crear") {
             $__tituloVentana = "Comprobantes especiales | Vasco System";
+        } elseif ($_GET["ruta"] === "exportacion-config") {
+            $__tituloVentana = "Exportación · Configuración | Vasco System";
         } elseif ($_GET["ruta"] === "cuadre-ventas") {
             $__tituloVentana = "Cuadre de ventas del día | Vasco System";
         } elseif ($_GET["ruta"] === "regularizaciones-comerciales") {
@@ -865,6 +867,13 @@ CUERPO DOCUMENTO
                 } else {
                     include "modulos/facturacion/" . $_GET["ruta"] . ".php";
                 }
+            } else if ($_GET["ruta"] == "exportacion-config") {
+
+                if (!class_exists("ControladorExportacion") || !ControladorExportacion::puedeUsar()) {
+                    denegarAccesoModulo();
+                } else {
+                    include "modulos/facturacion/exportacion-config.php";
+                }
             } else if ($_GET["ruta"] == "categorias-comerciales") {
 
                 if (!function_exists("usuarioPuedeVerModulo") || !usuarioPuedeVerModulo("gestion_comercial", "categorias_comerciales")) {
@@ -1228,6 +1237,9 @@ CUERPO DOCUMENTO
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "comprobantes-especiales" || $_GET["ruta"] == "comprobantes-especiales-crear")) { ?>
     <script src="vistas/js/comprobantes-especiales.js?v=<?php echo @filemtime("vistas/js/comprobantes-especiales.js"); ?>"></script>
+    <?php } ?>
+    <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "exportacion-config") { ?>
+    <script src="vistas/js/exportacion.js?v=<?php echo @filemtime("vistas/js/exportacion.js"); ?>"></script>
     <?php } ?>
     <?php if (isset($_GET["ruta"]) && $_GET["ruta"] == "cuadre-ventas") { ?>
     <script src="vistas/js/cuadre-ventas.js?v=50"></script>

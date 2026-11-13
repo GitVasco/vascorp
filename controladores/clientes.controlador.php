@@ -94,6 +94,10 @@ class ControladorClientes
 
 			if ($respuesta == "ok") {
 
+				if (class_exists("ControladorExportacion")) {
+					ControladorExportacion::ctrGuardarPaisCliente($codigoCliente, "pais_iso");
+				}
+
 				$grupoAlta = isset($_POST["grupo"]) ? trim($_POST["grupo"]) : "";
 				$idCategoriaAlta = isset($_POST["categoria_comercial"]) ? (int) $_POST["categoria_comercial"] : 0;
 
@@ -249,6 +253,10 @@ class ControladorClientes
 			#$respuesta = "false";
 
 			if ($respuesta == "ok") {
+
+				if (class_exists("ControladorExportacion")) {
+					ControladorExportacion::ctrGuardarPaisCliente(trim($codigo), "editarPais_iso");
+				}
 
 				$grupoEdit = isset($_POST["editarGrupo"]) ? trim($_POST["editarGrupo"]) : "";
 				if ($grupoEdit !== "") {

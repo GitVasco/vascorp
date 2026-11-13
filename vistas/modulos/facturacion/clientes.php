@@ -194,7 +194,7 @@ MODAL AGREGAR CLIENTE
 
                                     <span class="input-group-addon"><i class="fa fa-caret-square-o-right"></i></span>
 
-                                    <select class="form-control input-sm" id="tipo_documento" name="tipo_documento" required>
+                                    <select class="form-control input-sm selectpicker" id="tipo_documento" name="tipo_documento" data-size="10" required>
 
                                         <option value="">TIPO DOCUMENTO</option>
 
@@ -257,6 +257,8 @@ MODAL AGREGAR CLIENTE
                                 </div>
 
                             </div>
+
+                            <div class="clearfix"></div>
 
 
                             <!-- ENTRADA PARA EL TIPO PERSONA -->
@@ -322,6 +324,16 @@ MODAL AGREGAR CLIENTE
 
                             </div>
 
+                            <!-- CLIENTE DEL EXTERIOR (exportación): el país solo aparece si se marca -->
+                            <?php if (class_exists("ControladorExportacion") && ModeloExportacion::mdlTienePais()) { ?>
+                            <div class="clearfix"></div>
+                            <div class="form-group col-lg-3">
+                                <div class="checkbox" style="margin:5px 0">
+                                    <label><input type="checkbox" class="chkClienteExterior" data-pais="#pais_iso" data-ubigeo="#modalAgregarCliente select[name='ubigeo']"> Cliente del exterior (exportación)</label>
+                                </div>
+                            </div>
+                            <?php } ?>
+
 
                         </div>
 
@@ -350,6 +362,21 @@ MODAL AGREGAR CLIENTE
                                 </div>
 
                             </div>
+
+                            <!-- ENTRADA PARA EL PAÍS (cliente del exterior): ocupa el lugar del ubigeo -->
+                            <?php if (class_exists("ControladorExportacion") && ModeloExportacion::mdlTienePais()) { ?>
+                            <div class="form-group col-lg-4 grupoPaisCliente" style="display:none">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-globe"></i></span>
+                                    <select class="form-control input-sm selectpicker selPaisCliente" id="pais_iso" name="pais_iso" data-live-search="true" data-size="10">
+                                        <option value="">PAÍS</option>
+                                        <?php foreach (ControladorExportacion::paises() as $isoPais => $nombrePais) { ?>
+                                        <option value="<?php echo $isoPais; ?>"><?php echo $nombrePais; ?> (<?php echo $isoPais; ?>)</option>
+                                        <?php } ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <?php } ?>
 
                             <!-- ENTRADA PARA EL UBIGEO -->
 
@@ -782,7 +809,7 @@ MODAL EDITAR CLIENTE
 
                                     <span class="input-group-addon"><i class="fa fa-caret-square-o-right"></i></span>
 
-                                    <select class="form-control input-sm" id="editarTipo_documento" name="editarTipo_documento" required>
+                                    <select class="form-control input-sm selectpicker" id="editarTipo_documento" name="editarTipo_documento" data-size="10" required>
 
                                         <option value="">TIPO DOCUMENTO</option>
 
@@ -811,7 +838,7 @@ MODAL EDITAR CLIENTE
 
                                     <span class="input-group-addon"><i class="fa fa-caret-square-o-right"></i></span>
 
-                                    <input type="number" class="form-control input-sm" id="editarDocumento" name="editarDocumento" placeholder="NRO. DOCUMENTO" required>
+                                    <input type="text" class="form-control input-sm" id="editarDocumento" name="editarDocumento" placeholder="NRO. DOCUMENTO" required>
 
                                 </div>
 
@@ -880,6 +907,16 @@ MODAL EDITAR CLIENTE
 
                             </div>
 
+                            <!-- CLIENTE DEL EXTERIOR (exportación): el país solo aparece si se marca -->
+                            <?php if (class_exists("ControladorExportacion") && ModeloExportacion::mdlTienePais()) { ?>
+                            <div class="clearfix"></div>
+                            <div class="form-group col-lg-3">
+                                <div class="checkbox" style="margin:5px 0">
+                                    <label><input type="checkbox" class="chkClienteExterior" id="editarChkExterior" data-pais="#editarPais_iso" data-ubigeo="#editarUbigeo"> Cliente del exterior (exportación)</label>
+                                </div>
+                            </div>
+                            <?php } ?>
+
 
                         </div>
 
@@ -908,6 +945,21 @@ MODAL EDITAR CLIENTE
                                 </div>
 
                             </div>
+
+                            <!-- ENTRADA PARA EL PAÍS (cliente del exterior): ocupa el lugar del ubigeo -->
+                            <?php if (class_exists("ControladorExportacion") && ModeloExportacion::mdlTienePais()) { ?>
+                            <div class="form-group col-lg-4 grupoPaisCliente" style="display:none">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-globe"></i></span>
+                                    <select class="form-control input-sm selectpicker selPaisCliente" id="editarPais_iso" name="editarPais_iso" data-live-search="true" data-size="10">
+                                        <option value="">PAÍS</option>
+                                        <?php foreach (ControladorExportacion::paises() as $isoPais => $nombrePais) { ?>
+                                        <option value="<?php echo $isoPais; ?>"><?php echo $nombrePais; ?> (<?php echo $isoPais; ?>)</option>
+                                        <?php } ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <?php } ?>
 
                             <!-- ENTRADA PARA EL UBIGEO -->
 
