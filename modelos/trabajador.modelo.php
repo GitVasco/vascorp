@@ -369,9 +369,80 @@ class ModeloTrabajador{
 	}
 	
 	/*
-	* Trabajadores activos por sector (compensación feriado)
+	* Quincena del módulo Quincenas que cerró antes que "esta".
+	* "Esta" = la que contiene la fecha; si no hay, la última con fin < fecha.
 	*/
-	static public function mdlTrabajadoresActivosPorSector($sector){
+	static public function mdlQuincenaAnterior($fecha)
+	{
+		$pdo = Conexion::conectar();
+
+		$stmtActual = $pdo->prepare(
+			"SELECT id, inicio, fin, ano, mes, quincena
+			 FROM quincenasjf
+			 WHERE :fecha BETWEEN inicio AND fin
+			 ORDER BY fin DESC
+			 LIMIT 1"
+		);
+		$stmtActual->bindParam(":fecha", $fecha, PDO::PARAM_STR);
+		$stmtActual->execute();
+		$actual = $stmtActual->fetch(PDO::FETCH_ASSOC);
+
+		if ($actual && !empty($actual["inicio"])) {
+			$stmtPrev = $pdo->prepare(
+				"SELECT id, inicio, fin, ano, mes, quincena
+				 FROM quincenasjf
+				 WHERE fin < :inicioActual
+				 ORDER BY fin DESC
+				 LIMIT 1"
+			);
+			$stmtPrev->bindParam(":inicioActual", $actual["inicio"], PDO::PARAM_STR);
+			$stmtPrev->execute();
+			$prev = $stmtPrev->fetch(PDO::FETCH_ASSOC);
+			return $prev ? $prev : null;
+		}
+
+		$stmt = $pdo->prepare(
+			"SELECT id, inicio, fin, ano, mes, quincena
+			 FROM quincenasjf
+			 WHERE fin < :fecha
+			 ORDER BY fin DESC
+			 LIMIT 1"
+		);
+		$stmt->bindParam(":fecha", $fecha, PDO::PARAM_STR);
+		$stmt->execute();
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		return $row ? $row : null;
+	}
+
+	/*
+	* Total S/ de quincena (columna Total de /pagos, sin bono).
+	* Retorna mapa [cod_tra => total].
+	*/
+	static public function mdlPromedioDiarioProduccion($inicio, $fin, $sector = null)
+	{
+		if (!class_exists("ModeloProduccion")) {
+			require_once __DIR__ . "/produccion.modelo.php";
+		}
+
+		return ModeloProduccion::mdlPromedioDiarioPagoQuincena($inicio, $fin, $sector);
+	}
+
+	/*
+	* Trabajadores activos por sector (compensación día).
+	* $tipo: dia_sueldo | medio_sueldo | dia_promedio | medio_promedio
+	* $diasTrabajados: divisor del Total para promedio (lo indica el usuario).
+	*/
+	static public function mdlTrabajadoresActivosPorSector($sector, $tipo = "dia_sueldo", $fecha = null, $diasTrabajados = 15)
+	{
+		$tiposValidos = array("dia_sueldo", "medio_sueldo", "dia_promedio", "medio_promedio");
+		if (!in_array($tipo, $tiposValidos, true)) {
+			$tipo = "dia_sueldo";
+		}
+
+		$diasTrabajados = (float) $diasTrabajados;
+		if ($diasTrabajados <= 0) {
+			$diasTrabajados = 15;
+		}
 
 		$stmt = Conexion::conectar()->prepare(
 			"SELECT
@@ -379,20 +450,80 @@ class ModeloTrabajador{
 				CONCAT(TRIM(t.nom_tra), ' ', TRIM(t.ape_pat_tra), ' ', TRIM(t.ape_mat_tra)) AS nombre,
 				t.sueldo_total,
 				t.sector,
-				s.nom_sector,
-				ROUND(t.sueldo_total / 30, 2) AS monto_feriado,
-				ROUND(ROUND(t.sueldo_total / 30, 2) * 12, 2) AS cantidad
+				s.nom_sector
 			FROM trabajadorjf t
 			LEFT JOIN sectorjf s ON s.cod_sector = t.sector
 			WHERE t.estado = 'Activo'
 			  AND t.sector = :sector
-			ORDER BY t.ape_pat_tra, t.ape_mat_tra, t.nom_tra"
+			ORDER BY
+				TRIM(t.nom_tra),
+				TRIM(t.ape_pat_tra),
+				TRIM(t.ape_mat_tra)"
 		);
 
 		$stmt->bindParam(":sector", $sector, PDO::PARAM_STR);
 		$stmt->execute();
+		$lista = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		if (!$lista) {
+			return array();
+		}
 
-		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$totales = array();
+		$quincena = null;
+		$usaPromedio = ($tipo === "dia_promedio" || $tipo === "medio_promedio");
+
+		if ($usaPromedio) {
+			if ($fecha === null || $fecha === "") {
+				$fecha = date("Y-m-d");
+			}
+			$quincena = self::mdlQuincenaAnterior($fecha);
+			if ($quincena) {
+				$totales = self::mdlPromedioDiarioProduccion(
+					$quincena["inicio"],
+					$quincena["fin"],
+					$sector
+				);
+			}
+		}
+
+		foreach ($lista as &$t) {
+			$cod = (int) $t["cod_tra"];
+			$sueldo = isset($t["sueldo_total"]) ? (float) $t["sueldo_total"] : 0;
+			$diaSueldo = $sueldo > 0 ? round($sueldo / 30, 2) : 0;
+			$total = isset($totales[$cod]) ? round((float) $totales[$cod], 2) : 0;
+			$diaPromedio = ($total > 0 && $diasTrabajados > 0)
+				? round($total / $diasTrabajados, 2)
+				: 0;
+
+			if ($tipo === "dia_sueldo") {
+				$base = $sueldo;
+				$monto = $diaSueldo;
+			} elseif ($tipo === "medio_sueldo") {
+				$base = $sueldo;
+				$monto = round($diaSueldo / 2, 2);
+			} elseif ($tipo === "dia_promedio") {
+				$base = $total;
+				$monto = $diaPromedio;
+			} else {
+				$base = $total;
+				$monto = round($diaPromedio / 2, 2);
+			}
+
+			$t["base_calculo"] = $base;
+			$t["total_quincena"] = $total;
+			$t["promedio_diario"] = $diaPromedio;
+			$t["dias_trabajados"] = $diasTrabajados;
+			$t["monto_feriado"] = $monto;
+			$t["cantidad"] = round($monto * 12, 2);
+			$t["tipo"] = $tipo;
+			if ($quincena) {
+				$t["quincena_inicio"] = $quincena["inicio"];
+				$t["quincena_fin"] = $quincena["fin"];
+			}
+		}
+		unset($t);
+
+		return $lista;
 	}
 
 	/* 

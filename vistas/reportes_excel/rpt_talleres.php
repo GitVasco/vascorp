@@ -360,7 +360,7 @@ a.nombre,
 a.color,
 a.talla,
 et.cod_operacion,
-o.nombre AS nom_operacion,
+COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
 et.trabajador AS cod_trabajador,
 CONCAT(
 t.nom_tra,

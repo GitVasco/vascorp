@@ -3241,10 +3241,92 @@ cargarTablaEnTaller(null);
 /*=============================================
 COMPENSACIÓN FERIADO GLOBAL (832)
 =============================================*/
+function etiquetaTipoFeriado(tipo) {
+    if (tipo === "medio_sueldo") return "Medio día de sueldo";
+    if (tipo === "dia_promedio") return "Promedio quincena pasada";
+    if (tipo === "medio_promedio") return "Medio promedio quincena pasada";
+    return "Día de sueldo";
+}
+
+function usaPromedioFeriado(tipo) {
+    return tipo === "dia_promedio" || tipo === "medio_promedio";
+}
+
+function toggleDiasPromedioFeriado(tipo) {
+    if (usaPromedioFeriado(tipo)) {
+        $("#grupoDiasPromedioFeriado").show();
+    } else {
+        $("#grupoDiasPromedioFeriado").hide();
+    }
+}
+
+function diasPromedioFeriadoValor() {
+    var dias = parseFloat($("#diasPromedioFeriado").val());
+    if (!dias || dias <= 0) {
+        return 0;
+    }
+    return dias;
+}
+
+function actualizarAyudaFeriado(tipo, quincena) {
+    var texto = "";
+    var dias = diasPromedioFeriadoValor();
+    toggleDiasPromedioFeriado(tipo);
+
+    if (tipo === "dia_sueldo") {
+        texto = "Monto = sueldo ÷ 30.";
+        $("#thBaseFeriado").text("Sueldo");
+    } else if (tipo === "medio_sueldo") {
+        texto = "Monto = (sueldo ÷ 30) ÷ 2.";
+        $("#thBaseFeriado").text("Sueldo");
+    } else if (tipo === "dia_promedio") {
+        texto =
+            "Columna Total = Total S/ de Pagos (sin bono). Monto = Total ÷ días trabajados";
+        if (dias > 0) {
+            texto += " (" + dias + ")";
+        }
+        texto += ".";
+        $("#thBaseFeriado").text("Total");
+    } else {
+        texto =
+            "Columna Total = Total S/ de Pagos (sin bono). Monto = (Total ÷ días trabajados) ÷ 2.";
+        $("#thBaseFeriado").text("Total");
+    }
+
+    if (usaPromedioFeriado(tipo) && quincena && quincena.inicio && quincena.fin) {
+        texto +=
+            " Quincena usada: " + quincena.inicio + " al " + quincena.fin + ".";
+    }
+
+    texto +=
+        " Operación <b>832</b>; el concepto reemplaza el nombre. El ticket queda asignado y terminado.";
+    $("#ayudaFeriado").html(texto);
+}
+
+function filtrarTrabajadoresFeriado() {
+    var q = $.trim($("#buscarTrabajadorFeriado").val() || "").toLowerCase();
+    var visibles = 0;
+
+    $("#tablaTrabajadoresFeriado tbody tr.filaTrabajadorFeriado").each(function () {
+        var texto = String($(this).attr("data-buscar") || "").toLowerCase();
+        var ok = !q || texto.indexOf(q) !== -1;
+        $(this).toggle(ok);
+        if (ok) {
+            visibles++;
+        }
+    });
+
+    var $vacio = $("#tablaTrabajadoresFeriado tbody tr.filaBusquedaVacia");
+    if ($vacio.length) {
+        $vacio.toggle(visibles === 0 && q !== "");
+    }
+}
+
 function renderFilasTrabajadoresFeriado(lista) {
     var tbody = $("#tablaTrabajadoresFeriado tbody");
     tbody.empty();
     $("#checkTodosFeriado").prop("checked", false);
+    $("#buscarTrabajadorFeriado").val("");
 
     if (!lista || !lista.length) {
         tbody.append(
@@ -3253,23 +3335,40 @@ function renderFilasTrabajadoresFeriado(lista) {
         return;
     }
 
+    lista = lista.slice().sort(function (a, b) {
+        var na = String(a.nombre || "").toLowerCase();
+        var nb = String(b.nombre || "").toLowerCase();
+        if (na < nb) return -1;
+        if (na > nb) return 1;
+        return Number(a.cod_tra || 0) - Number(b.cod_tra || 0);
+    });
+
     lista.forEach(function (t) {
-        var sueldo = parseFloat(t.sueldo_total || 0).toFixed(2);
+        var nombre = t.nombre || "";
+        var base = parseFloat(
+            t.base_calculo != null ? t.base_calculo : t.sueldo_total || 0
+        ).toFixed(2);
         var monto = parseFloat(t.monto_feriado || 0).toFixed(2);
         var cantidad = parseFloat(t.cantidad || 0).toFixed(2);
+        var disabled = parseFloat(monto) <= 0 ? " disabled" : "";
+        var buscar = (t.cod_tra + " " + nombre).replace(/"/g, "&quot;");
         tbody.append(
-            "<tr>" +
+            '<tr class="filaTrabajadorFeriado" data-buscar="' +
+                buscar +
+                '">' +
                 '<td class="text-center"><input type="checkbox" class="checkFeriadoTrabajador" value="' +
                 t.cod_tra +
-                '"></td>' +
+                '"' +
+                disabled +
+                "></td>" +
                 "<td>" +
                 t.cod_tra +
                 "</td>" +
                 "<td>" +
-                (t.nombre || "") +
+                nombre +
                 "</td>" +
                 '<td class="text-right">' +
-                sueldo +
+                base +
                 "</td>" +
                 '<td class="text-right">' +
                 monto +
@@ -3279,6 +3378,75 @@ function renderFilasTrabajadoresFeriado(lista) {
                 "</td>" +
                 "</tr>"
         );
+    });
+
+    tbody.append(
+        '<tr class="filaBusquedaVacia" style="display:none"><td colspan="6" class="text-center text-muted">Sin coincidencias</td></tr>'
+    );
+}
+
+function cargarTrabajadoresFeriado() {
+    var sector = $("#sectorFeriado").val();
+    var tipo = $("#tipoCompensacionFeriado").val() || "dia_sueldo";
+    var fecha = $("#fechaFeriado").val();
+    var dias = diasPromedioFeriadoValor();
+    var tbody = $("#tablaTrabajadoresFeriado tbody");
+
+    actualizarAyudaFeriado(tipo, null);
+
+    if (!sector) {
+        tbody.html(
+            '<tr><td colspan="6" class="text-center text-muted">Seleccione un sector</td></tr>'
+        );
+        return;
+    }
+
+    if (usaPromedioFeriado(tipo) && dias <= 0) {
+        tbody.html(
+            '<tr><td colspan="6" class="text-center text-warning">Indique los días trabajados</td></tr>'
+        );
+        return;
+    }
+
+    tbody.html(
+        '<tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>'
+    );
+
+    var datos = new FormData();
+    datos.append("sectorFeriado", sector);
+    datos.append("tipoCompensacionFeriado", tipo);
+    datos.append("diasPromedioFeriado", dias || 15);
+    if (fecha) {
+        datos.append("fechaFeriado", fecha);
+    }
+
+    $.ajax({
+        url: "ajax/talleres.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            if (!respuesta || respuesta.ok === false) {
+                actualizarAyudaFeriado(tipo, null);
+                tbody.html(
+                    '<tr><td colspan="6" class="text-center text-danger">' +
+                        ((respuesta && respuesta.mensaje) ||
+                            "No se pudo cargar") +
+                        "</td></tr>"
+                );
+                return;
+            }
+            actualizarAyudaFeriado(tipo, respuesta.quincena || null);
+            renderFilasTrabajadoresFeriado(respuesta.trabajadores || []);
+        },
+        error: function () {
+            tbody.html(
+                '<tr><td colspan="6" class="text-center text-danger">Error al cargar trabajadores</td></tr>'
+            );
+        },
     });
 }
 
@@ -3290,54 +3458,53 @@ $("#modalCrearFeriado").on("shown.bs.modal", function () {
         var dd = String(hoy.getDate()).padStart(2, "0");
         $("#fechaFeriado").val(yyyy + "-" + mm + "-" + dd);
     }
-    if ($("#sectorFeriado").hasClass("selectpicker")) {
-        $("#sectorFeriado").selectpicker("refresh");
+    if ($.fn.selectpicker) {
+        $("#tipoCompensacionFeriado, #sectorFeriado").selectpicker("refresh");
     }
+    var tipo = $("#tipoCompensacionFeriado").val() || "dia_sueldo";
+    toggleDiasPromedioFeriado(tipo);
+    actualizarAyudaFeriado(tipo, null);
 });
 
-$(document).on("changed.bs.select change", "#sectorFeriado", function () {
-    var sector = $(this).val();
-    var tbody = $("#tablaTrabajadoresFeriado tbody");
-
-    if (!sector) {
-        tbody.html(
-            '<tr><td colspan="6" class="text-center text-muted">Seleccione un sector</td></tr>'
-        );
-        return;
+$(document).on(
+    "changed.bs.select change",
+    "#sectorFeriado, #tipoCompensacionFeriado",
+    function () {
+        var tipo = $("#tipoCompensacionFeriado").val() || "dia_sueldo";
+        toggleDiasPromedioFeriado(tipo);
+        if ($("#sectorFeriado").val()) {
+            cargarTrabajadoresFeriado();
+        } else {
+            actualizarAyudaFeriado(tipo, null);
+        }
     }
+);
 
-    tbody.html(
-        '<tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>'
-    );
-
-    var datos = new FormData();
-    datos.append("sectorFeriado", sector);
-
-    $.ajax({
-        url: "ajax/talleres.ajax.php",
-        method: "POST",
-        data: datos,
-        cache: false,
-        contentType: false,
-        processData: false,
-        dataType: "json",
-        success: function (respuesta) {
-            renderFilasTrabajadoresFeriado(respuesta);
-        },
-        error: function () {
-            tbody.html(
-                '<tr><td colspan="6" class="text-center text-danger">Error al cargar trabajadores</td></tr>'
-            );
-        },
-    });
+$(document).on("change", "#fechaFeriado, #diasPromedioFeriado", function () {
+    var tipo = $("#tipoCompensacionFeriado").val() || "dia_sueldo";
+    if ($("#sectorFeriado").val()) {
+        cargarTrabajadoresFeriado();
+    } else {
+        actualizarAyudaFeriado(tipo, null);
+    }
 });
 
 $(document).on("change", "#checkTodosFeriado", function () {
-    $(".checkFeriadoTrabajador").prop("checked", $(this).prop("checked"));
+    $("#tablaTrabajadoresFeriado tbody tr.filaTrabajadorFeriado:visible")
+        .find(".checkFeriadoTrabajador:not(:disabled)")
+        .prop("checked", $(this).prop("checked"));
+});
+
+$(document).on("input", "#buscarTrabajadorFeriado", function () {
+    filtrarTrabajadoresFeriado();
+    $("#checkTodosFeriado").prop("checked", false);
 });
 
 $(document).on("click", "#btnGuardarFeriado", function () {
     var fecha = $("#fechaFeriado").val();
+    var tipo = $("#tipoCompensacionFeriado").val() || "dia_sueldo";
+    var concepto = $.trim($("#conceptoFeriado").val() || "");
+    var dias = diasPromedioFeriadoValor();
     var seleccionados = [];
 
     $(".checkFeriadoTrabajador:checked").each(function () {
@@ -3345,7 +3512,27 @@ $(document).on("click", "#btnGuardarFeriado", function () {
     });
 
     if (!fecha) {
-        swal({ type: "warning", title: "Indique la fecha del feriado", confirmButtonText: "Cerrar" });
+        swal({ type: "warning", title: "Indique la fecha", confirmButtonText: "Cerrar" });
+        return;
+    }
+
+    if (!concepto) {
+        swal({
+            type: "warning",
+            title: "Indique el concepto",
+            text: "Ejemplo: Feriado 28 julio",
+            confirmButtonText: "Cerrar",
+        });
+        return;
+    }
+
+    if (usaPromedioFeriado(tipo) && dias <= 0) {
+        swal({
+            type: "warning",
+            title: "Indique los días trabajados",
+            text: "Sirven para dividir el Total de la quincena",
+            confirmButtonText: "Cerrar",
+        });
         return;
     }
 
@@ -3359,8 +3546,13 @@ $(document).on("click", "#btnGuardarFeriado", function () {
     }
 
     swal({
-        title: "¿Crear feriado a " + seleccionados.length + " trabajador(es)?",
-        text: "Se generarán tickets 832 FERIADO ya asignados y terminados.",
+        title: "¿Compensar a " + seleccionados.length + " trabajador(es)?",
+        text:
+            concepto +
+            " · " +
+            etiquetaTipoFeriado(tipo) +
+            (usaPromedioFeriado(tipo) ? " · " + dias + " día(s)" : "") +
+            ". Se generarán tickets 832 ya asignados y terminados.",
         type: "warning",
         showCancelButton: true,
         confirmButtonText: "Sí, crear",
@@ -3373,6 +3565,9 @@ $(document).on("click", "#btnGuardarFeriado", function () {
         var datos = new FormData();
         datos.append("crearFeriado", "1");
         datos.append("fechaFeriado", fecha);
+        datos.append("tipoCompensacionFeriado", tipo);
+        datos.append("conceptoFeriado", concepto);
+        datos.append("diasPromedioFeriado", dias || 15);
         seleccionados.forEach(function (cod) {
             datos.append("trabajadoresFeriado[]", cod);
         });
@@ -3392,7 +3587,7 @@ $(document).on("click", "#btnGuardarFeriado", function () {
                 if (respuesta && respuesta.ok) {
                     swal({
                         type: "success",
-                        title: respuesta.mensaje || "Feriados creados",
+                        title: respuesta.mensaje || "Compensaciones creadas",
                         confirmButtonText: "Cerrar",
                     }).then(function () {
                         $("#modalCrearFeriado").modal("hide");

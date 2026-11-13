@@ -111,21 +111,61 @@ class AjaxTalleres{
   }
 
   public $sectorFeriado;
+  public $tipoCompensacionFeriado;
+  public $fechaFeriadoLista;
+  public $diasPromedioFeriado;
 
   public function ajaxTrabajadoresFeriado(){
 
     $sector = trim((string) $this->sectorFeriado);
     if ($sector === "") {
-      echo json_encode(array());
+      echo json_encode(array("ok" => true, "trabajadores" => array(), "quincena" => null));
       return;
     }
 
-    $respuesta = ModeloTrabajador::mdlTrabajadoresActivosPorSector($sector);
-    echo json_encode($respuesta ? $respuesta : array());
+    $tipo = trim((string) $this->tipoCompensacionFeriado);
+    if ($tipo === "") {
+      $tipo = "dia_sueldo";
+    }
+    $fecha = trim((string) $this->fechaFeriadoLista);
+    $dias = (float) $this->diasPromedioFeriado;
+    if ($dias <= 0) {
+      $dias = 15;
+    }
+
+    $usaPromedio = ($tipo === "dia_promedio" || $tipo === "medio_promedio");
+    $quincena = null;
+    if ($usaPromedio) {
+      if ($fecha === "") {
+        $fecha = date("Y-m-d");
+      }
+      $quincena = ModeloTrabajador::mdlQuincenaAnterior($fecha);
+      if (!$quincena) {
+        echo json_encode(array(
+          "ok" => false,
+          "mensaje" => "No hay quincena registrada anterior a la fecha del feriado",
+          "trabajadores" => array(),
+          "quincena" => null
+        ));
+        return;
+      }
+    }
+
+    $respuesta = ModeloTrabajador::mdlTrabajadoresActivosPorSector($sector, $tipo, $fecha, $dias);
+    echo json_encode(array(
+      "ok" => true,
+      "trabajadores" => $respuesta ? $respuesta : array(),
+      "quincena" => $quincena,
+      "tipo" => $tipo,
+      "dias" => $dias
+    ));
   }
 
   public $trabajadoresFeriado;
   public $fechaFeriado;
+  public $tipoFeriado;
+  public $conceptoFeriado;
+  public $diasFeriado;
 
   public function ajaxCrearCompensacionFeriado(){
 
@@ -139,10 +179,23 @@ class AjaxTalleres{
       $trabajadores = array();
     }
 
+    $tipo = trim((string) $this->tipoFeriado);
+    if ($tipo === "") {
+      $tipo = "dia_sueldo";
+    }
+
+    $dias = (float) $this->diasFeriado;
+    if ($dias <= 0) {
+      $dias = 15;
+    }
+
     $respuesta = ControladorTalleres::ctrCrearCompensacionFeriado(
       $trabajadores,
       $this->fechaFeriado,
-      $_SESSION["id"]
+      $_SESSION["id"],
+      $tipo,
+      $this->conceptoFeriado,
+      $dias
     );
 
     echo json_encode($respuesta);
@@ -227,6 +280,9 @@ if (isset($_POST["sectorFeriado"])) {
 
 	$listar = new AjaxTalleres();
 	$listar->sectorFeriado = $_POST["sectorFeriado"];
+	$listar->tipoCompensacionFeriado = isset($_POST["tipoCompensacionFeriado"]) ? $_POST["tipoCompensacionFeriado"] : "dia_sueldo";
+	$listar->fechaFeriadoLista = isset($_POST["fechaFeriado"]) ? $_POST["fechaFeriado"] : "";
+	$listar->diasPromedioFeriado = isset($_POST["diasPromedioFeriado"]) ? $_POST["diasPromedioFeriado"] : 15;
 	$listar->ajaxTrabajadoresFeriado();
 
 }
@@ -239,6 +295,9 @@ if (isset($_POST["crearFeriado"]) && isset($_POST["trabajadoresFeriado"])) {
 	$crear = new AjaxTalleres();
 	$crear->trabajadoresFeriado = $_POST["trabajadoresFeriado"];
 	$crear->fechaFeriado = isset($_POST["fechaFeriado"]) ? $_POST["fechaFeriado"] : "";
+	$crear->tipoFeriado = isset($_POST["tipoCompensacionFeriado"]) ? $_POST["tipoCompensacionFeriado"] : "dia_sueldo";
+	$crear->conceptoFeriado = isset($_POST["conceptoFeriado"]) ? $_POST["conceptoFeriado"] : "";
+	$crear->diasFeriado = isset($_POST["diasPromedioFeriado"]) ? $_POST["diasPromedioFeriado"] : 15;
 	$crear->ajaxCrearCompensacionFeriado();
 
 }

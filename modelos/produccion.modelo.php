@@ -1105,6 +1105,37 @@ class ModeloProduccion
     return self::enriquecerFilasPagosTrusas($filas);
   }
 
+  /*
+   * Total S/ de una quincena (misma columna Total de /pagos: solo producción, sin bono).
+   * Retorna mapa [cod_tra => total].
+   */
+  static public function mdlPromedioDiarioPagoQuincena($inicio, $fin, $sector = null)
+  {
+    $sql = "SELECT
+              et.trabajador AS cod_tra,
+              ROUND(SUM(et.total_precio), 2) AS produccion
+            " . self::sqlFromWherePagosTrusas($sector) . "
+            GROUP BY et.trabajador
+            HAVING SUM(et.total_precio) > 0";
+
+    $stmt = Conexion::conectar()->prepare($sql);
+    $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
+    $stmt->bindParam(":fin", $fin, PDO::PARAM_STR);
+    $stmt->execute();
+
+    $map = array();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+      $cod = (int) $row["cod_tra"];
+      $prod = round((float) $row["produccion"], 2);
+      if ($cod <= 0 || $prod <= 0) {
+        continue;
+      }
+      $map[$cod] = $prod;
+    }
+
+    return $map;
+  }
+
   /* 
 	* BORRAR QUINCENA
 	*/

@@ -2688,16 +2688,38 @@ class ControladorTalleres
     }
 
     /*
-     * Compensación global por feriado (op. 832).
-     * Monto = ROUND(sueldo_total / 30, 2); cantidad = ROUND(monto * 12, 2) con precio_doc = 1.
+     * Compensación por día (op. 832 COMPENSACION).
+     * Tipos: dia_sueldo | medio_sueldo | dia_promedio | medio_promedio
+     * concepto: texto libre que se muestra en lugar del nombre de operación.
+     * cantidad = ROUND(monto * 12, 2) con precio_doc = 1.
      * Ticket queda terminado (estado 3) y asignado al trabajador; total_precio = monto.
      */
-    static public function ctrCrearCompensacionFeriado($codTrabajadores, $fechaFeriado, $usuario)
+    static public function ctrCrearCompensacionFeriado($codTrabajadores, $fechaFeriado, $usuario, $tipo = "dia_sueldo", $concepto = "", $diasTrabajados = 15)
     {
         $articulo = "C001251";
         $operacion = "832";
         $creados = array();
         $errores = array();
+
+        $tiposValidos = array("dia_sueldo", "medio_sueldo", "dia_promedio", "medio_promedio");
+        if (!in_array($tipo, $tiposValidos, true)) {
+            $tipo = "dia_sueldo";
+        }
+
+        $diasTrabajados = (float) $diasTrabajados;
+        if ($diasTrabajados <= 0) {
+            $diasTrabajados = 15;
+        }
+
+        $concepto = trim(preg_replace('/\s+/', ' ', (string) $concepto));
+        if ($concepto === "") {
+            return array("ok" => false, "mensaje" => "Indique el concepto de la compensación", "creados" => $creados, "errores" => $errores);
+        }
+        if (function_exists("mb_substr")) {
+            $concepto = mb_substr($concepto, 0, 120, "UTF-8");
+        } else {
+            $concepto = substr($concepto, 0, 120);
+        }
 
         if (!is_array($codTrabajadores) || count($codTrabajadores) === 0) {
             return array("ok" => false, "mensaje" => "Seleccione al menos un trabajador", "creados" => $creados, "errores" => $errores);
@@ -2705,12 +2727,32 @@ class ControladorTalleres
 
         $fechaFeriado = trim((string) $fechaFeriado);
         if ($fechaFeriado === "" || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFeriado)) {
-            return array("ok" => false, "mensaje" => "Fecha de feriado inválida", "creados" => $creados, "errores" => $errores);
+            return array("ok" => false, "mensaje" => "Fecha inválida", "creados" => $creados, "errores" => $errores);
         }
 
         date_default_timezone_set("America/Lima");
         $hora = date("G:i:s");
         $fechaTicket = $fechaFeriado . " " . $hora;
+
+        $usaPromedio = ($tipo === "dia_promedio" || $tipo === "medio_promedio");
+        $quincena = null;
+        $promedios = array();
+
+        if ($usaPromedio) {
+            $quincena = ModeloTrabajador::mdlQuincenaAnterior($fechaFeriado);
+            if (!$quincena) {
+                return array(
+                    "ok" => false,
+                    "mensaje" => "No hay quincena registrada anterior a la fecha del feriado",
+                    "creados" => $creados,
+                    "errores" => $errores
+                );
+            }
+            $promedios = ModeloTrabajador::mdlPromedioDiarioProduccion(
+                $quincena["inicio"],
+                $quincena["fin"]
+            );
+        }
 
         $pdoCheck = Conexion::conectar()->prepare(
             "SELECT od.precio_doc
@@ -2725,7 +2767,7 @@ class ControladorTalleres
         if (!$opDetalle) {
             return array(
                 "ok" => false,
-                "mensaje" => "Falta configurar operación 832 FERIADO en modelo C001. Ejecute docs/sql/operacion-feriado-832.sql",
+                "mensaje" => "Falta configurar operación 832 COMPENSACION en modelo C001. Ejecute docs/sql/compensacion-dia-concepto.sql",
                 "creados" => $creados,
                 "errores" => $errores
             );
@@ -2750,12 +2792,42 @@ class ControladorTalleres
             }
 
             $sueldo = isset($trab["sueldo_total"]) ? (float) $trab["sueldo_total"] : 0;
-            if ($sueldo <= 0) {
-                $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Sin sueldo total");
-                continue;
+            $diaSueldo = $sueldo > 0 ? round($sueldo / 30, 2) : 0;
+            $total = isset($promedios[$codTra]) ? round((float) $promedios[$codTra], 2) : 0;
+            $diaPromedio = ($total > 0 && $diasTrabajados > 0)
+                ? round($total / $diasTrabajados, 2)
+                : 0;
+
+            if ($tipo === "dia_sueldo") {
+                if ($sueldo <= 0) {
+                    $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Sin sueldo total");
+                    continue;
+                }
+                $monto = $diaSueldo;
+                $base = $sueldo;
+            } elseif ($tipo === "medio_sueldo") {
+                if ($sueldo <= 0) {
+                    $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Sin sueldo total");
+                    continue;
+                }
+                $monto = round($diaSueldo / 2, 2);
+                $base = $sueldo;
+            } elseif ($tipo === "dia_promedio") {
+                if ($total <= 0) {
+                    $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Sin total en quincena pasada");
+                    continue;
+                }
+                $monto = $diaPromedio;
+                $base = $total;
+            } else {
+                if ($total <= 0) {
+                    $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Sin total en quincena pasada");
+                    continue;
+                }
+                $monto = round($diaPromedio / 2, 2);
+                $base = $total;
             }
 
-            $monto = round($sueldo / 30, 2);
             $cantidad = round($monto * 12, 2);
             if ($cantidad <= 0) {
                 $errores[] = array("cod_tra" => $codTra, "nombre" => $nombre, "motivo" => "Cantidad calculada inválida");
@@ -2787,6 +2859,7 @@ class ControladorTalleres
                 "usuario" => $usuario,
                 "articulo" => $articulo,
                 "operacion" => $operacion,
+                "concepto" => $concepto,
                 "cantidad" => $cantidadStr,
                 "monto" => $montoStr,
                 "editarBarra" => $codigoBarra,
@@ -2805,6 +2878,9 @@ class ControladorTalleres
                 "cod_tra" => $codTra,
                 "nombre" => $nombre,
                 "sueldo_total" => round($sueldo, 2),
+                "base_calculo" => $base,
+                "tipo" => $tipo,
+                "concepto" => $concepto,
                 "monto" => $monto,
                 "cantidad" => $cantidad,
                 "codigo" => $codigoBarra
@@ -2813,8 +2889,8 @@ class ControladorTalleres
 
         $ok = count($creados) > 0;
         $mensaje = $ok
-            ? ("Se crearon " . count($creados) . " ticket(s) de feriado")
-            : "No se creó ningún ticket de feriado";
+            ? ("Se crearon " . count($creados) . " ticket(s) de compensación")
+            : "No se creó ningún ticket de compensación";
 
         if (count($errores) > 0) {
             $mensaje .= ". Errores: " . count($errores);
@@ -2824,7 +2900,10 @@ class ControladorTalleres
             "ok" => $ok,
             "mensaje" => $mensaje,
             "creados" => $creados,
-            "errores" => $errores
+            "errores" => $errores,
+            "tipo" => $tipo,
+            "concepto" => $concepto,
+            "quincena" => $quincena
         );
     }
 

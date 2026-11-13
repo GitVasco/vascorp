@@ -40,7 +40,7 @@
         </button>
 
         <button class="btn btn-info" data-toggle="modal" data-target="#modalCrearFeriado">
-        <i class="fa fa-calendar"></i> Crear feriado
+        <i class="fa fa-calendar"></i> Compensar día
         </button>
 
         <button class="btn btn-success btnCrearTicketOriginal" data-toggle="modal" data-target="#modalCrearTicketOriginal" > 
@@ -859,25 +859,50 @@ MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
 
         <div class="modal-header" style="background:#3c8dbc; color:white">
           <button type="button" class="close" data-dismiss="modal">&times;</button>
-          <h4 class="modal-title">Crear compensación feriado (832)</h4>
+          <h4 class="modal-title">Compensar día (832)</h4>
         </div>
+
+        <style>
+          #modalCrearFeriado .bootstrap-select > .dropdown-toggle {
+            height: 46px;
+            padding: 10px 16px;
+            font-size: 18px;
+            line-height: 1.3333333;
+            border-radius: 6px;
+          }
+          #modalCrearFeriado .bootstrap-select .filter-option {
+            line-height: 24px;
+          }
+          #modalCrearFeriado #fechaFeriado,
+          #modalCrearFeriado #conceptoFeriado,
+          #modalCrearFeriado #diasPromedioFeriado,
+          #modalCrearFeriado #buscarTrabajadorFeriado {
+            height: 46px;
+          }
+        </style>
 
         <div class="modal-body">
           <div class="box-body">
 
-            <div class="form-group col-lg-4">
-              <label>Fecha feriado</label>
-              <div class="input-group">
-                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+            <div class="row" style="margin-left:0;margin-right:0;">
+              <div class="form-group col-md-4" style="padding-right:15px;padding-left:0;">
+                <label>Fecha</label>
                 <input type="date" class="form-control input-lg" id="fechaFeriado" required>
               </div>
-            </div>
 
-            <div class="form-group col-lg-8">
-              <label>Sector</label>
-              <div class="input-group">
-                <span class="input-group-addon"><i class="fa fa-building"></i></span>
-                <select class="form-control input-lg selectpicker" id="sectorFeriado" data-live-search="true" title="Seleccionar sector">
+              <div class="form-group col-md-4" style="padding-right:15px;padding-left:15px;">
+                <label>Tipo de monto</label>
+                <select class="form-control input-lg selectpicker" id="tipoCompensacionFeriado" data-width="100%" data-style="btn-default" title="Tipo de monto">
+                  <option value="dia_sueldo">Día de sueldo</option>
+                  <option value="medio_sueldo">Medio día de sueldo</option>
+                  <option value="dia_promedio">Promedio quincena pasada</option>
+                  <option value="medio_promedio">Medio promedio quincena pasada</option>
+                </select>
+              </div>
+
+              <div class="form-group col-md-4" style="padding-right:0;padding-left:15px;">
+                <label>Sector</label>
+                <select class="form-control input-lg selectpicker" id="sectorFeriado" data-live-search="true" data-width="100%" data-style="btn-default" title="Seleccionar sector">
                   <option value="">Seleccionar sector</option>
                   <?php
                     $sectoresFeriado = ControladorSectores::ctrMostrarSectores(null);
@@ -891,14 +916,31 @@ MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
               </div>
             </div>
 
-            <div class="form-group col-lg-12">
-              <p class="help-block" style="margin-bottom:8px">
-                Monto = ROUND(sueldo total ÷ 30, 2). Operación <b>832 FERIADO</b>. El ticket queda asignado y terminado.
-              </p>
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" id="checkTodosFeriado"> Seleccionar todos
-                </label>
+            <div class="row" style="margin-left:0;margin-right:0;">
+              <div class="form-group col-md-8" style="padding-right:15px;padding-left:0;">
+                <label>Concepto (se muestra como operación)</label>
+                <input type="text" class="form-control input-lg" id="conceptoFeriado" maxlength="120" placeholder="Ej. Feriado 28 julio, Compensación media jornada">
+              </div>
+
+              <div class="form-group col-md-4" id="grupoDiasPromedioFeriado" style="padding-right:0;padding-left:15px;display:none;">
+                <label>Días trabajados</label>
+                <input type="number" class="form-control input-lg" id="diasPromedioFeriado" min="1" max="31" step="1" placeholder="Ej. 12">
+                <p class="help-block" style="margin:4px 0 0;">Días que trabajaron (para ÷ el Total)</p>
+              </div>
+            </div>
+
+            <div class="form-group col-lg-12" style="padding-left:0;padding-right:0;">
+              <div class="row" style="margin:0 0 8px 0;">
+                <div class="col-md-6" style="padding-left:0;">
+                  <div class="checkbox" style="margin-top:10px;">
+                    <label>
+                      <input type="checkbox" id="checkTodosFeriado"> Seleccionar todos
+                    </label>
+                  </div>
+                </div>
+                <div class="col-md-6" style="padding-right:0;">
+                  <input type="text" class="form-control" id="buscarTrabajadorFeriado" placeholder="Buscar trabajador o código...">
+                </div>
               </div>
               <div class="table-responsive" style="max-height:360px; overflow-y:auto">
                 <table class="table table-bordered table-striped" id="tablaTrabajadoresFeriado" width="100%">
@@ -907,7 +949,7 @@ MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
                       <th style="width:40px"></th>
                       <th>Código</th>
                       <th>Trabajador</th>
-                      <th>Sueldo</th>
+                      <th id="thBaseFeriado">Sueldo</th>
                       <th>Monto</th>
                       <th>Cantidad</th>
                     </tr>
@@ -919,6 +961,9 @@ MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
                   </tbody>
                 </table>
               </div>
+              <p class="help-block" id="ayudaFeriado" style="margin:10px 0 0;">
+                Monto = sueldo ÷ 30. Operación <b>832</b>; el concepto reemplaza el nombre.
+              </p>
             </div>
 
           </div>
@@ -926,7 +971,7 @@ MODAL CAMBIAR TALLER DE UN BLOQUE (envío a taller equivocado)
 
         <div class="modal-footer">
           <button type="button" class="btn btn-danger pull-left" data-dismiss="modal">Salir</button>
-          <button type="button" class="btn btn-primary" id="btnGuardarFeriado">Crear feriados</button>
+          <button type="button" class="btn btn-primary" id="btnGuardarFeriado">Crear compensación</button>
         </div>
 
     </div>

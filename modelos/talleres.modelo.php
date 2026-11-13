@@ -22,7 +22,7 @@ class ModeloTalleres
                                                             a.color,
                                                             a.talla,
                                                             et.cod_operacion,
-                                                            o.nombre AS nom_operacion,
+                                                            COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
                                                             et.trabajador AS cod_trabajador,
                                                             CONCAT(
                                                             t.nom_tra,
@@ -59,7 +59,7 @@ class ModeloTalleres
             a.nombre,
             a.color,
             a.talla,
-            o.nombre AS nom_operacion
+            COALESCE(NULLIF(TRIM(t.concepto), ''), o.nombre) AS nom_operacion
         FROM
           entallerjf  t
           LEFT JOIN articulojf a
@@ -96,7 +96,7 @@ class ModeloTalleres
               ' ',
               t.ape_mat_tra
             ) AS trabajador,
-            CONCAT(et.cod_operacion, ' - ', o.nombre) AS operacion,
+            CONCAT(et.cod_operacion, ' - ', COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre)) AS operacion,
             CONCAT(a.modelo, ' - ', a.color, ' -T', a.talla) AS articulo,
             et.cantidad,
             et.estado,
@@ -140,7 +140,7 @@ class ModeloTalleres
                                                         ' ',
                                                         t.ape_mat_tra
                                                         ) AS trabajador,
-                                                        CONCAT(et.cod_operacion, ' - ', o.nombre) AS operacion,
+                                                        CONCAT(et.cod_operacion, ' - ', COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre)) AS operacion,
                                                         CONCAT(a.modelo, ' - ', a.color, ' -T', a.talla) AS articulo,
                                                         et.cantidad,
                                                         et.estado,
@@ -184,7 +184,7 @@ class ModeloTalleres
                                                       a.color,
                                                       a.talla,
                                                       et.cod_operacion,
-                                                      o.nombre AS nom_operacion,
+                                                      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
                                                       et.trabajador AS cod_trabajador,
                                                       CONCAT(
                                                         t.nom_tra,
@@ -618,8 +618,9 @@ class ModeloTalleres
     }
 
     /*
-     * Ticket feriado terminado: total_precio = monto (2 decimales).
+     * Ticket compensación día terminado: total_precio = monto (2 decimales).
      * cantidad = monto * 12 (con precio_doc = 1).
+     * concepto reemplaza el nombre visible de la operación 832.
      */
     static public function mdlIngresarTallerFeriado($datos)
     {
@@ -628,6 +629,7 @@ class ModeloTalleres
       id_cabecera,
       articulo,
       cod_operacion,
+      concepto,
       cantidad,
       usuario,
       total_precio,
@@ -642,6 +644,7 @@ class ModeloTalleres
       :codigo,
       a.articulo,
       od.cod_operacion,
+      :concepto,
       :cantidad,
       :usuario,
       :monto,
@@ -659,6 +662,7 @@ class ModeloTalleres
 
         $stmt->bindParam(":articulo", $datos["articulo"], PDO::PARAM_STR);
         $stmt->bindParam(":codigo", $datos["codigo"], PDO::PARAM_INT);
+        $stmt->bindParam(":concepto", $datos["concepto"], PDO::PARAM_STR);
         $stmt->bindParam(":cantidad", $datos["cantidad"], PDO::PARAM_STR);
         $stmt->bindParam(":usuario", $datos["usuario"], PDO::PARAM_STR);
         $stmt->bindParam(":monto", $datos["monto"], PDO::PARAM_STR);
@@ -697,7 +701,7 @@ class ModeloTalleres
       a.talla,
       et.fecha_terminado,
       et.cod_operacion,
-      o.nombre AS nom_operacion,
+      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
       et.trabajador AS cod_trabajador,
       CONCAT(
       t.nom_tra,
@@ -736,7 +740,7 @@ class ModeloTalleres
       a.talla,
       et.fecha_terminado,
       et.cod_operacion,
-      o.nombre AS nom_operacion,
+      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
       et.trabajador AS cod_trabajador,
       CONCAT(
       t.nom_tra,
@@ -785,7 +789,7 @@ class ModeloTalleres
         a.talla,
         et.cod_operacion,
         et.fecha_terminado,
-        o.nombre AS nom_operacion,
+        COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
         et.trabajador AS cod_trabajador,
         CONCAT(
         t.nom_tra,
@@ -819,7 +823,7 @@ class ModeloTalleres
         a.talla,
         et.fecha_terminado,
         et.cod_operacion,
-        o.nombre AS nom_operacion,
+        COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
         et.trabajador AS cod_trabajador,
         CONCAT(
         t.nom_tra,
@@ -899,7 +903,7 @@ class ModeloTalleres
       a.color,
       a.talla,
       et.cod_operacion,
-      o.nombre AS nom_operacion,
+      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
       et.trabajador AS cod_trabajador,
       et.fecha_proceso,
       et.fecha_terminado,
@@ -947,7 +951,7 @@ class ModeloTalleres
       a.color,
       a.talla,
       et.cod_operacion,
-      o.nombre AS nom_operacion,
+      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
       et.trabajador AS cod_trabajador,
       et.fecha_proceso,
       et.fecha_terminado,
@@ -1006,7 +1010,7 @@ class ModeloTalleres
         a.color,
         a.talla,
         et.cod_operacion,
-        o.nombre AS nom_operacion,
+        COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
         et.trabajador AS cod_trabajador,
         et.fecha_proceso,
         et.fecha_terminado,
@@ -1050,7 +1054,7 @@ class ModeloTalleres
         a.color,
         a.talla,
         et.cod_operacion,
-        o.nombre AS nom_operacion,
+        COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
         et.trabajador AS cod_trabajador,
         et.fecha_proceso,
         et.fecha_terminado,
@@ -1103,7 +1107,7 @@ class ModeloTalleres
                                                       a.color,
                                                       a.talla,
                                                       et.cod_operacion,
-                                                      o.nombre AS nom_operacion,
+                                                      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
                                                       et.trabajador AS cod_trabajador,
                                                       CONCAT(
                                                         t.nom_tra,
@@ -2543,7 +2547,7 @@ class ModeloTalleres
                                                           a.color,
                                                           a.talla,
                                                           et.cod_operacion,
-                                                          o.nombre AS nom_operacion,
+                                                          COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
                                                           et.trabajador AS cod_trabajador,
                                                           CONCAT(
                                                             t.nom_tra,
@@ -2590,7 +2594,7 @@ class ModeloTalleres
                                                           a.color,
                                                           a.talla,
                                                           et.cod_operacion,
-                                                          o.nombre AS nom_operacion,
+                                                          COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
                                                           et.trabajador AS cod_trabajador,
                                                           CONCAT(
                                                             t.nom_tra,
@@ -2641,7 +2645,7 @@ class ModeloTalleres
                                                       a.color,
                                                       a.talla,
                                                       et.cod_operacion,
-                                                      o.nombre AS nom_operacion,
+                                                      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
                                                       et.trabajador AS cod_trabajador,
                                                       CONCAT(
                                                         t.nom_tra,
@@ -2694,7 +2698,7 @@ class ModeloTalleres
       a.color,
       a.talla,
       et.cod_operacion,
-      o.nombre AS nom_operacion,
+      COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
       et.cantidad,
       DATE(et.fecha) AS fecha,
       et.estado,
@@ -2732,7 +2736,7 @@ class ModeloTalleres
         a.color,
         a.talla,
         et.cod_operacion,
-        o.nombre AS nom_operacion,
+        COALESCE(NULLIF(TRIM(et.concepto), ''), o.nombre) AS nom_operacion,
         et.cantidad,
         DATE(et.fecha) AS fecha,
         et.estado,
