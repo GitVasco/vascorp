@@ -422,13 +422,18 @@ $(".tablaQuincena, .box").on("click", ".btnReportePagosTrusasProduccion", functi
     fin = $(this).attr("fin");
     id = $(this).attr("id");
 
-    window.location =
+    var urlResumen =
         "vistas/reportes_excel/rpt_pagos_trusas_produccion.php?inicio=" +
         inicio +
         "&fin=" +
         fin +
         "&id=" +
         id;
+    var sectorResumen = localStorage.getItem("sectorTra");
+    if (sectorResumen && sectorResumen !== "null") {
+        urlResumen += "&sector=" + encodeURIComponent(sectorResumen);
+    }
+    window.location = urlResumen;
 });
 
 /*

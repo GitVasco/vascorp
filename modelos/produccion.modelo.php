@@ -1073,8 +1073,12 @@ class ModeloProduccion
       $filasMap[$cod]['total'] += $monto;
     }
 
-    foreach ($filasMap as &$fila) {
+    foreach ($filasMap as $cod => &$fila) {
       $fila['total'] = round($fila['total'], 2);
+      /* Mismo criterio que el resumen/detalle Excel: solo trabajadores con total > 0 */
+      if ($fila['total'] <= 0) {
+        unset($filasMap[$cod]);
+      }
     }
     unset($fila);
 
@@ -1092,8 +1096,7 @@ class ModeloProduccion
               DAY(et.fecha_terminado) AS dia,
               SUM(et.total_precio) AS monto
             " . self::sqlFromWherePagosTrusas($sector) . "
-            GROUP BY et.trabajador, t.nom_tra, t.ape_pat_tra, DAY(et.fecha_terminado)
-            HAVING SUM(et.total_precio) > 0";
+            GROUP BY et.trabajador, t.nom_tra, t.ape_pat_tra, DAY(et.fecha_terminado)";
 
     $stmt = Conexion::conectar()->prepare($sql);
     $stmt->bindParam(":inicio", $inicio, PDO::PARAM_STR);
@@ -2316,7 +2319,7 @@ class ModeloProduccion
         t.sector,
         CONCAT(t.nom_tra, ' ', t.ape_pat_tra, ' ', t.ape_mat_tra) AS trabajador,
         et.cod_operacion AS op,
-        MAX(od.precio_doc) AS pre,
+        MAX((SELECT od.precio_doc FROM operaciones_detallejf od WHERE od.cod_operacion = et.cod_operacion AND od.modelo = a.modelo LIMIT 1)) AS pre,
         o.nombre,
         a.modelo AS cod_modelo,
         a.cod_color AS cc,
@@ -2335,16 +2338,14 @@ class ModeloProduccion
       FROM entallerjf et
       LEFT JOIN articulojf a ON et.articulo = a.articulo
       LEFT JOIN operacionesjf o ON et.cod_operacion = o.codigo
-      LEFT JOIN trabajadorjf t ON et.trabajador = t.cod_tra
-      LEFT JOIN operaciones_detallejf od ON et.cod_operacion = od.cod_operacion AND a.modelo = od.modelo
+      INNER JOIN trabajadorjf t ON et.trabajador = t.cod_tra AND t.cod_tip_tra IN (1, 2)
       LEFT JOIN modelojf modj ON a.modelo = modj.modelo
       LEFT JOIN (
         SELECT DISTINCT codigo, descripcion
         FROM meses
         WHERE ano = '2020'
       ) mes_tbl ON MONTH(et.fecha_terminado) = mes_tbl.codigo
-      WHERE et.estado = '3'
-        AND (COALESCE(modj.tipo, '') NOT IN ('BRASIER', 'SEAMLESS') OR modj.modelo IN ('10411', '10412', '10413'))
+      WHERE (COALESCE(modj.tipo, '') NOT IN ('BRASIER', 'SEAMLESS') OR modj.modelo IN ('10411', '10412', '10413'))
         AND et.fecha_terminado >= :inicio
         AND et.fecha_terminado < DATE_ADD(:fin, INTERVAL 1 DAY)
         AND et.trabajador = :trabajador

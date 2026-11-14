@@ -5,6 +5,10 @@ date_default_timezone_set('America/Lima');
 $inicio = isset($_GET["inicio"]) ? $_GET["inicio"] : "";
 $fin = isset($_GET["fin"]) ? $_GET["fin"] : "";
 $id = isset($_GET["id"]) ? (int) $_GET["id"] : 0;
+$sector = isset($_GET["sector"]) ? $_GET["sector"] : null;
+if ($sector === "null" || $sector === "") {
+    $sector = null;
+}
 
 include "../reportes_excel/Classes/PHPExcel.php";
 require_once "../../modelos/produccion.modelo.php";
@@ -442,7 +446,7 @@ $objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setHorizonta
 $objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setVertical(PHPExcel_Style_Alignment::VERTICAL_CENTER);
 $objPHPExcel->getActiveSheet()->getStyle("J$fila")->getAlignment()->setWrapText(true);
 
-$filasDetalle = ControladorProduccion::ctrRptPagosTrusasProduccionDetalle($inicio, $fin);
+$filasDetalle = ControladorProduccion::ctrRptPagosTrusasProduccionDetalle($inicio, $fin, $sector);
 
 $sumProduccion = 0;
 $sumBonos = 0;

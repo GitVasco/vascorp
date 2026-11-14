@@ -471,9 +471,9 @@ class ControladorProduccion
         return ModeloProduccion::mdlRptPagosTrusasProduccionCabecera($inicio, $fin);
     }
 
-    static public function ctrRptPagosTrusasProduccionDetalle($inicio, $fin)
+    static public function ctrRptPagosTrusasProduccionDetalle($inicio, $fin, $sector = null)
     {
-        return ModeloProduccion::mdlRptPagosTrusasProduccionDetalle($inicio, $fin);
+        return ModeloProduccion::mdlRptPagosTrusasProduccionDetalle($inicio, $fin, $sector);
     }
 
     static public function ctrRptDetalleProduccionTrabajadorInfo($inicio, $fin, $trabajador)
