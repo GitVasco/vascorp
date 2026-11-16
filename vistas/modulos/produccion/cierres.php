@@ -61,15 +61,16 @@
         <input type="hidden" value="<?= $_SESSION["perfil"]; ?>" id="perfilOculto">
         <input type="hidden" value="<?= $_GET["ruta"]; ?>" id="rutaAcceso">
 
+        <?php $cmTabManuales = (isset($_GET["tab"]) && $_GET["tab"] === "manuales"); ?>
         <div class="nav-tabs-custom">
           <ul class="nav nav-tabs">
-            <li class="active"><a href="#tabCierres" data-toggle="tab"><i class="fa fa-list"></i> Cierres</a></li>
-            <li><a href="#tabCierresManuales" data-toggle="tab"><i class="fa fa-lock"></i> Cierres manuales</a></li>
+            <li class="<?= $cmTabManuales ? "" : "active"; ?>"><a href="#tabCierres" data-toggle="tab" data-cm-tab="cierres"><i class="fa fa-list"></i> Cierres</a></li>
+            <li class="<?= $cmTabManuales ? "active" : ""; ?>"><a href="#tabCierresManuales" data-toggle="tab" data-cm-tab="manuales"><i class="fa fa-lock"></i> Cierres manuales</a></li>
           </ul>
 
           <div class="tab-content">
 
-            <div class="tab-pane active" id="tabCierres">
+            <div class="tab-pane <?= $cmTabManuales ? "" : "active"; ?>" id="tabCierres">
 
               <table class="table table-bordered table-striped dt-responsive tablaCierres" width="100%">
 
@@ -96,7 +97,7 @@
 
             </div>
 
-            <div class="tab-pane" id="tabCierresManuales">
+            <div class="tab-pane <?= $cmTabManuales ? "active" : ""; ?>" id="tabCierresManuales">
 
               <div class="form-inline" style="margin-bottom:10px">
                 <label>Desde</label>
@@ -113,8 +114,9 @@
                     <th>Fecha</th>
                     <th>Usuario</th>
                     <th>Taller</th>
-                    <th>Tipo de falla</th>
+                    <th>Motivo</th>
                     <th>Observación</th>
+                    <th>Estado</th>
                     <th>Líneas</th>
                     <th>Total</th>
                     <th>Acciones</th>
@@ -550,6 +552,7 @@ MODAL DETALLE DE CIERRE MANUAL
               <th>Modelo</th>
               <th>Color</th>
               <th>Talla</th>
+              <th>Motivo</th>
               <th class="text-right">Saldo antes</th>
               <th class="text-right">Cerrado</th>
             </tr>

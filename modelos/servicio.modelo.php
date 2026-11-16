@@ -2391,15 +2391,22 @@ class ModeloServicios
 
 	/*=============================================
 	CIERRE MANUAL: CIERRA CANTIDADES INDICADAS (transaccional)
-	$items = array(array("id"=>, "cantidad"=>), ...)
+	$items = array(array("id"=>, "cantidad"=>, "falla"=>), ...)
 	Todas las líneas deben ser del taller indicado. Se agrupan bajo un código CM000001.
+	La talla se toma del artículo. El motivo es el de cada prenda. $fecha = Y-m-d.
 	=============================================*/
-	static public function mdlCierreManualServicios($items, $falla, $obs, $usuario, $taller)
+	static public function mdlCierreManualServicios($items, $obs, $usuario, $taller, $fecha)
 	{
 		$pdo = Conexion::conectar();
 		$pdo->beginTransaction();
 
 		try {
+			if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $fecha)) {
+				throw new Exception("Indique una fecha válida");
+			}
+			date_default_timezone_set("America/Lima");
+			$fechaHora = $fecha . " " . date("H:i:s");
+
 			$stmt = $pdo->prepare("SELECT MAX(CAST(SUBSTRING(cierre_codigo, 3) AS UNSIGNED)) FROM servicios_cierre_manual
 				WHERE cierre_codigo LIKE 'CM%' FOR UPDATE");
 			$stmt->execute();
@@ -2416,9 +2423,10 @@ class ModeloServicios
 					continue;
 				}
 
-				$stmt = $pdo->prepare("SELECT sd.codigo, sd.articulo, sd.saldo, sd.cabecera_taller, s.taller
+				$stmt = $pdo->prepare("SELECT sd.codigo, sd.articulo, sd.saldo, sd.cabecera_taller, s.taller, a.talla
 					FROM servicios_detallejf sd
 					INNER JOIN serviciosjf s ON s.codigo = sd.codigo
+					LEFT JOIN articulojf a ON a.articulo = sd.articulo
 					WHERE sd.id = :id AND sd.cerrar = 0 FOR UPDATE");
 				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
 				$stmt->execute();
@@ -2469,21 +2477,32 @@ class ModeloServicios
 					$stmt->closeCursor();
 				}
 
-				// registro del cierre
+				$talla = mb_substr(trim(isset($d["talla"]) ? (string) $d["talla"] : ""), 0, 20);
+				$motivo = trim(isset($it["falla"]) ? (string) $it["falla"] : "");
+				if ($motivo === "") {
+					throw new Exception("Servicio " . $d["codigo"] . " / " . $d["articulo"] . ": indique el motivo");
+				}
+
+				// registro del cierre (talla del artículo + motivo de esta prenda)
 				$stmt = $pdo->prepare("INSERT INTO servicios_cierre_manual
-					(cierre_codigo, taller, detalle_id, codigo, articulo, cantidad, saldo_antes, motivo, obs, usuario, fecha)
-					VALUES (:cierre, :taller, :id, :codigo, :articulo, :cant, :saldo, :motivo, :obs, :usuario, NOW())");
+					(cierre_codigo, taller, detalle_id, codigo, articulo, talla, cantidad, saldo_antes, motivo, obs, usuario, fecha)
+					VALUES (:cierre, :taller, :id, :codigo, :articulo, :talla, :cant, :saldo, :motivo, :obs, :usuario, :fecha)");
 				$stmt->bindValue(":cierre", $cierreCodigo, PDO::PARAM_STR);
 				$stmt->bindValue(":taller", $taller, PDO::PARAM_STR);
 				$stmt->bindValue(":id", $id, PDO::PARAM_INT);
 				$stmt->bindValue(":codigo", $d["codigo"], PDO::PARAM_STR);
 				$stmt->bindValue(":articulo", $d["articulo"], PDO::PARAM_STR);
+				$stmt->bindValue(":talla", $talla, PDO::PARAM_STR);
 				$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
 				$stmt->bindValue(":saldo", $saldo, PDO::PARAM_INT);
-				$stmt->bindValue(":motivo", $falla, PDO::PARAM_STR);
+				$stmt->bindValue(":motivo", $motivo, PDO::PARAM_STR);
 				$stmt->bindValue(":obs", $obs, PDO::PARAM_STR);
 				$stmt->bindValue(":usuario", $usuario, PDO::PARAM_STR);
-				$stmt->execute();
+				$stmt->bindValue(":fecha", $fechaHora, PDO::PARAM_STR);
+				if (!$stmt->execute()) {
+					$e = $stmt->errorInfo();
+					throw new Exception(isset($e[2]) ? $e[2] : "No se pudo registrar la línea");
+				}
 				$stmt->closeCursor();
 
 				$lineas++;
@@ -2497,8 +2516,14 @@ class ModeloServicios
 			$pdo->commit();
 			return array("ok" => true, "codigo" => $cierreCodigo, "cerrados" => $lineas, "cantidad" => $total);
 		} catch (Exception $e) {
-			$pdo->rollBack();
-			return array("ok" => false, "error" => $e->getMessage());
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+			$msg = $e->getMessage();
+			if (stripos($msg, "Unknown column") !== false && stripos($msg, "talla") !== false) {
+				$msg = "Falta actualizar el cierre manual para guardar la talla. Avise a sistemas.";
+			}
+			return array("ok" => false, "error" => $msg);
 		}
 	}
 
@@ -2512,7 +2537,9 @@ class ModeloServicios
 					COALESCE(cm.cierre_codigo, CONCAT(cm.usuario, '|', cm.fecha)) AS clave,
 					MAX(cm.cierre_codigo) AS cierre_codigo,
 					MAX(cm.fecha) AS fecha, MAX(cm.usuario) AS usuario,
-					MAX(cm.motivo) AS motivo, MAX(cm.obs) AS obs,
+					MAX(cm.motivo) AS motivo, COUNT(DISTINCT cm.motivo) AS motivos_distintos, MAX(cm.obs) AS obs,
+					MAX(cm.anulado) AS anulado, MAX(cm.anulado_por) AS anulado_por,
+					MAX(cm.anulado_en) AS anulado_en, MAX(cm.motivo_anulacion) AS motivo_anulacion,
 					GROUP_CONCAT(DISTINCT CONCAT(COALESCE(cm.taller, s.taller), ' - ', COALESCE(se.nom_sector, '')) SEPARATOR ', ') AS taller,
 					COUNT(*) AS lineas, SUM(cm.cantidad) AS cantidad
 				FROM servicios_cierre_manual cm
@@ -2535,8 +2562,9 @@ class ModeloServicios
 	=============================================*/
 	static public function mdlDetalleCierreManual($clave)
 	{
-		$stmt = Conexion::conectar()->prepare("SELECT cm.codigo, s.guia, cm.articulo, a.modelo, a.nombre, a.color, a.talla,
-					cm.saldo_antes, cm.cantidad
+		$stmt = Conexion::conectar()->prepare("SELECT cm.codigo, s.guia, cm.articulo, a.modelo, a.nombre, a.color,
+					a.talla AS talla_articulo, cm.talla AS talla_cierre, cm.motivo,
+					cm.saldo_antes, cm.cantidad, cm.anulado
 				FROM servicios_cierre_manual cm
 				LEFT JOIN serviciosjf s ON s.codigo = cm.codigo
 				LEFT JOIN articulojf a ON a.articulo = cm.articulo
@@ -2548,5 +2576,123 @@ class ModeloServicios
 			throw new Exception("SQL: " . $e[2]);
 		}
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	CIERRE MANUAL: ANULA UN CIERRE (por código CM…)
+	Devuelve el saldo a la línea del servicio, al stock en servicio
+	y al envío a taller si aplica. Marca el cierre como anulado.
+	=============================================*/
+	static public function mdlAnularCierreManual($cierreCodigo, $motivo, $usuario)
+	{
+		$cierreCodigo = trim((string) $cierreCodigo);
+		$motivo = mb_substr(trim((string) $motivo), 0, 255);
+		$usuario = trim((string) $usuario);
+
+		if ($cierreCodigo === "" || !preg_match('/^CM\d+$/', $cierreCodigo)) {
+			return array("ok" => false, "error" => "Indique un código de cierre válido");
+		}
+		if ($motivo === "") {
+			return array("ok" => false, "error" => "Indique el motivo de anulación");
+		}
+		if ($usuario === "") {
+			return array("ok" => false, "error" => "Sesión no válida");
+		}
+
+		$pdo = Conexion::conectar();
+		$pdo->beginTransaction();
+
+		try {
+			$stmt = $pdo->prepare("SELECT id, detalle_id, articulo, cantidad, anulado
+				FROM servicios_cierre_manual
+				WHERE cierre_codigo = :cierre
+				FOR UPDATE");
+			$stmt->bindValue(":cierre", $cierreCodigo, PDO::PARAM_STR);
+			$stmt->execute();
+			$lineas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+			$stmt->closeCursor();
+
+			if (!$lineas) {
+				throw new Exception("No se encontró el cierre " . $cierreCodigo);
+			}
+			foreach ($lineas as $ln) {
+				if ((int) $ln["anulado"] === 1) {
+					throw new Exception("El cierre " . $cierreCodigo . " ya está anulado");
+				}
+			}
+
+			$total = 0;
+			foreach ($lineas as $ln) {
+				$idCm = (int) $ln["id"];
+				$idDet = (int) $ln["detalle_id"];
+				$cant = (int) $ln["cantidad"];
+				$articulo = $ln["articulo"];
+				if ($cant <= 0) {
+					continue;
+				}
+
+				$stmt = $pdo->prepare("SELECT id, saldo, cerrar, cabecera_taller
+					FROM servicios_detallejf
+					WHERE id = :id
+					FOR UPDATE");
+				$stmt->bindValue(":id", $idDet, PDO::PARAM_INT);
+				$stmt->execute();
+				$d = $stmt->fetch(PDO::FETCH_ASSOC);
+				$stmt->closeCursor();
+
+				if (!$d) {
+					throw new Exception("La línea de servicio del cierre ya no existe (detalle " . $idDet . ")");
+				}
+
+				$nuevoSaldo = (int) $d["saldo"] + $cant;
+				$stmt = $pdo->prepare("UPDATE servicios_detallejf
+					SET saldo = :saldo, cerrar = '0'
+					WHERE id = :id");
+				$stmt->bindValue(":saldo", $nuevoSaldo, PDO::PARAM_INT);
+				$stmt->bindValue(":id", $idDet, PDO::PARAM_INT);
+				$stmt->execute();
+				$stmt->closeCursor();
+
+				$stmt = $pdo->prepare("UPDATE articulojf SET servicio = servicio + :cant WHERE articulo = :articulo");
+				$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
+				$stmt->bindValue(":articulo", $articulo, PDO::PARAM_STR);
+				$stmt->execute();
+				$stmt->closeCursor();
+
+				if (!empty($d["cabecera_taller"])) {
+					$cab = (int) $d["cabecera_taller"];
+					$stmt = $pdo->prepare("UPDATE entaller_cabjf
+						SET saldo = saldo + :cant, estado = '0'
+						WHERE id = :cab");
+					$stmt->bindValue(":cant", $cant, PDO::PARAM_INT);
+					$stmt->bindValue(":cab", $cab, PDO::PARAM_INT);
+					$stmt->execute();
+					$stmt->closeCursor();
+				}
+
+				$stmt = $pdo->prepare("UPDATE servicios_cierre_manual
+					SET anulado = 1, anulado_por = :usuario, anulado_en = NOW(), motivo_anulacion = :motivo
+					WHERE id = :id");
+				$stmt->bindValue(":usuario", $usuario, PDO::PARAM_STR);
+				$stmt->bindValue(":motivo", $motivo, PDO::PARAM_STR);
+				$stmt->bindValue(":id", $idCm, PDO::PARAM_INT);
+				$stmt->execute();
+				$stmt->closeCursor();
+
+				$total += $cant;
+			}
+
+			$pdo->commit();
+			return array("ok" => true, "codigo" => $cierreCodigo, "lineas" => count($lineas), "cantidad" => $total);
+		} catch (Exception $e) {
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+			$msg = $e->getMessage();
+			if (stripos($msg, "Unknown column") !== false && stripos($msg, "anulado") !== false) {
+				$msg = "Falta actualizar el cierre manual para poder anular. Avise a sistemas.";
+			}
+			return array("ok" => false, "error" => $msg);
+		}
 	}
 }

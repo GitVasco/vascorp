@@ -1283,7 +1283,7 @@ CUERPO DOCUMENTO
     <script src="vistas/js/unidadesmedida.js"></script>
     <script src="vistas/js/servicios.js"></script>
     <?php if (isset($_GET["ruta"]) && ($_GET["ruta"] == "cierres" || $_GET["ruta"] == "crear-cierre-manual")) { ?>
-    <script src="vistas/js/cierres-manuales.js?v=4"></script>
+    <script src="vistas/js/cierres-manuales.js?v=10"></script>
     <?php } ?>
     <script src="vistas/js/ordenes-servicio-prod.js?v=8"></script>
     <script src="vistas/js/liquidaciones-servicio-prod.js?v=3"></script>

@@ -3,14 +3,38 @@ require_once "controladores/cierre-manual.config.php";
 ?>
 <style>
     .tablaCierreManualAbiertos th, .tablaCierreManualAbiertos td { white-space: nowrap; vertical-align: middle !important; }
+    .cmLista { height: 460px; overflow-y: auto; overflow-x: hidden; margin-bottom: 10px; }
+    .cmVacio { padding: 28px 16px; text-align: center; color: #888; }
+    .cmFila {
+        border: 1px solid #f3e2c2;
+        border-left: 3px solid #f39c12;
+        border-radius: 3px;
+        background: #fff;
+        margin: 0 0 8px;
+        padding: 8px 10px 10px;
+    }
+    .cmFila.cmIncompleto { border-color: #dd4b39; background: #fff6f5; }
+    .cmFilaHead { display: flex; gap: 8px; align-items: flex-start; }
+    .cmFilaTxt { flex: 1; min-width: 0; }
+    .cmTitulo { font-weight: 600; line-height: 1.25; }
+    .cmMeta { color: #777; font-size: 12px; margin-top: 2px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+    .cmMetaSep { color: #bbb; }
+    .cmFilaCampos { margin-top: 8px; }
+    .cmFila .row { margin-left: -4px; margin-right: -4px; }
+    .cmFila .row > [class*="col-"] { padding-left: 4px; padding-right: 4px; }
+    .cmFilaCampos label { display: block; font-size: 11px; font-weight: 600; color: #555; margin-bottom: 2px; }
+    .cmFilaCampos label .cmReq { color: #dd4b39; }
+    .cmFila .bootstrap-select { width: 100% !important; }
+    .cmFila .bootstrap-select > .dropdown-toggle { padding-right: 28px; }
 </style>
+<script>window.CM_FALLAS = <?= json_encode(cmFallas(), JSON_UNESCAPED_UNICODE); ?>;</script>
 <div class="content-wrapper">
 
     <section class="content-header">
         <h1>Crear cierre manual</h1>
         <ol class="breadcrumb">
             <li><a href="inicio"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li><a href="cierres">Cierres</a></li>
+            <li><a href="cierres?tab=manuales">Cierres</a></li>
             <li class="active">Crear cierre manual</li>
         </ol>
     </section>
@@ -51,7 +75,7 @@ require_once "controladores/cierre-manual.config.php";
                                 <div class="form-group">
                                     <div class="input-group">
                                         <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-                                        <input type="date" class="form-control" value="<?php date_default_timezone_set('America/Lima'); echo date("Y-m-d"); ?>" readonly>
+                                        <input type="date" class="form-control" id="cmFecha" value="<?php date_default_timezone_set('America/Lima'); echo date("Y-m-d"); ?>">
                                     </div>
                                 </div>
 
@@ -75,17 +99,6 @@ require_once "controladores/cierre-manual.config.php";
 
                                 <div class="form-group">
                                     <div class="input-group">
-                                        <span class="input-group-addon"><i class="fa fa-exclamation-triangle"></i></span>
-                                        <select class="form-control input-sm selectpicker" id="cmFalla" data-live-search="true" title="Seleccionar tipo de falla">
-                                            <?php foreach (cmFallas() as $f) { ?>
-                                                <option value="<?= htmlspecialchars($f["codigo"]); ?>"><?= htmlspecialchars($f["codigo"] . " - " . $f["nombre"]); ?></option>
-                                            <?php } ?>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <div class="input-group">
                                         <span class="input-group-addon"><i class="fa fa-comment"></i></span>
                                         <input type="text" class="form-control" id="cmObs" maxlength="255" placeholder="Observación (opcional)">
                                     </div>
@@ -101,16 +114,10 @@ require_once "controladores/cierre-manual.config.php";
                                     </div>
                                 </div>
 
-                                <div class="box box-primary">
-                                    <div class="row">
-                                        <div class="col-xs-6"><label>Artículo</label></div>
-                                        <div class="col-xs-2"><label>Servicio</label></div>
-                                        <div class="col-xs-2"><label>Saldo</label></div>
-                                        <div class="col-xs-2"><label>Cerrar</label></div>
-                                    </div>
+                                <p class="text-muted" style="margin:0 0 8px">Cada prenda lleva su motivo.</p>
+                                <div class="form-group cmLista">
+                                    <div class="cmVacio">Agregue prendas desde la lista de la derecha.<br>En cada una indique el motivo.</div>
                                 </div>
-
-                                <div class="form-group row cmLista" style="height:400px;overflow: scroll; overflow-x:hidden"></div>
 
                                 <div class="row">
                                     <div class="col-xs-6 pull-right">
@@ -138,7 +145,7 @@ require_once "controladores/cierre-manual.config.php";
 
                         <div class="box-footer">
                             <button type="button" class="btn btn-warning pull-right" id="cmGuardar"><i class="fa fa-lock"></i> Guardar cierre manual</button>
-                            <a href="cierres" class="btn btn-danger"><i class="fa fa-times-circle"></i> Cancelar</a>
+                            <a href="cierres?tab=manuales" class="btn btn-danger"><i class="fa fa-times-circle"></i> Cancelar</a>
                         </div>
 
                     </form>
