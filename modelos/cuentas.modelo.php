@@ -850,7 +850,7 @@ class ModeloCuentas
 	MOSTRAR CUENTAS
 	=============================================*/
 
-	static public function mdlMostrarCuentasUnicos($tabla, $item, $valor)
+	static public function mdlMostrarCuentasUnicos($tabla, $item, $valor, $codigoEnvio = null)
 	{
 
 		if ($item != null) {
@@ -864,9 +864,14 @@ class ModeloCuentas
 			  cli.ape_paterno,
 			  cli.ape_materno,
 			  cli.nombres,
-			  cli.documento 
+			  cli.documento,
+			  cli.direccion,
+			  UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
+			  UPPER(TRIM(IFNULL(u.provincia, ''))) AS provincia,
+			  UPPER(TRIM(IFNULL(u.distrito, ''))) AS distrito
 			  FROM $tabla c 
 			LEFT JOIN clientesjf cli ON c.cliente=cli.codigo
+			LEFT JOIN ubigeo u ON cli.ubigeo = u.codigo
 			WHERE c.tip_mov ='+'
 			AND c.tipo_doc = '85'
 			AND c.estado= 'PENDIENTE'
@@ -875,7 +880,8 @@ class ModeloCuentas
 
 			return $stmt->fetch();
 		} else {
-			$stmt = Conexion::conectar()->prepare("SELECT 
+			$codigoEnvio = $codigoEnvio !== null ? trim((string) $codigoEnvio) : "";
+			$sql = "SELECT 
 												c.*,
 												REPLACE(
 												DATE_FORMAT(c.fecha_ven, '%d-%m-%Y'),
@@ -887,29 +893,49 @@ class ModeloCuentas
 												cli.ape_paterno,
 												cli.ape_materno,
 												cli.nombres,
-												cli.documento 
+												cli.documento,
+												cli.direccion,
+												UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
+												UPPER(TRIM(IFNULL(u.provincia, ''))) AS provincia,
+												UPPER(TRIM(IFNULL(u.distrito, ''))) AS distrito
 											FROM
 												cuenta_ctejf c 
 												LEFT JOIN clientesjf cli 
-												ON c.cliente = cli.codigo 
+												ON c.cliente = cli.codigo
+												LEFT JOIN ubigeo u
+												ON cli.ubigeo = u.codigo
 											WHERE c.tip_mov = '+' 
 												AND c.tipo_doc = '85' 
 												AND c.estado = 'PENDIENTE' 
-												AND (
-												c.estado_doc IS NULL 
-												OR c.estado_doc = ''
-												) 
 												AND c.protesta = 0 
 												AND (
 												c.num_unico <> 'Cartera' 
 												OR c.num_unico IS NULL 
 												OR c.num_unico = ''
 												) 
-												AND DATE(c.fecha_ven) > DATE(NOW())");
+												AND DATE(c.fecha_ven) > DATE(NOW())";
 
+			// En edición: incluir también las letras ya del lote (para recuperar el botón Agregar al quitarlas)
+			if ($codigoEnvio !== "") {
+				$sql .= " AND (
+					c.estado_doc IS NULL
+					OR c.estado_doc = ''
+					OR REPLACE(c.num_cta, '-', '') IN (
+						SELECT el.num_cta FROM envio_letrasjf el WHERE el.codigo = :codigoEnvio
+					)
+				)";
+			} else {
+				$sql .= " AND (
+					c.estado_doc IS NULL
+					OR c.estado_doc = ''
+				)";
+			}
 
+			$stmt = Conexion::conectar()->prepare($sql);
+			if ($codigoEnvio !== "") {
+				$stmt->bindParam(":codigoEnvio", $codigoEnvio, PDO::PARAM_STR);
+			}
 			$stmt->execute();
-
 			return $stmt->fetchAll();
 		}
 
@@ -1776,6 +1802,125 @@ class ModeloCuentas
 	CREAR ENVIO LETRA CABECERA
 	=============================================*/
 
+	/*=============================================
+	ÚLTIMO CÓDIGO ENVÍO LETRAS
+	=============================================*/
+	static public function mdlUltimoCodigoEnvioLetra()
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT IFNULL(MAX(CAST(codigo AS UNSIGNED)), 1000) AS ultimo_codigo
+			FROM envio_letra_cabecerajf");
+		$stmt->execute();
+		return $stmt->fetch(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	KPIs ENVÍO LETRAS
+	=============================================*/
+	static public function mdlContarKpisEnvioLetras()
+	{
+		$sql = "SELECT
+				SUM(
+					CASE
+						WHEN c.protesta = 0
+							AND (c.estado_doc IS NULL OR c.estado_doc = '')
+							AND (
+								c.num_unico IS NULL
+								OR c.num_unico = ''
+								OR c.num_unico <> 'Cartera'
+							)
+							AND DATE(c.fecha_ven) > CURDATE()
+						THEN 1 ELSE 0
+					END
+				) AS por_mandar,
+				SUM(
+					CASE
+						WHEN c.estado_doc = '01'
+							AND c.banco = '02'
+							AND c.fecha_envio IS NOT NULL
+							AND TRIM(c.fecha_envio) <> ''
+							AND c.fecha_envio <> '-'
+						THEN 1 ELSE 0
+					END
+				) AS enviadas,
+				SUM(
+					CASE
+						WHEN c.estado_doc = '01'
+							AND c.banco = '02'
+							AND c.fecha_envio IS NOT NULL
+							AND TRIM(c.fecha_envio) <> ''
+							AND c.fecha_envio <> '-'
+							AND (
+								c.num_unico IS NULL
+								OR TRIM(c.num_unico) = ''
+								OR UPPER(TRIM(c.num_unico)) = 'CARTERA'
+							)
+						THEN 1 ELSE 0
+					END
+				) AS sin_num_unico
+			FROM cuenta_ctejf c
+			WHERE c.tip_mov = '+'
+				AND c.tipo_doc = '85'
+				AND c.estado = 'PENDIENTE'";
+
+		$stmt = Conexion::conectar()->prepare($sql);
+		$stmt->execute();
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$row) {
+			return array(
+				"por_mandar" => 0,
+				"enviadas" => 0,
+				"sin_num_unico" => 0
+			);
+		}
+		return array(
+			"por_mandar" => (int) $row["por_mandar"],
+			"enviadas" => (int) $row["enviadas"],
+			"sin_num_unico" => (int) $row["sin_num_unico"]
+		);
+	}
+
+	/**
+	 * Dirección / ubigeo del aceptante para planilla bancaria, por id de cuenta.
+	 * @param array $ids
+	 * @return array indexado por id de cuenta
+	 */
+	static public function mdlDireccionClientesEnvioLetras($ids)
+	{
+		$resultado = array();
+		if (empty($ids) || !is_array($ids)) {
+			return $resultado;
+		}
+
+		$idsLimpios = array();
+		foreach ($ids as $id) {
+			$id = (int) $id;
+			if ($id > 0) {
+				$idsLimpios[$id] = $id;
+			}
+		}
+		if (empty($idsLimpios)) {
+			return $resultado;
+		}
+
+		$in = implode(',', $idsLimpios);
+		$stmt = Conexion::conectar()->prepare("SELECT
+				c.id,
+				cli.direccion,
+				UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
+				UPPER(TRIM(IFNULL(u.provincia, ''))) AS provincia,
+				UPPER(TRIM(IFNULL(u.distrito, ''))) AS distrito
+			FROM cuenta_ctejf c
+			LEFT JOIN clientesjf cli ON c.cliente = cli.codigo
+			LEFT JOIN ubigeo u ON cli.ubigeo = u.codigo
+			WHERE c.id IN ($in)");
+		$stmt->execute();
+		$filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($filas as $fila) {
+			$resultado[$fila['id']] = $fila;
+		}
+		return $resultado;
+	}
+
 	static public function mdlIngresarEnvioLetra($tabla, $datos)
 	{
 
@@ -1821,6 +1966,198 @@ class ModeloCuentas
 
 		$stmt->close();
 		$stmt = null;
+	}
+
+	/*=============================================
+	CABECERA ENVIO LETRA POR ID
+	=============================================*/
+	static public function mdlMostrarEnvioLetraPorId($id)
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT
+				e.*,
+				u.nombre AS nombre_usuario
+			FROM envio_letra_cabecerajf e
+			LEFT JOIN usuariosjf u ON e.usuario = u.id
+			WHERE e.id = :id
+			LIMIT 1");
+		$stmt->bindParam(":id", $id, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	DETALLE ENVIO LETRA (letras del lote)
+	=============================================*/
+	static public function mdlDetalleEnvioLetras($codigo)
+	{
+		$stmt = Conexion::conectar()->prepare("SELECT
+				el.num_cta AS num_cta_envio,
+				c.id AS id_cuenta,
+				c.num_cta,
+				c.fecha_ven,
+				c.saldo,
+				c.monto,
+				c.estado_doc,
+				c.banco,
+				c.fecha_envio,
+				cli.codigo AS cod_cliente,
+				cli.nombre AS cliente_nombre,
+				cli.nombres,
+				cli.ape_paterno,
+				cli.ape_materno,
+				cli.documento,
+				cli.direccion,
+				UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
+				UPPER(TRIM(IFNULL(u.provincia, ''))) AS provincia,
+				UPPER(TRIM(IFNULL(u.distrito, ''))) AS distrito
+			FROM envio_letrasjf el
+			LEFT JOIN cuenta_ctejf c
+				ON REPLACE(c.num_cta, '-', '') = el.num_cta
+				AND c.tipo_doc = '85'
+				AND c.tip_mov = '+'
+			LEFT JOIN clientesjf cli ON c.cliente = cli.codigo
+			LEFT JOIN ubigeo u ON cli.ubigeo = u.codigo
+			WHERE el.codigo = :codigo
+			ORDER BY el.num_cta");
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
+	/*=============================================
+	ACTUALIZAR RUTA ARCHIVO ENVIO LETRA
+	=============================================*/
+	static public function mdlActualizarArchivoEnvioLetra($id, $archivo)
+	{
+		$stmt = Conexion::conectar()->prepare("UPDATE envio_letra_cabecerajf SET archivo = :archivo WHERE id = :id");
+		$stmt->bindParam(":archivo", $archivo, PDO::PARAM_STR);
+		$stmt->bindParam(":id", $id, PDO::PARAM_INT);
+		if ($stmt->execute()) {
+			return "ok";
+		}
+		return "error";
+	}
+
+	/*=============================================
+	ACTUALIZAR CABECERA ENVIO LETRA (editar)
+	=============================================*/
+	static public function mdlActualizarCabeceraEnvioLetra($id, $cantidad, $archivo, $usuario = null)
+	{
+		if ($usuario !== null && $usuario !== '') {
+			$stmt = Conexion::conectar()->prepare("UPDATE envio_letra_cabecerajf
+				SET cantidad = :cantidad, archivo = :archivo, usuario = :usuario
+				WHERE id = :id");
+			$stmt->bindParam(":usuario", $usuario, PDO::PARAM_STR);
+		} else {
+			$stmt = Conexion::conectar()->prepare("UPDATE envio_letra_cabecerajf
+				SET cantidad = :cantidad, archivo = :archivo
+				WHERE id = :id");
+		}
+		$stmt->bindParam(":cantidad", $cantidad, PDO::PARAM_STR);
+		$stmt->bindParam(":archivo", $archivo, PDO::PARAM_STR);
+		$stmt->bindParam(":id", $id, PDO::PARAM_INT);
+		if ($stmt->execute()) {
+			return "ok";
+		}
+		return "error";
+	}
+
+	/*=============================================
+	ELIMINAR DETALLE ENVIO POR CÓDIGO
+	=============================================*/
+	static public function mdlEliminarDetalleEnvioPorCodigo($codigo)
+	{
+		$stmt = Conexion::conectar()->prepare("DELETE FROM envio_letrasjf WHERE codigo = :codigo");
+		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		if ($stmt->execute()) {
+			return "ok";
+		}
+		return "error";
+	}
+
+	/*=============================================
+	REVERTIR CUENTA DE ENVÍO LETRA
+	=============================================*/
+	static public function mdlRevertirCuentaEnvioLetra($idCuenta)
+	{
+		$stmt = Conexion::conectar()->prepare("UPDATE cuenta_ctejf
+			SET fecha_envio = NULL,
+				fecha_cep = NULL,
+				estado_doc = NULL,
+				banco = NULL
+			WHERE id = :id
+				AND tipo_doc = '85'
+				AND tip_mov = '+'");
+		$stmt->bindParam(":id", $idCuenta, PDO::PARAM_INT);
+		if ($stmt->execute()) {
+			return "ok";
+		}
+		return "error";
+	}
+
+	/*=============================================
+	ANULAR ENVIO LETRA (revierte cuentas + borra lote)
+	=============================================*/
+	static public function mdlAnularEnvioLetra($id)
+	{
+		$pdo = Conexion::conectar();
+		$cab = self::mdlMostrarEnvioLetraPorId($id);
+		if (!$cab) {
+			return array("ok" => false, "mensaje" => "No se encontró el envío.");
+		}
+
+		$codigo = $cab["codigo"];
+		$detalle = self::mdlDetalleEnvioLetras($codigo);
+
+		try {
+			$pdo->beginTransaction();
+
+			$stmtRev = $pdo->prepare("UPDATE cuenta_ctejf
+				SET fecha_envio = NULL,
+					fecha_cep = NULL,
+					estado_doc = NULL,
+					banco = NULL
+				WHERE id = :id
+					AND tipo_doc = '85'
+					AND tip_mov = '+'");
+
+			foreach ($detalle as $fila) {
+				if (empty($fila["id_cuenta"])) {
+					continue;
+				}
+				$stmtRev->bindValue(":id", (int) $fila["id_cuenta"], PDO::PARAM_INT);
+				$stmtRev->execute();
+			}
+
+			$stmtDet = $pdo->prepare("DELETE FROM envio_letrasjf WHERE codigo = :codigo");
+			$stmtDet->bindValue(":codigo", $codigo, PDO::PARAM_STR);
+			$stmtDet->execute();
+
+			$stmtCab = $pdo->prepare("DELETE FROM envio_letra_cabecerajf WHERE id = :id");
+			$stmtCab->bindValue(":id", (int) $id, PDO::PARAM_INT);
+			$stmtCab->execute();
+
+			$pdo->commit();
+		} catch (Exception $e) {
+			if ($pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+			return array("ok" => false, "mensaje" => "No se pudo anular el envío.");
+		}
+
+		if (!empty($cab["archivo"])) {
+			$ruta = dirname(__DIR__) . "/" . $cab["archivo"];
+			if (is_file($ruta)) {
+				@unlink($ruta);
+			}
+		}
+
+		return array(
+			"ok" => true,
+			"mensaje" => "Envío anulado. Las letras volvieron a estar disponibles.",
+			"codigo" => $codigo,
+			"cantidad" => count($detalle)
+		);
 	}
 
 	static public function mdlMostrarReporteCobrar($tabla, $orden1, $orden2, $tip_doc, $cli, $vend, $banco, $fin)

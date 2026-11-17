@@ -1834,6 +1834,7 @@
                                         $_GET["ruta"] == "estado-cuenta" ||
                                         $_GET["ruta"] == "ver-envio-letras" ||
                                         $_GET["ruta"] == "envio-letras" ||
+                                        $_GET["ruta"] == "editar-envio-letras" ||
                                         $_GET["ruta"] == "reportes-generales" ||
                                         $_GET["ruta"] == "reportes-generales-v2" ||
                                         $_GET["ruta"] == "notificaciones" ||
@@ -1996,7 +1997,7 @@
                             </a>
                         </li>
 
-                        <li class="<?php if ($_GET["ruta"] == "ver-envio-letras") echo 'active'; ?>">
+                        <li class="<?php if ($_GET["ruta"] == "ver-envio-letras" || $_GET["ruta"] == "envio-letras" || $_GET["ruta"] == "editar-envio-letras") echo 'active'; ?>">
                             <a href="ver-envio-letras">
 
                                 <i class="fa fa-circle-o"></i>

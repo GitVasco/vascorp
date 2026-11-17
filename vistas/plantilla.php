@@ -981,6 +981,7 @@ CUERPO DOCUMENTO
                 $_GET["ruta"] == "ver-cuentas" ||
                 $_GET["ruta"] == "ver-cuentas-consultar" ||
                 $_GET["ruta"] == "envio-letras" ||
+                $_GET["ruta"] == "editar-envio-letras" ||
                 $_GET["ruta"] == "ver-envio-letras" ||
                 $_GET["ruta"] == "abonos" ||
                 $_GET["ruta"] == "cancelar-abonos" ||

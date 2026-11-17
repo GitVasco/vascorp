@@ -1,10 +1,11 @@
 <?php
 
 /**
- * Script para regenerar archivos TXT de letras
+ * Script para regenerar planillas Excel de letras (formato BCP Cobranza Libre).
  *
- * Genera los archivos .txt a partir de envio_letra_cabecerajf y envio_letrasjf
- * cuando el TXT falló al crearse pero los registros ya están en la BD.
+ * Genera los archivos .xls a partir de envio_letra_cabecerajf y envio_letrasjf
+ * cuando el Excel falló al crearse pero los registros ya están en la BD.
+ * También puede regenerar envíos antiguos (.txt / .xlsx).
  *
  * Uso: php scripts/regenerar_txt_letras.php [codigo] [fecha]
  *   - Sin argumentos: regenera TODOS los envíos que tengan archivo en BD
@@ -19,6 +20,7 @@ ini_set('display_errors', 1);
 
 $baseDir = dirname(__DIR__);
 require_once $baseDir . '/modelos/conexion.php';
+require_once $baseDir . '/controladores/envio-letras-excel.lib.php';
 
 function eliminarTildes($cadena)
 {
@@ -56,11 +58,10 @@ function eliminarTildes($cadena)
     return $cadena;
 }
 
-function generarTxtLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
+function generarExcelLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
 {
     $pdo = Conexion::conectar();
 
-    // Obtener cabeceras de envío
     $sql = "SELECT id, codigo, fecha, archivo FROM envio_letra_cabecerajf WHERE archivo IS NOT NULL AND archivo != ''";
     $params = array();
 
@@ -94,9 +95,11 @@ function generarTxtLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
 
     foreach ($cabeceras as $cab) {
         $codigo = $cab['codigo'];
-        $rutaArchivo = $baseDir . '/' . $cab['archivo'];
+        $archivoBd = $cab['archivo'];
+        $codigoArchivo = preg_replace('/[^0-9A-Za-z]/', '', (string) $codigo);
+        $rutaRel = 'vistas/letras/L' . $codigoArchivo . '_' . date('YmdHis') . '.xls';
+        $rutaArchivo = $baseDir . '/' . $rutaRel;
 
-        // Obtener detalle de letras para este envío
         $stmt2 = $pdo->prepare("
             SELECT el.num_cta
             FROM envio_letrasjf el
@@ -111,17 +114,11 @@ function generarTxtLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
             continue;
         }
 
-        $file = fopen($rutaArchivo, 'w');
-        if ($file === false) {
-            echo "  [Cod $codigo] ERROR: No se pudo crear archivo: $rutaArchivo\n";
-            continue;
-        }
-
-        $lineasEscritas = 0;
+        $filasExcel = array();
+        $faltan = 0;
         foreach ($detalles as $det) {
             $numCtaLimpio = $det['num_cta'];
 
-            // Obtener datos de cuenta con cliente (tipo_doc 85 = letras)
             $stmt3 = $pdo->prepare("
                 SELECT 
                     c.id,
@@ -131,9 +128,14 @@ function generarTxtLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
                     cli.nombres,
                     cli.ape_paterno,
                     cli.ape_materno,
-                    cli.documento
+                    cli.documento,
+                    cli.direccion,
+                    UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
+                    UPPER(TRIM(IFNULL(u.provincia, ''))) AS provincia,
+                    UPPER(TRIM(IFNULL(u.distrito, ''))) AS distrito
                 FROM cuenta_ctejf c
                 LEFT JOIN clientesjf cli ON c.cliente = cli.codigo
+                LEFT JOIN ubigeo u ON cli.ubigeo = u.codigo
                 WHERE REPLACE(c.num_cta, '-', '') = ?
                 AND c.tipo_doc = '85'
                 AND c.tip_mov = '+'
@@ -148,44 +150,51 @@ function generarTxtLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
             }
 
             $doc = $cuenta['documento'] ? trim($cuenta['documento']) : '';
-            if (strlen($doc) == 11) {
-                $cliente_doc = '6' . $doc;
-            } else {
-                $cliente_doc = '1' . $doc;
+            $tipoDoc = (strlen($doc) == 11) ? 6 : 1;
+
+            $direccion = eliminarTildes($cuenta['direccion'] ? trim($cuenta['direccion']) : '');
+            $departamento = eliminarTildes($cuenta['departamento'] ? trim($cuenta['departamento']) : '');
+            $provincia = eliminarTildes($cuenta['provincia'] ? trim($cuenta['provincia']) : '');
+            $distrito = eliminarTildes($cuenta['distrito'] ? trim($cuenta['distrito']) : '');
+
+            if ($direccion === '' || $departamento === '' || $provincia === '' || $distrito === '') {
+                $faltan++;
             }
 
-            $cliente_nom = eliminarTildes($cuenta['nombres'] ? $cuenta['nombres'] : '');
-            $cliente_pat = eliminarTildes($cuenta['ape_paterno'] ? $cuenta['ape_paterno'] : '');
-            $cliente_mat = eliminarTildes($cuenta['ape_materno'] ? $cuenta['ape_materno'] : '');
-
-            $salto1 = 72;
-            $salto2 = 24;
-            $salto3 = 24;
-            $salto4 = 16;
-            $salto5 = 12;
-            $monto = number_format($cuenta['saldo'], 2, '.', '');
-            $salto6 = (strlen($monto) == 7) ? 13 : 14;
-
-            $fechaVen = $cuenta['fecha_ven'];
-            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $fechaVen, $m)) {
-                $fechaTxt = $m[3] . $m[2] . substr($m[1], 2);
-            } else {
-                $fechaTxt = str_replace(array('-', '/'), '', $fechaVen);
-            }
-
-            $linea = str_pad($cliente_nom, $salto1) .
-                str_pad($cliente_pat, $salto2) .
-                str_pad($cliente_mat, $salto3) .
-                str_pad($cliente_doc, $salto4) .
-                str_pad($numCtaLimpio, $salto5) .
-                str_pad($fechaTxt, $salto6) . $monto . PHP_EOL;
-
-            fwrite($file, $linea);
-            $lineasEscritas++;
+            $filasExcel[] = array(
+                'nombre' => eliminarTildes($cuenta['nombres'] ? $cuenta['nombres'] : ''),
+                'ape_paterno' => eliminarTildes($cuenta['ape_paterno'] ? $cuenta['ape_paterno'] : ''),
+                'ape_materno' => eliminarTildes($cuenta['ape_materno'] ? $cuenta['ape_materno'] : ''),
+                'tipo_doc' => $tipoDoc,
+                'num_doc' => $doc,
+                'num_letra' => $numCtaLimpio,
+                'fecha_ven' => EnvioLetrasExcelLib::formatearFecha($cuenta['fecha_ven']),
+                'importe' => $cuenta['saldo'],
+                'direccion' => $direccion,
+                'departamento' => $departamento,
+                'provincia' => $provincia,
+                'distrito' => $distrito
+            );
         }
 
-        fclose($file);
-        echo "  [Cod $codigo] OK: $rutaArchivo ($lineasEscritas líneas)\n";
+        if (empty($filasExcel)) {
+            echo "  [Cod $codigo] Sin filas para Excel, omitiendo.\n";
+            continue;
+        }
+
+        $ok = EnvioLetrasExcelLib::generar($rutaArchivo, $filasExcel);
+        if (!$ok) {
+            echo "  [Cod $codigo] ERROR: No se pudo crear archivo: $rutaArchivo\n";
+            continue;
+        }
+
+        if ($rutaRel !== $archivoBd) {
+            $upd = $pdo->prepare("UPDATE envio_letra_cabecerajf SET archivo = ? WHERE id = ?");
+            $upd->execute(array($rutaRel, $cab['id']));
+        }
+
+        $aviso = $faltan > 0 ? " ($faltan sin dirección completa)" : '';
+        echo "  [Cod $codigo] OK: $rutaArchivo (" . count($filasExcel) . " filas)$aviso\n";
     }
 }
 
@@ -193,25 +202,25 @@ function generarTxtLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
 $codigo = null;
 $fecha = null;
 if (isset($argv[1])) {
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $argv[1])) {
+    if (preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $argv[1])) {
         $fecha = $argv[1];
     } else {
         $codigo = $argv[1];
     }
 }
 if (isset($argv[2])) {
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $argv[2])) {
+    if (preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $argv[2])) {
         $fecha = $argv[2];
     } else {
         $codigo = $argv[2];
     }
 }
 
-echo "Regenerando archivos TXT de letras...\n";
+echo "Regenerando planillas Excel de letras...\n";
 if ($codigo) echo "Filtro código: $codigo\n";
 if ($fecha) echo "Filtro fecha: $fecha\n";
 echo "---\n";
 
-generarTxtLetras($baseDir, $codigo, $fecha);
+generarExcelLetras($baseDir, $codigo, $fecha);
 
 echo "Listo.\n";

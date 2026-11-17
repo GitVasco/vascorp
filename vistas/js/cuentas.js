@@ -1827,7 +1827,9 @@ function cargarTablaVerCuentas(numCta, codCta) {
 $(".tablaEnvioLetras").DataTable({
     ajax:
         "ajax/cuentas-corrientes/tabla-envio-letras.ajax.php?perfil=" +
-        $("#perfilOculto").val(),
+        ($("#perfilOculto").val() || "") +
+        "&codigoEnvio=" +
+        encodeURIComponent($("#codigoEnvioEdicion").val() || ""),
     deferRender: true,
     retrieve: true,
     processing: true,
@@ -1899,6 +1901,15 @@ $(".tablaEnvioLetras tbody").on(
                 var nrocta = respuesta["cuenta"];
                 var cliente = respuesta["cliente"] + "-" + respuesta["nombre"];
                 var monto = respuesta["saldo"];
+                var direccionCli = respuesta["direccion"] || "";
+                var deptoCli = respuesta["departamento"] || "";
+                var provinciaCli = respuesta["provincia"] || "";
+                var distritoCli = respuesta["distrito"] || "";
+                var faltaDireccion =
+                    !$.trim(direccionCli) ||
+                    !$.trim(deptoCli) ||
+                    !$.trim(provinciaCli) ||
+                    !$.trim(distritoCli);
 
                 /* 
           todo: AGREGAR LOS CAMPOS
@@ -1943,6 +1954,19 @@ $(".tablaEnvioLetras tbody").on(
                         "</div>" +
                         "</div>",
                 );
+
+                if (faltaDireccion) {
+                    swal({
+                        type: "warning",
+                        title: "Dirección incompleta",
+                        text:
+                            "La letra " +
+                            nrocta +
+                            " se agregó, pero el cliente no tiene dirección completa (dirección, departamento, provincia y distrito). En la planilla esos campos irán vacíos.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Entendido",
+                    });
+                }
 
                 // SUMAR TOTAL DE UNIDADES
 
@@ -2029,15 +2053,9 @@ $(".formularioEnvioLetra").on("click", "button.quitarEnvioCuenta", function () {
         $("#nuevoTotalCuentaEnvio").val(0);
         $("#totalEnvioCuentas").val(0);
         $("#nuevoTotalCuentaEnvio").attr("total", 0);
+        $("#listaEnvioLetra").val("");
     } else {
-        // SUMAR TOTAL DE UNIDADES
-
         sumarTotalEnvio();
-
-        // AGREGAR IMPUESTO
-
-        // AGRUPAR PRODUCTOS EN FORMATO JSON
-
         listarCuentas();
     }
 });
@@ -2293,6 +2311,313 @@ $(".daterangepicker.opensleft .ranges li").on("click", function () {
             cargarTablaEnvioCuentas(fechaInicial, fechaFinal);
         }
     }
+});
+
+/*=============================================
+VER / EDITAR (REGENERAR) / ANULAR ENVIO LETRAS
+=============================================*/
+function recargarTablaEnvioCuentasActual() {
+    var fechaInicial = localStorage.getItem("fechaInicial");
+    var fechaFinal = localStorage.getItem("fechaFinal");
+    if ($(".tablaEnvioCuentas").length === 0) {
+        return;
+    }
+    $(".tablaEnvioCuentas").DataTable().destroy();
+    cargarTablaEnvioCuentas(fechaInicial || null, fechaFinal || null);
+}
+
+function escaparHtmlEnvio(valor) {
+    if (valor === null || valor === undefined) {
+        return "";
+    }
+    return String(valor)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+$(".tablaEnvioCuentas").on("click", ".btnVisualizarEnvioCuenta", function () {
+    var idEnvio = $(this).attr("idEnvio");
+    var datos = new FormData();
+    datos.append("verEnvioLetra", idEnvio);
+
+    $.ajax({
+        url: "ajax/cuentas.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            if (!respuesta || !respuesta.ok) {
+                swal({
+                    type: "error",
+                    title: "No se pudo cargar el envío",
+                    text: (respuesta && respuesta.mensaje) || "Intente nuevamente.",
+                });
+                return;
+            }
+
+            var cab = respuesta.cabecera || {};
+            $("#verEnvioCodigo").text(cab.codigo || "-");
+            $("#verEnvioFecha").text(cab.fecha || "-");
+            $("#verEnvioUsuario").text(cab.nombre_usuario || "-");
+            $("#verEnvioCantidad").text(cab.cantidad || (respuesta.detalle || []).length);
+
+            var idEnvioModal = cab.id || idEnvio;
+            $("#verEnvioDescargarTxt, #verEnvioDescargarExcel")
+                .attr("idEnvio", idEnvioModal)
+                .show();
+
+            var archivoActual = cab.archivo || "";
+            var ext = archivoActual.split(".").pop().toLowerCase();
+            var formatoGuardado =
+                ext === "xls" || ext === "xlsx" ? "excel" : archivoActual ? "txt" : "";
+            if (formatoGuardado === "excel") {
+                $("#verEnvioFormatoActual")
+                    .removeClass("label-default label-warning")
+                    .addClass("label-info")
+                    .text("Archivo actual: Excel")
+                    .show();
+            } else if (formatoGuardado === "txt") {
+                $("#verEnvioFormatoActual")
+                    .removeClass("label-info label-warning")
+                    .addClass("label-default")
+                    .text("Archivo actual: TXT")
+                    .show();
+            } else {
+                $("#verEnvioFormatoActual")
+                    .removeClass("label-info label-default")
+                    .addClass("label-warning")
+                    .text("Sin archivo")
+                    .show();
+            }
+
+            if (respuesta.faltan_direccion > 0) {
+                $("#verEnvioAvisoDireccion")
+                    .html(
+                        "Hay <b>" +
+                            respuesta.faltan_direccion +
+                            "</b> letra(s) sin dirección completa. El Excel puede ir con dirección vacía; complete el maestro de clientes si el banco lo exige.",
+                    )
+                    .show();
+            } else {
+                $("#verEnvioAvisoDireccion").hide().empty();
+            }
+
+            var html = "";
+            var detalle = respuesta.detalle || [];
+            if (detalle.length === 0) {
+                html =
+                    '<tr><td colspan="7" class="text-center">Sin letras en este envío</td></tr>';
+            } else {
+                for (var i = 0; i < detalle.length; i++) {
+                    var f = detalle[i];
+                    var numLetra = f.num_cta_envio || f.num_cta || "";
+                    var cliente =
+                        f.cliente_nombre ||
+                        [f.nombres, f.ape_paterno, f.ape_materno]
+                            .filter(Boolean)
+                            .join(" ");
+                    var ubigeo = [f.departamento, f.provincia, f.distrito]
+                        .filter(Boolean)
+                        .join(" / ");
+                    var direccion = f.direccion || "";
+                    var faltaDir =
+                        !$.trim(direccion) ||
+                        !$.trim(f.departamento || "") ||
+                        !$.trim(f.provincia || "") ||
+                        !$.trim(f.distrito || "");
+                    var claseFila = faltaDir ? ' style="background:#fcf8e3;"' : "";
+
+                    html +=
+                        "<tr" +
+                        claseFila +
+                        ">" +
+                        "<td>" +
+                        escaparHtmlEnvio(numLetra) +
+                        "</td>" +
+                        "<td>" +
+                        escaparHtmlEnvio(cliente) +
+                        "</td>" +
+                        "<td>" +
+                        escaparHtmlEnvio(f.documento || "") +
+                        "</td>" +
+                        "<td>" +
+                        escaparHtmlEnvio(f.fecha_ven || "") +
+                        "</td>" +
+                        "<td>" +
+                        escaparHtmlEnvio(f.saldo != null ? f.saldo : "") +
+                        "</td>" +
+                        "<td>" +
+                        escaparHtmlEnvio(direccion) +
+                        "</td>" +
+                        "<td>" +
+                        escaparHtmlEnvio(ubigeo) +
+                        "</td>" +
+                        "</tr>";
+                }
+            }
+            $("#tablaDetalleEnvioLetras tbody").html(html);
+            $("#modalVisualizarEnvioCuenta").modal("show");
+        },
+        error: function () {
+            swal({
+                type: "error",
+                title: "Error",
+                text: "No se pudo consultar el detalle del envío.",
+            });
+        },
+    });
+});
+
+$(".tablaEnvioCuentas").on("click", ".btnEditarEnvioLetra", function () {
+    var idEnvio = $(this).attr("idEnvio");
+    window.location = "index.php?ruta=editar-envio-letras&id=" + idEnvio;
+});
+
+function descargarEnvioLetraFormato(idEnvio, formato) {
+    if (!idEnvio || !formato) {
+        return;
+    }
+
+    var etiqueta = formato === "excel" ? "Excel" : "TXT";
+    var datos = new FormData();
+    datos.append("regenerarEnvioLetra", idEnvio);
+    datos.append("formatoEnvioLetra", formato);
+
+    swal({
+        title: "Generando " + etiqueta + "...",
+        text: "Espere un momento",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        onOpen: function () {
+            swal.showLoading();
+        },
+    });
+
+    $.ajax({
+        url: "ajax/cuentas.ajax.php",
+        method: "POST",
+        data: datos,
+        cache: false,
+        contentType: false,
+        processData: false,
+        dataType: "json",
+        success: function (respuesta) {
+            if (!respuesta || !respuesta.ok || !respuesta.archivo) {
+                swal({
+                    type: "error",
+                    title: "No se pudo generar",
+                    text: (respuesta && respuesta.mensaje) || "Intente nuevamente.",
+                });
+                return;
+            }
+
+            swal.close();
+            var link = document.createElement("a");
+            link.href = respuesta.archivo;
+            link.download = "";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            if (
+                respuesta.faltan_direccion &&
+                respuesta.faltan_direccion.length > 0 &&
+                formato === "excel"
+            ) {
+                swal({
+                    type: "warning",
+                    title: "Excel descargado",
+                    text:
+                        "Hay letras sin dirección completa: " +
+                        respuesta.faltan_direccion.join(", "),
+                });
+            }
+
+            recargarTablaEnvioCuentasActual();
+        },
+        error: function () {
+            swal({
+                type: "error",
+                title: "Error",
+                text: "No se pudo generar el archivo.",
+            });
+        },
+    });
+}
+
+$(document).on("click", ".btnDescargarEnvioFormato", function (e) {
+    e.preventDefault();
+    var idEnvio = $(this).attr("idEnvio");
+    var formato = $(this).attr("data-formato");
+    descargarEnvioLetraFormato(idEnvio, formato);
+});
+
+$(".formularioEnvioLetra").on("submit", function () {
+    if (typeof listarCuentas === "function") {
+        listarCuentas();
+    }
+});
+
+$(".tablaEnvioCuentas").on("click", ".btnAnularEnvioCuenta", function () {
+    var idEnvio = $(this).attr("idEnvio");
+
+    swal({
+        title: "¿Anular este envío?",
+        text: "Las letras volverán a estar disponibles para enviar. Se eliminará el archivo del envío.",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        cancelButtonText: "Cancelar",
+        confirmButtonText: "Sí, anular",
+    }).then(function (result) {
+        if (!result.value) {
+            return;
+        }
+
+        var datos = new FormData();
+        datos.append("anularEnvioLetra", idEnvio);
+
+        $.ajax({
+            url: "ajax/cuentas.ajax.php",
+            method: "POST",
+            data: datos,
+            cache: false,
+            contentType: false,
+            processData: false,
+            dataType: "json",
+            success: function (respuesta) {
+                if (!respuesta || !respuesta.ok) {
+                    swal({
+                        type: "error",
+                        title: "No se anuló",
+                        text: (respuesta && respuesta.mensaje) || "Intente nuevamente.",
+                    });
+                    return;
+                }
+
+                swal({
+                    type: "success",
+                    title: "Envío anulado",
+                    text: respuesta.mensaje || "Listo.",
+                }).then(function () {
+                    recargarTablaEnvioCuentasActual();
+                });
+            },
+            error: function () {
+                swal({
+                    type: "error",
+                    title: "Error",
+                    text: "No se pudo anular el envío.",
+                });
+            },
+        });
+    });
 });
 
 // ===== Configuración centralizada de impresión de letras =====

@@ -446,6 +446,25 @@ if (isset($_POST["letraCuenta"])) {
 }
 
 /*=============================================
+    VER / REGENERAR / ANULAR ENVIO LETRAS
+    =============================================*/
+if (isset($_POST["verEnvioLetra"])) {
+    $id = (int) $_POST["verEnvioLetra"];
+    echo json_encode(ControladorCuentas::ctrDetalleEnvioLetra($id));
+}
+
+if (isset($_POST["regenerarEnvioLetra"])) {
+    $id = (int) $_POST["regenerarEnvioLetra"];
+    $formato = isset($_POST["formatoEnvioLetra"]) ? $_POST["formatoEnvioLetra"] : null;
+    echo json_encode(ControladorCuentas::ctrRegenerarEnvioLetraExcel($id, $formato));
+}
+
+if (isset($_POST["anularEnvioLetra"])) {
+    $id = (int) $_POST["anularEnvioLetra"];
+    echo json_encode(ControladorCuentas::ctrAnularEnvioLetra($id));
+}
+
+/*=============================================
     CREAR CUENTA
     =============================================*/
 if (isset($_POST["jsonCuenta"])) {

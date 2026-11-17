@@ -15,8 +15,12 @@ class TablaEnvioLetras
 
         $item = null;
         $valor = null;
+        $codigoEnvio = isset($_GET["codigoEnvio"]) ? trim($_GET["codigoEnvio"]) : null;
+        if ($codigoEnvio === "") {
+            $codigoEnvio = null;
+        }
 
-        $cuenta = ControladorCuentas::ctrMostrarCuentasUnicos($item, $valor);
+        $cuenta = ControladorCuentas::ctrMostrarCuentasUnicos($item, $valor, $codigoEnvio);
         if (count($cuenta) > 0) {
 
             $datosJson = '{

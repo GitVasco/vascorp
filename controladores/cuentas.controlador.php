@@ -299,10 +299,10 @@ class ControladorCuentas
 	MOSTRAR CUENTAS
 	=============================================*/
 
-	static public function ctrMostrarCuentasUnicos($item, $valor)
+	static public function ctrMostrarCuentasUnicos($item, $valor, $codigoEnvio = null)
 	{
 		$tabla = "cuenta_ctejf";
-		$respuesta = ModeloCuentas::mdlMostrarCuentasUnicos($tabla, $item, $valor);
+		$respuesta = ModeloCuentas::mdlMostrarCuentasUnicos($tabla, $item, $valor, $codigoEnvio);
 
 		return $respuesta;
 	}
@@ -1260,6 +1260,154 @@ class ControladorCuentas
 	}
 
 	/*=============================================
+	ÚLTIMO CÓDIGO ENVÍO LETRAS
+	=============================================*/
+	static public function ctrUltimoCodigoEnvioLetra()
+	{
+		return ModeloCuentas::mdlUltimoCodigoEnvioLetra();
+	}
+
+	/*=============================================
+	KPIs ENVÍO LETRAS
+	=============================================*/
+	static public function ctrContarKpisEnvioLetras()
+	{
+		return ModeloCuentas::mdlContarKpisEnvioLetras();
+	}
+
+	/*=============================================
+	DETALLE ENVIO LETRAS (VER)
+	=============================================*/
+	static public function ctrDetalleEnvioLetra($id)
+	{
+		$cab = ModeloCuentas::mdlMostrarEnvioLetraPorId($id);
+		if (!$cab) {
+			return array("ok" => false, "mensaje" => "No se encontró el envío.");
+		}
+		$detalle = ModeloCuentas::mdlDetalleEnvioLetras($cab["codigo"]);
+		$faltan = 0;
+		foreach ($detalle as $fila) {
+			$dir = isset($fila["direccion"]) ? trim($fila["direccion"]) : "";
+			$dep = isset($fila["departamento"]) ? trim($fila["departamento"]) : "";
+			$prov = isset($fila["provincia"]) ? trim($fila["provincia"]) : "";
+			$dist = isset($fila["distrito"]) ? trim($fila["distrito"]) : "";
+			if ($dir === "" || $dep === "" || $prov === "" || $dist === "") {
+				$faltan++;
+			}
+		}
+		return array(
+			"ok" => true,
+			"cabecera" => $cab,
+			"detalle" => $detalle,
+			"faltan_direccion" => $faltan
+		);
+	}
+
+	/*=============================================
+	REGENERAR ARCHIVO ENVIO LETRAS (TXT o Excel)
+	=============================================*/
+	static public function ctrRegenerarEnvioLetraExcel($id, $formato = null)
+	{
+		require_once dirname(__FILE__) . "/envio-letras-excel.lib.php";
+		if (!class_exists("ControladorContabilidad")) {
+			require_once dirname(__FILE__) . "/contabilidad.controlador.php";
+		}
+
+		$cab = ModeloCuentas::mdlMostrarEnvioLetraPorId($id);
+		if (!$cab) {
+			return array("ok" => false, "mensaje" => "No se encontró el envío.");
+		}
+
+		$detalle = ModeloCuentas::mdlDetalleEnvioLetras($cab["codigo"]);
+		if (empty($detalle)) {
+			return array("ok" => false, "mensaje" => "El envío no tiene letras.");
+		}
+
+		if ($formato === null || $formato === "") {
+			$formato = EnvioLetrasExcelLib::formatoDesdeArchivo(isset($cab["archivo"]) ? $cab["archivo"] : "");
+		}
+		$formato = EnvioLetrasExcelLib::normalizarFormato($formato);
+		$ext = EnvioLetrasExcelLib::extension($formato);
+
+		$filasArchivo = array();
+		$faltanDireccion = array();
+
+		foreach ($detalle as $fila) {
+			$doc = isset($fila["documento"]) ? trim($fila["documento"]) : "";
+			$tipoDoc = (strlen($doc) == 11) ? 6 : 1;
+			$numCta = !empty($fila["num_cta_envio"]) ? $fila["num_cta_envio"] : str_replace("-", "", (string) $fila["num_cta"]);
+
+			$direccion = ControladorContabilidad::eliminar_tildes(isset($fila["direccion"]) ? trim($fila["direccion"]) : "");
+			$departamento = ControladorContabilidad::eliminar_tildes(isset($fila["departamento"]) ? trim($fila["departamento"]) : "");
+			$provincia = ControladorContabilidad::eliminar_tildes(isset($fila["provincia"]) ? trim($fila["provincia"]) : "");
+			$distrito = ControladorContabilidad::eliminar_tildes(isset($fila["distrito"]) ? trim($fila["distrito"]) : "");
+
+			if ($direccion === "" || $departamento === "" || $provincia === "" || $distrito === "") {
+				$faltanDireccion[] = $numCta;
+			}
+
+			$fechaVen = isset($fila["fecha_ven"]) ? $fila["fecha_ven"] : "";
+			$filasArchivo[] = array(
+				"nombre" => ControladorContabilidad::eliminar_tildes(isset($fila["nombres"]) ? $fila["nombres"] : ""),
+				"ape_paterno" => ControladorContabilidad::eliminar_tildes(isset($fila["ape_paterno"]) ? $fila["ape_paterno"] : ""),
+				"ape_materno" => ControladorContabilidad::eliminar_tildes(isset($fila["ape_materno"]) ? $fila["ape_materno"] : ""),
+				"tipo_doc" => $tipoDoc,
+				"num_doc" => $doc,
+				"num_letra" => $numCta,
+				"fecha_ven" => $formato === "excel"
+					? EnvioLetrasExcelLib::formatearFecha($fechaVen)
+					: EnvioLetrasExcelLib::formatearFechaTxt($fechaVen),
+				"importe" => isset($fila["saldo"]) ? $fila["saldo"] : 0,
+				"direccion" => $direccion,
+				"departamento" => $departamento,
+				"provincia" => $provincia,
+				"distrito" => $distrito
+			);
+		}
+
+		date_default_timezone_set('America/Lima');
+		$fecha = new DateTime();
+		$codigoArchivo = preg_replace('/[^0-9A-Za-z]/', '', (string) $cab["codigo"]);
+		$rutaNueva = "vistas/letras/L" . $codigoArchivo . "_" . $fecha->format("YmdHis") . "." . $ext;
+		$rutaAbs = dirname(__DIR__) . "/" . $rutaNueva;
+
+		if (!EnvioLetrasExcelLib::generarArchivo($rutaAbs, $filasArchivo, $formato)) {
+			return array("ok" => false, "mensaje" => "No se pudo regenerar el archivo " . strtoupper($ext) . ".");
+		}
+
+		if (!empty($cab["archivo"])) {
+			$viejo = dirname(__DIR__) . "/" . $cab["archivo"];
+			if (is_file($viejo) && realpath($viejo) !== realpath($rutaAbs)) {
+				@unlink($viejo);
+			}
+		}
+
+		ModeloCuentas::mdlActualizarArchivoEnvioLetra($id, $rutaNueva);
+
+		$etiqueta = $formato === "excel" ? "Excel" : "TXT";
+		$mensaje = "Planilla " . $etiqueta . " lista para descargar.";
+		if ($formato === "excel" && !empty($faltanDireccion)) {
+			$mensaje .= " Letras sin dirección completa: " . implode(", ", $faltanDireccion) . ".";
+		}
+
+		return array(
+			"ok" => true,
+			"mensaje" => $mensaje,
+			"archivo" => $rutaNueva,
+			"formato" => $formato,
+			"faltan_direccion" => $faltanDireccion
+		);
+	}
+
+	/*=============================================
+	ANULAR ENVIO LETRAS
+	=============================================*/
+	static public function ctrAnularEnvioLetra($id)
+	{
+		return ModeloCuentas::mdlAnularEnvioLetra($id);
+	}
+
+	/*=============================================
 	CANCELAR CUENTAS
 	=============================================*/
 
@@ -1461,11 +1609,21 @@ class ControladorCuentas
 					</script>';
 			} else {
 
+				require_once dirname(__FILE__) . "/envio-letras-excel.lib.php";
+				if (!class_exists("ControladorContabilidad")) {
+					require_once dirname(__FILE__) . "/contabilidad.controlador.php";
+				}
+
+				$formato = EnvioLetrasExcelLib::normalizarFormato(
+					isset($_POST["formatoEnvioLetra"]) ? $_POST["formatoEnvioLetra"] : "txt"
+				);
+				$ext = EnvioLetrasExcelLib::extension($formato);
+
 				$tabla = "envio_letra_cabecerajf";
 				date_default_timezone_set('America/Lima');
 				$fecha = new DateTime();
-				$ruta = "vistas/letras/L" . $fecha->format("Y") . $fecha->format("m") . $fecha->format("d") . $fecha->format("H") . $fecha->format("i") . ".txt";
-				$file = fopen($ruta, "w");
+				$codigoEnvio = preg_replace('/[^0-9A-Za-z]/', '', (string) $_POST["nuevoCodigoEnvio"]);
+				$ruta = "vistas/letras/L" . $codigoEnvio . "_" . $fecha->format("YmdHis") . "." . $ext;
 				$datos = array(
 					"codigo"	=> 	$_POST["nuevoCodigoEnvio"],
 					"fecha"		=>	$fecha->format("Y-m-d"),
@@ -1479,9 +1637,23 @@ class ControladorCuentas
 				//DETALLE
 
 				$cuentas = json_decode($_POST["listaEnvioLetra"], true);
+				if (!is_array($cuentas)) {
+					$cuentas = array();
+				}
 
-				//Creo nombre del archivo txt y asigno ruta
+				$idsCuentas = array();
+				foreach ($cuentas as $value) {
+					if (isset($value["idcuenta"])) {
+						$idsCuentas[] = $value["idcuenta"];
+					}
+				}
+				$direcciones = ($formato === "excel")
+					? ModeloCuentas::mdlDireccionClientesEnvioLetras($idsCuentas)
+					: array();
 
+				$filasArchivo = array();
+				$faltanDireccion = array();
+				$respuesta2 = "ok";
 
 				foreach ($cuentas as $key => $value) {
 
@@ -1497,52 +1669,73 @@ class ControladorCuentas
 					$actualizarEstadoDoc = ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "estado_doc", "01", $value["idcuenta"]);
 					$actualizarBanco = ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "banco", "02", $value["idcuenta"]);
 
-					if (strlen($value["cliente_doc"]) == "11") {
-
-						$cliente_doc = "6" . $value["cliente_doc"];
+					$doc = isset($value["cliente_doc"]) ? trim($value["cliente_doc"]) : "";
+					if (strlen($doc) == 11) {
+						$tipoDoc = 6;
 					} else {
-
-						$cliente_doc = "1" . $value["cliente_doc"];
+						$tipoDoc = 1;
 					}
-
-					//saltos para el txt
-					$salto1 = 72;
-					$salto2 = 24;
-					$salto3 = 24;
-					$salto4 = 16;
-					$salto5 = 12;
-
-					if (strlen($value["monto"]) == 7) {
-
-						$salto6 = 13;
-					} else {
-
-						$salto6 = 14;
-					}
-
-
-					//$salto6= 14 ;
 
 					$cliente_nom = ControladorContabilidad::eliminar_tildes($value["cliente_nom"]);
 					$cliente_pat = ControladorContabilidad::eliminar_tildes($value["cliente_pat"]);
 					$cliente_mat = ControladorContabilidad::eliminar_tildes($value["cliente_mat"]);
 
-					fwrite($file,	str_pad($cliente_nom, $salto1) .
-						str_pad($cliente_pat, $salto2) .
-						str_pad($cliente_mat, $salto3) .
-						str_pad($cliente_doc, $salto4) .
-						str_pad($value["numcta"], $salto5) .
-						str_pad($value["fecha"], $salto6) . $value["monto"] .
-						PHP_EOL);
+					$direccion = "";
+					$departamento = "";
+					$provincia = "";
+					$distrito = "";
+					if ($formato === "excel") {
+						$dirCli = isset($direcciones[$value["idcuenta"]]) ? $direcciones[$value["idcuenta"]] : array();
+						$direccion = isset($dirCli["direccion"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["direccion"])) : "";
+						$departamento = isset($dirCli["departamento"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["departamento"])) : "";
+						$provincia = isset($dirCli["provincia"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["provincia"])) : "";
+						$distrito = isset($dirCli["distrito"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["distrito"])) : "";
+						if ($direccion === "" || $departamento === "" || $provincia === "" || $distrito === "") {
+							$faltanDireccion[] = $value["numcta"];
+						}
+					}
+
+					$filasArchivo[] = array(
+						"nombre" => $cliente_nom,
+						"ape_paterno" => $cliente_pat,
+						"ape_materno" => $cliente_mat,
+						"tipo_doc" => $tipoDoc,
+						"num_doc" => $doc,
+						"num_letra" => $value["numcta"],
+						"fecha_ven" => ($formato === "excel")
+							? EnvioLetrasExcelLib::formatearFecha($value["fecha"])
+							: EnvioLetrasExcelLib::formatearFechaTxt($value["fecha"]),
+						"importe" => $value["monto"],
+						"direccion" => $direccion,
+						"departamento" => $departamento,
+						"provincia" => $provincia,
+						"distrito" => $distrito
+					);
 				}
-				fclose($file);
-				if ($respuesta == "ok"  && $respuesta2 == "ok") {
+
+				$archivoOk = EnvioLetrasExcelLib::generarArchivo($ruta, $filasArchivo, $formato);
+
+				if ($respuesta == "ok"  && $respuesta2 == "ok" && $archivoOk) {
+
+					$tituloOk = "El envio de letra ha sido guardado correctamente";
+					$textoOk = ($formato === "excel")
+						? "Se generó la planilla Excel para el banco."
+						: "Se generó el archivo TXT (formato vigente) para el banco.";
+					$tipoAlerta = "success";
+					if ($formato === "excel" && !empty($faltanDireccion)) {
+						$tituloOk = "Envío guardado con avisos";
+						$textoOk = "Hay letras sin dirección completa en el maestro de clientes (se dejaron vacías): "
+							. implode(", ", $faltanDireccion)
+							. ". Complete dirección, departamento, provincia y distrito antes de cargar en el banco.";
+						$tipoAlerta = "warning";
+					}
 
 					echo '<script>
 
 					swal({
-						  type: "success",
-						  title: "El envio de letra ha sido guardado correctamente",
+						  type: '.json_encode($tipoAlerta).',
+						  title: '.json_encode($tituloOk, JSON_UNESCAPED_UNICODE).',
+						  text: '.json_encode($textoOk, JSON_UNESCAPED_UNICODE).',
 						  showConfirmButton: true,
 						  confirmButtonText: "Cerrar"
 						  }).then(function(result){
@@ -1560,7 +1753,7 @@ class ControladorCuentas
 
 						swal({
 							type: "error",
-							title: "¡El envio no puede ir vacío o llevar caracteres especiales!",
+							title: "¡No se pudo generar el archivo del envío!",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							}).then(function(result){
@@ -1577,6 +1770,222 @@ class ControladorCuentas
 		}
 	}
 
+
+	/*=============================================
+	EDITAR ENVIO LETRAS (agregar/quitar letras del lote)
+	=============================================*/
+	static public function ctrEditarEnvioLetras()
+	{
+		if (!isset($_POST["editarCodigoEnvio"]) || !isset($_POST["idEnvioLetra"])) {
+			return;
+		}
+
+		if (!isset($_POST["listaEnvioLetra"]) || $_POST["listaEnvioLetra"] == "") {
+			echo '<script>
+				swal({
+					type: "error",
+					title: "Error",
+					text: "¡Debe dejar al menos una letra en el envío!",
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then(function(result){
+					if(result.value){
+						window.location="index.php?ruta=editar-envio-letras&id=' . (int) $_POST["idEnvioLetra"] . '";
+					}
+				});
+			</script>';
+			return;
+		}
+
+		require_once dirname(__FILE__) . "/envio-letras-excel.lib.php";
+		if (!class_exists("ControladorContabilidad")) {
+			require_once dirname(__FILE__) . "/contabilidad.controlador.php";
+		}
+
+		$idEnvio = (int) $_POST["idEnvioLetra"];
+		$codigo = $_POST["editarCodigoEnvio"];
+		$cab = ModeloCuentas::mdlMostrarEnvioLetraPorId($idEnvio);
+		if (!$cab || (string) $cab["codigo"] !== (string) $codigo) {
+			echo '<script>
+				swal({
+					type: "error",
+					title: "Error",
+					text: "No se encontró el envío a editar.",
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then(function(result){
+					if(result.value){ window.location="ver-envio-letras"; }
+				});
+			</script>';
+			return;
+		}
+
+		$cuentasNuevas = json_decode($_POST["listaEnvioLetra"], true);
+		if (!is_array($cuentasNuevas) || count($cuentasNuevas) === 0) {
+			echo '<script>
+				swal({
+					type: "error",
+					title: "Error",
+					text: "¡Debe dejar al menos una letra en el envío!",
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then(function(result){
+					if(result.value){
+						window.location="index.php?ruta=editar-envio-letras&id=' . $idEnvio . '";
+					}
+				});
+			</script>';
+			return;
+		}
+
+		$detalleActual = ModeloCuentas::mdlDetalleEnvioLetras($codigo);
+		$idsActuales = array();
+		foreach ($detalleActual as $fila) {
+			if (!empty($fila["id_cuenta"])) {
+				$idsActuales[(int) $fila["id_cuenta"]] = true;
+			}
+		}
+
+		$idsNuevos = array();
+		foreach ($cuentasNuevas as $value) {
+			if (isset($value["idcuenta"])) {
+				$idsNuevos[(int) $value["idcuenta"]] = true;
+			}
+		}
+
+		date_default_timezone_set('America/Lima');
+		$fecha = new DateTime();
+		$fechaHoy = $fecha->format("Y-m-d");
+
+		// Letras quitadas → volver al pool
+		foreach ($idsActuales as $idCuenta => $ok) {
+			if (!isset($idsNuevos[$idCuenta])) {
+				ModeloCuentas::mdlRevertirCuentaEnvioLetra($idCuenta);
+			}
+		}
+
+		// Letras nuevas → marcar como enviadas
+		foreach ($idsNuevos as $idCuenta => $ok) {
+			if (!isset($idsActuales[$idCuenta])) {
+				ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "fecha_envio", $fechaHoy, $idCuenta);
+				ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "fecha_cep", $fechaHoy, $idCuenta);
+				ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "estado_doc", "01", $idCuenta);
+				ModeloCuentas::mdlActualizarUnDato("cuenta_ctejf", "banco", "02", $idCuenta);
+			}
+		}
+
+		// Reemplazar detalle
+		ModeloCuentas::mdlEliminarDetalleEnvioPorCodigo($codigo);
+		$respuestaDetalle = "ok";
+		foreach ($cuentasNuevas as $value) {
+			$respuestaDetalle = ModeloCuentas::mdlIngresarEnvioLetraDetalle("envio_letrasjf", array(
+				"num_cta" => $value["numcta"],
+				"codigo" => $codigo
+			));
+		}
+
+		$formato = EnvioLetrasExcelLib::normalizarFormato(
+			isset($_POST["formatoEnvioLetra"]) ? $_POST["formatoEnvioLetra"] : EnvioLetrasExcelLib::formatoDesdeArchivo(isset($cab["archivo"]) ? $cab["archivo"] : "")
+		);
+		$ext = EnvioLetrasExcelLib::extension($formato);
+
+		$idsCuentas = array_keys($idsNuevos);
+		$direcciones = ($formato === "excel")
+			? ModeloCuentas::mdlDireccionClientesEnvioLetras($idsCuentas)
+			: array();
+		$filasArchivo = array();
+		$faltanDireccion = array();
+
+		foreach ($cuentasNuevas as $value) {
+			$doc = isset($value["cliente_doc"]) ? trim($value["cliente_doc"]) : "";
+			$tipoDoc = (strlen($doc) == 11) ? 6 : 1;
+
+			$direccion = "";
+			$departamento = "";
+			$provincia = "";
+			$distrito = "";
+			if ($formato === "excel") {
+				$dirCli = isset($direcciones[$value["idcuenta"]]) ? $direcciones[$value["idcuenta"]] : array();
+				$direccion = isset($dirCli["direccion"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["direccion"])) : "";
+				$departamento = isset($dirCli["departamento"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["departamento"])) : "";
+				$provincia = isset($dirCli["provincia"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["provincia"])) : "";
+				$distrito = isset($dirCli["distrito"]) ? ControladorContabilidad::eliminar_tildes(trim($dirCli["distrito"])) : "";
+				if ($direccion === "" || $departamento === "" || $provincia === "" || $distrito === "") {
+					$faltanDireccion[] = $value["numcta"];
+				}
+			}
+
+			$filasArchivo[] = array(
+				"nombre" => ControladorContabilidad::eliminar_tildes($value["cliente_nom"]),
+				"ape_paterno" => ControladorContabilidad::eliminar_tildes($value["cliente_pat"]),
+				"ape_materno" => ControladorContabilidad::eliminar_tildes($value["cliente_mat"]),
+				"tipo_doc" => $tipoDoc,
+				"num_doc" => $doc,
+				"num_letra" => $value["numcta"],
+				"fecha_ven" => ($formato === "excel")
+					? EnvioLetrasExcelLib::formatearFecha($value["fecha"])
+					: EnvioLetrasExcelLib::formatearFechaTxt($value["fecha"]),
+				"importe" => $value["monto"],
+				"direccion" => $direccion,
+				"departamento" => $departamento,
+				"provincia" => $provincia,
+				"distrito" => $distrito
+			);
+		}
+
+		$codigoArchivo = preg_replace('/[^0-9A-Za-z]/', '', (string) $codigo);
+		$ruta = "vistas/letras/L" . $codigoArchivo . "_" . $fecha->format("YmdHis") . "." . $ext;
+		$rutaAbs = dirname(__DIR__) . "/" . $ruta;
+		$archivoOk = EnvioLetrasExcelLib::generarArchivo($rutaAbs, $filasArchivo, $formato);
+
+		if ($archivoOk && !empty($cab["archivo"])) {
+			$viejo = dirname(__DIR__) . "/" . $cab["archivo"];
+			if (is_file($viejo) && realpath($viejo) !== realpath($rutaAbs)) {
+				@unlink($viejo);
+			}
+		}
+
+		$cantidad = isset($_POST["nuevoTotalCuentaEnvio"]) ? $_POST["nuevoTotalCuentaEnvio"] : count($cuentasNuevas);
+		$usuario = isset($_POST["idUsuario"]) ? $_POST["idUsuario"] : null;
+		$cabOk = ModeloCuentas::mdlActualizarCabeceraEnvioLetra($idEnvio, $cantidad, $ruta, $usuario);
+
+		if ($respuestaDetalle == "ok" && $cabOk == "ok" && $archivoOk) {
+			$tituloOk = "El envío se actualizó correctamente";
+			$textoOk = ($formato === "excel")
+				? "Se guardaron las letras y se regeneró la planilla Excel."
+				: "Se guardaron las letras y se regeneró el TXT (formato vigente).";
+			$tipo = "success";
+			if ($formato === "excel" && !empty($faltanDireccion)) {
+				$tipo = "warning";
+				$tituloOk = "Envío actualizado con avisos";
+				$textoOk = "Letras sin dirección completa: " . implode(", ", $faltanDireccion) . ".";
+			}
+			echo '<script>
+				swal({
+					type: ' . json_encode($tipo) . ',
+					title: ' . json_encode($tituloOk, JSON_UNESCAPED_UNICODE) . ',
+					text: ' . json_encode($textoOk, JSON_UNESCAPED_UNICODE) . ',
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then(function(result){
+					if(result.value){ window.location="ver-envio-letras"; }
+				});
+			</script>';
+		} else {
+			echo '<script>
+				swal({
+					type: "error",
+					title: "No se pudo guardar el envío",
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then(function(result){
+					if(result.value){
+						window.location="index.php?ruta=editar-envio-letras&id=' . $idEnvio . '";
+					}
+				});
+			</script>';
+		}
+	}
 
 	/*=============================================
 	MOSTRAR REPORTES COBRAR

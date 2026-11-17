@@ -67,30 +67,13 @@
 
                             <?php
 
-                            $ult_codigo = ControladorAlmacenCorte::ctrUltimoCodigoAC();
+                            $ult_codigo = ControladorCuentas::ctrUltimoCodigoEnvioLetra();
 
-                            #var_dump("ult_codigo", $ult_codigo);
-
-                            if(!$ult_codigo){
-
+                            if (!$ult_codigo || !isset($ult_codigo["ultimo_codigo"])) {
                                 echo '<input type="text" class="form-control" id="nuevoCodigoEnvio" name="nuevoCodigoEnvio" value="1001" readonly>';
-
-
-                            }else{
-
-                                foreach ($ult_codigo as $key => $value) {
-                                                    
-                                }
-
-                                /* var_dump("prueba", $value["ultimo_codigo"]); */
-
-                                $codigo = $ult_codigo["ultimo_codigo"]+1;
-
-                                /* var_dump("codigo", $codigo); */
-
+                            } else {
+                                $codigo = ((int) $ult_codigo["ultimo_codigo"]) + 1;
                                 echo '<input type="text" class="form-control" id="nuevoCodigoEnvio" name="nuevoCodigoEnvio" value="'.$codigo.'" readonly>';
-
-
                             }
 
 
@@ -98,6 +81,20 @@
 
                         </div>
 
+                        </div>
+
+                        <!--=====================================
+                        FORMATO ARCHIVO BANCO
+                        ======================================-->
+                        <div class="form-group">
+                            <label>Formato para el banco</label>
+                            <select class="form-control" name="formatoEnvioLetra" id="formatoEnvioLetra">
+                                <option value="txt" selected>TXT — formato vigente (recomendado)</option>
+                                <option value="excel">Excel nuevo — con dirección (pendiente confirmación banco)</option>
+                            </select>
+                            <p class="help-block" style="margin-bottom:0;">
+                                Mientras el banco no confirme el Excel, use <b>TXT</b>.
+                            </p>
                         </div>
 
                         <!--=====================================
