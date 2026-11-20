@@ -1,13 +1,13 @@
 # Comprobantes especiales — módulo estándar (tipo actual: GRATUITA) — Diseño
 
 **Emisor:** Corporación Vasco S.A.C. — RUC 20513613939
-**Fecha:** 9 de noviembre de 2026
-**Estado:** **implementado en rama `joel`, pendiente de probar con la BD y eFact** (guía: `pruebas-comprobantes-especiales/GUIA-PRUEBA.md`). Pendientes de decisión en §9.
+**Fecha:** 9 de noviembre de 2026 (actualizado 20-nov-2026)
+**Estado:** **implementado.** **Boleta gratuita validada con éxito por eFact** (20-nov-2026; `pruebas-comprobantes-especiales/REGISTRO.md`). Pendiente prueba de **factura** FG01 y decisiones §9 / pendientes contables.
 
 **Implementado:** `docs/sql/comprobantes-especiales.sql`, `modelos/comprobantes-especiales.modelo.php`, `controladores/comprobantes-especiales.controlador.php`, `ajax/comprobantes-especiales.ajax.php`, vistas `comprobantes-especiales.php` / `comprobantes-especiales-crear.php`, `vistas/js/comprobantes-especiales.js`, `vistas/reportes_ticket/impresion_comprobante_especial_html.php` y `impresion_comprobante_especial.php` y cableado en `index.php`, `plantilla.php`, `menu.php`.
 **Diferencias frente al diseño:** (1) los ítems son solo manuales (sin buscador de artículos); (2) acceso por `COMPROBANTES_ESPECIALES_USUARIOS` (id de sesión), por defecto 70 y 6; (3) inafecto desactivado salvo `GRATUITAS_PERMITE_INAFECTO`; (4) se agregó el estado `BAJA` (registro manual de que se dio de baja en eFact); (5) el total en letras del obsequio es fijo "CERO Y 00/100 SOLES" — **no** se modificó `convertir()` del flujo normal; (6) series provisionales BG01 / FG01; (7) máximo 7 días de antigüedad en la fecha de emisión.
 **Base técnica:** `ITEMS-GRATUITOS-obsequios-analisis.md` (brechas y reglas del manual Legacy CSV 2.1).
-**Pendientes (cuenta por cobrar, prueba con eFact, registro de ventas, SISCONT):** `COMPROBANTES-ESPECIALES-pendientes.md`.
+**Pendientes (cuenta por cobrar, factura FG01, registro de ventas, SISCONT):** `COMPROBANTES-ESPECIALES-pendientes.md`.
 **Patrón a copiar:** `GRE-manual-diseno.md` (módulo aislado, tablas propias, CSV propio, misma carpeta de salida).
 
 ---
@@ -55,9 +55,9 @@ Archivos: `Gratuita con igv/20551093035-01-FD02-9030.csv` (afectación **14**) y
 | Forma de pago | `Contado` | O1 | O | ✔ |
 | Tipo de operación | `0101` | Q1 | Q | ✔ |
 | **Total op. gratuitas** | `70.00` (10 + 60) | **Y1** | **Y** | ✔ misma columna en ambos manuales |
-| IGV de gratuitas (informativo) | `12.60` (con IGV) / `0.00` (sin IGV) | **T1** | **AO** (Legacy) | ⚠ posición distinta, probar |
-| Total impuestos / valor / precio | `0.00` | BB1, BC1, BD1 | BH, BI, BJ | ⚠ equivalentes en nuestro layout |
-| N.º de líneas | `2` | AL1 | AS | ⚠ equivalente |
+| IGV de gratuitas (informativo) | `12.60` (con IGV) / `0.00` (sin IGV) | **T1** | **AO** (Legacy) | ✔ boleta OK 20-nov-2026 (AO aceptado) |
+| Total impuestos / valor / precio | `0.00` | BB1, BC1, BD1 | BH, BI, BJ | ✔ boleta OK |
+| N.º de líneas | `2` | AL1 | AS | ✔ boleta OK |
 | **Leyenda 1002** | `TRANSFERENCIA GRATUITA DE UN BIEN Y/O SERVICIO PRESTADO GRATUITAMENTE` | B de la fila de leyendas | B de FILA 6 | ✔ texto confirmado |
 | Unidad | `ZZ` (servicio) | B (línea) | B | ✔ (`C62` para bienes) |
 | Precio unitario | `0.00` | E (línea) | E | ✔ |
@@ -67,15 +67,15 @@ Archivos: `Gratuita con igv/20551093035-01-FD02-9030.csv` (afectación **14**) y
 | Afectación | `14` (con IGV) / `32` (sin IGV) | K (línea) | K | ✔ |
 | Código de tributo | `9996` | L (línea) | L | ✔ |
 | Porcentaje IGV | `18.00` (afect. 14) / `0.00` (afect. 32) | M (línea) | M | ✔ |
-| IGV informativo de la línea | `1.80`, `10.80` (= 18 % de 10 y 60) / `0.00` | J (línea) | I y J (en nuestro layout ambas llevan IGV) | ⚠ |
+| IGV informativo de la línea | `1.80`, `10.80` (= 18 % de 10 y 60) / `0.00` | J (línea) | I y J (en nuestro layout ambas llevan IGV) | ✔ boleta OK |
 | Valor unitario / valor de venta | `0.00` / `10.00`, `60.00` (= ref × cant) | T, U (línea) | T, U | ✔ |
-| Base | `10.00`, `60.00` | I y AL (línea) | X (línea) | ⚠ |
+| Base | `10.00`, `60.00` | I y AL (línea) | X (línea) | ✔ boleta OK (W vacía también OK) |
 
 **Conclusiones**
 1. **Se confirman** los valores de §6: F = `01`, G/H = referencial/`02`, L = `9996`, E = 0, T = 0, U = ref × cantidad, Y = total gratuito, leyenda en B, total 0.00 válido.
 2. **"Con IGV" y "sin IGV" no son una opción de impresión: son dos afectaciones distintas.** Con IGV = afectación 11–16 (aquí 14), M = 18 e IGV informativo > 0. Sin IGV = afectación **inafecta 31–37** (aquí 32), M = 0 e IGV 0. La elección es tributaria: **decide Contabilidad**, no un formato. Esto reemplaza la pregunta 5 de §9.
 3. El ejemplo "sin IGV" también deja `T1 = 0.00` y la línea con `J = 0.00`.
-4. Todavía hay que probar en **nuestro** layout dónde va el IGV informativo (AO según Legacy; en el ejemplo 2021 es T) y la base de la línea. Para eso sirve el lazo de pruebas de §8: enviar y, si eFact rechaza, mandar CSV + error.
+4. **Confirmado en boleta (20-nov-2026):** en nuestro layout Legacy el IGV informativo de cabecera va en **AO**, base de línea en **X**, **W** vacía, **Z**/**AL** en `0.00` y total `0.00` — eFact validó con éxito. Queda pendiente la misma confirmación con **factura** FG01.
 5. Fecha: los ejemplos usan `YYYY-MM-DD`; nosotros seguimos con `dd/mm/yyyy` porque es lo que procesa hoy. No cambiarla.
 
 ## 2c. Regla de oro: nuestra estructura, solo cambia lo gratuito
@@ -158,7 +158,7 @@ Casos previstos: **panetones a clientes** (cód. 13/14) y **canastas de víveres
 
 ## 6. Generación del CSV (función nueva)
 
-Misma estructura de 9 filas + `FF00FF` que ya procesa eFact. Valores propuestos (los marcados ⚠ se confirman con la primera prueba, ver §8):
+Misma estructura de 9 filas + `FF00FF` que ya procesa eFact. Valores de §6 **confirmados en boleta** (20-nov-2026). Pendiente revalidar con factura FG01 (§8).
 
 **FILA 1 (cabecera)**
 
@@ -168,20 +168,20 @@ Misma estructura de 9 filas + `FF00FF` que ya procesa eFact. Valores propuestos 
 | B | `SERIE-CORRELATIVO` | |
 | C | `01` o `03` | |
 | D / G | `PEN` | |
-| E / F | `0.00` | IGV cobrado = 0 ✔ (ejemplo eFact) |
-| N | `0.00` | importe total ✔ (ejemplo eFact) |
-| O | `CONTADO` (solo factura, como hoy) | sin cuotas |
+| E / F | `0.00` | IGV cobrado = 0 ✔ |
+| N | `0.00` | importe total ✔ (boleta eFact 20-nov-2026) |
+| O | `CONTADO` (solo factura, como hoy) | sin cuotas — pendiente prueba factura |
 | Q | `0101` | |
 | V, X | vacío | sin gravado/exonerado |
-| **Y** | **total gratuito** (Σ valor de venta) | columna vacía hoy; ✔ misma columna en el ejemplo |
-| Z, AL | `0.00` ⚠ | subtotal / base IGV |
-| **AO** | **IGV informativo** (Σ, solo afectación 11–16) | columna vacía hoy ⚠ |
-| AS | n.º de líneas | |
-| AT | `1` (como hoy) | |
-| BH, BI, BJ | `0.00` | mismo bloque que usa nuestro CSV |
+| **Y** | **total gratuito** (Σ valor de venta) | ✔ |
+| Z, AL | `0.00` | ✔ boleta OK |
+| **AO** | **IGV informativo** (Σ, solo afectación 11–16) | ✔ boleta OK (Legacy AO) |
+| AS | n.º de líneas | ✔ |
+| AD | `1` (como hoy) | |
+| BH, BI, BJ | `0.00` | ✔ boleta OK |
 
 **FILA 3:** sin guía ni cuotas (`,,,,,` en boleta; en factura solo `ATTACH_DOC` si se mantiene).
-**FILA 6:** A = `CERO Y 00/100 SOLES`; **B = `TRANSFERENCIA GRATUITA DE UN BIEN Y/O SERVICIO PRESTADO GRATUITAMENTE`** ✔ (texto del ejemplo eFact)
+**FILA 6:** A = `CERO Y 00/100 SOLES`; **B = `TRANSFERENCIA GRATUITA DE UN BIEN Y/O SERVICIO PRESTADO GRATUITAMENTE`** ✔
 **FILA 7:** A = observaciones (motivo / "ENTREGA A TRABAJADORES"), resto vacío.
 
 **FILA 8… (líneas)**
@@ -190,17 +190,17 @@ Misma estructura de 9 filas + `FF00FF` que ya procesa eFact. Valores propuestos 
 |------|-------|
 | A–D | n.º, unidad (`C62` bienes / `ZZ` servicios), cantidad, descripción |
 | E | `0.00` |
-| F | `01` ✔ (confirmado por el ejemplo eFact) |
-| **G / H** | **valor referencial unitario / `02`** |
-| I, J | IGV informativo (afect. 11–16) o `0.00` (31–37) ⚠ |
+| F | `01` ✔ |
+| **G / H** | **valor referencial unitario / `02`** ✔ |
+| I, J | IGV informativo (afect. 11–16) o `0.00` (31–37) ✔ boleta OK |
 | **K** | afectación elegida (14, 16, 32…; ver §2b) |
 | **L** | `9996` |
 | M | `18` (afect. 11–16) / `0` (afect. 31–37) |
 | S | código |
 | T | `0.00` |
 | **U** | valor ref. × cantidad |
-| W | = U ⚠ (hoy se deja vacía) |
-| X | = U |
+| W | vacía ✔ (boleta OK sin rellenar) |
+| X | = U ✔ |
 | AP | `0.00` |
 
 ## 7. Impresión
@@ -225,18 +225,18 @@ Usa las constantes `BOLFACT_SAP_LINEAS_*` de `config.php` si existen (misma capa
 **Estados:** guardar (GENERADO, editable) → "Enviar a EFACT" genera el CSV en la carpeta vigilada → ENVIADO (no editable). Anular solo en GENERADO.
 
 **Cómo avanzar con eFact (acordado):**
-1. Emitir una boleta de prueba (a nombre de Joel) con los valores de §6 y enviarla.
-2. Si eFact la rechaza o la procesa mal, guardar el **CSV exacto + el mensaje de error** y enviarlos a eFact preguntando qué columna corregir. Con eso se resuelven los ⚠ de §6 sin adivinar.
-3. Repetir con una factura de prueba (RUC) y luego dar de baja los comprobantes de prueba.
-4. Registrar cada intento en `docs/efact/pruebas-comprobantes-especiales/REGISTRO.md` (plantilla abajo) para tener historial.
+1. ~~Emitir una boleta de prueba~~ → **Hecho 20-nov-2026: eFact validó con éxito** (ver `REGISTRO.md`).
+2. Si eFact rechaza o procesa mal, guardar el **CSV exacto + el mensaje de error** y enviarlos a eFact preguntando qué columna corregir.
+3. **Siguiente:** factura de prueba (RUC, FG01) y dar de baja los comprobantes de prueba.
+4. Registrar cada intento en `docs/efact/pruebas-comprobantes-especiales/REGISTRO.md`.
 
 | N.º | Fecha | Documento | CSV (archivo) | Respuesta de eFact / error | Cambio aplicado |
 |----|-------|-----------|---------------|----------------------------|-----------------|
-| 1 | | | | | |
+| 1 | 20-nov-2026 | Boleta BG01 (gratuita, afect. 16) | CSV módulo Legacy | Validado con éxito | Ninguno |
 
 ## 9. Decisiones abiertas
 
-1. **Serie/correlativo:** ¿serie propia (p. ej. `BG01` / `FG01`, que no choque con `B001`, `B002`, `BR01`, `FR01`, `FJ01`…) o misma serie que las ventas? Recomendación: **serie propia** para no tocar `talonariosjf`; confirmar con Contabilidad que es válido y con eFact que la acepta/hay que registrarla.
+1. **Serie/correlativo:** serie propia **BG01** / **FG01** (no toca `talonariosjf`). **eFact aceptó BG01 en boleta** (20-nov-2026). Confirmar con Contabilidad si esas series quedan definitivas en producción.
 2. **Stock:** ¿los regalos salen del inventario? Si sí, definir salida aparte (no desde este módulo).
 3. **Afectación (con IGV / sin IGV):** el módulo soporta **las dos** con un selector (11–16 = con IGV, 31–37 = sin IGV; el resto del CSV sale solo, §6). **Recomendación: por defecto "con IGV"** (retiro gravado): trabajadores **16**, obsequio a clientes/proveedores **13** (o **14** si es publicidad), premios **11**, donaciones **12**. "Sin IGV" solo con sustento que dé el contador. El porqué, con base legal de SUNAT, está en **`GRATUITAS-codigos-afectacion-sustento.md` (resumen para Contabilidad; detalle en `-detalle.md`)** (documento para Contabilidad). Esto no es asesoría tributaria.
 4. **Factura:** pedir a Contabilidad un ejemplo (proveedor o cliente con RUC).
@@ -265,6 +265,7 @@ Se acordó **no hacer un módulo por cada tipo de comprobante** ni llamarlo "Obs
 - Verificado: el CSV de la gratuita no cambió con la reestructuración (solo la etiqueta de FILA 7 columna E: "GRATUITA <categoría>").
 - Instalación nueva: `docs/sql/comprobantes-especiales.sql`. Si ya se había ejecutado la versión anterior (tablas `obsequio*`): `docs/sql/comprobantes-especiales-migracion.sql` (una sola vez; conserva datos).
 - Constantes opcionales en `config.php`: `COMPROBANTES_ESPECIALES_USUARIOS` (ids con acceso; por defecto 70 y 6) y `GRATUITAS_PERMITE_INAFECTO` (sin IGV; desactivado).
+- **Prueba eFact (20-nov-2026):** boleta GRATUITA (BG01, afectación 16) **validada con éxito**; sin cambio de CSV. Pendiente factura FG01. Ver `pruebas-comprobantes-especiales/REGISTRO.md`.
 
 **Para agregar un tipo nuevo (cuando lo pidan):**
 1. Elegirlo y **estudiar su estructura** como se hizo con la gratuita: columnas contra el manual de eFact, ejemplo de eFact, preguntas a Contabilidad.

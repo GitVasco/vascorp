@@ -1,6 +1,6 @@
-# Comprobantes especiales — pendientes y plan (revisión del 9-nov-2026)
+# Comprobantes especiales — pendientes y plan (actualizado 20-nov-2026)
 
-**Estado:** solo revisión y documentación. **No se implementa nada todavía.**
+**Estado:** módulo implementado. **Boleta gratuita validada con éxito en eFact** (20-nov-2026; ver `pruebas-comprobantes-especiales/REGISTRO.md`). Falta prueba de **factura** FG01 y los pendientes contables (1, 4, 5).
 **Alcance revisado:** cómo funciona hoy cada punto en el sistema y cómo se haría para el tipo **GRATUITA** (y futuros tipos).
 **Relacionado:** `COMPROBANTES-ESPECIALES-diseno.md` (módulo), `GRATUITAS-codigos-afectacion-sustento.md` (para Contabilidad).
 
@@ -8,13 +8,13 @@
 
 | # | Punto | Estado hoy | Depende de | Tamaño |
 |---|-------|------------|------------|--------|
-| 2 | Enviar a eFact | **Hecho en código** (copia el CSV a la carpeta que vigila eFact). Falta la prueba real | Prueba en el entorno con acceso a la carpeta de eFact | Hecho / probar |
-| 3 | Corregir lo que falle | **Proceso definido** (CSV + error → eFact → corregir → repetir). No empezó | Punto 2 | Variable |
+| 2 | Enviar a eFact | **Boleta OK** (eFact validó con éxito 20-nov-2026). Código ya copia el CSV a la carpeta vigilada. Falta prueba de **factura** FG01 | Entorno con carpeta eFact | Hecho (boleta) / probar factura |
+| 3 | Corregir lo que falle | **No hizo falta en boleta** (aceptada sin cambio de columnas). Proceso sigue vigente si falla la factura | Punto 2 (factura) | Variable |
 | 1 | Cuenta por cobrar | **No existe.** Probablemente **no hace falta** (total 0.00); decisión de Contabilidad | Respuesta de Contabilidad | S (si se pide) |
-| 4 | Excel de registro de ventas | **No incluye** estos comprobantes (solo lee `ventajf`) | Puntos 2–3 y criterio de Contabilidad | M |
-| 5 | Pase de datos a SISCONT | **No incluye** estos comprobantes (solo lee `ventajf`) | Puntos 2–3, 1 y el asiento contable | M–L |
+| 4 | Excel de registro de ventas | **No incluye** estos comprobantes (solo lee `ventajf`) | Boleta OK; criterio de Contabilidad | M |
+| 5 | Pase de datos a SISCONT | **No incluye** estos comprobantes (solo lee `ventajf`) | Boleta OK, punto 1 y el asiento contable | M–L |
 
-Orden: **2 → 3** (que eFact acepte) → **decisión del punto 1** → **4** → **5**. Los puntos 4 y 5 no se tocan hasta que eFact acepte el comprobante, como se acordó.
+Orden: **2 (boleta ✔) → 2/3 factura** → **decisión del punto 1** → **4** → **5**. Los puntos 4 y 5 ya pueden planificarse con Contabilidad; eFact aceptó la boleta.
 
 **Por qué 4 y 5 no salen solos:** el módulo guarda en sus propias tablas (`comp_especialjf`, `comp_especial_detjf`), y el registro de ventas y SISCONT leen **solo `ventajf`**. Es el costo de haberlo aislado del flujo de ventas, a propósito: no se rompe nada, pero cada reporte contable hay que extenderlo explícitamente.
 
@@ -54,8 +54,11 @@ Orden: **2 → 3** (que eFact acepte) → **decisión del punto 1** → **4** �
 ### Hecho
 - `ControladorComprobantesEspeciales::ctrEnviar()` arma el CSV con nuestra estructura y lo deja en la carpeta que vigila eFact (`DESTINO_INVOICE` / `DESTINO_BOLETA`, la misma de las ventas). Marca el comprobante como **ENVIADO**. También existe "Ver CSV" (no envía nada) y "Marcar baja".
 
+### Confirmado (20-nov-2026)
+1. **Primera prueba real de boleta:** eFact **validó con éxito** la boleta gratuita (serie provisional BG01, layout Legacy). Sin cambio de columnas. Detalle en `pruebas-comprobantes-especiales/REGISTRO.md`.
+
 ### Pendiente
-1. **Primera prueba real** (boleta a nombre de Joel, serie provisional BG01, baja inmediata). La prueba solo vale en el entorno con acceso a la carpeta de eFact (en desarrollo/Docker la carpeta destino es local y no la lee eFact).
+1. **Prueba de factura** (RUC, serie FG01): mismo CSV gratuito; revisar FILA 1 columna O (`CONTADO`) y FILA 3 (`ATTACH_DOC`). Solo vale en el entorno con carpeta real de eFact (en desarrollo/Docker la carpeta destino es local y no la lee eFact).
 2. **Estado real del comprobante.** Hoy el módulo **no sabe** si eFact lo aceptó: solo registra que dejó el archivo. Las ventas normales muestran SIN ENVIAR / ENVIADO / BAJA en **Procesar comprobante electrónico** (`procesar-ce`, columna `ventajf.facturacion`: `0` sin enviar, `2` enviado, `1`/`4` baja) y tienen el botón **Consulta SUNAT** (valida el comprobante con RUC, serie, correlativo, fecha y monto; responde ACEPTADO / AUTORIZADO / ANULADO / NO EXISTE).
 3. **Mejora propuesta:** botón **"Consultar estado"** en el listado, reutilizando la misma consulta SUNAT de `procesar-ce` (`ajax/facturacion.ajax.php`, parámetros `tipoConsulta`, `rucConsulta`, `serieConsulta`, `correlativoConsulta`, `emisionConsulta`, `montoConsulta`), y guardar el resultado (nuevo estado `ACEPTADO` / `OBSERVADO`). Para un obsequio el monto a consultar es **0.00**; hay que verificar que la consulta lo acepte.
 4. Si eFact rechaza, **no hay mensaje de error en el sistema** (igual que las ventas): el error se obtiene de eFact/su portal y se registra a mano en `pruebas-comprobantes-especiales/REGISTRO.md`.
@@ -65,20 +68,20 @@ Orden: **2 → 3** (que eFact acepte) → **decisión del punto 1** → **4** �
 ## 3. Corregir lo que falle
 
 Proceso acordado (ver `pruebas-comprobantes-especiales/GUIA-PRUEBA.md`):
-1. Enviar la boleta de prueba → revisar en eFact → **dar de baja** el comprobante en su portal y pulsar **Marcar baja**.
+1. ~~Enviar la boleta de prueba~~ → **Hecho (20-nov-2026): eFact validó con éxito.** Dar de baja en el portal y **Marcar baja** si corresponde.
 2. Si falla: guardar el **CSV exacto + el mensaje de error** y enviarlos a eFact preguntando qué columna corregir. Anotar cada intento en `REGISTRO.md`.
 3. Corregir **un campo a la vez** (solo la parte de operación gratuita; la estructura del CSV no se mueve) y repetir.
-4. Repetir con una **factura** (RUC, serie FG01).
-5. Al cerrar, actualizar el diseño (§6) y la guía con lo que eFact confirmó.
+4. **Siguiente:** repetir con una **factura** (RUC, serie FG01).
+5. Al cerrar la factura, actualizar el diseño (§6) y la guía si eFact pide algún ajuste distinto al de boleta.
 
-**Dudas ya identificadas (⚠, columnas a confirmar con la prueba):**
-- Columna del IGV informativo en cabecera: hoy **AO** (Legacy); en el layout 2021 es **T**.
-- Si la columna **W** de la línea (hoy vacía) debe llevar valor.
-- Si **Z** y **AL** de cabecera van en `0.00` o vacías.
-- Aceptación de dirección `-` y ubigeo vacío cuando el receptor es una persona con DNI.
-- Aceptación de **total 0.00** en nuestro layout (el ejemplo de eFact, en layout 2021, lo acepta).
+**Dudas de columnas (boleta — confirmadas 20-nov-2026):**
+- IGV informativo de cabecera en **AO** (Legacy): ✔ eFact aceptó.
+- Columna **W** de la línea vacía: ✔ eFact aceptó.
+- **Z** y **AL** en `0.00`: ✔ eFact aceptó.
+- Dirección / ubigeo del receptor DNI con el formato del módulo: ✔ eFact aceptó.
+- **Total 0.00** en nuestro layout: ✔ eFact aceptó.
 
-Cada intento consume un correlativo de la serie provisional; no reiniciarla si algún comprobante llegó a eFact (§ guía de prueba).
+Cada intento consume un correlativo de la serie provisional; **no reiniciar** BG01/FG01 si el comprobante ya llegó a eFact (§ guía de prueba).
 
 ---
 

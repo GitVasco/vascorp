@@ -2,6 +2,8 @@
 
 Rama `joel`. Nada de esto toca el flujo de ventas. **Probar siempre con una serie provisional (BG01 / FG01), a nombre de Joel, y dar de baja el comprobante en eFact al terminar.**
 
+**Estado (20-nov-2026):** la **boleta** gratuita (afectación 16) fue **validada con éxito** por eFact. El CSV de §3 no requiere cambios. **Siguiente paso:** §5 factura FG01. Historial: `REGISTRO.md`.
+
 ## 0. Preparación (una sola vez)
 1. Base de datos:
    - **Instalación nueva:** ejecutar `docs/sql/comprobantes-especiales.sql` (tablas `comp_especialjf`, `comp_especial_detjf`, `comp_especial_seriejf` y series BG01 / FG01).
@@ -12,22 +14,25 @@ Rama `joel`. Nada de esto toca el flujo de ventas. **Probar siempre con una seri
    ```
 3. Verificar que `BG01` y `FG01` no estén en uso por otra serie del sistema/eFact.
 4. El inafecto (sin IGV) está **desactivado**. Solo se activa con `define("GRATUITAS_PERMITE_INAFECTO", true);` y confirmación escrita de Contabilidad.
+5. Correlativo: vive en `comp_especial_seriejf.correlativo` (último usado). **No reiniciar** si el número ya llegó a eFact.
 
-## 1. Boleta de prueba (trabajador, con IGV)
+## 1. Boleta de prueba (trabajador, con IGV) — ✔ hecha
 1. Menú **Comprobantes especiales → Nuevo comprobante**. Tipo: *Operación gratuita (obsequios)*.
 2. Destinatarios: *Trabajador* (propone afectación **16**). Motivo: `PRUEBA ENTREGA A TRABAJADORES`.
 3. Ítem: descripción `CANASTA PRUEBA`, unidad C62, cantidad 1, valor referencial `67.80`.
 4. Receptor: tu DNI → *Completar nombres*.
-5. **Crear comprobantes** → queda GENERADO (`BG01-00000001`).
+5. **Crear comprobantes** → queda GENERADO (`BG01-…`).
 6. En el listado pulsa el icono de archivo (**Ver CSV**): revisa que sea lo esperado (ver §3). No envía nada.
 7. **Enviar** → el CSV queda en la carpeta que vigila eFact.
 
 ## 2. Qué mirar en eFact
 - ¿Procesó, rechazó o procesó con observaciones? Copiar el mensaje **exacto**.
-- ¿El PDF muestra Op. Gratuitas 67.80, IGV 12.20 (informativo), total 0.00, la leyenda y el monto en letras?
+- ¿El PDF muestra Op. Gratuitas, IGV informativo, total 0.00, la leyenda y el monto en letras?
 - Luego **dar de baja** el comprobante en el portal de eFact y, en el listado, pulsar **Marcar baja**.
 
-## 3. CSV esperado (boleta, afectación 16)
+**Resultado boleta (20-nov-2026):** eFact **validó con éxito**. Sin cambios de columnas.
+
+## 3. CSV esperado (boleta, afectación 16) — confirmado
 Con nuestra estructura (9 filas + `FF00FF`). Lo único distinto a una venta normal:
 
 | Dónde | Valor |
@@ -41,13 +46,12 @@ Con nuestra estructura (9 filas + `FF00FF`). Lo único distinto a una venta norm
 | Línea: I, J | `12.20` |
 | Línea: **K / L / M** | `16` / `9996` / `18` |
 | Línea: U, X | `67.80` |
+| Línea: W | vacía (aceptada) |
 
 ## 4. Si eFact rechaza
-Anotar en `REGISTRO.md`: archivo CSV, mensaje de error, y qué se cambió. Mandar a eFact el CSV + el error y preguntar qué columna corregir. Puntos que se espera confirmar (marcados ⚠ en el diseño):
-- Dónde va el IGV informativo de cabecera (hoy **AO**; en el layout 2021 es la columna T).
-- Si la columna **W** de la línea (hoy vacía) debe llevar valor.
-- Si **Z** / **AL** deben ir en `0.00` o vacías.
-- Aceptación de dirección `-` / ubigeo vacío en receptor DNI.
+Anotar en `REGISTRO.md`: archivo CSV, mensaje de error, y qué se cambió. Mandar a eFact el CSV + el error y preguntar qué columna corregir.
 
-## 5. Segunda prueba: factura
-Repetir con un RUC (serie FG01). Revisar FILA 1 columna O (`CONTADO`) y FILA 3 (`ATTACH_DOC`).
+En boleta ya no aplican las dudas de AO / W / Z / AL / total 0.00 (quedaron confirmadas). Si falla la **factura**, anotar diferencias de FILA 1 O y FILA 3.
+
+## 5. Segunda prueba: factura (siguiente)
+Repetir con un RUC (serie FG01). Revisar FILA 1 columna O (`CONTADO`) y FILA 3 (`ATTACH_DOC`). Registrar resultado en `REGISTRO.md`.
