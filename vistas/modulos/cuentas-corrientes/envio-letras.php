@@ -90,7 +90,7 @@
                             <label>Formato para el banco</label>
                             <select class="form-control" name="formatoEnvioLetra" id="formatoEnvioLetra">
                                 <option value="txt" selected>TXT — formato vigente (recomendado)</option>
-                                <option value="excel">Excel nuevo — con dirección (pendiente confirmación banco)</option>
+                                <option value="excel">Excel (.xlsx) — con dirección (pendiente confirmación banco)</option>
                             </select>
                             <p class="help-block" style="margin-bottom:0;">
                                 Mientras el banco no confirme el Excel, use <b>TXT</b>.

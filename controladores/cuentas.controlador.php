@@ -1306,7 +1306,7 @@ class ControladorCuentas
 	/*=============================================
 	REGENERAR ARCHIVO ENVIO LETRAS (TXT o Excel)
 	=============================================*/
-	static public function ctrRegenerarEnvioLetraExcel($id, $formato = null)
+	static public function ctrRegenerarEnvioLetraExcel($id, $formato = null, $forzar = false)
 	{
 		require_once dirname(__FILE__) . "/envio-letras-excel.lib.php";
 		if (!class_exists("ControladorContabilidad")) {
@@ -1318,16 +1318,32 @@ class ControladorCuentas
 			return array("ok" => false, "mensaje" => "No se encontró el envío.");
 		}
 
-		$detalle = ModeloCuentas::mdlDetalleEnvioLetras($cab["codigo"]);
-		if (empty($detalle)) {
-			return array("ok" => false, "mensaje" => "El envío no tiene letras.");
-		}
-
 		if ($formato === null || $formato === "") {
 			$formato = EnvioLetrasExcelLib::formatoDesdeArchivo(isset($cab["archivo"]) ? $cab["archivo"] : "");
 		}
 		$formato = EnvioLetrasExcelLib::normalizarFormato($formato);
 		$ext = EnvioLetrasExcelLib::extension($formato);
+
+		// Si ya tiene el archivo en la extensión pedida, devolverlo sin regenerar (más rápido).
+		if (!$forzar && !empty($cab["archivo"])) {
+			$extActual = strtolower(pathinfo($cab["archivo"], PATHINFO_EXTENSION));
+			$rutaAbsActual = dirname(__DIR__) . "/" . $cab["archivo"];
+			if ($extActual === $ext && is_file($rutaAbsActual)) {
+				return array(
+					"ok" => true,
+					"mensaje" => "Archivo listo.",
+					"archivo" => $cab["archivo"],
+					"formato" => $formato,
+					"regenerado" => false,
+					"faltan_direccion" => array()
+				);
+			}
+		}
+
+		$detalle = ModeloCuentas::mdlDetalleEnvioLetras($cab["codigo"]);
+		if (empty($detalle)) {
+			return array("ok" => false, "mensaje" => "El envío no tiene letras.");
+		}
 
 		$filasArchivo = array();
 		$faltanDireccion = array();
@@ -1347,10 +1363,18 @@ class ControladorCuentas
 			}
 
 			$fechaVen = isset($fila["fecha_ven"]) ? $fila["fecha_ven"] : "";
+			$partesNom = EnvioLetrasExcelLib::partesNombreCliente(
+				isset($fila["nombres"]) ? $fila["nombres"] : "",
+				isset($fila["ape_paterno"]) ? $fila["ape_paterno"] : "",
+				isset($fila["ape_materno"]) ? $fila["ape_materno"] : "",
+				isset($fila["cliente_nombre"]) ? $fila["cliente_nombre"] : "",
+				$doc,
+				$tipoDoc
+			);
 			$filasArchivo[] = array(
-				"nombre" => ControladorContabilidad::eliminar_tildes(isset($fila["nombres"]) ? $fila["nombres"] : ""),
-				"ape_paterno" => ControladorContabilidad::eliminar_tildes(isset($fila["ape_paterno"]) ? $fila["ape_paterno"] : ""),
-				"ape_materno" => ControladorContabilidad::eliminar_tildes(isset($fila["ape_materno"]) ? $fila["ape_materno"] : ""),
+				"nombre" => ControladorContabilidad::eliminar_tildes($partesNom["nombre"]),
+				"ape_paterno" => ControladorContabilidad::eliminar_tildes($partesNom["ape_paterno"]),
+				"ape_materno" => ControladorContabilidad::eliminar_tildes($partesNom["ape_materno"]),
 				"tipo_doc" => $tipoDoc,
 				"num_doc" => $doc,
 				"num_letra" => $numCta,
@@ -1372,7 +1396,10 @@ class ControladorCuentas
 		$rutaAbs = dirname(__DIR__) . "/" . $rutaNueva;
 
 		if (!EnvioLetrasExcelLib::generarArchivo($rutaAbs, $filasArchivo, $formato)) {
-			return array("ok" => false, "mensaje" => "No se pudo regenerar el archivo " . strtoupper($ext) . ".");
+			$detalleErr = EnvioLetrasExcelLib::$ultimoError !== ""
+				? (" " . EnvioLetrasExcelLib::$ultimoError)
+				: "";
+			return array("ok" => false, "mensaje" => "No se pudo regenerar el archivo " . strtoupper($ext) . "." . $detalleErr);
 		}
 
 		if (!empty($cab["archivo"])) {
@@ -1395,6 +1422,7 @@ class ControladorCuentas
 			"mensaje" => $mensaje,
 			"archivo" => $rutaNueva,
 			"formato" => $formato,
+			"regenerado" => true,
 			"faltan_direccion" => $faltanDireccion
 		);
 	}
@@ -1676,9 +1704,14 @@ class ControladorCuentas
 						$tipoDoc = 1;
 					}
 
-					$cliente_nom = ControladorContabilidad::eliminar_tildes($value["cliente_nom"]);
-					$cliente_pat = ControladorContabilidad::eliminar_tildes($value["cliente_pat"]);
-					$cliente_mat = ControladorContabilidad::eliminar_tildes($value["cliente_mat"]);
+					$partesNom = EnvioLetrasExcelLib::partesNombreCliente(
+						isset($value["cliente_nom"]) ? $value["cliente_nom"] : "",
+						isset($value["cliente_pat"]) ? $value["cliente_pat"] : "",
+						isset($value["cliente_mat"]) ? $value["cliente_mat"] : "",
+						isset($value["cliente_razon"]) ? $value["cliente_razon"] : "",
+						$doc,
+						$tipoDoc
+					);
 
 					$direccion = "";
 					$departamento = "";
@@ -1696,9 +1729,9 @@ class ControladorCuentas
 					}
 
 					$filasArchivo[] = array(
-						"nombre" => $cliente_nom,
-						"ape_paterno" => $cliente_pat,
-						"ape_materno" => $cliente_mat,
+						"nombre" => ControladorContabilidad::eliminar_tildes($partesNom["nombre"]),
+						"ape_paterno" => ControladorContabilidad::eliminar_tildes($partesNom["ape_paterno"]),
+						"ape_materno" => ControladorContabilidad::eliminar_tildes($partesNom["ape_materno"]),
 						"tipo_doc" => $tipoDoc,
 						"num_doc" => $doc,
 						"num_letra" => $value["numcta"],
@@ -1915,10 +1948,18 @@ class ControladorCuentas
 				}
 			}
 
+			$partesNom = EnvioLetrasExcelLib::partesNombreCliente(
+				isset($value["cliente_nom"]) ? $value["cliente_nom"] : "",
+				isset($value["cliente_pat"]) ? $value["cliente_pat"] : "",
+				isset($value["cliente_mat"]) ? $value["cliente_mat"] : "",
+				isset($value["cliente_razon"]) ? $value["cliente_razon"] : "",
+				$doc,
+				$tipoDoc
+			);
 			$filasArchivo[] = array(
-				"nombre" => ControladorContabilidad::eliminar_tildes($value["cliente_nom"]),
-				"ape_paterno" => ControladorContabilidad::eliminar_tildes($value["cliente_pat"]),
-				"ape_materno" => ControladorContabilidad::eliminar_tildes($value["cliente_mat"]),
+				"nombre" => ControladorContabilidad::eliminar_tildes($partesNom["nombre"]),
+				"ape_paterno" => ControladorContabilidad::eliminar_tildes($partesNom["ape_paterno"]),
+				"ape_materno" => ControladorContabilidad::eliminar_tildes($partesNom["ape_materno"]),
 				"tipo_doc" => $tipoDoc,
 				"num_doc" => $doc,
 				"num_letra" => $value["numcta"],

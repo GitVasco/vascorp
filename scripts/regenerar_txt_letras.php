@@ -3,7 +3,7 @@
 /**
  * Script para regenerar planillas Excel de letras (formato BCP Cobranza Libre).
  *
- * Genera los archivos .xls a partir de envio_letra_cabecerajf y envio_letrasjf
+ * Genera los archivos .xlsx a partir de envio_letra_cabecerajf y envio_letrasjf
  * cuando el Excel falló al crearse pero los registros ya están en la BD.
  * También puede regenerar envíos antiguos (.txt / .xlsx).
  *
@@ -97,14 +97,14 @@ function generarExcelLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
         $codigo = $cab['codigo'];
         $archivoBd = $cab['archivo'];
         $codigoArchivo = preg_replace('/[^0-9A-Za-z]/', '', (string) $codigo);
-        $rutaRel = 'vistas/letras/L' . $codigoArchivo . '_' . date('YmdHis') . '.xls';
+        $rutaRel = 'vistas/letras/L' . $codigoArchivo . '_' . date('YmdHis') . '.xlsx';
         $rutaArchivo = $baseDir . '/' . $rutaRel;
 
         $stmt2 = $pdo->prepare("
             SELECT el.num_cta
             FROM envio_letrasjf el
             WHERE el.codigo = ?
-            ORDER BY el.num_cta
+            ORDER BY el.id ASC
         ");
         $stmt2->execute(array($codigo));
         $detalles = $stmt2->fetchAll(PDO::FETCH_ASSOC);
@@ -125,6 +125,7 @@ function generarExcelLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
                     c.num_cta,
                     c.fecha_ven,
                     c.saldo,
+                    cli.nombre AS cliente_nombre,
                     cli.nombres,
                     cli.ape_paterno,
                     cli.ape_materno,
@@ -161,10 +162,19 @@ function generarExcelLetras($baseDir, $codigoFiltro = null, $fechaFiltro = null)
                 $faltan++;
             }
 
+            $partesNom = EnvioLetrasExcelLib::partesNombreCliente(
+                $cuenta['nombres'] ? $cuenta['nombres'] : '',
+                $cuenta['ape_paterno'] ? $cuenta['ape_paterno'] : '',
+                $cuenta['ape_materno'] ? $cuenta['ape_materno'] : '',
+                $cuenta['cliente_nombre'] ? $cuenta['cliente_nombre'] : '',
+                $doc,
+                $tipoDoc
+            );
+
             $filasExcel[] = array(
-                'nombre' => eliminarTildes($cuenta['nombres'] ? $cuenta['nombres'] : ''),
-                'ape_paterno' => eliminarTildes($cuenta['ape_paterno'] ? $cuenta['ape_paterno'] : ''),
-                'ape_materno' => eliminarTildes($cuenta['ape_materno'] ? $cuenta['ape_materno'] : ''),
+                'nombre' => eliminarTildes($partesNom['nombre']),
+                'ape_paterno' => eliminarTildes($partesNom['ape_paterno']),
+                'ape_materno' => eliminarTildes($partesNom['ape_materno']),
                 'tipo_doc' => $tipoDoc,
                 'num_doc' => $doc,
                 'num_letra' => $numCtaLimpio,

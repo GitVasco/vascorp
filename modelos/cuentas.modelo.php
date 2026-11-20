@@ -1990,10 +1990,38 @@ class ModeloCuentas
 	=============================================*/
 	static public function mdlDetalleEnvioLetras($codigo)
 	{
-		$stmt = Conexion::conectar()->prepare("SELECT
-				el.num_cta AS num_cta_envio,
+		$pdo = Conexion::conectar();
+
+		// 1) Letras del lote en el orden en que se agregaron
+		$stmtEl = $pdo->prepare("SELECT id, num_cta
+			FROM envio_letrasjf
+			WHERE codigo = :codigo
+			ORDER BY id ASC");
+		$stmtEl->bindParam(":codigo", $codigo, PDO::PARAM_STR);
+		$stmtEl->execute();
+		$orden = $stmtEl->fetchAll(PDO::FETCH_ASSOC);
+		if (empty($orden)) {
+			return array();
+		}
+
+		$numCtas = array();
+		foreach ($orden as $row) {
+			$num = isset($row["num_cta"]) ? trim((string) $row["num_cta"]) : "";
+			if ($num !== "") {
+				$numCtas[$num] = true;
+			}
+		}
+		$lista = array_keys($numCtas);
+		if (empty($lista)) {
+			return array();
+		}
+
+		// 2) Una sola consulta de cuentas (evita JOIN con REPLACE sobre toda la tabla)
+		$placeholders = implode(",", array_fill(0, count($lista), "?"));
+		$sql = "SELECT
 				c.id AS id_cuenta,
 				c.num_cta,
+				REPLACE(c.num_cta, '-', '') AS num_cta_limpia,
 				c.fecha_ven,
 				c.saldo,
 				c.monto,
@@ -2010,18 +2038,51 @@ class ModeloCuentas
 				UPPER(TRIM(IFNULL(u.Departamento, ''))) AS departamento,
 				UPPER(TRIM(IFNULL(u.provincia, ''))) AS provincia,
 				UPPER(TRIM(IFNULL(u.distrito, ''))) AS distrito
-			FROM envio_letrasjf el
-			LEFT JOIN cuenta_ctejf c
-				ON REPLACE(c.num_cta, '-', '') = el.num_cta
-				AND c.tipo_doc = '85'
-				AND c.tip_mov = '+'
+			FROM cuenta_ctejf c
 			LEFT JOIN clientesjf cli ON c.cliente = cli.codigo
 			LEFT JOIN ubigeo u ON cli.ubigeo = u.codigo
-			WHERE el.codigo = :codigo
-			ORDER BY el.num_cta");
-		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_STR);
-		$stmt->execute();
-		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+			WHERE c.tipo_doc = '85'
+				AND c.tip_mov = '+'
+				AND REPLACE(c.num_cta, '-', '') IN ($placeholders)";
+		$stmtC = $pdo->prepare($sql);
+		foreach ($lista as $i => $num) {
+			$stmtC->bindValue($i + 1, $num, PDO::PARAM_STR);
+		}
+		$stmtC->execute();
+		$porNum = array();
+		foreach ($stmtC->fetchAll(PDO::FETCH_ASSOC) as $cuenta) {
+			$porNum[$cuenta["num_cta_limpia"]] = $cuenta;
+		}
+
+		// 3) Rearmar en el orden del envío
+		$detalle = array();
+		foreach ($orden as $row) {
+			$num = isset($row["num_cta"]) ? trim((string) $row["num_cta"]) : "";
+			$base = isset($porNum[$num]) ? $porNum[$num] : array(
+				"id_cuenta" => null,
+				"num_cta" => $num,
+				"fecha_ven" => null,
+				"saldo" => null,
+				"monto" => null,
+				"estado_doc" => null,
+				"banco" => null,
+				"fecha_envio" => null,
+				"cod_cliente" => null,
+				"cliente_nombre" => null,
+				"nombres" => null,
+				"ape_paterno" => null,
+				"ape_materno" => null,
+				"documento" => null,
+				"direccion" => null,
+				"departamento" => "",
+				"provincia" => "",
+				"distrito" => ""
+			);
+			$base["num_cta_envio"] = $num;
+			$detalle[] = $base;
+		}
+
+		return $detalle;
 	}
 
 	/*=============================================

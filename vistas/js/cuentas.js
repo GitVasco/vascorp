@@ -1942,6 +1942,8 @@ $(".tablaEnvioLetras tbody").on(
                         respuesta["ape_paterno"] +
                         '" ape_mat ="' +
                         respuesta["ape_materno"] +
+                        '" razon_social ="' +
+                        (respuesta["nombre"] || "") +
                         '" documento ="' +
                         respuesta["documento"] +
                         '" readonly required>' +
@@ -2100,6 +2102,7 @@ function listarCuentas() {
             cliente_nom: $(cliente[i]).attr("nombres"),
             cliente_pat: $(cliente[i]).attr("ape_pat"),
             cliente_mat: $(cliente[i]).attr("ape_mat"),
+            cliente_razon: $(cliente[i]).attr("razon_social") || "",
             cliente_doc: $(cliente[i]).attr("documento"),
             monto: $(monto[i]).val(),
         });
@@ -2367,19 +2370,31 @@ $(".tablaEnvioCuentas").on("click", ".btnVisualizarEnvioCuenta", function () {
             $("#verEnvioCantidad").text(cab.cantidad || (respuesta.detalle || []).length);
 
             var idEnvioModal = cab.id || idEnvio;
-            $("#verEnvioDescargarTxt, #verEnvioDescargarExcel")
-                .attr("idEnvio", idEnvioModal)
-                .show();
-
             var archivoActual = cab.archivo || "";
             var ext = archivoActual.split(".").pop().toLowerCase();
             var formatoGuardado =
-                ext === "xls" || ext === "xlsx" ? "excel" : archivoActual ? "txt" : "";
+                ext === "xlsx" || ext === "xls"
+                    ? "excel"
+                    : archivoActual
+                      ? "txt"
+                      : "";
+
+            $("#verEnvioDescargarTxt")
+                .attr("idEnvio", idEnvioModal)
+                .attr("data-archivo", ext === "txt" ? archivoActual : "")
+                .attr("data-formato-actual", ext === "txt" ? "txt" : "")
+                .show();
+            $("#verEnvioDescargarExcel")
+                .attr("idEnvio", idEnvioModal)
+                .attr("data-archivo", ext === "xlsx" ? archivoActual : "")
+                .attr("data-formato-actual", ext === "xlsx" ? "excel" : "")
+                .show();
+
             if (formatoGuardado === "excel") {
                 $("#verEnvioFormatoActual")
                     .removeClass("label-default label-warning")
                     .addClass("label-info")
-                    .text("Archivo actual: Excel")
+                    .text(ext === "xlsx" ? "Archivo actual: Excel (.xlsx)" : "Archivo actual: Excel")
                     .show();
             } else if (formatoGuardado === "txt") {
                 $("#verEnvioFormatoActual")
@@ -2478,8 +2493,26 @@ $(".tablaEnvioCuentas").on("click", ".btnEditarEnvioLetra", function () {
     window.location = "index.php?ruta=editar-envio-letras&id=" + idEnvio;
 });
 
-function descargarEnvioLetraFormato(idEnvio, formato) {
+function dispararDescargaArchivoEnvio(ruta) {
+    if (!ruta) {
+        return;
+    }
+    var link = document.createElement("a");
+    link.href = ruta;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function descargarEnvioLetraFormato(idEnvio, formato, archivoActual, formatoActual) {
     if (!idEnvio || !formato) {
+        return;
+    }
+
+    // Mismo formato y archivo existente: descarga directa (sin regenerar ni recargar tabla).
+    if (archivoActual && formatoActual === formato) {
+        dispararDescargaArchivoEnvio(archivoActual);
         return;
     }
 
@@ -2517,12 +2550,7 @@ function descargarEnvioLetraFormato(idEnvio, formato) {
             }
 
             swal.close();
-            var link = document.createElement("a");
-            link.href = respuesta.archivo;
-            link.download = "";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            dispararDescargaArchivoEnvio(respuesta.archivo);
 
             if (
                 respuesta.faltan_direccion &&
@@ -2538,7 +2566,8 @@ function descargarEnvioLetraFormato(idEnvio, formato) {
                 });
             }
 
-            recargarTablaEnvioCuentasActual();
+            // No recargar toda la tabla tras descargar (evita warning JSON / parpadeo).
+            // El archivo ya quedó guardado; al refrescar o cambiar de rango se ve el badge.
         },
         error: function () {
             swal({
@@ -2554,7 +2583,9 @@ $(document).on("click", ".btnDescargarEnvioFormato", function (e) {
     e.preventDefault();
     var idEnvio = $(this).attr("idEnvio");
     var formato = $(this).attr("data-formato");
-    descargarEnvioLetraFormato(idEnvio, formato);
+    var archivo = $(this).attr("data-archivo") || "";
+    var formatoActual = $(this).attr("data-formato-actual") || "";
+    descargarEnvioLetraFormato(idEnvio, formato, archivo, formatoActual);
 });
 
 $(".formularioEnvioLetra").on("submit", function () {

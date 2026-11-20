@@ -82,7 +82,7 @@ if (!function_exists("envioLetraFechaVenAttr")) {
                                     <label>Formato para el banco</label>
                                     <select class="form-control" name="formatoEnvioLetra" id="formatoEnvioLetra">
                                         <option value="txt" <?php echo $formatoActual === "txt" ? "selected" : ""; ?>>TXT — formato vigente (recomendado)</option>
-                                        <option value="excel" <?php echo $formatoActual === "excel" ? "selected" : ""; ?>>Excel nuevo — con dirección (pendiente confirmación banco)</option>
+                                        <option value="excel" <?php echo $formatoActual === "excel" ? "selected" : ""; ?>>Excel (.xlsx) — con dirección (pendiente confirmación banco)</option>
                                     </select>
                                     <p class="help-block" style="margin-bottom:0;">
                                         Mientras el banco no confirme el Excel, use <b>TXT</b>.
@@ -138,6 +138,7 @@ if (!function_exists("envioLetraFechaVenAttr")) {
                                                     nombres="<?php echo htmlspecialchars($nombres); ?>"
                                                     ape_pat="<?php echo htmlspecialchars($apePat); ?>"
                                                     ape_mat="<?php echo htmlspecialchars($apeMat); ?>"
+                                                    razon_social="<?php echo htmlspecialchars($clienteNom); ?>"
                                                     documento="<?php echo htmlspecialchars($documento); ?>"
                                                     readonly required>
                                             </div>

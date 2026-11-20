@@ -2,11 +2,16 @@
 
 /**
  * Planilla de Cobranza Libre de Letras (formato BCP).
- * - excel: SpreadsheetML (.xls) con dirección (formato nuevo del banco)
+ * - excel: .xlsx OOXML liviano (sin depender de extensión zip / plantilla pesada)
  * - txt: ancho fijo histórico (formato vigente hasta confirmación del banco)
  */
 class EnvioLetrasExcelLib
 {
+	const PLANTILLA_XLSX = 'vistas/letras/plantilla/Formato_Planilla_de_Letras.xlsx';
+
+	/** @var string */
+	public static $ultimoError = '';
+
 	/**
 	 * @param string $formato txt|excel
 	 * @return string
@@ -26,7 +31,7 @@ class EnvioLetrasExcelLib
 	 */
 	public static function extension($formato)
 	{
-		return self::normalizarFormato($formato) === 'excel' ? 'xls' : 'txt';
+		return self::normalizarFormato($formato) === 'excel' ? 'xlsx' : 'txt';
 	}
 
 	/**
@@ -39,6 +44,44 @@ class EnvioLetrasExcelLib
 			return 'excel';
 		}
 		return 'txt';
+	}
+
+	/**
+	 * Solo RUC 20… (empresa): razón social completa en la 1ª columna; apellidos vacíos.
+	 * DNI y RUC 10… (persona): nombres / ape. paterno / ape. materno.
+	 *
+	 * @return array{nombre:string,ape_paterno:string,ape_materno:string}
+	 */
+	public static function partesNombreCliente($nombres, $apePaterno, $apeMaterno, $razonSocial = '', $numDoc = '', $tipoDoc = null)
+	{
+		$docDigitos = preg_replace('/\D+/', '', (string) $numDoc);
+		$esEmpresaRuc20 = (strlen($docDigitos) === 11 && strpos($docDigitos, '20') === 0);
+
+		if ($esEmpresaRuc20) {
+			$razon = trim((string) $razonSocial);
+			if ($razon === '') {
+				$razon = trim((string) $nombres);
+			}
+			if ($razon === '') {
+				$partes = array_filter(array(
+					trim((string) $nombres),
+					trim((string) $apePaterno),
+					trim((string) $apeMaterno),
+				), 'strlen');
+				$razon = implode(' ', $partes);
+			}
+			return array(
+				'nombre' => $razon,
+				'ape_paterno' => '',
+				'ape_materno' => '',
+			);
+		}
+
+		return array(
+			'nombre' => trim((string) $nombres),
+			'ape_paterno' => trim((string) $apePaterno),
+			'ape_materno' => trim((string) $apeMaterno),
+		);
 	}
 
 	/**
@@ -101,16 +144,20 @@ class EnvioLetrasExcelLib
 	}
 
 	/**
-	 * @param string $rutaDestino Ruta del .xls a crear
-	 * @param array  $filas       nombre, ape_paterno, ape_materno, tipo_doc, num_doc,
-	 *                            num_letra, fecha_ven, importe, direccion, departamento,
-	 *                            provincia, distrito
+	 * Genera .xlsx OOXML (mismas columnas que la plantilla BCP).
+	 * No requiere extensión zip del servidor: arma el ZIP en PHP puro.
+	 *
+	 * @param string $rutaDestino Ruta del .xlsx a crear
+	 * @param array  $filas
 	 * @return bool
 	 */
 	public static function generar($rutaDestino, array $filas)
 	{
+		self::$ultimoError = '';
+
 		$dir = dirname($rutaDestino);
 		if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+			self::$ultimoError = 'No se pudo crear la carpeta de letras.';
 			return false;
 		}
 
@@ -129,64 +176,186 @@ class EnvioLetrasExcelLib
 			'DISTRITO'
 		);
 
-		$xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-		$xml .= '<?mso-application progid="Excel.Sheet"?>' . "\n";
-		$xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"' . "\n";
-		$xml .= ' xmlns:o="urn:schemas-microsoft-com:office:office"' . "\n";
-		$xml .= ' xmlns:x="urn:schemas-microsoft-com:office:excel"' . "\n";
-		$xml .= ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"' . "\n";
-		$xml .= ' xmlns:html="http://www.w3.org/TR/REC-html40">' . "\n";
-		$xml .= '<Styles>' . "\n";
-		$xml .= '<Style ss:ID="header"><Font ss:Bold="1"/></Style>' . "\n";
-		$xml .= '<Style ss:ID="number"><NumberFormat ss:Format="0.00"/></Style>' . "\n";
-		$xml .= '</Styles>' . "\n";
-
-		$xml .= '<Worksheet ss:Name="Hoja1"><Table>' . "\n";
-		$xml .= '<Row>';
+		$ultimaFila = 1 + count($filas);
+		$sheetData = '<sheetData>';
+		$sheetData .= '<row r="1">';
+		$col = 0;
 		foreach ($headers as $h) {
-			$xml .= '<Cell ss:StyleID="header"><Data ss:Type="String">' . self::xmlEscape($h) . '</Data></Cell>';
+			$sheetData .= self::celdaInlineStr(self::colLetter($col) . '1', $h, null);
+			$col++;
 		}
-		$xml .= '</Row>' . "\n";
+		$sheetData .= '</row>';
 
+		$rowNum = 2;
 		foreach ($filas as $fila) {
-			$xml .= '<Row>';
-			$xml .= self::celdaTexto(self::texto($fila, 'nombre'));
-			$xml .= self::celdaTexto(self::texto($fila, 'ape_paterno'));
-			$xml .= self::celdaTexto(self::texto($fila, 'ape_materno'));
-			$xml .= self::celdaNumero(isset($fila['tipo_doc']) ? (int) $fila['tipo_doc'] : 0, false);
-			$xml .= self::celdaTexto(self::texto($fila, 'num_doc'));
-			$xml .= self::celdaTexto(self::texto($fila, 'num_letra'));
-			$xml .= self::celdaTexto(self::texto($fila, 'fecha_ven'));
 			$importe = isset($fila['importe']) ? $fila['importe'] : 0;
 			if (!is_numeric($importe)) {
 				$importe = 0;
 			}
-			$xml .= self::celdaNumero(round((float) $importe, 2), true);
-			$xml .= self::celdaTexto(self::texto($fila, 'direccion'));
-			$xml .= self::celdaTexto(self::texto($fila, 'departamento'));
-			$xml .= self::celdaTexto(self::texto($fila, 'provincia'));
-			$xml .= self::celdaTexto(self::texto($fila, 'distrito'));
-			$xml .= '</Row>' . "\n";
+			$importe = round((float) $importe, 2);
+			$tipoDoc = isset($fila['tipo_doc']) ? (int) $fila['tipo_doc'] : 0;
+
+			$sheetData .= '<row r="' . $rowNum . '">';
+			$sheetData .= self::celdaInlineStr('A' . $rowNum, self::texto($fila, 'nombre'), null);
+			$sheetData .= self::celdaInlineStr('B' . $rowNum, self::texto($fila, 'ape_paterno'), null);
+			$sheetData .= self::celdaInlineStr('C' . $rowNum, self::texto($fila, 'ape_materno'), null);
+			$sheetData .= self::celdaNumeroXlsx('D' . $rowNum, $tipoDoc, null);
+			$sheetData .= self::celdaInlineStr('E' . $rowNum, self::texto($fila, 'num_doc'), null);
+			$sheetData .= self::celdaInlineStr('F' . $rowNum, self::texto($fila, 'num_letra'), null);
+			$sheetData .= self::celdaInlineStr('G' . $rowNum, self::texto($fila, 'fecha_ven'), null);
+			$sheetData .= self::celdaNumeroXlsx('H' . $rowNum, $importe, null);
+			$sheetData .= self::celdaInlineStr('I' . $rowNum, self::texto($fila, 'direccion'), null);
+			$sheetData .= self::celdaInlineStr('J' . $rowNum, self::texto($fila, 'departamento'), null);
+			$sheetData .= self::celdaInlineStr('K' . $rowNum, self::texto($fila, 'provincia'), null);
+			$sheetData .= self::celdaInlineStr('L' . $rowNum, self::texto($fila, 'distrito'), null);
+			$sheetData .= '</row>';
+			$rowNum++;
+		}
+		$sheetData .= '</sheetData>';
+
+		$sheet1 = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+			. '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+			. '<dimension ref="A1:L' . max(1, $ultimaFila) . '"/>'
+			. $sheetData
+			. '</worksheet>';
+
+		$contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+			. '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+			. '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+			. '<Default Extension="xml" ContentType="application/xml"/>'
+			. '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+			. '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+			. '</Types>';
+
+		$rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+			. '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+			. '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+			. '</Relationships>';
+
+		$workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+			. '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+			. ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+			. '<sheets><sheet name="Hoja1" sheetId="1" r:id="rId1"/></sheets>'
+			. '</workbook>';
+
+		$workbookRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+			. '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+			. '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+			. '</Relationships>';
+
+		$archivos = array(
+			'[Content_Types].xml' => $contentTypes,
+			'_rels/.rels' => $rels,
+			'xl/workbook.xml' => $workbook,
+			'xl/_rels/workbook.xml.rels' => $workbookRels,
+			'xl/worksheets/sheet1.xml' => $sheet1
+		);
+
+		if (is_file($rutaDestino)) {
+			@unlink($rutaDestino);
 		}
 
-		$xml .= '</Table></Worksheet>' . "\n";
-		$xml .= '</Workbook>';
+		if (!self::escribirZipStore($rutaDestino, $archivos)) {
+			if (self::$ultimoError === '') {
+				self::$ultimoError = 'No se pudo escribir el archivo XLSX.';
+			}
+			@unlink($rutaDestino);
+			return false;
+		}
 
-		return @file_put_contents($rutaDestino, $xml) !== false;
+		return is_file($rutaDestino) && filesize($rutaDestino) > 0;
 	}
 
-	private static function celdaTexto($valor)
+	/**
+	 * ZIP método store (sin compresión) en PHP puro — funciona sin extensión zip.
+	 */
+	private static function escribirZipStore($rutaDestino, array $archivos)
 	{
+		$fh = @fopen($rutaDestino, 'wb');
+		if ($fh === false) {
+			self::$ultimoError = 'Sin permiso de escritura en vistas/letras.';
+			return false;
+		}
+
+		$offset = 0;
+		$central = '';
+		$count = 0;
+
+		foreach ($archivos as $nombre => $contenido) {
+			$nombre = str_replace('\\', '/', $nombre);
+			$contenido = (string) $contenido;
+			$size = strlen($contenido);
+			$crcBin = pack('V', hexdec(hash('crc32b', $contenido)));
+
+			$local = pack('Vvvvvv', 0x04034b50, 20, 0, 0, 0, 0)
+				. $crcBin
+				. pack('VV', $size, $size)
+				. pack('vv', strlen($nombre), 0)
+				. $nombre
+				. $contenido;
+
+			if (fwrite($fh, $local) === false) {
+				fclose($fh);
+				self::$ultimoError = 'Error al escribir datos ZIP.';
+				return false;
+			}
+
+			$central .= pack('Vvvvvvv', 0x02014b50, 20, 20, 0, 0, 0, 0)
+				. $crcBin
+				. pack('VV', $size, $size)
+				. pack('vvvvvVV', strlen($nombre), 0, 0, 0, 0, 0, $offset)
+				. $nombre;
+
+			$offset += strlen($local);
+			$count++;
+		}
+
+		$centralOffset = $offset;
+		$centralSize = strlen($central);
+		if (fwrite($fh, $central) === false) {
+			fclose($fh);
+			self::$ultimoError = 'Error al escribir directorio ZIP.';
+			return false;
+		}
+
+		$end = pack('VvvvvVVv', 0x06054b50, 0, 0, $count, $count, $centralSize, $centralOffset, 0);
+		if (fwrite($fh, $end) === false) {
+			fclose($fh);
+			self::$ultimoError = 'Error al cerrar ZIP.';
+			return false;
+		}
+
+		fclose($fh);
+		return true;
+	}
+
+	private static function colLetter($index)
+	{
+		$letters = 'ABCDEFGHIJKL';
+		return $letters[$index];
+	}
+
+	private static function celdaInlineStr($ref, $valor, $style)
+	{
+		$sAttr = ($style !== null && $style !== '') ? ' s="' . $style . '"' : '';
 		if ($valor === '') {
-			return '<Cell><Data ss:Type="String"></Data></Cell>';
+			return '<c r="' . $ref . '"' . $sAttr . '/>';
 		}
-		return '<Cell><Data ss:Type="String">' . self::xmlEscape($valor) . '</Data></Cell>';
+		$space = preg_match('/^\s|\s$/', $valor) ? ' xml:space="preserve"' : '';
+		return '<c r="' . $ref . '"' . $sAttr . ' t="inlineStr"><is><t' . $space . '>'
+			. self::xmlEscape($valor) . '</t></is></c>';
 	}
 
-	private static function celdaNumero($valor, $conEstilo)
+	private static function celdaNumeroXlsx($ref, $valor, $style)
 	{
-		$style = $conEstilo ? ' ss:StyleID="number"' : '';
-		return '<Cell' . $style . '><Data ss:Type="Number">' . $valor . '</Data></Cell>';
+		$sAttr = ($style !== null && $style !== '') ? ' s="' . $style . '"' : '';
+		if (is_float($valor) || (is_string($valor) && strpos((string) $valor, '.') !== false)) {
+			$valor = rtrim(rtrim(number_format((float) $valor, 2, '.', ''), '0'), '.');
+			if ($valor === '') {
+				$valor = '0';
+			}
+		}
+		return '<c r="' . $ref . '"' . $sAttr . '><v>' . $valor . '</v></c>';
 	}
 
 	private static function texto(array $fila, $clave)

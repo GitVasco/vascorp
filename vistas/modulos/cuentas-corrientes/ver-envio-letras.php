@@ -161,7 +161,7 @@ MODAL VISUALIZAR ENVIO LETRAS
                     <i class="fa fa-file-text-o"></i> Descargar TXT
                 </button>
                 <button type="button" class="btn btn-success btnDescargarEnvioFormato" id="verEnvioDescargarExcel" data-formato="excel" style="display:none;">
-                    <i class="fa fa-file-excel-o"></i> Descargar Excel
+                    <i class="fa fa-file-excel-o"></i> Descargar Excel (.xlsx)
                 </button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
             </div>
