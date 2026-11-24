@@ -4464,6 +4464,11 @@ class ModeloArticulos
 	static public function mdlArticulosUrgencia()
 	{
 
+		/*
+		 * Bloque "b": taller desde cabecera (serviciosjf/cierresjf).
+		 * LEFT(codigo,2) rompía T10–T15 (T12R… → T1 BRASIER).
+		 * A/C van por tipo (como antes), sin filtrar servicio=0, para no perder filas.
+		 */
 		$stmt = Conexion::conectar()->prepare("SELECT 
 					'a' AS inicio,
 					'T3 - TRUSAS' AS nom_taller,
@@ -4523,38 +4528,15 @@ class ModeloArticulos
 					) > (a.stock - a.pedidos) 
 					AND a.estado = 'Activo' 
 					AND LEFT(a.modelo, 1) NOT IN ('D') 
-					AND m.tipo NOT IN ('BRASIER','SEAMLESS') 
+					AND IFNULL(m.tipo, '') NOT IN ('BRASIER', 'TOP', 'SEAMLESS', 'SEAMLESS BRASIER') 
 				UNION
 				SELECT 
 					'b' AS inicio,
 					CONCAT(
-					CASE
-						WHEN sd.taller IS NULL 
-						THEN cd.taller 
-						WHEN cd.taller IS NULL 
-						THEN sd.taller 
-						WHEN sd.taller = cd.taller 
-						THEN sd.taller 
-						WHEN sd.taller <> cd.taller 
-						THEN sd.taller 
-					END,
-					' - ',
-					(SELECT 
-						nom_sector 
-					FROM
-						sectorjf s 
-					WHERE s.cod_sector = 
-						CASE
-						WHEN sd.taller IS NULL 
-						THEN cd.taller 
-						WHEN cd.taller IS NULL 
-						THEN sd.taller 
-						WHEN sd.taller = cd.taller 
-						THEN sd.taller 
-						WHEN sd.taller <> cd.taller 
-						THEN sd.taller 
-						END)
-					) AS nom_sector,
+						x.taller,
+						' - ',
+						IFNULL(sec.nom_sector, x.taller)
+					) AS nom_taller,
 					a.articulo,
 					a.id_marca,
 					a.marca,
@@ -4581,16 +4563,7 @@ class ModeloArticulos
 					END AS stock,
 					(a.stock - a.pedidos) AS stockB,
 					a.pedidos,
-					CASE
-					WHEN sd.taller IS NULL 
-					THEN cd.cantidad 
-					WHEN cd.taller IS NULL 
-					THEN sd.saldo 
-					WHEN sd.taller = cd.taller 
-					THEN sd.saldo + cd.cantidad 
-					WHEN sd.taller <> cd.taller 
-					THEN sd.saldo 
-					END AS taller,
+					x.cantidad AS taller,
 					a.alm_corte,
 					CASE
 					WHEN a.alerta = '0' 
@@ -4610,39 +4583,51 @@ class ModeloArticulos
 					IFNULL(a.ult_mes, 0) AS ult_mes 
 				FROM
 					articulojf a 
-					LEFT JOIN 
-					(SELECT 
-						LEFT(sd.codigo, 2) AS taller,
-						sd.articulo,
-						SUM(sd.saldo) AS saldo 
-					FROM
-						servicios_detallejf sd 
-					WHERE sd.saldo > 0 
-						AND sd.cerrar = 0 
-					GROUP BY LEFT(sd.codigo, 2),
-						sd.articulo) AS sd 
-					ON a.articulo = sd.articulo 
-					LEFT JOIN 
-					(SELECT 
-						LEFT(cd.codigo, 2) AS taller,
-						cd.articulo,
-						SUM(cd.cantidad) AS cantidad 
-					FROM
-						cierres_detallejf cd 
-					WHERE cd.cantidad > 0 
-					GROUP BY LEFT(cd.codigo, 2),
-						cd.articulo) AS cd 
-					ON a.articulo = cd.articulo 
-				WHERE a.estado = 'ACTIVO' 
-					AND servicio > 0 
+					INNER JOIN (
+						SELECT 
+							u.taller,
+							u.articulo,
+							SUM(u.qty) AS cantidad 
+						FROM (
+							SELECT 
+								s.taller,
+								sd.articulo,
+								SUM(sd.saldo) AS qty 
+							FROM
+								servicios_detallejf sd 
+								INNER JOIN serviciosjf s 
+									ON s.codigo = sd.codigo 
+							WHERE sd.saldo > 0 
+								AND sd.cerrar = 0 
+							GROUP BY s.taller,
+								sd.articulo 
+							UNION ALL 
+							SELECT 
+								c.taller,
+								cd.articulo,
+								SUM(cd.cantidad) AS qty 
+							FROM
+								cierres_detallejf cd 
+								INNER JOIN cierresjf c 
+									ON c.codigo = cd.codigo 
+							WHERE cd.cantidad > 0 
+							GROUP BY c.taller,
+								cd.articulo
+						) u 
+						GROUP BY u.taller,
+							u.articulo
+					) x 
+						ON a.articulo = x.articulo 
+					LEFT JOIN sectorjf sec 
+						ON sec.cod_sector = x.taller 
+				WHERE a.estado = 'Activo' 
+					AND a.servicio > 0 
 					AND ROUND(
 					(
 						IFNULL(a.ult_mes, 0) * a.urgencia / 100
 					),
 					0
 					) > (a.stock - a.pedidos) 
-				GROUP BY a.articulo,
-					sd.taller 
 				UNION
 				SELECT 
 					'c' AS inicio,
@@ -4703,7 +4688,7 @@ class ModeloArticulos
 					) > (a.stock - a.pedidos) 
 					AND a.estado = 'Activo' 
 					AND LEFT(a.modelo, 1) NOT IN ('D') 
-					AND m.tipo IN ('BRASIER','TOP','SEAMLESS') 
+					AND m.tipo IN ('BRASIER', 'TOP', 'SEAMLESS', 'SEAMLESS BRASIER') 
 				ORDER BY inicio,
 					nom_taller,
 					articulo");
@@ -4711,11 +4696,6 @@ class ModeloArticulos
 		$stmt->execute();
 
 		return $stmt->fetchAll();
-
-
-		$stmt->close();
-
-		$stmt = null;
 	}
 
 	/*

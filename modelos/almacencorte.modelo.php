@@ -35,8 +35,14 @@ class ModeloAlmacenCorte
 
 	static public function mdlExisteGuiaAC($guia)
 	{
-
-		$stmt = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE guia = :guia LIMIT 1");
+		// Solo del año actual: guías numéricas viejas (ej. "2024" de 2024)
+		// no deben bloquear el corte interno 2024 de este año.
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT codigo FROM almacencortejf
+			WHERE guia = :guia
+			  AND YEAR(fecha) = YEAR(CURDATE())
+			LIMIT 1"
+		);
 
 		$stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
 
@@ -330,8 +336,13 @@ class ModeloAlmacenCorte
 	*/
 	static public function mdlExisteGuiaOtroAC($guia, $codigo)
 	{
-
-		$stmt = Conexion::conectar()->prepare("SELECT codigo FROM almacencortejf WHERE guia = :guia AND codigo <> :codigo LIMIT 1");
+		$stmt = Conexion::conectar()->prepare(
+			"SELECT codigo FROM almacencortejf
+			WHERE guia = :guia
+			  AND codigo <> :codigo
+			  AND YEAR(fecha) = YEAR(CURDATE())
+			LIMIT 1"
+		);
 
 		$stmt->bindParam(":guia", $guia, PDO::PARAM_STR);
 		$stmt->bindParam(":codigo", $codigo, PDO::PARAM_INT);

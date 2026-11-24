@@ -86,15 +86,27 @@ class ControladorAlmacenCorte
             self::alertaAlmacenCorte(
                 "error",
                 "Guía duplicada",
-                "¡Esa guía ya fue registrada. No se puede crear el corte otra vez!",
+                "¡Esa guía ya fue registrada este año. No se puede crear el corte otra vez!",
                 "crear-almacencorte"
             );
             return;
         }
 
+        // Código interno propio de almacén corte (no compartido con envío de letras).
         $codigo = ModeloAlmacenCorte::mdlSiguienteCodigoAC();
-        while (ModeloAlmacenCorte::mdlExisteCodigoAC($codigo)) {
+        $intentos = 0;
+        while (ModeloAlmacenCorte::mdlExisteCodigoAC($codigo) && $intentos < 1000) {
             $codigo++;
+            $intentos++;
+        }
+        if ($intentos >= 1000) {
+            self::alertaAlmacenCorte(
+                "error",
+                "Error",
+                "¡No se pudo obtener un código interno libre. Inténtelo de nuevo!",
+                "crear-almacencorte"
+            );
+            return;
         }
 
         $listArticulo = json_decode($_POST["listArticulo"], true);
